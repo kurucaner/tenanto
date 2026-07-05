@@ -4,6 +4,12 @@ import { APP_NAME } from "@/packages/shared";
 import { renderTemplate } from "./email-templates";
 import { sendTransactionalEmail } from "./ses";
 
+export interface PropertyInviteEmailOptions {
+  inviterName: string;
+  propertyName: string;
+  role: string;
+}
+
 const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
 
@@ -60,4 +66,22 @@ export async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose
     text,
     to,
   });
+}
+
+export async function sendPropertyInviteEmail(
+  to: string,
+  opts: PropertyInviteEmailOptions
+): Promise<void> {
+  const subject = `You've been invited to join ${opts.propertyName} on ${APP_NAME}`;
+  const text = `${opts.inviterName} has invited you to join ${opts.propertyName} as a ${opts.role}. Sign up at ${WEB_APP_URL} using this email address to accept.`;
+
+  const html = renderTemplate("property-invite.html", {
+    appName: APP_NAME,
+    baseUrl: WEB_APP_URL ?? "",
+    inviterName: opts.inviterName,
+    propertyName: opts.propertyName,
+    role: opts.role,
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
 }

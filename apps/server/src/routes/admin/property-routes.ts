@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { adminAuditEventsDb } from "@/db/admin-audit-events";
 import { pool } from "@/db/pool";
 import { propertiesDb } from "@/db/properties";
+import { propertyInvitesDb } from "@/db/property-invites";
 import { propertyMembersDb } from "@/db/property-members";
 import { userDb } from "@/db/users";
 import {
@@ -16,6 +17,7 @@ import {
   type TPropertyRole,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
 
 import { parseAdminLimit, parseUuidParam } from "./admin-query-utils";
 import { buildInsertAdminAuditParams } from "./record-admin-audit";
@@ -79,6 +81,8 @@ function parseUpdatePropertyBody(
   return { body, ok: true };
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function parseAddMemberBody(
   raw: unknown
 ): { body: IAdminAddPropertyMemberBody; ok: true } | { error: string; ok: false } {
@@ -86,14 +90,17 @@ function parseAddMemberBody(
     return { error: "Body must be a JSON object", ok: false };
   }
   const r = raw as Record<string, unknown>;
-  if (typeof r["userId"] !== "string" || r["userId"].trim() === "") {
-    return { error: "userId is required", ok: false };
+  if (typeof r["email"] !== "string" || r["email"].trim() === "") {
+    return { error: "email is required", ok: false };
+  }
+  if (!EMAIL_REGEX.test(r["email"].trim())) {
+    return { error: "email is not valid", ok: false };
   }
   const role = parsePropertyRole(r["role"]);
   if (role === null) {
     return { error: `role must be one of: ${[...PROPERTY_ROLES].join(", ")}`, ok: false };
   }
-  return { body: { role, userId: r["userId"] }, ok: true };
+  return { body: { email: r["email"].trim().toLowerCase(), role }, ok: true };
 }
 
 function parseUpdateMemberBody(
@@ -319,26 +326,54 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const targetUser = await userDb.findById(parsed.body.userId);
-      if (!targetUser) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "User not found" });
+      const { email, role } = parsed.body;
+      const targetUser = await userDb.findByEmail(email);
+
+      if (targetUser) {
+        const existingMember = await propertyMembersDb.findOne(propertyId, targetUser.id);
+        if (existingMember) {
+          return reply
+            .status(HttpStatus.CONFLICT)
+            .send({ error: "User is already a member of this property" });
+        }
+        const member = await propertyMembersDb.add(
+          propertyId,
+          targetUser.id,
+          role,
+          request.user.userId
+        );
+        return reply.status(HttpStatus.CREATED).send({ member, type: "member_added" });
       }
 
-      const existingMember = await propertyMembersDb.findOne(propertyId, parsed.body.userId);
-      if (existingMember) {
+      // User does not exist — create invite
+      const existingInvite = await propertyInvitesDb.findByPropertyAndEmail(propertyId, email);
+      if (existingInvite && existingInvite.status === "pending") {
         return reply
           .status(HttpStatus.CONFLICT)
-          .send({ error: "User is already a member of this property" });
+          .send({ error: "An invitation has already been sent to this email" });
       }
 
-      const member = await propertyMembersDb.add(
+      const currentUser = await userDb.findById(request.user.userId);
+      const invite = await propertyInvitesDb.create({
+        email,
+        invitedBy: request.user.userId,
         propertyId,
-        parsed.body.userId,
-        parsed.body.role,
-        request.user.userId
-      );
+        role,
+      });
 
-      return reply.status(HttpStatus.CREATED).send({ member });
+      try {
+        await sendPropertyInviteEmail(email, {
+          inviterName: currentUser?.name ?? "Someone",
+          propertyName: propertyExists.name,
+          role,
+        });
+        return reply.status(HttpStatus.CREATED).send({ invite, type: "invite_sent" });
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : "Unknown email error";
+        await propertyInvitesDb.updateStatus(invite.id, "email_failed", errMsg);
+        const failed = { ...invite, emailError: errMsg, status: "email_failed" as const };
+        return reply.status(HttpStatus.CREATED).send({ invite: failed, type: "invite_email_failed" });
+      }
     }
   );
 

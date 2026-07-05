@@ -1,13 +1,15 @@
 import {
   type IAppConfig,
   type IProperty,
+  type IPropertyInvite,
   type IPropertyMember,
   type ISupportRequest,
   type IUser,
   type SupportCategory,
   type SupportRequestStatus,
-  type TPropertyRole,
   toIso,
+  type TPropertyInviteStatus,
+  type TPropertyRole,
   UserType,
 } from "@/packages/shared";
 
@@ -67,4 +69,16 @@ export const mapPropertyMemberRow = (row: Record<string, unknown>): IPropertyMem
     name: row.user_name as string,
   },
   userId: row.user_id as string,
+});
+
+export const mapPropertyInviteRow = (row: Record<string, unknown>): IPropertyInvite => ({
+  createdAt: (row.created_at as Date).toISOString(),
+  email: row.email as string,
+  emailError: (row.email_error as string) ?? null,
+  expiresAt: (row.expires_at as Date).toISOString(),
+  id: row.id as string,
+  invitedBy: row.invited_by as string,
+  propertyId: row.property_id as string,
+  role: row.role as TPropertyRole,
+  status: row.status as TPropertyInviteStatus,
 });

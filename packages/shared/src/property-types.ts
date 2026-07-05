@@ -62,10 +62,36 @@ export interface IAdminUpdatePropertyBody {
 }
 
 export interface IAdminAddPropertyMemberBody {
+  email: string;
   role: TPropertyRole;
-  userId: string;
 }
 
 export interface IAdminUpdatePropertyMemberBody {
   role: TPropertyRole;
 }
+
+export const PropertyInviteStatus = {
+  ACCEPTED: "accepted",
+  EMAIL_FAILED: "email_failed",
+  PENDING: "pending",
+} as const;
+
+export type TPropertyInviteStatus =
+  (typeof PropertyInviteStatus)[keyof typeof PropertyInviteStatus];
+
+export interface IPropertyInvite {
+  createdAt: string;
+  email: string;
+  emailError: string | null;
+  expiresAt: string;
+  id: string;
+  invitedBy: string;
+  propertyId: string;
+  role: TPropertyRole;
+  status: TPropertyInviteStatus;
+}
+
+export type TAddPropertyMemberResponse =
+  | { member: IPropertyMember; type: "member_added" }
+  | { invite: IPropertyInvite; type: "invite_sent" }
+  | { invite: IPropertyInvite; type: "invite_email_failed" };

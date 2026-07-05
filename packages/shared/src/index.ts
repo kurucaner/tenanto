@@ -40,6 +40,7 @@ export type {
 
 // Property Types
 export {
+  PropertyInviteStatus,
   PropertyRole,
   type IAdminAddPropertyMemberBody,
   type IAdminCreatePropertyBody,
@@ -49,8 +50,11 @@ export {
   type IAdminUpdatePropertyMemberBody,
   type IProperty,
   type IPropertyDetail,
+  type IPropertyInvite,
   type IPropertyMember,
   type IPropertyMemberUser,
+  type TAddPropertyMemberResponse,
+  type TPropertyInviteStatus,
   type TPropertyRole,
 } from "./property-types";
 

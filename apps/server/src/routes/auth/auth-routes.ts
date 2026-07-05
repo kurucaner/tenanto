@@ -16,6 +16,8 @@ import {
 import { accountEventsDb } from "@/db/account-events";
 import { authOtpsDb } from "@/db/auth-otps";
 import { pool } from "@/db/pool";
+import { propertyInvitesDb } from "@/db/property-invites";
+import { propertyMembersDb } from "@/db/property-members";
 import { pushTokenDb } from "@/db/push-tokens";
 import { refreshTokenDb } from "@/db/refresh-tokens";
 import { userDb } from "@/db/users";
@@ -294,6 +296,15 @@ export const authRoutes = async (server: FastifyInstance) => {
     });
 
     await authOtpsDb.deleteById(otpRow.id);
+
+    // Auto-claim any pending property invites for this email
+    const pendingInvites = await propertyInvitesDb.findPendingByEmail(email);
+    await Promise.all(
+      pendingInvites.map(async (invite) => {
+        await propertyMembersDb.add(invite.propertyId, user.id, invite.role, invite.invitedBy);
+        await propertyInvitesDb.updateStatus(invite.id, "accepted");
+      })
+    );
 
     const accessToken = signAccessToken(server, {
       email: user.email,

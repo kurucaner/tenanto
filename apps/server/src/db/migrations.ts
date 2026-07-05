@@ -420,4 +420,43 @@ export const migrations: IMigration[] = [
     },
     version: 11,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_invites CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_invite_status CASCADE;`);
+    },
+    name: "create_property_invites",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_invite_status AS ENUM ('pending', 'accepted', 'email_failed');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE property_invites (
+          id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          email       VARCHAR(255) NOT NULL,
+          role        property_role NOT NULL,
+          invited_by  UUID NOT NULL REFERENCES users(id),
+          status      property_invite_status NOT NULL DEFAULT 'pending',
+          email_error TEXT,
+          expires_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (property_id, email)
+        );
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_invites_email ON property_invites(LOWER(TRIM(email)));`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_invites_property_id ON property_invites(property_id);`
+      );
+    },
+    version: 12,
+  },
 ];

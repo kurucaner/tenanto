@@ -18,6 +18,7 @@ import {
   type IPropertyMember,
   type IUser,
   JwtError,
+  type TAddPropertyMemberResponse,
   type UserType,
 } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
@@ -349,7 +350,7 @@ export const propertiesApi = {
     }),
 
   addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
-    authenticatedRequest<{ member: IPropertyMember }>(
+    authenticatedRequest<TAddPropertyMemberResponse>(
       `/properties/${encodeURIComponent(propertyId)}/members`,
       { body: JSON.stringify(body), method: "POST" }
     ),

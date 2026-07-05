@@ -3,7 +3,6 @@ import { Building2, Plus, Search } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { AdminPageIntro } from "@/components/admin-page-intro";
 import { AdminPageLayout } from "@/components/admin-page-layout";
 import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
 import { Button } from "@/components/ui/button";
@@ -90,12 +89,7 @@ const PropertiesListPageInner = memo(() => {
 
   return (
     <AdminPageLayout gap={6}>
-      <div className="flex items-start justify-between gap-4">
-        <AdminPageIntro
-          description="Manage and browse all properties."
-          eyebrow="Management"
-          title="Properties"
-        />
+      <div className="flex items-center justify-end gap-4">
         <Button className="shrink-0 gap-2" onClick={() => setCreateOpen(true)} type="button">
           <Plus className="size-4" />
           New Property
