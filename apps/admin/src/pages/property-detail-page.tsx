@@ -236,13 +236,13 @@ const PropertyDetailContent = memo(
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Added</TableHead>
-                  <TableHead>Actions</TableHead>
+                  {canManageMembers ? <TableHead>Actions</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {property.members.length === 0 ? (
                   <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={4}>
+                    <TableCell className="text-muted-foreground" colSpan={canManageMembers ? 4 : 3}>
                       No members yet. Add one to get started.
                     </TableCell>
                   </TableRow>
