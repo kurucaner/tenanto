@@ -10,7 +10,7 @@ const ses = new SESv2Client({
   region: "us-east-1",
 });
 
-export const FROM_EMAIL = "noreply@tenanto.app";
+export const FROM_EMAIL = "noreply@edgium.tech";
 
 function buildRawEmail(opts: {
   to: string;
@@ -21,7 +21,7 @@ function buildRawEmail(opts: {
 }) {
   const boundary = "ALT-" + Math.random().toString(36).slice(2);
   const from = `${APP_NAME} <${FROM_EMAIL}>`;
-  const listUnsub = `<${opts.unsubUrl}>, <mailto:unsubscribe@tenanto.app?subject=unsubscribe&body=${encodeURIComponent(
+  const listUnsub = `<${opts.unsubUrl}>, <mailto:unsubscribe@edgium.tech?subject=unsubscribe&body=${encodeURIComponent(
     opts.to
   )}>`;
 
