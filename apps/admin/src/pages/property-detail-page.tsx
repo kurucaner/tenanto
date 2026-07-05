@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/table";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { useAuthStore } from "@/stores/auth-store";
 import type { IPropertyDetail, IPropertyMember, TPropertyRole } from "@/packages/shared";
-import { PropertyRole } from "@/packages/shared";
+import { PropertyRole, UserType } from "@/packages/shared";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
   { label: "Owner", value: PropertyRole.OWNER },
@@ -32,10 +33,12 @@ const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
 
 const MemberTableRow = memo(
   ({
+    canManageMembers,
     member,
     onChangeRole,
     onRemove,
   }: {
+    canManageMembers: boolean;
     member: IPropertyMember;
     onChangeRole: (userId: string, role: TPropertyRole) => void;
     onRemove: (userId: string) => void;
@@ -54,28 +57,30 @@ const MemberTableRow = memo(
         {new Date(member.createdAt).toLocaleString()}
       </TableCell>
       <TableCell>
-        <div className="flex items-center gap-2">
-          <select
-            className="border-input bg-background h-7 rounded border px-2 text-xs"
-            onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
-            value={member.role}
-          >
-            {ROLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <Button
-            aria-label="Remove member"
-            onClick={() => onRemove(member.userId)}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <UserMinus className="size-4" />
-          </Button>
-        </div>
+        {canManageMembers ? (
+          <div className="flex items-center gap-2">
+            <select
+              className="border-input bg-background h-7 rounded border px-2 text-xs"
+              onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
+              value={member.role}
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              aria-label="Remove member"
+              onClick={() => onRemove(member.userId)}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <UserMinus className="size-4" />
+            </Button>
+          </div>
+        ) : null}
       </TableCell>
     </TableRow>
   )
@@ -86,6 +91,10 @@ const PropertyDetailContent = memo(
   ({ property, propertyId }: { property: IPropertyDetail; propertyId: string }) => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
+    const currentUser = useAuthStore((s) => s.user);
+    const isAdmin = currentUser?.userType === UserType.ADMIN;
+    const callerMembership = property.members.find((m) => m.userId === currentUser?.id);
+    const canManageMembers = isAdmin || callerMembership?.role === PropertyRole.OWNER;
     const [editOpen, setEditOpen] = useState(false);
     const [addMemberOpen, setAddMemberOpen] = useState(false);
 
@@ -240,6 +249,7 @@ const PropertyDetailContent = memo(
                 ) : (
                   property.members.map((member) => (
                     <MemberTableRow
+                      canManageMembers={canManageMembers}
                       key={member.id}
                       member={member}
                       onChangeRole={(userId, role) =>

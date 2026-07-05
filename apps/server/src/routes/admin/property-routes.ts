@@ -445,6 +445,15 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyAccess) return;
 
+      if (request.user.userType !== UserType.ADMIN) {
+        const callerMembership = await propertyMembersDb.findOne(propertyId, request.user.userId);
+        if (callerMembership?.role !== PropertyRole.OWNER) {
+          return reply
+            .status(HttpStatus.FORBIDDEN)
+            .send({ error: "Only property owners can update member roles" });
+        }
+      }
+
       const existing = await propertyMembersDb.findOne(propertyId, userId);
       if (!existing) {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Member not found" });
@@ -483,6 +492,15 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         reply
       );
       if (!propertyAccess) return;
+
+      if (request.user.userType !== UserType.ADMIN) {
+        const callerMembership = await propertyMembersDb.findOne(propertyId, request.user.userId);
+        if (callerMembership?.role !== PropertyRole.OWNER) {
+          return reply
+            .status(HttpStatus.FORBIDDEN)
+            .send({ error: "Only property owners can remove members" });
+        }
+      }
 
       const removed = await propertyMembersDb.remove(propertyId, userId);
       if (!removed) {
