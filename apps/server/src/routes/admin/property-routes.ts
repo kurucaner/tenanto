@@ -126,11 +126,11 @@ interface IPropertyMemberParams {
 }
 
 export const propertyRoutes = async (server: FastifyInstance): Promise<void> => {
-  const adminPre = [server.authenticate, server.requireAdmin];
+  const authPre = [server.authenticate];
 
   server.get<{ Querystring: IPropertiesListQuerystring }>(
-    "/admin/properties",
-    { preHandler: adminPre },
+    "/properties",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Querystring: IPropertiesListQuerystring }>,
       reply: FastifyReply
@@ -157,8 +157,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.post(
-    "/admin/properties",
-    { preHandler: adminPre },
+    "/properties",
+    { preHandler: authPre },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const parsed = parseCreatePropertyBody(request.body);
       if (!parsed.ok) {
@@ -190,8 +190,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.get<{ Params: IPropertyParams }>(
-    "/admin/properties/:propertyId",
-    { preHandler: adminPre },
+    "/properties/:propertyId",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyParams }>,
       reply: FastifyReply
@@ -211,8 +211,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.patch<{ Params: IPropertyParams }>(
-    "/admin/properties/:propertyId",
-    { preHandler: adminPre },
+    "/properties/:propertyId",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyParams }>,
       reply: FastifyReply
@@ -257,8 +257,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.delete<{ Params: IPropertyParams }>(
-    "/admin/properties/:propertyId",
-    { preHandler: adminPre },
+    "/properties/:propertyId",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyParams }>,
       reply: FastifyReply
@@ -298,8 +298,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.post<{ Params: IPropertyParams }>(
-    "/admin/properties/:propertyId/members",
-    { preHandler: adminPre },
+    "/properties/:propertyId/members",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyParams }>,
       reply: FastifyReply
@@ -343,8 +343,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.patch<{ Params: IPropertyMemberParams }>(
-    "/admin/properties/:propertyId/members/:userId",
-    { preHandler: adminPre },
+    "/properties/:propertyId/members/:userId",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyMemberParams }>,
       reply: FastifyReply
@@ -374,8 +374,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   );
 
   server.delete<{ Params: IPropertyMemberParams }>(
-    "/admin/properties/:propertyId/members/:userId",
-    { preHandler: adminPre },
+    "/properties/:propertyId/members/:userId",
+    { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyMemberParams }>,
       reply: FastifyReply

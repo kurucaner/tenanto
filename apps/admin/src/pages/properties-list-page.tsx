@@ -84,14 +84,7 @@ const PropertiesListPageInner = memo(() => {
   }
 
   return (
-    <AdminPageLayout
-      gap={6}
-      intro={{
-        description: "Manage properties and their members.",
-        eyebrow: "Management",
-        title: "Properties",
-      }}
-    >
+    <AdminPageLayout gap={6}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Card className="border-border/80 bg-card/80 flex-1 shadow-sm backdrop-blur-sm">
           <CardHeader className="pb-3">

@@ -322,47 +322,47 @@ export const adminApi = {
 export const propertiesApi = {
   list: (query: IAdminPropertiesListQuery = {}) =>
     authenticatedRequest<IAdminPropertiesListResponse>(
-      `/admin/properties${buildPropertiesListSearchParams(query)}`
+      `/properties${buildPropertiesListSearchParams(query)}`
     ),
 
   create: (body: IAdminCreatePropertyBody) =>
-    authenticatedRequest<{ property: IProperty }>("/admin/properties", {
+    authenticatedRequest<{ property: IProperty }>("/properties", {
       body: JSON.stringify(body),
       method: "POST",
     }),
 
   getDetail: (propertyId: string) =>
     authenticatedRequest<{ property: IPropertyDetail }>(
-      `/admin/properties/${encodeURIComponent(propertyId)}`
+      `/properties/${encodeURIComponent(propertyId)}`
     ),
 
   update: (propertyId: string, body: IAdminUpdatePropertyBody) =>
     authenticatedRequest<{ property: IProperty }>(
-      `/admin/properties/${encodeURIComponent(propertyId)}`,
+      `/properties/${encodeURIComponent(propertyId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   delete: (propertyId: string) =>
-    authenticatedRequest<void>(`/admin/properties/${encodeURIComponent(propertyId)}`, {
+    authenticatedRequest<void>(`/properties/${encodeURIComponent(propertyId)}`, {
       method: "DELETE",
       omitDefaultContentType: true,
     }),
 
   addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
     authenticatedRequest<{ member: IPropertyMember }>(
-      `/admin/properties/${encodeURIComponent(propertyId)}/members`,
+      `/properties/${encodeURIComponent(propertyId)}/members`,
       { body: JSON.stringify(body), method: "POST" }
     ),
 
   updateMember: (propertyId: string, userId: string, body: IAdminUpdatePropertyMemberBody) =>
     authenticatedRequest<{ member: IPropertyMember }>(
-      `/admin/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
+      `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   removeMember: (propertyId: string, userId: string) =>
     authenticatedRequest<void>(
-      `/admin/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
+      `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
 };

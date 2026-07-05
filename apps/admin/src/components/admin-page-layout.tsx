@@ -16,7 +16,7 @@ const gapClass = {
 export type AdminPageLayoutProps = {
   children: ReactNode;
   gap?: keyof typeof gapClass;
-  intro: AdminPageIntroProps;
+  intro?: AdminPageIntroProps;
   maxWidth?: keyof typeof maxWidthClass;
 };
 
@@ -29,7 +29,7 @@ export const AdminPageLayout = memo(
         gapClass[gap]
       )}
     >
-      <AdminPageIntro {...intro} />
+      {intro ? <AdminPageIntro {...intro} /> : null}
       {children}
     </div>
   )
