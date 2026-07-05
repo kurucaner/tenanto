@@ -7,8 +7,10 @@ import { RequireRole } from "@/components/require-role";
 import { UserType } from "@/packages/shared";
 import { ActivityPage } from "@/pages/activity-page";
 import { ConfigPage } from "@/pages/config-page";
+import { ErrorPage } from "@/pages/error-page";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
+import { NotFoundPage } from "@/pages/not-found-page";
 import { PropertiesListPage } from "@/pages/properties-list-page";
 import { PropertyDetailPage } from "@/pages/property-detail-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
@@ -41,14 +43,17 @@ export const router = createBrowserRouter([
                 ],
                 element: <RequireRole roles={ADMIN_ONLY} />,
               },
+              { element: <NotFoundPage />, path: "*" },
             ],
             element: <AdminLayout />,
           },
         ],
         element: <ProtectedRoute />,
       },
+      { element: <NotFoundPage />, path: "*" },
     ],
     element: <RootLayout />,
+    errorElement: <ErrorPage />,
     path: "/",
   },
 ]);

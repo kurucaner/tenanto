@@ -55,9 +55,6 @@ const DashboardSidebarInner = memo(() => {
       <span className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
         {APP_NAME}
       </span>
-      <span className="text-[0.65rem] font-medium uppercase tracking-[0.22em] text-muted-foreground group-data-[collapsible=icon]:hidden">
-        Admin
-      </span>
       <span
         aria-hidden
         className="font-display hidden size-8 shrink-0 items-center justify-center rounded-md border border-sidebar-border/80 text-base font-semibold text-sidebar-primary transition-colors group-hover:border-sidebar-primary/50 group-data-[collapsible=icon]:flex"
@@ -69,7 +66,7 @@ const DashboardSidebarInner = memo(() => {
 
   return (
     <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-4">
+      <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px]">
         {brandCollapsedTooltip ? (
           <Tooltip>
             <TooltipTrigger asChild>{brandLink}</TooltipTrigger>
