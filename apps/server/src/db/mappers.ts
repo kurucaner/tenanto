@@ -1,9 +1,12 @@
 import {
   type IAppConfig,
+  type IProperty,
+  type IPropertyMember,
   type ISupportRequest,
   type IUser,
   type SupportCategory,
   type SupportRequestStatus,
+  type TPropertyRole,
   toIso,
   UserType,
 } from "@/packages/shared";
@@ -37,5 +40,31 @@ export const mapSupportRequestRow = (row: Record<string, unknown>): ISupportRequ
   message: row.message as string,
   status: row.status as SupportRequestStatus,
   updatedAt: (row.updated_at as Date).toISOString(),
+  userId: row.user_id as string,
+});
+
+export const mapPropertyRow = (row: Record<string, unknown>): IProperty => ({
+  address: row.address as string,
+  createdAt: (row.created_at as Date).toISOString(),
+  createdBy: row.created_by as string,
+  id: row.id as string,
+  memberCount: (row.member_count as number) ?? 0,
+  name: row.name as string,
+  phoneNumber: (row.phone_number as string) ?? null,
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+export const mapPropertyMemberRow = (row: Record<string, unknown>): IPropertyMember => ({
+  addedBy: row.added_by as string,
+  createdAt: (row.created_at as Date).toISOString(),
+  id: row.id as string,
+  propertyId: row.property_id as string,
+  role: row.role as TPropertyRole,
+  updatedAt: (row.updated_at as Date).toISOString(),
+  user: {
+    email: row.user_email as string,
+    id: row.user_id as string,
+    name: row.user_name as string,
+  },
   userId: row.user_id as string,
 });

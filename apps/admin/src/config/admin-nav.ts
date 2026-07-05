@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { History, Home, LifeBuoy, SlidersHorizontal, Users } from "lucide-react";
+import { Building2, History, Home, LifeBuoy, SlidersHorizontal, Users } from "lucide-react";
 
 export type AdminNavMatch = "exact" | "prefix";
 
@@ -13,6 +13,7 @@ export type AdminNavItem = {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { title: "Home", href: "/home", icon: Home, match: "exact" },
   { title: "Users", href: "/users", icon: Users, match: "prefix" },
+  { title: "Properties", href: "/properties", icon: Building2, match: "prefix" },
   { title: "Support", href: "/support-requests", icon: LifeBuoy, match: "exact" },
   { title: "Activity", href: "/activity", icon: History, match: "exact" },
   { title: "Config", href: "/config", icon: SlidersHorizontal, match: "exact" },

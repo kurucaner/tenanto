@@ -38,6 +38,22 @@ export type {
   TPlatform,
 } from "./app-config-types";
 
+// Property Types
+export {
+  PropertyRole,
+  type IAdminAddPropertyMemberBody,
+  type IAdminCreatePropertyBody,
+  type IAdminPropertiesListQuery,
+  type IAdminPropertiesListResponse,
+  type IAdminUpdatePropertyBody,
+  type IAdminUpdatePropertyMemberBody,
+  type IProperty,
+  type IPropertyDetail,
+  type IPropertyMember,
+  type IPropertyMemberUser,
+  type TPropertyRole,
+} from "./property-types";
+
 // Helpers
 export { sleep, toIso } from "./helpers";
 

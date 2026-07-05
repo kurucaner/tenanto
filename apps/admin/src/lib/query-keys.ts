@@ -1,4 +1,8 @@
-import type { IAdminFounderInvitesListQuery, IAdminUsersListQuery } from "@/lib/api-client";
+import type {
+  IAdminFounderInvitesListQuery,
+  IAdminPropertiesListQuery,
+  IAdminUsersListQuery,
+} from "@/lib/api-client";
 import type {
   IAdminAuditEventsListQuery,
   IAdminSupportRequestsListQuery,
@@ -18,4 +22,7 @@ export const adminQueryKeys = {
   notificationBroadcastHistory: () => ["admin", "notification-broadcasts", "history"] as const,
   supportRequestsList: (filters: Omit<IAdminSupportRequestsListQuery, "cursor" | "limit">) =>
     ["admin", "support-requests", filters] as const,
+  propertiesList: (filters: Omit<IAdminPropertiesListQuery, "cursor">) =>
+    ["admin", "properties", filters] as const,
+  propertyDetail: (propertyId: string) => ["admin", "property", propertyId] as const,
 };

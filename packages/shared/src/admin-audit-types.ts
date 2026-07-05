@@ -1,6 +1,9 @@
 /** Stable action names for admin audit log filtering and documentation */
 export const AdminAuditAction = {
   APP_CONFIG_UPDATED: "app_config.updated",
+  PROPERTY_CREATED: "property.created",
+  PROPERTY_DELETED: "property.deleted",
+  PROPERTY_UPDATED: "property.updated",
   USER_ACCOUNT_RESET: "user.account_reset",
 } as const;
 

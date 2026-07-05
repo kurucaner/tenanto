@@ -355,4 +355,69 @@ export const migrations: IMigration[] = [
     },
     version: 10,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_members CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS properties CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_role CASCADE;`);
+    },
+    name: "create_properties",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_role AS ENUM ('owner', 'manager', 'accountant');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE properties (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          name VARCHAR(255) NOT NULL,
+          address TEXT NOT NULL,
+          phone_number VARCHAR(50),
+          created_by UUID NOT NULL REFERENCES users(id),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_properties_updated_at
+          BEFORE UPDATE ON properties
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`CREATE INDEX idx_properties_created_at ON properties(created_at DESC);`);
+      await client.query(`CREATE INDEX idx_properties_created_by ON properties(created_by);`);
+
+      await client.query(`
+        CREATE TABLE property_members (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          role property_role NOT NULL,
+          added_by UUID NOT NULL REFERENCES users(id),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (property_id, user_id)
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_members_updated_at
+          BEFORE UPDATE ON property_members
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_members_property_id ON property_members(property_id);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_members_user_id ON property_members(user_id);`
+      );
+    },
+    version: 11,
+  },
 ];

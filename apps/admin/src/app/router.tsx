@@ -7,6 +7,8 @@ import { ActivityPage } from "@/pages/activity-page";
 import { ConfigPage } from "@/pages/config-page";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
+import { PropertiesListPage } from "@/pages/properties-list-page";
+import { PropertyDetailPage } from "@/pages/property-detail-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
 import { UsersListPage } from "@/pages/users-list-page";
@@ -26,6 +28,8 @@ export const router = createBrowserRouter([
               { element: <SupportRequestsPage />, path: "support-requests" },
               { element: <UserDetailPage />, path: "users/:userId" },
               { element: <ConfigPage />, path: "config" },
+              { element: <PropertiesListPage />, path: "properties" },
+              { element: <PropertyDetailPage />, path: "properties/:propertyId" },
             ],
             element: <AdminLayout />,
           },

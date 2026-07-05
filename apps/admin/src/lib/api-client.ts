@@ -1,13 +1,21 @@
 import {
+  type IAdminAddPropertyMemberBody,
   type IAdminAuditEventsListQuery,
   type IAdminAuditEventsListResponse,
+  type IAdminCreatePropertyBody,
   type IAdminPatchAppConfigBody,
   type IAdminPlatformStats,
+  type IAdminPropertiesListResponse,
   type IAdminSupportRequestPatchBody,
   type IAdminSupportRequestPatchResponse,
   type IAdminSupportRequestsListQuery,
   type IAdminSupportRequestsListResponse,
+  type IAdminUpdatePropertyBody,
+  type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
+  type IProperty,
+  type IPropertyDetail,
+  type IPropertyMember,
   type IUser,
   JwtError,
   type UserType,
@@ -237,6 +245,21 @@ function buildSupportRequestsListSearchParams(query: IAdminSupportRequestsListQu
   return s === "" ? "" : `?${s}`;
 }
 
+export interface IAdminPropertiesListQuery {
+  cursor?: string;
+  limit?: number;
+  q?: string;
+}
+
+function buildPropertiesListSearchParams(query: IAdminPropertiesListQuery): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.q != null && query.q !== "") params.set("q", query.q);
+  const s = params.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
 export const authApi = {
   loginEmail: (email: string, password: string) =>
     request<IAuthEmailResponse>("/auth/email", {
@@ -295,5 +318,53 @@ export const adminApi = {
     authenticatedRequest<IAdminSupportRequestPatchResponse>(
       `/admin/support-requests/${encodeURIComponent(id)}`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const propertiesApi = {
+  list: (query: IAdminPropertiesListQuery = {}) =>
+    authenticatedRequest<IAdminPropertiesListResponse>(
+      `/admin/properties${buildPropertiesListSearchParams(query)}`
+    ),
+
+  create: (body: IAdminCreatePropertyBody) =>
+    authenticatedRequest<{ property: IProperty }>("/admin/properties", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  getDetail: (propertyId: string) =>
+    authenticatedRequest<{ property: IPropertyDetail }>(
+      `/admin/properties/${encodeURIComponent(propertyId)}`
+    ),
+
+  update: (propertyId: string, body: IAdminUpdatePropertyBody) =>
+    authenticatedRequest<{ property: IProperty }>(
+      `/admin/properties/${encodeURIComponent(propertyId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  delete: (propertyId: string) =>
+    authenticatedRequest<void>(`/admin/properties/${encodeURIComponent(propertyId)}`, {
+      method: "DELETE",
+      omitDefaultContentType: true,
+    }),
+
+  addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
+    authenticatedRequest<{ member: IPropertyMember }>(
+      `/admin/properties/${encodeURIComponent(propertyId)}/members`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  updateMember: (propertyId: string, userId: string, body: IAdminUpdatePropertyMemberBody) =>
+    authenticatedRequest<{ member: IPropertyMember }>(
+      `/admin/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  removeMember: (propertyId: string, userId: string) =>
+    authenticatedRequest<void>(
+      `/admin/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
     ),
 };
