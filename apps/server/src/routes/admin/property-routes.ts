@@ -15,6 +15,7 @@ import {
   type IAdminUpdatePropertyMemberBody,
   PropertyRole,
   type TPropertyRole,
+  UserType,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
@@ -117,6 +118,31 @@ function parseUpdateMemberBody(
   return { body: { role }, ok: true };
 }
 
+async function assertPropertyAccess(
+  propertyId: string,
+  userId: string,
+  userType: string,
+  reply: FastifyReply
+): Promise<ReturnType<typeof propertiesDb.findById> extends Promise<infer T> ? T : never> {
+  const property = await propertiesDb.findById(propertyId);
+  if (!property) {
+    void reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
+    return null as never;
+  }
+  if (userType === UserType.ADMIN) {
+    return property as never;
+  }
+  const isCreator = property.createdBy === userId;
+  if (!isCreator) {
+    const membership = await propertyMembersDb.findOne(propertyId, userId);
+    if (!membership) {
+      void reply.status(HttpStatus.FORBIDDEN).send({ error: "Access denied" });
+      return null as never;
+    }
+  }
+  return property as never;
+}
+
 interface IPropertiesListQuerystring {
   cursor?: string;
   limit?: string;
@@ -153,11 +179,16 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         }
       }
 
-      const { items, nextCursor } = await propertiesDb.listPaginatedForAdmin({
-        cursor: qs.cursor,
-        limit,
-        q: typeof qs.q === "string" && qs.q.trim() !== "" ? qs.q.trim() : undefined,
-      });
+      const q = typeof qs.q === "string" && qs.q.trim() !== "" ? qs.q.trim() : undefined;
+      const isAdmin = request.user.userType === UserType.ADMIN;
+      const { items, nextCursor } = isAdmin
+        ? await propertiesDb.listPaginatedForAdmin({ cursor: qs.cursor, limit, q })
+        : await propertiesDb.listPaginatedForUser({
+            cursor: qs.cursor,
+            limit,
+            q,
+            userId: request.user.userId,
+          });
 
       return reply.send({ items, nextCursor });
     }
@@ -208,11 +239,15 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
 
-      const property = await propertiesDb.findDetailById(propertyId);
-      if (!property) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
-      }
+      const access = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!access) return;
 
+      const property = await propertiesDb.findDetailById(propertyId);
       return reply.send({ property });
     }
   );
@@ -229,10 +264,13 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
 
-      const existing = await propertiesDb.findById(propertyId);
-      if (!existing) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
-      }
+      const existing = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!existing) return;
 
       const parsed = parseUpdatePropertyBody(request.body);
       if (!parsed.ok) {
@@ -275,10 +313,13 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
 
-      const existing = await propertiesDb.findById(propertyId);
-      if (!existing) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
-      }
+      const existing = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!existing) return;
 
       const client = await pool.connect();
       try {
@@ -316,10 +357,13 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
 
-      const propertyExists = await propertiesDb.findById(propertyId);
-      if (!propertyExists) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
-      }
+      const propertyExists = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!propertyExists) return;
 
       const parsed = parseAddMemberBody(request.body);
       if (!parsed.ok) {
@@ -393,6 +437,14 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid userId" });
       }
 
+      const propertyAccess = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!propertyAccess) return;
+
       const existing = await propertyMembersDb.findOne(propertyId, userId);
       if (!existing) {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Member not found" });
@@ -423,6 +475,14 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       if (userId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid userId" });
       }
+
+      const propertyAccess = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!propertyAccess) return;
 
       const removed = await propertyMembersDb.remove(propertyId, userId);
       if (!removed) {

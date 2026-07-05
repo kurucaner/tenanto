@@ -25,6 +25,11 @@ export const propertiesDb = {
     return mapPropertyRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async delete(id: string): Promise<boolean> {
+    const result = await pool.query(`DELETE FROM properties WHERE id = $1`, [id]);
+    return (result.rowCount ?? 0) > 0;
+  },
+
   async findById(id: string): Promise<IProperty | null> {
     const result = await pool.query(
       `SELECT p.*, COUNT(pm.id)::int AS member_count
@@ -111,6 +116,56 @@ export const propertiesDb = {
     return { items, nextCursor };
   },
 
+  async listPaginatedForUser(params: {
+    cursor?: string;
+    limit: number;
+    q?: string;
+    userId: string;
+  }): Promise<{ items: IProperty[]; nextCursor: string | null }> {
+    const fragments: string[] = [
+      `(p.created_by = $1 OR EXISTS (
+         SELECT 1 FROM property_members pm2
+         WHERE pm2.property_id = p.id AND pm2.user_id = $1
+       ))`,
+    ];
+    const values: unknown[] = [params.userId];
+    let p = 2;
+
+    if (params.q != null && params.q.trim() !== "") {
+      fragments.push(`(p.name ILIKE $${p} OR p.address ILIKE $${p})`);
+      values.push(`%${params.q.trim()}%`);
+      p++;
+    }
+
+    if (params.cursor != null && params.cursor !== "") {
+      const decoded = decodeKeysetCursor(params.cursor);
+      fragments.push(`(p.created_at, p.id) < ($${p++}::timestamptz, $${p++}::uuid)`);
+      values.push(decoded.createdAt, decoded.id);
+    }
+
+    const whereClause = `WHERE ${fragments.join(" AND ")}`;
+    const limitParam = p;
+    values.push(params.limit + 1);
+
+    const result = await pool.query(
+      `SELECT p.*, COUNT(pm.id)::int AS member_count
+       FROM properties p
+       LEFT JOIN property_members pm ON pm.property_id = p.id
+       ${whereClause}
+       GROUP BY p.id
+       ORDER BY p.created_at DESC, p.id DESC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, params.limit, (last) =>
+      encodeKeysetCursor(last.created_at as Date, last.id as string)
+    );
+    const items = pageRows.map(mapPropertyRow);
+    return { items, nextCursor };
+  },
+
   async update(id: string, input: IAdminUpdatePropertyBody): Promise<IProperty | null> {
     const setClauses: string[] = [];
     const values: unknown[] = [];
@@ -140,10 +195,5 @@ export const propertiesDb = {
     );
     if (result.rows.length === 0) return null;
     return propertiesDb.findById(id);
-  },
-
-  async delete(id: string): Promise<boolean> {
-    const result = await pool.query(`DELETE FROM properties WHERE id = $1`, [id]);
-    return (result.rowCount ?? 0) > 0;
   },
 };
