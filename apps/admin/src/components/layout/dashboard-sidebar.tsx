@@ -19,9 +19,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ADMIN_NAV_ITEMS, isAdminNavActive } from "@/config/admin-nav";
+import { getNavItemsForRole, isAdminNavActive } from "@/config/admin-nav";
 import { authApi } from "@/lib/api-client";
-import { APP_NAME } from "@/packages/shared";
+import { APP_NAME, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 const DashboardSidebarInner = memo(() => {
@@ -88,7 +88,7 @@ const DashboardSidebarInner = memo(() => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {ADMIN_NAV_ITEMS.map((item) => {
+              {getNavItemsForRole(user?.userType ?? UserType.USER).map((item) => {
                 const Icon = item.icon;
                 const active = isAdminNavActive(item, location.pathname);
                 return (

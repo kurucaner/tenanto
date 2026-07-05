@@ -130,8 +130,6 @@ const authenticatedRequest = async <T>(
 
   if (response.status === 403) {
     const body = await response.json().catch(() => ({}));
-    useAuthStore.getState().clearSession();
-    onSessionExpired?.();
     throw new Error((body as { error?: string }).error ?? "Forbidden");
   }
 

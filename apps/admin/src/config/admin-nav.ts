@@ -1,23 +1,48 @@
 import type { LucideIcon } from "lucide-react";
 import { Building2, History, Home, LifeBuoy, SlidersHorizontal, Users } from "lucide-react";
 
+import { UserType } from "@/packages/shared";
+
 export type AdminNavMatch = "exact" | "prefix";
 
 export type AdminNavItem = {
-  title: string;
   href: string;
   icon: LucideIcon;
   match: AdminNavMatch;
+  /**
+   * Which user types can see this item.
+   * `undefined` means visible to all authenticated users.
+   */
+  roles?: UserType[];
+  title: string;
 };
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
-  { title: "Home", href: "/home", icon: Home, match: "exact" },
-  { title: "Users", href: "/users", icon: Users, match: "prefix" },
-  { title: "Properties", href: "/properties", icon: Building2, match: "prefix" },
-  { title: "Support", href: "/support-requests", icon: LifeBuoy, match: "exact" },
-  { title: "Activity", href: "/activity", icon: History, match: "exact" },
-  { title: "Config", href: "/config", icon: SlidersHorizontal, match: "exact" },
+  { href: "/home", icon: Home, match: "exact", title: "Home" },
+  { href: "/properties", icon: Building2, match: "prefix", title: "Properties" },
+  { href: "/users", icon: Users, match: "prefix", roles: [UserType.ADMIN], title: "Users" },
+  {
+    href: "/support-requests",
+    icon: LifeBuoy,
+    match: "exact",
+    roles: [UserType.ADMIN],
+    title: "Support",
+  },
+  { href: "/activity", icon: History, match: "exact", roles: [UserType.ADMIN], title: "Activity" },
+  {
+    href: "/config",
+    icon: SlidersHorizontal,
+    match: "exact",
+    roles: [UserType.ADMIN],
+    title: "Config",
+  },
 ];
+
+export function getNavItemsForRole(userType: UserType): AdminNavItem[] {
+  return ADMIN_NAV_ITEMS.filter(
+    (item) => item.roles === undefined || item.roles.includes(userType)
+  );
+}
 
 export function isAdminNavActive(
   item: Pick<AdminNavItem, "href" | "match">,

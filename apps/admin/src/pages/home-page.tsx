@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, History, SlidersHorizontal, Users } from "lucide-react";
+import { ArrowRight, Building2, History, SlidersHorizontal, Users } from "lucide-react";
 import { memo } from "react";
 import { Link } from "react-router-dom";
 
@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { UserType } from "@/packages/shared";
+import { useAuthStore } from "@/stores/auth-store";
 
 const StatMetricCard = memo(({ label, value }: Readonly<{ label: string; value: number }>) => (
   <Card className="border-border/80 border-l-2 border-l-primary/35 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
@@ -40,7 +42,11 @@ const StatsSectionSkeleton = memo(() => (
 StatsSectionSkeleton.displayName = "StatsSectionSkeleton";
 
 const HomePageInner = memo(() => {
+  const userType = useAuthStore((s) => s.user?.userType);
+  const isAdmin = userType === UserType.ADMIN;
+
   const statsQuery = useQuery({
+    enabled: isAdmin,
     queryFn: () => adminApi.getAdminStats(),
     queryKey: adminQueryKeys.platformStats(),
   });
@@ -48,83 +54,108 @@ const HomePageInner = memo(() => {
   return (
     <AdminPageLayout
       intro={{
-        description:
-          "Manage people, policies, and platform settings from one calm surface. Pick up where you left off or jump straight into your next task.",
+        description: isAdmin
+          ? "Manage people, policies, and platform settings from one calm surface. Pick up where you left off or jump straight into your next task."
+          : "View and manage your properties from one place.",
         eyebrow: "Overview",
         title: "Welcome back",
       }}
     >
       <div className="flex flex-col gap-8">
-        <section aria-label="Platform statistics">
-          {statsQuery.isLoading ? <StatsSectionSkeleton /> : null}
-          {statsQuery.isError ? (
-            <p className="text-destructive text-sm">
-              {statsQuery.error instanceof Error
-                ? statsQuery.error.message
-                : "Could not load platform statistics."}
-            </p>
-          ) : null}
-          {statsQuery.data ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
-              <StatMetricCard label="Users" value={statsQuery.data.usersTotal} />
-            </div>
-          ) : null}
-        </section>
+        {isAdmin ? (
+          <section aria-label="Platform statistics">
+            {statsQuery.isLoading ? <StatsSectionSkeleton /> : null}
+            {statsQuery.isError ? (
+              <p className="text-destructive text-sm">
+                {statsQuery.error instanceof Error
+                  ? statsQuery.error.message
+                  : "Could not load platform statistics."}
+              </p>
+            ) : null}
+            {statsQuery.data ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+                <StatMetricCard label="Users" value={statsQuery.data.usersTotal} />
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2 text-primary">
-                <Users className="size-4" />
-                <CardTitle className="text-base font-semibold">Users</CardTitle>
+                <Building2 className="size-4" />
+                <CardTitle className="text-base font-semibold">Properties</CardTitle>
               </div>
-              <CardDescription>Search, filter, and open individual accounts.</CardDescription>
+              <CardDescription>Browse and manage your assigned properties.</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild className="gap-2" variant="secondary">
-                <Link to="/users">
-                  Open directory
+                <Link to="/properties">
+                  Open properties
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-primary">
-                <History className="size-4" />
-                <CardTitle className="text-base font-semibold">Activity</CardTitle>
-              </div>
-              <CardDescription>Review admin audit events across the workspace.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="gap-2" variant="secondary">
-                <Link to="/activity">
-                  Open activity log
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {isAdmin ? (
+            <>
+              <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Users className="size-4" />
+                    <CardTitle className="text-base font-semibold">Users</CardTitle>
+                  </div>
+                  <CardDescription>Search, filter, and open individual accounts.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild className="gap-2" variant="secondary">
+                    <Link to="/users">
+                      Open directory
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
 
-          <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md sm:col-span-2 lg:col-span-1">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-primary">
-                <SlidersHorizontal className="size-4" />
-                <CardTitle className="text-base font-semibold">Configuration</CardTitle>
-              </div>
-              <CardDescription>App versions, maintenance mode, and store URLs.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="gap-2" variant="secondary">
-                <Link to="/config">
-                  Open settings
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+              <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2 text-primary">
+                    <History className="size-4" />
+                    <CardTitle className="text-base font-semibold">Activity</CardTitle>
+                  </div>
+                  <CardDescription>Review admin audit events across the workspace.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild className="gap-2" variant="secondary">
+                    <Link to="/activity">
+                      Open activity log
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md sm:col-span-2 lg:col-span-1">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2 text-primary">
+                    <SlidersHorizontal className="size-4" />
+                    <CardTitle className="text-base font-semibold">Configuration</CardTitle>
+                  </div>
+                  <CardDescription>App versions, maintenance mode, and store URLs.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild className="gap-2" variant="secondary">
+                    <Link to="/config">
+                      Open settings
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </>
+          ) : null}
         </div>
       </div>
     </AdminPageLayout>

@@ -3,7 +3,6 @@ import { Navigate, Outlet } from "react-router-dom";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
-import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 const HydrationFallback = memo(() => (
@@ -19,13 +18,15 @@ HydrationFallback.displayName = "HydrationFallback";
 const ProtectedRouteInner = memo(() => {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  console.log("user", user);
+  console.log("accessToken", accessToken);
   const hydrated = useAuthHydrated();
 
   if (!hydrated) {
     return <HydrationFallback />;
   }
 
-  if (!accessToken || user?.userType !== UserType.ADMIN) {
+  if (!accessToken || !user) {
     return <Navigate replace to="/login" />;
   }
 

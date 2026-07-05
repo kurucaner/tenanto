@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { memo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
 import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
 import { authApi } from "@/lib/api-client";
-import { APP_NAME, UserType } from "@/packages/shared";
+import { APP_NAME } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 const loginSchema = z.object({
@@ -37,6 +37,7 @@ const LoginPageInner = memo(() => {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const setSession = useAuthStore((s) => s.setSession);
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -44,7 +45,7 @@ const LoginPageInner = memo(() => {
     resolver: zodResolver(loginSchema),
   });
 
-  if (hydrated && accessToken && user?.userType === UserType.ADMIN) {
+  if (hydrated && accessToken && user) {
     return <Navigate replace to="/home" />;
   }
 
@@ -52,16 +53,13 @@ const LoginPageInner = memo(() => {
     setSubmitting(true);
     try {
       const res = await authApi.loginEmail(values.email.trim(), values.password);
-      if (res.user.userType !== UserType.ADMIN) {
-        toast.error("This account is not an admin.");
-        return;
-      }
       setSession({
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
         user: res.user,
       });
       toast.success("Signed in");
+      navigate("/home", { replace: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Sign-in failed");
     } finally {
@@ -77,19 +75,19 @@ const LoginPageInner = memo(() => {
       </div>
       <div className="flex flex-col items-center gap-1 text-center">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          Admin access
+          Workspace
         </p>
         <p className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           {APP_NAME}
         </p>
-        <p className="text-sm text-muted-foreground">Sign in to the operations console.</p>
+        <p className="text-sm text-muted-foreground">Sign in to your workspace.</p>
       </div>
       <Card className="w-full max-w-sm rounded-2xl border-border/80 bg-card/85 shadow-sm backdrop-blur-sm">
         <CardHeader className="space-y-1">
           <CardTitle className="font-display text-2xl font-semibold tracking-tight">
             Sign in
           </CardTitle>
-          <CardDescription>Use your admin email and password.</CardDescription>
+          <CardDescription>Use your email and password.</CardDescription>
         </CardHeader>
         <form onSubmit={onSubmit}>
           <CardContent className="flex flex-col gap-4 mb-4">

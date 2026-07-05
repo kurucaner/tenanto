@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RootLayout } from "@/app/root-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
 import { ProtectedRoute } from "@/components/protected-route";
+import { RequireRole } from "@/components/require-role";
+import { UserType } from "@/packages/shared";
 import { ActivityPage } from "@/pages/activity-page";
 import { ConfigPage } from "@/pages/config-page";
 import { HomePage } from "@/pages/home-page";
@@ -13,6 +15,8 @@ import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
 import { UsersListPage } from "@/pages/users-list-page";
 
+const ADMIN_ONLY = [UserType.ADMIN];
+
 export const router = createBrowserRouter([
   {
     children: [
@@ -22,14 +26,21 @@ export const router = createBrowserRouter([
           {
             children: [
               { element: <Navigate replace to="/home" />, index: true },
+              // Available to all authenticated users
               { element: <HomePage />, path: "home" },
-              { element: <ActivityPage />, path: "activity" },
-              { element: <UsersListPage />, path: "users" },
-              { element: <SupportRequestsPage />, path: "support-requests" },
-              { element: <UserDetailPage />, path: "users/:userId" },
-              { element: <ConfigPage />, path: "config" },
               { element: <PropertiesListPage />, path: "properties" },
               { element: <PropertyDetailPage />, path: "properties/:propertyId" },
+              // Admin-only routes
+              {
+                children: [
+                  { element: <UsersListPage />, path: "users" },
+                  { element: <UserDetailPage />, path: "users/:userId" },
+                  { element: <SupportRequestsPage />, path: "support-requests" },
+                  { element: <ActivityPage />, path: "activity" },
+                  { element: <ConfigPage />, path: "config" },
+                ],
+                element: <RequireRole roles={ADMIN_ONLY} />,
+              },
             ],
             element: <AdminLayout />,
           },
