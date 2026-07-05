@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
 
 interface CreatePropertyDialogProps {
@@ -52,38 +54,40 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[460px]">
         <DialogHeader>
           <DialogTitle>Create Property</DialogTitle>
+          <DialogDescription>
+            Add a new property to the workspace. You can assign members after creation.
+          </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="create-property-name">Name *</Label>
-            <Input
-              id="create-property-name"
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Sunset Apartments"
-              required
-              value={name}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="create-property-address">Address *</Label>
-            <Input
-              id="create-property-address"
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. 123 Main St, City, State"
-              required
-              value={address}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="create-property-phone">Phone Number</Label>
-            <Input
+        <form onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-5 px-6 py-5">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-property-name">Name</Label>
+              <Input
+                autoFocus
+                id="create-property-name"
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Sunset Apartments"
+                required
+                value={name}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="create-property-address">Address</Label>
+              <Input
+                id="create-property-address"
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="e.g. 123 Main St, City, State"
+                required
+                value={address}
+              />
+            </div>
+            <PhoneInput
               id="create-property-phone"
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="e.g. +1 (555) 000-0000"
-              type="tel"
+              onChange={setPhoneNumber}
+              optional
               value={phoneNumber}
             />
           </div>

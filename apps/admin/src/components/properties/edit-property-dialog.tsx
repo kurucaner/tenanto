@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import type { IProperty } from "@/packages/shared";
@@ -67,36 +69,36 @@ export const EditPropertyDialog = memo(
 
     return (
       <Dialog onOpenChange={onOpenChange} open={open}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
             <DialogTitle>Edit Property</DialogTitle>
+            <DialogDescription>Update the details for this property.</DialogDescription>
           </DialogHeader>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-property-name">Name *</Label>
-              <Input
-                id="edit-property-name"
-                onChange={(e) => setName(e.target.value)}
-                required
-                value={name}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-property-address">Address *</Label>
-              <Input
-                id="edit-property-address"
-                onChange={(e) => setAddress(e.target.value)}
-                required
-                value={address}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-property-phone">Phone Number</Label>
-              <Input
+          <form onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-5 px-6 py-5">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-property-name">Name</Label>
+                <Input
+                  autoFocus
+                  id="edit-property-name"
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  value={name}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="edit-property-address">Address</Label>
+                <Input
+                  id="edit-property-address"
+                  onChange={(e) => setAddress(e.target.value)}
+                  required
+                  value={address}
+                />
+              </div>
+              <PhoneInput
                 id="edit-property-phone"
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="e.g. +1 (555) 000-0000"
-                type="tel"
+                onChange={setPhoneNumber}
+                optional
                 value={phoneNumber}
               />
             </div>
