@@ -1,5 +1,4 @@
-import { EMAIL_REGEX } from "../vaults/constants";
-
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_MAX_LENGTH = 255;
 const NAME_MAX_LENGTH = 255;
 const PASSWORD_MIN_LENGTH = 8;

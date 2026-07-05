@@ -17,7 +17,7 @@ const SUCCESS_HTML = `
 <body style="font-family: system-ui, sans-serif; background: #0c0c0c; color: #ededed; margin: 0; padding: 2rem; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
   <div style="text-align: center; max-width: 400px;">
     <h1 style="color: #d4b034; font-size: 1.5rem; margin-bottom: 1rem;">You've been unsubscribed</h1>
-    <p style="color: rgba(237,237,237,0.8); line-height: 1.6;">You will no longer receive vault release emails from ${APP_NAME}.</p>
+    <p style="color: rgba(237,237,237,0.8); line-height: 1.6;">You will no longer receive emails from ${APP_NAME}.</p>
   </div>
 </body>
 </html>

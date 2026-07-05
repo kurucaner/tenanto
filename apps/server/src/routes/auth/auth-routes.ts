@@ -15,13 +15,11 @@ import {
 } from "@/constants/account";
 import { accountEventsDb } from "@/db/account-events";
 import { authOtpsDb } from "@/db/auth-otps";
-import { keyholderDb } from "@/db/keyholders";
 import { pool } from "@/db/pool";
 import { pushTokenDb } from "@/db/push-tokens";
 import { refreshTokenDb } from "@/db/refresh-tokens";
 import { userDb } from "@/db/users";
 import { HttpStatus, TPlatform } from "@/packages/shared";
-import { applyFounderInviteAfterSignup } from "@/services/apply-founder-invite-after-signup";
 import { sendOtpEmail } from "@/ses/transactional-emails";
 
 import { AccountEvent } from "../../server-types";
@@ -105,13 +103,14 @@ export const authRoutes = async (server: FastifyInstance) => {
 
     const googleUser = await verifyGoogleToken({ idToken, platform });
 
-    let result;
+    let user;
     try {
-      result = await userDb.findOrCreateByGoogle({
+      const result = await userDb.findOrCreateByGoogle({
         email: googleUser.email,
         googleId: googleUser.googleId,
         name: googleUser.name,
       });
+      user = result.user;
     } catch (error) {
       if (isAccountPermanentlyDeletedError(error)) {
         return reply.status(HttpStatus.FORBIDDEN).send({
@@ -128,13 +127,6 @@ export const authRoutes = async (server: FastifyInstance) => {
       throw error;
     }
 
-    const { accountLinked, accountRecovered, isNewSignup, user: createdUser } = result;
-    let user = createdUser;
-    if (isNewSignup) {
-      user = await applyFounderInviteAfterSignup(request.log, user);
-    }
-    await keyholderDb.linkUserByEmail(user.id, user.email);
-
     const accessToken = signAccessToken(server, {
       email: user.email,
       userId: user.id,
@@ -148,8 +140,6 @@ export const authRoutes = async (server: FastifyInstance) => {
 
     return reply.send({
       accessToken,
-      accountLinked: accountLinked || undefined,
-      accountRecovered: accountRecovered || undefined,
       refreshToken: rawRefreshToken,
       user,
     });
@@ -165,13 +155,14 @@ export const authRoutes = async (server: FastifyInstance) => {
     try {
       const appleUser = await verifyAppleToken(identityToken);
 
-      let result;
+      let user;
       try {
-        result = await userDb.findOrCreateByApple({
+        const result = await userDb.findOrCreateByApple({
           appleId: appleUser.appleId,
           email: appleUser.email,
           name: appleUser.name,
         });
+        user = result.user;
       } catch (error) {
         if (isAccountPermanentlyDeletedError(error)) {
           return reply.status(HttpStatus.FORBIDDEN).send({
@@ -188,15 +179,6 @@ export const authRoutes = async (server: FastifyInstance) => {
         throw error;
       }
 
-      const { accountLinked, accountRecovered, isNewSignup, user: createdUser } = result;
-      let user = createdUser;
-      if (isNewSignup) {
-        user = await applyFounderInviteAfterSignup(request.log, user);
-      }
-      if (user.email) {
-        await keyholderDb.linkUserByEmail(user.id, user.email);
-      }
-
       const accessToken = signAccessToken(server, {
         email: user.email,
         userId: user.id,
@@ -210,8 +192,6 @@ export const authRoutes = async (server: FastifyInstance) => {
 
       return reply.send({
         accessToken,
-        accountLinked: accountLinked || undefined,
-        accountRecovered: accountRecovered || undefined,
         refreshToken: rawRefreshToken,
         user,
       });
@@ -307,15 +287,13 @@ export const authRoutes = async (server: FastifyInstance) => {
     if (passwordErr) return reply.status(HttpStatus.BAD_REQUEST).send({ error: passwordErr });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    let user = await userDb.createWithEmail({
+    const user = await userDb.createWithEmail({
       email,
       name: name.trim(),
       passwordHash,
     });
-    user = await applyFounderInviteAfterSignup(request.log, user);
 
     await authOtpsDb.deleteById(otpRow.id);
-    await keyholderDb.linkUserByEmail(user.id, user.email);
 
     const accessToken = signAccessToken(server, {
       email: user.email,
@@ -359,8 +337,6 @@ export const authRoutes = async (server: FastifyInstance) => {
     if (!user) {
       return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Invalid email or password" });
     }
-
-    await keyholderDb.linkUserByEmail(user.id, user.email);
 
     const accessToken = signAccessToken(server, {
       email: user.email,
@@ -594,8 +570,7 @@ export const authRoutes = async (server: FastifyInstance) => {
 
     const tokenHash = hashToken(refreshToken);
     const pushTokenHeader = request.headers["x-push-token"];
-    const pushToken =
-      typeof pushTokenHeader === "string" ? pushTokenHeader.trim() : "";
+    const pushToken = typeof pushTokenHeader === "string" ? pushTokenHeader.trim() : "";
 
     const client = await pool.connect();
     try {

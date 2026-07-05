@@ -5,7 +5,6 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
 import { HttpStatus, JwtError, UserType } from "@/packages/shared";
-import { getBearerTokenRaw, getQueryAccessTokenRaw } from "@/routes/vaults/vault-hls-manifest-url";
 
 const ACCESS_TOKEN_EXPIRY = "15m";
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
@@ -26,10 +25,6 @@ declare module "@fastify/jwt" {
 declare module "fastify" {
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    authenticateBearerOrAccessTokenQuery: (
-      request: FastifyRequest,
-      reply: FastifyReply
-    ) => Promise<void>;
     requireAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
@@ -53,45 +48,6 @@ const jwtPlugin = async (server: FastifyInstance) => {
       reply.status(HttpStatus.UNAUTHORIZED).send({ code, error: "Unauthorized" });
     }
   });
-
-  server.decorate(
-    "authenticateBearerOrAccessTokenQuery",
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      if (getBearerTokenRaw(request) != null) {
-        try {
-          await request.jwtVerify();
-        } catch (err: unknown) {
-          const code =
-            (err as { code?: string })?.code === "FST_JWT_AUTHORIZATION_TOKEN_EXPIRED"
-              ? JwtError.TOKEN_EXPIRED
-              : JwtError.TOKEN_INVALID;
-          await reply.status(HttpStatus.UNAUTHORIZED).send({ code, error: "Unauthorized" });
-        }
-        return;
-      }
-
-      const queryToken = getQueryAccessTokenRaw(request);
-      if (queryToken != null) {
-        try {
-          const decoded = server.jwt.verify<JwtUserPayload>(queryToken);
-          request.user = decoded;
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-          const code =
-            /expired|EXP/i.test(msg) ||
-            (err as { code?: string })?.code === "FST_JWT_AUTHORIZATION_TOKEN_EXPIRED"
-              ? JwtError.TOKEN_EXPIRED
-              : JwtError.TOKEN_INVALID;
-          await reply.status(HttpStatus.UNAUTHORIZED).send({ code, error: "Unauthorized" });
-        }
-        return;
-      }
-
-      await reply
-        .status(HttpStatus.UNAUTHORIZED)
-        .send({ code: JwtError.TOKEN_INVALID, error: "Unauthorized" });
-    }
-  );
 
   server.decorate("requireAdmin", async (request: FastifyRequest, reply: FastifyReply) => {
     if (request.user.userType !== UserType.ADMIN) {
