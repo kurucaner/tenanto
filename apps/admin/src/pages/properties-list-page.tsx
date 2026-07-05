@@ -1,14 +1,14 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Building2, Plus } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { Building2, Plus, Search } from "lucide-react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { AdminPageIntro } from "@/components/admin-page-intro";
 import { AdminPageLayout } from "@/components/admin-page-layout";
 import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -23,6 +23,7 @@ import { adminQueryKeys } from "@/lib/query-keys";
 import type { IAdminPropertiesListResponse, IProperty } from "@/packages/shared";
 
 const LIMIT = 25;
+const SEARCH_DEBOUNCE_MS = 300;
 
 const PropertyTableRow = memo(({ property }: { property: IProperty }) => (
   <TableRow>
@@ -50,16 +51,21 @@ const PropertyTableRow = memo(({ property }: { property: IProperty }) => (
 PropertyTableRow.displayName = "PropertyTableRow";
 
 const PropertiesListPageInner = memo(() => {
-  const [qInput, setQInput] = useState("");
-  const [appliedQ, setAppliedQ] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [searchInput]);
 
   const listFilters = useMemo<Omit<IAdminPropertiesListQuery, "cursor">>(
     () => ({
       limit: LIMIT,
-      q: appliedQ || undefined,
+      q: debouncedSearch || undefined,
     }),
-    [appliedQ]
+    [debouncedSearch]
   );
 
   const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
@@ -67,8 +73,7 @@ const PropertiesListPageInner = memo(() => {
       getNextPageParam: (lastPage: IAdminPropertiesListResponse) =>
         lastPage.nextCursor ?? undefined,
       initialPageParam: undefined as string | undefined,
-      queryFn: ({ pageParam }) =>
-        propertiesApi.list({ ...listFilters, cursor: pageParam }),
+      queryFn: ({ pageParam }) => propertiesApi.list({ ...listFilters, cursor: pageParam }),
       queryKey: adminQueryKeys.propertiesList(listFilters),
     });
 
@@ -85,41 +90,26 @@ const PropertiesListPageInner = memo(() => {
 
   return (
     <AdminPageLayout gap={6}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Card className="border-border/80 bg-card/80 flex-1 shadow-sm backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-              <div className="flex min-w-[200px] flex-1 flex-col gap-2">
-                <Label htmlFor="filter-q">Name or address contains</Label>
-                <Input
-                  id="filter-q"
-                  onChange={(e) => setQInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") setAppliedQ(qInput.trim());
-                  }}
-                  placeholder="search…"
-                  value={qInput}
-                />
-              </div>
-              <Button
-                onClick={() => setAppliedQ(qInput.trim())}
-                type="button"
-                variant="secondary"
-              >
-                Apply search
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        <div className="flex shrink-0 self-start sm:self-auto">
-          <Button className="gap-2" onClick={() => setCreateOpen(true)} type="button">
-            <Plus className="size-4" />
-            New Property
-          </Button>
-        </div>
+      <div className="flex items-start justify-between gap-4">
+        <AdminPageIntro
+          description="Manage and browse all properties."
+          eyebrow="Management"
+          title="Properties"
+        />
+        <Button className="shrink-0 gap-2" onClick={() => setCreateOpen(true)} type="button">
+          <Plus className="size-4" />
+          New Property
+        </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by name or address…"
+          value={searchInput}
+        />
       </div>
 
       {error ? (
