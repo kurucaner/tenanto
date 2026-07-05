@@ -1,0 +1,62 @@
+---
+description: Avoid code repetition - extract reusable code into callbacks, components, utilities
+alwaysApply: true
+---
+
+# No Code Repetition (DRY)
+
+Do not repeat the same or similar code in multiple places. Extract shared logic into:
+
+- **Callback functions** – parameterized logic used in multiple handlers
+- **Reusable components** – repeated UI patterns
+- **Utility functions** – shared logic across modules
+- **Custom hooks** – repeated React state or side-effect logic
+- **Shared constants/types** – repeated values or type definitions
+
+When you notice similar code in 2+ places, refactor to a single reusable abstraction.
+
+## Examples
+
+### Repeated logic → utility function
+
+```typescript
+// BAD – same validation logic duplicated
+function createUser(data) {
+  if (!data.email?.includes("@")) throw new Error("Invalid email");
+  if (data.name?.length < 2) throw new Error("Name too short");
+  // ...
+}
+function updateUser(data) {
+  if (!data.email?.includes("@")) throw new Error("Invalid email");
+  if (data.name?.length < 2) throw new Error("Name too short");
+  // ...
+}
+
+// GOOD – shared validation extracted
+function validateUserInput(data) {
+  if (!data.email?.includes("@")) throw new Error("Invalid email");
+  if (data.name?.length < 2) throw new Error("Name too short");
+}
+function createUser(data) {
+  validateUserInput(data);
+  // ...
+}
+function updateUser(data) {
+  validateUserInput(data);
+  // ...
+}
+```
+
+### Repeated UI → reusable component
+
+```tsx
+// BAD – same card markup repeated
+<Card className="p-4 border rounded">
+  <h3>{item.title}</h3>
+  <p>{item.description}</p>
+</Card>
+// ... same structure elsewhere
+
+// GOOD – extract ItemCard component
+<ItemCard item={item} />
+```

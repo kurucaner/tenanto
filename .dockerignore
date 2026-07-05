@@ -1,0 +1,34 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+.next
+**/.next
+build
+**/build
+
+# Git
+.git
+.gitignore
+
+# Env and secrets
+.env*
+*.pem
+
+# Misc
+.DS_Store
+*.tsbuildinfo
+*.log
+logs
+**/logs
+
+# Docs and scripts (optional - exclude to reduce context)
+# docs
+# scripts
+
+# IDE
+.history
+.VSCodeCounter

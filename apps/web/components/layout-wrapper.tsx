@@ -1,0 +1,24 @@
+import { Inter } from "next/font/google";
+import { ReactNode } from "react";
+
+import { SectionContainer } from "./section-container";
+
+interface Props {
+  children: ReactNode;
+}
+
+const inter = Inter({
+  subsets: ["latin"],
+});
+
+const LayoutWrapper = ({ children }: Props) => {
+  return (
+    <SectionContainer>
+      <div className={`${inter.className} flex flex-col`}>
+        <main className="mb-auto">{children}</main>
+      </div>
+    </SectionContainer>
+  );
+};
+
+export default LayoutWrapper;

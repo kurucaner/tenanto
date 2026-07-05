@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "aaron-bond.better-comments",
+    "Cardinal90.multi-cursor-case-preserve"
+  ]
+}

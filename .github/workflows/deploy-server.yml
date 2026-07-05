@@ -1,0 +1,152 @@
+name: Build and Deploy Server
+env:
+  API_PUBLIC_URL: ${{ secrets.API_PUBLIC_URL }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_EVENTBRIDGE_SCHEDULER_EXECUTION_ROLE_ARN: ${{ secrets.AWS_EVENTBRIDGE_SCHEDULER_EXECUTION_ROLE_ARN }}
+  AWS_EVENTBRIDGE_SCHEDULER_LAMBDA_ARN: ${{ secrets.AWS_EVENTBRIDGE_SCHEDULER_LAMBDA_ARN }}
+  AWS_INTERNAL_SECRET: ${{ secrets.AWS_INTERNAL_SECRET }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+  DATADOG_APPLICATION_ID: ${{ secrets.DATADOG_APPLICATION_ID }}
+  DATADOG_CLIENT_TOKEN: ${{ secrets.DATADOG_CLIENT_TOKEN }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_NAME: ${{ secrets.DB_NAME }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  DB_PORT: ${{ secrets.DB_PORT }}
+  DB_USER: ${{ secrets.DB_USER }}
+  DISCORD_SUPPORT_WEBHOOK_URL: ${{ secrets.DISCORD_SUPPORT_WEBHOOK_URL }}
+  DISCORD_FOUNDER_WEBHOOK_URL: ${{ secrets.DISCORD_FOUNDER_WEBHOOK_URL }}
+  GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+  GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+  GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+  MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+  MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+  MINIO_REGION: ${{ secrets.MINIO_REGION }}
+  MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+  MINIO_WEBHOOK_API_KEY: ${{ secrets.MINIO_WEBHOOK_API_KEY }}
+  NODE_ENV: ${{ secrets.NODE_ENV }}
+  PORT: ${{ secrets.PORT }}
+  REVENUECAT_WEBHOOK_SECRET: ${{ secrets.REVENUECAT_WEBHOOK_SECRET }}
+  WEB_APP_URL: ${{ secrets.WEB_APP_URL }}
+  ADMIN_APP_URL: ${{ secrets.ADMIN_APP_URL }}
+  MEDIACONVERT_QUEUE_ARN: ${{ secrets.MEDIACONVERT_QUEUE_ARN }}
+  MEDIACONVERT_ROLE_ARN: ${{ secrets.MEDIACONVERT_ROLE_ARN }}
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/server/**"
+      - "packages/shared/**"
+      - "docker-compose.yml"
+      - "Dockerfile"
+      - ".github/workflows/deploy-server.yml"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Lint server
+        run: bun run --filter server lint
+
+      - name: Build server
+        run: bun run --filter server build
+
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key
+          chmod 600 private_key
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Create .env file
+        run: |
+          mkdir -p apps/server
+          {
+            echo "API_PUBLIC_URL=$API_PUBLIC_URL"
+            echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+            echo "AWS_EVENTBRIDGE_SCHEDULER_EXECUTION_ROLE_ARN=$AWS_EVENTBRIDGE_SCHEDULER_EXECUTION_ROLE_ARN"
+            echo "AWS_EVENTBRIDGE_SCHEDULER_LAMBDA_ARN=$AWS_EVENTBRIDGE_SCHEDULER_LAMBDA_ARN"
+            echo "AWS_INTERNAL_SECRET=$AWS_INTERNAL_SECRET"
+            echo "AWS_REGION=$AWS_REGION"
+            echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+            echo "DATADOG_API_KEY=$DATADOG_API_KEY"
+            echo "DATADOG_APPLICATION_ID=$DATADOG_APPLICATION_ID"
+            echo "DATADOG_CLIENT_TOKEN=$DATADOG_CLIENT_TOKEN"
+            echo "DB_HOST=$DB_HOST"
+            echo "DB_NAME=$DB_NAME"
+            echo "DB_PASSWORD=$DB_PASSWORD"
+            echo "DB_PORT=$DB_PORT"
+            echo "DB_USER=$DB_USER"
+            echo "DISCORD_SUPPORT_WEBHOOK_URL=$DISCORD_SUPPORT_WEBHOOK_URL"
+            echo "DISCORD_FOUNDER_WEBHOOK_URL=$DISCORD_FOUNDER_WEBHOOK_URL"
+            echo "GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID"
+            echo "GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID"
+            echo "GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID"
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "MINIO_ACCESS_KEY=$MINIO_ACCESS_KEY"
+            echo "MINIO_BUCKET=$MINIO_BUCKET"
+            echo "MINIO_ENDPOINT=$MINIO_ENDPOINT"
+            echo "MINIO_REGION=$MINIO_REGION"
+            echo "MINIO_SECRET_KEY=$MINIO_SECRET_KEY"
+            echo "MINIO_WEBHOOK_API_KEY=$MINIO_WEBHOOK_API_KEY"
+            echo "NODE_ENV=$NODE_ENV"
+            echo "PORT=$PORT"
+            echo "REVENUECAT_WEBHOOK_SECRET=$REVENUECAT_WEBHOOK_SECRET"
+            echo "WEB_APP_URL=$WEB_APP_URL"
+            echo "ADMIN_APP_URL=$ADMIN_APP_URL"
+            echo "MEDIACONVERT_QUEUE_ARN=$MEDIACONVERT_QUEUE_ARN"
+            echo "MEDIACONVERT_ROLE_ARN=$MEDIACONVERT_ROLE_ARN"
+          } > apps/server/.env
+
+      - name: Deploy server
+        env:
+          SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          SERVER_IP: ${{ secrets.PROD_SERVER_IP }}
+        run: |
+          rsync -avz --delete --exclude=node_modules --exclude=.next --exclude=dist --exclude=.git --exclude=apps/mobile --exclude=lambda --exclude=docs --exclude=.cursor --exclude=scripts -e "ssh -i private_key -o StrictHostKeyChecking=no" \
+            . \
+            $SERVER_USER@$SERVER_IP:/root/tenanto/
+          ssh -i private_key -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP \
+            "cd /root/tenanto && docker compose build server && docker compose up -d server"
+
+      - name: Notify Discord - Success
+        if: success()
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_GITHUB_ACTIONS_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg url "$RUN_URL" \
+              '{embeds:[{title:"Server Deployment",description:"Deployment completed successfully!",color:3066993,fields:[{name:"Status",value:"Success",inline:true},{name:"View run",value:$url,inline:false}]}]}')"
+
+      - name: Notify Discord - Failure
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_GITHUB_ACTIONS_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg url "$RUN_URL" \
+              '{embeds:[{title:"Server Deployment",description:"Deployment failed. Check the workflow run for details.",color:15158332,fields:[{name:"Status",value:"Failed",inline:true},{name:"View run",value:$url,inline:false}]}]}')"

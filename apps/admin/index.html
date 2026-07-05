@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      (function () {
+        try {
+          var k = "tenanto-admin-theme";
+          var pk = "tenanto-admin-dark-preset";
+          var ok = ["noir", "obsidian", "evergreen", "plum", "ember", "inkwell"];
+          var t = localStorage.getItem(k) || "system";
+          if (t !== "light" && t !== "dark" && t !== "system") t = "system";
+          var r = document.documentElement;
+          r.dataset.theme = t;
+          var d =
+            t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+          r.classList.toggle("dark", d);
+          r.style.colorScheme = d ? "dark" : "light";
+          if (d) {
+            var pv = localStorage.getItem(pk) || "noir";
+            if (ok.indexOf(pv) < 0) pv = "noir";
+            r.setAttribute("data-dark-preset", pv);
+          } else {
+            r.removeAttribute("data-dark-preset");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Tenanto Admin</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

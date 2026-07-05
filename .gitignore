@@ -1,0 +1,32 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+
+# production
+build
+
+# misc
+.DS_Store
+*.pem
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# typescript
+*.tsbuildinfo
+
+# mobile
+*.tar.gz
+*.apk
+*.aab
+
+# code editor
+.history
+.VSCodeCounter
+
+logs
+
+dist
+
+*.ipa

@@ -1,0 +1,57 @@
+{
+  "name": "server",
+  "version": "1.0.2",
+  "main": "dist/apps/server/src/server.js",
+  "scripts": {
+    "dev": "nodemon --watch src --ext ts --exec \"bun src/server.ts\"",
+    "build": "tsc && bunx tsc-alias -p tsconfig.json && cp -r templates dist/apps/server/",
+    "start": "NODE_ENV=production node dist/apps/server/src/server.js",
+    "worker:vault-streaming": "bun src/workers/vault-streaming-worker.cli.ts",
+    "worker:vault-streaming:ffmpeg": "VAULT_STREAMING_WORKER_MODE=ffmpeg bun src/workers/vault-streaming-worker.cli.ts",
+    "worker:vault-streaming:mediaconvert": "VAULT_STREAMING_WORKER_MODE=mediaconvert bun src/workers/vault-streaming-worker.cli.ts",
+    "worker:vault-streaming:prod": "NODE_ENV=production node dist/apps/server/src/workers/vault-streaming-worker.cli.js",
+    "test": "bun test",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@/packages/shared": "workspace:*",
+    "@aws-sdk/client-mediaconvert": "^3.1045.0",
+    "@aws-sdk/client-s3": "^3.999.0",
+    "@aws-sdk/client-scheduler": "^3.1002.0",
+    "@aws-sdk/client-sesv2": "^3.1002.0",
+    "@aws-sdk/s3-request-presigner": "^3.999.0",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "apple-signin-auth": "^2.0.0",
+    "bcrypt": "^6.0.0",
+    "datadog-winston": "^1.6.0",
+    "dotenv": "^17.3.1",
+    "expo-server-sdk": "^6.0.0",
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^5.1.0",
+    "google-auth-library": "^10.5.0",
+    "node-cron": "^4.2.1",
+    "pg": "^8.18.0",
+    "semver": "^7.7.4",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/datadog-winston": "^1.0.7",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.16.0",
+    "nodemon": "^3.1.9",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.19.2"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
+    "ext": "ts"
+  }
+}

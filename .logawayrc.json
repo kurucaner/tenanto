@@ -1,0 +1,7 @@
+{
+  "targetDir": ["apps/server", "apps/web", "apps/admin"],
+  "ignoredDirs": ["node_modules", "dist", "build", ".next", "scripts"],
+  "extensions": [".js", ".jsx", ".ts", ".tsx"],
+  "methods": ["log"],
+  "prettier": true
+}

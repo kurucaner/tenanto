@@ -1,0 +1,36 @@
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      /** Base URL for the admin app (e.g. https://admin.tenanto.app) - used for magic links in emails */
+      ADMIN_APP_URL: string;
+      /** AWS credentials */
+      AWS_ACCESS_KEY_ID: string;
+      AWS_REGION: string;
+      AWS_SECRET_ACCESS_KEY: string;
+      /** Database credentials */
+      DB_HOST: string;
+      DB_NAME: string;
+      DB_PASSWORD: string;
+      DB_PORT: string;
+      DB_USER: string;
+      /** Discord webhook URL for support requests. Create via Server Settings > Integrations > Webhooks */
+      DISCORD_SUPPORT_WEBHOOK_URL: string;
+      /** Google Credentials */
+      GOOGLE_ANDROID_CLIENT_ID: string;
+      GOOGLE_IOS_CLIENT_ID: string;
+      JWT_SECRET: string;
+      /** MinIO / S3-compatible object storage credentials */
+      MINIO_ACCESS_KEY: string;
+      MINIO_BUCKET: string;
+      MINIO_ENDPOINT: string;
+      MINIO_REGION: string;
+      MINIO_SECRET_KEY: string;
+      NODE_ENV: string;
+      PORT: string;
+      /** Base URL for the web app (e.g. https://tenanto.app) - used for magic links in emails */
+      WEB_APP_URL: string;
+    }
+  }
+}
+
+export {};

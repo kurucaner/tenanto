@@ -1,0 +1,63 @@
+{
+  "name": "tenanto",
+  "version": "1.0.0",
+  "main": "index.js",
+  "engines": {
+    "node": ">=24.14.0"
+  },
+  "scripts": {
+    "dev:mobile": "cd apps/mobile && npm run dev",
+    "dev:proxy": "npm run --filter proxy dev",
+    "dev:server": "npm run --filter server dev",
+    "dev:web": "npm run --filter web dev",
+    "dev:admin": "npm run --filter admin dev",
+    "dev:pinorama": "npm run --filter server dev:pinorama",
+    "build:mobile": "cd apps/mobile && npm run build",
+    "build:proxy": "npm run --filter proxy build",
+    "build:server": "npm run --filter server build",
+    "build:web": "npm run --filter web build",
+    "build:admin": "npm run --filter admin build",
+    "build:pinorama": "npm run --filter server build:pinorama",
+    "start:mobile": "cd apps/mobile && npm run start",
+    "start:proxy": "npm run --filter proxy start",
+    "start:server": "npm run --filter server start",
+    "start:web": "npm run --filter web start",
+    "start:pinorama": "npm run --filter server start:pinorama",
+    "lint:mobile": "cd apps/mobile && npm run lint",
+    "lint:server": "npm run --filter server lint",
+    "lint:web": "npm run --filter web lint",
+    "lint:admin": "npm run --filter admin lint",
+    "logaway": "logaway",
+    "reset:node_modules": "rm -rf node_modules && rm bun.lock && cd apps/mobile && rm -rf node_modules && cd ../web && rm -rf node_modules && cd ../server && rm -rf node_modules && cd ../admin && rm -rf node_modules"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@types/semver": "^7.7.1",
+    "concurrently": "^9.2.1",
+    "eslint-plugin-perfectionist": "^5.6.0",
+    "logaway": "^1.1.0",
+    "prettier": "^3.8.1",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.94.5",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^9.25.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "lucide-react": "^0.577.0",
+    "sonner": "^2.0.7",
+    "tailwindcss": "^4.2.2",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  }
+}

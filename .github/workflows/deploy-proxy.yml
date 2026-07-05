@@ -1,0 +1,71 @@
+name: Build and Deploy Proxy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/proxy/**"
+      - ".github/workflows/deploy-proxy.yml"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build proxy
+        run: bun run --filter proxy build
+
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key
+          chmod 600 private_key
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy proxy
+        env:
+          SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          SERVER_IP: ${{ secrets.PROD_SERVER_IP }}
+        run: |
+          rsync -avz --exclude=node_modules --exclude=.next --exclude=dist --exclude=.git --exclude=apps/mobile --exclude=lambda --exclude=docs --exclude=.cursor --exclude=scripts -e "ssh -i private_key -o StrictHostKeyChecking=no" \
+            . \
+            $SERVER_USER@$SERVER_IP:/root/tenanto/
+          ssh -i private_key -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP \
+            "cd /root/tenanto && docker compose build proxy && docker compose up -d proxy"
+
+      - name: Notify Discord - Success
+        if: success()
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_GITHUB_ACTIONS_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg url "$RUN_URL" \
+              '{embeds:[{title:"Proxy Deployment",description:"Deployment completed successfully!",color:3066993,fields:[{name:"Status",value:"Success",inline:true},{name:"View run",value:$url,inline:false}]}]}')"
+
+      - name: Notify Discord - Failure
+        if: failure()
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_GITHUB_ACTIONS_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -s -X POST "$WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg url "$RUN_URL" \
+              '{embeds:[{title:"Proxy Deployment",description:"Deployment failed. Check the workflow run for details.",color:15158332,fields:[{name:"Status",value:"Failed",inline:true},{name:"View run",value:$url,inline:false}]}]}')"

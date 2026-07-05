@@ -1,0 +1,367 @@
+@import "tailwindcss";
+
+/* Class-based dark (see `applyTheme` / `html.dark`). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme (default) */
+:root {
+  color-scheme: light;
+  --radius: 0.5rem;
+  --background: 43 18% 95%;
+  --foreground: 0 0% 9%;
+  --card: 43 14% 97%;
+  --card-foreground: 0 0% 9%;
+  --popover: 43 14% 97%;
+  --popover-foreground: 0 0% 9%;
+  --primary: 43 52% 35%;
+  --primary-foreground: 43 18% 98%;
+  --secondary: 43 12% 90%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 43 10% 91%;
+  --muted-foreground: 43 4% 38%;
+  --accent: 43 22% 88%;
+  --accent-foreground: 0 0% 9%;
+  --destructive: 0 84% 55%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 43 8% 86%;
+  --input: 43 8% 86%;
+  --ring: 43 45% 42%;
+
+  --gold: #9a7b2e;
+  --gold-muted: rgba(154, 123, 46, 0.45);
+  --gold-glow: rgba(201, 169, 98, 0.14);
+  --obsidian: #141414;
+  --surface: rgba(0, 0, 0, 0.04);
+  --surface-elevated: rgba(0, 0, 0, 0.07);
+  --noise-opacity: 0.025;
+  --navbar-bg: rgba(245, 243, 239, 0.88);
+  --navbar-border: rgba(0, 0, 0, 0.09);
+  --navbar-link: rgba(20, 20, 20, 0.72);
+  --navbar-link-hover: rgba(20, 20, 20, 0.92);
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-subtle-2: rgba(0, 0, 0, 0.06);
+  --btn-solid-bg: #141414;
+  --btn-solid-fg: #faf9f6;
+  --btn-solid-hover: #2a2a2a;
+  --text-muted: #5c5a56;
+  --text-muted-2: #7a7874;
+  --text-muted-3: #9c9a96;
+
+  /* Vault illustration (hero monogram): readable on warm cream; distinct from --gold */
+  --vault-accent: #342c18;
+  --vault-orbit: #5a4a30;
+  --vault-core: #453822;
+}
+
+html.dark {
+  color-scheme: dark;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 94%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 94%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 94%;
+    --primary: 43 45% 52%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 94%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 94%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 43 45% 52%;
+
+    --gold: #c9a962;
+    --gold-muted: rgba(201, 169, 98, 0.4);
+    --gold-glow: rgba(201, 169, 98, 0.15);
+    --obsidian: #0a0a0a;
+    --surface: rgba(255, 255, 255, 0.02);
+    --surface-elevated: rgba(255, 255, 255, 0.04);
+    --noise-opacity: 0.03;
+    --navbar-bg: rgba(10, 10, 10, 0.8);
+    --navbar-border: rgba(255, 255, 255, 0.1);
+    --navbar-link: rgba(255, 255, 255, 0.78);
+    --navbar-link-hover: rgba(255, 255, 255, 0.95);
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-subtle-2: rgba(255, 255, 255, 0.05);
+    --btn-solid-bg: #0a0a0a;
+    --btn-solid-fg: #f0f0f0;
+    --btn-solid-hover: #1a1a1a;
+    --text-muted: rgba(240, 240, 240, 0.65);
+    --text-muted-2: rgba(240, 240, 240, 0.5);
+    --text-muted-3: rgba(240, 240, 240, 0.4);
+
+    /* Vault illustration: bright on near-black; distinct from marketing --gold */
+    --vault-accent: #f2ead1;
+    --vault-orbit: #c8b57e;
+    --vault-core: #dcc894;
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-gold: var(--gold);
+  --color-obsidian: var(--obsidian);
+  --color-text-muted: var(--text-muted);
+  --color-text-muted-2: var(--text-muted-2);
+  --color-text-muted-3: var(--text-muted-3);
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Noise overlay for atmospheric depth */
+.noise-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--noise-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Gradient utilities for section backgrounds */
+.bg-hero-gradient {
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    var(--gold-glow) 0%,
+    transparent 50%
+  );
+}
+
+.bg-section-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--gold) 50%,
+    transparent 100%
+  );
+  opacity: 0.3;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@keyframes marquee-slow {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.animate-marquee-slow {
+  animation: marquee-slow 60s linear infinite;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .animate-marquee-slow {
+    animation: none;
+  }
+}
+
+/* Premium landing: one IO + CSS keyframes (compositor-friendly; staggered entrance). */
+.premium-section__reveal {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  backface-visibility: hidden;
+}
+
+.premium-section-root--visible .premium-section__reveal--head {
+  animation: premium-reveal-rise 0.58s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.premium-section-root--visible .premium-section__reveal--table {
+  animation: premium-reveal-lift 0.68s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+}
+
+.premium-section-root--visible .premium-section__reveal--cta {
+  animation: premium-reveal-rise 0.52s cubic-bezier(0.22, 1, 0.36, 1) 0.22s forwards;
+}
+
+@keyframes premium-reveal-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes premium-reveal-lift {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 26px, 0) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-section-root--visible .premium-section__reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Reveal landing: one IO + CSS keyframes (matches Premium pattern). */
+.reveal-section__reveal--title {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+  backface-visibility: hidden;
+}
+
+.reveal-section__reveal--phone {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0);
+  backface-visibility: hidden;
+}
+
+.reveal-section-root--visible .reveal-section__reveal--title {
+  animation: reveal-section-title 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.reveal-section-root--visible .reveal-section__reveal--phone {
+  animation: reveal-section-phone 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-stagger, 0s) forwards;
+}
+
+@keyframes reveal-section-title {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes reveal-section-phone {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-section-root--visible .reveal-section__reveal--title,
+  .reveal-section-root--visible .reveal-section__reveal--phone {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* How it works: one IO + CSS (reuses reveal-section-title keyframe for the header). */
+.how-it-works__reveal--head {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+  backface-visibility: hidden;
+}
+
+.how-it-works__reveal--line {
+  transform: scaleX(0);
+  transform-origin: center;
+  opacity: 0.3;
+}
+
+.how-it-works__reveal--dot {
+  opacity: 0;
+  transform: scale(0);
+  backface-visibility: hidden;
+}
+
+.how-it-works__reveal--step {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  backface-visibility: hidden;
+}
+
+.how-it-works-root--visible .how-it-works__reveal--head {
+  animation: reveal-section-title 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.how-it-works-root--visible .how-it-works__reveal--line {
+  animation: how-it-works-line 1s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+}
+
+.how-it-works-root--visible .how-it-works__reveal--dot {
+  animation: how-it-works-dot 0.5s cubic-bezier(0.22, 1, 0.36, 1) var(--how-it-works-dot-delay, 0s) forwards;
+}
+
+.how-it-works-root--visible .how-it-works__reveal--step {
+  animation: how-it-works-step 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--how-it-works-step-delay, 0s) forwards;
+}
+
+@keyframes how-it-works-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes how-it-works-dot {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes how-it-works-step {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .how-it-works-root--visible .how-it-works__reveal--head,
+  .how-it-works-root--visible .how-it-works__reveal--line,
+  .how-it-works-root--visible .how-it-works__reveal--dot,
+  .how-it-works-root--visible .how-it-works__reveal--step {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

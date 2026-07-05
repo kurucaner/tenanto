@@ -1,0 +1,21 @@
+---
+description: Plan mode - always get user confirmation before making changes
+alwaysApply: true
+---
+
+# Plan Mode: Confirmation Required
+
+When the system indicates **Plan mode is active**:
+
+1. **Never implement without confirmation**: Do NOT make edits, run migrations, or execute any non-readonly changes until the user explicitly requests implementation or confirms the plan.
+
+2. **Present the plan first**: Use the CreatePlan tool or provide a clear written plan. Include all proposed changes (DB migrations, new files, API changes, etc.).
+
+3. **Wait for explicit approval**: Only proceed with implementation when the user:
+   - Says "go ahead", "implement it", "start", or similar
+   - Explicitly confirms the plan
+   - Asks you to begin execution
+
+4. **Ask before major changes**: For DB migrations, schema changes, or large refactors, explicitly ask the user if they approve before proceeding.
+
+5. **Read-only until confirmed**: Use only read-only tools (read, search, grep) when exploring. Do not use write, search_replace, or run commands that modify state until the user confirms.

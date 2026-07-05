@@ -1,0 +1,299 @@
+import {
+  type IAdminAuditEventsListQuery,
+  type IAdminAuditEventsListResponse,
+  type IAdminPatchAppConfigBody,
+  type IAdminPlatformStats,
+  type IAdminSupportRequestPatchBody,
+  type IAdminSupportRequestPatchResponse,
+  type IAdminSupportRequestsListQuery,
+  type IAdminSupportRequestsListResponse,
+  type IAppConfig,
+  type IUser,
+  JwtError,
+  type UserType,
+} from "@/packages/shared";
+import { useAuthStore } from "@/stores/auth-store";
+
+function getApiBaseUrl(): string {
+  const url = import.meta.env.VITE_API_URL;
+  if (url == null || url === "") {
+    throw new Error("VITE_API_URL is not set");
+  }
+  return url.replace(/\/$/, "");
+}
+
+type RequestOptions = RequestInit & { omitDefaultContentType?: boolean };
+
+let onSessionExpired: (() => void) | undefined;
+
+export const setOnSessionExpired = (callback: (() => void) | undefined): void => {
+  onSessionExpired = callback;
+};
+
+const getDefaultHeaders = (): Record<string, string> => ({
+  "Content-Type": "application/json",
+});
+
+const rawRequest = async (path: string, options: RequestOptions = {}): Promise<Response> => {
+  const { omitDefaultContentType, ...requestInit } = options;
+  const defaultHeaders = { ...getDefaultHeaders() };
+  if (omitDefaultContentType) {
+    delete defaultHeaders["Content-Type"];
+  }
+  return fetch(`${getApiBaseUrl()}${path}`, {
+    ...requestInit,
+    headers: {
+      ...defaultHeaders,
+      ...requestInit.headers,
+    },
+  });
+};
+
+const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+  const response = await rawRequest(path, options);
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
+    const err = new Error(body.error ?? `Request failed: ${response.status}`);
+    (err as Error & { code?: string }).code = body.code;
+    throw err;
+  }
+  return response.json() as Promise<T>;
+};
+
+let inFlightRefresh: Promise<string | null> | null = null;
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  const refreshToken = useAuthStore.getState().refreshToken;
+  if (!refreshToken) {
+    useAuthStore.getState().clearSession();
+    onSessionExpired?.();
+    return null;
+  }
+  try {
+    const result = await request<IAuthRefreshResponse>("/auth/refresh", {
+      body: JSON.stringify({ refreshToken }),
+      method: "POST",
+    });
+    useAuthStore.getState().setAccessToken(result.accessToken);
+    useAuthStore.getState().setUser(result.user);
+    return result.accessToken;
+  } catch {
+    useAuthStore.getState().clearSession();
+    onSessionExpired?.();
+    return null;
+  }
+};
+
+const getDeduplicatedRefresh = (): Promise<string | null> => {
+  if (!inFlightRefresh) {
+    inFlightRefresh = refreshAccessToken().finally(() => {
+      inFlightRefresh = null;
+    });
+  }
+  return inFlightRefresh;
+};
+
+interface UnauthorizedBody {
+  code?: string;
+  error?: string;
+}
+
+const authenticatedRequest = async <T>(
+  path: string,
+  options: RequestOptions = {},
+  isRetry = false
+): Promise<T> => {
+  const token = useAuthStore.getState().accessToken;
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await rawRequest(path, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (response.ok) {
+    return response.json() as Promise<T>;
+  }
+
+  if (response.status === 403) {
+    const body = await response.json().catch(() => ({}));
+    useAuthStore.getState().clearSession();
+    onSessionExpired?.();
+    throw new Error((body as { error?: string }).error ?? "Forbidden");
+  }
+
+  if (response.status !== 401) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
+  }
+
+  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
+  const code = body.code;
+
+  const handleSessionInvalid = (): never => {
+    useAuthStore.getState().clearSession();
+    onSessionExpired?.();
+    throw new Error("Session expired");
+  };
+
+  if (code !== JwtError.TOKEN_EXPIRED) {
+    handleSessionInvalid();
+  }
+
+  if (isRetry) {
+    handleSessionInvalid();
+  }
+
+  const newToken = await getDeduplicatedRefresh();
+  if (!newToken) {
+    throw new Error("Session expired");
+  }
+
+  return authenticatedRequest<T>(path, options, true);
+};
+
+interface IAuthEmailResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: IUser;
+}
+
+interface IAuthRefreshResponse {
+  accessToken: string;
+  user: IUser;
+}
+
+export interface IAdminUsersListResponse {
+  nextCursor: string | null;
+  users: IUser[];
+}
+
+export interface IAdminUserDetailUser extends IUser {
+  deletedAt: string | null;
+  hasPassword: boolean;
+  isDeleted: boolean;
+}
+
+export interface IAdminUserDetailResponse {
+  stats: {
+    activePushTokens: number;
+  };
+  user: IAdminUserDetailUser;
+}
+
+export interface IAdminUsersListQuery {
+  cursor?: string;
+  include_deleted?: boolean;
+  limit?: number;
+  q?: string;
+  user_type?: UserType;
+}
+
+function buildCursorLimitSearchParams(query: { cursor?: string; limit?: number }): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const s = params.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
+function buildAuditEventsSearchParams(query: IAdminAuditEventsListQuery): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.resource_type != null && query.resource_type !== "")
+    params.set("resource_type", query.resource_type);
+  if (query.resource_id != null && query.resource_id !== "")
+    params.set("resource_id", query.resource_id);
+  if (query.actor_user_id != null && query.actor_user_id !== "")
+    params.set("actor_user_id", query.actor_user_id);
+  const s = params.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
+function buildUsersListSearchParams(query: IAdminUsersListQuery): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.user_type != null) params.set("user_type", query.user_type);
+  if (query.include_deleted === true) params.set("include_deleted", "true");
+  const s = params.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
+function buildSupportRequestsListSearchParams(query: IAdminSupportRequestsListQuery): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.status != null) params.set("status", query.status);
+  if (query.category != null) params.set("category", query.category);
+  const s = params.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
+export const authApi = {
+  loginEmail: (email: string, password: string) =>
+    request<IAuthEmailResponse>("/auth/email", {
+      body: JSON.stringify({ email, password }),
+      method: "POST",
+    }),
+
+  logout: (refreshToken: string) =>
+    request<{ success: boolean }>("/auth/logout", {
+      body: JSON.stringify({ refreshToken }),
+      method: "POST",
+    }),
+};
+
+export const adminApi = {
+  getAdminStats: () => authenticatedRequest<IAdminPlatformStats>("/admin/stats"),
+
+  getAppConfig: () => authenticatedRequest<{ config: IAppConfig }>("/admin/app-config"),
+
+  patchAppConfig: (body: IAdminPatchAppConfigBody) =>
+    authenticatedRequest<{ config: IAppConfig }>("/admin/app-config", {
+      body: JSON.stringify(body),
+      method: "PATCH",
+    }),
+
+  getUser: (userId: string) =>
+    authenticatedRequest<IAdminUserDetailResponse>(`/admin/users/${encodeURIComponent(userId)}`),
+
+  listUsers: (query: IAdminUsersListQuery = {}) =>
+    authenticatedRequest<IAdminUsersListResponse>(
+      `/admin/users${buildUsersListSearchParams(query)}`
+    ),
+
+  resetUserAccount: (userId: string) =>
+    authenticatedRequest<IAdminUserDetailResponse>(
+      `/admin/users/${encodeURIComponent(userId)}/reset-account`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  listUserAuditEvents: (userId: string, query: { cursor?: string; limit?: number } = {}) =>
+    authenticatedRequest<IAdminAuditEventsListResponse>(
+      `/admin/users/${encodeURIComponent(userId)}/audit-events${buildCursorLimitSearchParams(query)}`
+    ),
+
+  listAuditEvents: (query: IAdminAuditEventsListQuery = {}) =>
+    authenticatedRequest<IAdminAuditEventsListResponse>(
+      `/admin/audit-events${buildAuditEventsSearchParams(query)}`
+    ),
+
+  listSupportRequests: (query: IAdminSupportRequestsListQuery = {}) =>
+    authenticatedRequest<IAdminSupportRequestsListResponse>(
+      `/admin/support-requests${buildSupportRequestsListSearchParams(query)}`
+    ),
+
+  patchSupportRequest: (id: string, body: IAdminSupportRequestPatchBody) =>
+    authenticatedRequest<IAdminSupportRequestPatchResponse>(
+      `/admin/support-requests/${encodeURIComponent(id)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
