@@ -1,5 +1,4 @@
 import { SecondaryPageLayout } from "@/components/secondary-page-layout";
-import { SOCIAL_LINKS } from "@/lib/social-links";
 import { APP_NAME, SUPPORT_EMAIL } from "@/packages/shared";
 
 export const metadata = {
@@ -42,29 +41,6 @@ export default function ContactPage() {
                 {SUPPORT_EMAIL}
               </a>
             </div>
-            {SOCIAL_LINKS.length > 0 && (
-              <div>
-                <h2 className="mb-2 font-[family-name:var(--font-display)] text-lg font-medium text-[var(--gold)]">
-                  Social
-                </h2>
-                <ul className="flex flex-col gap-2">
-                  {SOCIAL_LINKS.map(({ href, name, ariaLabel, Icon }) => (
-                    <li key={href}>
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={ariaLabel}
-                        className="inline-flex items-center gap-2 text-foreground/80 underline transition-colors hover:text-[var(--gold)]"
-                      >
-                        <Icon className="size-4 shrink-0" aria-hidden />
-                        {name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
           <p className="mt-12 text-sm text-foreground/50">
             We typically respond within 24–48 hours.

@@ -1,7 +1,7 @@
 "use client";
 
+import { type LucideIcon, Moon, Sun, SunMoon } from "lucide-react";
 import { memo, useCallback, useEffect, useSyncExternalStore } from "react";
-import { MdOutlineBrightnessAuto, MdOutlineDarkMode, MdOutlineLightMode } from "react-icons/md";
 
 import {
   applyTheme,
@@ -11,10 +11,10 @@ import {
   type ThemeChoice,
 } from "@/lib/theme-preference";
 
-const OPTIONS: readonly { value: ThemeChoice; label: string; Icon: typeof MdOutlineLightMode }[] = [
-  { value: "light", label: "Light theme", Icon: MdOutlineLightMode },
-  { value: "dark", label: "Dark theme", Icon: MdOutlineDarkMode },
-  { value: "system", label: "Match system theme", Icon: MdOutlineBrightnessAuto },
+const OPTIONS: readonly { value: ThemeChoice; label: string; Icon: LucideIcon }[] = [
+  { value: "light", label: "Light theme", Icon: Sun },
+  { value: "dark", label: "Dark theme", Icon: Moon },
+  { value: "system", label: "Match system theme", Icon: SunMoon },
 ] as const;
 
 function getServerStoredTheme(): ThemeChoice {
