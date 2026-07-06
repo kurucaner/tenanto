@@ -119,7 +119,7 @@ function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
 }
 
 class NotificationStreamHub {
-  private connections = new Map<string, Set<SseConnection>>();
+  private readonly connections = new Map<string, Set<SseConnection>>();
   private initialized = false;
   private listenClient: Client | null = null;
 

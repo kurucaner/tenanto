@@ -7,8 +7,8 @@ import Fastify from "fastify";
 
 import { jwtAuthPlugin } from "./auth/jwt";
 import { initializeDatabase } from "./db/pool";
-import { isProduction } from "./lib/environment";
 import { resolveAllowedOrigin } from "./lib/cors-headers";
+import { isProduction } from "./lib/environment";
 import { adminRoutes } from "./routes/admin/admin-routes";
 import { homeRoutes } from "./routes/admin/home-routes";
 import { portfolioReportRoutes } from "./routes/admin/portfolio-report-routes";
@@ -40,6 +40,10 @@ server.register(cors, {
   allowedHeaders: ["Accept", "Authorization", "Content-Type", "X-Stream-Client-Id"],
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   origin: (origin, callback) => {
+    if (origin == null || origin === "") {
+      callback(null, true); // server-to-server: Lambda, webhooks, curl
+      return;
+    }
     const allowed = resolveAllowedOrigin(origin);
     if (allowed == null) {
       callback(new Error("Not allowed by CORS"), false);
