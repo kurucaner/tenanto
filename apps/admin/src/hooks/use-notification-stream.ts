@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-client";
+import { NOTIFICATION_STREAM_CLIENT_ID_KEY } from "@/lib/notification-stream-constants";
 import { handleSupportRequestUpdated } from "@/lib/notification-stream-handlers";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { showNotificationToast } from "@/lib/show-notification-toast";
@@ -22,7 +23,7 @@ const MAX_BACKOFF_MS = 30_000;
 const MAX_FAILURES_BEFORE_DEGRADED = 5;
 const PROACTIVE_RECONNECT_MS = 12 * 60 * 1000;
 const RECONNECT_DEBOUNCE_MS = 500;
-const STREAM_CLIENT_ID_KEY = "notification-stream-client-id";
+const STREAM_CLIENT_ID_KEY = NOTIFICATION_STREAM_CLIENT_ID_KEY;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {

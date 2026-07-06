@@ -22,6 +22,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getNavItemsForRole, isAdminNavActive } from "@/config/admin-nav";
 import { authApi } from "@/lib/api-client";
+import { clearAppSession } from "@/lib/clear-app-session";
 import { APP_NAME, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -31,7 +32,6 @@ const DashboardSidebarInner = memo(() => {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const refreshToken = useAuthStore((s) => s.refreshToken);
-  const clearSession = useAuthStore((s) => s.clearSession);
 
   const handleLogout = async () => {
     if (refreshToken) {
@@ -41,7 +41,7 @@ const DashboardSidebarInner = memo(() => {
         // Still clear local session if revoke fails
       }
     }
-    clearSession();
+    clearAppSession();
     navigate("/login", { replace: true });
   };
 

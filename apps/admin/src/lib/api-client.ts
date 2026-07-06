@@ -52,6 +52,7 @@ import {
   type TAddPropertyMemberResponse,
   type UserType,
 } from "@/packages/shared";
+import { clearAppSession } from "@/lib/clear-app-session";
 import { useAuthStore } from "@/stores/auth-store";
 
 function getApiBaseUrl(): string {
@@ -105,7 +106,7 @@ let inFlightRefresh: Promise<string | null> | null = null;
 const refreshAccessToken = async (): Promise<string | null> => {
   const refreshToken = useAuthStore.getState().refreshToken;
   if (!refreshToken) {
-    useAuthStore.getState().clearSession();
+    clearAppSession();
     onSessionExpired?.();
     return null;
   }
@@ -118,7 +119,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
     useAuthStore.getState().setUser(result.user);
     return result.accessToken;
   } catch {
-    useAuthStore.getState().clearSession();
+    clearAppSession();
     onSessionExpired?.();
     return null;
   }
@@ -178,7 +179,7 @@ const authenticatedRequest = async <T>(
   const code = body.code;
 
   const handleSessionInvalid = (): never => {
-    useAuthStore.getState().clearSession();
+    clearAppSession();
     onSessionExpired?.();
     throw new Error("Session expired");
   };
@@ -236,7 +237,7 @@ const authenticatedDownload = async (
   const code = body.code;
 
   const handleSessionInvalid = (): never => {
-    useAuthStore.getState().clearSession();
+    clearAppSession();
     onSessionExpired?.();
     throw new Error("Session expired");
   };
