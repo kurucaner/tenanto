@@ -1,6 +1,6 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
-import { isProduction } from "../environment";
+import { isProduction } from "../lib/environment";
 
 export const s3Client = new S3Client({
   credentials: {

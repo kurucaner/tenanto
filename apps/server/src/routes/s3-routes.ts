@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { isProduction } from "src/environment";
 
 import { supportStagedUploadsDb } from "@/db/support-staged-uploads";
+import { isProduction } from "@/lib/environment";
 import { HttpStatus } from "@/packages/shared";
 import {
   decodeS3ObjectKey,

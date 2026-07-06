@@ -1,4 +1,4 @@
-import { isProduction } from "../environment";
+import { isProduction } from "./environment";
 
 const PRODUCTION_ORIGINS = [
   process.env["WEB_APP_URL"],

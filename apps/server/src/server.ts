@@ -7,7 +7,7 @@ import Fastify from "fastify";
 
 import { jwtAuthPlugin } from "./auth/jwt";
 import { initializeDatabase } from "./db/pool";
-import { isProduction } from "./environment";
+import { isProduction } from "./lib/environment";
 import { resolveAllowedOrigin } from "./lib/cors-headers";
 import { adminRoutes } from "./routes/admin/admin-routes";
 import { homeRoutes } from "./routes/admin/home-routes";

@@ -33,6 +33,53 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "1.3.0",
+    version: "1.3.0",
+    publishedAt: "2026-07-06",
+    summary: "Portfolio finances on Home, a smoother support chat, and photo attachments.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "Your Home page now shows a financial overview — income, expenses, and trends for the last six months across your properties.",
+      },
+      {
+        category: "new",
+        description:
+          "Attach photos when submitting a support request — drag and drop images or browse your files (up to 5 images).",
+      },
+      {
+        category: "improved",
+        description:
+          "Support conversations use a cleaner, full-screen chat layout that feels natural on both phone and desktop.",
+      },
+      {
+        category: "improved",
+        description:
+          "When adding a property phone number, pick your country from a dropdown — the number formats automatically as you type.",
+      },
+      {
+        category: "improved",
+        description:
+          "Image uploads show progress while sending and let you retry if something goes wrong.",
+      },
+      {
+        category: "fixed",
+        description:
+          "The message box on support tickets stays visible at the bottom while you scroll through long conversations.",
+      },
+      {
+        category: "fixed",
+        description: "Sending a message in support no longer causes a brief flicker on the screen.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Signing out now fully clears your session so the next person who logs in won't see your data.",
+      },
+    ],
+  },
+  {
     id: "1.2.0",
     version: "1.2.0",
     publishedAt: "2026-07-06",
