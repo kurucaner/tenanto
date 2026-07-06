@@ -1,3 +1,5 @@
+import type { Pool, PoolClient } from "pg";
+
 import type {
   IAdminCreatePropertyBody,
   IAdminUpdatePropertyBody,
@@ -7,7 +9,6 @@ import type {
   IPropertyMemberUser,
 } from "@/packages/shared";
 import { PropertyRole } from "@/packages/shared";
-import type { Pool, PoolClient } from "pg";
 import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 

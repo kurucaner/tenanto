@@ -6,8 +6,8 @@ import { toast } from "sonner";
 
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
+import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,6 +1,6 @@
 import {
-  type IPropertyReservationComputedFields,
   type IPropertyIncomeLineComputedFields,
+  type IPropertyReservationComputedFields,
   type IPropertySettings,
   ReservationChannel,
   type TReservationChannel,

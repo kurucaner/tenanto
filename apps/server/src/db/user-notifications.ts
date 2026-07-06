@@ -35,6 +35,14 @@ function mapUserNotificationRow(row: Record<string, unknown>): IUserNotification
 }
 
 export const userNotificationsDb = {
+  async countUnread(userId: string): Promise<number> {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS c FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`,
+      [userId]
+    );
+    return Number(result.rows[0]?.c ?? 0);
+  },
+
   async create(input: CreateUserNotificationInput): Promise<IUserNotification> {
     const result = await pool.query(
       `INSERT INTO user_notifications (user_id, type, title, body, resource_type, resource_id)
@@ -50,14 +58,6 @@ export const userNotificationsDb = {
       ]
     );
     return mapUserNotificationRow(result.rows[0] as Record<string, unknown>);
-  },
-
-  async countUnread(userId: string): Promise<number> {
-    const result = await pool.query(
-      `SELECT COUNT(*)::int AS c FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`,
-      [userId]
-    );
-    return Number(result.rows[0]?.c ?? 0);
   },
 
   async listPaginated(params: {
@@ -94,6 +94,16 @@ export const userNotificationsDb = {
     return { items: pageRows.map(mapUserNotificationRow), nextCursor };
   },
 
+  async markAllRead(userId: string): Promise<number> {
+    const result = await pool.query(
+      `UPDATE user_notifications
+       SET read_at = CURRENT_TIMESTAMP
+       WHERE user_id = $1 AND read_at IS NULL`,
+      [userId]
+    );
+    return result.rowCount ?? 0;
+  },
+
   async markRead(userId: string, id: string): Promise<IUserNotification | null> {
     const result = await pool.query(
       `UPDATE user_notifications
@@ -104,15 +114,5 @@ export const userNotificationsDb = {
     );
     if (result.rows.length === 0) return null;
     return mapUserNotificationRow(result.rows[0] as Record<string, unknown>);
-  },
-
-  async markAllRead(userId: string): Promise<number> {
-    const result = await pool.query(
-      `UPDATE user_notifications
-       SET read_at = CURRENT_TIMESTAMP
-       WHERE user_id = $1 AND read_at IS NULL`,
-      [userId]
-    );
-    return result.rowCount ?? 0;
   },
 };

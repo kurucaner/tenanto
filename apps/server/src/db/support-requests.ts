@@ -130,16 +130,16 @@ export const supportRequestsDb = {
     return mapSupportRequestRow(result.rows[0] as Record<string, unknown>);
   },
 
-  async findDetailByIdForUser(id: string, userId: string): Promise<ISupportRequestDetail | null> {
+  async findDetailByIdForAdmin(id: string): Promise<ISupportRequestDetail | null> {
     const ticket = await supportRequestsDb.findById(id);
-    if (ticket == null || ticket.userId !== userId) return null;
+    if (ticket == null) return null;
     const messages = await supportMessagesDb.listByRequestId(id);
     return { item: ticket, messages };
   },
 
-  async findDetailByIdForAdmin(id: string): Promise<ISupportRequestDetail | null> {
+  async findDetailByIdForUser(id: string, userId: string): Promise<ISupportRequestDetail | null> {
     const ticket = await supportRequestsDb.findById(id);
-    if (ticket == null) return null;
+    if (ticket == null || ticket.userId !== userId) return null;
     const messages = await supportMessagesDb.listByRequestId(id);
     return { item: ticket, messages };
   },

@@ -4,21 +4,21 @@ import { memo, useMemo, useState } from "react";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
 import { CreateSupportRequestDialog } from "@/components/support/create-support-request-dialog";
+import { type TAppliedSupportFilters } from "@/components/support/support-constants";
 import { SupportFiltersBar } from "@/components/support/support-filters-bar";
 import { SupportRequestsTable } from "@/components/support/support-requests-table";
-import { type TAppliedSupportFilters } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { SupportRequestsPage } from "@/pages/support-requests-page";
 import {
   type ISupportRequestsListResponse,
   type SupportCategory,
   type SupportRequestStatus,
   UserType,
 } from "@/packages/shared";
+import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { useAuthStore } from "@/stores/auth-store";
 
 const UserSupportPageInner = memo(() => {
