@@ -32,14 +32,21 @@ ENV VITE_API_URL=$VITE_API_URL \
 
 RUN bun run --filter admin build
 
-FROM nginx:1.27-alpine
+FROM node:24
 
-RUN apk add --no-cache gettext
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 
-COPY apps/admin/nginx.conf.template /etc/nginx/templates/default.conf.template
-COPY apps/admin/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+WORKDIR /app
 
-COPY --from=base-builder /app/apps/admin/dist /usr/share/nginx/html
+COPY package.json bun.lock ./
+COPY packages ./packages
+COPY apps/admin ./apps/admin
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+COPY --from=base-builder /app/apps/admin/dist ./apps/admin/dist
+COPY --from=base-builder /app/node_modules ./node_modules
+COPY --from=base-builder /app/apps/admin/node_modules ./apps/admin/node_modules
+
+ENV NODE_ENV=production
+
+WORKDIR /app/apps/admin
+CMD ["dumb-init", "npm", "run", "start"]

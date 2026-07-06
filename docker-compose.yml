@@ -40,9 +40,9 @@ services:
         VITE_DD_SITE: ${VITE_DD_SITE:-us5.datadoghq.com}
         VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
     ports:
-      - "3002:80"
+      - "3002:4173"
     environment:
-      - PORT=80
+      - PORT=4173
     restart: unless-stopped
 
   proxy:

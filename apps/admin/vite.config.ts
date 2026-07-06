@@ -28,4 +28,9 @@ export default defineConfig({
       { find: "@", replacement: path.resolve(__dirname, "src") },
     ],
   },
+  preview: {
+    host: true,
+    port: Number(process.env.PORT) || 4173,
+    strictPort: true,
+  },
 });
