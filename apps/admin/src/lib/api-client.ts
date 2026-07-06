@@ -17,6 +17,7 @@ import {
   type ICreatePropertyIncomeLineBody,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
+  type IHomeFinancialOverview,
   type IPortfolioReportSummary,
   type IProperty,
   type IPropertyDetail,
@@ -703,4 +704,9 @@ export const portfolioReportsApi = {
 
   exportCsv: (query: IPropertyReportsQuery) =>
     authenticatedDownload(`/reports/export${buildReportsSearchParams(query)}`),
+};
+
+export const homeApi = {
+  financialOverview: () =>
+    authenticatedRequest<{ overview: IHomeFinancialOverview }>("/home/financial-overview"),
 };

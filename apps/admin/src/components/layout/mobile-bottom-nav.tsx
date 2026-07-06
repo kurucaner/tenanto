@@ -4,9 +4,9 @@ import { Link, useLocation } from "react-router-dom";
 
 import { useSidebar } from "@/components/ui/sidebar";
 import {
+  type AdminNavItem,
   getMobileBottomNavItems,
   isAdminNavActive,
-  type AdminNavItem,
 } from "@/config/admin-nav";
 import { cn } from "@/lib/utils";
 import { UserType } from "@/packages/shared";

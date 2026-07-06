@@ -97,15 +97,24 @@ export function useNotificationStream(
   const [status, setStatus] = useState<NotificationStreamStatus>("idle");
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const statusRef = useRef(status);
-  statusRef.current = status;
   const pathnameRef = useRef(location.pathname);
-  pathnameRef.current = location.pathname;
   const streamClientIdRef = useRef(getStreamClientId());
   const reconnectDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressToastsRef = useRef(suppressToasts);
-  suppressToastsRef.current = suppressToasts;
 
   const enabled = accessToken != null;
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    pathnameRef.current = location.pathname;
+  }, [location.pathname]);
+
+  useEffect(() => {
+    suppressToastsRef.current = suppressToasts;
+  }, [suppressToasts]);
 
   useEffect(() => {
     const scheduleReconnect = (): void => {
@@ -152,7 +161,6 @@ export function useNotificationStream(
 
   useEffect(() => {
     if (!enabled || accessToken == null) {
-      setStatus("idle");
       return;
     }
 
@@ -335,5 +343,5 @@ export function useNotificationStream(
     };
   }, [accessToken, enabled, queryClient, reconnectNonce, userType]);
 
-  return status;
+  return enabled && accessToken != null ? status : "idle";
 }

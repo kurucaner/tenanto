@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, Building2, History, SlidersHorizontal, Users } from "lucide-react";
+import { ArrowRight, History, SlidersHorizontal, Users } from "lucide-react";
 import { memo } from "react";
 import { Link } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
+import { HomeFinancialOverview } from "@/components/home/home-financial-overview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +57,7 @@ const HomePageInner = memo(() => {
       intro={{
         description: isAdmin
           ? "Manage people, policies, and platform settings from one calm surface. Pick up where you left off or jump straight into your next task."
-          : "View and manage your properties from one place.",
+          : "Your portfolio at a glance — income, expenses, and trends across your properties.",
         eyebrow: "Overview",
         title: "Welcome back",
       }}
@@ -80,83 +81,65 @@ const HomePageInner = memo(() => {
           </section>
         ) : null}
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2 text-primary">
-                <Building2 className="size-4" />
-                <CardTitle className="text-base font-semibold">Properties</CardTitle>
-              </div>
-              <CardDescription>Browse and manage your assigned properties.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild className="gap-2" variant="secondary">
-                <Link to="/properties">
-                  Open properties
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <HomeFinancialOverview />
 
-          {isAdmin ? (
-            <>
-              <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2 text-primary">
-                    <Users className="size-4" />
-                    <CardTitle className="text-base font-semibold">Users</CardTitle>
-                  </div>
-                  <CardDescription>Search, filter, and open individual accounts.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="gap-2" variant="secondary">
-                    <Link to="/users">
-                      Open directory
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+        {isAdmin ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <Users className="size-4" />
+                  <CardTitle className="text-base font-semibold">Users</CardTitle>
+                </div>
+                <CardDescription>Search, filter, and open individual accounts.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="gap-2" variant="secondary">
+                  <Link to="/users">
+                    Open directory
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
 
-              <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2 text-primary">
-                    <History className="size-4" />
-                    <CardTitle className="text-base font-semibold">Activity</CardTitle>
-                  </div>
-                  <CardDescription>Review admin audit events across the workspace.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="gap-2" variant="secondary">
-                    <Link to="/activity">
-                      Open activity log
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+            <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <History className="size-4" />
+                  <CardTitle className="text-base font-semibold">Activity</CardTitle>
+                </div>
+                <CardDescription>Review admin audit events across the workspace.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="gap-2" variant="secondary">
+                  <Link to="/activity">
+                    Open activity log
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
 
-              <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md sm:col-span-2 lg:col-span-1">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2 text-primary">
-                    <SlidersHorizontal className="size-4" />
-                    <CardTitle className="text-base font-semibold">Configuration</CardTitle>
-                  </div>
-                  <CardDescription>App versions, maintenance mode, and store URLs.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="gap-2" variant="secondary">
-                    <Link to="/config">
-                      Open settings
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </>
-          ) : null}
-        </div>
+            <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md sm:col-span-2 lg:col-span-1">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 text-primary">
+                  <SlidersHorizontal className="size-4" />
+                  <CardTitle className="text-base font-semibold">Configuration</CardTitle>
+                </div>
+                <CardDescription>App versions, maintenance mode, and store URLs.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="gap-2" variant="secondary">
+                  <Link to="/config">
+                    Open settings
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
       </div>
     </AdminPageLayout>
   );
