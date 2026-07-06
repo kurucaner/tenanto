@@ -3,6 +3,7 @@ import { memo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { SidebarWhatsChanged } from "@/components/layout/sidebar-whats-changed";
 import {
   Sidebar,
   SidebarContent,
@@ -105,6 +106,7 @@ const DashboardSidebarInner = memo(() => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarWhatsChanged />
       <SidebarSeparator className="mx-2" />
       <SidebarFooter className="gap-2 p-2">
         <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-sidebar-border/70 px-2.5 py-2 group-data-[collapsible=icon]:hidden">
