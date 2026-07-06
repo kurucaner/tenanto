@@ -1,0 +1,35 @@
+# Build context: repository root
+# Railway service config: deploy/railway/proxy.toml
+
+FROM node:24 AS base-builder
+
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+
+RUN bun install
+RUN bun run --filter proxy build
+
+FROM node:24
+
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY apps/proxy ./apps/proxy
+
+COPY --from=base-builder /app/apps/proxy/dist ./apps/proxy/dist
+COPY --from=base-builder /app/node_modules ./node_modules
+COPY --from=base-builder /app/apps/proxy/node_modules ./apps/proxy/node_modules
+
+ENV NODE_ENV=production
+
+WORKDIR /app/apps/proxy
+CMD ["dumb-init", "node", "dist/apps/proxy/src/server.js"]

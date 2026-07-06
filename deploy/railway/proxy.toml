@@ -1,0 +1,7 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile.proxy"
+watchPatterns = ["apps/proxy/**", "docker/Dockerfile.proxy"]
+
+[deploy]
+restartPolicyType = "ON_FAILURE"

@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile.server"
+watchPatterns = ["apps/server/**", "packages/**", "docker/Dockerfile.server"]
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"

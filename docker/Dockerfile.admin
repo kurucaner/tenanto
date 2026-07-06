@@ -1,0 +1,45 @@
+# Build context: repository root
+# Railway service config: deploy/railway/admin.toml
+
+FROM node:24 AS base-builder
+
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+
+RUN bun install
+
+ARG VITE_API_URL
+ARG VITE_DD_RUM_APPLICATION_ID
+ARG VITE_DD_CLIENT_TOKEN
+ARG VITE_DD_RUM_PROXY_URL
+ARG VITE_DD_ENV
+ARG VITE_DD_SITE
+ARG VITE_APP_VERSION
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_DD_RUM_APPLICATION_ID=$VITE_DD_RUM_APPLICATION_ID \
+    VITE_DD_CLIENT_TOKEN=$VITE_DD_CLIENT_TOKEN \
+    VITE_DD_RUM_PROXY_URL=$VITE_DD_RUM_PROXY_URL \
+    VITE_DD_ENV=$VITE_DD_ENV \
+    VITE_DD_SITE=$VITE_DD_SITE \
+    VITE_APP_VERSION=$VITE_APP_VERSION
+
+RUN bun run --filter admin build
+
+FROM nginx:1.27-alpine
+
+RUN apk add --no-cache gettext
+
+COPY apps/admin/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY apps/admin/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+COPY --from=base-builder /app/apps/admin/dist /usr/share/nginx/html
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

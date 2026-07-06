@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile.admin"
+watchPatterns = ["apps/admin/**", "packages/**", "docker/Dockerfile.admin"]
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
