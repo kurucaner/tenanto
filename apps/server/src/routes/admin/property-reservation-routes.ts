@@ -6,7 +6,7 @@ import { propertyUnitsDb } from "@/db/property-units";
 import {
   calculateNights,
   calculateStayIncome,
-} from "@/lib/property-income-calculator";
+} from "@/services/property-income-calculator";
 import {
   HttpStatus,
   type ICreatePropertyReservationBody,
