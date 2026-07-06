@@ -90,18 +90,24 @@ export function useSupportImageAttachments() {
   const pollUntilConfirmed = useCallback(
     async (attachmentId: string, storageKey: string) => {
       for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt += 1) {
-        await delay(POLL_INTERVAL_MS);
+        if (attempt > 0) {
+          await delay(POLL_INTERVAL_MS);
+        }
 
         const current = attachmentsRef.current.find((attachment) => attachment.id === attachmentId);
         if (current?.uploadStatus === "confirmed" || current?.uploadStatus === "linked") {
           return;
         }
 
-        const response = await supportApi.attachmentStatus({ keys: [storageKey] });
-        const status = response.keys[storageKey];
-        if (status === "confirmed" || status === "linked") {
-          updateAttachment(attachmentId, { uploadStatus: "confirmed" });
-          return;
+        try {
+          const response = await supportApi.attachmentStatus({ keys: [storageKey] });
+          const status = response.keys[storageKey];
+          if (status === "confirmed" || status === "linked") {
+            updateAttachment(attachmentId, { uploadStatus: "confirmed" });
+            return;
+          }
+        } catch {
+          // Keep polling until attempts are exhausted or SSE confirms the upload.
         }
       }
     },

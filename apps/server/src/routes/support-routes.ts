@@ -237,7 +237,7 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
 
   server.post<{ Body: ISupportAttachmentStatusBody }>(
     "/support/attachments/status",
-    { preHandler: authPre },
+    { config: { rateLimit: false }, preHandler: authPre },
     async (
       request: FastifyRequest<{ Body: ISupportAttachmentStatusBody }>,
       reply: FastifyReply
