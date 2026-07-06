@@ -277,6 +277,32 @@ function parseReservationsListQuery(
     }
     filters.rentalType = query["rentalType"] as TUnitRentalType;
   }
+  if (query["checkOutFrom"] !== undefined && query["checkOutFrom"] !== "") {
+    const checkOutFrom = parseDateString(query["checkOutFrom"]);
+    if (!checkOutFrom) {
+      return { error: "checkOutFrom must be a YYYY-MM-DD date", ok: false };
+    }
+    filters.checkOutFrom = checkOutFrom;
+  }
+  if (query["checkInTo"] !== undefined && query["checkInTo"] !== "") {
+    const checkInTo = parseDateString(query["checkInTo"]);
+    if (!checkInTo) return { error: "checkInTo must be a YYYY-MM-DD date", ok: false };
+    filters.checkInTo = checkInTo;
+  }
+  if (query["includeReservationId"] !== undefined && query["includeReservationId"] !== "") {
+    const includeReservationId = parseOptionalUuid(query["includeReservationId"]);
+    if (includeReservationId === null) {
+      return { error: "includeReservationId must be a valid UUID", ok: false };
+    }
+    if (includeReservationId) filters.includeReservationId = includeReservationId;
+  }
+  if (query["limit"] !== undefined && query["limit"] !== "") {
+    const rawLimit = Number(query["limit"]);
+    if (!Number.isInteger(rawLimit) || rawLimit < 1 || rawLimit > 100) {
+      return { error: "limit must be an integer between 1 and 100", ok: false };
+    }
+    filters.limit = rawLimit;
+  }
 
   return { filters, ok: true };
 }

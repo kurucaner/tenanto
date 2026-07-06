@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -7,6 +7,7 @@ import {
   INCOME_LINE_TYPE_OPTIONS,
   incomeLineSelectClassName,
 } from "@/components/income/income-line-form-options";
+import { LinkToStayField, LockedStaySummary } from "@/components/income/link-to-stay-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,24 +22,64 @@ import { Label } from "@/components/ui/label";
 import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { IncomeLineType, type TIncomeLineType } from "@/packages/shared";
+import { buildStayLinkPickerFilters } from "@/lib/stay-link-picker-filters";
+import {
+  IncomeLineType,
+  type IPropertyReservation,
+  type TIncomeLineType,
+} from "@/packages/shared";
+
+export interface CreateIncomeLineDialogPrefill {
+  guestName?: string;
+  lineType?: TIncomeLineType;
+  reservationId?: string;
+  transactionDate?: string;
+  unitId?: string;
+}
 
 interface CreateIncomeLineDialogProps {
+  lockedStay?: IPropertyReservation | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  prefill?: CreateIncomeLineDialogPrefill | null;
   propertyId: string;
 }
 
+const defaultFormState = {
+  amount: "",
+  description: "",
+  guestName: "",
+  lineType: IncomeLineType.EXTRA_CLEANING as TIncomeLineType,
+  reservationId: "",
+  transactionDate: "",
+  unitId: "",
+};
+
 export const CreateIncomeLineDialog = memo(
-  ({ onOpenChange, open, propertyId }: CreateIncomeLineDialogProps) => {
+  ({ lockedStay, onOpenChange, open, prefill, propertyId }: CreateIncomeLineDialogProps) => {
     const queryClient = useQueryClient();
-    const [lineType, setLineType] = useState<TIncomeLineType>(IncomeLineType.EXTRA_CLEANING);
-    const [unitId, setUnitId] = useState("");
-    const [amount, setAmount] = useState("");
-    const [transactionDate, setTransactionDate] = useState("");
-    const [reservationId, setReservationId] = useState("");
-    const [description, setDescription] = useState("");
-    const [guestName, setGuestName] = useState("");
+    const [lineType, setLineType] = useState<TIncomeLineType>(defaultFormState.lineType);
+    const [unitId, setUnitId] = useState(defaultFormState.unitId);
+    const [amount, setAmount] = useState(defaultFormState.amount);
+    const [transactionDate, setTransactionDate] = useState(defaultFormState.transactionDate);
+    const [reservationId, setReservationId] = useState(defaultFormState.reservationId);
+    const [description, setDescription] = useState(defaultFormState.description);
+    const [guestName, setGuestName] = useState(defaultFormState.guestName);
+
+    useEffect(() => {
+      if (!open) return;
+      setLineType(prefill?.lineType ?? defaultFormState.lineType);
+      setUnitId(prefill?.unitId ?? lockedStay?.unitId ?? defaultFormState.unitId);
+      setAmount(defaultFormState.amount);
+      setTransactionDate(
+        prefill?.transactionDate ?? lockedStay?.checkOut ?? defaultFormState.transactionDate
+      );
+      setReservationId(
+        prefill?.reservationId ?? lockedStay?.id ?? defaultFormState.reservationId
+      );
+      setDescription(defaultFormState.description);
+      setGuestName(prefill?.guestName ?? lockedStay?.guestName ?? defaultFormState.guestName);
+    }, [lockedStay, open, prefill]);
 
     const unitsQuery = useQuery({
       enabled: open,
@@ -46,10 +87,20 @@ export const CreateIncomeLineDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
+    const pickerFilters = useMemo(
+      () =>
+        buildStayLinkPickerFilters({
+          includeReservationId: reservationId || undefined,
+          transactionDate: transactionDate || undefined,
+          unitId,
+        }),
+      [reservationId, transactionDate, unitId]
+    );
+
     const reservationsQuery = useQuery({
-      enabled: open && unitId !== "",
-      queryFn: () => reservationsApi.list(propertyId, { unitId }),
-      queryKey: adminQueryKeys.propertyReservations(propertyId, { unitId }),
+      enabled: open && unitId !== "" && !lockedStay,
+      queryFn: () => reservationsApi.list(propertyId, pickerFilters),
+      queryKey: adminQueryKeys.propertyReservations(propertyId, pickerFilters),
     });
 
     const mutation = useMutation({
@@ -75,21 +126,14 @@ export const CreateIncomeLineDialog = memo(
 
     const handleClose = () => {
       onOpenChange(false);
-      setLineType(IncomeLineType.EXTRA_CLEANING);
-      setUnitId("");
-      setAmount("");
-      setTransactionDate("");
-      setReservationId("");
-      setDescription("");
-      setGuestName("");
     };
 
     const units = unitsQuery.data?.units ?? [];
-    const reservations = reservationsQuery.data?.reservations ?? [];
-    const linkedReservation = useMemo(
-      () => reservations.find((r) => r.id === reservationId),
-      [reservationId, reservations]
-    );
+    const linkedReservation = useMemo(() => {
+      if (lockedStay) return lockedStay;
+      if (!reservationId) return null;
+      return reservationsQuery.data?.reservations.find((r) => r.id === reservationId) ?? null;
+    }, [lockedStay, reservationId, reservationsQuery.data?.reservations]);
 
     const canSubmit =
       unitId !== "" &&
@@ -103,7 +147,9 @@ export const CreateIncomeLineDialog = memo(
           <DialogHeader>
             <DialogTitle>Add Other Income</DialogTitle>
             <DialogDescription>
-              Record cleaning, extra services, or other non-stay revenue.
+              {lockedStay
+                ? `Add income linked to ${lockedStay.guestName}'s stay.`
+                : "Record cleaning, extra services, or other non-stay revenue."}
             </DialogDescription>
           </DialogHeader>
 
@@ -128,10 +174,11 @@ export const CreateIncomeLineDialog = memo(
               <Label htmlFor="income-line-unit">Unit</Label>
               <select
                 className={incomeLineSelectClassName}
+                disabled={Boolean(lockedStay)}
                 id="income-line-unit"
                 onChange={(e) => {
                   setUnitId(e.target.value);
-                  setReservationId("");
+                  if (!lockedStay) setReservationId("");
                 }}
                 value={unitId}
               >
@@ -167,23 +214,18 @@ export const CreateIncomeLineDialog = memo(
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="income-line-reservation">Link to stay (optional)</Label>
-              <select
-                className={incomeLineSelectClassName}
-                disabled={unitId === ""}
+            {lockedStay ? (
+              <LockedStaySummary stay={lockedStay} />
+            ) : (
+              <LinkToStayField
                 id="income-line-reservation"
-                onChange={(e) => setReservationId(e.target.value)}
-                value={reservationId}
-              >
-                <option value="">No linked stay</option>
-                {reservations.map((reservation) => (
-                  <option key={reservation.id} value={reservation.id}>
-                    {reservation.guestName} · {reservation.checkIn} → {reservation.checkOut}
-                  </option>
-                ))}
-              </select>
-            </div>
+                onReservationIdChange={setReservationId}
+                propertyId={propertyId}
+                reservationId={reservationId}
+                transactionDate={transactionDate}
+                unitId={unitId}
+              />
+            )}
 
             {!linkedReservation ? (
               <div className="flex flex-col gap-1.5">

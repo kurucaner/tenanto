@@ -68,7 +68,11 @@ export interface IUpdatePropertyReservationBody {
 
 export interface IPropertyReservationsListQuery {
   channel?: TReservationChannel;
+  checkInTo?: string;
+  checkOutFrom?: string;
   from?: string;
+  includeReservationId?: string;
+  limit?: number;
   rentalType?: TUnitRentalType;
   status?: TReservationStatus;
   to?: string;

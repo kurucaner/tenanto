@@ -93,9 +93,30 @@ export const propertyReservationsDb = {
       conditions.push(`pr.check_in <= $${p++}`);
       values.push(filters.to);
     }
+    if (filters.checkOutFrom) {
+      conditions.push(`pr.check_out >= $${p++}`);
+      values.push(filters.checkOutFrom);
+    }
+    if (filters.checkInTo) {
+      conditions.push(`pr.check_in <= $${p++}`);
+      values.push(filters.checkInTo);
+    }
     if (filters.unitId) {
       conditions.push(`pr.unit_id = $${p++}`);
       values.push(filters.unitId);
+    }
+
+    if (filters.includeReservationId) {
+      const pickerConditions = conditions.slice(1);
+      conditions.length = 0;
+      conditions.push("pr.property_id = $1");
+      if (pickerConditions.length > 0) {
+        conditions.push(`(${pickerConditions.join(" AND ")} OR pr.id = $${p++})`);
+        values.push(filters.includeReservationId);
+      } else {
+        conditions.push(`pr.id = $${p++}`);
+        values.push(filters.includeReservationId);
+      }
     }
     if (filters.channel) {
       conditions.push(`pr.channel = $${p++}::property_reservation_channel`);
@@ -112,12 +133,15 @@ export const propertyReservationsDb = {
       values.push(filters.rentalType);
     }
 
+    const limitClause =
+      filters.limit != null && filters.limit > 0 ? ` LIMIT ${Math.floor(filters.limit)}` : "";
+
     const result = await pool.query(
       `SELECT pr.*
        FROM property_reservations pr
        ${joinUnits}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY pr.check_in DESC, pr.created_at DESC`,
+       ORDER BY pr.check_in DESC, pr.created_at DESC${limitClause}`,
       values
     );
 

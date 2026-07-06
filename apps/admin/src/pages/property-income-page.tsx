@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { CreateIncomeLineDialog } from "@/components/income/create-income-line-dialog";
+import { CreateIncomeLineDialog, type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
 import { CreateReservationDialog } from "@/components/income/create-reservation-dialog";
 import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialog";
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
@@ -36,6 +36,7 @@ import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   IncomeEntryKind,
+  IncomeLineType,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyReservation,
@@ -88,6 +89,7 @@ const IncomeEntryRow = memo(
   ({
     canManage,
     entry,
+    onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
     onEditLine,
@@ -96,6 +98,7 @@ const IncomeEntryRow = memo(
   }: {
     canManage: boolean;
     entry: TPropertyIncomeEntry;
+    onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine) => void;
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
@@ -121,6 +124,16 @@ const IncomeEntryRow = memo(
           {canManage ? (
             <TableCell>
               <div className="flex items-center gap-1">
+                <Button
+                  aria-label="Add other income for this stay"
+                  onClick={() => onAddOtherIncomeFromStay(stay)}
+                  size="icon-sm"
+                  title="Add other income"
+                  type="button"
+                  variant="ghost"
+                >
+                  <CirclePlus className="size-3.5" />
+                </Button>
                 <Button
                   aria-label="Edit stay"
                   onClick={() => onEditStay(stay)}
@@ -197,6 +210,12 @@ const PropertyIncomeContent = memo(
     const currentUser = useAuthStore((s) => s.user);
     const [createStayOpen, setCreateStayOpen] = useState(false);
     const [createLineOpen, setCreateLineOpen] = useState(false);
+    const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
+      null
+    );
+    const [createLineLockedStay, setCreateLineLockedStay] = useState<IPropertyReservation | null>(
+      null
+    );
     const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
     const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
     const [from, setFrom] = useState("");
@@ -315,7 +334,11 @@ const PropertyIncomeContent = memo(
           <Plus className="size-3.5" />
           Add Stay
         </Button>
-        <Button className="gap-1.5" onClick={() => setCreateLineOpen(true)} size="sm" type="button">
+        <Button className="gap-1.5" onClick={() => {
+          setCreateLinePrefill(null);
+          setCreateLineLockedStay(null);
+          setCreateLineOpen(true);
+        }} size="sm" type="button">
           <Plus className="size-3.5" />
           Add Other Income
         </Button>
@@ -458,6 +481,17 @@ const PropertyIncomeContent = memo(
                               ? `stay-${entry.stay.id}`
                               : `line-${entry.line.id}`
                           }
+                          onAddOtherIncomeFromStay={(stay) => {
+                            setCreateLineLockedStay(stay);
+                            setCreateLinePrefill({
+                              guestName: stay.guestName,
+                              lineType: IncomeLineType.EXTRA_CLEANING,
+                              reservationId: stay.id,
+                              transactionDate: stay.checkOut,
+                              unitId: stay.unitId,
+                            });
+                            setCreateLineOpen(true);
+                          }}
                           onDeleteLine={(line) => {
                             if (
                               !globalThis.confirm(
@@ -503,8 +537,16 @@ const PropertyIncomeContent = memo(
           propertyId={propertyId}
         />
         <CreateIncomeLineDialog
-          onOpenChange={setCreateLineOpen}
+          lockedStay={createLineLockedStay}
+          onOpenChange={(open) => {
+            setCreateLineOpen(open);
+            if (!open) {
+              setCreateLinePrefill(null);
+              setCreateLineLockedStay(null);
+            }
+          }}
           open={createLineOpen}
+          prefill={createLinePrefill}
           propertyId={propertyId}
         />
         {editReservation ? (

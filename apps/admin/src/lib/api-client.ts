@@ -423,10 +423,14 @@ function buildReservationsSearchParams(query: IPropertyReservationsListQuery = {
   const params = new URLSearchParams();
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
+  if (query.checkOutFrom) params.set("checkOutFrom", query.checkOutFrom);
+  if (query.checkInTo) params.set("checkInTo", query.checkInTo);
   if (query.unitId) params.set("unitId", query.unitId);
   if (query.channel) params.set("channel", query.channel);
   if (query.status) params.set("status", query.status);
   if (query.rentalType) params.set("rentalType", query.rentalType);
+  if (query.includeReservationId) params.set("includeReservationId", query.includeReservationId);
+  if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
   return search ? `?${search}` : "";
 }
