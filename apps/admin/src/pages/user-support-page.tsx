@@ -27,13 +27,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import { SupportRequestsPage } from "@/pages/support-requests-page";
 import {
   type ISupportMessage,
   type ISupportRequestListItem,
   type ISupportRequestsListResponse,
   type SupportCategory,
   type SupportRequestStatus,
+  UserType,
 } from "@/packages/shared";
+import { useAuthStore } from "@/stores/auth-store";
 
 const STATUS_OPTIONS: { label: string; value: "" | SupportRequestStatus }[] = [
   { label: "All statuses", value: "" },
@@ -501,3 +504,16 @@ const UserSupportPageInner = memo(() => {
 UserSupportPageInner.displayName = "UserSupportPageInner";
 
 export const UserSupportPage = UserSupportPageInner;
+
+const SupportPageInner = memo(() => {
+  const userType = useAuthStore((s) => s.user?.userType);
+
+  if (userType === UserType.ADMIN) {
+    return <SupportRequestsPage />;
+  }
+
+  return <UserSupportPageInner />;
+});
+SupportPageInner.displayName = "SupportPageInner";
+
+export const SupportPage = SupportPageInner;

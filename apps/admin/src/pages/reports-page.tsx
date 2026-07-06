@@ -73,7 +73,6 @@ export const ReportsPage = memo(() => {
         ),
         description: "Portfolio totals across all properties you can access.",
         eyebrow: "Accounting",
-        title: "Reports",
       }}
     >
       <Card>
