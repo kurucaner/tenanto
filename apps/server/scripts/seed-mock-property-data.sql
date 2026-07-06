@@ -2,83 +2,153 @@
 --
 -- Prerequisites:
 --   - Migrations applied (v17+)
---   - User with email user@propertyos.xyz exists
+--   - User with email user@tenanto.xyz exists (or update seed_config below)
 --
 -- Creates:
---   - 6 properties owned by user@propertyos.xyz (created_by + owner member row)
+--   - 6 properties owned by the configured seed owner (created_by + owner member row)
 --   - ~60 units (mix of short_term / long_term, varied layouts)
 --   - Varied property_settings per property
---   - ~120 reservations (check-ins) over the last 18 months
---   - ~36 misc income lines
---   - ~72 expenses across all categories
+--   - ~120 reservations (check-ins) over the last ~6 months (relative to run date)
+--   - ~36 misc income lines in the same window
+--   - ~72 expenses across all categories in the same window
 --
 -- Idempotent: deletes prior rows with the fixed seed UUIDs before re-inserting.
 --
 -- Usage:
---   psql "$DATABASE_URL" -f apps/server/scripts/seed-mock-property-data.sql
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f apps/server/scripts/seed-mock-property-data.sql
+--
+-- psql override (optional):
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ...
+--   (edit seed_config INSERT above, or use sed to replace the email)
+--
+-- If a previous run failed with "current transaction is aborted", run ROLLBACK; first,
+-- or re-run this file — it starts with ROLLBACK to clear a stale failed transaction.
+-- Run the entire file in one go (do not execute sections in isolation).
+--
+-- To use a different owner email, edit the INSERT INTO seed_config line below.
+
+ROLLBACK;
 
 BEGIN;
 
 -- ---------------------------------------------------------------------------
--- Resolve owner
+-- Seed owner config — edit owner_email here for SQL GUI clients
+-- ---------------------------------------------------------------------------
+CREATE TEMP TABLE seed_config (owner_email TEXT NOT NULL) ON COMMIT DROP;
+
+INSERT INTO seed_config (owner_email) VALUES ('user@tenanto.xyz');
+
+-- ---------------------------------------------------------------------------
+-- Resolve owner (pre-flight)
 -- ---------------------------------------------------------------------------
 DO $$
+DECLARE
+  v_owner_email TEXT;
+  v_owner_id UUID;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM users WHERE LOWER(TRIM(email)) = 'user@propertyos.xyz'
-  ) THEN
-    RAISE EXCEPTION 'User user@propertyos.xyz not found. Create the account first.';
+  SELECT owner_email INTO v_owner_email FROM seed_config LIMIT 1;
+
+  SELECT id INTO v_owner_id
+  FROM users
+  WHERE LOWER(TRIM(email)) = LOWER(TRIM(v_owner_email))
+  LIMIT 1;
+
+  IF v_owner_id IS NULL THEN
+    RAISE EXCEPTION
+      'Seed owner not found: % — sign up in the app first or update seed_config.',
+      v_owner_email;
   END IF;
+
+  RAISE NOTICE 'Seed owner: % (id %)', v_owner_email, v_owner_id;
 END $$;
+
+-- Pre-flight diagnostic (visible in query results)
+SELECT u.id AS seed_owner_id, u.email AS seed_owner_email
+FROM users u
+WHERE LOWER(TRIM(u.email)) = LOWER(TRIM((SELECT owner_email FROM seed_config LIMIT 1)));
 
 -- ---------------------------------------------------------------------------
 -- Cleanup previous seed data (fixed UUID namespace f0000000-0000-4000-8000-*)
 -- ---------------------------------------------------------------------------
 DELETE FROM property_income_lines
 WHERE property_id IN (
-  SELECT id FROM properties
-  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
 DELETE FROM property_reservations
 WHERE property_id IN (
-  SELECT id FROM properties
-  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
 DELETE FROM property_expenses
 WHERE property_id IN (
-  SELECT id FROM properties
-  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
 DELETE FROM property_units
 WHERE property_id IN (
-  SELECT id FROM properties
-  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
 DELETE FROM property_settings
 WHERE property_id IN (
-  SELECT id FROM properties
-  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
+);
+
+DELETE FROM property_invites
+WHERE property_id IN (
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
 DELETE FROM property_members
 WHERE property_id IN (
-  SELECT id FROM properties
-  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
 DELETE FROM properties
-WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-  AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid;
+WHERE id IN (
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
+);
 
 -- ---------------------------------------------------------------------------
 -- Helper: round money like property-income-calculator.ts
@@ -187,72 +257,112 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Properties
 -- ---------------------------------------------------------------------------
-WITH owner AS (
-  SELECT id AS owner_id
+DO $$
+DECLARE
+  v_owner_email TEXT;
+  v_owner_id UUID;
+  v_count INTEGER;
+BEGIN
+  SELECT owner_email INTO v_owner_email FROM seed_config LIMIT 1;
+
+  SELECT id INTO v_owner_id
   FROM users
-  WHERE LOWER(TRIM(email)) = 'user@propertyos.xyz'
-  LIMIT 1
-)
-INSERT INTO properties (id, name, address, phone_number, created_by, created_at)
-SELECT
-  p.id,
-  p.name,
-  p.address,
-  p.phone_number,
-  owner.owner_id,
-  p.created_at
-FROM owner
-CROSS JOIN (
-  VALUES
-    (
-      'f0000000-0000-4000-8000-000000000001'::uuid,
-      'Oceanview Suites Miami Beach',
-      '1200 Collins Ave, Miami Beach, FL 33139',
-      '+1 (305) 555-0101',
-      TIMESTAMPTZ '2024-01-15 10:00:00+00'
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000002'::uuid,
-      'Brickell Tower Residences',
-      '500 Brickell Ave, Miami, FL 33131',
-      '+1 (305) 555-0102',
-      TIMESTAMPTZ '2024-03-01 14:30:00+00'
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000003'::uuid,
-      'Wynwood Art Lofts',
-      '220 NW 27th St, Miami, FL 33127',
-      '+1 (305) 555-0103',
-      TIMESTAMPTZ '2024-05-10 09:15:00+00'
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000004'::uuid,
-      'Coral Gables Long-Term Homes',
-      '450 Alhambra Cir, Coral Gables, FL 33134',
-      '+1 (305) 555-0104',
-      TIMESTAMPTZ '2024-07-20 11:45:00+00'
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000005'::uuid,
-      'South Beach Condos',
-      '800 Ocean Dr, Miami Beach, FL 33139',
-      '+1 (305) 555-0105',
-      TIMESTAMPTZ '2024-09-05 16:00:00+00'
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000006'::uuid,
-      'Edgewater Bay Apartments',
-      '1800 North Bayshore Dr, Miami, FL 33132',
-      '+1 (305) 555-0106',
-      TIMESTAMPTZ '2025-01-08 08:20:00+00'
-    )
-) AS p(id, name, address, phone_number, created_at);
+  WHERE LOWER(TRIM(email)) = LOWER(TRIM(v_owner_email))
+  LIMIT 1;
+
+  IF v_owner_id IS NULL THEN
+    RAISE EXCEPTION
+      'Seed owner not found: % — sign up in the app first or update seed_config.',
+      v_owner_email;
+  END IF;
+
+  INSERT INTO properties (id, name, address, phone_number, created_by, created_at)
+  SELECT
+    p.id,
+    p.name,
+    p.address,
+    p.phone_number,
+    v_owner_id,
+    p.created_at
+  FROM (
+    VALUES
+      (
+        'f0000000-0000-4000-8000-000000000001'::uuid,
+        'Oceanview Suites Miami Beach',
+        '1200 Collins Ave, Miami Beach, FL 33139',
+        '+1 (305) 555-0101',
+        TIMESTAMPTZ '2024-01-15 10:00:00+00'
+      ),
+      (
+        'f0000000-0000-4000-8000-000000000002'::uuid,
+        'Brickell Tower Residences',
+        '500 Brickell Ave, Miami, FL 33131',
+        '+1 (305) 555-0102',
+        TIMESTAMPTZ '2024-03-01 14:30:00+00'
+      ),
+      (
+        'f0000000-0000-4000-8000-000000000003'::uuid,
+        'Wynwood Art Lofts',
+        '220 NW 27th St, Miami, FL 33127',
+        '+1 (305) 555-0103',
+        TIMESTAMPTZ '2024-05-10 09:15:00+00'
+      ),
+      (
+        'f0000000-0000-4000-8000-000000000004'::uuid,
+        'Coral Gables Long-Term Homes',
+        '450 Alhambra Cir, Coral Gables, FL 33134',
+        '+1 (305) 555-0104',
+        TIMESTAMPTZ '2024-07-20 11:45:00+00'
+      ),
+      (
+        'f0000000-0000-4000-8000-000000000005'::uuid,
+        'South Beach Condos',
+        '800 Ocean Dr, Miami Beach, FL 33139',
+        '+1 (305) 555-0105',
+        TIMESTAMPTZ '2024-09-05 16:00:00+00'
+      ),
+      (
+        'f0000000-0000-4000-8000-000000000006'::uuid,
+        'Edgewater Bay Apartments',
+        '1800 North Bayshore Dr, Miami, FL 33132',
+        '+1 (305) 555-0106',
+        TIMESTAMPTZ '2025-01-08 08:20:00+00'
+      )
+  ) AS p(id, name, address, phone_number, created_at);
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  IF v_count <> 6 THEN
+    RAISE EXCEPTION
+      'Seed properties insert failed: expected 6 rows, inserted %.',
+      v_count;
+  END IF;
+
+  RAISE NOTICE 'Inserted % seed properties for owner %', v_count, v_owner_email;
+END $$;
+
+SELECT COUNT(*) AS inserted_property_count
+FROM properties
+WHERE id IN (
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
+);
 
 INSERT INTO property_members (property_id, user_id, role, added_by)
 SELECT p.id, p.created_by, 'owner'::property_role, p.created_by
 FROM properties p
-WHERE p.id >= 'f0000000-0000-4000-8000-000000000001'::uuid
-  AND p.id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+WHERE p.id IN (
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
+)
 ON CONFLICT (property_id, user_id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
@@ -269,43 +379,88 @@ INSERT INTO property_settings (
   expedia_commission_rate,
   direct_commission_rate
 )
-VALUES
-  -- defaults (14% total tax)
-  (
-    'f0000000-0000-4000-8000-000000000001',
-    0.06, 0.01, 0.03, 0.04,
-    0.155, 0.15, 0.15, 0.035
-  ),
-  -- higher Airbnb commission
-  (
-    'f0000000-0000-4000-8000-000000000002',
-    0.06, 0.01, 0.03, 0.04,
-    0.17, 0.15, 0.16, 0.04
-  ),
-  -- reduced resort tax
-  (
-    'f0000000-0000-4000-8000-000000000003',
-    0.06, 0.01, 0.03, 0.02,
-    0.155, 0.14, 0.15, 0.03
-  ),
-  -- long-term focused: lower direct commission
-  (
-    'f0000000-0000-4000-8000-000000000004',
-    0.06, 0.01, 0.03, 0.04,
-    0.155, 0.15, 0.15, 0.025
-  ),
-  -- premium short-term: higher taxes
-  (
-    'f0000000-0000-4000-8000-000000000005',
-    0.065, 0.01, 0.03, 0.045,
-    0.16, 0.155, 0.155, 0.035
-  ),
-  -- balanced / newer property
-  (
-    'f0000000-0000-4000-8000-000000000006',
-    0.06, 0.01, 0.03, 0.04,
-    0.15, 0.145, 0.145, 0.03
+SELECT
+  seed.property_id,
+  seed.sales_tax_rate,
+  seed.miami_dade_surtax_rate,
+  seed.convention_development_tax_rate,
+  seed.resort_tax_rate,
+  seed.airbnb_commission_rate,
+  seed.booking_commission_rate,
+  seed.expedia_commission_rate,
+  seed.direct_commission_rate
+FROM (
+  VALUES
+    -- defaults (14% total tax)
+    (
+      'f0000000-0000-4000-8000-000000000001'::uuid,
+      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
+      0.155::numeric, 0.15::numeric, 0.15::numeric, 0.035::numeric
+    ),
+    -- higher Airbnb commission
+    (
+      'f0000000-0000-4000-8000-000000000002'::uuid,
+      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
+      0.17::numeric, 0.15::numeric, 0.16::numeric, 0.04::numeric
+    ),
+    -- reduced resort tax
+    (
+      'f0000000-0000-4000-8000-000000000003'::uuid,
+      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.02::numeric,
+      0.155::numeric, 0.14::numeric, 0.15::numeric, 0.03::numeric
+    ),
+    -- long-term focused: lower direct commission
+    (
+      'f0000000-0000-4000-8000-000000000004'::uuid,
+      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
+      0.155::numeric, 0.15::numeric, 0.15::numeric, 0.025::numeric
+    ),
+    -- premium short-term: higher taxes
+    (
+      'f0000000-0000-4000-8000-000000000005'::uuid,
+      0.065::numeric, 0.01::numeric, 0.03::numeric, 0.045::numeric,
+      0.16::numeric, 0.155::numeric, 0.155::numeric, 0.035::numeric
+    ),
+    -- balanced / newer property
+    (
+      'f0000000-0000-4000-8000-000000000006'::uuid,
+      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
+      0.15::numeric, 0.145::numeric, 0.145::numeric, 0.03::numeric
+    )
+) AS seed(
+  property_id,
+  sales_tax_rate,
+  miami_dade_surtax_rate,
+  convention_development_tax_rate,
+  resort_tax_rate,
+  airbnb_commission_rate,
+  booking_commission_rate,
+  expedia_commission_rate,
+  direct_commission_rate
+)
+INNER JOIN properties p ON p.id = seed.property_id;
+
+DO $$
+DECLARE
+  settings_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO settings_count
+  FROM property_settings
+  WHERE property_id IN (
+    'f0000000-0000-4000-8000-000000000001'::uuid,
+    'f0000000-0000-4000-8000-000000000002'::uuid,
+    'f0000000-0000-4000-8000-000000000003'::uuid,
+    'f0000000-0000-4000-8000-000000000004'::uuid,
+    'f0000000-0000-4000-8000-000000000005'::uuid,
+    'f0000000-0000-4000-8000-000000000006'::uuid
   );
+
+  IF settings_count <> 6 THEN
+    RAISE EXCEPTION
+      'Seed property_settings insert failed: expected 6 rows, found %.',
+      settings_count;
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- Units (10 per property)
@@ -337,7 +492,7 @@ FROM (
 ) AS units;
 
 -- ---------------------------------------------------------------------------
--- Reservations (~20 per property, spread over 18 months)
+-- Reservations (~20 per property, spread over the last ~6 months)
 -- ---------------------------------------------------------------------------
 INSERT INTO property_reservations (
   id,
@@ -399,9 +554,17 @@ FROM (
       'Isabella Davis', 'Lucas Wilson', 'Mia Anderson', 'James Taylor'
     ])[1 + ((prop_idx + stay_idx) % 12)] AS guest_name,
     'RES-' || LPAD((prop_idx * 100 + stay_idx)::text, 6, '0') AS reservation_number,
-    (DATE '2024-07-01' + ((prop_idx * 17 + stay_idx * 11) % 540))::date AS check_in,
-    ((DATE '2024-07-01' + ((prop_idx * 17 + stay_idx * 11) % 540))::date
-      + (2 + ((prop_idx + stay_idx) % 6)))::date AS check_out,
+    (
+      date_trunc('month', CURRENT_DATE)::date
+      - INTERVAL '5 months'
+      + ((prop_idx * 17 + stay_idx * 11) % 180) * INTERVAL '1 day'
+    )::date AS check_in,
+    (
+      date_trunc('month', CURRENT_DATE)::date
+      - INTERVAL '5 months'
+      + ((prop_idx * 17 + stay_idx * 11) % 180) * INTERVAL '1 day'
+      + (2 + ((prop_idx + stay_idx) % 6)) * INTERVAL '1 day'
+    )::date AS check_out,
     (2 + ((prop_idx + stay_idx) % 6)) AS nights,
     (ARRAY['stayed', 'stayed', 'stayed', 'stayed', 'active', 'canceled', 'no_show'])[
       1 + ((prop_idx + stay_idx) % 7)
@@ -481,7 +644,11 @@ SELECT
   END,
   line_type::property_income_line_type,
   amount,
-  (DATE '2024-08-01' + ((prop_idx * 13 + line_idx * 9) % 500))::date,
+  (
+    date_trunc('month', CURRENT_DATE)::date
+    - INTERVAL '5 months'
+    + ((prop_idx * 13 + line_idx * 9) % 180) * INTERVAL '1 day'
+  )::date,
   description,
   guest_name,
   seed_round_money(amount),
@@ -549,7 +716,11 @@ FROM (
     expense_idx,
     category,
     amount,
-    (DATE '2024-07-01' + ((prop_idx * 19 + expense_idx * 23) % 540))::date AS expense_date,
+    (
+      date_trunc('month', CURRENT_DATE)::date
+      - INTERVAL '5 months'
+      + ((prop_idx * 19 + expense_idx * 23) % 180) * INTERVAL '1 day'
+    )::date AS expense_date,
     person_name,
     description
   FROM generate_series(1, 6) AS prop_idx
@@ -598,7 +769,7 @@ SELECT
   ('f0000000-0000-4000-8000-' || LPAD(prop_idx::text, 12, '0'))::uuid,
   category::property_expense_category,
   seed_round_money(250 + prop_idx * 40),
-  (DATE '2025-06-01' + (prop_idx * 3))::date,
+  (CURRENT_DATE - (prop_idx * 3))::date,
   'Manual channel commission reconciliation'
 FROM generate_series(1, 6) AS prop_idx
 CROSS JOIN (
@@ -624,8 +795,7 @@ COMMIT;
 -- Summary
 SELECT
   (SELECT COUNT(*) FROM properties p
-   WHERE p.created_by = (SELECT id FROM users WHERE LOWER(TRIM(email)) = 'user@propertyos.xyz')
-     AND p.id >= 'f0000000-0000-4000-8000-000000000001'::uuid
+   WHERE p.id >= 'f0000000-0000-4000-8000-000000000001'::uuid
      AND p.id <= 'f0000000-0000-4000-8000-000000000006'::uuid) AS seed_properties,
   (SELECT COUNT(*) FROM property_units u
    WHERE u.property_id >= 'f0000000-0000-4000-8000-000000000001'::uuid
@@ -642,3 +812,137 @@ SELECT
   (SELECT COUNT(*) FROM property_members pm
    WHERE pm.property_id >= 'f0000000-0000-4000-8000-000000000001'::uuid
      AND pm.property_id <= 'f0000000-0000-4000-8000-000000000006'::uuid) AS seed_members;
+
+-- ---------------------------------------------------------------------------
+-- Last 6 months financial overview (matches GET /home/financial-overview)
+-- Scoped to fixed seed property IDs
+-- ---------------------------------------------------------------------------
+WITH params AS (
+  SELECT
+    (date_trunc('month', (now() AT TIME ZONE 'UTC')::date) - INTERVAL '5 months')::date AS period_from,
+    (
+      date_trunc('month', (now() AT TIME ZONE 'UTC')::date)
+      + INTERVAL '1 month'
+      - INTERVAL '1 day'
+    )::date AS period_to
+),
+
+months AS (
+  SELECT
+    to_char(d, 'YYYY-MM') AS month_key,
+    d::date AS month_start
+  FROM params,
+  generate_series(
+    date_trunc('month', period_from),
+    date_trunc('month', period_to),
+    INTERVAL '1 month'
+  ) AS d
+),
+
+seed_properties AS (
+  SELECT id
+  FROM properties
+  WHERE id IN (
+    'f0000000-0000-4000-8000-000000000001'::uuid,
+    'f0000000-0000-4000-8000-000000000002'::uuid,
+    'f0000000-0000-4000-8000-000000000003'::uuid,
+    'f0000000-0000-4000-8000-000000000004'::uuid,
+    'f0000000-0000-4000-8000-000000000005'::uuid,
+    'f0000000-0000-4000-8000-000000000006'::uuid
+  )
+),
+
+reservation_income AS (
+  SELECT
+    to_char(pr.check_in, 'YYYY-MM') AS month_key,
+    SUM(pr.gross_income) AS gross_income,
+    SUM(pr.net_income) AS net_income
+  FROM property_reservations pr
+  CROSS JOIN params
+  WHERE pr.property_id IN (SELECT id FROM seed_properties)
+    AND pr.check_in >= params.period_from
+    AND pr.check_in <= params.period_to
+  GROUP BY 1
+),
+
+line_income AS (
+  SELECT
+    to_char(pil.transaction_date, 'YYYY-MM') AS month_key,
+    SUM(pil.gross_income) AS gross_income,
+    SUM(pil.net_income) AS net_income
+  FROM property_income_lines pil
+  CROSS JOIN params
+  WHERE pil.property_id IN (SELECT id FROM seed_properties)
+    AND pil.transaction_date >= params.period_from
+    AND pil.transaction_date <= params.period_to
+  GROUP BY 1
+),
+
+dated_expenses AS (
+  SELECT
+    to_char(pe.expense_date, 'YYYY-MM') AS month_key,
+    SUM(pe.amount) AS expenses
+  FROM property_expenses pe
+  CROSS JOIN params
+  WHERE pe.property_id IN (SELECT id FROM seed_properties)
+    AND pe.category NOT IN ('property_tax', 'insurance')
+    AND pe.expense_date IS NOT NULL
+    AND pe.expense_date >= params.period_from
+    AND pe.expense_date <= params.period_to
+  GROUP BY 1
+),
+
+annual_expense_total AS (
+  SELECT COALESCE(SUM(pe.amount), 0) AS total_annual
+  FROM property_expenses pe
+  CROSS JOIN params
+  WHERE pe.property_id IN (SELECT id FROM seed_properties)
+    AND pe.category IN ('property_tax', 'insurance')
+    AND (
+      pe.expense_date IS NULL
+      OR (pe.expense_date >= params.period_from AND pe.expense_date <= params.period_to)
+    )
+),
+
+monthly_annual AS (
+  SELECT
+    m.month_key,
+    ROUND(a.total_annual / 12.0, 2) AS expenses
+  FROM months m
+  CROSS JOIN annual_expense_total a
+),
+
+income_by_month AS (
+  SELECT
+    month_key,
+    SUM(gross_income) AS gross_income,
+    SUM(net_income) AS net_income
+  FROM (
+    SELECT month_key, gross_income, net_income FROM reservation_income
+    UNION ALL
+    SELECT month_key, gross_income, net_income FROM line_income
+  ) x
+  GROUP BY 1
+),
+
+expenses_by_month AS (
+  SELECT month_key, SUM(expenses) AS expenses
+  FROM (
+    SELECT month_key, expenses FROM dated_expenses
+    UNION ALL
+    SELECT month_key, expenses FROM monthly_annual
+  ) x
+  GROUP BY 1
+)
+
+SELECT
+  m.month_key AS month,
+  COALESCE(i.gross_income, 0) AS gross_income,
+  COALESCE(i.net_income, 0) AS net_income,
+  COALESCE(e.expenses, 0) AS expenses,
+  
+  ROUND(COALESCE(i.net_income, 0) - COALESCE(e.expenses, 0), 2) AS operational_net
+FROM months m
+LEFT JOIN income_by_month i USING (month_key)
+LEFT JOIN expenses_by_month e USING (month_key)
+ORDER BY m.month_key;

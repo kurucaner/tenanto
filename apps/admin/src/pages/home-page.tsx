@@ -53,15 +53,7 @@ const HomePageInner = memo(() => {
   });
 
   return (
-    <AdminPageLayout
-      intro={{
-        description: isAdmin
-          ? "Manage people, policies, and platform settings from one calm surface. Pick up where you left off or jump straight into your next task."
-          : "Your portfolio at a glance — income, expenses, and trends across your properties.",
-        eyebrow: "Overview",
-        title: "Welcome back",
-      }}
-    >
+    <AdminPageLayout>
       <div className="flex flex-col gap-8">
         {isAdmin ? (
           <section aria-label="Platform statistics">
