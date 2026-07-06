@@ -4,6 +4,7 @@ import type {
   IProperty,
   IPropertyDetail,
   IPropertyMember,
+  IPropertyMemberUser,
 } from "@/packages/shared";
 import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
@@ -45,16 +46,24 @@ export const propertiesDb = {
 
   async findDetailById(id: string): Promise<IPropertyDetail | null> {
     const propertyResult = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count
+      `SELECT p.*, COUNT(pm.id)::int AS member_count,
+              u.name AS creator_name, u.email AS creator_email
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
+       INNER JOIN users u ON u.id = p.created_by
        WHERE p.id = $1
-       GROUP BY p.id`,
+       GROUP BY p.id, u.name, u.email`,
       [id]
     );
     if (propertyResult.rows.length === 0) return null;
 
-    const property = mapPropertyRow(propertyResult.rows[0] as Record<string, unknown>);
+    const row = propertyResult.rows[0] as Record<string, unknown>;
+    const property = mapPropertyRow(row);
+    const creator: IPropertyMemberUser = {
+      email: row.creator_email as string,
+      id: row.created_by as string,
+      name: row.creator_name as string,
+    };
 
     const membersResult = await pool.query(
       `SELECT pm.*, u.name AS user_name, u.email AS user_email
@@ -65,11 +74,11 @@ export const propertiesDb = {
       [id]
     );
 
-    const members: IPropertyMember[] = membersResult.rows.map((row) =>
-      mapPropertyMemberRow(row as Record<string, unknown>)
+    const members: IPropertyMember[] = membersResult.rows.map((memberRow) =>
+      mapPropertyMemberRow(memberRow as Record<string, unknown>)
     );
 
-    return { ...property, members };
+    return { ...property, creator, members };
   },
 
   async listPaginatedForAdmin(params: {

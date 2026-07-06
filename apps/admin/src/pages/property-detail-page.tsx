@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -21,7 +22,12 @@ import {
 } from "@/components/ui/table";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import type { IPropertyDetail, IPropertyMember, TPropertyRole } from "@/packages/shared";
+import type {
+  IPropertyDetail,
+  IPropertyMember,
+  IPropertyMemberUser,
+  TPropertyRole,
+} from "@/packages/shared";
 import { PropertyRole, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -86,6 +92,42 @@ const MemberTableRow = memo(
   )
 );
 MemberTableRow.displayName = "MemberTableRow";
+
+const CreatorTableRow = memo(
+  ({
+    createdAt,
+    creator,
+    isCurrentUser,
+  }: {
+    createdAt: string;
+    creator: IPropertyMemberUser;
+    isCurrentUser: boolean;
+  }) => (
+    <TableRow>
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="font-medium">
+            {creator.name}
+            {isCurrentUser ? (
+              <span className="text-muted-foreground ml-1.5 text-xs font-normal">(You)</span>
+            ) : null}
+          </span>
+          <span className="text-muted-foreground text-xs">{creator.email}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <Badge className="border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+          Owner
+        </Badge>
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs">
+        {new Date(createdAt).toLocaleString()}
+      </TableCell>
+      <TableCell />
+    </TableRow>
+  )
+);
+CreatorTableRow.displayName = "CreatorTableRow";
 
 const PropertyDetailContent = memo(
   ({ property, propertyId }: { property: IPropertyDetail; propertyId: string }) => {
@@ -235,7 +277,7 @@ const PropertyDetailContent = memo(
             <CardContent className="space-y-2 text-sm">
               <p>
                 <span className="text-muted-foreground">Total members:</span>{" "}
-                {property.members.length}
+                {property.members.length + 1}
               </p>
             </CardContent>
           </Card>
@@ -268,25 +310,22 @@ const PropertyDetailContent = memo(
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {property.members.length === 0 ? (
-                  <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={canManageMembers ? 4 : 3}>
-                      No members yet. Add one to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  property.members.map((member) => (
-                    <MemberTableRow
-                      canManageMembers={canManageMembers}
-                      key={member.id}
-                      member={member}
-                      onChangeRole={(userId, role) =>
-                        updateRoleMutation.mutate({ role, userId })
-                      }
-                      onRemove={handleRemoveMember}
-                    />
-                  ))
-                )}
+                <CreatorTableRow
+                  createdAt={property.createdAt}
+                  creator={property.creator}
+                  isCurrentUser={currentUser?.id === property.createdBy}
+                />
+                {property.members.map((member) => (
+                  <MemberTableRow
+                    canManageMembers={canManageMembers}
+                    key={member.id}
+                    member={member}
+                    onChangeRole={(userId, role) =>
+                      updateRoleMutation.mutate({ role, userId })
+                    }
+                    onRemove={handleRemoveMember}
+                  />
+                ))}
               </TableBody>
             </Table>
           </CardContent>

@@ -35,6 +35,7 @@ export interface IPropertyMember {
 }
 
 export interface IPropertyDetail extends IProperty {
+  creator: IPropertyMemberUser;
   members: IPropertyMember[];
 }
 
