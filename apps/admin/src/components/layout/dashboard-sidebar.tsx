@@ -55,12 +55,14 @@ const DashboardSidebarInner = memo(() => {
       <span className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
         {APP_NAME}
       </span>
-      <span
+      <img
+        alt=""
         aria-hidden
-        className="font-display hidden size-8 shrink-0 items-center justify-center rounded-md border border-sidebar-border/80 text-base font-semibold text-sidebar-primary transition-colors group-hover:border-sidebar-primary/50 group-data-[collapsible=icon]:flex"
-      >
-        {APP_NAME.charAt(0)}
-      </span>
+        className="hidden size-8 shrink-0 rounded-md object-cover transition-opacity group-hover:opacity-90 group-data-[collapsible=icon]:block"
+        height={32}
+        src="/brand-icon.png"
+        width={32}
+      />
     </Link>
   );
 

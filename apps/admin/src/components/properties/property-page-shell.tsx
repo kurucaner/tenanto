@@ -37,6 +37,9 @@ export const PropertyPageShell = memo(
         <NavLink className={tabClass} to={`/properties/${propertyId}/units`}>
           Units
         </NavLink>
+        <NavLink className={tabClass} to={`/properties/${propertyId}/income`}>
+          Income
+        </NavLink>
         <NavLink className={tabClass} to={`/properties/${propertyId}/settings`}>
           Settings
         </NavLink>

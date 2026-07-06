@@ -529,4 +529,72 @@ export const migrations: IMigration[] = [
     },
     version: 14,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_reservations CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_reservation_status CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_reservation_channel CASCADE;`);
+    },
+    name: "create_property_reservations",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_reservation_status AS ENUM ('stayed', 'canceled', 'no_show', 'active');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_reservation_channel AS ENUM ('airbnb', 'booking', 'expedia', 'direct');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE property_reservations (
+          id                            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id                   UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          unit_id                       UUID NOT NULL REFERENCES property_units(id) ON DELETE RESTRICT,
+          guest_name                    VARCHAR(255) NOT NULL,
+          reservation_number            VARCHAR(100),
+          check_in                      DATE NOT NULL,
+          check_out                     DATE NOT NULL,
+          nights                        INTEGER NOT NULL,
+          status                        property_reservation_status NOT NULL DEFAULT 'active',
+          channel                       property_reservation_channel NOT NULL,
+          room_rate                     NUMERIC(12,2) NOT NULL DEFAULT 0,
+          cleaning_fee                  NUMERIC(12,2) NOT NULL DEFAULT 0,
+          gross_income                  NUMERIC(12,2) NOT NULL DEFAULT 0,
+          sales_tax                     NUMERIC(12,2) NOT NULL DEFAULT 0,
+          miami_dade_surtax             NUMERIC(12,2) NOT NULL DEFAULT 0,
+          convention_development_tax    NUMERIC(12,2) NOT NULL DEFAULT 0,
+          resort_tax                    NUMERIC(12,2) NOT NULL DEFAULT 0,
+          channel_commission            NUMERIC(12,2) NOT NULL DEFAULT 0,
+          net_income                    NUMERIC(12,2) NOT NULL DEFAULT 0,
+          created_at                    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at                    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_reservations_updated_at
+          BEFORE UPDATE ON property_reservations
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_reservations_property_id ON property_reservations(property_id);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_reservations_property_check_in ON property_reservations(property_id, check_in DESC);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_reservations_unit_id ON property_reservations(unit_id);`
+      );
+    },
+    version: 15,
+  },
 ];

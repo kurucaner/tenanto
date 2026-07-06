@@ -74,6 +74,19 @@ export {
   rateToPercent,
 } from "./property-settings-types";
 
+// Property Reservation Types
+export {
+  type ICreatePropertyReservationBody,
+  type IPropertyReservation,
+  type IPropertyReservationComputedFields,
+  type IPropertyReservationsListQuery,
+  type IUpdatePropertyReservationBody,
+  ReservationChannel,
+  ReservationStatus,
+  type TReservationChannel,
+  type TReservationStatus,
+} from "./property-reservation-types";
+
 // Helpers
 export { sleep, toIso } from "./helpers";
 

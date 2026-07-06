@@ -13,12 +13,16 @@ import {
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
+  type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type IProperty,
   type IPropertyDetail,
   type IPropertyMember,
+  type IPropertyReservation,
+  type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
+  type IUpdatePropertyReservationBody,
   type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
   type IUser,
@@ -408,5 +412,42 @@ export const settingsApi = {
     authenticatedRequest<{ settings: IPropertySettings }>(
       `/properties/${encodeURIComponent(propertyId)}/settings`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+function buildReservationsSearchParams(query: IPropertyReservationsListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.unitId) params.set("unitId", query.unitId);
+  if (query.channel) params.set("channel", query.channel);
+  if (query.status) params.set("status", query.status);
+  if (query.rentalType) params.set("rentalType", query.rentalType);
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+export const reservationsApi = {
+  list: (propertyId: string, query?: IPropertyReservationsListQuery) =>
+    authenticatedRequest<{ reservations: IPropertyReservation[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations${buildReservationsSearchParams(query)}`
+    ),
+
+  create: (propertyId: string, body: ICreatePropertyReservationBody) =>
+    authenticatedRequest<{ reservation: IPropertyReservation }>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  update: (propertyId: string, reservationId: string, body: IUpdatePropertyReservationBody) =>
+    authenticatedRequest<{ reservation: IPropertyReservation }>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  delete: (propertyId: string, reservationId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
     ),
 };

@@ -3,6 +3,7 @@ import {
   type IProperty,
   type IPropertyInvite,
   type IPropertyMember,
+  type IPropertyReservation,
   type IPropertySettings,
   type IPropertyUnit,
   type ISupportRequest,
@@ -12,6 +13,8 @@ import {
   toIso,
   type TPropertyInviteStatus,
   type TPropertyRole,
+  type TReservationChannel,
+  type TReservationStatus,
   type TUnitRentalType,
   UserType,
 } from "@/packages/shared";
@@ -108,5 +111,34 @@ export const mapPropertySettingsRow = (row: Record<string, unknown>): IPropertyS
   propertyId: row.property_id as string,
   resortTaxRate: Number(row.resort_tax_rate),
   salesTaxRate: Number(row.sales_tax_rate),
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+const formatDateColumn = (value: unknown): string => {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+};
+
+export const mapPropertyReservationRow = (row: Record<string, unknown>): IPropertyReservation => ({
+  channel: row.channel as TReservationChannel,
+  channelCommission: Number(row.channel_commission),
+  checkIn: formatDateColumn(row.check_in),
+  checkOut: formatDateColumn(row.check_out),
+  cleaningFee: Number(row.cleaning_fee),
+  conventionDevelopmentTax: Number(row.convention_development_tax),
+  createdAt: (row.created_at as Date).toISOString(),
+  grossIncome: Number(row.gross_income),
+  guestName: row.guest_name as string,
+  id: row.id as string,
+  miamiDadeSurtax: Number(row.miami_dade_surtax),
+  netIncome: Number(row.net_income),
+  nights: row.nights as number,
+  propertyId: row.property_id as string,
+  reservationNumber: (row.reservation_number as string) ?? null,
+  resortTax: Number(row.resort_tax),
+  roomRate: Number(row.room_rate),
+  salesTax: Number(row.sales_tax),
+  status: row.status as TReservationStatus,
+  unitId: row.unit_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),
 });
