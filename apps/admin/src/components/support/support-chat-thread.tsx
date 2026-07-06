@@ -1,8 +1,10 @@
-import { memo, useLayoutEffect, useMemo, useRef } from "react";
+import { ArrowDown } from "lucide-react";
+import { memo, useMemo, useState } from "react";
 
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useChatStickToBottom } from "@/hooks/use-chat-stick-to-bottom";
 import { groupSupportMessagesByDay } from "@/lib/group-support-messages";
 import {
   isOwnSupportMessage,
@@ -12,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { type ISupportMessage } from "@/packages/shared";
 
 export interface SupportChatThreadProps {
+  forceScrollMessageId?: string | null;
   isError: boolean;
   isPending: boolean;
   messages: ISupportMessage[] | undefined;
@@ -49,6 +52,27 @@ const DateDivider = memo(({ label }: Readonly<{ label: string }>) => (
 ));
 DateDivider.displayName = "SupportChatDateDivider";
 
+interface JumpToLatestButtonProps {
+  count: number;
+  onClick: () => void;
+}
+
+const JumpToLatestButton = memo(({ count, onClick }: JumpToLatestButtonProps) => (
+  <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+    <Button
+      className="pointer-events-auto h-8 gap-1.5 rounded-full border border-border/80 bg-card/95 px-3 text-xs shadow-md backdrop-blur-sm"
+      onClick={onClick}
+      size="sm"
+      type="button"
+      variant="secondary"
+    >
+      <ArrowDown className="size-3.5" />
+      {count === 1 ? "New message" : `${count} new messages`}
+    </Button>
+  </div>
+));
+JumpToLatestButton.displayName = "SupportChatJumpToLatestButton";
+
 function getMessageIdsKey(messages: ISupportMessage[] | undefined): string {
   if (messages == null || messages.length === 0) return "";
   return messages.map((message) => message.id).join(",");
@@ -56,6 +80,7 @@ function getMessageIdsKey(messages: ISupportMessage[] | undefined): string {
 
 export const SupportChatThread = memo(
   ({
+    forceScrollMessageId,
     isError,
     isPending,
     messages,
@@ -64,46 +89,41 @@ export const SupportChatThread = memo(
     ticketUserId,
     viewer,
   }: SupportChatThreadProps) => {
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const bottomRef = useRef<HTMLDivElement>(null);
-    const seenIdsRef = useRef<Set<string>>(new Set());
-    const isInitialMountRef = useRef(true);
-    const lastScrolledMessageIdRef = useRef<string | null>(null);
+    const [baselineMessageIdsKey, setBaselineMessageIdsKey] = useState("");
 
     const messageIdsKey = getMessageIdsKey(messages);
     const lastMessageId = messages?.at(-1)?.id ?? null;
+    const scrollEnabled = !isPending && !isError && messages != null;
 
-    if (messages != null && isInitialMountRef.current) {
-      for (const message of messages) {
-        seenIdsRef.current.add(message.id);
-      }
-      isInitialMountRef.current = false;
+    const { handleScroll, pendingBelowCount, scrollRef, scrollToBottom } = useChatStickToBottom({
+      enabled: scrollEnabled,
+      forceScrollMessageId,
+      lastMessageId,
+    });
+
+    const animateMessageIds = useMemo(() => {
+      if (messages == null || baselineMessageIdsKey === "") return new Set<string>();
+      if (messageIdsKey === baselineMessageIdsKey) return new Set<string>();
+
+      const baselineIds = new Set(baselineMessageIdsKey.split(",").filter(Boolean));
+      return new Set(
+        messages.filter((message) => !baselineIds.has(message.id)).map((message) => message.id)
+      );
+    }, [baselineMessageIdsKey, messageIdsKey, messages]);
+
+    if (messages != null && messageIdsKey !== baselineMessageIdsKey) {
+      setBaselineMessageIdsKey(messageIdsKey);
     }
 
-    const groups = useMemo(
-      () => groupSupportMessagesByDay(messages ?? []),
-      [messageIdsKey, messages]
-    );
+    const groups = useMemo(() => groupSupportMessagesByDay(messages ?? []), [messages]);
 
-    useLayoutEffect(() => {
-      if (messages == null) return;
-      for (const message of messages) {
-        seenIdsRef.current.add(message.id);
-      }
-    }, [messageIdsKey, messages]);
-
-    useLayoutEffect(() => {
-      if (lastMessageId == null || lastMessageId === lastScrolledMessageIdRef.current) return;
-      lastScrolledMessageIdRef.current = lastMessageId;
-
-      requestAnimationFrame(() => {
-        bottomRef.current?.scrollIntoView({ block: "end" });
-      });
-    }, [lastMessageId]);
+    const handleJumpToLatest = () => {
+      scrollToBottom("smooth");
+    };
 
     if (isPending) {
       return (
-        <div className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-4")}>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-6 lg:px-8")}>
           <ThreadSkeleton />
         </div>
       );
@@ -123,29 +143,43 @@ export const SupportChatThread = memo(
     }
 
     return (
-      <div
-        className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-3 py-3 [overflow-anchor:auto] md:px-4"
-        )}
-        ref={scrollRef}
-      >
-        <div className="flex flex-col gap-3">
-          {groups.map((group) => (
-            <div className="space-y-3" key={group.dateKey}>
-              <DateDivider label={group.label} />
-              {group.messages.map((message) => (
-                <SupportChatBubble
-                  isOwn={isOwnSupportMessage(message, viewer, ticketUserId)}
-                  key={message.id}
-                  message={message}
-                  shouldAnimate={!seenIdsRef.current.has(message.id)}
-                  showAuthorEmail={showAuthorEmail}
-                />
-              ))}
-            </div>
-          ))}
-          <div aria-hidden ref={bottomRef} />
+      <div className="relative min-h-0 flex-1">
+        <div
+          className={cn(
+            "h-full min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3 md:px-6 lg:px-8"
+          )}
+          onScroll={handleScroll}
+          ref={scrollRef}
+        >
+          <div className="flex flex-col gap-3 pb-1">
+            {groups.map((group) => (
+              <div className="space-y-3" key={group.dateKey}>
+                <DateDivider label={group.label} />
+                {group.messages.map((message) => {
+                  const isOwn = isOwnSupportMessage(message, viewer, ticketUserId);
+
+                  return (
+                    <div
+                      className={cn("flex w-full", isOwn ? "justify-end" : "justify-start")}
+                      key={message.id}
+                    >
+                      <SupportChatBubble
+                        isOwn={isOwn}
+                        message={message}
+                        shouldAnimate={animateMessageIds.has(message.id)}
+                        showAuthorEmail={showAuthorEmail}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
+
+        {pendingBelowCount > 0 ? (
+          <JumpToLatestButton count={pendingBelowCount} onClick={handleJumpToLatest} />
+        ) : null}
       </div>
     );
   }

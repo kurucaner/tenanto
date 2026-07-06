@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SendHorizontal } from "lucide-react";
-import { memo, useCallback, useRef, useState, type KeyboardEvent } from "react";
+import { type KeyboardEvent,memo, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { supportTextareaClass } from "@/components/support/support-constants";
@@ -16,6 +16,7 @@ export interface SupportChatComposerProps {
   idPrefix: string;
   isAdmin?: boolean;
   onListsInvalidate?: () => void;
+  onMessageSent?: (messageId: string) => void;
   placeholder?: string;
   status: SupportRequestStatus;
   supportRequestId: string;
@@ -30,6 +31,7 @@ export const SupportChatComposer = memo(
     idPrefix,
     isAdmin = false,
     onListsInvalidate,
+    onMessageSent,
     placeholder = "Write a message…",
     status,
     supportRequestId,
@@ -61,7 +63,6 @@ export const SupportChatComposer = memo(
         toast.error(e instanceof Error ? e.message : "Could not send message");
       },
       onSuccess: (detail) => {
-        toast.success("Message sent");
         setReplyDraft("");
         resetTextareaHeight();
         queryClient.setQueryData(adminQueryKeys.supportRequest(supportRequestId), detail);
@@ -69,7 +70,12 @@ export const SupportChatComposer = memo(
         const lastMessageId = detail.messages.at(-1)?.id;
         if (lastMessageId != null) {
           markSupportDetailLocallyUpdated(supportRequestId, lastMessageId);
+          onMessageSent?.(lastMessageId);
         }
+
+        queueMicrotask(() => {
+          textareaRef.current?.focus();
+        });
 
         if (onListsInvalidate != null) {
           queueMicrotask(onListsInvalidate);

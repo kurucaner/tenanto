@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { SupportChatComposer } from "@/components/support/support-chat-composer";
 import { SupportChatThread } from "@/components/support/support-chat-thread";
@@ -29,25 +29,36 @@ export const SupportChatSection = memo(
     supportRequestId,
     ticketUserId,
     viewer,
-  }: SupportChatSectionProps) => (
-    <SupportChatPanel>
-      <SupportChatThread
-        isError={false}
-        isPending={false}
-        messages={messages}
-        showAuthorEmail={isAdmin}
-        ticketUserId={ticketUserId}
-        viewer={viewer}
-      />
-      <SupportChatComposer
-        idPrefix={idPrefix}
-        isAdmin={isAdmin}
-        onListsInvalidate={onListsInvalidate}
-        placeholder={placeholder}
-        status={status}
-        supportRequestId={supportRequestId}
-      />
-    </SupportChatPanel>
-  )
+  }: SupportChatSectionProps) => {
+    const [forceScrollMessageId, setForceScrollMessageId] = useState<string | null>(null);
+
+    const handleMessageSent = useCallback((messageId: string) => {
+      setForceScrollMessageId(messageId);
+    }, []);
+
+    return (
+      <SupportChatPanel>
+        <SupportChatThread
+          forceScrollMessageId={forceScrollMessageId}
+          isError={false}
+          isPending={false}
+          key={supportRequestId}
+          messages={messages}
+          showAuthorEmail={isAdmin}
+          ticketUserId={ticketUserId}
+          viewer={viewer}
+        />
+        <SupportChatComposer
+          idPrefix={idPrefix}
+          isAdmin={isAdmin}
+          onListsInvalidate={onListsInvalidate}
+          onMessageSent={handleMessageSent}
+          placeholder={placeholder}
+          status={status}
+          supportRequestId={supportRequestId}
+        />
+      </SupportChatPanel>
+    );
+  }
 );
 SupportChatSection.displayName = "SupportChatSection";

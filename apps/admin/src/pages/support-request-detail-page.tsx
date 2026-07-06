@@ -216,7 +216,7 @@ const SupportRequestDetailPageInner = memo(() => {
         ticket={ticket}
       />
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-0">
+      <div className="grid min-h-0 flex-1 overflow-hidden lg:gap-0">
         {isAdmin ? (
           <SupportTicketSidebarSection
             onPatchStatus={handlePatchStatus}

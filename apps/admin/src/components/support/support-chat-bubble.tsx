@@ -41,11 +41,11 @@ const SupportChatBubbleInner = ({
   return (
     <div
       className={cn(
-        "flex max-w-[85%] gap-2",
+        "flex w-fit max-w-[min(85vw,20rem)] gap-2 sm:max-w-[min(85%,24rem)] lg:max-w-[28rem]",
         shouldAnimate
           ? "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300"
           : null,
-        isOwn ? "ms-auto flex-row-reverse" : "me-auto"
+        isOwn ? "flex-row-reverse" : null
       )}
     >
       <div
