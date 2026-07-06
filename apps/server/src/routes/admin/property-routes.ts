@@ -22,6 +22,7 @@ import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
 
 import { parseAdminLimit, parseUuidParam } from "./admin-query-utils";
 import { buildInsertAdminAuditParams } from "./record-admin-audit";
+import { assertPropertyStructureAccess } from "./property-route-access";
 
 const PROPERTY_ROLES = new Set<TPropertyRole>(Object.values(PropertyRole));
 
@@ -272,6 +273,15 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!existing) return;
 
+      const canManage = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can update property details"
+      );
+      if (!canManage) return;
+
       const parsed = parseUpdatePropertyBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
@@ -321,6 +331,15 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!existing) return;
 
+      const canManage = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can delete properties"
+      );
+      if (!canManage) return;
+
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
@@ -365,15 +384,36 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyExists) return;
 
+      const canManageMembers = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can manage members"
+      );
+      if (!canManageMembers) return;
+
       const parsed = parseAddMemberBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
       const { email, role } = parsed.body;
+      const creator = await userDb.findById(propertyExists.createdBy);
+      if (creator?.email.toLowerCase() === email.toLowerCase()) {
+        return reply.status(HttpStatus.CONFLICT).send({
+          error: "The property creator is already assigned as owner",
+        });
+      }
+
       const targetUser = await userDb.findByEmail(email);
 
       if (targetUser) {
+        if (targetUser.id === propertyExists.createdBy) {
+          return reply.status(HttpStatus.CONFLICT).send({
+            error: "The property creator is already assigned as owner",
+          });
+        }
         const existingMember = await propertyMembersDb.findOne(propertyId, targetUser.id);
         if (existingMember) {
           return reply
@@ -445,22 +485,19 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyAccess) return;
 
+      const canManageMembers = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can update member roles"
+      );
+      if (!canManageMembers) return;
+
       if (userId === propertyAccess.createdBy) {
         return reply.status(HttpStatus.FORBIDDEN).send({
           error: "The property creator cannot be modified or removed",
         });
-      }
-
-      if (
-        request.user.userType !== UserType.ADMIN &&
-        propertyAccess.createdBy !== request.user.userId
-      ) {
-        const callerMembership = await propertyMembersDb.findOne(propertyId, request.user.userId);
-        if (callerMembership?.role !== PropertyRole.OWNER) {
-          return reply
-            .status(HttpStatus.FORBIDDEN)
-            .send({ error: "Only property owners can update member roles" });
-        }
       }
 
       const existing = await propertyMembersDb.findOne(propertyId, userId);
@@ -502,22 +539,19 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyAccess) return;
 
+      const canManageMembers = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can remove members"
+      );
+      if (!canManageMembers) return;
+
       if (userId === propertyAccess.createdBy) {
         return reply.status(HttpStatus.FORBIDDEN).send({
           error: "The property creator cannot be modified or removed",
         });
-      }
-
-      if (
-        request.user.userType !== UserType.ADMIN &&
-        propertyAccess.createdBy !== request.user.userId
-      ) {
-        const callerMembership = await propertyMembersDb.findOne(propertyId, request.user.userId);
-        if (callerMembership?.role !== PropertyRole.OWNER) {
-          return reply
-            .status(HttpStatus.FORBIDDEN)
-            .send({ error: "Only property owners can remove members" });
-        }
       }
 
       const removed = await propertyMembersDb.remove(propertyId, userId);

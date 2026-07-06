@@ -1,11 +1,29 @@
 import { AlertTriangle } from "lucide-react";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { isRouteErrorResponse, Link, useRouteError } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { trackDatadogRumError } from "@/lib/datadog-rum";
 
 const ErrorPageInner = memo(() => {
   const error = useRouteError();
+
+  useEffect(() => {
+    if (error instanceof Error) {
+      trackDatadogRumError(error, { source: "react-router" });
+      return;
+    }
+
+    if (isRouteErrorResponse(error)) {
+      trackDatadogRumError(`${error.status} ${error.statusText}`, {
+        source: "react-router",
+        status: error.status,
+      });
+      return;
+    }
+
+    trackDatadogRumError("Unknown route error", { source: "react-router" });
+  }, [error]);
 
   const isNotFound = isRouteErrorResponse(error) && error.status === 404;
 

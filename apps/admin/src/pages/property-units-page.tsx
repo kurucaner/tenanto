@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
-import { PropertyPageShell } from "@/components/properties/property-page-shell";
+import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,12 +17,12 @@ import {
 } from "@/components/ui/table";
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
-import { propertiesApi,unitsApi } from "@/lib/api-client";
+import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import type { IPropertyUnit } from "@/packages/shared";
-import { PropertyRole, UnitRentalType, UserType } from "@/packages/shared";
-import { useAuthStore } from "@/stores/auth-store";
+import { UnitRentalType } from "@/packages/shared";
 
 const RentalTypeBadge = memo(({ type }: { type: string }) => {
   const isShort = type === UnitRentalType.SHORT_TERM;
@@ -91,171 +90,103 @@ const UnitRow = memo(
 );
 UnitRow.displayName = "UnitRow";
 
-const PropertyUnitsContent = memo(
-  ({ propertyId, propertyName }: { propertyId: string; propertyName: string }) => {
-    const queryClient = useQueryClient();
-    const currentUser = useAuthStore((s) => s.user);
-    const [createOpen, setCreateOpen] = useState(false);
-    const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
+export const PropertyUnitsPage = memo(() => {
+  const { permissions, propertyId } = usePropertyShell();
+  const canManage = permissions.canManageStructure;
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
 
-    const unitsQuery = useQuery({
-      queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnits(propertyId),
-    });
+  const unitsQuery = useQuery({
+    queryFn: () => unitsApi.list(propertyId),
+    queryKey: adminQueryKeys.propertyUnits(propertyId),
+  });
 
-    const propertyDetailQuery = useQuery({
-      queryFn: () => propertiesApi.getDetail(propertyId),
-      queryKey: adminQueryKeys.propertyDetail(propertyId),
-    });
+  const deleteMutation = useMutation({
+    mutationFn: (unit: IPropertyUnit) => unitsApi.delete(propertyId, unit.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to delete unit");
+    },
+    onSuccess: () => {
+      toast.success("Unit deleted");
+      invalidatePropertyUnitCaches(queryClient, propertyId);
+    },
+  });
 
-    const isAdmin = currentUser?.userType === UserType.ADMIN;
-    const members = propertyDetailQuery.data?.property?.members ?? [];
-    const callerMembership = members.find((m) => m.userId === currentUser?.id);
-    const isCreator = propertyDetailQuery.data?.property?.createdBy === currentUser?.id;
-    const canManage = isAdmin || isCreator || callerMembership?.role === PropertyRole.OWNER;
+  const handleDelete = (unit: IPropertyUnit) => {
+    if (!globalThis.confirm(`Delete unit ${unit.unitNumber}? This cannot be undone.`)) return;
+    deleteMutation.mutate(unit);
+  };
 
-    const deleteMutation = useMutation({
-      mutationFn: (unit: IPropertyUnit) => unitsApi.delete(propertyId, unit.id),
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to delete unit");
-      },
-      onSuccess: () => {
-        toast.success("Unit deleted");
-        invalidatePropertyUnitCaches(queryClient, propertyId);
-      },
-    });
+  const units = unitsQuery.data?.units ?? [];
 
-    const handleDelete = (unit: IPropertyUnit) => {
-      if (!globalThis.confirm(`Delete unit ${unit.unitNumber}? This cannot be undone.`)) return;
-      deleteMutation.mutate(unit);
-    };
-
-    const units = unitsQuery.data?.units ?? [];
-
-    const actions = canManage ? (
-      <Button
-        className="gap-1.5"
-        onClick={() => setCreateOpen(true)}
-        size="sm"
-        type="button"
-      >
+  usePropertyShellActions(
+    canManage ? (
+      <Button className="gap-1.5" onClick={() => setCreateOpen(true)} size="sm" type="button">
         <Plus className="size-3.5" />
         Add Unit
       </Button>
-    ) : undefined;
-
-    return (
-      <PropertyPageShell
-        actions={actions}
-        propertyId={propertyId}
-        propertyName={propertyName}
-      >
-        <Card>
-          <CardContent className="p-0">
-            {unitsQuery.isPending ? (
-              <div className="space-y-3 p-6">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Layout</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Added</TableHead>
-                    {canManage ? <TableHead>Actions</TableHead> : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {units.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        className="text-muted-foreground"
-                        colSpan={canManage ? 5 : 4}
-                      >
-                        No units yet.{canManage ? " Add one to get started." : ""}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    units.map((unit) => (
-                      <UnitRow
-                        canManage={canManage}
-                        key={unit.id}
-                        onDelete={handleDelete}
-                        onEdit={(u) => setEditUnit(u)}
-                        unit={unit}
-                      />
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <CreateUnitDialog
-          onOpenChange={setCreateOpen}
-          open={createOpen}
-          propertyId={propertyId}
-        />
-        {editUnit ? (
-          <EditUnitDialog
-            key={editUnit.id}
-            onOpenChange={(open) => { if (!open) setEditUnit(null); }}
-            open={true}
-            propertyId={propertyId}
-            unit={editUnit}
-          />
-        ) : null}
-      </PropertyPageShell>
-    );
-  }
-);
-PropertyUnitsContent.displayName = "PropertyUnitsContent";
-
-const PropertyUnitsPageInner = memo(() => {
-  const { propertyId } = useParams<{ propertyId: string }>();
-
-  const propertyQuery = useQuery({
-    enabled: Boolean(propertyId),
-    queryFn: () => propertiesApi.getDetail(propertyId!), // NOSONAR
-    queryKey: adminQueryKeys.propertyDetail(propertyId!), // NOSONAR
-  });
-
-  if (!propertyId) {
-    return <p className="text-muted-foreground text-sm">Invalid property.</p>;
-  }
-
-  if (propertyQuery.isPending) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (propertyQuery.isError || !propertyQuery.data?.property) {
-    return (
-      <p className="text-destructive text-sm">
-        {propertyQuery.error instanceof Error
-          ? propertyQuery.error.message
-          : "Property not found"}
-      </p>
-    );
-  }
+    ) : null
+  );
 
   return (
-    <PropertyUnitsContent
-      key={propertyId}
-      propertyId={propertyId}
-      propertyName={propertyQuery.data.property.name}
-    />
+    <>
+      <Card>
+        <CardContent className="p-0">
+          {unitsQuery.isPending ? (
+            <div className="space-y-3 p-6">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Layout</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Added</TableHead>
+                  {canManage ? <TableHead>Actions</TableHead> : null}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {units.length === 0 ? (
+                  <TableRow>
+                    <TableCell className="text-muted-foreground" colSpan={canManage ? 5 : 4}>
+                      No units yet.{canManage ? " Add one to get started." : ""}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  units.map((unit) => (
+                    <UnitRow
+                      canManage={canManage}
+                      key={unit.id}
+                      onDelete={handleDelete}
+                      onEdit={(u) => setEditUnit(u)}
+                      unit={unit}
+                    />
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <CreateUnitDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
+      {editUnit ? (
+        <EditUnitDialog
+          key={editUnit.id}
+          onOpenChange={(open) => {
+            if (!open) setEditUnit(null);
+          }}
+          open={true}
+          propertyId={propertyId}
+          unit={editUnit}
+        />
+      ) : null}
+    </>
   );
 });
-PropertyUnitsPageInner.displayName = "PropertyUnitsPageInner";
-
-export const PropertyUnitsPage = PropertyUnitsPageInner;
+PropertyUnitsPage.displayName = "PropertyUnitsPage";

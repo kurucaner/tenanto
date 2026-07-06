@@ -15,7 +15,7 @@ import {
 import { parseUuidParam } from "./admin-query-utils";
 import {
   assertPropertyMemberAccess,
-  assertPropertyOwnerAccess,
+  assertPropertyLedgerWriteAccess,
 } from "./property-route-access";
 
 const EXPENSE_CATEGORIES = new Set<TExpenseCategory>(Object.values(ExpenseCategory));
@@ -270,7 +270,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -320,7 +320,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -376,7 +376,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,

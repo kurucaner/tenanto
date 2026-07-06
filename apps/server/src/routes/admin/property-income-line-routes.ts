@@ -17,7 +17,7 @@ import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
 import {
   assertPropertyMemberAccess,
-  assertPropertyOwnerAccess,
+  assertPropertyLedgerWriteAccess,
 } from "./property-route-access";
 
 const INCOME_LINE_TYPES = new Set<TIncomeLineType>(Object.values(IncomeLineType));
@@ -343,7 +343,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -417,7 +417,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -482,7 +482,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,

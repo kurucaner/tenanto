@@ -12,7 +12,7 @@ import {
 import { parseUuidParam } from "./admin-query-utils";
 import {
   assertPropertyMemberAccess,
-  assertPropertyOwnerAccess,
+  assertPropertyStructureAccess,
 } from "./property-route-access";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
@@ -130,7 +130,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyStructureAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -170,7 +170,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyStructureAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -215,7 +215,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyStructureAccess(
         propertyId,
         request.user.userId,
         request.user.userType,

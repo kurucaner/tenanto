@@ -257,7 +257,7 @@ In the NPM UI, add **Proxy Hosts** for each domain:
 | ----------------------------------------- | ----------------------- | ------------------------- |
 | `api.postscrypt.app` (or your API domain) | `http://127.0.0.1:3001` | Request new Let's Encrypt |
 | `postscrypt.app` (or your web domain)     | `http://127.0.0.1:3000` | Request new Let's Encrypt |
-| `proxy.postscrypt.app` (Datadog proxy)    | `http://127.0.0.1:8082` | Request new Let's Encrypt |
+| `proxy.tenanto.app` (Datadog RUM proxy)   | `http://127.0.0.1:8082` | Request new Let's Encrypt |
 
 For each proxy host:
 

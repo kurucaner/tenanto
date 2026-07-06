@@ -35,6 +35,24 @@ services:
       target: admin
       args:
         VITE_API_URL: ${VITE_API_URL}
+        VITE_DD_CLIENT_TOKEN: ${VITE_DD_CLIENT_TOKEN}
+        VITE_DD_ENV: ${VITE_DD_ENV:-production}
+        VITE_DD_RUM_APPLICATION_ID: ${VITE_DD_RUM_APPLICATION_ID}
+        VITE_DD_RUM_PROXY_URL: ${VITE_DD_RUM_PROXY_URL}
+        VITE_DD_SITE: ${VITE_DD_SITE:-us5.datadoghq.com}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
     ports:
       - "3002:80"
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: proxy
+    ports:
+      - "8082:8082"
+    environment:
+      - DD_SITE=${DD_SITE:-us5.datadoghq.com}
+      - CORS_ORIGINS=${ADMIN_ORIGIN:-http://localhost:3002}
     restart: unless-stopped

@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
@@ -11,7 +10,7 @@ import {
   expenseSelectClassName,
   formatExpenseCategoryLabel,
 } from "@/components/expenses/expense-form-options";
-import { PropertyPageShell } from "@/components/properties/property-page-shell";
+import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,18 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { expensesApi, propertiesApi } from "@/lib/api-client";
+import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import {
-  type IPropertyExpense,
-  type IPropertyExpensesListQuery,
-  type TExpenseCategory,
-  PropertyRole,
-  UserType,
-} from "@/packages/shared";
-import { useAuthStore } from "@/stores/auth-store";
+import { type IPropertyExpense, type IPropertyExpensesListQuery, type TExpenseCategory } from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -85,219 +78,158 @@ const ExpenseRow = memo(
 );
 ExpenseRow.displayName = "ExpenseRow";
 
-const PropertyExpensesContent = memo(
-  ({ propertyId, propertyName }: { propertyId: string; propertyName: string }) => {
-    const queryClient = useQueryClient();
-    const currentUser = useAuthStore((s) => s.user);
-    const [createOpen, setCreateOpen] = useState(false);
-    const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
-    const [from, setFrom] = useState("");
-    const [to, setTo] = useState("");
-    const [category, setCategory] = useState("");
+export const PropertyExpensesPage = memo(() => {
+  const { permissions, propertyId } = usePropertyShell();
+  const canManage = permissions.canManageLedger;
+  const queryClient = useQueryClient();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [category, setCategory] = useState("");
 
-    const filters = useMemo<IPropertyExpensesListQuery>(() => {
-      const next: IPropertyExpensesListQuery = {};
-      if (from) next.from = from;
-      if (to) next.to = to;
-      if (category) next.category = category as TExpenseCategory;
-      return next;
-    }, [category, from, to]);
+  const filters = useMemo<IPropertyExpensesListQuery>(() => {
+    const next: IPropertyExpensesListQuery = {};
+    if (from) next.from = from;
+    if (to) next.to = to;
+    if (category) next.category = category as TExpenseCategory;
+    return next;
+  }, [category, from, to]);
 
-    const expensesQuery = useQuery({
-      queryFn: () => expensesApi.list(propertyId, filters),
-      queryKey: adminQueryKeys.propertyExpenses(propertyId, filters),
-    });
+  const expensesQuery = useQuery({
+    queryFn: () => expensesApi.list(propertyId, filters),
+    queryKey: adminQueryKeys.propertyExpenses(propertyId, filters),
+  });
 
-    const propertyDetailQuery = useQuery({
-      queryFn: () => propertiesApi.getDetail(propertyId),
-      queryKey: adminQueryKeys.propertyDetail(propertyId),
-    });
+  const deleteMutation = useMutation({
+    mutationFn: (expense: IPropertyExpense) => expensesApi.delete(propertyId, expense.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to delete expense");
+    },
+    onSuccess: () => {
+      toast.success("Expense deleted");
+      invalidatePropertyExpenseCaches(queryClient, propertyId);
+    },
+  });
 
-    const isAdmin = currentUser?.userType === UserType.ADMIN;
-    const members = propertyDetailQuery.data?.property?.members ?? [];
-    const callerMembership = members.find((m) => m.userId === currentUser?.id);
-    const isCreator = propertyDetailQuery.data?.property?.createdBy === currentUser?.id;
-    const canManage = isAdmin || isCreator || callerMembership?.role === PropertyRole.OWNER;
+  const expenses = expensesQuery.data?.expenses ?? [];
 
-    const deleteMutation = useMutation({
-      mutationFn: (expense: IPropertyExpense) => expensesApi.delete(propertyId, expense.id),
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to delete expense");
-      },
-      onSuccess: () => {
-        toast.success("Expense deleted");
-        invalidatePropertyExpenseCaches(queryClient, propertyId);
-      },
-    });
-
-    const expenses = expensesQuery.data?.expenses ?? [];
-
-    const actions = canManage ? (
+  usePropertyShellActions(
+    canManage ? (
       <Button className="gap-1.5" onClick={() => setCreateOpen(true)} size="sm" type="button">
         <Plus className="size-3.5" />
         Add Expense
       </Button>
-    ) : undefined;
-
-    return (
-      <PropertyPageShell actions={actions} propertyId={propertyId} propertyName={propertyName}>
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="expense-filter-from">From</Label>
-                <Input
-                  id="expense-filter-from"
-                  onChange={(e) => setFrom(e.target.value)}
-                  type="date"
-                  value={from}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="expense-filter-to">To</Label>
-                <Input
-                  id="expense-filter-to"
-                  onChange={(e) => setTo(e.target.value)}
-                  type="date"
-                  value={to}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="expense-filter-category">Category</Label>
-                <select
-                  className={expenseSelectClassName}
-                  id="expense-filter-category"
-                  onChange={(e) => setCategory(e.target.value)}
-                  value={category}
-                >
-                  {EXPENSE_CATEGORY_FILTER_OPTIONS.map((opt) => (
-                    <option key={opt.value || "all"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {expensesQuery.isPending ? (
-              <div className="space-y-3">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Person</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      {canManage ? <TableHead>Actions</TableHead> : null}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {expenses.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          className="text-muted-foreground"
-                          colSpan={canManage ? 6 : 5}
-                        >
-                          No expenses yet.
-                          {canManage ? " Add an expense to get started." : ""}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      expenses.map((expense) => (
-                        <ExpenseRow
-                          canManage={canManage}
-                          expense={expense}
-                          key={expense.id}
-                          onDelete={(item) => {
-                            if (
-                              !globalThis.confirm(
-                                `Delete ${formatExpenseCategoryLabel(item.category)} expense? This cannot be undone.`
-                              )
-                            ) {
-                              return;
-                            }
-                            deleteMutation.mutate(item);
-                          }}
-                          onEdit={setEditExpense}
-                        />
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <CreateExpenseDialog
-          onOpenChange={setCreateOpen}
-          open={createOpen}
-          propertyId={propertyId}
-        />
-        {editExpense ? (
-          <EditExpenseDialog
-            expense={editExpense}
-            key={editExpense.id}
-            onOpenChange={(open) => {
-              if (!open) setEditExpense(null);
-            }}
-            open={true}
-            propertyId={propertyId}
-          />
-        ) : null}
-      </PropertyPageShell>
-    );
-  }
-);
-PropertyExpensesContent.displayName = "PropertyExpensesContent";
-
-const PropertyExpensesPageInner = memo(() => {
-  const { propertyId } = useParams<{ propertyId: string }>();
-
-  const propertyQuery = useQuery({
-    enabled: Boolean(propertyId),
-    queryFn: () => propertiesApi.getDetail(propertyId!), // NOSONAR
-    queryKey: adminQueryKeys.propertyDetail(propertyId!), // NOSONAR
-  });
-
-  if (!propertyId) {
-    return <p className="text-muted-foreground text-sm">Invalid property.</p>;
-  }
-
-  if (propertyQuery.isPending) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (propertyQuery.isError || !propertyQuery.data?.property) {
-    return (
-      <p className="text-destructive text-sm">
-        {propertyQuery.error instanceof Error
-          ? propertyQuery.error.message
-          : "Property not found"}
-      </p>
-    );
-  }
+    ) : null
+  );
 
   return (
-    <PropertyExpensesContent
-      key={propertyId}
-      propertyId={propertyId}
-      propertyName={propertyQuery.data.property.name}
-    />
+    <>
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="expense-filter-from">From</Label>
+              <Input
+                id="expense-filter-from"
+                onChange={(e) => setFrom(e.target.value)}
+                type="date"
+                value={from}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="expense-filter-to">To</Label>
+              <Input
+                id="expense-filter-to"
+                onChange={(e) => setTo(e.target.value)}
+                type="date"
+                value={to}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="expense-filter-category">Category</Label>
+              <select
+                className={expenseSelectClassName}
+                id="expense-filter-category"
+                onChange={(e) => setCategory(e.target.value)}
+                value={category}
+              >
+                {EXPENSE_CATEGORY_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value || "all"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {expensesQuery.isPending ? (
+            <div className="space-y-3">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Person</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    {canManage ? <TableHead>Actions</TableHead> : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {expenses.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="text-muted-foreground" colSpan={canManage ? 6 : 5}>
+                        No expenses yet.
+                        {canManage ? " Add an expense to get started." : ""}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    expenses.map((expense) => (
+                      <ExpenseRow
+                        canManage={canManage}
+                        expense={expense}
+                        key={expense.id}
+                        onDelete={(item) => {
+                          if (
+                            !globalThis.confirm(
+                              `Delete ${formatExpenseCategoryLabel(item.category)} expense? This cannot be undone.`
+                            )
+                          ) {
+                            return;
+                          }
+                          deleteMutation.mutate(item);
+                        }}
+                        onEdit={setEditExpense}
+                      />
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <CreateExpenseDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
+      {editExpense ? (
+        <EditExpenseDialog
+          expense={editExpense}
+          key={editExpense.id}
+          onOpenChange={(open) => {
+            if (!open) setEditExpense(null);
+          }}
+          open={true}
+          propertyId={propertyId}
+        />
+      ) : null}
+    </>
   );
 });
-PropertyExpensesPageInner.displayName = "PropertyExpensesPageInner";
-
-export const PropertyExpensesPage = PropertyExpensesPageInner;
+PropertyExpensesPage.displayName = "PropertyExpensesPage";

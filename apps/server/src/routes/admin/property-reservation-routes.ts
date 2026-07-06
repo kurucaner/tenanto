@@ -24,7 +24,7 @@ import {
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
 import {
   assertPropertyMemberAccess,
-  assertPropertyOwnerAccess,
+  assertPropertyLedgerWriteAccess,
 } from "./property-route-access";
 
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
@@ -436,7 +436,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -486,7 +486,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -542,7 +542,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyOwnerAccess(
+      const isOwner = await assertPropertyLedgerWriteAccess(
         propertyId,
         request.user.userId,
         request.user.userType,

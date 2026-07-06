@@ -17,6 +17,7 @@ import { PropertyExpensesPage } from "@/pages/property-expenses-page";
 import { PropertyIncomePage } from "@/pages/property-income-page";
 import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
+import { PropertyShellLayout } from "@/components/properties/property-page-shell";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { ReportsPage } from "@/pages/reports-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
@@ -38,12 +39,18 @@ export const router = createBrowserRouter([
               { element: <HomePage />, path: "home" },
               { element: <PropertiesListPage />, path: "properties" },
               { element: <ReportsPage />, path: "reports" },
-              { element: <PropertyDetailPage />, path: "properties/:propertyId" },
-              { element: <PropertyUnitsPage />, path: "properties/:propertyId/units" },
-              { element: <PropertyIncomePage />, path: "properties/:propertyId/income" },
-              { element: <PropertyExpensesPage />, path: "properties/:propertyId/expenses" },
-              { element: <PropertyReportsPage />, path: "properties/:propertyId/reports" },
-              { element: <PropertySettingsPage />, path: "properties/:propertyId/settings" },
+              {
+                children: [
+                  { element: <PropertyDetailPage />, index: true },
+                  { element: <PropertyUnitsPage />, path: "units" },
+                  { element: <PropertyIncomePage />, path: "income" },
+                  { element: <PropertyExpensesPage />, path: "expenses" },
+                  { element: <PropertyReportsPage />, path: "reports" },
+                  { element: <PropertySettingsPage />, path: "settings" },
+                ],
+                element: <PropertyShellLayout />,
+                path: "properties/:propertyId",
+              },
               // Admin-only routes
               {
                 children: [

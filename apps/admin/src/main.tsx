@@ -6,6 +6,9 @@ import { Toaster } from "sonner";
 
 import { App } from "@/App";
 import { AdminThemeSync } from "@/components/admin-theme-sync";
+import { initDatadogRum } from "@/lib/datadog-rum";
+
+initDatadogRum();
 
 const queryClient = new QueryClient({
   defaultOptions: {

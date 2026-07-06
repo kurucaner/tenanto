@@ -9,7 +9,7 @@ import {
 import { parseUuidParam } from "./admin-query-utils";
 import {
   assertPropertyMemberAccess,
-  assertPropertyOwnerAccess,
+  assertPropertyStructureAccess,
 } from "./property-route-access";
 
 const SETTINGS_FIELDS: (keyof IUpdatePropertySettingsBody)[] = [
@@ -105,7 +105,7 @@ export const propertySettingsRoutes = async (server: FastifyInstance): Promise<v
       );
       if (!hasAccess) return;
 
-      const canEdit = await assertPropertyOwnerAccess(
+      const canEdit = await assertPropertyStructureAccess(
         propertyId,
         request.user.userId,
         request.user.userType,

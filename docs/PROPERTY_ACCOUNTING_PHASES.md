@@ -258,17 +258,42 @@ Reuses `loadReportData` + `buildPropertyReportSummary` per property, then `rollu
 
 ---
 
-## Phase 6 — Property Shell Navigation
+## Phase 6 — Property Shell Navigation ✅
 
-**Goal:** Unified navigation across accounting features.
+**Goal:** Unified navigation across accounting features with consistent access gating.
 
-Extend [`PropertyPageShell`](../apps/admin/src/components/properties/property-page-shell.tsx) tabs as each phase ships:
+### Shell layout
+
+- [`PropertyShellLayout`](../apps/admin/src/components/properties/property-page-shell.tsx) — nested route at `/properties/:propertyId/*`; single `getDetail` fetch
+- [`PropertyShellProvider`](../apps/admin/src/components/properties/property-shell-context.tsx) + [`usePropertyPermissions`](../apps/admin/src/hooks/use-property-permissions.ts) — shared permission model
+- [`PROPERTY_SHELL_TABS`](../apps/admin/src/config/property-shell-tabs.ts) — tab config driving [`PropertyPageShell`](../apps/admin/src/components/properties/property-page-shell.tsx)
+- Child pages inject header actions via [`usePropertyShellActions`](../apps/admin/src/hooks/use-property-shell-actions.ts)
+
+### Tabs
 
 ```
 Overview | Units | Income | Expenses | Reports | Settings
 ```
 
-Add routes under `/properties/:propertyId/*` and gate write access consistently (admin, creator, owner).
+### Access gating (client + server)
+
+| Capability | Admin | Creator | Owner member | Manager / Accountant |
+|------------|-------|---------|--------------|----------------------|
+| View all tabs | Yes | Yes | Yes | Yes |
+| Manage units, settings, members, property metadata | Yes | Yes | Yes | No |
+| Add/edit income & expenses | No | Yes | Yes | No |
+| View reports | Yes | Yes | Yes | Yes |
+
+Server helpers in [`property-route-access.ts`](../apps/server/src/routes/admin/property-route-access.ts):
+
+- `assertPropertyStructureAccess` — units, settings, property PATCH/DELETE, members
+- `assertPropertyLedgerWriteAccess` — reservations, income lines, expenses (admin excluded)
+
+### Cross-cutting fixes
+
+- Overview Edit/Delete/Add Member gated by permissions
+- Creator excluded from member role/remove controls and cannot be re-invited
+- Duplicate creator rows filtered from members table
 
 ---
 
@@ -278,7 +303,8 @@ Add routes under `/properties/:propertyId/*` and gate write access consistently 
 |------|-------|-------|
 | Auto-add creator as `property_members` owner on property create | Any | Simplifies permission checks |
 | Block inviting/adding creator as duplicate member | Any | Avoid duplicate rows |
-| Protect creator from member PATCH/DELETE | Done (API) | UI filter pending |
+| Protect creator from member PATCH/DELETE | Done (API + UI) | Creator row has no controls; duplicate member filtered |
+| Block inviting/adding creator as duplicate member | Done (API) | POST /members rejects creator email |
 | Multi-property dashboard totals | Phase 5+ | Home page aggregates for owners |
 | i18n (TR/EN labels) | Later | Menus: Gelir Gir, Gider Gir, etc. |
 
@@ -295,7 +321,7 @@ flowchart LR
   P4["Phase 4: Expenses ✅"]
   P5["Phase 5: Reports ✅"]
   P51["Phase 5.1: Portfolio Reports ✅"]
-  P6["Phase 6: Nav tabs"]
+  P6["Phase 6: Nav tabs ✅"]
   P1 --> P2 --> P3 --> P31 --> P4 --> P5 --> P51
   P2 -.-> P6
   P3 -.-> P6

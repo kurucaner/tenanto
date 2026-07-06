@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { CreateIncomeLineDialog, type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
@@ -16,7 +15,7 @@ import {
   reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
-import { PropertyPageShell } from "@/components/properties/property-page-shell";
+import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { incomeLinesApi, propertiesApi, reservationsApi, unitsApi } from "@/lib/api-client";
+import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -44,8 +44,6 @@ import {
   type TIncomeLineType,
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
-import { PropertyRole, UserType } from "@/packages/shared";
-import { useAuthStore } from "@/stores/auth-store";
 
 function buildMergedEntries(
   reservations: IPropertyReservation[],
@@ -204,10 +202,10 @@ const IncomeEntryRow = memo(
 );
 IncomeEntryRow.displayName = "IncomeEntryRow";
 
-const PropertyIncomeContent = memo(
-  ({ propertyId, propertyName }: { propertyId: string; propertyName: string }) => {
+const PropertyIncomePage = memo(() => {
+    const { permissions, propertyId } = usePropertyShell();
+    const canManage = permissions.canManageLedger;
     const queryClient = useQueryClient();
-    const currentUser = useAuthStore((s) => s.user);
     const [createStayOpen, setCreateStayOpen] = useState(false);
     const [createLineOpen, setCreateLineOpen] = useState(false);
     const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
@@ -265,17 +263,6 @@ const PropertyIncomeContent = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
-    const propertyDetailQuery = useQuery({
-      queryFn: () => propertiesApi.getDetail(propertyId),
-      queryKey: adminQueryKeys.propertyDetail(propertyId),
-    });
-
-    const isAdmin = currentUser?.userType === UserType.ADMIN;
-    const members = propertyDetailQuery.data?.property?.members ?? [];
-    const callerMembership = members.find((m) => m.userId === currentUser?.id);
-    const isCreator = propertyDetailQuery.data?.property?.createdBy === currentUser?.id;
-    const canManage = isAdmin || isCreator || callerMembership?.role === PropertyRole.OWNER;
-
     const units = unitsQuery.data?.units ?? [];
     const unitLabelById = useMemo(
       () => new Map(units.map((unit) => [unit.id, unit.unitNumber])),
@@ -322,31 +309,38 @@ const PropertyIncomeContent = memo(
           ? reservationsQuery.isPending || incomeLinesQuery.isPending
           : incomeLinesQuery.isPending;
 
-    const actions = canManage ? (
-      <>
-        <Button
-          className="gap-1.5"
-          onClick={() => setCreateStayOpen(true)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          Add Stay
-        </Button>
-        <Button className="gap-1.5" onClick={() => {
-          setCreateLinePrefill(null);
-          setCreateLineLockedStay(null);
-          setCreateLineOpen(true);
-        }} size="sm" type="button">
-          <Plus className="size-3.5" />
-          Add Other Income
-        </Button>
-      </>
-    ) : undefined;
+    usePropertyShellActions(
+      canManage ? (
+        <>
+          <Button
+            className="gap-1.5"
+            onClick={() => setCreateStayOpen(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="size-3.5" />
+            Add Stay
+          </Button>
+          <Button
+            className="gap-1.5"
+            onClick={() => {
+              setCreateLinePrefill(null);
+              setCreateLineLockedStay(null);
+              setCreateLineOpen(true);
+            }}
+            size="sm"
+            type="button"
+          >
+            <Plus className="size-3.5" />
+            Add Other Income
+          </Button>
+        </>
+      ) : null
+    );
 
     return (
-      <PropertyPageShell actions={actions} propertyId={propertyId} propertyName={propertyName}>
+      <>
         <Card>
           <CardContent className="space-y-4 p-4">
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
@@ -573,52 +567,9 @@ const PropertyIncomeContent = memo(
             units={units}
           />
         ) : null}
-      </PropertyPageShell>
+      </>
     );
-  }
-);
-PropertyIncomeContent.displayName = "PropertyIncomeContent";
-
-const PropertyIncomePageInner = memo(() => {
-  const { propertyId } = useParams<{ propertyId: string }>();
-
-  const propertyQuery = useQuery({
-    enabled: Boolean(propertyId),
-    queryFn: () => propertiesApi.getDetail(propertyId!), // NOSONAR
-    queryKey: adminQueryKeys.propertyDetail(propertyId!), // NOSONAR
-  });
-
-  if (!propertyId) {
-    return <p className="text-muted-foreground text-sm">Invalid property.</p>;
-  }
-
-  if (propertyQuery.isPending) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  if (propertyQuery.isError || !propertyQuery.data?.property) {
-    return (
-      <p className="text-destructive text-sm">
-        {propertyQuery.error instanceof Error
-          ? propertyQuery.error.message
-          : "Property not found"}
-      </p>
-    );
-  }
-
-  return (
-    <PropertyIncomeContent
-      key={propertyId}
-      propertyId={propertyId}
-      propertyName={propertyQuery.data.property.name}
-    />
-  );
 });
-PropertyIncomePageInner.displayName = "PropertyIncomePageInner";
+PropertyIncomePage.displayName = "PropertyIncomePage";
 
-export const PropertyIncomePage = PropertyIncomePageInner;
+export { PropertyIncomePage };
