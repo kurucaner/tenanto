@@ -12,6 +12,7 @@ export interface IProperty {
   createdBy: string;
   id: string;
   memberCount: number;
+  unitCount: number;
   name: string;
   phoneNumber: string | null;
   updatedAt: string;

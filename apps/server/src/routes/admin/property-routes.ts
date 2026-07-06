@@ -445,6 +445,12 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyAccess) return;
 
+      if (userId === propertyAccess.createdBy) {
+        return reply.status(HttpStatus.FORBIDDEN).send({
+          error: "The property creator cannot be modified or removed",
+        });
+      }
+
       if (
         request.user.userType !== UserType.ADMIN &&
         propertyAccess.createdBy !== request.user.userId
@@ -495,6 +501,12 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         reply
       );
       if (!propertyAccess) return;
+
+      if (userId === propertyAccess.createdBy) {
+        return reply.status(HttpStatus.FORBIDDEN).send({
+          error: "The property creator cannot be modified or removed",
+        });
+      }
 
       if (
         request.user.userType !== UserType.ADMIN &&

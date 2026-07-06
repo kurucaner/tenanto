@@ -20,7 +20,7 @@ export const propertiesDb = {
     const result = await pool.query(
       `INSERT INTO properties (name, address, phone_number, created_by)
        VALUES ($1, $2, $3, $4)
-       RETURNING *, 0 AS member_count`,
+       RETURNING *, 0 AS member_count, 0 AS unit_count`,
       [input.name.trim(), input.address.trim(), input.phoneNumber?.trim() ?? null, createdBy]
     );
     return mapPropertyRow(result.rows[0] as Record<string, unknown>);
@@ -33,7 +33,8 @@ export const propertiesDb = {
 
   async findById(id: string): Promise<IProperty | null> {
     const result = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count
+      `SELECT p.*, COUNT(pm.id)::int AS member_count,
+              (SELECT COUNT(*)::int FROM property_units pu WHERE pu.property_id = p.id) AS unit_count
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
        WHERE p.id = $1
@@ -47,6 +48,7 @@ export const propertiesDb = {
   async findDetailById(id: string): Promise<IPropertyDetail | null> {
     const propertyResult = await pool.query(
       `SELECT p.*, COUNT(pm.id)::int AS member_count,
+              (SELECT COUNT(*)::int FROM property_units pu WHERE pu.property_id = p.id) AS unit_count,
               u.name AS creator_name, u.email AS creator_email
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
@@ -107,7 +109,8 @@ export const propertiesDb = {
     values.push(params.limit + 1);
 
     const result = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count
+      `SELECT p.*, COUNT(pm.id)::int AS member_count,
+              (SELECT COUNT(*)::int FROM property_units pu WHERE pu.property_id = p.id) AS unit_count
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
        ${whereClause}
@@ -157,7 +160,8 @@ export const propertiesDb = {
     values.push(params.limit + 1);
 
     const result = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count
+      `SELECT p.*, COUNT(pm.id)::int AS member_count,
+              (SELECT COUNT(*)::int FROM property_units pu WHERE pu.property_id = p.id) AS unit_count
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
        ${whereClause}

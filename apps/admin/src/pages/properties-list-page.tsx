@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Building2, Plus, Search } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
 import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
@@ -24,29 +24,24 @@ import type { IAdminPropertiesListResponse, IProperty } from "@/packages/shared"
 const LIMIT = 25;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const PropertyTableRow = memo(({ property }: { property: IProperty }) => (
-  <TableRow>
-    <TableCell>
-      <Link
-        className="text-primary font-medium underline-offset-4 hover:underline"
-        to={`/properties/${property.id}`}
-      >
-        {property.name}
-      </Link>
-    </TableCell>
-    <TableCell className="max-w-[260px] truncate text-sm">{property.address}</TableCell>
-    <TableCell className="text-sm">{property.phoneNumber ?? "—"}</TableCell>
-    <TableCell className="text-center text-sm">{property.memberCount}</TableCell>
-    <TableCell className="text-muted-foreground text-xs">
-      {new Date(property.createdAt).toLocaleString()}
-    </TableCell>
-    <TableCell>
-      <Button asChild size="sm" variant="outline">
-        <Link to={`/properties/${property.id}`}>View</Link>
-      </Button>
-    </TableCell>
-  </TableRow>
-));
+const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
+  const navigate = useNavigate();
+
+  return (
+    <TableRow
+      className="cursor-pointer"
+      onClick={() => navigate(`/properties/${property.id}`)}
+    >
+      <TableCell className="font-medium">{property.name}</TableCell>
+      <TableCell className="max-w-[260px] truncate text-sm">{property.address}</TableCell>
+      <TableCell className="text-sm">{property.phoneNumber ?? "—"}</TableCell>
+      <TableCell className="text-center text-sm">{property.memberCount}</TableCell>
+      <TableCell className="text-muted-foreground text-xs">
+        {new Date(property.createdAt).toLocaleString()}
+      </TableCell>
+    </TableRow>
+  );
+});
 PropertyTableRow.displayName = "PropertyTableRow";
 
 const PropertiesListPageInner = memo(() => {
@@ -130,13 +125,12 @@ const PropertiesListPageInner = memo(() => {
                     <TableHead>Phone</TableHead>
                     <TableHead className="text-center">Members</TableHead>
                     <TableHead>Created</TableHead>
-                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {properties.length === 0 ? (
                     <TableRow>
-                      <TableCell className="text-muted-foreground" colSpan={6}>
+                      <TableCell className="text-muted-foreground" colSpan={5}>
                         <div className="flex flex-col items-center gap-2 py-8">
                           <Building2 className="text-muted-foreground/50 size-8" />
                           <span>No properties found.</span>

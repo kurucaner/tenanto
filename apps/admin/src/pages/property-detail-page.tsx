@@ -253,6 +253,9 @@ const PropertyDetailContent = memo(
                 <span className="text-muted-foreground">Total members:</span>{" "}
                 {property.members.length + 1}
               </p>
+              <p>
+                <span className="text-muted-foreground">Total units:</span> {property.unitCount}
+              </p>
             </CardContent>
           </Card>
         </div>

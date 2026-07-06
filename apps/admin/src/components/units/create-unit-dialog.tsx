@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LayoutPicker } from "@/components/units/layout-picker";
 import { unitsApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { cn } from "@/lib/utils";
 import { type TUnitRentalType, UnitRentalType } from "@/packages/shared";
 
@@ -49,7 +49,7 @@ export const CreateUnitDialog = memo(
       },
       onSuccess: () => {
         toast.success("Unit created");
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.propertyUnits(propertyId) });
+        invalidatePropertyUnitCaches(queryClient, propertyId);
         handleClose();
       },
     });

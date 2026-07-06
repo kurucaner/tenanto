@@ -19,6 +19,7 @@ import {
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
 import { propertiesApi,unitsApi } from "@/lib/api-client";
+import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import type { IPropertyUnit } from "@/packages/shared";
 import { PropertyRole, UnitRentalType, UserType } from "@/packages/shared";
@@ -120,7 +121,7 @@ const PropertyUnitsContent = memo(
       },
       onSuccess: () => {
         toast.success("Unit deleted");
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.propertyUnits(propertyId) });
+        invalidatePropertyUnitCaches(queryClient, propertyId);
       },
     });
 

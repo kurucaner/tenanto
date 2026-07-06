@@ -53,6 +53,7 @@ export const mapPropertyRow = (row: Record<string, unknown>): IProperty => ({
   createdBy: row.created_by as string,
   id: row.id as string,
   memberCount: (row.member_count as number) ?? 0,
+  unitCount: (row.unit_count as number) ?? 0,
   name: row.name as string,
   phoneNumber: (row.phone_number as string) ?? null,
   updatedAt: (row.updated_at as Date).toISOString(),
