@@ -12,9 +12,9 @@ export interface IProperty {
   createdBy: string;
   id: string;
   memberCount: number;
-  unitCount: number;
   name: string;
   phoneNumber: string | null;
+  unitCount: number;
   updatedAt: string;
 }
 
