@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { reservationsApi, unitsApi } from "@/lib/api-client";
-import { invalidatePropertyReservationCaches } from "@/lib/invalidate-property-reservation-caches";
+import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   ReservationChannel,
@@ -71,7 +71,7 @@ export const CreateReservationDialog = memo(
       },
       onSuccess: () => {
         toast.success("Income entry created");
-        invalidatePropertyReservationCaches(queryClient, propertyId);
+        invalidatePropertyIncomeCaches(queryClient, propertyId);
         handleClose();
       },
     });

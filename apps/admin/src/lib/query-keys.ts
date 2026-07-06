@@ -6,6 +6,7 @@ import type {
   IAdminAuditEventsListQuery,
   IAdminSupportRequestsListQuery,
   IPropertyReservationsListQuery,
+  IPropertyIncomeLinesListQuery,
 } from "@/packages/shared";
 
 export const adminQueryKeys = {
@@ -27,5 +28,7 @@ export const adminQueryKeys = {
   propertySettings: (propertyId: string) => ["admin", "property", propertyId, "settings"] as const,
   propertyReservations: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
     ["admin", "property", propertyId, "reservations", filters] as const,
+  propertyIncomeLines: (propertyId: string, filters: IPropertyIncomeLinesListQuery = {}) =>
+    ["admin", "property", propertyId, "income-lines", filters] as const,
 };
 

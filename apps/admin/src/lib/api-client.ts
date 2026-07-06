@@ -14,15 +14,19 @@ import {
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
   type ICreatePropertyReservationBody,
+  type ICreatePropertyIncomeLineBody,
   type ICreatePropertyUnitBody,
   type IProperty,
   type IPropertyDetail,
+  type IPropertyIncomeLine,
+  type IPropertyIncomeLinesListQuery,
   type IPropertyMember,
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
   type IUpdatePropertyReservationBody,
+  type IUpdatePropertyIncomeLineBody,
   type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
   type IUser,
@@ -448,6 +452,42 @@ export const reservationsApi = {
   delete: (propertyId: string, reservationId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
+    ),
+};
+
+function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.unitId) params.set("unitId", query.unitId);
+  if (query.lineType) params.set("lineType", query.lineType);
+  if (query.reservationId) params.set("reservationId", query.reservationId);
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+export const incomeLinesApi = {
+  list: (propertyId: string, query?: IPropertyIncomeLinesListQuery) =>
+    authenticatedRequest<{ incomeLines: IPropertyIncomeLine[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
+    ),
+
+  create: (propertyId: string, body: ICreatePropertyIncomeLineBody) =>
+    authenticatedRequest<{ incomeLine: IPropertyIncomeLine }>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  update: (propertyId: string, lineId: string, body: IUpdatePropertyIncomeLineBody) =>
+    authenticatedRequest<{ incomeLine: IPropertyIncomeLine }>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  delete: (propertyId: string, lineId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
 };

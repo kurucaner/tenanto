@@ -597,4 +597,65 @@ export const migrations: IMigration[] = [
     },
     version: 15,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_income_lines CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_income_line_type CASCADE;`);
+    },
+    name: "create_property_income_lines",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_income_line_type AS ENUM (
+            'cleaning_only',
+            'extra_cleaning',
+            'extra_service',
+            'beach_equipment_rental'
+          );
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE property_income_lines (
+          id                            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id                   UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          unit_id                       UUID NOT NULL REFERENCES property_units(id) ON DELETE RESTRICT,
+          reservation_id                UUID REFERENCES property_reservations(id) ON DELETE SET NULL,
+          line_type                     property_income_line_type NOT NULL,
+          amount                        NUMERIC(12,2) NOT NULL,
+          transaction_date              DATE NOT NULL,
+          description                   TEXT,
+          guest_name                    VARCHAR(255),
+          gross_income                  NUMERIC(12,2) NOT NULL DEFAULT 0,
+          sales_tax                     NUMERIC(12,2) NOT NULL DEFAULT 0,
+          miami_dade_surtax             NUMERIC(12,2) NOT NULL DEFAULT 0,
+          convention_development_tax    NUMERIC(12,2) NOT NULL DEFAULT 0,
+          resort_tax                    NUMERIC(12,2) NOT NULL DEFAULT 0,
+          channel_commission            NUMERIC(12,2) NOT NULL DEFAULT 0,
+          net_income                    NUMERIC(12,2) NOT NULL DEFAULT 0,
+          created_at                    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at                    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_income_lines_updated_at
+          BEFORE UPDATE ON property_income_lines
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_income_lines_property_date ON property_income_lines(property_id, transaction_date DESC);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_income_lines_unit_id ON property_income_lines(unit_id);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_income_lines_reservation_id ON property_income_lines(reservation_id) WHERE reservation_id IS NOT NULL;`
+      );
+    },
+    version: 16,
+  },
 ];

@@ -87,6 +87,20 @@ export {
   type TReservationStatus,
 } from "./property-reservation-types";
 
+// Property Income Line Types
+export {
+  type ICreatePropertyIncomeLineBody,
+  IncomeEntryKind,
+  IncomeLineType,
+  type IPropertyIncomeLine,
+  type IPropertyIncomeLineComputedFields,
+  type IPropertyIncomeLinesListQuery,
+  type IUpdatePropertyIncomeLineBody,
+  type TIncomeEntryKind,
+  type TIncomeLineType,
+  type TPropertyIncomeEntry,
+} from "./property-income-line-types";
+
 // Helpers
 export { sleep, toIso } from "./helpers";
 

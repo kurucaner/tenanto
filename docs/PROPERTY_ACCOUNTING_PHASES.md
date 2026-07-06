@@ -22,7 +22,7 @@ Roadmap for the property pre-accounting module (ön muhasebe). Each property can
 
 ---
 
-## Phase 2 — Property Default Settings
+## Phase 2 — Property Default Settings ✅ Complete
 
 **Goal:** Store per-property tax and channel commission rates used in income calculations.
 
@@ -58,7 +58,7 @@ Income entry calculations should read from settings, not hardcoded constants.
 
 ---
 
-## Phase 3 — Reservations / Income Entries (Gelir Gir)
+## Phase 3 — Reservations / Income Entries (Gelir Gir) ✅ Complete
 
 **Goal:** Record stays and revenue with automatic gross/net breakdown.
 
@@ -82,14 +82,7 @@ Table: `property_reservations` (or `property_income_entries`)
 | Room rate | decimal | Net room rate (after discounts) |
 | Cleaning fee | decimal | |
 
-**Additional income lines** (optional, separate rows or JSON — TBD in plan):
-
-- Room rate only
-- Room rate + cleaning
-- Cleaning only
-- Extra cleaning
-- Extra service
-- Beach equipment rental
+**Additional income lines** — implemented in Phase 3.1 (see below). Room rate / room + cleaning remain stay fields.
 
 **Stored computed fields** (short term, room + cleaning):
 
@@ -125,7 +118,49 @@ Server-side calculation on create/update; rates from Phase 2 settings.
 ### Shared
 
 - Types in `packages/shared`
-- Calculation utility: `apps/server/src/lib/property-income-calculator.ts` (or similar)
+- Calculation utility: `apps/server/src/services/property-income-calculator.ts`
+
+---
+
+## Phase 3.1 — Additional Income Lines ✅ Complete
+
+**Goal:** Record non-stay revenue (cleaning only, extra cleaning, extra service, beach rental) alongside stays in a unified Income tab.
+
+### Approach
+
+Dual-ledger model (industry-aligned with PMS fee types / accounting income items):
+
+- **Stays** — `property_reservations` (unchanged from Phase 3)
+- **Income lines** — `property_income_lines` with optional `reservation_id` link
+
+### DB (migration v16)
+
+Table: `property_income_lines`
+
+| Field | Notes |
+|-------|-------|
+| `line_type` | `cleaning_only`, `extra_cleaning`, `extra_service`, `beach_equipment_rental` |
+| `amount`, `transaction_date` | Input |
+| `unit_id` | Required |
+| `reservation_id` | Optional FK to stay |
+| `description`, `guest_name` | Optional |
+| computed money columns | gross = net = amount; no tax/commission |
+
+### API
+
+- CRUD at `/properties/:propertyId/income-lines`
+- Filters: date range, unit, line type, reservation
+
+### UI
+
+- Income tab: merged stays + lines, sorted by date
+- **Add Stay** and **Add Other Income** actions
+- Income type filter (Stay | line types)
+
+### Notes
+
+- Room rate only / room + cleaning are stay fields, not separate line types
+- Phase 5 reports will UNION stays + income_lines for sales-type breakdown
 
 ---
 
@@ -133,7 +168,7 @@ Server-side calculation on create/update; rates from Phase 2 settings.
 
 **Goal:** Track operational costs per property.
 
-### DB (migration v16)
+### DB (migration v17)
 
 Table: `property_expenses`
 
@@ -237,12 +272,13 @@ Add routes under `/properties/:propertyId/*` and gate write access consistently 
 ```mermaid
 flowchart LR
   P1["Phase 1: Units ✅"]
-  P2["Phase 2: Settings"]
-  P3["Phase 3: Income"]
+  P2["Phase 2: Settings ✅"]
+  P3["Phase 3: Income ✅"]
+  P31["Phase 3.1: Income Lines ✅"]
   P4["Phase 4: Expenses"]
   P5["Phase 5: Reports"]
   P6["Phase 6: Nav tabs"]
-  P1 --> P2 --> P3 --> P4 --> P5
+  P1 --> P2 --> P3 --> P31 --> P4 --> P5
   P2 -.-> P6
   P3 -.-> P6
   P4 -.-> P6
@@ -264,7 +300,7 @@ flowchart LR
 | View property data | Yes | Yes | Yes | Yes (member) |
 | Manage units | Yes | Yes | Yes | No |
 | Edit settings | Yes | Yes | Yes | No |
-| Add/edit income & expenses | TBD | Yes | Yes | TBD |
+| Add/edit income & expenses | No | Yes | Yes | No |
 | View reports | Yes | Yes | Yes | Yes |
 
-Finalize manager/accountant write permissions when planning Phase 3.
+Finalize manager/accountant write permissions when planning Phase 4.

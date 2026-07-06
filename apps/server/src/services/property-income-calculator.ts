@@ -1,5 +1,6 @@
 import {
   type IPropertyReservationComputedFields,
+  type IPropertyIncomeLineComputedFields,
   type IPropertySettings,
   ReservationChannel,
   type TReservationChannel,
@@ -88,5 +89,20 @@ export function calculateStayIncome(
     netIncome,
     resortTax,
     salesTax,
+  };
+}
+
+export function calculateMiscIncomeLine(
+  amount: number
+): IPropertyIncomeLineComputedFields {
+  const netIncome = roundMoney(amount);
+  return {
+    channelCommission: 0,
+    conventionDevelopmentTax: 0,
+    grossIncome: netIncome,
+    miamiDadeSurtax: 0,
+    netIncome,
+    resortTax: 0,
+    salesTax: 0,
   };
 }

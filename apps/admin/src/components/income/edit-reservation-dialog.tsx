@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { reservationsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
-import { invalidatePropertyReservationCaches } from "@/lib/invalidate-property-reservation-caches";
+import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
   type IPropertyReservation, type IPropertyUnit,
   type TReservationChannel,
@@ -68,7 +68,7 @@ export const EditReservationDialog = memo(
       },
       onSuccess: () => {
         toast.success("Income entry updated");
-        invalidatePropertyReservationCaches(queryClient, propertyId);
+        invalidatePropertyIncomeCaches(queryClient, propertyId);
         onOpenChange(false);
       },
     });
