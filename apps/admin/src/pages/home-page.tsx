@@ -62,7 +62,7 @@ const HomePageInner = memo(() => {
               <p className="text-destructive text-sm">
                 {statsQuery.error instanceof Error
                   ? statsQuery.error.message
-                  : "Could not load platform statistics."}
+                  : "Could not load platform statistics"}
               </p>
             ) : null}
             {statsQuery.data ? (

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const RETURN_TITLE = "👋 Don't leave us!";
+const RETURN_TITLE = "👋 Don't leave us";
 
 export function TitleOnVisibility(): null {
   const lastTitleRef = useRef<string | null>(null);
