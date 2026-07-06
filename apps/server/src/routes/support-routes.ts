@@ -12,6 +12,7 @@ import {
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { postDiscordWebhook } from "@/services/discord-webhook";
+import { notifyUser, truncateNotificationBody } from "@/services/user-notifications";
 
 import {
   isValidSupportCategory,
@@ -269,6 +270,17 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
 
       if (detail == null) {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });
+      }
+
+      if (isAdmin) {
+        notifyUser({
+          body: truncateNotificationBody(parsedBody.body),
+          resourceId: idParsed,
+          resourceType: "support_request",
+          title: "New reply on your support request",
+          type: "support_request_reply",
+          userId: ticket.userId,
+        }).catch((err) => request.log.error(err));
       }
 
       return reply.send(detail);

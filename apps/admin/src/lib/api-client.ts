@@ -42,6 +42,11 @@ import {
   type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
   type IUser,
+  type IUserNotification,
+  type IUserNotificationsListQuery,
+  type IUserNotificationsListResponse,
+  type IUserNotificationsMarkAllReadResponse,
+  type IUserNotificationsUnreadCountResponse,
   JwtError,
   type TAddPropertyMemberResponse,
   type UserType,
@@ -326,6 +331,36 @@ function buildSupportRequestsListSearchParams(query: ISupportRequestsListQuery):
   const s = params.toString();
   return s === "" ? "" : `?${s}`;
 }
+
+function buildNotificationsListSearchParams(query: IUserNotificationsListQuery): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const s = params.toString();
+  return s === "" ? "" : `?${s}`;
+}
+
+export const notificationsApi = {
+  getUnreadCount: () =>
+    authenticatedRequest<IUserNotificationsUnreadCountResponse>("/notifications/unread-count"),
+
+  list: (query: IUserNotificationsListQuery = {}) =>
+    authenticatedRequest<IUserNotificationsListResponse>(
+      `/notifications${buildNotificationsListSearchParams(query)}`
+    ),
+
+  markAllRead: () =>
+    authenticatedRequest<IUserNotificationsMarkAllReadResponse>("/notifications/read-all", {
+      method: "POST",
+      omitDefaultContentType: true,
+    }),
+
+  markRead: (id: string) =>
+    authenticatedRequest<{ item: IUserNotification }>(
+      `/notifications/${encodeURIComponent(id)}/read`,
+      { method: "PATCH", omitDefaultContentType: true }
+    ),
+};
 
 export interface ISupportCreateResponse {
   id: string;

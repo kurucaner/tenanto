@@ -19,6 +19,7 @@ import { propertySettingsRoutes } from "./routes/admin/property-settings-routes"
 import { propertyUnitRoutes } from "./routes/admin/property-unit-routes";
 import { authRoutes } from "./routes/auth/auth-routes";
 import { initRoutes } from "./routes/init-routes";
+import { notificationRoutes } from "./routes/notification-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
@@ -52,6 +53,7 @@ server.register(propertyReportRoutes);
 server.register(portfolioReportRoutes);
 server.register(pushTokenRoutes);
 server.register(supportRoutes);
+server.register(notificationRoutes);
 server.register(unsubscribeRoutes);
 
 server.register(async (server) => {

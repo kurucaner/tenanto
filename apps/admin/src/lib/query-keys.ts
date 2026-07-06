@@ -42,5 +42,7 @@ export const adminQueryKeys = {
     ["admin", "property", propertyId, "reports", filters] as const,
   portfolioReportSummary: (filters: IPropertyReportsQuery) =>
     ["admin", "portfolio", "reports", filters] as const,
+  notificationsUnreadCount: () => ["notifications", "unread-count"] as const,
+  notificationsList: () => ["notifications", "list"] as const,
 };
 

@@ -19,6 +19,7 @@ import {
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
+import { notifyUser } from "@/services/user-notifications";
 
 import { parseAdminLimit, parseUuidParam } from "./admin-query-utils";
 import { buildInsertAdminAuditParams } from "./record-admin-audit";
@@ -426,6 +427,14 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
           role,
           request.user.userId
         );
+        notifyUser({
+          body: `You were added as ${role}.`,
+          resourceId: propertyId,
+          resourceType: "property",
+          title: `Added to ${propertyExists.name}`,
+          type: "property_member_added",
+          userId: targetUser.id,
+        }).catch((err) => request.log.error(err));
         return reply.status(HttpStatus.CREATED).send({ member, type: "member_added" });
       }
 
@@ -558,6 +567,15 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       if (!removed) {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Member not found" });
       }
+
+      notifyUser({
+        body: `You no longer have access to ${propertyAccess.name}.`,
+        resourceId: propertyId,
+        resourceType: "property",
+        title: `Removed from ${propertyAccess.name}`,
+        type: "property_member_removed",
+        userId,
+      }).catch((err) => request.log.error(err));
 
       return reply.status(HttpStatus.NO_CONTENT).send();
     }

@@ -17,6 +17,17 @@ export {
 } from "./admin-audit-types";
 export type { IAdminPlatformStats } from "./admin-platform-stats-types";
 
+// Notification Types
+export type {
+  IUserNotification,
+  IUserNotificationsListQuery,
+  IUserNotificationsListResponse,
+  IUserNotificationsMarkAllReadResponse,
+  IUserNotificationsUnreadCountResponse,
+  UserNotificationResourceType,
+  UserNotificationType,
+} from "./notification-types";
+
 // Support Types
 export type {
   IAdminSupportRequestListItem,

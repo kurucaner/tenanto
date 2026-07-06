@@ -793,4 +793,43 @@ export const migrations: IMigration[] = [
     },
     version: 19,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS user_notifications CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS user_notification_type CASCADE;`);
+    },
+    name: "create_user_notifications",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TYPE user_notification_type AS ENUM (
+          'property_member_added',
+          'property_member_removed',
+          'support_request_reply'
+        );
+      `);
+      await client.query(`
+        CREATE TABLE user_notifications (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          type user_notification_type NOT NULL,
+          title TEXT NOT NULL,
+          body TEXT NOT NULL,
+          resource_type VARCHAR(64),
+          resource_id UUID,
+          read_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_user_notifications_user_created_id
+        ON user_notifications (user_id, created_at DESC, id DESC);
+      `);
+      await client.query(`
+        CREATE INDEX idx_user_notifications_user_unread
+        ON user_notifications (user_id)
+        WHERE read_at IS NULL;
+      `);
+    },
+    version: 20,
+  },
 ];
