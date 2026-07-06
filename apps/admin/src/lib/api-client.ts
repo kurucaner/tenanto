@@ -17,7 +17,9 @@ import {
   type IProperty,
   type IPropertyDetail,
   type IPropertyMember,
+  type IPropertySettings,
   type IPropertyUnit,
+  type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
   type IUser,
   JwtError,
@@ -393,5 +395,18 @@ export const unitsApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+};
+
+export const settingsApi = {
+  get: (propertyId: string) =>
+    authenticatedRequest<{ settings: IPropertySettings }>(
+      `/properties/${encodeURIComponent(propertyId)}/settings`
+    ),
+
+  update: (propertyId: string, body: IUpdatePropertySettingsBody) =>
+    authenticatedRequest<{ settings: IPropertySettings }>(
+      `/properties/${encodeURIComponent(propertyId)}/settings`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 };

@@ -499,4 +499,34 @@ export const migrations: IMigration[] = [
     },
     version: 13,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_settings CASCADE;`);
+    },
+    name: "create_property_settings",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_settings (
+          property_id                      UUID PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+          sales_tax_rate                   NUMERIC(6,5) NOT NULL DEFAULT 0.06,
+          miami_dade_surtax_rate           NUMERIC(6,5) NOT NULL DEFAULT 0.01,
+          convention_development_tax_rate  NUMERIC(6,5) NOT NULL DEFAULT 0.03,
+          resort_tax_rate                  NUMERIC(6,5) NOT NULL DEFAULT 0.04,
+          airbnb_commission_rate           NUMERIC(6,5) NOT NULL DEFAULT 0.155,
+          booking_commission_rate          NUMERIC(6,5) NOT NULL DEFAULT 0.15,
+          expedia_commission_rate          NUMERIC(6,5) NOT NULL DEFAULT 0.15,
+          direct_commission_rate           NUMERIC(6,5) NOT NULL DEFAULT 0.035,
+          created_at                       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at                       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_settings_updated_at
+          BEFORE UPDATE ON property_settings
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+    },
+    version: 14,
+  },
 ];

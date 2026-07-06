@@ -23,5 +23,6 @@ export const adminQueryKeys = {
     ["admin", "properties", filters] as const,
   propertyDetail: (propertyId: string) => ["admin", "property", propertyId] as const,
   propertyUnits: (propertyId: string) => ["admin", "property", propertyId, "units"] as const,
+  propertySettings: (propertyId: string) => ["admin", "property", propertyId, "settings"] as const,
 };
 

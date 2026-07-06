@@ -13,6 +13,7 @@ import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { PropertiesListPage } from "@/pages/properties-list-page";
 import { PropertyDetailPage } from "@/pages/property-detail-page";
+import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
               { element: <PropertiesListPage />, path: "properties" },
               { element: <PropertyDetailPage />, path: "properties/:propertyId" },
               { element: <PropertyUnitsPage />, path: "properties/:propertyId/units" },
+              { element: <PropertySettingsPage />, path: "properties/:propertyId/settings" },
               // Admin-only routes
               {
                 children: [

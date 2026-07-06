@@ -1,19 +1,19 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { propertiesDb } from "@/db/properties";
-import { propertyMembersDb } from "@/db/property-members";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
   HttpStatus,
   type ICreatePropertyUnitBody,
   type IUpdatePropertyUnitBody,
-  PropertyRole,
   type TUnitRentalType,
   UnitRentalType,
-  UserType,
 } from "@/packages/shared";
 
 import { parseUuidParam } from "./admin-query-utils";
+import {
+  assertPropertyMemberAccess,
+  assertPropertyOwnerAccess,
+} from "./property-route-access";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
 
@@ -88,47 +88,6 @@ interface IPropertyParams {
   propertyId: string;
 }
 
-async function assertUnitPropertyAccess(
-  propertyId: string,
-  userId: string,
-  userType: string,
-  reply: FastifyReply
-): Promise<boolean> {
-  const property = await propertiesDb.findById(propertyId);
-  if (!property) {
-    void reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
-    return false;
-  }
-  if (userType === UserType.ADMIN) return true;
-
-  const isCreator = property.createdBy === userId;
-  if (!isCreator) {
-    const membership = await propertyMembersDb.findOne(propertyId, userId);
-    if (!membership) {
-      void reply.status(HttpStatus.FORBIDDEN).send({ error: "Access denied" });
-      return false;
-    }
-  }
-  return true;
-}
-
-async function assertOwnerAccess(
-  propertyId: string,
-  userId: string,
-  userType: string,
-  reply: FastifyReply
-): Promise<boolean> {
-  if (userType === UserType.ADMIN) return true;
-  const property = await propertiesDb.findById(propertyId);
-  if (property?.createdBy === userId) return true;
-  const membership = await propertyMembersDb.findOne(propertyId, userId);
-  if (membership?.role !== PropertyRole.OWNER) {
-    void reply.status(HttpStatus.FORBIDDEN).send({ error: "Only property owners can manage units" });
-    return false;
-  }
-  return true;
-}
-
 export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
@@ -141,7 +100,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
 
-      const hasAccess = await assertUnitPropertyAccess(
+      const hasAccess = await assertPropertyMemberAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -163,7 +122,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
 
-      const hasAccess = await assertUnitPropertyAccess(
+      const hasAccess = await assertPropertyMemberAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -171,11 +130,12 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertOwnerAccess(
+      const isOwner = await assertPropertyOwnerAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
-        reply
+        reply,
+        "Only property owners can manage units"
       );
       if (!isOwner) return;
 
@@ -202,7 +162,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid unitId" });
       }
 
-      const hasAccess = await assertUnitPropertyAccess(
+      const hasAccess = await assertPropertyMemberAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -210,11 +170,12 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertOwnerAccess(
+      const isOwner = await assertPropertyOwnerAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
-        reply
+        reply,
+        "Only property owners can manage units"
       );
       if (!isOwner) return;
 
@@ -246,7 +207,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid unitId" });
       }
 
-      const hasAccess = await assertUnitPropertyAccess(
+      const hasAccess = await assertPropertyMemberAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
@@ -254,11 +215,12 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertOwnerAccess(
+      const isOwner = await assertPropertyOwnerAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
-        reply
+        reply,
+        "Only property owners can manage units"
       );
       if (!isOwner) return;
 

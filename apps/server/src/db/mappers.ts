@@ -3,6 +3,7 @@ import {
   type IProperty,
   type IPropertyInvite,
   type IPropertyMember,
+  type IPropertySettings,
   type IPropertyUnit,
   type ISupportRequest,
   type IUser,
@@ -93,5 +94,19 @@ export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit 
   propertyId: row.property_id as string,
   rentalType: row.rental_type as TUnitRentalType,
   unitNumber: row.unit_number as string,
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+export const mapPropertySettingsRow = (row: Record<string, unknown>): IPropertySettings => ({
+  airbnbCommissionRate: Number(row.airbnb_commission_rate),
+  bookingCommissionRate: Number(row.booking_commission_rate),
+  conventionDevelopmentTaxRate: Number(row.convention_development_tax_rate),
+  createdAt: (row.created_at as Date).toISOString(),
+  directCommissionRate: Number(row.direct_commission_rate),
+  expediaCommissionRate: Number(row.expedia_commission_rate),
+  miamiDadeSurtaxRate: Number(row.miami_dade_surtax_rate),
+  propertyId: row.property_id as string,
+  resortTaxRate: Number(row.resort_tax_rate),
+  salesTaxRate: Number(row.sales_tax_rate),
   updatedAt: (row.updated_at as Date).toISOString(),
 });
