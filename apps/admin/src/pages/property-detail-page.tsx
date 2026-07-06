@@ -1,16 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, UserMinus } from "lucide-react";
 import { memo, useState } from "react";
-import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
+import { PropertyPageShell } from "@/components/properties/property-page-shell";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -185,67 +185,38 @@ const PropertyDetailContent = memo(
       removeMemberMutation.mutate(userId);
     };
 
+    const actions = (
+      <>
+        <Button
+          className="gap-1.5"
+          onClick={() => setEditOpen(true)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <Pencil className="size-3.5" />
+          Edit
+        </Button>
+        <Button
+          className="gap-1.5"
+          disabled={deleteMutation.isPending}
+          onClick={handleDelete}
+          size="sm"
+          type="button"
+          variant="destructive"
+        >
+          <Trash2 className="size-3.5" />
+          {deleteMutation.isPending ? "Deleting…" : "Delete"}
+        </Button>
+      </>
+    );
+
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link className="text-muted-foreground text-sm hover:underline" to="/properties">
-            ← Properties
-          </Link>
-          <Separator className="h-4" orientation="vertical" />
-          <h1 className="text-2xl font-semibold tracking-tight">{property.name}</h1>
-          <div className="ml-auto flex gap-2">
-            <Button
-              className="gap-1.5"
-              onClick={() => setEditOpen(true)}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <Pencil className="size-3.5" />
-              Edit
-            </Button>
-            <Button
-              className="gap-1.5"
-              disabled={deleteMutation.isPending}
-              onClick={handleDelete}
-              size="sm"
-              type="button"
-              variant="destructive"
-            >
-              <Trash2 className="size-3.5" />
-              {deleteMutation.isPending ? "Deleting…" : "Delete"}
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 border-b">
-          <NavLink
-            className={({ isActive }) =>
-              `px-3 pb-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "border-b-2 border-foreground text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`
-            }
-            end
-            to={`/properties/${propertyId}`}
-          >
-            Overview
-          </NavLink>
-          <NavLink
-            className={({ isActive }) =>
-              `px-3 pb-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "border-b-2 border-foreground text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`
-            }
-            to={`/properties/${propertyId}/units`}
-          >
-            Units
-          </NavLink>
-        </div>
-
+      <PropertyPageShell
+        actions={actions}
+        propertyId={propertyId}
+        propertyName={property.name}
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -341,7 +312,7 @@ const PropertyDetailContent = memo(
           open={addMemberOpen}
           propertyId={propertyId}
         />
-      </div>
+      </PropertyPageShell>
     );
   }
 );

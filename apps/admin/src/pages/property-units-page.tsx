@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 
+import { PropertyPageShell } from "@/components/properties/property-page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -131,36 +131,24 @@ const PropertyUnitsContent = memo(
 
     const units = unitsQuery.data?.units ?? [];
 
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link className="text-muted-foreground text-sm hover:underline" to="/properties">
-            ← Properties
-          </Link>
-          <Separator className="h-4" orientation="vertical" />
-          <Link
-            className="text-muted-foreground text-sm hover:underline"
-            to={`/properties/${propertyId}`}
-          >
-            {propertyName}
-          </Link>
-          <Separator className="h-4" orientation="vertical" />
-          <h1 className="text-2xl font-semibold tracking-tight">Units</h1>
-          {canManage ? (
-            <div className="ml-auto">
-              <Button
-                className="gap-1.5"
-                onClick={() => setCreateOpen(true)}
-                size="sm"
-                type="button"
-              >
-                <Plus className="size-3.5" />
-                Add Unit
-              </Button>
-            </div>
-          ) : null}
-        </div>
+    const actions = canManage ? (
+      <Button
+        className="gap-1.5"
+        onClick={() => setCreateOpen(true)}
+        size="sm"
+        type="button"
+      >
+        <Plus className="size-3.5" />
+        Add Unit
+      </Button>
+    ) : undefined;
 
+    return (
+      <PropertyPageShell
+        actions={actions}
+        propertyId={propertyId}
+        propertyName={propertyName}
+      >
         <Card>
           <CardContent className="p-0">
             {unitsQuery.isPending ? (
@@ -221,7 +209,7 @@ const PropertyUnitsContent = memo(
             unit={editUnit}
           />
         ) : null}
-      </div>
+      </PropertyPageShell>
     );
   }
 );
