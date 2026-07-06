@@ -29,6 +29,7 @@ COPY apps/server ./apps/server
 COPY --from=base-builder /app/apps/server/dist ./apps/server/dist
 COPY --from=base-builder /app/node_modules ./node_modules
 COPY --from=base-builder /app/apps/server/node_modules ./apps/server/node_modules
+COPY --from=base-builder /app/packages/shared/node_modules ./packages/shared/node_modules
 
 RUN npm install -g pm2
 
