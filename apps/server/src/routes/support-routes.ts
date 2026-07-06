@@ -12,7 +12,7 @@ import {
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { postDiscordWebhook } from "@/services/discord-webhook";
-import { notifyUser, truncateNotificationBody } from "@/services/user-notifications";
+import { buildSupportStatusChangedNotification,notifyUser, truncateNotificationBody } from "@/services/user-notifications";
 
 import {
   isValidSupportCategory,
@@ -301,12 +301,29 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const item = await supportRequestsDb.updateSettableStatusForAdmin(
-        idParsed,
-        parsed.body.status
-      );
+      const ticket = await supportRequestsDb.findById(idParsed);
+      if (ticket == null) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });
+      }
+
+      const previousStatus = ticket.status;
+      const nextStatus = parsed.body.status;
+
+      const item = await supportRequestsDb.updateSettableStatusForAdmin(idParsed, nextStatus);
       if (item == null) {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });
+      }
+
+      if (previousStatus !== nextStatus) {
+        const { body, title } = buildSupportStatusChangedNotification(nextStatus);
+        notifyUser({
+          body,
+          resourceId: idParsed,
+          resourceType: "support_request",
+          title,
+          type: "support_request_status_changed",
+          userId: ticket.userId,
+        }).catch((err) => request.log.error(err));
       }
 
       return reply.send({ item });

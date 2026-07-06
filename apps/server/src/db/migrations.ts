@@ -832,4 +832,16 @@ export const migrations: IMigration[] = [
     },
     version: 20,
   },
+  {
+    down: async () => {
+      // PostgreSQL does not support removing enum values; no-op.
+    },
+    name: "add_support_request_status_changed_notification_type",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE user_notification_type ADD VALUE IF NOT EXISTS 'support_request_status_changed';
+      `);
+    },
+    version: 21,
+  },
 ];

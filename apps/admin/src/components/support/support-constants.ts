@@ -30,6 +30,15 @@ export const STATUS_LABEL: Record<SupportRequestStatus, string> = {
   resolved: "Resolved",
 };
 
+export const STATUS_BADGE_CLASS: Record<SupportRequestStatus, string> = {
+  in_progress:
+    "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+  pending:
+    "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
+  resolved:
+    "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
+};
+
 export type TAppliedSupportFilters = {
   category?: SupportCategory;
   status?: SupportRequestStatus;

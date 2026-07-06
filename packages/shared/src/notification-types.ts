@@ -1,7 +1,8 @@
 export type UserNotificationType =
   | "property_member_added"
   | "property_member_removed"
-  | "support_request_reply";
+  | "support_request_reply"
+  | "support_request_status_changed";
 
 export type UserNotificationResourceType = "property" | "support_request";
 
