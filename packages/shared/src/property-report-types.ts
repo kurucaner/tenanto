@@ -79,3 +79,17 @@ export interface IPropertyReportSummary {
   salesTypeBreakdown: IPropertyReportSalesTypeBreakdown;
   totals: IPropertyReportTotals;
 }
+
+export interface IPortfolioPropertyReportRow {
+  propertyId: string;
+  propertyName: string;
+  summary: IPropertyReportSummary;
+}
+
+export interface IPortfolioReportSummary {
+  from: string;
+  properties: IPortfolioPropertyReportRow[];
+  rentalType?: TReportRentalTypeFilter;
+  to: string;
+  totals: IPropertyReportSummary;
+}

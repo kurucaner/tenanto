@@ -17,6 +17,7 @@ import {
   type ICreatePropertyIncomeLineBody,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
+  type IPortfolioReportSummary,
   type IProperty,
   type IPropertyDetail,
   type IPropertyExpense,
@@ -24,9 +25,9 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyMember,
-  type IPropertyReservation,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
+  type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
@@ -615,4 +616,14 @@ export const reportsApi = {
     authenticatedDownload(
       `/properties/${encodeURIComponent(propertyId)}/reports/export${buildReportsSearchParams(query)}`
     ),
+};
+
+export const portfolioReportsApi = {
+  summary: (query: IPropertyReportsQuery) =>
+    authenticatedRequest<{ summary: IPortfolioReportSummary }>(
+      `/reports/summary${buildReportsSearchParams(query)}`
+    ),
+
+  exportCsv: (query: IPropertyReportsQuery) =>
+    authenticatedDownload(`/reports/export${buildReportsSearchParams(query)}`),
 };

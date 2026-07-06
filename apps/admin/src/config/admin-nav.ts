@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Building2, History, Home, LifeBuoy, SlidersHorizontal, Users } from "lucide-react";
+import { BarChart3, Building2, History, Home, LifeBuoy, SlidersHorizontal, Users } from "lucide-react";
 
 import { UserType } from "@/packages/shared";
 
@@ -20,6 +20,7 @@ export type AdminNavItem = {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/home", icon: Home, match: "exact", title: "Home" },
   { href: "/properties", icon: Building2, match: "prefix", title: "Properties" },
+  { href: "/reports", icon: BarChart3, match: "exact", title: "Reports" },
   { href: "/users", icon: Users, match: "prefix", roles: [UserType.ADMIN], title: "Users" },
   {
     href: "/support-requests",

@@ -83,6 +83,32 @@ export const propertiesDb = {
     return { ...property, creator, members };
   },
 
+  async listAccessibleForUser(
+    userId: string,
+    isAdmin: boolean
+  ): Promise<{ id: string; name: string }[]> {
+    if (isAdmin) {
+      const result = await pool.query(`SELECT id, name FROM properties ORDER BY name ASC`);
+      return result.rows.map((row) => ({
+        id: row.id as string,
+        name: row.name as string,
+      }));
+    }
+
+    const result = await pool.query(
+      `SELECT DISTINCT p.id, p.name
+       FROM properties p
+       LEFT JOIN property_members pm ON pm.property_id = p.id
+       WHERE p.created_by = $1 OR pm.user_id = $1
+       ORDER BY p.name ASC`,
+      [userId]
+    );
+    return result.rows.map((row) => ({
+      id: row.id as string,
+      name: row.name as string,
+    }));
+  },
+
   async listPaginatedForAdmin(params: {
     cursor?: string;
     limit: number;

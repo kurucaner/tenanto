@@ -5,21 +5,23 @@ import { propertyUnitsDb } from "@/db/property-units";
 import {
   getExpenseCategoryMeta,
   IncomeLineType,
+  type IPortfolioPropertyReportRow,
+  type IPortfolioReportSummary,
   type IPropertyExpense,
   type IPropertyIncomeLine,
   type IPropertyReportChannelSummary,
   type IPropertyReportExpenseCategory,
   type IPropertyReportMonthSummary,
   type IPropertyReportSalesTypeBreakdown,
+  type IPropertyReportsQuery,
   type IPropertyReportSummary,
   type IPropertyReportUnitSummary,
-  type IPropertyReportsQuery,
   type IPropertyReservation,
   type IPropertyUnit,
-  type TExpenseCategory,
   ReportRentalTypeFilter,
   ReservationChannel,
   ReservationStatus,
+  type TExpenseCategory,
   type TReportRentalTypeFilter,
   type TReservationChannel,
   type TUnitRentalType,
@@ -180,8 +182,8 @@ function initUnitMap(units: IPropertyUnit[], from: string, to: string) {
       unit.id,
       {
         adr: 0,
-        adrRoomTotal: 0,
         adrNights: 0,
+        adrRoomTotal: 0,
         availableNights: days,
         bookedNights: 0,
         grossIncome: 0,
@@ -379,32 +381,206 @@ function csvRow(values: Array<string | number>): string {
   return `${values.map(csvEscape).join(",")}\n`;
 }
 
-export function buildPropertyReportCsv(summary: IPropertyReportSummary): string {
-  let csv = "";
-  csv += csvRow(["Property Report"]);
-  csv += csvRow(["Period", `${summary.period.from} to ${summary.period.to}`]);
-  csv += "\n";
-  csv += csvRow(["Totals"]);
-  csv += csvRow(["Gross Income", summary.totals.grossIncome]);
-  csv += csvRow(["Net Income", summary.totals.netIncome]);
-  csv += csvRow(["Total Expenses", summary.totals.totalExpenses]);
-  csv += csvRow(["Operational Net", summary.totals.operationalNet]);
-  csv += "\n";
-  csv += csvRow(["Sales Type Breakdown"]);
-  csv += csvRow(["Room", summary.salesTypeBreakdown.room]);
-  csv += csvRow(["Cleaning (stays)", summary.salesTypeBreakdown.cleaningFromStays]);
-  csv += csvRow(["Cleaning only", summary.salesTypeBreakdown.cleaningOnly]);
-  csv += csvRow(["Total cleaning", summary.salesTypeBreakdown.totalCleaning]);
-  csv += csvRow(["Extra cleaning", summary.salesTypeBreakdown.extraCleaning]);
-  csv += csvRow(["Extra service", summary.salesTypeBreakdown.extraService]);
-  csv += csvRow(["Beach rental", summary.salesTypeBreakdown.beachRental]);
-  csv += "\n";
-  csv += csvRow(["Channel Summary", "Gross Income", "Commission", "Stays"]);
-  for (const row of summary.channelSummary) {
-    csv += csvRow([row.channel, row.grossIncome, row.channelCommission, row.stayCount]);
+const PORTFOLIO_BATCH_SIZE = 8;
+
+function emptyPropertyReportSummary(query: IPropertyReportsQuery): IPropertyReportSummary {
+  const months = listMonthsInRange(query.from, query.to);
+  return {
+    byMonth: months.map((month) => ({
+      expenses: 0,
+      grossIncome: 0,
+      month,
+      netIncome: 0,
+      operationalNet: 0,
+    })),
+    byUnit: [],
+    channelSummary: [],
+    expenseByCategory: [],
+    filters: query,
+    period: { from: query.from, to: query.to },
+    propertyExpensesTotal: 0,
+    salesTypeBreakdown: initSalesBreakdown(),
+    totals: {
+      grossIncome: 0,
+      netIncome: 0,
+      operationalNet: 0,
+      totalExpenses: 0,
+    },
+  };
+}
+
+export function rollupSummaries(
+  summaries: IPropertyReportSummary[],
+  query: IPropertyReportsQuery
+): IPropertyReportSummary {
+  if (summaries.length === 0) return emptyPropertyReportSummary(query);
+
+  const salesTypeBreakdown = initSalesBreakdown();
+  const channelMap = new Map<TReservationChannel, IPropertyReportChannelSummary>();
+  const monthMap = new Map<string, IPropertyReportMonthSummary>();
+  const expenseCategoryMap = new Map<TExpenseCategory, number>();
+  const byUnit: IPropertyReportUnitSummary[] = [];
+
+  let propertyExpensesTotal = 0;
+  let grossIncome = 0;
+  let netIncome = 0;
+  let totalExpenses = 0;
+
+  for (const summary of summaries) {
+    grossIncome = roundMoney(grossIncome + summary.totals.grossIncome);
+    netIncome = roundMoney(netIncome + summary.totals.netIncome);
+    totalExpenses = roundMoney(totalExpenses + summary.totals.totalExpenses);
+    propertyExpensesTotal = roundMoney(propertyExpensesTotal + summary.propertyExpensesTotal);
+
+    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + summary.salesTypeBreakdown.room);
+    salesTypeBreakdown.cleaningFromStays = roundMoney(
+      salesTypeBreakdown.cleaningFromStays + summary.salesTypeBreakdown.cleaningFromStays
+    );
+    salesTypeBreakdown.cleaningOnly = roundMoney(
+      salesTypeBreakdown.cleaningOnly + summary.salesTypeBreakdown.cleaningOnly
+    );
+    salesTypeBreakdown.extraCleaning = roundMoney(
+      salesTypeBreakdown.extraCleaning + summary.salesTypeBreakdown.extraCleaning
+    );
+    salesTypeBreakdown.extraService = roundMoney(
+      salesTypeBreakdown.extraService + summary.salesTypeBreakdown.extraService
+    );
+    salesTypeBreakdown.beachRental = roundMoney(
+      salesTypeBreakdown.beachRental + summary.salesTypeBreakdown.beachRental
+    );
+    salesTypeBreakdown.totalCleaning = roundMoney(
+      salesTypeBreakdown.totalCleaning + summary.salesTypeBreakdown.totalCleaning
+    );
+
+    for (const row of summary.channelSummary) {
+      const existing = channelMap.get(row.channel);
+      if (existing) {
+        existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
+        existing.channelCommission = roundMoney(existing.channelCommission + row.channelCommission);
+        existing.stayCount += row.stayCount;
+      } else {
+        channelMap.set(row.channel, { ...row });
+      }
+    }
+
+    byUnit.push(...summary.byUnit);
+
+    for (const row of summary.byMonth) {
+      const existing = monthMap.get(row.month);
+      if (existing) {
+        existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
+        existing.netIncome = roundMoney(existing.netIncome + row.netIncome);
+        existing.expenses = roundMoney(existing.expenses + row.expenses);
+        existing.operationalNet = roundMoney(existing.operationalNet + row.operationalNet);
+      } else {
+        monthMap.set(row.month, { ...row });
+      }
+    }
+
+    for (const row of summary.expenseByCategory) {
+      expenseCategoryMap.set(
+        row.category,
+        roundMoney((expenseCategoryMap.get(row.category) ?? 0) + row.amount)
+      );
+    }
   }
-  csv += "\n";
-  csv += csvRow([
+
+  const months = listMonthsInRange(query.from, query.to);
+  const byMonth = months.map(
+    (month) =>
+      monthMap.get(month) ?? {
+        expenses: 0,
+        grossIncome: 0,
+        month,
+        netIncome: 0,
+        operationalNet: 0,
+      }
+  );
+
+  const channelSummary = [...channelMap.values()].sort((a, b) => b.grossIncome - a.grossIncome);
+  const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
+    .map(([category, amount]) => ({ amount, category }))
+    .sort((a, b) => b.amount - a.amount);
+
+  return {
+    byMonth,
+    byUnit,
+    channelSummary,
+    expenseByCategory,
+    filters: query,
+    period: { from: query.from, to: query.to },
+    propertyExpensesTotal,
+    salesTypeBreakdown,
+    totals: {
+      grossIncome,
+      netIncome,
+      operationalNet: roundMoney(netIncome - totalExpenses),
+      totalExpenses,
+    },
+  };
+}
+
+async function runInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
+
+export async function buildPortfolioReportSummary(
+  properties: { id: string; name: string }[],
+  query: IPropertyReportsQuery
+): Promise<IPortfolioReportSummary> {
+  const summaries = await runInBatches(properties, PORTFOLIO_BATCH_SIZE, async (property) => {
+    const data = await loadReportData(property.id, query);
+    return buildPropertyReportSummary(data, query);
+  });
+
+  const propertyRows: IPortfolioPropertyReportRow[] = properties.map((property, index) => ({
+    propertyId: property.id,
+    propertyName: property.name,
+    summary: summaries[index]!,
+  }));
+
+  return {
+    from: query.from,
+    properties: propertyRows,
+    rentalType: query.rentalType,
+    to: query.to,
+    totals: rollupSummaries(summaries, query),
+  };
+}
+
+function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSummary): string {
+  let next = csv;
+  next += csvRow(["Totals"]);
+  next += csvRow(["Gross Income", summary.totals.grossIncome]);
+  next += csvRow(["Net Income", summary.totals.netIncome]);
+  next += csvRow(["Total Expenses", summary.totals.totalExpenses]);
+  next += csvRow(["Operational Net", summary.totals.operationalNet]);
+  next += "\n";
+  next += csvRow(["Sales Type Breakdown"]);
+  next += csvRow(["Room", summary.salesTypeBreakdown.room]);
+  next += csvRow(["Cleaning (stays)", summary.salesTypeBreakdown.cleaningFromStays]);
+  next += csvRow(["Cleaning only", summary.salesTypeBreakdown.cleaningOnly]);
+  next += csvRow(["Total cleaning", summary.salesTypeBreakdown.totalCleaning]);
+  next += csvRow(["Extra cleaning", summary.salesTypeBreakdown.extraCleaning]);
+  next += csvRow(["Extra service", summary.salesTypeBreakdown.extraService]);
+  next += csvRow(["Beach rental", summary.salesTypeBreakdown.beachRental]);
+  next += "\n";
+  next += csvRow(["Channel Summary", "Gross Income", "Commission", "Stays"]);
+  for (const row of summary.channelSummary) {
+    next += csvRow([row.channel, row.grossIncome, row.channelCommission, row.stayCount]);
+  }
+  next += "\n";
+  next += csvRow([
     "By Unit",
     "Gross Income",
     "Net Income",
@@ -414,7 +590,7 @@ export function buildPropertyReportCsv(summary: IPropertyReportSummary): string 
     "ADR",
   ]);
   for (const row of summary.byUnit) {
-    csv += csvRow([
+    next += csvRow([
       row.unitNumber,
       row.grossIncome,
       row.netIncome,
@@ -424,15 +600,46 @@ export function buildPropertyReportCsv(summary: IPropertyReportSummary): string 
       row.adr,
     ]);
   }
-  csv += "\n";
-  csv += csvRow(["By Month", "Gross Income", "Net Income", "Expenses", "Operational Net"]);
+  next += "\n";
+  next += csvRow(["By Month", "Gross Income", "Net Income", "Expenses", "Operational Net"]);
   for (const row of summary.byMonth) {
-    csv += csvRow([row.month, row.grossIncome, row.netIncome, row.expenses, row.operationalNet]);
+    next += csvRow([row.month, row.grossIncome, row.netIncome, row.expenses, row.operationalNet]);
+  }
+  next += "\n";
+  next += csvRow(["Expenses by Category", "Amount"]);
+  for (const row of summary.expenseByCategory) {
+    next += csvRow([row.category, row.amount]);
+  }
+  return next;
+}
+
+export function buildPropertyReportCsv(summary: IPropertyReportSummary): string {
+  let csv = "";
+  csv += csvRow(["Property Report"]);
+  csv += csvRow(["Period", `${summary.period.from} to ${summary.period.to}`]);
+  csv += "\n";
+  return appendPropertyReportCsvSections(csv, summary);
+}
+
+export function buildPortfolioReportCsv(summary: IPortfolioReportSummary): string {
+  let csv = "";
+  csv += csvRow(["Portfolio Report"]);
+  csv += csvRow(["Period", `${summary.from} to ${summary.to}`]);
+  if (summary.rentalType) {
+    csv += csvRow(["Rental Type Filter", summary.rentalType]);
   }
   csv += "\n";
-  csv += csvRow(["Expenses by Category", "Amount"]);
-  for (const row of summary.expenseByCategory) {
-    csv += csvRow([row.category, row.amount]);
+  csv += csvRow(["Portfolio Totals"]);
+  csv += "\n";
+  csv = appendPropertyReportCsvSections(csv, summary.totals);
+
+  for (const row of summary.properties) {
+    csv += "\n";
+    csv += csvRow(["Property", row.propertyName]);
+    csv += csvRow(["Property ID", row.propertyId]);
+    csv += "\n";
+    csv = appendPropertyReportCsvSections(csv, row.summary);
   }
+
   return csv;
 }

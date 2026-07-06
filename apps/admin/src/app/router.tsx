@@ -18,6 +18,7 @@ import { PropertyIncomePage } from "@/pages/property-income-page";
 import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
+import { ReportsPage } from "@/pages/reports-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
 import { UsersListPage } from "@/pages/users-list-page";
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
               // Available to all authenticated users
               { element: <HomePage />, path: "home" },
               { element: <PropertiesListPage />, path: "properties" },
+              { element: <ReportsPage />, path: "reports" },
               { element: <PropertyDetailPage />, path: "properties/:propertyId" },
               { element: <PropertyUnitsPage />, path: "properties/:propertyId/units" },
               { element: <PropertyIncomePage />, path: "properties/:propertyId/income" },

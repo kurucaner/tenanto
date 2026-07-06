@@ -1,67 +1,41 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download } from "lucide-react";
 import { memo, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
-import {
-  CHANNEL_OPTIONS,
-  formatChannelLabel,
-  reservationSelectClassName,
-} from "@/components/income/reservation-form-options";
+import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import { PropertyPageShell } from "@/components/properties/property-page-shell";
+import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
 import { ReportSectionTable } from "@/components/reports/report-section-table";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { propertiesApi, reportsApi, unitsApi } from "@/lib/api-client";
+import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { cn } from "@/lib/utils";
 import {
-  ReportRentalTypeFilter,
+  formatReportPercent,
+  getDefaultReportDateRange,
+} from "@/lib/report-date-defaults";
+import {
   type IPropertyReportsQuery,
   type TReportRentalTypeFilter,
 } from "@/packages/shared";
 
-const reportSelectClassName = cn(
-  reservationSelectClassName,
-  "bg-background"
-);
-
-const RENTAL_TYPE_FILTER_OPTIONS: { label: string; value: TReportRentalTypeFilter | "" }[] = [
-  { label: "Both", value: "" },
-  { label: "Short term", value: ReportRentalTypeFilter.SHORT_TERM },
-  { label: "Long term", value: ReportRentalTypeFilter.LONG_TERM },
-];
-
-function getDefaultDateRange(): { from: string; to: string } {
-  const now = new Date();
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-  return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
-  };
-}
-
-function formatPercent(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
 const PropertyReportsContent = memo(
   ({ propertyId, propertyName }: { propertyId: string; propertyName: string }) => {
-    const defaults = useMemo(() => getDefaultDateRange(), []);
-    const [from, setFrom] = useState(defaults.from);
-    const [to, setTo] = useState(defaults.to);
+    const [searchParams] = useSearchParams();
+    const defaultRange = useMemo(() => getDefaultReportDateRange(), []);
+    const [from, setFrom] = useState(
+      () => searchParams.get("from") ?? defaultRange.from
+    );
+    const [to, setTo] = useState(() => searchParams.get("to") ?? defaultRange.to);
     const [unitId, setUnitId] = useState("");
     const [channel, setChannel] = useState("");
-    const [rentalType, setRentalType] = useState("");
+    const [rentalType, setRentalType] = useState(() => searchParams.get("rentalType") ?? "");
     const [isExporting, setIsExporting] = useState(false);
 
     const reportQuery = useMemo<IPropertyReportsQuery | null>(() => {
@@ -92,12 +66,10 @@ const PropertyReportsContent = memo(
       setIsExporting(true);
       try {
         const blob = await reportsApi.exportCsv(propertyId, reportQuery);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `property-${propertyId}-report-${reportQuery.from}-${reportQuery.to}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        downloadReportCsv(
+          blob,
+          `property-${propertyId}-report-${reportQuery.from}-${reportQuery.to}.csv`
+        );
         toast.success("Report downloaded");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Failed to download report");
@@ -106,98 +78,29 @@ const PropertyReportsContent = memo(
       }
     };
 
-    const actions = (
-      <Button
-        className="gap-1.5"
-        disabled={!reportQuery || isExporting}
-        onClick={() => void handleExport()}
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        <Download className="size-3.5" />
-        {isExporting ? "Downloading…" : "Download CSV"}
-      </Button>
-    );
-
     return (
-      <PropertyPageShell actions={actions} propertyId={propertyId} propertyName={propertyName}>
+      <PropertyPageShell propertyId={propertyId} propertyName={propertyName}>
         <Card>
           <CardContent className="space-y-4 p-4">
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="report-from">From</Label>
-                <Input
-                  id="report-from"
-                  onChange={(e) => setFrom(e.target.value)}
-                  type="date"
-                  value={from}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="report-to">To</Label>
-                <Input
-                  id="report-to"
-                  onChange={(e) => setTo(e.target.value)}
-                  type="date"
-                  value={to}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="report-unit">Unit</Label>
-                <select
-                  className={reportSelectClassName}
-                  id="report-unit"
-                  onChange={(e) => setUnitId(e.target.value)}
-                  value={unitId}
-                >
-                  <option value="">All units</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.unitNumber}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="report-channel">Channel</Label>
-                <select
-                  className={reportSelectClassName}
-                  id="report-channel"
-                  onChange={(e) => setChannel(e.target.value)}
-                  value={channel}
-                >
-                  <option value="">All channels</option>
-                  {CHANNEL_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="report-rental-type">Rental type</Label>
-                <select
-                  className={reportSelectClassName}
-                  id="report-rental-type"
-                  onChange={(e) => setRentalType(e.target.value)}
-                  value={rentalType}
-                >
-                  {RENTAL_TYPE_FILTER_OPTIONS.map((opt) => (
-                    <option key={opt.value || "both"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {rentalType ? (
-              <p className="text-muted-foreground text-xs">
-                Expenses are property-wide and included when the property has units of the selected
-                rental type.
-              </p>
-            ) : null}
+            <ReportFiltersBar
+              channel={channel}
+              from={from}
+              isExportDisabled={!reportQuery}
+              isExporting={isExporting}
+              onChannelChange={setChannel}
+              onExport={() => void handleExport()}
+              onFromChange={setFrom}
+              onRentalTypeChange={setRentalType}
+              onToChange={setTo}
+              onUnitChange={setUnitId}
+              rentalType={rentalType}
+              showChannelFilter
+              showExport
+              showUnitFilter
+              to={to}
+              unitId={unitId}
+              units={units}
+            />
 
             {!reportQuery ? (
               <p className="text-muted-foreground text-sm">Select a valid date range to load reports.</p>
@@ -290,7 +193,7 @@ const PropertyReportsContent = memo(
                       <TableCell className="text-right">{formatMoney(row.netIncome)}</TableCell>
                       <TableCell className="text-right">{row.bookedNights}</TableCell>
                       <TableCell className="text-right">{row.availableNights}</TableCell>
-                      <TableCell className="text-right">{formatPercent(row.occupancyRate)}</TableCell>
+                      <TableCell className="text-right">{formatReportPercent(row.occupancyRate)}</TableCell>
                       <TableCell className="text-right">{formatMoney(row.adr)}</TableCell>
                     </TableRow>
                   ))}

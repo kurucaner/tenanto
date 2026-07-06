@@ -242,17 +242,19 @@ Table: `property_expenses`
 
 ---
 
-## Phase 5.1 — Multi-property Reports (planned)
+## Phase 5.1 — Multi-property Reports ✅
 
 **Goal:** Portfolio-level reports across all accessible properties.
 
 | Item | Description |
 |------|-------------|
-| API | `GET /reports/summary?from=&to=` — aggregate across member properties |
-| Sidebar | Global **Reports** nav item at `/reports` |
-| Page | Portfolio totals + per-property breakdown table |
+| API | `GET /reports/summary?from=&to=&rentalType=` — aggregate across accessible properties |
+| API | `GET /reports/export` — portfolio CSV (totals + per-property sections) |
+| Access | Admin: all properties; others: created + member properties (same as property list) |
+| Sidebar | Global **Reports** nav item at `/reports` (all authenticated users) |
+| Page | Portfolio summary cards + per-property breakdown table with links to property Reports |
 
-Reuses `buildPropertyReportSummary` per property and rolls up totals.
+Reuses `loadReportData` + `buildPropertyReportSummary` per property, then `rollupSummaries` for portfolio totals. Occupancy and ADR in the per-property table are recomputed from unit aggregates.
 
 ---
 
@@ -292,7 +294,7 @@ flowchart LR
   P31["Phase 3.1: Income Lines ✅"]
   P4["Phase 4: Expenses ✅"]
   P5["Phase 5: Reports ✅"]
-  P51["Phase 5.1: Portfolio Reports"]
+  P51["Phase 5.1: Portfolio Reports ✅"]
   P6["Phase 6: Nav tabs"]
   P1 --> P2 --> P3 --> P31 --> P4 --> P5 --> P51
   P2 -.-> P6

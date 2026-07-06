@@ -116,15 +116,17 @@ export {
 
 // Property Report Types
 export {
-  ReportRentalTypeFilter,
+  type IPortfolioPropertyReportRow,
+  type IPortfolioReportSummary,
   type IPropertyReportChannelSummary,
   type IPropertyReportExpenseCategory,
   type IPropertyReportMonthSummary,
   type IPropertyReportSalesTypeBreakdown,
+  type IPropertyReportsQuery,
   type IPropertyReportSummary,
   type IPropertyReportTotals,
   type IPropertyReportUnitSummary,
-  type IPropertyReportsQuery,
+  ReportRentalTypeFilter,
   type TReportRentalTypeFilter,
 } from "./property-report-types";
 
