@@ -119,6 +119,8 @@ async function assertOwnerAccess(
   reply: FastifyReply
 ): Promise<boolean> {
   if (userType === UserType.ADMIN) return true;
+  const property = await propertiesDb.findById(propertyId);
+  if (property?.createdBy === userId) return true;
   const membership = await propertyMembersDb.findOne(propertyId, userId);
   if (membership?.role !== PropertyRole.OWNER) {
     void reply.status(HttpStatus.FORBIDDEN).send({ error: "Only property owners can manage units" });
