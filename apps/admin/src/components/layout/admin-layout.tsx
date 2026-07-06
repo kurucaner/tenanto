@@ -6,7 +6,6 @@ import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
@@ -32,10 +31,6 @@ const AdminLayoutInner = memo(() => {
         <SidebarInset className="admin-app-surface overflow-hidden">
           <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
             <SidebarTrigger className="hidden md:inline-flex" />
-            <Separator className="hidden h-6 md:block" orientation="vertical" />
-            <span className="min-w-0 truncate text-xs font-medium tracking-[0.18em] text-muted-foreground">
-              DASHBOARD
-            </span>
             <div className="ms-auto flex shrink-0 items-center gap-2">
               <NotificationBell />
               {resolvedDark ? <AdminDarkPaletteMenu compact /> : null}
