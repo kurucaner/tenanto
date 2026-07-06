@@ -7,4 +7,5 @@ watchPatterns = ["apps/server/**", "packages/**", "docker/Dockerfile.server"]
 
 [deploy]
 startCommand = "dumb-init pm2-runtime start ecosystem.config.cjs"
+healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"

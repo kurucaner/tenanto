@@ -7,5 +7,4 @@ watchPatterns = ["apps/admin/**", "packages/**", "docker/Dockerfile.admin"]
 
 [deploy]
 startCommand = "dumb-init npm run start"
-healthcheckPath = "/"
 restartPolicyType = "ON_FAILURE"
