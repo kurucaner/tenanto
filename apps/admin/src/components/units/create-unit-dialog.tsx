@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LayoutPicker } from "@/components/units/layout-picker";
 import { unitsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
-import { type TUnitRentalType,UnitRentalType } from "@/packages/shared";
+import { type TUnitRentalType, UnitRentalType } from "@/packages/shared";
 
 const RENTAL_TYPE_OPTIONS: { label: string; value: TUnitRentalType }[] = [
   { label: "Short Term", value: UnitRentalType.SHORT_TERM },
@@ -38,7 +39,11 @@ export const CreateUnitDialog = memo(
 
     const mutation = useMutation({
       mutationFn: () =>
-        unitsApi.create(propertyId, { layout: layout.trim(), rentalType, unitNumber: unitNumber.trim() }),
+        unitsApi.create(propertyId, {
+          layout: layout.trim(),
+          rentalType,
+          unitNumber: unitNumber.trim(),
+        }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to create unit");
       },
@@ -60,7 +65,7 @@ export const CreateUnitDialog = memo(
 
     return (
       <Dialog onOpenChange={handleClose} open={open}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Add Unit</DialogTitle>
             <DialogDescription>
@@ -81,13 +86,8 @@ export const CreateUnitDialog = memo(
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="unit-layout">Layout</Label>
-              <Input
-                id="unit-layout"
-                onChange={(e) => setLayout(e.target.value)}
-                placeholder="e.g. 1+0, 1+1, 2+1"
-                value={layout}
-              />
+              <Label>Layout</Label>
+              <LayoutPicker onChange={setLayout} value={layout} />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -112,7 +112,12 @@ export const CreateUnitDialog = memo(
           </div>
 
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={handleClose} type="button" variant="outline">
+            <Button
+              disabled={mutation.isPending}
+              onClick={handleClose}
+              type="button"
+              variant="outline"
+            >
               Cancel
             </Button>
             <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">

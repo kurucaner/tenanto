@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LayoutPicker } from "@/components/units/layout-picker";
 import { unitsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ export const EditUnitDialog = memo(
 
     return (
       <Dialog onOpenChange={() => onOpenChange(false)} open={open}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Edit Unit {unit.unitNumber}</DialogTitle>
             <DialogDescription>Update the details of this unit.</DialogDescription>
@@ -77,13 +78,8 @@ export const EditUnitDialog = memo(
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-unit-layout">Layout</Label>
-              <Input
-                id="edit-unit-layout"
-                onChange={(e) => setLayout(e.target.value)}
-                placeholder="e.g. 1+0, 1+1, 2+1"
-                value={layout}
-              />
+              <Label>Layout</Label>
+              <LayoutPicker onChange={setLayout} value={layout} />
             </div>
 
             <div className="flex flex-col gap-1.5">
