@@ -10,16 +10,19 @@ import { supportStagedUploadsDb } from "@/db/support-staged-uploads";
 import {
   HttpStatus,
   type ISupportAttachmentPresignBody,
+  type ISupportAttachmentStatusBody,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type SupportCategory,
   type SupportRequestStatus,
+  type TSupportStagedUploadStatus,
   UserType,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { generateUploadUrl, headObject } from "@/s3/s3-commands";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
+import { publishSupportAttachmentStatus } from "@/services/publish-support-attachment-status";
 import {
   buildSupportStatusChangedNotification,
   notifyUser,
@@ -31,6 +34,7 @@ import {
   parseOptionalSupportCategory,
   parseOptionalSupportRequestStatus,
   parseSupportAttachmentPresignBody,
+  parseSupportAttachmentStatusBody,
   parseSupportCreateAttachments,
   parseSupportListLimit,
   parseSupportMessageBody,
@@ -138,7 +142,8 @@ function parseListQuery(
 
 async function verifyCreateAttachments(
   userId: string,
-  attachments: ISupportCreateBody["attachments"]
+  attachments: ISupportCreateBody["attachments"],
+  log?: FastifyRequest["log"]
 ): Promise<{ error: string; ok: false; status: number } | { ok: true }> {
   if (attachments == null || attachments.length === 0) {
     return { ok: true };
@@ -174,7 +179,18 @@ async function verifyCreateAttachments(
       };
     }
 
-    await supportStagedUploadsDb.confirmByKey(attachment.key, attachment.sizeBytes);
+    const confirmResult = await supportStagedUploadsDb.confirmByKey(
+      attachment.key,
+      attachment.sizeBytes
+    );
+    if (confirmResult.confirmed && confirmResult.userId != null) {
+      publishSupportAttachmentStatus({
+        log,
+        status: "confirmed",
+        storageKey: attachment.key,
+        userId: confirmResult.userId,
+      });
+    }
   }
 
   return { ok: true };
@@ -219,6 +235,31 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
     }
   );
 
+  server.post<{ Body: ISupportAttachmentStatusBody }>(
+    "/support/attachments/status",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Body: ISupportAttachmentStatusBody }>,
+      reply: FastifyReply
+    ) => {
+      const parsed = parseSupportAttachmentStatusBody(request.body);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      const statuses = await supportStagedUploadsDb.findByKeysForUser(
+        request.user.userId,
+        parsed.body.keys
+      );
+      const keys: Record<string, TSupportStagedUploadStatus> = {};
+      for (const [key, status] of statuses) {
+        keys[key] = status;
+      }
+
+      return reply.send({ keys });
+    }
+  );
+
   server.post<{ Body: ISupportCreateBody }>(
     "/support",
     { preHandler: authPre },
@@ -250,7 +291,8 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
 
       const verifiedAttachments = await verifyCreateAttachments(
         userId,
-        parsedAttachments.attachments
+        parsedAttachments.attachments,
+        request.log
       );
       if (!verifiedAttachments.ok) {
         return reply
@@ -281,6 +323,18 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
           message: trimmedMessage,
           userEmail,
         }).catch((err) => server.log.error(err));
+      }
+
+      const ticketId = detail.item.id;
+      publishSupportRequestUpdated(ticketId, userId, request.log);
+      for (const attachment of parsedAttachments.attachments) {
+        publishSupportAttachmentStatus({
+          log: request.log,
+          status: "linked",
+          storageKey: attachment.key,
+          supportRequestId: ticketId,
+          userId,
+        });
       }
 
       return reply.status(HttpStatus.OK).send({

@@ -1,3 +1,4 @@
+import { clearAppSession } from "@/lib/clear-app-session";
 import {
   type IAdminAddPropertyMemberBody,
   type IAdminAuditEventsListQuery,
@@ -34,6 +35,8 @@ import {
   type IPropertyUnit,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
+  type ISupportAttachmentStatusBody,
+  type ISupportAttachmentStatusResponse,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type ISupportRequestDetail,
@@ -54,7 +57,6 @@ import {
   type TAddPropertyMemberResponse,
   type UserType,
 } from "@/packages/shared";
-import { clearAppSession } from "@/lib/clear-app-session";
 import { useAuthStore } from "@/stores/auth-store";
 
 function getApiBaseUrl(): string {
@@ -399,6 +401,12 @@ export const supportApi = {
 
   presignAttachments: (body: ISupportAttachmentPresignBody) =>
     authenticatedRequest<ISupportAttachmentPresignResponse>("/support/attachments/presign", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  attachmentStatus: (body: ISupportAttachmentStatusBody) =>
+    authenticatedRequest<ISupportAttachmentStatusResponse>("/support/attachments/status", {
       body: JSON.stringify(body),
       method: "POST",
     }),

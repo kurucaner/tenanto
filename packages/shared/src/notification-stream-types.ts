@@ -1,4 +1,5 @@
 import { type IUserNotification } from "./notification-types";
+import { type TSupportStagedUploadStatus } from "./support-types";
 
 export type NotificationStreamEventType =
   | "connected"
@@ -6,6 +7,7 @@ export type NotificationStreamEventType =
   | "notifications.new"
   | "notifications.unread_count"
   | "notifications.inbox_updated"
+  | "support_attachment.updated"
   | "support_request.updated";
 
 export interface INotificationStreamEvent {
@@ -29,4 +31,10 @@ export interface INotificationStreamNewData {
 
 export interface INotificationStreamSupportRequestUpdatedData {
   supportRequestId: string;
+}
+
+export interface INotificationStreamSupportAttachmentUpdatedData {
+  status: TSupportStagedUploadStatus;
+  storageKey: string;
+  supportRequestId?: string;
 }

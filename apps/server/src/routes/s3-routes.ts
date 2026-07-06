@@ -8,6 +8,7 @@ import {
   isObjectCreatedEvent,
   parseS3NotificationEvent,
 } from "@/s3/s3-notification-utils";
+import { publishSupportAttachmentStatus } from "@/services/publish-support-attachment-status";
 
 function getInternalSecretFromRequest(request: FastifyRequest): string | null {
   const headerSecret = request.headers["x-internal-secret"];
@@ -55,12 +56,19 @@ export const s3Routes = async (server: FastifyInstance): Promise<void> => {
         if (!key.startsWith("support/")) continue;
 
         const sizeBytes = record.s3.object.size;
-        const confirmed = await supportStagedUploadsDb.confirmByKey(
+        const result = await supportStagedUploadsDb.confirmByKey(
           key,
           Number.isFinite(sizeBytes) ? sizeBytes : undefined
         );
 
-        if (!confirmed) {
+        if (result.confirmed && result.userId != null) {
+          publishSupportAttachmentStatus({
+            log: request.log,
+            status: "confirmed",
+            storageKey: key,
+            userId: result.userId,
+          });
+        } else if (!result.confirmed) {
           request.log.warn({ key }, "S3 notification for unknown or consumed support upload");
         }
       }

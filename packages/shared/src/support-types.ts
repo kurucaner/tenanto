@@ -21,6 +21,8 @@ export const SUPPORT_ALLOWED_IMAGE_MIME_TYPES = [
 
 export type TSupportAllowedImageMimeType = (typeof SUPPORT_ALLOWED_IMAGE_MIME_TYPES)[number];
 
+export type TSupportStagedUploadStatus = "confirmed" | "linked" | "pending";
+
 export interface ISupportAttachment {
   contentType: string;
   downloadUrl: string;
@@ -99,6 +101,14 @@ export interface ISupportAttachmentPresignItem {
 
 export interface ISupportAttachmentPresignResponse {
   uploads: ISupportAttachmentPresignItem[];
+}
+
+export interface ISupportAttachmentStatusBody {
+  keys: string[];
+}
+
+export interface ISupportAttachmentStatusResponse {
+  keys: Record<string, TSupportStagedUploadStatus>;
 }
 
 export interface IAdminSupportRequestPatchBody {

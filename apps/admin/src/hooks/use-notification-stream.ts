@@ -5,7 +5,7 @@ import { useLocation } from "react-router-dom";
 
 import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-client";
 import { NOTIFICATION_STREAM_CLIENT_ID_KEY } from "@/lib/notification-stream-constants";
-import { handleSupportRequestUpdated } from "@/lib/notification-stream-handlers";
+import { handleSupportAttachmentUpdated, handleSupportRequestUpdated, parseSupportAttachmentUpdatedData } from "@/lib/notification-stream-handlers";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { showNotificationToast } from "@/lib/show-notification-toast";
 import {
@@ -224,6 +224,13 @@ export function useNotificationStream(
         const supportRequestId = event.data.supportRequestId;
         if (typeof supportRequestId === "string") {
           handleSupportRequestUpdated(queryClient, supportRequestId, pathnameRef.current);
+        }
+      }
+
+      if (event.type === "support_attachment.updated") {
+        const parsed = parseSupportAttachmentUpdatedData(event.data);
+        if (parsed != null) {
+          handleSupportAttachmentUpdated(queryClient, parsed, pathnameRef.current);
         }
       }
     };

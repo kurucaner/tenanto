@@ -22,6 +22,7 @@ export type {
   INotificationStreamConnectedData,
   INotificationStreamEvent,
   INotificationStreamNewData,
+  INotificationStreamSupportAttachmentUpdatedData,
   INotificationStreamSupportRequestUpdatedData,
   INotificationStreamUnreadCountData,
   NotificationStreamEventType,
@@ -37,11 +38,6 @@ export type {
 } from "./notification-types";
 
 // Support Types
-export {
-  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
-  SUPPORT_MAX_IMAGE_ATTACHMENTS,
-  SUPPORT_MAX_IMAGE_BYTES,
-} from "./support-types";
 export type {
   IAdminSupportRequestListItem,
   IAdminSupportRequestPatchBody,
@@ -54,6 +50,8 @@ export type {
   ISupportAttachmentPresignFile,
   ISupportAttachmentPresignItem,
   ISupportAttachmentPresignResponse,
+  ISupportAttachmentStatusBody,
+  ISupportAttachmentStatusResponse,
   ISupportCreateBody,
   ISupportMessage,
   ISupportMessageCreateBody,
@@ -66,6 +64,12 @@ export type {
   SupportRequestStatus,
   TAdminSupportRequestSettableStatus,
   TSupportAllowedImageMimeType,
+  TSupportStagedUploadStatus,
+} from "./support-types";
+export {
+  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
+  SUPPORT_MAX_IMAGE_ATTACHMENTS,
+  SUPPORT_MAX_IMAGE_BYTES,
 } from "./support-types";
 
 // App Config Types
@@ -176,19 +180,19 @@ export { sleep, toIso } from "./helpers";
 
 // Phone utilities
 export {
+  type CountryCode,
   formatNationalAsYouType,
   formatPhoneDisplay,
   getMaxNationalDigits,
   getPhoneCountryOptions,
+  type IPhoneCountryOption,
+  type IPhoneParts,
   isValidE164,
   isValidPhone,
   normalizeToE164,
   parsePhoneToParts,
   PHONE_DEFAULT_COUNTRY,
   toE164,
-  type CountryCode,
-  type IPhoneCountryOption,
-  type IPhoneParts,
 } from "./phone";
 
 // Brand Constants

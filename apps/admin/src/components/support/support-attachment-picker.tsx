@@ -24,6 +24,7 @@ export interface SupportAttachmentPickerProps {
   isDragOver: boolean;
   onAddFiles: (files: FileList | File[]) => void;
   onRemove: (id: string) => void;
+  onRetry: (id: string) => void;
 }
 
 export const SupportAttachmentPicker = memo(
@@ -36,6 +37,7 @@ export const SupportAttachmentPicker = memo(
     isDragOver,
     onAddFiles,
     onRemove,
+    onRetry,
   }: SupportAttachmentPickerProps) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropzoneId = `${idPrefix}-attachments-dropzone`;
@@ -102,6 +104,7 @@ export const SupportAttachmentPicker = memo(
                 formatFileSize={formatFileSize}
                 key={attachment.id}
                 onRemove={onRemove}
+                onRetry={onRetry}
               />
             ))}
           </ul>

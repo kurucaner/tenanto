@@ -3,6 +3,7 @@ import {
   type ISupportAttachmentInput,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignFile,
+  type ISupportAttachmentStatusBody,
   SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
   SUPPORT_MAX_IMAGE_ATTACHMENTS,
   SUPPORT_MAX_IMAGE_BYTES,
@@ -196,4 +197,37 @@ export function parseSupportCreateAttachments(
   }
 
   return { attachments, ok: true };
+}
+
+export function parseSupportAttachmentStatusBody(
+  raw: unknown
+): { body: ISupportAttachmentStatusBody; ok: true } | { error: string; ok: false } {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { error: "Body must be a JSON object", ok: false };
+  }
+  const record = raw as Record<string, unknown>;
+  const keysRaw = record["keys"];
+  if (!Array.isArray(keysRaw)) {
+    return { error: "keys must be an array", ok: false };
+  }
+  if (keysRaw.length === 0) {
+    return { error: "keys must not be empty", ok: false };
+  }
+  if (keysRaw.length > SUPPORT_MAX_IMAGE_ATTACHMENTS) {
+    return {
+      error: `You can check up to ${SUPPORT_MAX_IMAGE_ATTACHMENTS} keys`,
+      ok: false,
+    };
+  }
+
+  const keys: string[] = [];
+  for (const keyRaw of keysRaw) {
+    const key = parseAttachmentKey(keyRaw);
+    if (key == null) {
+      return { error: "Invalid key in keys array", ok: false };
+    }
+    keys.push(key);
+  }
+
+  return { body: { keys }, ok: true };
 }

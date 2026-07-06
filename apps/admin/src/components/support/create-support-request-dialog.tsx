@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
-import { uploadSupportAttachments } from "@/lib/upload-support-attachments";
+import { toAttachmentInput } from "@/lib/upload-support-attachments";
 import { type SupportCategory } from "@/packages/shared";
 
 export const CreateSupportRequestDialog = memo(
@@ -35,21 +35,23 @@ export const CreateSupportRequestDialog = memo(
     const queryClient = useQueryClient();
     const [category, setCategory] = useState<SupportCategory>("bug");
     const [message, setMessage] = useState("");
-    const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
     const {
       addFiles,
+      allUploadsReady,
       attachments,
       clearAttachments,
       dragHandlers,
       formatFileSize,
+      hasPendingUploads,
+      hasUploadErrors,
       isDragOver,
       removeAttachment,
+      retryAttachment,
     } = useSupportImageAttachments();
 
     const resetForm = useCallback(() => {
       setCategory("bug");
       setMessage("");
-      setIsUploadingAttachments(false);
       clearAttachments();
     }, [clearAttachments]);
 
@@ -65,18 +67,8 @@ export const CreateSupportRequestDialog = memo(
 
     const mutation = useMutation({
       mutationFn: async () => {
-        let attachmentInputs;
-        if (attachments.length > 0) {
-          setIsUploadingAttachments(true);
-          try {
-            attachmentInputs = await uploadSupportAttachments(
-              attachments.map((attachment) => attachment.file),
-              (files) => supportApi.presignAttachments({ files })
-            );
-          } finally {
-            setIsUploadingAttachments(false);
-          }
-        }
+        const attachmentInputs =
+          attachments.length > 0 ? attachments.map((attachment) => toAttachmentInput(attachment)) : undefined;
 
         return supportApi.create({
           attachments: attachmentInputs,
@@ -101,13 +93,22 @@ export const CreateSupportRequestDialog = memo(
         toast.error("Message is required");
         return;
       }
+      if (!allUploadsReady) {
+        toast.error("Wait for image uploads to finish");
+        return;
+      }
+      if (hasUploadErrors) {
+        toast.error("Fix failed uploads before submitting");
+        return;
+      }
       mutation.mutate();
     };
 
-    const isBusy = mutation.isPending || isUploadingAttachments;
+    const isBusy = mutation.isPending || hasPendingUploads;
+    const canSubmit = allUploadsReady && !hasUploadErrors && !mutation.isPending;
 
     const submitLabel = (() => {
-      if (isUploadingAttachments) return "Uploading images…";
+      if (hasPendingUploads) return "Waiting for uploads…";
       if (mutation.isPending) return "Submitting…";
       return "Submit request";
     })();
@@ -159,11 +160,12 @@ export const CreateSupportRequestDialog = memo(
                   isDragOver={isDragOver}
                   onAddFiles={addFiles}
                   onRemove={removeAttachment}
+                  onRetry={retryAttachment}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button disabled={isBusy} type="submit">
+              <Button disabled={!canSubmit || isBusy} type="submit">
                 {submitLabel}
               </Button>
             </DialogFooter>

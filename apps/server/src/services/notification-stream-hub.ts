@@ -7,7 +7,7 @@ import { Client } from "pg";
 import { pool } from "@/db/pool";
 import { userNotificationsDb } from "@/db/user-notifications";
 import { buildSseCorsHeaders } from "@/lib/cors-headers";
-import { type INotificationStreamEvent, type IUserNotification, UserType } from "@/packages/shared";
+import { type INotificationStreamEvent, type IUserNotification, type TSupportStagedUploadStatus, UserType } from "@/packages/shared";
 
 const NOTIFY_CHANNEL = "user_notifications";
 const MAX_CONNECTIONS_PER_USER = 5;
@@ -26,7 +26,15 @@ interface NotifyPayloadSupport {
   ticketUserId: string;
 }
 
-type NotifyPayload = NotifyPayloadUser | NotifyPayloadSupport;
+interface NotifyPayloadSupportAttachment {
+  kind: "support_attachment";
+  status: TSupportStagedUploadStatus;
+  storageKey: string;
+  supportRequestId?: string;
+  userId: string;
+}
+
+type NotifyPayload = NotifyPayloadUser | NotifyPayloadSupport | NotifyPayloadSupportAttachment;
 
 interface SseConnection {
   clientId: string | null;
@@ -80,6 +88,26 @@ function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
       }
       return null;
     }
+    if (payload.kind === "support_attachment") {
+      const userId = payload.userId;
+      const storageKey = payload.storageKey;
+      const status = payload.status;
+      if (
+        typeof userId === "string" &&
+        typeof storageKey === "string" &&
+        (status === "pending" || status === "confirmed" || status === "linked")
+      ) {
+        const supportRequestId = payload.supportRequestId;
+        return {
+          kind: "support_attachment",
+          status,
+          storageKey,
+          userId,
+          ...(typeof supportRequestId === "string" ? { supportRequestId } : {}),
+        };
+      }
+      return null;
+    }
     const userId = payload.userId;
     if (typeof userId === "string" && userId !== "") {
       return { userId };
@@ -106,6 +134,10 @@ class NotificationStreamHub {
       if (payload == null) return;
       if (payload.kind === "support_request") {
         this.pushSupportRequestUpdated(payload.supportRequestId, payload.ticketUserId);
+        return;
+      }
+      if (payload.kind === "support_attachment") {
+        this.pushSupportAttachmentUpdated(payload);
         return;
       }
       void this.pushToUser(payload.userId, payload.notification);
@@ -154,6 +186,24 @@ class NotificationStreamHub {
     ]);
   }
 
+  async publishSupportAttachmentUpdated(params: {
+    status: TSupportStagedUploadStatus;
+    storageKey: string;
+    supportRequestId?: string;
+    userId: string;
+  }): Promise<void> {
+    await pool.query(`SELECT pg_notify($1, $2)`, [
+      NOTIFY_CHANNEL,
+      JSON.stringify({
+        kind: "support_attachment",
+        status: params.status,
+        storageKey: params.storageKey,
+        supportRequestId: params.supportRequestId,
+        userId: params.userId,
+      }),
+    ]);
+  }
+
   async pushToUser(userId: string, notification?: IUserNotification): Promise<void> {
     if (notification != null) {
       this.broadcastToUser(userId, {
@@ -186,6 +236,34 @@ class NotificationStreamHub {
     for (const set of this.connections.values()) {
       for (const conn of set) {
         if (conn.userId === ticketUserId || conn.userType === UserType.ADMIN) {
+          writeToConnection(conn, event);
+        }
+      }
+    }
+  }
+
+  pushSupportAttachmentUpdated(payload: NotifyPayloadSupportAttachment): void {
+    const event: INotificationStreamEvent = {
+      data: {
+        status: payload.status,
+        storageKey: payload.storageKey,
+        ...(payload.supportRequestId != null ? { supportRequestId: payload.supportRequestId } : {}),
+      },
+      type: "support_attachment.updated",
+      v: 1,
+    };
+
+    for (const set of this.connections.values()) {
+      for (const conn of set) {
+        if (conn.userId === payload.userId) {
+          writeToConnection(conn, event);
+        }
+        if (
+          payload.status === "linked" &&
+          payload.supportRequestId != null &&
+          conn.userType === UserType.ADMIN &&
+          conn.userId !== payload.userId
+        ) {
           writeToConnection(conn, event);
         }
       }

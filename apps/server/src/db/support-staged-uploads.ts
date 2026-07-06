@@ -38,7 +38,10 @@ export const supportStagedUploadsDb = {
     });
   },
 
-  async confirmByKey(key: string, sizeBytesFromEvent?: number): Promise<boolean> {
+  async confirmByKey(
+    key: string,
+    sizeBytesFromEvent?: number
+  ): Promise<{ confirmed: boolean; userId?: string }> {
     const result = await pool.query(
       `UPDATE support_staged_uploads
        SET status = 'confirmed',
@@ -46,10 +49,14 @@ export const supportStagedUploadsDb = {
            size_bytes = COALESCE($2, size_bytes)
        WHERE storage_key = $1
          AND status IN ('pending', 'confirmed')
-       RETURNING storage_key`,
+       RETURNING storage_key, user_id`,
       [key, sizeBytesFromEvent ?? null]
     );
-    return result.rowCount != null && result.rowCount > 0;
+    if (result.rowCount == null || result.rowCount === 0) {
+      return { confirmed: false };
+    }
+    const row = result.rows[0] as { user_id: string };
+    return { confirmed: true, userId: row.user_id };
   },
 
   async createPending(params: {
