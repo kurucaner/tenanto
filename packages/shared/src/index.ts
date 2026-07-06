@@ -140,6 +140,9 @@ export {
   validateExpenseCategoryFields,
 } from "./property-expense-types";
 
+// Home Financial Overview Types
+export type { IHomeFinancialOverview } from "./home-financial-overview-types";
+
 // Property Report Types
 export {
   type IPortfolioPropertyReportRow,
