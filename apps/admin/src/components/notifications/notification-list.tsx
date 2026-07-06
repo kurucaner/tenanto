@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCheck } from "lucide-react";
 import { memo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -102,8 +103,21 @@ export const NotificationList = memo(
 
     return (
       <div className="flex max-h-[min(24rem,70vh)] flex-col">
-        <div className="border-b border-border/60 px-3 py-2">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 px-3 py-2">
           <p className="text-sm font-semibold">Notifications</p>
+          {hasUnread ? (
+            <Button
+              aria-label="Mark all as read"
+              className="size-7 shrink-0"
+              disabled={markAllMutation.isPending}
+              onClick={() => markAllMutation.mutate()}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <CheckCheck className="size-4" />
+            </Button>
+          ) : null}
         </div>
         <div className="flex-1 overflow-y-auto p-1">
           {listQuery.isPending ? (
@@ -126,20 +140,6 @@ export const NotificationList = memo(
             />
           ))}
         </div>
-        {hasUnread ? (
-          <div className="border-t border-border/60 p-2">
-            <Button
-              className="w-full"
-              disabled={markAllMutation.isPending}
-              onClick={() => markAllMutation.mutate()}
-              size="sm"
-              type="button"
-              variant="ghost"
-            >
-              {markAllMutation.isPending ? "Updating…" : "Mark all as read"}
-            </Button>
-          </div>
-        ) : null}
       </div>
     );
   }

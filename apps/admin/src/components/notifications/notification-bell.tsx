@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { notificationsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -18,12 +19,13 @@ import { useAuthStore } from "@/stores/auth-store";
 export const NotificationBell = memo(() => {
   const userType = useAuthStore((s) => s.user?.userType);
   const [open, setOpen] = useState(false);
+  const streamStatus = useNotificationStream();
 
   const unreadQuery = useQuery({
     enabled: userType === UserType.USER,
     queryFn: () => notificationsApi.getUnreadCount(),
     queryKey: adminQueryKeys.notificationsUnreadCount(),
-    refetchInterval: 60_000,
+    refetchInterval: streamStatus === "degraded" ? 30_000 : false,
     refetchOnWindowFocus: true,
   });
 
