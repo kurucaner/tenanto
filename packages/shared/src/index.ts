@@ -66,6 +66,7 @@ export {
 // Property Settings Types
 export {
   DEFAULT_PROPERTY_SETTINGS,
+  formatRateAsPercent,
   type IPropertySettings,
   type IPropertySettingsDefaults,
   type IUpdatePropertySettingsBody,

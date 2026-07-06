@@ -45,6 +45,10 @@ export interface IUpdatePropertySettingsBody {
   salesTaxRate?: number;
 }
 
-export const rateToPercent = (rate: number): number => rate * 100;
+export const rateToPercent = (rate: number): number => Math.round(rate * 100 * 1000) / 1000;
 
 export const percentToRate = (percent: number): number => percent / 100;
+
+/** Formats a decimal rate (e.g. 0.035) as a clean percent string (e.g. "3.5"). */
+export const formatRateAsPercent = (rate: number): string =>
+  parseFloat(rateToPercent(rate).toFixed(3)).toString();

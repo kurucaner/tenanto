@@ -12,9 +12,9 @@ import { settingsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   DEFAULT_PROPERTY_SETTINGS,
+  formatRateAsPercent,
   type IPropertySettings,
   percentToRate,
-  rateToPercent,
 } from "@/packages/shared";
 
 type TSettingsFormState = {
@@ -29,14 +29,14 @@ type TSettingsFormState = {
 };
 
 const settingsToFormState = (settings: IPropertySettings): TSettingsFormState => ({
-  airbnbCommissionRate: String(rateToPercent(settings.airbnbCommissionRate)),
-  bookingCommissionRate: String(rateToPercent(settings.bookingCommissionRate)),
-  conventionDevelopmentTaxRate: String(rateToPercent(settings.conventionDevelopmentTaxRate)),
-  directCommissionRate: String(rateToPercent(settings.directCommissionRate)),
-  expediaCommissionRate: String(rateToPercent(settings.expediaCommissionRate)),
-  miamiDadeSurtaxRate: String(rateToPercent(settings.miamiDadeSurtaxRate)),
-  resortTaxRate: String(rateToPercent(settings.resortTaxRate)),
-  salesTaxRate: String(rateToPercent(settings.salesTaxRate)),
+  airbnbCommissionRate: formatRateAsPercent(settings.airbnbCommissionRate),
+  bookingCommissionRate: formatRateAsPercent(settings.bookingCommissionRate),
+  conventionDevelopmentTaxRate: formatRateAsPercent(settings.conventionDevelopmentTaxRate),
+  directCommissionRate: formatRateAsPercent(settings.directCommissionRate),
+  expediaCommissionRate: formatRateAsPercent(settings.expediaCommissionRate),
+  miamiDadeSurtaxRate: formatRateAsPercent(settings.miamiDadeSurtaxRate),
+  resortTaxRate: formatRateAsPercent(settings.resortTaxRate),
+  salesTaxRate: formatRateAsPercent(settings.salesTaxRate),
 });
 
 const formStateToBody = (form: TSettingsFormState) => ({
