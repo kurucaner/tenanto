@@ -10,12 +10,10 @@ import { supportStagedUploadsDb } from "@/db/support-staged-uploads";
 import {
   HttpStatus,
   type ISupportAttachmentPresignBody,
-  type ISupportAttachmentStatusBody,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type SupportCategory,
   type SupportRequestStatus,
-  type TSupportStagedUploadStatus,
   UserType,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
@@ -34,7 +32,6 @@ import {
   parseOptionalSupportCategory,
   parseOptionalSupportRequestStatus,
   parseSupportAttachmentPresignBody,
-  parseSupportAttachmentStatusBody,
   parseSupportCreateAttachments,
   parseSupportListLimit,
   parseSupportMessageBody,
@@ -232,31 +229,6 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
       );
 
       return reply.send({ uploads });
-    }
-  );
-
-  server.post<{ Body: ISupportAttachmentStatusBody }>(
-    "/support/attachments/status",
-    { config: { rateLimit: false }, preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Body: ISupportAttachmentStatusBody }>,
-      reply: FastifyReply
-    ) => {
-      const parsed = parseSupportAttachmentStatusBody(request.body);
-      if (!parsed.ok) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-
-      const statuses = await supportStagedUploadsDb.findByKeysForUser(
-        request.user.userId,
-        parsed.body.keys
-      );
-      const keys: Record<string, TSupportStagedUploadStatus> = {};
-      for (const [key, status] of statuses) {
-        keys[key] = status;
-      }
-
-      return reply.send({ keys });
     }
   );
 

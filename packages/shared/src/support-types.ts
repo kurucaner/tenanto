@@ -103,14 +103,6 @@ export interface ISupportAttachmentPresignResponse {
   uploads: ISupportAttachmentPresignItem[];
 }
 
-export interface ISupportAttachmentStatusBody {
-  keys: string[];
-}
-
-export interface ISupportAttachmentStatusResponse {
-  keys: Record<string, TSupportStagedUploadStatus>;
-}
-
 export interface IAdminSupportRequestPatchBody {
   status: TAdminSupportRequestSettableStatus;
 }

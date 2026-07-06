@@ -26,9 +26,6 @@ export interface SupportImageAttachment {
   uploadStatus: SupportUploadStatus;
 }
 
-const POLL_INTERVAL_MS = 500;
-const POLL_MAX_ATTEMPTS = 10;
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -46,12 +43,6 @@ function isDuplicateAttachment(
   return attachments.some(
     (attachment) => attachment.file.name === file.name && attachment.file.size === file.size
   );
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 export function useSupportImageAttachments() {
@@ -87,62 +78,35 @@ export function useSupportImageAttachments() {
     []
   );
 
-  const pollUntilConfirmed = useCallback(
-    async (attachmentId: string, storageKey: string) => {
-      for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt += 1) {
-        if (attempt > 0) {
-          await delay(POLL_INTERVAL_MS);
-        }
-
-        const current = attachmentsRef.current.find((attachment) => attachment.id === attachmentId);
-        if (current?.uploadStatus === "confirmed" || current?.uploadStatus === "linked") {
-          return;
-        }
-
-        try {
-          const response = await supportApi.attachmentStatus({ keys: [storageKey] });
-          const status = response.keys[storageKey];
-          if (status === "confirmed" || status === "linked") {
-            updateAttachment(attachmentId, { uploadStatus: "confirmed" });
-            return;
-          }
-        } catch {
-          // Keep polling until attempts are exhausted or SSE confirms the upload.
-        }
-      }
-    },
-    [updateAttachment]
-  );
-
   const uploadAttachment = useCallback(
     async (attachmentId: string, file: File) => {
       updateAttachment(attachmentId, { uploadStatus: "pending" });
 
       try {
-        const uploaded = await presignAndPutSupportFile(file, (files) =>
-          supportApi.presignAttachments({ files })
-        );
+        await presignAndPutSupportFile(
+          file,
+          (files) => supportApi.presignAttachments({ files }),
+          ({ key }) => {
+            updateAttachment(attachmentId, {
+              storageKey: key,
+              uploadStatus: "pending",
+            });
 
-        updateAttachment(attachmentId, {
-          storageKey: uploaded.key,
-          uploadStatus: "pending",
-        });
-
-        clearUnsubscribe(attachmentId);
-        const unsubscribe = subscribeSupportAttachmentStatus(uploaded.key, (status) => {
-          if (status === "confirmed" || status === "linked") {
-            updateAttachment(attachmentId, { uploadStatus: "confirmed" });
+            clearUnsubscribe(attachmentId);
+            const unsubscribe = subscribeSupportAttachmentStatus(key, (status) => {
+              if (status === "confirmed" || status === "linked") {
+                updateAttachment(attachmentId, { uploadStatus: "confirmed" });
+              }
+            });
+            unsubscribeByAttachmentIdRef.current.set(attachmentId, unsubscribe);
           }
-        });
-        unsubscribeByAttachmentIdRef.current.set(attachmentId, unsubscribe);
-
-        void pollUntilConfirmed(attachmentId, uploaded.key);
+        );
       } catch (error) {
         updateAttachment(attachmentId, { uploadStatus: "error" });
         toast.error(error instanceof Error ? error.message : "Could not upload image");
       }
     },
-    [clearUnsubscribe, pollUntilConfirmed, updateAttachment]
+    [clearUnsubscribe, updateAttachment]
   );
 
   const clearAttachments = useCallback(() => {

@@ -50,8 +50,6 @@ export type {
   ISupportAttachmentPresignFile,
   ISupportAttachmentPresignItem,
   ISupportAttachmentPresignResponse,
-  ISupportAttachmentStatusBody,
-  ISupportAttachmentStatusResponse,
   ISupportCreateBody,
   ISupportMessage,
   ISupportMessageCreateBody,

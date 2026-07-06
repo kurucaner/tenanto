@@ -7,7 +7,8 @@ import {
 
 export async function presignAndPutSupportFile(
   file: File,
-  presign: (files: ISupportAttachmentPresignFile[]) => Promise<ISupportAttachmentPresignResponse>
+  presign: (files: ISupportAttachmentPresignFile[]) => Promise<ISupportAttachmentPresignResponse>,
+  onPresigned?: (upload: { contentType: string; key: string }) => void
 ): Promise<{ contentType: string; key: string; sizeBytes: number }> {
   const presignResponse = await presign([
     {
@@ -21,6 +22,8 @@ export async function presignAndPutSupportFile(
   if (upload == null) {
     throw new Error("Could not prepare image upload");
   }
+
+  onPresigned?.({ contentType: upload.contentType, key: upload.key });
 
   const response = await fetch(upload.uploadUrl, {
     body: file,

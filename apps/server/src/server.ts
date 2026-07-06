@@ -58,8 +58,7 @@ server.register(rateLimit, {
     const path = request.url.split("?")[0];
     return (
       path === "/notifications/stream" ||
-      path === "/s3-notification" ||
-      path === "/support/attachments/status"
+      path === "/s3-notification"
     );
   },
   max: isProduction ? 20 : 100,
