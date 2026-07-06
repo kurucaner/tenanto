@@ -7,19 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { notificationsApi } from "@/lib/api-client";
+import { getNotificationHref } from "@/lib/notification-routing";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { type IUserNotification } from "@/packages/shared";
-
-function getNotificationHref(notification: IUserNotification): string {
-  if (notification.resourceType === "property" && notification.resourceId != null) {
-    return `/properties/${encodeURIComponent(notification.resourceId)}`;
-  }
-  if (notification.resourceType === "support_request" && notification.resourceId != null) {
-    return `/support-requests/${encodeURIComponent(notification.resourceId)}`;
-  }
-  return "/support-requests";
-}
 
 const NotificationListItem = memo(
   ({

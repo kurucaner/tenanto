@@ -4,10 +4,10 @@ import type { ServerResponse } from "node:http";
 import type { FastifyReply } from "fastify";
 import { Client } from "pg";
 
-import { userNotificationsDb } from "@/db/user-notifications";
 import { pool } from "@/db/pool";
+import { userNotificationsDb } from "@/db/user-notifications";
 import { buildSseCorsHeaders } from "@/lib/cors-headers";
-import { type INotificationStreamEvent, UserType } from "@/packages/shared";
+import { type INotificationStreamEvent, type IUserNotification, UserType } from "@/packages/shared";
 
 const NOTIFY_CHANNEL = "user_notifications";
 const MAX_CONNECTIONS_PER_USER = 5;
@@ -16,6 +16,7 @@ const HEARTBEAT_INTERVAL_MS = 25_000;
 
 interface NotifyPayloadUser {
   kind?: "user_notifications";
+  notification?: IUserNotification;
   userId: string;
 }
 
@@ -107,7 +108,7 @@ class NotificationStreamHub {
         this.pushSupportRequestUpdated(payload.supportRequestId, payload.ticketUserId);
         return;
       }
-      void this.pushToUser(payload.userId);
+      void this.pushToUser(payload.userId, payload.notification);
     });
     client.on("error", (err) => {
       console.error("[NotificationStreamHub] LISTEN client error:", err);
@@ -136,10 +137,10 @@ class NotificationStreamHub {
     return this.connections.get(userId)?.size ?? 0;
   }
 
-  async publish(userId: string): Promise<void> {
+  async publish(userId: string, options?: { notification?: IUserNotification }): Promise<void> {
     await pool.query(`SELECT pg_notify($1, $2)`, [
       NOTIFY_CHANNEL,
-      JSON.stringify({ userId }),
+      JSON.stringify({ notification: options?.notification, userId }),
     ]);
   }
 
@@ -153,7 +154,15 @@ class NotificationStreamHub {
     ]);
   }
 
-  async pushToUser(userId: string): Promise<void> {
+  async pushToUser(userId: string, notification?: IUserNotification): Promise<void> {
+    if (notification != null) {
+      this.broadcastToUser(userId, {
+        data: { notification },
+        type: "notifications.new",
+        v: 1,
+      });
+    }
+
     const count = await userNotificationsDb.countUnread(userId);
     this.broadcastToUser(userId, {
       data: { count },

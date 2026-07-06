@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
@@ -17,10 +17,15 @@ import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
 
 const AdminLayoutInner = memo(() => {
   const resolvedDark = useResolvedAdminDark();
-  const streamStatus = useNotificationStream();
+  const [suppressToasts, setSuppressToasts] = useState(false);
+  const streamStatus = useNotificationStream({ suppressToasts });
+  const streamContextValue = useMemo(
+    () => ({ setSuppressToasts, status: streamStatus }),
+    [streamStatus]
+  );
 
   return (
-    <NotificationStreamContext.Provider value={streamStatus}>
+    <NotificationStreamContext.Provider value={streamContextValue}>
       <SidebarProvider>
         <DashboardSidebar />
         <SidebarInset className="admin-app-surface overflow-hidden">

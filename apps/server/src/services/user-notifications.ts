@@ -23,8 +23,8 @@ export async function notifyUser(input: NotifyUserInput): Promise<void> {
     return;
   }
 
-  await userNotificationsDb.create(input);
-  notificationStreamHub.publish(input.userId).catch((err) => {
+  const notification = await userNotificationsDb.create(input);
+  notificationStreamHub.publish(input.userId, { notification }).catch((err) => {
     console.error("[notifyUser] Failed to publish notification stream update:", err);
   });
 }

@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNotificationStreamStatus } from "@/contexts/notification-stream-context";
+import { useNotificationStreamContext } from "@/contexts/notification-stream-context";
 import { notificationsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,12 @@ import { useAuthStore } from "@/stores/auth-store";
 export const NotificationBell = memo(() => {
   const userType = useAuthStore((s) => s.user?.userType);
   const [open, setOpen] = useState(false);
-  const streamStatus = useNotificationStreamStatus();
+  const { setSuppressToasts, status: streamStatus } = useNotificationStreamContext();
+
+  const handleOpenChange = (nextOpen: boolean): void => {
+    setOpen(nextOpen);
+    setSuppressToasts(nextOpen);
+  };
 
   const unreadQuery = useQuery({
     enabled: userType === UserType.USER,
@@ -36,7 +41,7 @@ export const NotificationBell = memo(() => {
   const unreadCount = unreadQuery.data?.count ?? 0;
 
   return (
-    <DropdownMenu onOpenChange={setOpen} open={open}>
+    <DropdownMenu onOpenChange={handleOpenChange} open={open}>
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={unreadCount > 0 ? `${unreadCount} unread notifications` : "Notifications"}

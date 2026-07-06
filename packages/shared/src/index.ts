@@ -19,6 +19,14 @@ export type { IAdminPlatformStats } from "./admin-platform-stats-types";
 
 // Notification Types
 export type {
+  INotificationStreamConnectedData,
+  INotificationStreamEvent,
+  INotificationStreamNewData,
+  INotificationStreamSupportRequestUpdatedData,
+  INotificationStreamUnreadCountData,
+  NotificationStreamEventType,
+} from "./notification-stream-types";
+export type {
   IUserNotification,
   IUserNotificationsListQuery,
   IUserNotificationsListResponse,
@@ -27,13 +35,6 @@ export type {
   UserNotificationResourceType,
   UserNotificationType,
 } from "./notification-types";
-export type {
-  INotificationStreamConnectedData,
-  INotificationStreamEvent,
-  INotificationStreamSupportRequestUpdatedData,
-  INotificationStreamUnreadCountData,
-  NotificationStreamEventType,
-} from "./notification-stream-types";
 
 // Support Types
 export type {

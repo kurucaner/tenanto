@@ -6,8 +6,10 @@ import { useLocation } from "react-router-dom";
 import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-client";
 import { handleSupportRequestUpdated } from "@/lib/notification-stream-handlers";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { showNotificationToast } from "@/lib/show-notification-toast";
 import {
   type INotificationStreamEvent,
+  type IUserNotification,
   type IUserNotificationsUnreadCountResponse,
   UserType,
 } from "@/packages/shared";
@@ -40,6 +42,19 @@ function parseStreamEvent(data: string): INotificationStreamEvent | null {
   }
 }
 
+function parseStreamNotification(value: unknown): IUserNotification | null {
+  if (value == null || typeof value !== "object") return null;
+  const notification = value as Record<string, unknown>;
+  if (
+    typeof notification.id === "string" &&
+    typeof notification.title === "string" &&
+    typeof notification.body === "string"
+  ) {
+    return notification as unknown as IUserNotification;
+  }
+  return null;
+}
+
 function getStreamClientId(): string {
   const existing = sessionStorage.getItem(STREAM_CLIENT_ID_KEY);
   if (existing != null && existing !== "") {
@@ -67,7 +82,14 @@ class StreamReconnectError extends Error {
   }
 }
 
-export function useNotificationStream(): NotificationStreamStatus {
+export interface UseNotificationStreamOptions {
+  suppressToasts?: boolean;
+}
+
+export function useNotificationStream(
+  options: UseNotificationStreamOptions = {}
+): NotificationStreamStatus {
+  const { suppressToasts = false } = options;
   const queryClient = useQueryClient();
   const location = useLocation();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -80,6 +102,8 @@ export function useNotificationStream(): NotificationStreamStatus {
   pathnameRef.current = location.pathname;
   const streamClientIdRef = useRef(getStreamClientId());
   const reconnectDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressToastsRef = useRef(suppressToasts);
+  suppressToastsRef.current = suppressToasts;
 
   const enabled = accessToken != null;
 
@@ -175,6 +199,15 @@ export function useNotificationStream(): NotificationStreamStatus {
       if (event.type === "notifications.inbox_updated") {
         if (userType === UserType.USER) {
           queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsList() });
+        }
+      }
+
+      if (event.type === "notifications.new") {
+        if (userType === UserType.USER && !suppressToastsRef.current) {
+          const notification = parseStreamNotification(event.data.notification);
+          if (notification != null) {
+            showNotificationToast(notification);
+          }
         }
       }
 
