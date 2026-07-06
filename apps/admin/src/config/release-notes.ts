@@ -6,7 +6,8 @@
  * - Avoid jargon: API, cache, migration, refactor, endpoint, etc.
  * - Use short, active sentences: "You can now…", "Fixed an issue where…"
  * - Group each item as new | improved | fixed.
- * - Add newest releases at the TOP of RELEASE_NOTES with a unique `id`.
+ * - Add newest releases at the TOP of RELEASE_NOTES with a unique `id` (use the version string).
+ * - Bump `version` using simple numbering: 1.0.0, 1.1.0, 1.2.0, etc.
  */
 
 export type ReleaseChangeCategory = "new" | "improved" | "fixed";
@@ -18,7 +19,7 @@ export type ReleaseChange = {
 
 export type ReleaseNote = {
   id: string;
-  versionLabel: string;
+  version: string;
   publishedAt: string;
   summary?: string;
   changes: ReleaseChange[];
@@ -32,8 +33,8 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    id: "2026-07-05",
-    versionLabel: "July 2026",
+    id: "1.1.0",
+    version: "1.1.0",
     publishedAt: "2026-07-05",
     summary: "Portfolio reports and a clearer property workspace.",
     changes: [
@@ -56,8 +57,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
-    id: "2026-06-15",
-    versionLabel: "June 2026",
+    id: "1.0.0",
+    version: "1.0.0",
     publishedAt: "2026-06-15",
     summary: "Track income and expenses for each property.",
     changes: [

@@ -51,9 +51,9 @@ ReleaseChangeItem.displayName = "ReleaseChangeItem";
 const ReleaseNoteSection = memo(({ note }: Readonly<{ note: ReleaseNote }>) => (
   <section className="flex flex-col gap-3">
     <div className="flex flex-col gap-1">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <h3 className="font-display text-base font-semibold tracking-tight text-foreground">
-          {note.versionLabel}
+          Version {note.version}
         </h3>
         <time className="text-xs text-muted-foreground" dateTime={note.publishedAt}>
           {formatPublishedDate(note.publishedAt)}

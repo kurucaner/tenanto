@@ -8,6 +8,7 @@ const RUM_SERVICE = "tenanto-admin";
 let rumInitialized = false;
 
 function getRumConfig() {
+  console.log("getRumConfig", import.meta.env.VITE_DD_RUM_APPLICATION_ID, import.meta.env.VITE_DD_CLIENT_TOKEN, import.meta.env.VITE_DD_RUM_PROXY_URL);
   const applicationId = import.meta.env.VITE_DD_RUM_APPLICATION_ID;
   const clientToken = import.meta.env.VITE_DD_CLIENT_TOKEN;
   const proxyUrl = import.meta.env.VITE_DD_RUM_PROXY_URL;
