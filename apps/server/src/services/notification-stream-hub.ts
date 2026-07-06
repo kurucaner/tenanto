@@ -7,12 +7,25 @@ import { Client } from "pg";
 import { userNotificationsDb } from "@/db/user-notifications";
 import { pool } from "@/db/pool";
 import { buildSseCorsHeaders } from "@/lib/cors-headers";
-import { type INotificationStreamEvent } from "@/packages/shared";
+import { type INotificationStreamEvent, UserType } from "@/packages/shared";
 
 const NOTIFY_CHANNEL = "user_notifications";
 const MAX_CONNECTIONS_PER_USER = 5;
 const CONNECTION_MAX_AGE_MS = 3 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 25_000;
+
+interface NotifyPayloadUser {
+  kind?: "user_notifications";
+  userId: string;
+}
+
+interface NotifyPayloadSupport {
+  kind: "support_request";
+  supportRequestId: string;
+  ticketUserId: string;
+}
+
+type NotifyPayload = NotifyPayloadUser | NotifyPayloadSupport;
 
 interface SseConnection {
   clientId: string | null;
@@ -23,6 +36,7 @@ interface SseConnection {
   registeredAt: number;
   res: ServerResponse;
   userId: string;
+  userType: UserType;
 }
 
 function createListenClient(): Client {
@@ -54,6 +68,27 @@ function closeConnection(conn: SseConnection): void {
   }
 }
 
+function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
+  try {
+    const payload = JSON.parse(raw ?? "{}") as Record<string, unknown>;
+    if (payload.kind === "support_request") {
+      const supportRequestId = payload.supportRequestId;
+      const ticketUserId = payload.ticketUserId;
+      if (typeof supportRequestId === "string" && typeof ticketUserId === "string") {
+        return { kind: "support_request", supportRequestId, ticketUserId };
+      }
+      return null;
+    }
+    const userId = payload.userId;
+    if (typeof userId === "string" && userId !== "") {
+      return { userId };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 class NotificationStreamHub {
   private connections = new Map<string, Set<SseConnection>>();
   private initialized = false;
@@ -66,14 +101,13 @@ class NotificationStreamHub {
     await client.connect();
     await client.query(`LISTEN ${NOTIFY_CHANNEL}`);
     client.on("notification", (message) => {
-      try {
-        const payload = JSON.parse(message.payload ?? "{}") as { userId?: string };
-        if (payload.userId != null && payload.userId !== "") {
-          void this.pushToUser(payload.userId);
-        }
-      } catch {
-        // Ignore malformed NOTIFY payloads.
+      const payload = parseNotifyPayload(message.payload);
+      if (payload == null) return;
+      if (payload.kind === "support_request") {
+        this.pushSupportRequestUpdated(payload.supportRequestId, payload.ticketUserId);
+        return;
       }
+      void this.pushToUser(payload.userId);
     });
     client.on("error", (err) => {
       console.error("[NotificationStreamHub] LISTEN client error:", err);
@@ -109,6 +143,16 @@ class NotificationStreamHub {
     ]);
   }
 
+  async publishSupportRequestUpdated(
+    supportRequestId: string,
+    ticketUserId: string
+  ): Promise<void> {
+    await pool.query(`SELECT pg_notify($1, $2)`, [
+      NOTIFY_CHANNEL,
+      JSON.stringify({ kind: "support_request", supportRequestId, ticketUserId }),
+    ]);
+  }
+
   async pushToUser(userId: string): Promise<void> {
     const count = await userNotificationsDb.countUnread(userId);
     this.broadcastToUser(userId, {
@@ -123,8 +167,25 @@ class NotificationStreamHub {
     });
   }
 
+  pushSupportRequestUpdated(supportRequestId: string, ticketUserId: string): void {
+    const event: INotificationStreamEvent = {
+      data: { supportRequestId },
+      type: "support_request.updated",
+      v: 1,
+    };
+
+    for (const set of this.connections.values()) {
+      for (const conn of set) {
+        if (conn.userId === ticketUserId || conn.userType === UserType.ADMIN) {
+          writeToConnection(conn, event);
+        }
+      }
+    }
+  }
+
   register(
     userId: string,
+    userType: UserType,
     reply: FastifyReply,
     initialCount: number,
     clientId?: string | null
@@ -173,6 +234,7 @@ class NotificationStreamHub {
       registeredAt: Date.now(),
       res,
       userId,
+      userType,
     };
 
     const cleanup = (): void => {
@@ -189,11 +251,13 @@ class NotificationStreamHub {
       type: "connected",
       v: 1,
     });
-    writeToConnection(connection, {
-      data: { count: initialCount },
-      type: "notifications.unread_count",
-      v: 1,
-    });
+    if (userType === UserType.USER) {
+      writeToConnection(connection, {
+        data: { count: initialCount },
+        type: "notifications.unread_count",
+        v: 1,
+      });
+    }
 
     return connection;
   }

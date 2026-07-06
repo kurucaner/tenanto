@@ -30,6 +30,7 @@ export type {
 export type {
   INotificationStreamConnectedData,
   INotificationStreamEvent,
+  INotificationStreamSupportRequestUpdatedData,
   INotificationStreamUnreadCountData,
   NotificationStreamEventType,
 } from "./notification-stream-types";

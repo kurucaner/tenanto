@@ -29,10 +29,6 @@ export const notificationRoutes = async (server: FastifyInstance): Promise<void>
     "/notifications/stream",
     { config: { rateLimit: false }, preHandler: authPre },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      if (request.user.userType !== UserType.USER) {
-        return reply.status(HttpStatus.FORBIDDEN).send({ error: "Forbidden" });
-      }
-
       const userId = request.user.userId;
       const requestOrigin =
         typeof request.headers.origin === "string" ? request.headers.origin : undefined;
@@ -46,8 +42,18 @@ export const notificationRoutes = async (server: FastifyInstance): Promise<void>
           ? request.headers["x-stream-client-id"]
           : undefined;
 
-      const count = await userNotificationsDb.countUnread(userId);
-      notificationStreamHub.register(userId, reply, count, clientId);
+      const initialCount =
+        request.user.userType === UserType.USER
+          ? await userNotificationsDb.countUnread(userId)
+          : 0;
+
+      notificationStreamHub.register(
+        userId,
+        request.user.userType,
+        reply,
+        initialCount,
+        clientId
+      );
     }
   );
 

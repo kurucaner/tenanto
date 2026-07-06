@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useNotificationStream } from "@/hooks/use-notification-stream";
+import { useNotificationStreamStatus } from "@/contexts/notification-stream-context";
 import { notificationsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ import { useAuthStore } from "@/stores/auth-store";
 export const NotificationBell = memo(() => {
   const userType = useAuthStore((s) => s.user?.userType);
   const [open, setOpen] = useState(false);
-  const streamStatus = useNotificationStream();
+  const streamStatus = useNotificationStreamStatus();
 
   const unreadQuery = useQuery({
     enabled: userType === UserType.USER,

@@ -12,7 +12,12 @@ import {
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { postDiscordWebhook } from "@/services/discord-webhook";
-import { buildSupportStatusChangedNotification,notifyUser, truncateNotificationBody } from "@/services/user-notifications";
+import { notificationStreamHub } from "@/services/notification-stream-hub";
+import {
+  buildSupportStatusChangedNotification,
+  notifyUser,
+  truncateNotificationBody,
+} from "@/services/user-notifications";
 
 import {
   isValidSupportCategory,
@@ -59,6 +64,18 @@ async function sendToDiscord(payload: {
   };
 
   await postDiscordWebhook(process.env["DISCORD_SUPPORT_WEBHOOK_URL"], body);
+}
+
+function publishSupportRequestUpdated(
+  supportRequestId: string,
+  ticketUserId: string,
+  log: FastifyRequest["log"]
+): void {
+  notificationStreamHub
+    .publishSupportRequestUpdated(supportRequestId, ticketUserId)
+    .catch((err) => {
+      log.error(err);
+    });
 }
 
 function resolveStatusAfterMessage(params: {
@@ -283,6 +300,8 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         }).catch((err) => request.log.error(err));
       }
 
+      publishSupportRequestUpdated(idParsed, ticket.userId, request.log);
+
       return reply.send(detail);
     }
   );
@@ -325,6 +344,8 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
           userId: ticket.userId,
         }).catch((err) => request.log.error(err));
       }
+
+      publishSupportRequestUpdated(idParsed, ticket.userId, request.log);
 
       return reply.send({ item });
     }

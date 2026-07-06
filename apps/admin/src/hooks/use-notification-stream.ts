@@ -1,8 +1,10 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-client";
+import { handleSupportRequestUpdated } from "@/lib/notification-stream-handlers";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   type INotificationStreamEvent,
@@ -67,16 +69,19 @@ class StreamReconnectError extends Error {
 
 export function useNotificationStream(): NotificationStreamStatus {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const accessToken = useAuthStore((s) => s.accessToken);
   const userType = useAuthStore((s) => s.user?.userType);
   const [status, setStatus] = useState<NotificationStreamStatus>("idle");
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const statusRef = useRef(status);
   statusRef.current = status;
+  const pathnameRef = useRef(location.pathname);
+  pathnameRef.current = location.pathname;
   const streamClientIdRef = useRef(getStreamClientId());
   const reconnectDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const enabled = userType === UserType.USER && accessToken != null;
+  const enabled = accessToken != null;
 
   useEffect(() => {
     const scheduleReconnect = (): void => {
@@ -162,11 +167,22 @@ export function useNotificationStream(): NotificationStreamStatus {
         consecutiveFailures = 0;
         backoffMs = BASE_BACKOFF_MS;
         setStatus("connected");
-        applyUnreadCount(event.data.count);
+        if (userType === UserType.USER) {
+          applyUnreadCount(event.data.count);
+        }
       }
 
       if (event.type === "notifications.inbox_updated") {
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsList() });
+        if (userType === UserType.USER) {
+          queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsList() });
+        }
+      }
+
+      if (event.type === "support_request.updated") {
+        const supportRequestId = event.data.supportRequestId;
+        if (typeof supportRequestId === "string") {
+          handleSupportRequestUpdated(queryClient, supportRequestId, pathnameRef.current);
+        }
       }
     };
 
@@ -284,7 +300,7 @@ export function useNotificationStream(): NotificationStreamStatus {
       clearProactiveReconnect();
       abortController.abort();
     };
-  }, [accessToken, enabled, queryClient, reconnectNonce]);
+  }, [accessToken, enabled, queryClient, reconnectNonce, userType]);
 
   return status;
 }

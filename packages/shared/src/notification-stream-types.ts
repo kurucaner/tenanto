@@ -2,7 +2,8 @@ export type NotificationStreamEventType =
   | "connected"
   | "ping"
   | "notifications.unread_count"
-  | "notifications.inbox_updated";
+  | "notifications.inbox_updated"
+  | "support_request.updated";
 
 export interface INotificationStreamEvent {
   data: Record<string, unknown>;
@@ -17,4 +18,8 @@ export interface INotificationStreamUnreadCountData {
 export interface INotificationStreamConnectedData {
   count: number;
   serverTime: string;
+}
+
+export interface INotificationStreamSupportRequestUpdatedData {
+  supportRequestId: string;
 }
