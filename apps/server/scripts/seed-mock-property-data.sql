@@ -290,42 +290,42 @@ BEGIN
         'f0000000-0000-4000-8000-000000000001'::uuid,
         'Oceanview Suites Miami Beach',
         '1200 Collins Ave, Miami Beach, FL 33139',
-        '+1 (305) 555-0101',
+        '+13055550101',
         TIMESTAMPTZ '2024-01-15 10:00:00+00'
       ),
       (
         'f0000000-0000-4000-8000-000000000002'::uuid,
         'Brickell Tower Residences',
         '500 Brickell Ave, Miami, FL 33131',
-        '+1 (305) 555-0102',
+        '+13055550102',
         TIMESTAMPTZ '2024-03-01 14:30:00+00'
       ),
       (
         'f0000000-0000-4000-8000-000000000003'::uuid,
         'Wynwood Art Lofts',
         '220 NW 27th St, Miami, FL 33127',
-        '+1 (305) 555-0103',
+        '+13055550103',
         TIMESTAMPTZ '2024-05-10 09:15:00+00'
       ),
       (
         'f0000000-0000-4000-8000-000000000004'::uuid,
         'Coral Gables Long-Term Homes',
         '450 Alhambra Cir, Coral Gables, FL 33134',
-        '+1 (305) 555-0104',
+        '+13055550104',
         TIMESTAMPTZ '2024-07-20 11:45:00+00'
       ),
       (
         'f0000000-0000-4000-8000-000000000005'::uuid,
         'South Beach Condos',
         '800 Ocean Dr, Miami Beach, FL 33139',
-        '+1 (305) 555-0105',
+        '+13055550105',
         TIMESTAMPTZ '2024-09-05 16:00:00+00'
       ),
       (
         'f0000000-0000-4000-8000-000000000006'::uuid,
         'Edgewater Bay Apartments',
         '1800 North Bayshore Dr, Miami, FL 33132',
-        '+1 (305) 555-0106',
+        '+13055550106',
         TIMESTAMPTZ '2025-01-08 08:20:00+00'
       )
   ) AS p(id, name, address, phone_number, created_at);

@@ -13,6 +13,8 @@ import {
   type IAdminCreatePropertyBody,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
+  isValidE164,
+  normalizeToE164,
   PropertyRole,
   type TPropertyRole,
   UserType,
@@ -32,6 +34,52 @@ function parsePropertyRole(raw: unknown): TPropertyRole | null {
   return PROPERTY_ROLES.has(raw as TPropertyRole) ? (raw as TPropertyRole) : null;
 }
 
+function parseOptionalPhoneNumber(
+  raw: unknown
+): { error: string; ok: false } | { ok: true; phoneNumber: string | undefined } {
+  if (raw == null || raw === "") {
+    return { ok: true, phoneNumber: undefined };
+  }
+  if (typeof raw !== "string") {
+    return { error: "phoneNumber must be a string", ok: false };
+  }
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return { ok: true, phoneNumber: undefined };
+  }
+  if (!isValidE164(trimmed)) {
+    return { error: "phoneNumber must be a valid phone number", ok: false };
+  }
+  const normalized = normalizeToE164(trimmed);
+  if (!normalized) {
+    return { error: "phoneNumber must be a valid phone number", ok: false };
+  }
+  return { ok: true, phoneNumber: normalized };
+}
+
+function parseNullablePhoneNumber(
+  raw: unknown
+): { error: string; ok: false } | { ok: true; phoneNumber: string | null } {
+  if (raw == null || raw === "") {
+    return { ok: true, phoneNumber: null };
+  }
+  if (typeof raw !== "string") {
+    return { error: "phoneNumber must be a string or null", ok: false };
+  }
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return { ok: true, phoneNumber: null };
+  }
+  if (!isValidE164(trimmed)) {
+    return { error: "phoneNumber must be a valid phone number", ok: false };
+  }
+  const normalized = normalizeToE164(trimmed);
+  if (!normalized) {
+    return { error: "phoneNumber must be a valid phone number", ok: false };
+  }
+  return { ok: true, phoneNumber: normalized };
+}
+
 function parseCreatePropertyBody(
   raw: unknown
 ): { body: IAdminCreatePropertyBody; ok: true } | { error: string; ok: false } {
@@ -45,11 +93,14 @@ function parseCreatePropertyBody(
   if (typeof r["address"] !== "string" || r["address"].trim() === "") {
     return { error: "address is required", ok: false };
   }
-  const phoneNumber =
-    typeof r["phoneNumber"] === "string" && r["phoneNumber"].trim() !== ""
-      ? r["phoneNumber"].trim()
-      : undefined;
-  return { body: { address: r["address"], name: r["name"], phoneNumber }, ok: true };
+  const phoneResult = parseOptionalPhoneNumber(r["phoneNumber"]);
+  if (!phoneResult.ok) {
+    return { error: phoneResult.error, ok: false };
+  }
+  return {
+    body: { address: r["address"], name: r["name"], phoneNumber: phoneResult.phoneNumber },
+    ok: true,
+  };
 }
 
 function parseUpdatePropertyBody(
@@ -74,12 +125,11 @@ function parseUpdatePropertyBody(
     body.address = r["address"];
   }
   if ("phoneNumber" in r) {
-    const rawPhone = r["phoneNumber"];
-    if (rawPhone == null || rawPhone === "") {
-      body.phoneNumber = null;
-    } else {
-      body.phoneNumber = typeof rawPhone === "string" ? rawPhone : null;
+    const phoneResult = parseNullablePhoneNumber(r["phoneNumber"]);
+    if (!phoneResult.ok) {
+      return { error: phoneResult.error, ok: false };
     }
+    body.phoneNumber = phoneResult.phoneNumber;
   }
   return { body, ok: true };
 }

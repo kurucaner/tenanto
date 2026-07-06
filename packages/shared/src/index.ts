@@ -162,6 +162,23 @@ export {
 // Helpers
 export { sleep, toIso } from "./helpers";
 
+// Phone utilities
+export {
+  formatNationalAsYouType,
+  formatPhoneDisplay,
+  getMaxNationalDigits,
+  getPhoneCountryOptions,
+  isValidE164,
+  isValidPhone,
+  normalizeToE164,
+  parsePhoneToParts,
+  PHONE_DEFAULT_COUNTRY,
+  toE164,
+  type CountryCode,
+  type IPhoneCountryOption,
+  type IPhoneParts,
+} from "./phone";
+
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";
 
