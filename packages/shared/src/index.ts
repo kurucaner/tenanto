@@ -37,12 +37,23 @@ export type {
 } from "./notification-types";
 
 // Support Types
+export {
+  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
+  SUPPORT_MAX_IMAGE_ATTACHMENTS,
+  SUPPORT_MAX_IMAGE_BYTES,
+} from "./support-types";
 export type {
   IAdminSupportRequestListItem,
   IAdminSupportRequestPatchBody,
   IAdminSupportRequestPatchResponse,
   IAdminSupportRequestsListQuery,
   IAdminSupportRequestsListResponse,
+  ISupportAttachment,
+  ISupportAttachmentInput,
+  ISupportAttachmentPresignBody,
+  ISupportAttachmentPresignFile,
+  ISupportAttachmentPresignItem,
+  ISupportAttachmentPresignResponse,
   ISupportCreateBody,
   ISupportMessage,
   ISupportMessageCreateBody,
@@ -54,6 +65,7 @@ export type {
   SupportCategory,
   SupportRequestStatus,
   TAdminSupportRequestSettableStatus,
+  TSupportAllowedImageMimeType,
 } from "./support-types";
 
 // App Config Types

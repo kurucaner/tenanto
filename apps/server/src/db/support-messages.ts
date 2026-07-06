@@ -1,8 +1,9 @@
 import type { ISupportMessage } from "@/packages/shared";
 
 import { pool } from "./pool";
+import { supportMessageAttachmentsDb } from "./support-message-attachments";
 
-function mapSupportMessageRow(row: Record<string, unknown>): ISupportMessage {
+function mapSupportMessageRow(row: Record<string, unknown>): Omit<ISupportMessage, "attachments"> {
   return {
     authorEmail: row.author_email as string,
     authorName: row.author_name as string,
@@ -11,6 +12,19 @@ function mapSupportMessageRow(row: Record<string, unknown>): ISupportMessage {
     createdAt: (row.created_at as Date).toISOString(),
     id: row.id as string,
   };
+}
+
+async function attachMessageAttachments(messages: Omit<ISupportMessage, "attachments">[]) {
+  if (messages.length === 0) return [] as ISupportMessage[];
+
+  const attachmentsByMessageId = await supportMessageAttachmentsDb.listByMessageIds(
+    messages.map((message) => message.id)
+  );
+
+  return messages.map((message) => ({
+    ...message,
+    attachments: attachmentsByMessageId.get(message.id) ?? [],
+  }));
 }
 
 export const supportMessagesDb = {
@@ -29,11 +43,12 @@ export const supportMessagesDb = {
       params.authorUserId,
     ]);
     const authorRow = author.rows[0] as Record<string, unknown>;
-    return mapSupportMessageRow({
+    const base = mapSupportMessageRow({
       ...result.rows[0],
       author_email: authorRow.email,
       author_name: authorRow.name,
     });
+    return { ...base, attachments: [] };
   },
 
   async listByRequestId(supportRequestId: string): Promise<ISupportMessage[]> {
@@ -45,6 +60,9 @@ export const supportMessagesDb = {
        ORDER BY sm.created_at ASC, sm.id ASC`,
       [supportRequestId]
     );
-    return result.rows.map((row) => mapSupportMessageRow(row as Record<string, unknown>));
+    const messages = result.rows.map((row) =>
+      mapSupportMessageRow(row as Record<string, unknown>)
+    );
+    return attachMessageAttachments(messages);
   },
 };

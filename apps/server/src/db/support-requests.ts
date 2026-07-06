@@ -12,9 +12,14 @@ import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapSupportRequestRow } from "./mappers";
 import { pool } from "./pool";
+import {
+  supportMessageAttachmentsDb,
+  type SupportMessageAttachmentInsert,
+} from "./support-message-attachments";
 import { supportMessagesDb } from "./support-messages";
 
 export interface CreateSupportRequestInput {
+  attachments?: SupportMessageAttachmentInsert[];
   category: SupportCategory;
   message: string;
   userId: string;
@@ -102,17 +107,33 @@ export const supportRequestsDb = {
       ]);
       const authorRow = authorResult.rows[0] as Record<string, unknown>;
       const messageRow = messageResult.rows[0] as Record<string, unknown>;
+      const messageId = messageRow.id as string;
+
+      if (input.attachments != null && input.attachments.length > 0) {
+        await supportMessageAttachmentsDb.createMany(
+          {
+            attachments: input.attachments,
+            supportMessageId: messageId,
+          },
+          client
+        );
+      }
+
       await client.query("COMMIT");
+
+      const attachments = await supportMessageAttachmentsDb.listByMessageId(messageId);
+
       return {
         item: ticket,
         messages: [
           {
+            attachments,
             authorEmail: authorRow.email as string,
             authorName: authorRow.name as string,
             authorUserId: input.userId,
             body: messageRow.body as string,
             createdAt: (messageRow.created_at as Date).toISOString(),
-            id: messageRow.id as string,
+            id: messageId,
           },
         ],
       };

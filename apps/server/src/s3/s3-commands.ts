@@ -4,6 +4,7 @@ import {
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
@@ -124,4 +125,18 @@ export const deleteObject = async (key: string): Promise<void> => {
     Key: key,
   });
   await s3Client.send(command);
+};
+
+export const headObject = async (key: string): Promise<boolean> => {
+  try {
+    await s3Client.send(
+      new HeadObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      })
+    );
+    return true;
+  } catch {
+    return false;
+  }
 };

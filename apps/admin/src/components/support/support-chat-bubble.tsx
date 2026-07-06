@@ -2,13 +2,21 @@ import { memo } from "react";
 
 import { getAuthorInitials } from "@/lib/support-message-ownership";
 import { cn } from "@/lib/utils";
-import { type ISupportMessage } from "@/packages/shared";
+import { type ISupportAttachment, type ISupportMessage } from "@/packages/shared";
 
 export interface SupportChatBubbleProps {
   isOwn: boolean;
   message: ISupportMessage;
   shouldAnimate?: boolean;
   showAuthorEmail?: boolean;
+}
+
+function areAttachmentsEqual(
+  prev: ISupportAttachment[],
+  next: ISupportAttachment[]
+): boolean {
+  if (prev.length !== next.length) return false;
+  return prev.every((attachment, index) => attachment.id === next[index]?.id);
 }
 
 function areBubblePropsEqual(
@@ -23,9 +31,29 @@ function areBubblePropsEqual(
     prev.message.body === next.message.body &&
     prev.message.createdAt === next.message.createdAt &&
     prev.message.authorName === next.message.authorName &&
-    prev.message.authorEmail === next.message.authorEmail
+    prev.message.authorEmail === next.message.authorEmail &&
+    areAttachmentsEqual(prev.message.attachments, next.message.attachments)
   );
 }
+
+const SupportAttachmentThumbnail = memo(({ attachment }: { attachment: ISupportAttachment }) => {
+  return (
+    <a
+      className="block overflow-hidden rounded-lg ring-1 ring-border/20"
+      href={attachment.downloadUrl}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <img
+        alt={attachment.filename}
+        className="max-h-40 w-full object-cover"
+        loading="lazy"
+        src={attachment.downloadUrl}
+      />
+    </a>
+  );
+});
+SupportAttachmentThumbnail.displayName = "SupportAttachmentThumbnail";
 
 const SupportChatBubbleInner = ({
   isOwn,
@@ -86,6 +114,13 @@ const SupportChatBubbleInner = ({
           >
             {message.body}
           </pre>
+          {message.attachments.length > 0 ? (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {message.attachments.map((attachment) => (
+                <SupportAttachmentThumbnail attachment={attachment} key={attachment.id} />
+              ))}
+            </div>
+          ) : null}
         </div>
         <time className="block px-1 text-[11px] text-muted-foreground" dateTime={message.createdAt}>
           {timeLabel}

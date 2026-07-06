@@ -8,7 +8,29 @@ export type TAdminSupportRequestSettableStatus = Extract<
   "in_progress" | "resolved"
 >;
 
+export const SUPPORT_MAX_IMAGE_ATTACHMENTS = 5;
+
+export const SUPPORT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+export const SUPPORT_ALLOWED_IMAGE_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+] as const;
+
+export type TSupportAllowedImageMimeType = (typeof SUPPORT_ALLOWED_IMAGE_MIME_TYPES)[number];
+
+export interface ISupportAttachment {
+  contentType: string;
+  downloadUrl: string;
+  filename: string;
+  id: string;
+  sizeBytes: number;
+}
+
 export interface ISupportMessage {
+  attachments: ISupportAttachment[];
   authorEmail: string;
   authorName: string;
   authorUserId: string;
@@ -42,13 +64,41 @@ export interface ISupportRequestDetail {
   messages: ISupportMessage[];
 }
 
+export interface ISupportAttachmentInput {
+  contentType: string;
+  filename: string;
+  key: string;
+  sizeBytes: number;
+}
+
 export interface ISupportCreateBody {
+  attachments?: ISupportAttachmentInput[];
   category: SupportCategory;
   message: string;
 }
 
 export interface ISupportMessageCreateBody {
   message: string;
+}
+
+export interface ISupportAttachmentPresignFile {
+  contentType: string;
+  filename: string;
+  sizeBytes: number;
+}
+
+export interface ISupportAttachmentPresignBody {
+  files: ISupportAttachmentPresignFile[];
+}
+
+export interface ISupportAttachmentPresignItem {
+  contentType: string;
+  key: string;
+  uploadUrl: string;
+}
+
+export interface ISupportAttachmentPresignResponse {
+  uploads: ISupportAttachmentPresignItem[];
 }
 
 export interface IAdminSupportRequestPatchBody {

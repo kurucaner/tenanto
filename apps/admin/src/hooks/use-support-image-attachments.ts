@@ -8,7 +8,7 @@ import {
 import { toast } from "sonner";
 
 import {
-  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
+  SUPPORT_ALLOWED_IMAGE_MIME_TYPE_SET,
   SUPPORT_MAX_IMAGE_ATTACHMENTS,
   SUPPORT_MAX_IMAGE_BYTES,
 } from "@/components/support/support-constants";
@@ -85,7 +85,7 @@ export function useSupportImageAttachments() {
     let rejectedCount = false;
 
     for (const file of incoming) {
-      if (!SUPPORT_ALLOWED_IMAGE_MIME_TYPES.has(file.type)) {
+      if (!SUPPORT_ALLOWED_IMAGE_MIME_TYPE_SET.has(file.type)) {
         rejectedType = true;
         continue;
       }

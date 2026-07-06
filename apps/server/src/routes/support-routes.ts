@@ -1,9 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { supportMessagesDb } from "@/db/support-messages";
+import {
+  buildSupportAttachmentStorageKey,
+  isSupportAttachmentKeyOwnedByUser,
+} from "@/db/support-message-attachments";
 import { supportRequestsDb } from "@/db/support-requests";
 import {
   HttpStatus,
+  type ISupportAttachmentPresignBody,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type SupportCategory,
@@ -11,6 +16,7 @@ import {
   UserType,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { generateUploadUrl, headObject } from "@/s3/s3-commands";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
 import {
@@ -23,6 +29,8 @@ import {
   isValidSupportCategory,
   parseOptionalSupportCategory,
   parseOptionalSupportRequestStatus,
+  parseSupportAttachmentPresignBody,
+  parseSupportCreateAttachments,
   parseSupportListLimit,
   parseSupportMessageBody,
   parseSupportRequestPatchBody,
@@ -127,15 +135,65 @@ function parseListQuery(
   };
 }
 
+async function verifyCreateAttachments(
+  userId: string,
+  attachments: ISupportCreateBody["attachments"]
+): Promise<{ error: string; ok: false; status: number } | { ok: true }> {
+  if (attachments == null || attachments.length === 0) {
+    return { ok: true };
+  }
+
+  for (const attachment of attachments) {
+    if (!isSupportAttachmentKeyOwnedByUser(attachment.key, userId)) {
+      return { error: "Invalid attachment key", ok: false, status: HttpStatus.FORBIDDEN };
+    }
+
+    const exists = await headObject(attachment.key);
+    if (!exists) {
+      return { error: `Upload not found for ${attachment.filename}`, ok: false, status: HttpStatus.BAD_REQUEST };
+    }
+  }
+
+  return { ok: true };
+}
+
 export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
   const adminPre = [server.authenticate, server.requireAdmin];
+
+  server.post<{ Body: ISupportAttachmentPresignBody }>(
+    "/support/attachments/presign",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Body: ISupportAttachmentPresignBody }>,
+      reply: FastifyReply
+    ) => {
+      const parsed = parseSupportAttachmentPresignBody(request.body);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      const uploads = await Promise.all(
+        parsed.body.files.map(async (file) => {
+          const key = buildSupportAttachmentStorageKey(request.user.userId);
+          const uploadUrl = await generateUploadUrl(key, file.contentType);
+          return {
+            contentType: file.contentType,
+            key,
+            uploadUrl,
+          };
+        })
+      );
+
+      return reply.send({ uploads });
+    }
+  );
 
   server.post<{ Body: ISupportCreateBody }>(
     "/support",
     { preHandler: authPre },
     async (request: FastifyRequest<{ Body: ISupportCreateBody }>, reply: FastifyReply) => {
-      const { category, message } = request.body;
+      const { attachments: attachmentsRaw, category, message } = request.body;
       const userId = request.user.userId;
       const userEmail = request.user.email;
 
@@ -155,9 +213,26 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         });
       }
 
+      const parsedAttachments = parseSupportCreateAttachments(attachmentsRaw);
+      if (!parsedAttachments.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsedAttachments.error });
+      }
+
+      const verifiedAttachments = await verifyCreateAttachments(
+        userId,
+        parsedAttachments.attachments
+      );
+      if (!verifiedAttachments.ok) {
+        return reply
+          .status(verifiedAttachments.status)
+          .send({ error: verifiedAttachments.error });
+      }
+
       let detail;
       try {
         detail = await supportRequestsDb.createWithInitialMessage({
+          attachments:
+            parsedAttachments.attachments.length > 0 ? parsedAttachments.attachments : undefined,
           category,
           message: trimmedMessage,
           userId,

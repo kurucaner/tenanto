@@ -1,5 +1,5 @@
 import { ImagePlus } from "lucide-react";
-import { memo, useRef, type DragEvent } from "react";
+import { type DragEvent,memo, useRef } from "react";
 
 import { SupportAttachmentPreview } from "@/components/support/support-attachment-preview";
 import {

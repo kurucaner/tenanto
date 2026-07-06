@@ -32,6 +32,8 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
+  type ISupportAttachmentPresignBody,
+  type ISupportAttachmentPresignResponse,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type ISupportRequestDetail,
@@ -391,6 +393,12 @@ export const supportApi = {
 
   postMessage: (id: string, body: ISupportMessageCreateBody) =>
     authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}/messages`, {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  presignAttachments: (body: ISupportAttachmentPresignBody) =>
+    authenticatedRequest<ISupportAttachmentPresignResponse>("/support/attachments/presign", {
       body: JSON.stringify(body),
       method: "POST",
     }),

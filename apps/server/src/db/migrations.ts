@@ -844,4 +844,28 @@ export const migrations: IMigration[] = [
     },
     version: 21,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS support_message_attachments;`);
+    },
+    name: "create_support_message_attachments",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE support_message_attachments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          support_message_id UUID NOT NULL REFERENCES support_messages(id) ON DELETE CASCADE,
+          storage_key TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          content_type TEXT NOT NULL,
+          size_bytes INTEGER NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_support_message_attachments_message_id
+        ON support_message_attachments (support_message_id);
+      `);
+    },
+    version: 22,
+  },
 ];

@@ -20,6 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
+import { uploadSupportAttachments } from "@/lib/upload-support-attachments";
 import { type SupportCategory } from "@/packages/shared";
 
 export const CreateSupportRequestDialog = memo(
@@ -34,6 +35,7 @@ export const CreateSupportRequestDialog = memo(
     const queryClient = useQueryClient();
     const [category, setCategory] = useState<SupportCategory>("bug");
     const [message, setMessage] = useState("");
+    const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
     const {
       addFiles,
       attachments,
@@ -47,6 +49,7 @@ export const CreateSupportRequestDialog = memo(
     const resetForm = useCallback(() => {
       setCategory("bug");
       setMessage("");
+      setIsUploadingAttachments(false);
       clearAttachments();
     }, [clearAttachments]);
 
@@ -61,19 +64,31 @@ export const CreateSupportRequestDialog = memo(
     );
 
     const mutation = useMutation({
-      mutationFn: () =>
-        supportApi.create({
+      mutationFn: async () => {
+        let attachmentInputs;
+        if (attachments.length > 0) {
+          setIsUploadingAttachments(true);
+          try {
+            attachmentInputs = await uploadSupportAttachments(
+              attachments.map((attachment) => attachment.file),
+              (files) => supportApi.presignAttachments({ files })
+            );
+          } finally {
+            setIsUploadingAttachments(false);
+          }
+        }
+
+        return supportApi.create({
+          attachments: attachmentInputs,
           category,
           message: message.trim(),
-        }),
+        });
+      },
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Could not submit request");
       },
       onSuccess: (data) => {
         toast.success("Support request submitted");
-        if (attachments.length > 0) {
-          toast.info("Images will be uploaded when attachment support is enabled");
-        }
         queryClient.invalidateQueries({ queryKey: ["support", "list"] });
         handleOpenChange(false);
         navigate(`/support-requests/${encodeURIComponent(data.id)}`);
@@ -89,6 +104,14 @@ export const CreateSupportRequestDialog = memo(
       mutation.mutate();
     };
 
+    const isBusy = mutation.isPending || isUploadingAttachments;
+
+    const submitLabel = (() => {
+      if (isUploadingAttachments) return "Uploading images…";
+      if (mutation.isPending) return "Submitting…";
+      return "Submit request";
+    })();
+
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[560px]">
@@ -101,6 +124,7 @@ export const CreateSupportRequestDialog = memo(
                 <Label htmlFor="create-support-category">Category</Label>
                 <select
                   className={supportSelectClass}
+                  disabled={isBusy}
                   id="create-support-category"
                   onChange={(e) => setCategory(e.target.value as SupportCategory)}
                   value={category}
@@ -116,6 +140,7 @@ export const CreateSupportRequestDialog = memo(
                 <Label htmlFor="create-support-message">Message</Label>
                 <textarea
                   className={supportTextareaClass}
+                  disabled={isBusy}
                   id="create-support-message"
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe the issue or request…"
@@ -127,7 +152,7 @@ export const CreateSupportRequestDialog = memo(
                 <Label htmlFor="create-support-attachments-dropzone">Attachments (optional)</Label>
                 <SupportAttachmentPicker
                   attachments={attachments}
-                  disabled={mutation.isPending}
+                  disabled={isBusy}
                   dragHandlers={dragHandlers}
                   formatFileSize={formatFileSize}
                   idPrefix="create-support"
@@ -138,8 +163,8 @@ export const CreateSupportRequestDialog = memo(
               </div>
             </div>
             <DialogFooter>
-              <Button disabled={mutation.isPending} type="submit">
-                {mutation.isPending ? "Submitting…" : "Submit request"}
+              <Button disabled={isBusy} type="submit">
+                {submitLabel}
               </Button>
             </DialogFooter>
           </form>

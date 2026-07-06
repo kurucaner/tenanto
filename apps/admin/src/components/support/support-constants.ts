@@ -1,8 +1,17 @@
 import { cn } from "@/lib/utils";
 import {
+  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
+  SUPPORT_MAX_IMAGE_ATTACHMENTS,
+  SUPPORT_MAX_IMAGE_BYTES,
   type SupportCategory,
   type SupportRequestStatus,
 } from "@/packages/shared";
+
+export {
+  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
+  SUPPORT_MAX_IMAGE_ATTACHMENTS,
+  SUPPORT_MAX_IMAGE_BYTES,
+};
 
 export const STATUS_OPTIONS: { label: string; value: "" | SupportRequestStatus }[] = [
   { label: "All statuses", value: "" },
@@ -52,18 +61,11 @@ export const supportTextareaClass = cn(
   "min-h-[88px] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 );
 
-export const SUPPORT_IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp";
+export const SUPPORT_IMAGE_ACCEPT = SUPPORT_ALLOWED_IMAGE_MIME_TYPES.join(",");
 
-export const SUPPORT_MAX_IMAGE_ATTACHMENTS = 5;
-
-export const SUPPORT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-
-export const SUPPORT_ALLOWED_IMAGE_MIME_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-]);
+export const SUPPORT_ALLOWED_IMAGE_MIME_TYPE_SET = new Set<string>(
+  SUPPORT_ALLOWED_IMAGE_MIME_TYPES
+);
 
 export const supportAttachmentDropzoneClass = cn(
   "flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-transparent px-4 py-6 text-sm outline-none transition-colors dark:bg-input/30",
