@@ -30,6 +30,14 @@ export const propertyInvitesDb = {
     return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async findByProperty(propertyId: string): Promise<IPropertyInvite[]> {
+    const result = await pool.query(
+      `SELECT * FROM property_invites WHERE property_id = $1 ORDER BY created_at DESC`,
+      [propertyId]
+    );
+    return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
+  },
+
   async findByPropertyAndEmail(
     propertyId: string,
     email: string
@@ -50,14 +58,6 @@ export const propertyInvitesDb = {
          AND status = 'pending'
          AND expires_at > NOW()`,
       [email]
-    );
-    return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
-  },
-
-  async findByProperty(propertyId: string): Promise<IPropertyInvite[]> {
-    const result = await pool.query(
-      `SELECT * FROM property_invites WHERE property_id = $1 ORDER BY created_at DESC`,
-      [propertyId]
     );
     return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
   },

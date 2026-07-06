@@ -4,10 +4,6 @@ import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertySettingsDb } from "@/db/property-settings";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
-  calculateNights,
-  calculateStayIncome,
-} from "@/services/property-income-calculator";
-import {
   HttpStatus,
   type ICreatePropertyReservationBody,
   type IPropertyReservation,
@@ -20,6 +16,10 @@ import {
   type TUnitRentalType,
   UnitRentalType,
 } from "@/packages/shared";
+import {
+  calculateNights,
+  calculateStayIncome,
+} from "@/services/property-income-calculator";
 
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
 import {

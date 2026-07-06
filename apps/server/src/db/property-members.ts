@@ -20,27 +20,6 @@ export const propertyMembersDb = {
     return member;
   },
 
-  async updateRole(
-    propertyId: string,
-    userId: string,
-    role: TPropertyRole
-  ): Promise<IPropertyMember | null> {
-    await pool.query(
-      `UPDATE property_members SET role = $1::property_role
-       WHERE property_id = $2 AND user_id = $3`,
-      [role, propertyId, userId]
-    );
-    return propertyMembersDb.findOne(propertyId, userId);
-  },
-
-  async remove(propertyId: string, userId: string): Promise<boolean> {
-    const result = await pool.query(
-      `DELETE FROM property_members WHERE property_id = $1 AND user_id = $2`,
-      [propertyId, userId]
-    );
-    return (result.rowCount ?? 0) > 0;
-  },
-
   async findByProperty(propertyId: string): Promise<IPropertyMember[]> {
     const result = await pool.query(
       `SELECT pm.*, u.name AS user_name, u.email AS user_email
@@ -63,5 +42,26 @@ export const propertyMembersDb = {
     );
     if (result.rows.length === 0) return null;
     return mapPropertyMemberRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async remove(propertyId: string, userId: string): Promise<boolean> {
+    const result = await pool.query(
+      `DELETE FROM property_members WHERE property_id = $1 AND user_id = $2`,
+      [propertyId, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async updateRole(
+    propertyId: string,
+    userId: string,
+    role: TPropertyRole
+  ): Promise<IPropertyMember | null> {
+    await pool.query(
+      `UPDATE property_members SET role = $1::property_role
+       WHERE property_id = $2 AND user_id = $3`,
+      [role, propertyId, userId]
+    );
+    return propertyMembersDb.findOne(propertyId, userId);
   },
 };
