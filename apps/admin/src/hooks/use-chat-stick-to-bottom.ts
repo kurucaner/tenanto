@@ -37,15 +37,22 @@ export function useChatStickToBottom({
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [pendingBelowCount, setPendingBelowCount] = useState(0);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "instant") => {
+  const applyScrollToBottom = useCallback((behavior: ScrollBehavior = "instant") => {
     const container = scrollRef.current;
     if (!container) return;
 
     container.scrollTo({ behavior, top: container.scrollHeight });
     isNearBottomRef.current = true;
-    setIsNearBottom(true);
-    setPendingBelowCount(0);
   }, []);
+
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "instant") => {
+      applyScrollToBottom(behavior);
+      setIsNearBottom(true);
+      setPendingBelowCount(0);
+    },
+    [applyScrollToBottom]
+  );
 
   const handleScroll = useCallback(() => {
     const container = scrollRef.current;
@@ -69,8 +76,8 @@ export function useChatStickToBottom({
 
     hasInitialScrolledRef.current = true;
     lastHandledMessageIdRef.current = lastMessageId;
-    scrollToBottom("instant");
-  }, [enabled, lastMessageId, scrollToBottom]);
+    applyScrollToBottom("instant");
+  }, [enabled, lastMessageId, applyScrollToBottom]);
 
   useLayoutEffect(() => {
     if (!enabled || lastMessageId == null) return;
@@ -101,7 +108,9 @@ export function useChatStickToBottom({
     }
 
     lastHandledMessageIdRef.current = lastMessageId;
-    setPendingBelowCount((count) => count + 1);
+    requestAnimationFrame(() => {
+      setPendingBelowCount((count) => count + 1);
+    });
   }, [enabled, forceScrollMessageId, lastMessageId, scrollToBottom]);
 
   return {
