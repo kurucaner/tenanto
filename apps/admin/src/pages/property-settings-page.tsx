@@ -3,12 +3,43 @@ import { memo } from "react";
 import { useParams } from "react-router-dom";
 
 import { PropertyPageShell } from "@/components/properties/property-page-shell";
-import { PropertySettingsForm } from "@/components/settings/property-settings-form";
+import { usePropertySettingsForm } from "@/components/settings/property-settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { propertiesApi, settingsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { PropertyRole, UserType } from "@/packages/shared";
+import { type IPropertySettings,PropertyRole, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
+
+const PropertySettingsEditor = memo(
+  ({
+    canEdit,
+    propertyId,
+    propertyName,
+    settings,
+  }: {
+    canEdit: boolean;
+    propertyId: string;
+    propertyName: string;
+    settings: IPropertySettings;
+  }) => {
+    const { formContent, headerActions } = usePropertySettingsForm({
+      canEdit,
+      propertyId,
+      settings,
+    });
+
+    return (
+      <PropertyPageShell
+        actions={headerActions}
+        propertyId={propertyId}
+        propertyName={propertyName}
+      >
+        {formContent}
+      </PropertyPageShell>
+    );
+  }
+);
+PropertySettingsEditor.displayName = "PropertySettingsEditor";
 
 const PropertySettingsContent = memo(
   ({ propertyId, propertyName }: { propertyId: string; propertyName: string }) => {
@@ -30,27 +61,36 @@ const PropertySettingsContent = memo(
     const isCreator = propertyDetailQuery.data?.property?.createdBy === currentUser?.id;
     const canEdit = isAdmin || isCreator || callerMembership?.role === PropertyRole.OWNER;
 
-    return (
-      <PropertyPageShell propertyId={propertyId} propertyName={propertyName}>
-        {settingsQuery.isPending ? (
+    if (settingsQuery.isPending) {
+      return (
+        <PropertyPageShell propertyId={propertyId} propertyName={propertyName}>
           <div className="space-y-4">
             <Skeleton className="h-8 w-64" />
             <Skeleton className="h-96 w-full" />
           </div>
-        ) : settingsQuery.isError || !settingsQuery.data?.settings ? (
+        </PropertyPageShell>
+      );
+    }
+
+    if (settingsQuery.isError || !settingsQuery.data?.settings) {
+      return (
+        <PropertyPageShell propertyId={propertyId} propertyName={propertyName}>
           <p className="text-destructive text-sm">
             {settingsQuery.error instanceof Error
               ? settingsQuery.error.message
               : "Failed to load settings"}
           </p>
-        ) : (
-          <PropertySettingsForm
-            canEdit={canEdit}
-            propertyId={propertyId}
-            settings={settingsQuery.data.settings}
-          />
-        )}
-      </PropertyPageShell>
+        </PropertyPageShell>
+      );
+    }
+
+    return (
+      <PropertySettingsEditor
+        canEdit={canEdit}
+        propertyId={propertyId}
+        propertyName={propertyName}
+        settings={settingsQuery.data.settings}
+      />
     );
   }
 );

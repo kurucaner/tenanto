@@ -27,7 +27,7 @@ export const PropertyPageShell = memo(
         </Link>
         <Separator className="h-4" orientation="vertical" />
         <span className="text-sm font-medium text-foreground">{propertyName}</span>
-        {actions ? <div className="ml-auto flex gap-2">{actions}</div> : null}
+        <div className="ml-auto flex min-h-8 items-center gap-2">{actions}</div>
       </div>
 
       <div className="flex items-center gap-1 border-b">
