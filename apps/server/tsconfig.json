@@ -18,6 +18,7 @@
       "@/auth/*": ["./src/auth/*"],
       "@/constants/*": ["./src/constants/*"],
       "@/db/*": ["./src/db/*"],
+      "@/lib/*": ["./src/lib/*"],
       "@/email": ["./src/email"],
       "@/routes/*": ["./src/routes/*"],
       "@/s3/*": ["./src/s3/*"],

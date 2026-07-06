@@ -8,6 +8,7 @@ import Fastify from "fastify";
 import { jwtAuthPlugin } from "./auth/jwt";
 import { initializeDatabase } from "./db/pool";
 import { isProduction } from "./environment";
+import { resolveAllowedOrigin } from "./lib/cors-headers";
 import { adminRoutes } from "./routes/admin/admin-routes";
 import { portfolioReportRoutes } from "./routes/admin/portfolio-report-routes";
 import { propertyExpenseRoutes } from "./routes/admin/property-expense-routes";
@@ -33,10 +34,17 @@ const pm2Instance = process.env["NODE_APP_INSTANCE"];
 export const server = Fastify({ logger: false });
 server.log = createFastifyLogAdapter();
 
-const productionCorsOrigins = [process.env["WEB_APP_URL"], process.env["ADMIN_APP_URL"]];
 server.register(cors, {
+  allowedHeaders: ["Accept", "Authorization", "Content-Type", "X-Stream-Client-Id"],
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  origin: isProduction ? productionCorsOrigins : "*",
+  origin: (origin, callback) => {
+    const allowed = resolveAllowedOrigin(origin);
+    if (allowed == null) {
+      callback(new Error("Not allowed by CORS"), false);
+      return;
+    }
+    callback(null, allowed === "*" ? true : allowed);
+  },
 });
 server.register(helmet);
 server.register(rateLimit, {

@@ -17,6 +17,8 @@ const BASE_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
 const MAX_FAILURES_BEFORE_DEGRADED = 5;
 const PROACTIVE_RECONNECT_MS = 12 * 60 * 1000;
+const RECONNECT_DEBOUNCE_MS = 500;
+const STREAM_CLIENT_ID_KEY = "notification-stream-client-id";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -36,6 +38,16 @@ function parseStreamEvent(data: string): INotificationStreamEvent | null {
   }
 }
 
+function getStreamClientId(): string {
+  const existing = sessionStorage.getItem(STREAM_CLIENT_ID_KEY);
+  if (existing != null && existing !== "") {
+    return existing;
+  }
+  const id = crypto.randomUUID();
+  sessionStorage.setItem(STREAM_CLIENT_ID_KEY, id);
+  return id;
+}
+
 class StreamFatalError extends Error {
   constructor(message: string) {
     super(message);
@@ -44,9 +56,12 @@ class StreamFatalError extends Error {
 }
 
 class StreamReconnectError extends Error {
-  constructor(message: string) {
+  readonly retryDelayMs?: number;
+
+  constructor(message: string, retryDelayMs?: number) {
     super(message);
     this.name = "StreamReconnectError";
+    this.retryDelayMs = retryDelayMs;
   }
 }
 
@@ -58,21 +73,33 @@ export function useNotificationStream(): NotificationStreamStatus {
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const statusRef = useRef(status);
   statusRef.current = status;
+  const streamClientIdRef = useRef(getStreamClientId());
+  const reconnectDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const enabled = userType === UserType.USER && accessToken != null;
 
   useEffect(() => {
-    const requestReconnect = (): void => {
-      setReconnectNonce((value) => value + 1);
+    const scheduleReconnect = (): void => {
+      if (statusRef.current === "connected") return;
+
+      if (reconnectDebounceRef.current != null) {
+        clearTimeout(reconnectDebounceRef.current);
+      }
+
+      reconnectDebounceRef.current = setTimeout(() => {
+        reconnectDebounceRef.current = null;
+        if (statusRef.current === "connected") return;
+        setReconnectNonce((value) => value + 1);
+      }, RECONNECT_DEBOUNCE_MS);
     };
 
     const handleOnline = (): void => {
-      requestReconnect();
+      scheduleReconnect();
     };
 
     const handleVisibility = (): void => {
       if (document.visibilityState === "visible") {
-        requestReconnect();
+        scheduleReconnect();
       }
     };
 
@@ -80,13 +107,16 @@ export function useNotificationStream(): NotificationStreamStatus {
       setStatus("degraded");
     };
 
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    globalThis.addEventListener("online", handleOnline);
+    globalThis.addEventListener("offline", handleOffline);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
+      if (reconnectDebounceRef.current != null) {
+        clearTimeout(reconnectDebounceRef.current);
+      }
+      globalThis.removeEventListener("online", handleOnline);
+      globalThis.removeEventListener("offline", handleOffline);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
@@ -145,6 +175,7 @@ export function useNotificationStream(): NotificationStreamStatus {
         headers: {
           Accept: "text/event-stream",
           Authorization: `Bearer ${token}`,
+          "X-Stream-Client-Id": streamClientIdRef.current,
         },
         method: "GET",
         onclose: () => {
@@ -174,7 +205,7 @@ export function useNotificationStream(): NotificationStreamStatus {
             throw new StreamReconnectError("Token refreshed");
           }
           if (response.status === 429) {
-            throw new StreamFatalError("Too many stream connections");
+            throw new StreamReconnectError("Too many stream connections", BASE_BACKOFF_MS);
           }
           if (!response.ok) {
             throw new Error(`Stream failed: ${response.status}`);
@@ -202,6 +233,7 @@ export function useNotificationStream(): NotificationStreamStatus {
         } catch (err) {
           if (cancelled || abortController.signal.aborted) {
             if (!cancelled) {
+              await sleep(withJitter(BASE_BACKOFF_MS));
               token = useAuthStore.getState().accessToken ?? token;
               const refreshed = await refreshAccessTokenForStream();
               if (refreshed != null) {
@@ -225,6 +257,9 @@ export function useNotificationStream(): NotificationStreamStatus {
             consecutiveFailures = 0;
             backoffMs = BASE_BACKOFF_MS;
             setStatus("connecting");
+            if (err.retryDelayMs != null) {
+              await sleep(withJitter(err.retryDelayMs));
+            }
             continue;
           }
 

@@ -6,18 +6,21 @@ import { Client } from "pg";
 
 import { userNotificationsDb } from "@/db/user-notifications";
 import { pool } from "@/db/pool";
+import { buildSseCorsHeaders } from "@/lib/cors-headers";
 import { type INotificationStreamEvent } from "@/packages/shared";
 
 const NOTIFY_CHANNEL = "user_notifications";
 const MAX_CONNECTIONS_PER_USER = 5;
-const CONNECTION_MAX_AGE_MS = 12 * 60 * 1000;
+const CONNECTION_MAX_AGE_MS = 3 * 60 * 1000;
 const HEARTBEAT_INTERVAL_MS = 25_000;
 
 interface SseConnection {
+  clientId: string | null;
   closed: boolean;
   heartbeatTimer: ReturnType<typeof setInterval>;
   id: string;
   maxAgeTimer: ReturnType<typeof setTimeout>;
+  registeredAt: number;
   res: ServerResponse;
   userId: string;
 }
@@ -120,15 +123,37 @@ class NotificationStreamHub {
     });
   }
 
-  register(userId: string, reply: FastifyReply, initialCount: number): SseConnection | "too_many" {
+  register(
+    userId: string,
+    reply: FastifyReply,
+    initialCount: number,
+    clientId?: string | null
+  ): SseConnection {
     const existing = this.connections.get(userId) ?? new Set<SseConnection>();
-    if (existing.size >= MAX_CONNECTIONS_PER_USER) {
-      return "too_many";
+    const normalizedClientId = clientId?.trim() || null;
+
+    if (normalizedClientId != null) {
+      for (const conn of [...existing]) {
+        if (conn.clientId === normalizedClientId) {
+          this.unregister(userId, conn.id);
+        }
+      }
+    }
+
+    while (existing.size >= MAX_CONNECTIONS_PER_USER) {
+      const oldest = this.findOldestConnection(existing);
+      if (oldest == null) break;
+      this.unregister(userId, oldest.id);
     }
 
     reply.hijack();
     const res = reply.raw;
+    const requestOrigin = reply.request.headers.origin;
+    const corsHeaders = buildSseCorsHeaders(
+      typeof requestOrigin === "string" ? requestOrigin : undefined
+    );
     res.writeHead(200, {
+      ...corsHeaders,
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
       "Content-Type": "text/event-stream",
@@ -136,6 +161,7 @@ class NotificationStreamHub {
     });
 
     const connection: SseConnection = {
+      clientId: normalizedClientId,
       closed: false,
       heartbeatTimer: setInterval(() => {
         writeToConnection(connection, { data: {}, type: "ping", v: 1 });
@@ -144,6 +170,7 @@ class NotificationStreamHub {
       maxAgeTimer: setTimeout(() => {
         this.unregister(userId, connection.id);
       }, CONNECTION_MAX_AGE_MS),
+      registeredAt: Date.now(),
       res,
       userId,
     };
@@ -195,6 +222,16 @@ class NotificationStreamHub {
     for (const conn of set) {
       writeToConnection(conn, event);
     }
+  }
+
+  private findOldestConnection(connections: Set<SseConnection>): SseConnection | null {
+    let oldest: SseConnection | null = null;
+    for (const conn of connections) {
+      if (oldest == null || conn.registeredAt < oldest.registeredAt) {
+        oldest = conn;
+      }
+    }
+    return oldest;
   }
 }
 

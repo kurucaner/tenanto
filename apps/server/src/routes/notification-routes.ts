@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { userNotificationsDb } from "@/db/user-notifications";
+import { resolveAllowedOrigin } from "@/lib/cors-headers";
 import { HttpStatus, UserType } from "@/packages/shared";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
@@ -33,19 +34,20 @@ export const notificationRoutes = async (server: FastifyInstance): Promise<void>
       }
 
       const userId = request.user.userId;
-      if (notificationStreamHub.getConnectionCount(userId) >= 5) {
-        return reply.status(HttpStatus.TOO_MANY_REQUESTS).send({
-          error: "Too many notification stream connections",
-        });
+      const requestOrigin =
+        typeof request.headers.origin === "string" ? request.headers.origin : undefined;
+
+      if (resolveAllowedOrigin(requestOrigin) == null) {
+        return reply.status(HttpStatus.FORBIDDEN).send({ error: "Forbidden" });
       }
 
+      const clientId =
+        typeof request.headers["x-stream-client-id"] === "string"
+          ? request.headers["x-stream-client-id"]
+          : undefined;
+
       const count = await userNotificationsDb.countUnread(userId);
-      const registered = notificationStreamHub.register(userId, reply, count);
-      if (registered === "too_many") {
-        return reply.status(HttpStatus.TOO_MANY_REQUESTS).send({
-          error: "Too many notification stream connections",
-        });
-      }
+      notificationStreamHub.register(userId, reply, count, clientId);
     }
   );
 
