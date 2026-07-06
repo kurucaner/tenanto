@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,11 @@ const DateDivider = memo(({ label }: Readonly<{ label: string }>) => (
 ));
 DateDivider.displayName = "SupportChatDateDivider";
 
+function getMessageIdsKey(messages: ISupportMessage[] | undefined): string {
+  if (messages == null || messages.length === 0) return "";
+  return messages.map((message) => message.id).join(",");
+}
+
 export const SupportChatThread = memo(
   ({
     isError,
@@ -60,13 +65,41 @@ export const SupportChatThread = memo(
     viewer,
   }: SupportChatThreadProps) => {
     const scrollRef = useRef<HTMLDivElement>(null);
-    const messageCount = messages?.length ?? 0;
+    const bottomRef = useRef<HTMLDivElement>(null);
+    const seenIdsRef = useRef<Set<string>>(new Set());
+    const isInitialMountRef = useRef(true);
+    const lastScrolledMessageIdRef = useRef<string | null>(null);
 
-    useEffect(() => {
-      const node = scrollRef.current;
-      if (!node) return;
-      node.scrollTop = node.scrollHeight;
-    }, [messageCount]);
+    const messageIdsKey = getMessageIdsKey(messages);
+    const lastMessageId = messages?.at(-1)?.id ?? null;
+
+    if (messages != null && isInitialMountRef.current) {
+      for (const message of messages) {
+        seenIdsRef.current.add(message.id);
+      }
+      isInitialMountRef.current = false;
+    }
+
+    const groups = useMemo(
+      () => groupSupportMessagesByDay(messages ?? []),
+      [messageIdsKey, messages]
+    );
+
+    useLayoutEffect(() => {
+      if (messages == null) return;
+      for (const message of messages) {
+        seenIdsRef.current.add(message.id);
+      }
+    }, [messageIdsKey, messages]);
+
+    useLayoutEffect(() => {
+      if (lastMessageId == null || lastMessageId === lastScrolledMessageIdRef.current) return;
+      lastScrolledMessageIdRef.current = lastMessageId;
+
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ block: "end" });
+      });
+    }, [lastMessageId]);
 
     if (isPending) {
       return (
@@ -89,33 +122,29 @@ export const SupportChatThread = memo(
       );
     }
 
-    const groups = groupSupportMessagesByDay(messages ?? []);
-    let bubbleIndex = 0;
-
     return (
       <div
-        className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-4")}
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-3 py-3 [overflow-anchor:auto] md:px-4"
+        )}
         ref={scrollRef}
       >
-        <div className="flex min-h-full flex-col justify-end gap-3">
+        <div className="flex flex-col gap-3">
           {groups.map((group) => (
             <div className="space-y-3" key={group.dateKey}>
               <DateDivider label={group.label} />
-              {group.messages.map((message) => {
-                const index = bubbleIndex;
-                bubbleIndex += 1;
-                return (
-                  <SupportChatBubble
-                    animationIndex={index}
-                    isOwn={isOwnSupportMessage(message, viewer, ticketUserId)}
-                    key={message.id}
-                    message={message}
-                    showAuthorEmail={showAuthorEmail}
-                  />
-                );
-              })}
+              {group.messages.map((message) => (
+                <SupportChatBubble
+                  isOwn={isOwnSupportMessage(message, viewer, ticketUserId)}
+                  key={message.id}
+                  message={message}
+                  shouldAnimate={!seenIdsRef.current.has(message.id)}
+                  showAuthorEmail={showAuthorEmail}
+                />
+              ))}
             </div>
           ))}
+          <div aria-hidden ref={bottomRef} />
         </div>
       </div>
     );

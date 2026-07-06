@@ -7,14 +7,15 @@ import { supportTextareaClass } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
 import { supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { markSupportDetailLocallyUpdated } from "@/lib/support-chat-cache";
 import { cn } from "@/lib/utils";
-import { type ISupportRequestDetail, type SupportRequestStatus } from "@/packages/shared";
+import { type SupportRequestStatus } from "@/packages/shared";
 
 export interface SupportChatComposerProps {
   disabled?: boolean;
   idPrefix: string;
   isAdmin?: boolean;
-  onSuccess?: (detail: ISupportRequestDetail) => void;
+  onListsInvalidate?: () => void;
   placeholder?: string;
   status: SupportRequestStatus;
   supportRequestId: string;
@@ -28,7 +29,7 @@ export const SupportChatComposer = memo(
     disabled = false,
     idPrefix,
     isAdmin = false,
-    onSuccess,
+    onListsInvalidate,
     placeholder = "Write a message…",
     status,
     supportRequestId,
@@ -36,22 +37,6 @@ export const SupportChatComposer = memo(
     const queryClient = useQueryClient();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [replyDraft, setReplyDraft] = useState("");
-
-    const replyMutation = useMutation({
-      mutationFn: (message: string) => supportApi.postMessage(supportRequestId, { message }),
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Could not send message");
-      },
-      onSuccess: (detail) => {
-        toast.success("Message sent");
-        setReplyDraft("");
-        resetTextareaHeight();
-        queryClient.setQueryData(adminQueryKeys.supportRequest(supportRequestId), detail);
-        onSuccess?.(detail);
-      },
-    });
-
-    const busy = disabled || replyMutation.isPending;
 
     const resetTextareaHeight = useCallback(() => {
       const node = textareaRef.current;
@@ -69,6 +54,30 @@ export const SupportChatComposer = memo(
       );
       node.style.height = `${nextHeight}px`;
     }, []);
+
+    const replyMutation = useMutation({
+      mutationFn: (message: string) => supportApi.postMessage(supportRequestId, { message }),
+      onError: (e) => {
+        toast.error(e instanceof Error ? e.message : "Could not send message");
+      },
+      onSuccess: (detail) => {
+        toast.success("Message sent");
+        setReplyDraft("");
+        resetTextareaHeight();
+        queryClient.setQueryData(adminQueryKeys.supportRequest(supportRequestId), detail);
+
+        const lastMessageId = detail.messages.at(-1)?.id;
+        if (lastMessageId != null) {
+          markSupportDetailLocallyUpdated(supportRequestId, lastMessageId);
+        }
+
+        if (onListsInvalidate != null) {
+          queueMicrotask(onListsInvalidate);
+        }
+      },
+    });
+
+    const busy = disabled || replyMutation.isPending;
 
     const handleSendReply = useCallback(() => {
       const trimmed = replyDraft.trim();

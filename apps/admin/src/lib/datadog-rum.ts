@@ -1,5 +1,6 @@
 import { datadogRum } from "@datadog/browser-rum";
 
+import { APP_VERSION } from "@/lib/app-version";
 import type { IUser } from "@/packages/shared";
 
 const DEFAULT_DD_SITE = "us5.datadoghq.com";
@@ -40,7 +41,7 @@ function getRumConfig() {
     env: import.meta.env.VITE_DD_ENV ?? import.meta.env.MODE,
     proxyUrl: normalizeProxyUrl(proxyUrl),
     site: import.meta.env.VITE_DD_SITE ?? DEFAULT_DD_SITE,
-    version: import.meta.env.VITE_APP_VERSION,
+    version: APP_VERSION,
   };
 }
 
