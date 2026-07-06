@@ -13,11 +13,14 @@ import {
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
-  type ICreatePropertyReservationBody,
+  type ICreatePropertyExpenseBody,
   type ICreatePropertyIncomeLineBody,
+  type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type IProperty,
   type IPropertyDetail,
+  type IPropertyExpense,
+  type IPropertyExpensesListQuery,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyMember,
@@ -25,8 +28,9 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
-  type IUpdatePropertyReservationBody,
+  type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
+  type IUpdatePropertyReservationBody,
   type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
   type IUser,
@@ -492,6 +496,40 @@ export const incomeLinesApi = {
   delete: (propertyId: string, lineId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
+    ),
+};
+
+function buildExpensesSearchParams(query: IPropertyExpensesListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.category) params.set("category", query.category);
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+export const expensesApi = {
+  list: (propertyId: string, query?: IPropertyExpensesListQuery) =>
+    authenticatedRequest<{ expenses: IPropertyExpense[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses${buildExpensesSearchParams(query)}`
+    ),
+
+  create: (propertyId: string, body: ICreatePropertyExpenseBody) =>
+    authenticatedRequest<{ expense: IPropertyExpense }>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  update: (propertyId: string, expenseId: string, body: IUpdatePropertyExpenseBody) =>
+    authenticatedRequest<{ expense: IPropertyExpense }>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  delete: (propertyId: string, expenseId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
 };

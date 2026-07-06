@@ -1,9 +1,10 @@
 import {
   type IAppConfig,
   type IProperty,
+  type IPropertyExpense,
+  type IPropertyIncomeLine,
   type IPropertyInvite,
   type IPropertyMember,
-  type IPropertyIncomeLine,
   type IPropertyReservation,
   type IPropertySettings,
   type IPropertyUnit,
@@ -11,10 +12,11 @@ import {
   type IUser,
   type SupportCategory,
   type SupportRequestStatus,
+  type TExpenseCategory,
+  type TIncomeLineType,
   toIso,
   type TPropertyInviteStatus,
   type TPropertyRole,
-  type TIncomeLineType,
   type TReservationChannel,
   type TReservationStatus,
   type TUnitRentalType,
@@ -163,5 +165,17 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
   salesTax: Number(row.sales_tax),
   transactionDate: formatDateColumn(row.transaction_date),
   unitId: row.unit_id as string,
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyExpense => ({
+  amount: Number(row.amount),
+  category: row.category as TExpenseCategory,
+  createdAt: (row.created_at as Date).toISOString(),
+  description: (row.description as string) ?? null,
+  expenseDate: row.expense_date == null ? null : formatDateColumn(row.expense_date),
+  id: row.id as string,
+  personName: (row.person_name as string) ?? null,
+  propertyId: row.property_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),
 });

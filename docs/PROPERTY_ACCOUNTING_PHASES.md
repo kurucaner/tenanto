@@ -164,7 +164,7 @@ Table: `property_income_lines`
 
 ---
 
-## Phase 4 — Expenses (Gider Gir)
+## Phase 4 — Expenses (Gider Gir) ✅ Complete
 
 **Goal:** Track operational costs per property.
 
@@ -175,7 +175,7 @@ Table: `property_expenses`
 | Field | Type | Notes |
 |-------|------|-------|
 | `property_id` | FK | |
-| `category` | enum | See categories below |
+| `category` | enum | 22 categories (commissions, utilities, tax, insurance, etc.) |
 | `amount` | decimal | |
 | `expense_date` | date | Optional |
 | `person_name` | text | Optional — Cleaning, Salary |
@@ -183,7 +183,7 @@ Table: `property_expenses`
 
 **Categories**
 
-- Airbnb / Booking / Expedia / Merchant commission (if tracked as expense vs deduction)
+- Airbnb / Booking / Expedia / Merchant commission (included for manual expense entry; may overlap stay deductions)
 - Property Tax (annual → ÷12 in reports)
 - Insurance (annual → ÷12 in reports)
 - Credit payment, Electricity, Water, Internet, Gas
@@ -194,12 +194,13 @@ Table: `property_expenses`
 ### API
 
 - CRUD at `/properties/:propertyId/expenses`
-- Category-specific validation (description required, etc.)
+- Category-specific validation (description required for Material/Maintenance/Other)
+- List filters: date range, category
 
 ### UI
 
-- New **Expenses** tab
-- “Add Expense” form with dynamic fields per category
+- **Expenses** tab under property shell
+- “Add Expense” dialog with dynamic fields per category
 - Expense list with date and category filters
 
 ---
@@ -275,7 +276,7 @@ flowchart LR
   P2["Phase 2: Settings ✅"]
   P3["Phase 3: Income ✅"]
   P31["Phase 3.1: Income Lines ✅"]
-  P4["Phase 4: Expenses"]
+  P4["Phase 4: Expenses ✅"]
   P5["Phase 5: Reports"]
   P6["Phase 6: Nav tabs"]
   P1 --> P2 --> P3 --> P31 --> P4 --> P5

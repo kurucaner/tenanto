@@ -658,4 +658,71 @@ export const migrations: IMigration[] = [
     },
     version: 16,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_expenses CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_expense_category CASCADE;`);
+    },
+    name: "create_property_expenses",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_expense_category AS ENUM (
+            'airbnb_commission',
+            'booking_commission',
+            'expedia_commission',
+            'merchant_commission',
+            'property_tax',
+            'insurance',
+            'credit_payment',
+            'electricity',
+            'water',
+            'internet',
+            'gas',
+            'fire_alarm',
+            'sewerage',
+            'waste_management',
+            'phone',
+            'legal_fee_permit',
+            'subscription',
+            'cleaning',
+            'salary',
+            'material',
+            'maintenance',
+            'other'
+          );
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE property_expenses (
+          id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id     UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          category        property_expense_category NOT NULL,
+          amount          NUMERIC(12,2) NOT NULL,
+          expense_date    DATE,
+          person_name     VARCHAR(255),
+          description     TEXT,
+          created_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at      TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_expenses_updated_at
+          BEFORE UPDATE ON property_expenses
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_expenses_property_date ON property_expenses(property_id, expense_date DESC NULLS LAST);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_expenses_property_category ON property_expenses(property_id, category);`
+      );
+    },
+    version: 17,
+  },
 ];

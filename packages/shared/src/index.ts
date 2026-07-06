@@ -101,6 +101,19 @@ export {
   type TPropertyIncomeEntry,
 } from "./property-income-line-types";
 
+// Property Expense Types
+export {
+  ExpenseCategory,
+  getExpenseCategoryMeta,
+  type ICreatePropertyExpenseBody,
+  type IExpenseCategoryMeta,
+  type IPropertyExpense,
+  type IPropertyExpensesListQuery,
+  type IUpdatePropertyExpenseBody,
+  type TExpenseCategory,
+  validateExpenseCategoryFields,
+} from "./property-expense-types";
+
 // Helpers
 export { sleep, toIso } from "./helpers";
 

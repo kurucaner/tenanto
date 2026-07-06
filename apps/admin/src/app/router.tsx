@@ -13,6 +13,7 @@ import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { PropertiesListPage } from "@/pages/properties-list-page";
 import { PropertyDetailPage } from "@/pages/property-detail-page";
+import { PropertyExpensesPage } from "@/pages/property-expenses-page";
 import { PropertyIncomePage } from "@/pages/property-income-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
               { element: <PropertyDetailPage />, path: "properties/:propertyId" },
               { element: <PropertyUnitsPage />, path: "properties/:propertyId/units" },
               { element: <PropertyIncomePage />, path: "properties/:propertyId/income" },
+              { element: <PropertyExpensesPage />, path: "properties/:propertyId/expenses" },
               { element: <PropertySettingsPage />, path: "properties/:propertyId/settings" },
               // Admin-only routes
               {
