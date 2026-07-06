@@ -2,10 +2,10 @@
 --
 -- Prerequisites:
 --   - Migrations applied (v17+)
---   - User with email user@tenanto.xyz exists
+--   - User with email user@propertyos.xyz exists
 --
 -- Creates (no property_members rows):
---   - 6 properties owned by user@tenanto.xyz (created_by)
+--   - 6 properties owned by user@propertyos.xyz (created_by)
 --   - ~60 units (mix of short_term / long_term, varied layouts)
 --   - Varied property_settings per property
 --   - ~120 reservations (check-ins) over the last 18 months
@@ -25,9 +25,9 @@ BEGIN;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM users WHERE LOWER(TRIM(email)) = 'user@tenanto.xyz'
+    SELECT 1 FROM users WHERE LOWER(TRIM(email)) = 'user@propertyos.xyz'
   ) THEN
-    RAISE EXCEPTION 'User user@tenanto.xyz not found. Create the account first.';
+    RAISE EXCEPTION 'User user@propertyos.xyz not found. Create the account first.';
   END IF;
 END $$;
 
@@ -183,7 +183,7 @@ $$;
 WITH owner AS (
   SELECT id AS owner_id
   FROM users
-  WHERE LOWER(TRIM(email)) = 'user@tenanto.xyz'
+  WHERE LOWER(TRIM(email)) = 'user@propertyos.xyz'
   LIMIT 1
 )
 INSERT INTO properties (id, name, address, phone_number, created_by, created_at)
@@ -610,7 +610,7 @@ COMMIT;
 -- Summary
 SELECT
   (SELECT COUNT(*) FROM properties p
-   WHERE p.created_by = (SELECT id FROM users WHERE LOWER(TRIM(email)) = 'user@tenanto.xyz')
+   WHERE p.created_by = (SELECT id FROM users WHERE LOWER(TRIM(email)) = 'user@propertyos.xyz')
      AND p.id >= 'f0000000-0000-4000-8000-000000000001'::uuid
      AND p.id <= 'f0000000-0000-4000-8000-000000000006'::uuid) AS seed_properties,
   (SELECT COUNT(*) FROM property_units u

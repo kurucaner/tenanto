@@ -31,6 +31,8 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
+  type ISupportMessageCreateBody,
+  type ISupportRequestDetail,
   type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
   type IUpdatePropertyReservationBody,
@@ -388,12 +390,21 @@ export const adminApi = {
 
   listSupportRequests: (query: IAdminSupportRequestsListQuery = {}) =>
     authenticatedRequest<IAdminSupportRequestsListResponse>(
-      `/admin/support-requests${buildSupportRequestsListSearchParams(query)}`
+      `/support${buildSupportRequestsListSearchParams(query)}`
     ),
+
+  getSupportRequest: (id: string) =>
+    authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}`),
+
+  postSupportMessage: (id: string, body: ISupportMessageCreateBody) =>
+    authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}/messages`, {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
 
   patchSupportRequest: (id: string, body: IAdminSupportRequestPatchBody) =>
     authenticatedRequest<IAdminSupportRequestPatchResponse>(
-      `/admin/support-requests/${encodeURIComponent(id)}`,
+      `/support/${encodeURIComponent(id)}`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 };

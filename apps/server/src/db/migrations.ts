@@ -725,4 +725,46 @@ export const migrations: IMigration[] = [
     },
     version: 17,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE support_requests ADD COLUMN IF NOT EXISTS message TEXT;`);
+      await client.query(`
+        UPDATE support_requests sr
+        SET message = (
+          SELECT sm.body
+          FROM support_messages sm
+          WHERE sm.support_request_id = sr.id
+          ORDER BY sm.created_at ASC, sm.id ASC
+          LIMIT 1
+        )
+        WHERE message IS NULL;
+      `);
+      await client.query(`ALTER TABLE support_requests ALTER COLUMN message SET NOT NULL;`);
+      await client.query(`DROP TABLE IF EXISTS support_messages CASCADE;`);
+    },
+    name: "create_support_messages",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE support_messages (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          support_request_id UUID NOT NULL REFERENCES support_requests(id) ON DELETE CASCADE,
+          author_user_id UUID NOT NULL REFERENCES users(id),
+          body TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_support_messages_request_created
+        ON support_messages (support_request_id, created_at ASC, id ASC);
+      `);
+      await client.query(`
+        INSERT INTO support_messages (support_request_id, author_user_id, body, created_at)
+        SELECT id, user_id, message, created_at
+        FROM support_requests
+        WHERE message IS NOT NULL AND message <> '';
+      `);
+      await client.query(`ALTER TABLE support_requests DROP COLUMN message;`);
+    },
+    version: 18,
+  },
 ];

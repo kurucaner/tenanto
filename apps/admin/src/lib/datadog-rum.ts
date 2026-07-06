@@ -3,7 +3,7 @@ import { datadogRum } from "@datadog/browser-rum";
 import type { IUser } from "@/packages/shared";
 
 const DEFAULT_DD_SITE = "us5.datadoghq.com";
-const RUM_SERVICE = "tenanto-admin";
+const RUM_SERVICE = "propertyos-admin";
 
 let rumInitialized = false;
 

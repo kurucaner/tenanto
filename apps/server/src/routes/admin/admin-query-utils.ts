@@ -1,34 +1,4 @@
-import {
-  type IAdminSupportRequestPatchBody,
-  type SupportCategory,
-  type SupportRequestStatus,
-  type TAdminSupportRequestSettableStatus,
-  UserType,
-} from "@/packages/shared";
-
-const ADMIN_SUPPORT_SETTABLE_STATUSES = new Set<TAdminSupportRequestSettableStatus>([
-  "in_progress",
-  "resolved",
-]);
-
-const SUPPORT_STATUSES = new Set<SupportRequestStatus>(["pending", "in_progress", "resolved"]);
-const SUPPORT_CATEGORIES = new Set<SupportCategory>(["bug", "feature", "general"]);
-
-/** Missing/empty → `undefined`; invalid shape → `null`; otherwise parsed status. */
-export function parseOptionalSupportRequestStatus(
-  raw: unknown
-): SupportRequestStatus | undefined | null {
-  if (raw === undefined || raw === null || raw === "") return undefined;
-  if (typeof raw !== "string") return null;
-  return SUPPORT_STATUSES.has(raw as SupportRequestStatus) ? (raw as SupportRequestStatus) : null;
-}
-
-/** Missing/empty → `undefined`; invalid shape → `null`; otherwise parsed category. */
-export function parseOptionalSupportCategory(raw: unknown): SupportCategory | undefined | null {
-  if (raw === undefined || raw === null || raw === "") return undefined;
-  if (typeof raw !== "string") return null;
-  return SUPPORT_CATEGORIES.has(raw as SupportCategory) ? (raw as SupportCategory) : null;
-}
+import { UserType } from "@/packages/shared";
 
 export function parseAdminLimit(raw: unknown): number {
   const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
@@ -64,21 +34,4 @@ export function parseUuidParam(raw: unknown): string | null {
   const t = raw.trim();
   if (t === "") return null;
   return UUID_RE.test(t) ? t : null;
-}
-
-export function parseAdminSupportRequestPatchBody(
-  raw: unknown
-): { body: IAdminSupportRequestPatchBody; ok: true } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { error: "Body must be a JSON object", ok: false };
-  }
-  const record = raw as Record<string, unknown>;
-  const status = record["status"];
-  if (
-    typeof status !== "string" ||
-    !ADMIN_SUPPORT_SETTABLE_STATUSES.has(status as TAdminSupportRequestSettableStatus)
-  ) {
-    return { error: 'status must be "in_progress" or "resolved"', ok: false };
-  }
-  return { body: { status: status as TAdminSupportRequestSettableStatus }, ok: true };
 }

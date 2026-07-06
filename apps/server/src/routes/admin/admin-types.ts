@@ -1,10 +1,3 @@
-export interface ISupportRequestsListQuerystring {
-  category?: string;
-  cursor?: string;
-  limit?: string;
-  status?: string;
-}
-
 export interface IUsersListQuerystring {
   cursor?: string;
   include_deleted?: string;

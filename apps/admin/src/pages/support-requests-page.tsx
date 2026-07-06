@@ -2,6 +2,7 @@ import {
   type InfiniteData,
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { LifeBuoy, PanelRightOpen } from "lucide-react";
@@ -30,6 +31,8 @@ import { cn } from "@/lib/utils";
 import {
   type IAdminSupportRequestListItem,
   type IAdminSupportRequestsListResponse,
+  type ISupportMessage,
+  type ISupportRequestDetail,
   type SupportCategory,
   type SupportRequestStatus,
   type TAdminSupportRequestSettableStatus,
@@ -64,7 +67,15 @@ const selectClass = cn(
   "h-8 w-full min-w-[160px] rounded-lg border border-input bg-transparent px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 );
 
+const replyTextareaClass = cn(
+  "min-h-[88px] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+);
+
 const detailTriageButtonClass = "cursor-pointer disabled:cursor-not-allowed";
+
+function supportRequestDetailKey(id: string) {
+  return ["admin", "support-request", id] as const;
+}
 
 function mergePatchedSupportItemIntoInfiniteCache(
   old: InfiniteData<IAdminSupportRequestsListResponse> | undefined,
@@ -85,6 +96,21 @@ function mergePatchedSupportItemIntoInfiniteCache(
   return touched ? { ...old, pages } : old;
 }
 
+function listItemFromDetail(
+  row: IAdminSupportRequestListItem,
+  detail: ISupportRequestDetail
+): IAdminSupportRequestListItem {
+  const lastMessage = detail.messages.at(-1);
+  return {
+    ...row,
+    category: detail.item.category,
+    lastMessagePreview: lastMessage?.body ?? row.lastMessagePreview,
+    messageCount: detail.messages.length,
+    status: detail.item.status,
+    updatedAt: detail.item.updatedAt,
+  };
+}
+
 function supportStatusBadgeVariant(
   status: SupportRequestStatus
 ): "default" | "outline" | "secondary" {
@@ -103,60 +129,142 @@ const SupportStatusBadge = memo(({ status }: Readonly<{ status: SupportRequestSt
 ));
 SupportStatusBadge.displayName = "SupportStatusBadge";
 
+const SupportMessageBubble = memo(({ message }: Readonly<{ message: ISupportMessage }>) => (
+  <div className="rounded-lg border border-border/80 bg-muted/30 p-3">
+    <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <span className="font-medium text-foreground">{message.authorName}</span>
+      <span>{message.authorEmail}</span>
+      <span>{new Date(message.createdAt).toLocaleString()}</span>
+    </div>
+    <pre className="text-foreground whitespace-pre-wrap break-words text-sm leading-relaxed">
+      {message.body}
+    </pre>
+  </div>
+));
+SupportMessageBubble.displayName = "SupportMessageBubble";
+
 const SupportRequestDetailDialogContent = memo(
   ({
+    listRow,
     onPatchStatus,
     patchingId,
-    row,
   }: Readonly<{
+    listRow: IAdminSupportRequestListItem;
     onPatchStatus: (id: string, status: TAdminSupportRequestSettableStatus) => void;
     patchingId: string | null;
-    row: IAdminSupportRequestListItem;
   }>) => {
-    const busy = patchingId === row.id;
+    const queryClient = useQueryClient();
+    const [replyDraft, setReplyDraft] = useState("");
+
+    const detailQuery = useQuery({
+      queryFn: () => adminApi.getSupportRequest(listRow.id),
+      queryKey: supportRequestDetailKey(listRow.id),
+    });
+
+    const replyMutation = useMutation({
+      mutationFn: (message: string) => adminApi.postSupportMessage(listRow.id, { message }),
+      onError: (e) => {
+        toast.error(e instanceof Error ? e.message : "Could not send reply");
+      },
+      onSuccess: (detail) => {
+        toast.success("Reply sent");
+        setReplyDraft("");
+        queryClient.setQueryData(supportRequestDetailKey(listRow.id), detail);
+        queryClient.setQueriesData<InfiniteData<IAdminSupportRequestsListResponse>>(
+          { queryKey: ["admin", "support-requests"] },
+          (old) => mergePatchedSupportItemIntoInfiniteCache(old, listItemFromDetail(listRow, detail))
+        );
+      },
+    });
+
+    const detail = detailQuery.data;
+    const status = detail?.item.status ?? listRow.status;
+    const busy = patchingId === listRow.id || replyMutation.isPending;
+
+    const handleSendReply = () => {
+      const trimmed = replyDraft.trim();
+      if (trimmed.length === 0) {
+        toast.error("Reply cannot be empty");
+        return;
+      }
+      replyMutation.mutate(trimmed);
+    };
+
     return (
-      <DialogContent className="gap-0 p-0 sm:max-w-xl" key={row.id}>
+      <DialogContent className="gap-0 p-0 sm:max-w-xl" key={listRow.id}>
         <DialogHeader>
           <DialogTitle>Support request</DialogTitle>
           <DialogDescription className="font-mono text-xs">
-            {row.id} · {new Date(row.createdAt).toLocaleString()}
+            {listRow.id} · {new Date(listRow.createdAt).toLocaleString()}
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[min(60vh,480px)] space-y-4 overflow-y-auto px-6 py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground text-xs uppercase tracking-wide">Status</span>
-            <SupportStatusBadge status={row.status} />
+            <SupportStatusBadge status={status} />
             <span className="text-muted-foreground text-xs uppercase tracking-wide">Category</span>
-            <Badge variant="outline">{row.category}</Badge>
+            <Badge variant="outline">{listRow.category}</Badge>
           </div>
           <Separator />
           <div>
             <p className="text-muted-foreground text-xs uppercase tracking-wide">Submitter</p>
-            <p className="font-medium">{row.submitterName}</p>
+            <p className="font-medium">{listRow.submitterName}</p>
             <Link
               className="text-sm text-primary underline-offset-2 hover:underline"
-              to={`/users/${encodeURIComponent(row.userId)}`}
+              to={`/users/${encodeURIComponent(listRow.userId)}`}
             >
-              {row.submitterEmail}
+              {listRow.submitterEmail}
             </Link>
           </div>
-          <div>
-            <p className="text-muted-foreground mb-1 text-xs uppercase tracking-wide">Message</p>
-            <pre className="text-foreground max-h-[min(40vh,320px)] overflow-y-auto whitespace-pre-wrap break-words rounded-lg border border-border/80 bg-muted/30 p-3 text-sm leading-relaxed">
-              {row.message}
-            </pre>
+          <div className="space-y-3">
+            <p className="text-muted-foreground text-xs uppercase tracking-wide">Conversation</p>
+            {detailQuery.isPending ? (
+              <div className="space-y-2">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : null}
+            {detailQuery.isError ? (
+              <p className="text-destructive text-sm">
+                {detailQuery.error instanceof Error
+                  ? detailQuery.error.message
+                  : "Could not load conversation."}
+              </p>
+            ) : null}
+            {detail?.messages.map((message) => (
+              <SupportMessageBubble key={message.id} message={message} />
+            ))}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`support-reply-${listRow.id}`}>Reply</Label>
+            <textarea
+              className={replyTextareaClass}
+              disabled={busy}
+              id={`support-reply-${listRow.id}`}
+              onChange={(e) => setReplyDraft(e.target.value)}
+              placeholder="Write a reply to the user…"
+              value={replyDraft}
+            />
+            <Button
+              className="cursor-pointer disabled:cursor-not-allowed"
+              disabled={busy || replyDraft.trim().length === 0}
+              onClick={handleSendReply}
+              type="button"
+            >
+              {replyMutation.isPending ? "Sending…" : "Send reply"}
+            </Button>
           </div>
         </div>
         <DialogFooter>
-          {row.status === "resolved" ? (
+          {status === "resolved" ? (
             <p className="text-muted-foreground text-sm sm:mr-auto">This request is resolved.</p>
           ) : null}
-          {row.status === "pending" ? (
+          {status === "pending" ? (
             <>
               <Button
                 className={detailTriageButtonClass}
                 disabled={busy}
-                onClick={() => onPatchStatus(row.id, "in_progress")}
+                onClick={() => onPatchStatus(listRow.id, "in_progress")}
                 type="button"
                 variant="secondary"
               >
@@ -165,18 +273,18 @@ const SupportRequestDetailDialogContent = memo(
               <Button
                 className={detailTriageButtonClass}
                 disabled={busy}
-                onClick={() => onPatchStatus(row.id, "resolved")}
+                onClick={() => onPatchStatus(listRow.id, "resolved")}
                 type="button"
               >
                 {busy ? "Saving…" : "Mark resolved"}
               </Button>
             </>
           ) : null}
-          {row.status === "in_progress" ? (
+          {status === "in_progress" ? (
             <Button
               className={detailTriageButtonClass}
               disabled={busy}
-              onClick={() => onPatchStatus(row.id, "resolved")}
+              onClick={() => onPatchStatus(listRow.id, "resolved")}
               type="button"
             >
               {busy ? "Saving…" : "Mark resolved"}
@@ -218,8 +326,11 @@ const SupportRequestTableRow = memo(
       </td>
       <td className="max-w-[min(20rem,36vw)] py-2 pr-2">
         <p className="text-muted-foreground line-clamp-2 whitespace-pre-wrap break-words">
-          {row.message}
+          {row.lastMessagePreview}
         </p>
+        {row.messageCount > 1 ? (
+          <p className="text-muted-foreground mt-1 text-xs">{row.messageCount} messages</p>
+        ) : null}
       </td>
       <td className="max-w-[120px] py-2 pr-2 text-xs text-muted-foreground">
         {new Date(row.updatedAt).toLocaleString()}
@@ -284,6 +395,10 @@ const SupportRequestsPageInner = memo(() => {
         (old) => mergePatchedSupportItemIntoInfiniteCache(old, data.item)
       );
       setDetailRow((prev) => (prev?.id === data.item.id ? data.item : prev));
+      queryClient.setQueryData<ISupportRequestDetail | undefined>(
+        supportRequestDetailKey(data.item.id),
+        (old) => (old == null ? old : { ...old, item: { ...old.item, status: data.item.status } })
+      );
     },
   });
 
@@ -321,7 +436,7 @@ const SupportRequestsPageInner = memo(() => {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <AdminPageIntro
-        description="Feedback submitted from the mobile app: category, message, triage status, and who filed it."
+        description="User-submitted tickets with threaded replies, triage status, and submitter details."
         eyebrow="Support"
         title="Support requests"
       />
@@ -335,9 +450,9 @@ const SupportRequestsPageInner = memo(() => {
       >
         {liveDetailRow === null ? null : (
           <SupportRequestDetailDialogContent
+            listRow={liveDetailRow}
             onPatchStatus={handlePatchStatus}
             patchingId={patchingId}
-            row={liveDetailRow}
           />
         )}
       </Dialog>
@@ -391,7 +506,7 @@ const SupportRequestsPageInner = memo(() => {
         <CardHeader>
           <CardTitle className="text-base">Requests</CardTitle>
           <CardDescription>
-            Newest first. Open a row to read the full message and update status.
+            Newest first. Open a row to read the thread, reply, and update status.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-0">
@@ -419,7 +534,7 @@ const SupportRequestsPageInner = memo(() => {
                       <th className="py-2 pr-2 font-medium">Category</th>
                       <th className="py-2 pr-2 font-medium">Status</th>
                       <th className="py-2 pr-2 font-medium">Submitter</th>
-                      <th className="py-2 pr-2 font-medium">Message</th>
+                      <th className="py-2 pr-2 font-medium">Latest message</th>
                       <th className="py-2 pr-2 font-medium">Updated</th>
                       <th className="w-12 py-2 text-right font-medium">
                         <span className="sr-only">Details</span>

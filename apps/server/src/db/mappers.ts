@@ -49,7 +49,6 @@ export const mapSupportRequestRow = (row: Record<string, unknown>): ISupportRequ
   category: row.category as SupportCategory,
   createdAt: (row.created_at as Date).toISOString(),
   id: row.id as string,
-  message: row.message as string,
   status: row.status as SupportRequestStatus,
   updatedAt: (row.updated_at as Date).toISOString(),
   userId: row.user_id as string,

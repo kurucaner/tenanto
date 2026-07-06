@@ -7,7 +7,7 @@ export interface AppleUserPayload {
 }
 
 export const verifyAppleToken = async (identityToken: string): Promise<AppleUserPayload> => {
-  const bundleId = "com.tenanto.app";
+  const bundleId = "com.propertyos.app";
   if (!bundleId) {
     throw new Error("APPLE_BUNDLE_ID is not configured");
   }

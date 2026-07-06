@@ -4,7 +4,6 @@ import { adminAuditEventsDb } from "@/db/admin-audit-events";
 import { appConfigDb } from "@/db/app-config";
 import { pool } from "@/db/pool";
 import { pushTokenDb } from "@/db/push-tokens";
-import { supportRequestsDb } from "@/db/support-requests";
 import { userDb } from "@/db/users";
 import {
   AdminAuditAction,
@@ -16,17 +15,12 @@ import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 
 import {
   parseAdminLimit,
-  parseAdminSupportRequestPatchBody,
   parseIncludeDeleted,
-  parseOptionalSupportCategory,
-  parseOptionalSupportRequestStatus,
   parseOptionalUuid,
   parseUserTypeFilter,
-  parseUuidParam,
 } from "./admin-query-utils";
 import {
   type IAuditEventsListQuerystring,
-  type ISupportRequestsListQuerystring,
   type IUsersListQuerystring,
 } from "./admin-types";
 import { parsePatchAppConfigBody } from "./parse-patch-app-config-body";
@@ -244,65 +238,6 @@ export const adminRoutes = async (server: FastifyInstance): Promise<void> => {
           isDeleted: detailAfter.isDeleted,
         },
       });
-    }
-  );
-
-  server.get<{ Querystring: ISupportRequestsListQuerystring }>(
-    "/admin/support-requests",
-    { preHandler: adminPre },
-    async (
-      request: FastifyRequest<{ Querystring: ISupportRequestsListQuerystring }>,
-      reply: FastifyReply
-    ) => {
-      const qs = request.query;
-      const limit = parseAdminLimit(qs.limit);
-      if (qs.cursor != null && qs.cursor !== "") {
-        try {
-          decodeKeysetCursor(qs.cursor);
-        } catch {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-        }
-      }
-
-      const statusParsed = parseOptionalSupportRequestStatus(qs.status);
-      if (statusParsed === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid status filter" });
-      }
-      const categoryParsed = parseOptionalSupportCategory(qs.category);
-      if (categoryParsed === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid category filter" });
-      }
-
-      const { items, nextCursor } = await supportRequestsDb.listPaginatedForAdmin({
-        category: categoryParsed,
-        cursor: qs.cursor,
-        limit,
-        status: statusParsed,
-      });
-      return reply.send({ items, nextCursor });
-    }
-  );
-
-  server.patch<{ Params: { id: string } }>(
-    "/admin/support-requests/:id",
-    { preHandler: adminPre },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const idParsed = parseUuidParam(request.params.id);
-      if (idParsed === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid support request id" });
-      }
-      const parsed = parseAdminSupportRequestPatchBody(request.body);
-      if (!parsed.ok) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-      const item = await supportRequestsDb.updateSettableStatusForAdmin(
-        idParsed,
-        parsed.body.status
-      );
-      if (!item) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });
-      }
-      return reply.send({ item });
     }
   );
 

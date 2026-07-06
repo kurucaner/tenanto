@@ -24,7 +24,14 @@ export type {
   IAdminSupportRequestPatchResponse,
   IAdminSupportRequestsListQuery,
   IAdminSupportRequestsListResponse,
+  ISupportCreateBody,
+  ISupportMessage,
+  ISupportMessageCreateBody,
   ISupportRequest,
+  ISupportRequestDetail,
+  ISupportRequestListItem,
+  ISupportRequestsListQuery,
+  ISupportRequestsListResponse,
   SupportCategory,
   SupportRequestStatus,
   TAdminSupportRequestSettableStatus,
@@ -134,4 +141,7 @@ export {
 export { sleep, toIso } from "./helpers";
 
 // Brand Constants
-export { APP_NAME, SUPPORT_EMAIL } from "./constants";
+export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";
+
+// Storage migration
+export { migrateLocalStorageKey } from "./migrate-storage-key";

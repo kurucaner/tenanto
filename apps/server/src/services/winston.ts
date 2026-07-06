@@ -78,9 +78,9 @@ if (process.env.DATADOG_API_KEY) {
     apiKey: process.env.DATADOG_API_KEY,
     ddsource: "nodejs",
     ddtags: datadogTags,
-    hostname: `tenanto-server-${env}`,
+    hostname: `propertyos-server-${env}`,
     intakeRegion: "us5",
-    service: "tenanto-server",
+    service: "propertyos-server",
   };
   WinstonLogger.add(new DatadogWinston(datadogOptions));
 }

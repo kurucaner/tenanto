@@ -1,7 +1,7 @@
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      /** Base URL for the admin app (e.g. https://admin.tenanto.app) - used for magic links in emails */
+      /** Base URL for the admin app (e.g. https://admin.propertyos.app) - used for magic links in emails */
       ADMIN_APP_URL: string;
       /** AWS credentials */
       AWS_ACCESS_KEY_ID: string;
@@ -27,7 +27,7 @@ declare global {
       MINIO_SECRET_KEY: string;
       NODE_ENV: string;
       PORT: string;
-      /** Base URL for the web app (e.g. https://tenanto.app) - used for magic links in emails */
+      /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */
       WEB_APP_URL: string;
     }
   }

@@ -22,7 +22,7 @@ const dmSans = DM_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tenanto.app";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://propertyos.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
