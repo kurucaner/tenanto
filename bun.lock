@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "tenanto",
+      "name": "propertyos",
       "dependencies": {
         "@tanstack/react-query": "^5.94.5",
         "@typescript-eslint/eslint-plugin": "^8.56.1",

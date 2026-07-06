@@ -31,8 +31,11 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
+  type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type ISupportRequestDetail,
+  type ISupportRequestsListQuery,
+  type ISupportRequestsListResponse,
   type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
   type IUpdatePropertyReservationBody,
@@ -314,7 +317,7 @@ function buildUsersListSearchParams(query: IAdminUsersListQuery): string {
   return s === "" ? "" : `?${s}`;
 }
 
-function buildSupportRequestsListSearchParams(query: IAdminSupportRequestsListQuery): string {
+function buildSupportRequestsListSearchParams(query: ISupportRequestsListQuery): string {
   const params = new URLSearchParams();
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
@@ -323,6 +326,34 @@ function buildSupportRequestsListSearchParams(query: IAdminSupportRequestsListQu
   const s = params.toString();
   return s === "" ? "" : `?${s}`;
 }
+
+export interface ISupportCreateResponse {
+  id: string;
+  item: ISupportRequestDetail;
+  success: boolean;
+}
+
+export const supportApi = {
+  create: (body: ISupportCreateBody) =>
+    authenticatedRequest<ISupportCreateResponse>("/support", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  get: (id: string) =>
+    authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}`),
+
+  list: (query: ISupportRequestsListQuery = {}) =>
+    authenticatedRequest<ISupportRequestsListResponse>(
+      `/support${buildSupportRequestsListSearchParams(query)}`
+    ),
+
+  postMessage: (id: string, body: ISupportMessageCreateBody) =>
+    authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}/messages`, {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+};
 
 export interface IAdminPropertiesListQuery {
   cursor?: string;
@@ -393,14 +424,10 @@ export const adminApi = {
       `/support${buildSupportRequestsListSearchParams(query)}`
     ),
 
-  getSupportRequest: (id: string) =>
-    authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}`),
+  getSupportRequest: (id: string) => supportApi.get(id),
 
   postSupportMessage: (id: string, body: ISupportMessageCreateBody) =>
-    authenticatedRequest<ISupportRequestDetail>(`/support/${encodeURIComponent(id)}/messages`, {
-      body: JSON.stringify(body),
-      method: "POST",
-    }),
+    supportApi.postMessage(id, body),
 
   patchSupportRequest: (id: string, body: IAdminSupportRequestPatchBody) =>
     authenticatedRequest<IAdminSupportRequestPatchResponse>(

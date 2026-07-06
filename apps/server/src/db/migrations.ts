@@ -767,4 +767,30 @@ export const migrations: IMigration[] = [
     },
     version: 18,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DELETE FROM property_members pm
+        USING properties p
+        WHERE pm.property_id = p.id
+          AND pm.user_id = p.created_by
+          AND pm.added_by = p.created_by
+          AND pm.role = 'owner'::property_role;
+      `);
+    },
+    name: "backfill_property_creator_members",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        INSERT INTO property_members (property_id, user_id, role, added_by)
+        SELECT p.id, p.created_by, 'owner'::property_role, p.created_by
+        FROM properties p
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM property_members pm
+          WHERE pm.property_id = p.id AND pm.user_id = p.created_by
+        );
+      `);
+    },
+    version: 19,
+  },
 ];

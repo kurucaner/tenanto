@@ -18,8 +18,6 @@ HydrationFallback.displayName = "HydrationFallback";
 const ProtectedRouteInner = memo(() => {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
-  console.log("user", user);
-  console.log("accessToken", accessToken);
   const hydrated = useAuthHydrated();
 
   if (!hydrated) {

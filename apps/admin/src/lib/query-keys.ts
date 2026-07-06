@@ -9,6 +9,7 @@ import type {
   IPropertyIncomeLinesListQuery,
   IPropertyReportsQuery,
   IPropertyReservationsListQuery,
+  ISupportRequestsListQuery,
 } from "@/packages/shared";
 
 export const adminQueryKeys = {
@@ -23,6 +24,9 @@ export const adminQueryKeys = {
   notificationBroadcastHistory: () => ["admin", "notification-broadcasts", "history"] as const,
   supportRequestsList: (filters: Omit<IAdminSupportRequestsListQuery, "cursor" | "limit">) =>
     ["admin", "support-requests", filters] as const,
+  supportRequest: (id: string) => ["support", "request", id] as const,
+  userSupportList: (filters: Omit<ISupportRequestsListQuery, "cursor" | "limit">) =>
+    ["support", "list", filters] as const,
   propertiesList: (filters: Omit<IAdminPropertiesListQuery, "cursor">) =>
     ["admin", "properties", filters] as const,
   propertyDetail: (propertyId: string) => ["admin", "property", propertyId] as const,

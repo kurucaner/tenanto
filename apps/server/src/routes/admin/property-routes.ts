@@ -207,7 +207,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
-        const property = await propertiesDb.create(parsed.body, request.user.userId);
+        const property = await propertiesDb.create(parsed.body, request.user.userId, client);
         await adminAuditEventsDb.insert(
           client,
           buildInsertAdminAuditParams(request, {

@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { RootLayout } from "@/app/root-layout";
 import { AdminLayout } from "@/components/layout/admin-layout";
+import { PropertyShellLayout } from "@/components/properties/property-page-shell";
 import { ProtectedRoute } from "@/components/protected-route";
 import { RequireRole } from "@/components/require-role";
 import { UserType } from "@/packages/shared";
@@ -17,10 +18,9 @@ import { PropertyExpensesPage } from "@/pages/property-expenses-page";
 import { PropertyIncomePage } from "@/pages/property-income-page";
 import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
-import { PropertyShellLayout } from "@/components/properties/property-page-shell";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { ReportsPage } from "@/pages/reports-page";
-import { SupportRequestsPage } from "@/pages/support-requests-page";
+import { SupportPage } from "@/pages/support-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
 import { UsersListPage } from "@/pages/users-list-page";
 
@@ -39,6 +39,7 @@ export const router = createBrowserRouter([
               { element: <HomePage />, path: "home" },
               { element: <PropertiesListPage />, path: "properties" },
               { element: <ReportsPage />, path: "reports" },
+              { element: <SupportPage />, path: "support-requests" },
               {
                 children: [
                   { element: <PropertyDetailPage />, index: true },
@@ -56,7 +57,6 @@ export const router = createBrowserRouter([
                 children: [
                   { element: <UsersListPage />, path: "users" },
                   { element: <UserDetailPage />, path: "users/:userId" },
-                  { element: <SupportRequestsPage />, path: "support-requests" },
                   { element: <ActivityPage />, path: "activity" },
                   { element: <ConfigPage />, path: "config" },
                 ],

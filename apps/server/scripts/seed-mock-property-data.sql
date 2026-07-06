@@ -4,8 +4,8 @@
 --   - Migrations applied (v17+)
 --   - User with email user@propertyos.xyz exists
 --
--- Creates (no property_members rows):
---   - 6 properties owned by user@propertyos.xyz (created_by)
+-- Creates:
+--   - 6 properties owned by user@propertyos.xyz (created_by + owner member row)
 --   - ~60 units (mix of short_term / long_term, varied layouts)
 --   - Varied property_settings per property
 --   - ~120 reservations (check-ins) over the last 18 months
@@ -63,6 +63,13 @@ WHERE property_id IN (
 );
 
 DELETE FROM property_settings
+WHERE property_id IN (
+  SELECT id FROM properties
+  WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
+    AND id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+);
+
+DELETE FROM property_members
 WHERE property_id IN (
   SELECT id FROM properties
   WHERE id >= 'f0000000-0000-4000-8000-000000000001'::uuid
@@ -240,6 +247,13 @@ CROSS JOIN (
       TIMESTAMPTZ '2025-01-08 08:20:00+00'
     )
 ) AS p(id, name, address, phone_number, created_at);
+
+INSERT INTO property_members (property_id, user_id, role, added_by)
+SELECT p.id, p.created_by, 'owner'::property_role, p.created_by
+FROM properties p
+WHERE p.id >= 'f0000000-0000-4000-8000-000000000001'::uuid
+  AND p.id <= 'f0000000-0000-4000-8000-000000000006'::uuid
+ON CONFLICT (property_id, user_id) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- Property settings (varied rates)

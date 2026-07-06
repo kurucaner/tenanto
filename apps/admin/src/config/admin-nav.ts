@@ -26,7 +26,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: "/support-requests",
     icon: LifeBuoy,
     match: "exact",
-    roles: [UserType.ADMIN],
     title: "Support",
   },
   { href: "/activity", icon: History, match: "exact", roles: [UserType.ADMIN], title: "Activity" },

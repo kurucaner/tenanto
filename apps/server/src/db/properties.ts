@@ -6,24 +6,38 @@ import type {
   IPropertyMember,
   IPropertyMemberUser,
 } from "@/packages/shared";
+import { PropertyRole } from "@/packages/shared";
+import type { Pool, PoolClient } from "pg";
 import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapPropertyMemberRow, mapPropertyRow } from "./mappers";
 import { pool } from "./pool";
 
+type DbQueryable = Pool | PoolClient;
+
 export const propertiesDb = {
   async create(
     input: IAdminCreatePropertyBody,
-    createdBy: string
+    createdBy: string,
+    queryable: DbQueryable = pool
   ): Promise<IProperty> {
-    const result = await pool.query(
+    const result = await queryable.query(
       `INSERT INTO properties (name, address, phone_number, created_by)
        VALUES ($1, $2, $3, $4)
-       RETURNING *, 0 AS member_count, 0 AS unit_count`,
+       RETURNING *`,
       [input.name.trim(), input.address.trim(), input.phoneNumber?.trim() ?? null, createdBy]
     );
-    return mapPropertyRow(result.rows[0] as Record<string, unknown>);
+    const row = result.rows[0] as Record<string, unknown>;
+    const propertyId = row.id as string;
+
+    await queryable.query(
+      `INSERT INTO property_members (property_id, user_id, role, added_by)
+       VALUES ($1, $2, $3::property_role, $4)`,
+      [propertyId, createdBy, PropertyRole.OWNER, createdBy]
+    );
+
+    return mapPropertyRow({ ...row, member_count: 1, unit_count: 0 });
   },
 
   async delete(id: string): Promise<boolean> {
