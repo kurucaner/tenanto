@@ -33,6 +33,66 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "1.2.0",
+    version: "1.2.0",
+    publishedAt: "2026-07-06",
+    summary: "Support, notifications, and easier navigation on your phone.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "Use the Support section to submit requests and follow the full conversation on each ticket.",
+      },
+      {
+        category: "new",
+        description:
+          "Get in-app notifications when something needs your attention — check the bell icon in the header.",
+      },
+      {
+        category: "new",
+        description:
+          "On your phone, use the bottom bar to switch quickly between Home, Properties, Reports, and Support.",
+      },
+      {
+        category: "improved",
+        description:
+          "Support requests appear in a clear list — tap any row to open the full conversation.",
+      },
+      {
+        category: "improved",
+        description: "Ticket status labels are easier to read with clearer colors.",
+      },
+      {
+        category: "improved",
+        description:
+          "Guests are notified automatically when you change their support ticket status.",
+      },
+      {
+        category: "improved",
+        description:
+          "Messages on a ticket update on their own while you're viewing it — no need to refresh.",
+      },
+      {
+        category: "improved",
+        description: "A brief popup appears when a new notification arrives.",
+      },
+      {
+        category: "improved",
+        description: "Mark all notifications as read with one tap.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Download button on property reports is now at the top of the page for easier access.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Fixed an issue where live updates sometimes didn't appear until you refreshed the page.",
+      },
+    ],
+  },
+  {
     id: "1.1.0",
     version: "1.1.0",
     publishedAt: "2026-07-05",
