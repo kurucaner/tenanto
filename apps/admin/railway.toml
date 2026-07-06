@@ -1,8 +1,11 @@
+# Railway: set this service's "Config file path" to apps/admin/railway.toml
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "docker/Dockerfile.admin"
 watchPatterns = ["apps/admin/**", "packages/**", "docker/Dockerfile.admin"]
 
 [deploy]
+startCommand = "/docker-entrypoint.sh"
 healthcheckPath = "/"
 restartPolicyType = "ON_FAILURE"

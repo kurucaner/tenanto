@@ -1,7 +1,10 @@
+# Railway: set this service's "Config file path" to apps/proxy/railway.toml
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "docker/Dockerfile.proxy"
 watchPatterns = ["apps/proxy/**", "docker/Dockerfile.proxy"]
 
 [deploy]
+startCommand = "dumb-init node dist/apps/proxy/src/server.js"
 restartPolicyType = "ON_FAILURE"

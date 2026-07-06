@@ -1,7 +1,10 @@
+# Railway: set this service's "Config file path" to apps/web/railway.toml
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "docker/Dockerfile.web"
 watchPatterns = ["apps/web/**", "packages/**", "docker/Dockerfile.web"]
 
 [deploy]
+startCommand = "dumb-init node node_modules/next/dist/bin/next start"
 restartPolicyType = "ON_FAILURE"
