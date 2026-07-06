@@ -13,10 +13,11 @@ import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { mapSupportRequestRow } from "./mappers";
 import { pool } from "./pool";
 import {
-  supportMessageAttachmentsDb,
   type SupportMessageAttachmentInsert,
+  supportMessageAttachmentsDb,
 } from "./support-message-attachments";
 import { supportMessagesDb } from "./support-messages";
+import { supportStagedUploadsDb } from "./support-staged-uploads";
 
 export interface CreateSupportRequestInput {
   attachments?: SupportMessageAttachmentInsert[];
@@ -110,6 +111,10 @@ export const supportRequestsDb = {
       const messageId = messageRow.id as string;
 
       if (input.attachments != null && input.attachments.length > 0) {
+        await supportStagedUploadsDb.markLinked(
+          input.attachments.map((attachment) => attachment.key),
+          client
+        );
         await supportMessageAttachmentsDb.createMany(
           {
             attachments: input.attachments,

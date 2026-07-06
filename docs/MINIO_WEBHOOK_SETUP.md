@@ -1,162 +1,106 @@
-# 📝 MinIO + Node.js Webhook Notification Setup (macOS, No Docker)
+# MinIO S3 Notification Setup (Local Development)
 
-Last updated: **2025-08-02**
+Last updated: **2026-07-06**
+
+Tenanto handles S3 upload notifications on the main API server at `POST /s3-notification`. Support attachment uploads under the `support/` prefix are confirmed event-driven via the `support_staged_uploads` table.
 
 ---
 
-## ✅ 1. Install MinIO (Server) on macOS
+## Prerequisites
+
+- MinIO running locally (API on `:9000`, console on `:9001`)
+- `mc` (MinIO Client): `brew install minio/stable/mc`
+- tenanto server running (default `http://localhost:3001`)
+- `AWS_INTERNAL_SECRET` set in `apps/server/.env` (same value used for webhook auth)
+
+---
+
+## Quick setup (recommended)
+
+From the repo root:
+
+```bash
+export AWS_INTERNAL_SECRET=your-local-secret
+export MINIO_ACCESS_KEY=minioadmin
+export MINIO_SECRET_KEY=minioadmin
+export MINIO_BUCKET=tenanto
+export API_URL=http://localhost:3001
+
+bash scripts/setup-minio-s3-notifications.sh
+```
+
+Or from `apps/server`:
+
+```bash
+bun run setup:minio-notifications
+```
+
+### Docker dev note
+
+If MinIO runs on the host and the server runs in Docker, point the webhook at the host:
+
+```bash
+export API_URL=http://host.docker.internal:3001
+bash scripts/setup-minio-s3-notifications.sh
+```
+
+---
+
+## What the script does
+
+1. Configures `mc` alias (default `local`)
+2. Creates the bucket if missing
+3. Registers webhook target `notify_webhook:tenanto` → `{API_URL}/s3-notification`
+4. Restarts MinIO to apply config
+5. Adds bucket event: `put` events with prefix `support/`
+
+Auth: MinIO sends `Authorization: Bearer {AWS_INTERNAL_SECRET}` which the API accepts alongside `X-Internal-Secret`.
+
+---
+
+## Manual MinIO install (macOS)
 
 ```bash
 brew install minio/stable/minio
-```
-
----
-
-## ✅ 2. Create Data Directory for MinIO
-
-```bash
 mkdir -p ~/minio-data
-```
-
----
-
-## ✅ 3. Set MinIO Root Credentials
-
-Temporarily:
-
-```bash
 export MINIO_ROOT_USER=minioadmin
 export MINIO_ROOT_PASSWORD=minioadmin
-```
-
-Or permanently (in `~/.zshrc` or `~/.bash_profile`):
-
-```bash
-echo 'export MINIO_ROOT_USER=minioadmin' >> ~/.zshrc
-echo 'export MINIO_ROOT_PASSWORD=minioadmin' >> ~/.zshrc
-source ~/.zshrc
-```
-
----
-
-## ✅ 4. Start MinIO Server
-
-```bash
 minio server ~/minio-data --console-address ":9001"
 ```
 
-- API: http://localhost:9000
-- UI Console: http://localhost:9001
-- Login: `minioadmin / minioadmin`
-
 ---
 
-## ✅ 5. Install `mc` (MinIO Client)
+## Verify
+
+1. Presign a support attachment via the admin UI (or API).
+2. Upload the file (client PUT to MinIO).
+3. Check server logs or DB: `support_staged_uploads.status` should become `confirmed`.
+4. Submit the support request — attachment appears in the thread.
+
+Manual upload test:
 
 ```bash
-brew install minio/stable/mc
-```
-
-Add alias:
-
-```bash
-mc alias set $ALIAS(myminio) http://localhost:9000 $ACCESS_TOKEN $SECRET_TOKEN
-```
-
-Test:
-
-```bash
-mc admin info local
+mc cp ./test.png local/tenanto/support/test-user-id/test-object-id
 ```
 
 ---
 
-## ✅ 6. Set Up Node.js Webhook Listener
+## Production (AWS)
 
-Create project:
+Do not use MinIO webhooks in production. Deploy the Lambda forwarder instead:
 
-```bash
-mkdir nodejs-webhook && cd nodejs-webhook
-npm init -y
-npm install express body-parser
-```
+- [`lambda/s3-notification/index.mjs`](../lambda/s3-notification/index.mjs)
+- [`lambda/s3-notification/README.md`](../lambda/s3-notification/README.md)
 
-Create `server.js`:
-
-```js
-const express = require("express");
-const bodyParser = require("body-parser");
-const app = express();
-const port = 3001;
-
-app.use(bodyParser.json());
-
-app.post("/s3-notification", (req, res) => {
-  console.log("🔔 Received MinIO Event:", JSON.stringify(req.body, null, 2));
-  res.status(200).send("OK");
-});
-
-app.listen(port, () => {
-  console.log(`🚀 Webhook server running at http://localhost:${port}/s3-notification`);
-});
-```
-
-Start server:
-
-```bash
-node server.js
-```
+Configure S3 bucket notifications on `s3:ObjectCreated:*` with prefix `support/` to invoke the Lambda.
 
 ---
 
-## ✅ 7. Configure Webhook Notification in MinIO
+## Troubleshooting
 
-```bash
-mc admin config set $ALIAS notify_webhook:node1 \
-  enable="on" \
-  endpoint="http://localhost:3001/s3-notification" \
-  auth_token="my-super-secret" \
-  queue_limit="0" \
-  queue_dir="/tmp" \
-  comment="Webhook for Node.js"
-```
-
-Restart MinIO:
-
-```bash
-mc admin service restart $ALIAS
-```
-
----
-
-## ✅ 8. Enable Notifications on Bucket
-
-Create bucket (if needed):
-
-```bash
-mc mb $ALIAS/$BUCKET_NAME
-```
-
-Attach events:
-
-```bash
-mc event add $ALIAS/$BUCKET_NAME arn:minio:sqs::node1:webhook --event put
-```
-
-Confirm:
-
-```bash
-mc event list $ALIAS/$BUCKET_NAME
-```
-
----
-
-## ✅ 9. Test It 🎉
-
-Upload a file:
-
-```bash
-mc cp ./test-video.mp4 local/mybucket/
-```
-
-You should see the webhook receive an event in the Node.js terminal.
+| Issue | Fix |
+|-------|-----|
+| 401 from `/s3-notification` | Ensure `AWS_INTERNAL_SECRET` matches on server and in `mc admin config` |
+| No events received | Run `mc event list local/tenanto` and restart MinIO after config changes |
+| Upload works but ticket fails | Notification may be slow — create still falls back to `headObject` for pending uploads |
+| CORS errors on browser PUT | Configure MinIO bucket CORS to allow `PUT` from your admin origin |

@@ -868,4 +868,34 @@ export const migrations: IMigration[] = [
     },
     version: 22,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS support_staged_uploads;`);
+      await client.query(`DROP TYPE IF EXISTS support_staged_upload_status;`);
+    },
+    name: "create_support_staged_uploads",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TYPE support_staged_upload_status AS ENUM ('pending', 'confirmed', 'linked');
+      `);
+      await client.query(`
+        CREATE TABLE support_staged_uploads (
+          storage_key TEXT PRIMARY KEY,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          filename TEXT NOT NULL,
+          content_type TEXT NOT NULL,
+          size_bytes INTEGER NOT NULL,
+          status support_staged_upload_status NOT NULL DEFAULT 'pending',
+          confirmed_at TIMESTAMPTZ,
+          linked_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_support_staged_uploads_user_status
+        ON support_staged_uploads (user_id, status);
+      `);
+    },
+    version: 23,
+  },
 ];

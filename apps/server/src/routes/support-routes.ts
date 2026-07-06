@@ -1,11 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { supportMessagesDb } from "@/db/support-messages";
 import {
   buildSupportAttachmentStorageKey,
   isSupportAttachmentKeyOwnedByUser,
 } from "@/db/support-message-attachments";
+import { supportMessagesDb } from "@/db/support-messages";
 import { supportRequestsDb } from "@/db/support-requests";
+import { supportStagedUploadsDb } from "@/db/support-staged-uploads";
 import {
   HttpStatus,
   type ISupportAttachmentPresignBody,
@@ -143,15 +144,37 @@ async function verifyCreateAttachments(
     return { ok: true };
   }
 
+  const keys = attachments.map((attachment) => attachment.key);
+  const statuses = await supportStagedUploadsDb.findByKeysForUser(userId, keys);
+
   for (const attachment of attachments) {
     if (!isSupportAttachmentKeyOwnedByUser(attachment.key, userId)) {
       return { error: "Invalid attachment key", ok: false, status: HttpStatus.FORBIDDEN };
     }
 
+    const stagedStatus = statuses.get(attachment.key);
+    if (stagedStatus == null) {
+      return {
+        error: `Unknown upload for ${attachment.filename}`,
+        ok: false,
+        status: HttpStatus.BAD_REQUEST,
+      };
+    }
+
+    if (stagedStatus === "confirmed" || stagedStatus === "linked") {
+      continue;
+    }
+
     const exists = await headObject(attachment.key);
     if (!exists) {
-      return { error: `Upload not found for ${attachment.filename}`, ok: false, status: HttpStatus.BAD_REQUEST };
+      return {
+        error: `Upload not found for ${attachment.filename}`,
+        ok: false,
+        status: HttpStatus.BAD_REQUEST,
+      };
     }
+
+    await supportStagedUploadsDb.confirmByKey(attachment.key, attachment.sizeBytes);
   }
 
   return { ok: true };
@@ -176,6 +199,13 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
       const uploads = await Promise.all(
         parsed.body.files.map(async (file) => {
           const key = buildSupportAttachmentStorageKey(request.user.userId);
+          await supportStagedUploadsDb.createPending({
+            contentType: file.contentType,
+            filename: file.filename,
+            key,
+            sizeBytes: file.sizeBytes,
+            userId: request.user.userId,
+          });
           const uploadUrl = await generateUploadUrl(key, file.contentType);
           return {
             contentType: file.contentType,

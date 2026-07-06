@@ -38,6 +38,7 @@ export interface S3NotificationEvent {
     s3: {
       object: {
         key: string;
+        size?: number;
       };
     };
   }[];

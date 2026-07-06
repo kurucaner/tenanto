@@ -23,6 +23,7 @@ import { authRoutes } from "./routes/auth/auth-routes";
 import { initRoutes } from "./routes/init-routes";
 import { notificationRoutes } from "./routes/notification-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
+import { s3Routes } from "./routes/s3-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
@@ -49,7 +50,10 @@ server.register(cors, {
 });
 server.register(helmet);
 server.register(rateLimit, {
-  allowList: (request) => request.url.split("?")[0] === "/notifications/stream",
+  allowList: (request) => {
+    const path = request.url.split("?")[0];
+    return path === "/notifications/stream" || path === "/s3-notification";
+  },
   max: isProduction ? 20 : 100,
   timeWindow: "1 minute",
 });
@@ -67,6 +71,7 @@ server.register(propertyReportRoutes);
 server.register(portfolioReportRoutes);
 server.register(homeRoutes);
 server.register(pushTokenRoutes);
+server.register(s3Routes);
 server.register(supportRoutes);
 server.register(notificationRoutes);
 server.register(unsubscribeRoutes);
