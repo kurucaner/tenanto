@@ -3,8 +3,8 @@ import { memo } from "react";
 import { useParams } from "react-router-dom";
 
 import { PropertyPageShell } from "@/components/properties/property-page-shell";
-import { usePropertySettingsForm } from "@/components/settings/property-settings-form";
 import { Skeleton } from "@/components/ui/skeleton";
+import { usePropertySettingsForm } from "@/hooks/use-property-settings-form";
 import { propertiesApi, settingsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { type IPropertySettings,PropertyRole, UserType } from "@/packages/shared";

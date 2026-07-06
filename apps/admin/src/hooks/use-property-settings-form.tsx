@@ -1,12 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
-import { memo, type ReactNode,useMemo, useState } from "react";
+import { type ReactNode,useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { PercentField } from "@/components/settings/property-settings-percent-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { settingsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -55,34 +54,6 @@ const parsePercent = (value: string): number | null => {
   if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) return null;
   return parsed;
 };
-
-interface PercentFieldProps {
-  disabled: boolean;
-  id: string;
-  label: string;
-  onChange: (value: string) => void;
-  value: string;
-}
-
-const PercentField = memo(({ disabled, id, label, onChange, value }: PercentFieldProps) => (
-  <div className="space-y-2">
-    <Label htmlFor={id}>{label}</Label>
-    <div className="relative">
-      <Input
-        disabled={disabled}
-        id={id}
-        inputMode="decimal"
-        onChange={(e) => onChange(e.target.value)}
-        type="text"
-        value={value}
-      />
-      <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">
-        %
-      </span>
-    </div>
-  </div>
-));
-PercentField.displayName = "PercentField";
 
 interface UsePropertySettingsFormOptions {
   canEdit: boolean;
