@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { SupportAttachmentPicker } from "@/components/support/support-attachment-picker";
 import {
   CREATE_CATEGORY_OPTIONS,
   supportSelectClass,
@@ -17,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
 import { type SupportCategory } from "@/packages/shared";
 
@@ -32,6 +34,31 @@ export const CreateSupportRequestDialog = memo(
     const queryClient = useQueryClient();
     const [category, setCategory] = useState<SupportCategory>("bug");
     const [message, setMessage] = useState("");
+    const {
+      addFiles,
+      attachments,
+      clearAttachments,
+      dragHandlers,
+      formatFileSize,
+      isDragOver,
+      removeAttachment,
+    } = useSupportImageAttachments();
+
+    const resetForm = useCallback(() => {
+      setCategory("bug");
+      setMessage("");
+      clearAttachments();
+    }, [clearAttachments]);
+
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        if (!nextOpen) {
+          resetForm();
+        }
+        onOpenChange(nextOpen);
+      },
+      [onOpenChange, resetForm]
+    );
 
     const mutation = useMutation({
       mutationFn: () =>
@@ -44,10 +71,11 @@ export const CreateSupportRequestDialog = memo(
       },
       onSuccess: (data) => {
         toast.success("Support request submitted");
+        if (attachments.length > 0) {
+          toast.info("Images will be uploaded when attachment support is enabled");
+        }
         queryClient.invalidateQueries({ queryKey: ["support", "list"] });
-        onOpenChange(false);
-        setCategory("bug");
-        setMessage("");
+        handleOpenChange(false);
         navigate(`/support-requests/${encodeURIComponent(data.id)}`);
       },
     });
@@ -62,8 +90,8 @@ export const CreateSupportRequestDialog = memo(
     };
 
     return (
-      <Dialog onOpenChange={onOpenChange} open={open}>
-        <DialogContent className="sm:max-w-[520px]">
+      <Dialog onOpenChange={handleOpenChange} open={open}>
+        <DialogContent className="sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle>New support request</DialogTitle>
           </DialogHeader>
@@ -93,6 +121,19 @@ export const CreateSupportRequestDialog = memo(
                   placeholder="Describe the issue or request…"
                   required
                   value={message}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="create-support-attachments-dropzone">Attachments (optional)</Label>
+                <SupportAttachmentPicker
+                  attachments={attachments}
+                  disabled={mutation.isPending}
+                  dragHandlers={dragHandlers}
+                  formatFileSize={formatFileSize}
+                  idPrefix="create-support"
+                  isDragOver={isDragOver}
+                  onAddFiles={addFiles}
+                  onRemove={removeAttachment}
                 />
               </div>
             </div>

@@ -52,6 +52,24 @@ export const supportTextareaClass = cn(
   "min-h-[88px] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 );
 
+export const SUPPORT_IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp";
+
+export const SUPPORT_MAX_IMAGE_ATTACHMENTS = 5;
+
+export const SUPPORT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+export const SUPPORT_ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+]);
+
+export const supportAttachmentDropzoneClass = cn(
+  "flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-input bg-transparent px-4 py-6 text-sm outline-none transition-colors dark:bg-input/30",
+  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+);
+
 export const supportDetailMetaClass = "px-4 md:px-6 lg:px-8";
 
 export const supportDetailRailClass = "bg-muted/20 px-4 py-5 lg:bg-muted/10 lg:px-5";
