@@ -459,4 +459,44 @@ export const migrations: IMigration[] = [
     },
     version: 12,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_units CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS property_unit_rental_type CASCADE;`);
+    },
+    name: "create_property_units",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_unit_rental_type AS ENUM ('short_term', 'long_term');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE property_units (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id   UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          unit_number   VARCHAR(50) NOT NULL,
+          rental_type   property_unit_rental_type NOT NULL DEFAULT 'short_term',
+          layout        VARCHAR(20) NOT NULL,
+          created_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE (property_id, unit_number)
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_units_updated_at
+          BEFORE UPDATE ON property_units
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_units_property_id ON property_units(property_id);`
+      );
+    },
+    version: 13,
+  },
 ];

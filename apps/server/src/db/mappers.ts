@@ -3,6 +3,7 @@ import {
   type IProperty,
   type IPropertyInvite,
   type IPropertyMember,
+  type IPropertyUnit,
   type ISupportRequest,
   type IUser,
   type SupportCategory,
@@ -10,6 +11,7 @@ import {
   toIso,
   type TPropertyInviteStatus,
   type TPropertyRole,
+  type TUnitRentalType,
   UserType,
 } from "@/packages/shared";
 
@@ -81,4 +83,14 @@ export const mapPropertyInviteRow = (row: Record<string, unknown>): IPropertyInv
   propertyId: row.property_id as string,
   role: row.role as TPropertyRole,
   status: row.status as TPropertyInviteStatus,
+});
+
+export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit => ({
+  createdAt: (row.created_at as Date).toISOString(),
+  id: row.id as string,
+  layout: row.layout as string,
+  propertyId: row.property_id as string,
+  rentalType: row.rental_type as TUnitRentalType,
+  unitNumber: row.unit_number as string,
+  updatedAt: (row.updated_at as Date).toISOString(),
 });

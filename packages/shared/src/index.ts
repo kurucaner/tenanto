@@ -40,22 +40,27 @@ export type {
 
 // Property Types
 export {
-  PropertyInviteStatus,
-  PropertyRole,
   type IAdminAddPropertyMemberBody,
   type IAdminCreatePropertyBody,
   type IAdminPropertiesListQuery,
   type IAdminPropertiesListResponse,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
+  type ICreatePropertyUnitBody,
   type IProperty,
   type IPropertyDetail,
   type IPropertyInvite,
   type IPropertyMember,
   type IPropertyMemberUser,
+  type IPropertyUnit,
+  type IUpdatePropertyUnitBody,
+  PropertyInviteStatus,
+  PropertyRole,
   type TAddPropertyMemberResponse,
   type TPropertyInviteStatus,
   type TPropertyRole,
+  type TUnitRentalType,
+  UnitRentalType,
 } from "./property-types";
 
 // Helpers

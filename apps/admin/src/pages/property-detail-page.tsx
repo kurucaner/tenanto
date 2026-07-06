@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2, UserMinus } from "lucide-react";
 import { memo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, NavLink, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
@@ -21,9 +21,9 @@ import {
 } from "@/components/ui/table";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { useAuthStore } from "@/stores/auth-store";
 import type { IPropertyDetail, IPropertyMember, TPropertyRole } from "@/packages/shared";
 import { PropertyRole, UserType } from "@/packages/shared";
+import { useAuthStore } from "@/stores/auth-store";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
   { label: "Owner", value: PropertyRole.OWNER },
@@ -174,6 +174,34 @@ const PropertyDetailContent = memo(
               {deleteMutation.isPending ? "Deleting…" : "Delete"}
             </Button>
           </div>
+        </div>
+
+        <div className="flex items-center gap-1 border-b">
+          <NavLink
+            className={({ isActive }) =>
+              `px-3 pb-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? "border-b-2 border-foreground text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`
+            }
+            end
+            to={`/properties/${propertyId}`}
+          >
+            Overview
+          </NavLink>
+          <NavLink
+            className={({ isActive }) =>
+              `px-3 pb-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? "border-b-2 border-foreground text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`
+            }
+            to={`/properties/${propertyId}/units`}
+          >
+            Units
+          </NavLink>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

@@ -70,6 +70,35 @@ export interface IAdminUpdatePropertyMemberBody {
   role: TPropertyRole;
 }
 
+export const UnitRentalType = {
+  LONG_TERM: "long_term",
+  SHORT_TERM: "short_term",
+} as const;
+
+export type TUnitRentalType = (typeof UnitRentalType)[keyof typeof UnitRentalType];
+
+export interface IPropertyUnit {
+  createdAt: string;
+  id: string;
+  layout: string;
+  propertyId: string;
+  rentalType: TUnitRentalType;
+  unitNumber: string;
+  updatedAt: string;
+}
+
+export interface ICreatePropertyUnitBody {
+  layout: string;
+  rentalType: TUnitRentalType;
+  unitNumber: string;
+}
+
+export interface IUpdatePropertyUnitBody {
+  layout?: string;
+  rentalType?: TUnitRentalType;
+  unitNumber?: string;
+}
+
 export const PropertyInviteStatus = {
   ACCEPTED: "accepted",
   EMAIL_FAILED: "email_failed",

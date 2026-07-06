@@ -13,9 +13,12 @@ import {
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
+  type ICreatePropertyUnitBody,
   type IProperty,
   type IPropertyDetail,
   type IPropertyMember,
+  type IPropertyUnit,
+  type IUpdatePropertyUnitBody,
   type IUser,
   JwtError,
   type TAddPropertyMemberResponse,
@@ -364,6 +367,31 @@ export const propertiesApi = {
   removeMember: (propertyId: string, userId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
+    ),
+};
+
+export const unitsApi = {
+  list: (propertyId: string) =>
+    authenticatedRequest<{ units: IPropertyUnit[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/units`
+    ),
+
+  create: (propertyId: string, body: ICreatePropertyUnitBody) =>
+    authenticatedRequest<{ unit: IPropertyUnit }>(
+      `/properties/${encodeURIComponent(propertyId)}/units`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  update: (propertyId: string, unitId: string, body: IUpdatePropertyUnitBody) =>
+    authenticatedRequest<{ unit: IPropertyUnit }>(
+      `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  delete: (propertyId: string, unitId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
 };

@@ -25,4 +25,5 @@ export const adminQueryKeys = {
   propertiesList: (filters: Omit<IAdminPropertiesListQuery, "cursor">) =>
     ["admin", "properties", filters] as const,
   propertyDetail: (propertyId: string) => ["admin", "property", propertyId] as const,
+  propertyUnits: (propertyId: string) => ["admin", "property", propertyId, "units"] as const,
 };
