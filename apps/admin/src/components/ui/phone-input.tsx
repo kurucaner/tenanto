@@ -54,7 +54,7 @@ export const PhoneInput = memo(
           inputMode="tel"
           onBlur={() => setTouched(true)}
           onChange={handleChange}
-          placeholder="+19297328282"
+          placeholder="+1 (305) 555-0106"
           type="tel"
           value={value}
         />
