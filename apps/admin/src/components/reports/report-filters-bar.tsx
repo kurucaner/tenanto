@@ -1,4 +1,3 @@
-import { Download } from "lucide-react";
 import { memo } from "react";
 
 import {
@@ -6,7 +5,6 @@ import {
   reservationSelectClassName,
 } from "@/components/income/reservation-form-options";
 import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-options";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -17,17 +15,13 @@ const reportSelectClassName = cn(reservationSelectClassName, "bg-background");
 export interface ReportFiltersBarProps {
   channel?: string;
   from: string;
-  isExportDisabled?: boolean;
-  isExporting?: boolean;
   onChannelChange?: (value: string) => void;
-  onExport?: () => void;
   onFromChange: (value: string) => void;
   onRentalTypeChange: (value: string) => void;
   onToChange: (value: string) => void;
   onUnitChange?: (value: string) => void;
   rentalType: string;
   showChannelFilter?: boolean;
-  showExport?: boolean;
   showUnitFilter?: boolean;
   to: string;
   unitId?: string;
@@ -38,24 +32,19 @@ export const ReportFiltersBar = memo(
   ({
     channel = "",
     from,
-    isExportDisabled = false,
-    isExporting = false,
     onChannelChange,
-    onExport,
     onFromChange,
     onRentalTypeChange,
     onToChange,
     onUnitChange,
     rentalType,
     showChannelFilter = false,
-    showExport = false,
     showUnitFilter = false,
     to,
     unitId = "",
     units = [],
   }: ReportFiltersBarProps) => {
-    const filterCount =
-      2 + (showUnitFilter ? 1 : 0) + (showChannelFilter ? 1 : 0) + 1 + (showExport ? 0 : 0);
+    const filterCount = 2 + (showUnitFilter ? 1 : 0) + (showChannelFilter ? 1 : 0) + 1;
     const gridClass =
       filterCount >= 5
         ? "md:grid-cols-2 lg:grid-cols-5"
@@ -135,21 +124,6 @@ export const ReportFiltersBar = memo(
               ))}
             </select>
           </div>
-          {showExport ? (
-            <div className="flex items-end">
-              <Button
-                className="w-full gap-1.5"
-                disabled={isExportDisabled || isExporting}
-                onClick={() => onExport?.()}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                <Download className="size-3.5" />
-                {isExporting ? "Downloading…" : "Download CSV"}
-              </Button>
-            </div>
-          ) : null}
         </div>
 
         {rentalType ? (

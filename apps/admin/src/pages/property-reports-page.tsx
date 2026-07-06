@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Download } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,9 +10,11 @@ import { usePropertyShell } from "@/components/properties/property-shell-context
 import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
 import { ReportSectionTable } from "@/components/reports/report-section-table";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { reportsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
@@ -76,23 +79,33 @@ export const PropertyReportsPage = memo(() => {
     }
   };
 
+  usePropertyShellActions(
+    <Button
+      className="gap-1.5"
+      disabled={!reportQuery || isExporting}
+      onClick={() => void handleExport()}
+      size="sm"
+      type="button"
+      variant="outline"
+    >
+      <Download className="size-3.5" />
+      {isExporting ? "Downloading…" : "Download CSV"}
+    </Button>
+  );
+
   return (
     <Card>
       <CardContent className="space-y-4 p-4">
         <ReportFiltersBar
           channel={channel}
           from={from}
-          isExportDisabled={!reportQuery}
-          isExporting={isExporting}
           onChannelChange={setChannel}
-          onExport={() => void handleExport()}
           onFromChange={setFrom}
           onRentalTypeChange={setRentalType}
           onToChange={setTo}
           onUnitChange={setUnitId}
           rentalType={rentalType}
           showChannelFilter
-          showExport
           showUnitFilter
           to={to}
           unitId={unitId}

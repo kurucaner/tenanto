@@ -9,6 +9,16 @@ const SENSITIVE_REQUEST_HEADERS = new Set([
   "x-api-key",
 ]);
 
+function getBodyByteLength(body: unknown): number {
+  if (body instanceof Buffer) {
+    return body.length;
+  }
+  if (body instanceof ArrayBuffer) {
+    return body.byteLength;
+  }
+  return 0;
+}
+
 function getClientIp(request: FastifyRequest): string {
   const forwarded = request.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.length > 0) {
@@ -52,16 +62,26 @@ async function forwardRumRequest(
   const search = request.url.includes("?") ? `?${request.url.split("?")[1]}` : "";
   const queryParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const subdomain = queryParams.get("ddforwardSubdomain");
+  const clientIp = getClientIp(request);
+  const body = request.body;
+
+  console.log("[proxy] incoming", {
+    bodyBytes: getBodyByteLength(body),
+    ip: clientIp,
+    method: request.method,
+    origin: request.headers.origin,
+    path: pathname,
+  });
 
   if (!isAllowedRumPath(pathname)) {
+    console.log("[proxy] rejected invalid path", pathname);
     return reply.code(400).send({ error: "Invalid Datadog intake path" });
   }
 
   const targetUrl = buildTargetUrl(intakeOrigin, pathname, search, subdomain);
-  const clientIp = getClientIp(request);
-  const body = request.body;
 
   if (body === undefined || body === null) {
+    console.log("[proxy] rejected missing body", pathname);
     return reply.code(400).send({ error: "Missing request body" });
   }
 
@@ -76,6 +96,12 @@ async function forwardRumRequest(
     body: body instanceof Buffer ? body : Buffer.from(body as ArrayBuffer),
     headers: forwardHeaders,
     method: "POST",
+  });
+
+  console.log("[proxy] forwarded", {
+    path: pathname,
+    targetHost: new URL(targetUrl).hostname,
+    upstreamStatus: upstream.status,
   });
 
   const responseBody = Buffer.from(await upstream.arrayBuffer());
@@ -94,6 +120,9 @@ export async function registerRumProxyRoutes(
   intakeOrigin: string
 ): Promise<void> {
   fastify.addHook("onRequest", async (request, _reply) => {
+    const pathname = request.url.split("?")[0] ?? "/";
+    console.log("[proxy] request", request.method, pathname);
+
     if (request.method === "OPTIONS") {
       return;
     }

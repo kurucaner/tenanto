@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Download } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -6,6 +7,7 @@ import { AdminPageLayout } from "@/components/admin-page-layout";
 import { PortfolioPropertyTable } from "@/components/reports/portfolio-property-table";
 import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { portfolioReportsApi } from "@/lib/api-client";
@@ -56,6 +58,19 @@ export const ReportsPage = memo(() => {
   return (
     <AdminPageLayout
       intro={{
+        actions: (
+          <Button
+            className="gap-1.5"
+            disabled={!reportQuery || isExporting}
+            onClick={() => void handleExport()}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Download className="size-3.5" />
+            {isExporting ? "Downloading…" : "Download CSV"}
+          </Button>
+        ),
         description: "Portfolio totals across all properties you can access.",
         eyebrow: "Accounting",
         title: "Reports",
@@ -65,14 +80,10 @@ export const ReportsPage = memo(() => {
         <CardContent className="space-y-4 p-4">
           <ReportFiltersBar
             from={from}
-            isExportDisabled={!reportQuery}
-            isExporting={isExporting}
-            onExport={() => void handleExport()}
             onFromChange={setFrom}
             onRentalTypeChange={setRentalType}
             onToChange={setTo}
             rentalType={rentalType}
-            showExport
             to={to}
           />
 

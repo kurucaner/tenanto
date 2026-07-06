@@ -7,8 +7,25 @@ const RUM_SERVICE = "tenanto-admin";
 
 let rumInitialized = false;
 
+function normalizeProxyUrl(proxyUrl: string): string {
+  const trimmed = proxyUrl.replace(/\/$/, "");
+
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname === "0.0.0.0") {
+      url.hostname = "localhost";
+      console.warn(
+        "[datadog-rum] VITE_DD_RUM_PROXY_URL uses 0.0.0.0, which browsers block. Using http://localhost instead."
+      );
+      return url.origin;
+    }
+    return trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
 function getRumConfig() {
-  console.log("getRumConfig", import.meta.env.VITE_DD_RUM_APPLICATION_ID, import.meta.env.VITE_DD_CLIENT_TOKEN, import.meta.env.VITE_DD_RUM_PROXY_URL);
   const applicationId = import.meta.env.VITE_DD_RUM_APPLICATION_ID;
   const clientToken = import.meta.env.VITE_DD_CLIENT_TOKEN;
   const proxyUrl = import.meta.env.VITE_DD_RUM_PROXY_URL;
@@ -21,7 +38,7 @@ function getRumConfig() {
     applicationId,
     clientToken,
     env: import.meta.env.VITE_DD_ENV ?? import.meta.env.MODE,
-    proxyUrl: proxyUrl.replace(/\/$/, ""),
+    proxyUrl: normalizeProxyUrl(proxyUrl),
     site: import.meta.env.VITE_DD_SITE ?? DEFAULT_DD_SITE,
     version: import.meta.env.VITE_APP_VERSION,
   };

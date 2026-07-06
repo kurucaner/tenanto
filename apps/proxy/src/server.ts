@@ -55,9 +55,12 @@ async function start(): Promise<void> {
 
   await fastify.listen({ host: "0.0.0.0", port });
 
+  console.log(
+    `Proxy server started on http://localhost:${port} (bind 0.0.0.0:${port}, DD_SITE=${ddSite})`
+  );
   fastify.log.info(
     { corsOrigins, ddSite, intakeOrigin, port },
-    "Datadog RUM proxy listening"
+    "Proxy server started"
   );
 }
 
