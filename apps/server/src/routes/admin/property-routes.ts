@@ -445,7 +445,10 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyAccess) return;
 
-      if (request.user.userType !== UserType.ADMIN) {
+      if (
+        request.user.userType !== UserType.ADMIN &&
+        propertyAccess.createdBy !== request.user.userId
+      ) {
         const callerMembership = await propertyMembersDb.findOne(propertyId, request.user.userId);
         if (callerMembership?.role !== PropertyRole.OWNER) {
           return reply
@@ -493,7 +496,10 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!propertyAccess) return;
 
-      if (request.user.userType !== UserType.ADMIN) {
+      if (
+        request.user.userType !== UserType.ADMIN &&
+        propertyAccess.createdBy !== request.user.userId
+      ) {
         const callerMembership = await propertyMembersDb.findOne(propertyId, request.user.userId);
         if (callerMembership?.role !== PropertyRole.OWNER) {
           return reply

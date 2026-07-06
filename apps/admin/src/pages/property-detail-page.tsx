@@ -135,8 +135,9 @@ const PropertyDetailContent = memo(
     const navigate = useNavigate();
     const currentUser = useAuthStore((s) => s.user);
     const isAdmin = currentUser?.userType === UserType.ADMIN;
+    const isCreator = property.createdBy === currentUser?.id;
     const callerMembership = property.members.find((m) => m.userId === currentUser?.id);
-    const canManageMembers = isAdmin || callerMembership?.role === PropertyRole.OWNER;
+    const canManageMembers = isAdmin || isCreator || callerMembership?.role === PropertyRole.OWNER;
     const [editOpen, setEditOpen] = useState(false);
     const [addMemberOpen, setAddMemberOpen] = useState(false);
 
