@@ -4,6 +4,7 @@ import { Outlet } from "react-router-dom";
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
 import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -30,8 +31,8 @@ const AdminLayoutInner = memo(() => {
         <DashboardSidebar />
         <SidebarInset className="admin-app-surface overflow-hidden">
           <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
-            <SidebarTrigger />
-            <Separator className="h-6" orientation="vertical" />
+            <SidebarTrigger className="hidden md:inline-flex" />
+            <Separator className="hidden h-6 md:block" orientation="vertical" />
             <span className="min-w-0 truncate text-xs font-medium tracking-[0.18em] text-muted-foreground">
               DASHBOARD
             </span>
@@ -41,9 +42,10 @@ const AdminLayoutInner = memo(() => {
               <AdminThemeSwitcher compact />
             </div>
           </header>
-          <div className="flex flex-1 flex-col overflow-auto p-6 md:p-8">
+          <div className="flex flex-1 flex-col overflow-auto p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-8">
             <Outlet />
           </div>
+          <MobileBottomNav />
         </SidebarInset>
       </SidebarProvider>
     </NotificationStreamContext.Provider>

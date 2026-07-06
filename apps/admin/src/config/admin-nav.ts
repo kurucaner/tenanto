@@ -38,10 +38,35 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
 ];
 
+/** Primary destinations shown in the bottom bar (max 4). */
+export const MOBILE_BOTTOM_NAV_PRIMARY_HREFS = [
+  "/home",
+  "/properties",
+  "/reports",
+  "/support-requests",
+] as const;
+
 export function getNavItemsForRole(userType: UserType): AdminNavItem[] {
   return ADMIN_NAV_ITEMS.filter(
     (item) => item.roles === undefined || item.roles.includes(userType)
   );
+}
+
+export function getMobileBottomNavItems(userType: UserType): {
+  primary: AdminNavItem[];
+  overflow: AdminNavItem[];
+} {
+  const visible = getNavItemsForRole(userType);
+  const primary = MOBILE_BOTTOM_NAV_PRIMARY_HREFS.map((href) =>
+    visible.find((item) => item.href === href)
+  ).filter((item): item is AdminNavItem => item !== undefined);
+  const overflow = visible.filter(
+    (item) =>
+      !MOBILE_BOTTOM_NAV_PRIMARY_HREFS.includes(
+        item.href as (typeof MOBILE_BOTTOM_NAV_PRIMARY_HREFS)[number]
+      )
+  );
+  return { primary, overflow };
 }
 
 export function isAdminNavActive(
