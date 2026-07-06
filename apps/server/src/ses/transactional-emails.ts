@@ -5,7 +5,7 @@ import { renderTemplate } from "./email-templates";
 import { sendTransactionalEmail } from "./ses";
 
 export interface PropertyInviteEmailOptions {
-  inviterName: string;
+  inviterEmail: string;
   propertyName: string;
   role: string;
 }
@@ -73,12 +73,12 @@ export async function sendPropertyInviteEmail(
   opts: PropertyInviteEmailOptions
 ): Promise<void> {
   const subject = `You've been invited to join ${opts.propertyName} on ${APP_NAME}`;
-  const text = `${opts.inviterName} has invited you to join ${opts.propertyName} as a ${opts.role}. Sign up at ${WEB_APP_URL} using this email address to accept.`;
+  const text = `${opts.inviterEmail} has invited you to join the property management for ${opts.propertyName} as a ${opts.role}. Sign up at ${WEB_APP_URL} using this email address to accept.`;
 
   const html = renderTemplate("property-invite.html", {
     appName: APP_NAME,
     baseUrl: WEB_APP_URL ?? "",
-    inviterName: opts.inviterName,
+    inviterEmail: opts.inviterEmail,
     propertyName: opts.propertyName,
     role: opts.role,
   });

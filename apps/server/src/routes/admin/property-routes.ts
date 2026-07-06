@@ -407,7 +407,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
 
       try {
         await sendPropertyInviteEmail(email, {
-          inviterName: currentUser?.name ?? "Someone",
+          inviterEmail: currentUser?.email ?? "someone@tenanto.com",
           propertyName: propertyExists.name,
           role,
         });
