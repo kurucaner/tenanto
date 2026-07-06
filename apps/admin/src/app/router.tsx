@@ -15,6 +15,7 @@ import { PropertiesListPage } from "@/pages/properties-list-page";
 import { PropertyDetailPage } from "@/pages/property-detail-page";
 import { PropertyExpensesPage } from "@/pages/property-expenses-page";
 import { PropertyIncomePage } from "@/pages/property-income-page";
+import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
               { element: <PropertyUnitsPage />, path: "properties/:propertyId/units" },
               { element: <PropertyIncomePage />, path: "properties/:propertyId/income" },
               { element: <PropertyExpensesPage />, path: "properties/:propertyId/expenses" },
+              { element: <PropertyReportsPage />, path: "properties/:propertyId/reports" },
               { element: <PropertySettingsPage />, path: "properties/:propertyId/settings" },
               // Admin-only routes
               {

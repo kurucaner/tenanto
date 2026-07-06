@@ -205,40 +205,54 @@ Table: `property_expenses`
 
 ---
 
-## Phase 5 — Reports & Export (Raporlar)
+## Phase 5 — Reports & Export (Raporlar) ✅ Complete
 
-**Goal:** Financial summaries and Excel download.
+**Goal:** Financial summaries and CSV download.
 
-### Report types
+### Report types (implemented)
 
 | Report | Dimensions |
 |--------|------------|
-| Room-based income/expense | Per unit |
-| Monthly / yearly summary | Property |
-| Occupancy rate | Per unit or all; monthly/yearly |
-| Average nightly rate (ADR) | Per unit or all; monthly/yearly |
-| Channel summary | Sales total, commissions total |
+| Room-based income | Per unit (expenses property-level) |
+| Monthly summary | Property (`byMonth`) |
+| Occupancy rate | Per unit |
+| ADR | Per unit (room rate / nights) |
+| Channel summary | Gross, commission, stay count |
 | Sales-type breakdown | Room, cleaning, extra cleaning, extra service, beach rental |
-| Rental type filter | Short term only / long term only / both |
+| Rental type filter | Short term / long term / both |
 
-### Key metrics
+### Metric rules
 
-- **Gross Income** = Net room rate + cleaning + taxes
-- **Net Income** = (Net room rate + cleaning) − taxes − channel commissions
-- Expenses subtracted for operational net (define naming in UI)
+- **Stays** bucketed by `check_in`; **income lines** by `transaction_date`; **expenses** by `expense_date` (null-date expenses in property totals only)
+- Occupancy/ADR: only `stayed` and `active` reservations
+- **Annual expenses** (`property_tax`, `insurance`): full amount in property totals; `amount / 12` in monthly buckets
+- **Operational net** = net income − total expenses
 
 ### API
 
-- `GET /properties/:propertyId/reports/summary?from=&to=&rentalType=&unitId=`
-- `GET /properties/:propertyId/reports/export` — Excel (CSV or xlsx)
-- Optional: `GET /reports/summary` — aggregate across all accessible properties
+- `GET /properties/:propertyId/reports/summary?from=&to=&rentalType=&unitId=&channel=`
+- `GET /properties/:propertyId/reports/export` — CSV download
 
 ### UI
 
-- New **Reports** tab
+- **Reports** tab under property shell
 - Filter bar (date range, unit, channel, rental type)
 - Summary cards + detail tables
-- “Download Excel” action
+- **Download CSV** action
+
+---
+
+## Phase 5.1 — Multi-property Reports (planned)
+
+**Goal:** Portfolio-level reports across all accessible properties.
+
+| Item | Description |
+|------|-------------|
+| API | `GET /reports/summary?from=&to=` — aggregate across member properties |
+| Sidebar | Global **Reports** nav item at `/reports` |
+| Page | Portfolio totals + per-property breakdown table |
+
+Reuses `buildPropertyReportSummary` per property and rolls up totals.
 
 ---
 
@@ -277,9 +291,10 @@ flowchart LR
   P3["Phase 3: Income ✅"]
   P31["Phase 3.1: Income Lines ✅"]
   P4["Phase 4: Expenses ✅"]
-  P5["Phase 5: Reports"]
+  P5["Phase 5: Reports ✅"]
+  P51["Phase 5.1: Portfolio Reports"]
   P6["Phase 6: Nav tabs"]
-  P1 --> P2 --> P3 --> P31 --> P4 --> P5
+  P1 --> P2 --> P3 --> P31 --> P4 --> P5 --> P51
   P2 -.-> P6
   P3 -.-> P6
   P4 -.-> P6

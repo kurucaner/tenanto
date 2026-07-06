@@ -81,35 +81,45 @@ export const propertyIncomeLinesDb = {
     propertyId: string,
     filters: IPropertyIncomeLinesListQuery = {}
   ): Promise<IPropertyIncomeLine[]> {
-    const conditions = ["property_id = $1"];
+    const conditions = ["pil.property_id = $1"];
     const values: unknown[] = [propertyId];
     let p = 2;
 
     if (filters.from) {
-      conditions.push(`transaction_date >= $${p++}`);
+      conditions.push(`pil.transaction_date >= $${p++}`);
       values.push(filters.from);
     }
     if (filters.to) {
-      conditions.push(`transaction_date <= $${p++}`);
+      conditions.push(`pil.transaction_date <= $${p++}`);
       values.push(filters.to);
     }
     if (filters.unitId) {
-      conditions.push(`unit_id = $${p++}`);
+      conditions.push(`pil.unit_id = $${p++}`);
       values.push(filters.unitId);
     }
     if (filters.lineType) {
-      conditions.push(`line_type = $${p++}::property_income_line_type`);
+      conditions.push(`pil.line_type = $${p++}::property_income_line_type`);
       values.push(filters.lineType);
     }
     if (filters.reservationId) {
-      conditions.push(`reservation_id = $${p++}`);
+      conditions.push(`pil.reservation_id = $${p++}`);
       values.push(filters.reservationId);
     }
 
+    const joinUnits = filters.rentalType
+      ? "INNER JOIN property_units pu ON pu.id = pil.unit_id"
+      : "";
+    if (filters.rentalType) {
+      conditions.push(`pu.rental_type = $${p++}::property_unit_rental_type`);
+      values.push(filters.rentalType);
+    }
+
     const result = await pool.query(
-      `SELECT * FROM property_income_lines
+      `SELECT pil.*
+       FROM property_income_lines pil
+       ${joinUnits}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY transaction_date DESC, created_at DESC`,
+       ORDER BY pil.transaction_date DESC, pil.created_at DESC`,
       values
     );
 

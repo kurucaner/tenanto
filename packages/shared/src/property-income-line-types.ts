@@ -1,4 +1,5 @@
 import type { IPropertyReservation } from "./property-reservation-types";
+import type { TUnitRentalType } from "./property-types";
 
 export const IncomeLineType = {
   BEACH_EQUIPMENT_RENTAL: "beach_equipment_rental",
@@ -63,6 +64,7 @@ export interface IUpdatePropertyIncomeLineBody {
 export interface IPropertyIncomeLinesListQuery {
   from?: string;
   lineType?: TIncomeLineType;
+  rentalType?: TUnitRentalType;
   reservationId?: string;
   to?: string;
   unitId?: string;

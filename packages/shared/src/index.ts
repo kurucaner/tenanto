@@ -114,6 +114,20 @@ export {
   validateExpenseCategoryFields,
 } from "./property-expense-types";
 
+// Property Report Types
+export {
+  ReportRentalTypeFilter,
+  type IPropertyReportChannelSummary,
+  type IPropertyReportExpenseCategory,
+  type IPropertyReportMonthSummary,
+  type IPropertyReportSalesTypeBreakdown,
+  type IPropertyReportSummary,
+  type IPropertyReportTotals,
+  type IPropertyReportUnitSummary,
+  type IPropertyReportsQuery,
+  type TReportRentalTypeFilter,
+} from "./property-report-types";
+
 // Helpers
 export { sleep, toIso } from "./helpers";
 

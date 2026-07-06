@@ -25,6 +25,8 @@ import {
   type IPropertyIncomeLinesListQuery,
   type IPropertyMember,
   type IPropertyReservation,
+  type IPropertyReportsQuery,
+  type IPropertyReportSummary,
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
@@ -179,6 +181,64 @@ const authenticatedRequest = async <T>(
   }
 
   return authenticatedRequest<T>(path, options, true);
+};
+
+const authenticatedDownload = async (
+  path: string,
+  options: RequestOptions = {},
+  isRetry = false
+): Promise<Blob> => {
+  const token = useAuthStore.getState().accessToken;
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await rawRequest(path, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${token}`,
+    },
+    omitDefaultContentType: true,
+  });
+
+  if (response.ok) {
+    return response.blob();
+  }
+
+  if (response.status === 403) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? "Forbidden");
+  }
+
+  if (response.status !== 401) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
+  }
+
+  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
+  const code = body.code;
+
+  const handleSessionInvalid = (): never => {
+    useAuthStore.getState().clearSession();
+    onSessionExpired?.();
+    throw new Error("Session expired");
+  };
+
+  if (code !== JwtError.TOKEN_EXPIRED) {
+    handleSessionInvalid();
+  }
+
+  if (isRetry) {
+    handleSessionInvalid();
+  }
+
+  const newToken = await getDeduplicatedRefresh();
+  if (!newToken) {
+    throw new Error("Session expired");
+  }
+
+  return authenticatedDownload(path, options, true);
 };
 
 interface IAuthEmailResponse {
@@ -531,5 +591,28 @@ export const expensesApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+};
+
+function buildReportsSearchParams(query: IPropertyReportsQuery): string {
+  const params = new URLSearchParams();
+  params.set("from", query.from);
+  params.set("to", query.to);
+  if (query.unitId) params.set("unitId", query.unitId);
+  if (query.channel) params.set("channel", query.channel);
+  if (query.rentalType) params.set("rentalType", query.rentalType);
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+export const reportsApi = {
+  summary: (propertyId: string, query: IPropertyReportsQuery) =>
+    authenticatedRequest<{ summary: IPropertyReportSummary }>(
+      `/properties/${encodeURIComponent(propertyId)}/reports/summary${buildReportsSearchParams(query)}`
+    ),
+
+  exportCsv: (propertyId: string, query: IPropertyReportsQuery) =>
+    authenticatedDownload(
+      `/properties/${encodeURIComponent(propertyId)}/reports/export${buildReportsSearchParams(query)}`
     ),
 };
