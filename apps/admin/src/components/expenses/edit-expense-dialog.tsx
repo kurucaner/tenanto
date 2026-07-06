@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatMoney } from "@/lib/format-money";
 import { expensesApi } from "@/lib/api-client";
+import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import {
   getExpenseCategoryMeta,

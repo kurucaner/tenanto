@@ -24,6 +24,7 @@ import { pushTokenRoutes } from "./routes/push-token-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
+import { notificationStreamHub } from "./services/notification-stream-hub";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
 import { createFastifyLogAdapter, normalizeWinstonRecord, WinstonLogger } from "./services/winston";
 
@@ -38,7 +39,11 @@ server.register(cors, {
   origin: isProduction ? productionCorsOrigins : "*",
 });
 server.register(helmet);
-server.register(rateLimit, { max: isProduction ? 20 : 100, timeWindow: "1 minute" });
+server.register(rateLimit, {
+  allowList: (request) => request.url.split("?")[0] === "/notifications/stream",
+  max: isProduction ? 20 : 100,
+  timeWindow: "1 minute",
+});
 server.register(jwtAuthPlugin);
 server.register(initRoutes);
 server.register(authRoutes);
@@ -117,6 +122,8 @@ const start = async () => {
       startRefreshTokenCleanupCron();
     }
 
+    await notificationStreamHub.start();
+
     const port = Number(process.env["PORT"]);
     await server.listen({ host: "0.0.0.0", port });
   } catch (err) {
@@ -129,14 +136,18 @@ start();
 
 process.on("SIGINT", () => {
   WinstonLogger.info("SIGINT signal received. Shutting down gracefully...");
-  server.close(() => {
-    process.exit(0);
+  void notificationStreamHub.stop().finally(() => {
+    server.close(() => {
+      process.exit(0);
+    });
   });
 });
 
 process.on("SIGTERM", () => {
   WinstonLogger.info("SIGTERM signal received. Shutting down gracefully...");
-  server.close(() => {
-    process.exit(0);
+  void notificationStreamHub.stop().finally(() => {
+    server.close(() => {
+      process.exit(0);
+    });
   });
 });

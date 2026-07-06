@@ -2,16 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   memo,
+  type ReactNode,
   useCallback,
   useContext,
   useState,
-  type ReactNode,
 } from "react";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 
-import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
 import { type IPropertyShellOutletContext } from "@/hooks/use-property-shell-actions";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";

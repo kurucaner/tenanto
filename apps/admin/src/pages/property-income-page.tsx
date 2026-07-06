@@ -15,7 +15,6 @@ import {
   reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
@@ -264,9 +264,13 @@ const PropertyIncomePage = memo(() => {
     });
 
     const units = unitsQuery.data?.units ?? [];
+
     const unitLabelById = useMemo(
-      () => new Map(units.map((unit) => [unit.id, unit.unitNumber])),
-      [units]
+      () =>
+        new Map(
+          (unitsQuery.data?.units ?? []).map((unit) => [unit.id, unit.unitNumber])
+        ),
+      [unitsQuery.data?.units]
     );
 
     const deleteStayMutation = useMutation({

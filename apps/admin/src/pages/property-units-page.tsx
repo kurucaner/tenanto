@@ -3,7 +3,6 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";

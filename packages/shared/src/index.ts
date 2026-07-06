@@ -27,6 +27,12 @@ export type {
   UserNotificationResourceType,
   UserNotificationType,
 } from "./notification-types";
+export type {
+  INotificationStreamConnectedData,
+  INotificationStreamEvent,
+  INotificationStreamUnreadCountData,
+  NotificationStreamEventType,
+} from "./notification-stream-types";
 
 // Support Types
 export type {

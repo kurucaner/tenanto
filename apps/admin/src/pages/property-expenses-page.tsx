@@ -10,7 +10,6 @@ import {
   expenseSelectClassName,
   formatExpenseCategoryLabel,
 } from "@/components/expenses/expense-form-options";
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";

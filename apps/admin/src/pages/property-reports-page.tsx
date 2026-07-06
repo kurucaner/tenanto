@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
 import { formatChannelLabel } from "@/components/income/reservation-form-options";
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
 import { ReportSectionTable } from "@/components/reports/report-section-table";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { reportsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { memo } from "react";
 
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePropertySettingsForm } from "@/hooks/use-property-settings-form";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { settingsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";

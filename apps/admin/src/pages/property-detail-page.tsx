@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
-import { usePropertyShell } from "@/components/properties/property-shell-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";

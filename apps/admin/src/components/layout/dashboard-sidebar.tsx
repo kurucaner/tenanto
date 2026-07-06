@@ -2,8 +2,8 @@ import { LogOut } from "lucide-react";
 import { memo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
 import { SidebarWhatsChanged } from "@/components/layout/sidebar-whats-changed";
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,

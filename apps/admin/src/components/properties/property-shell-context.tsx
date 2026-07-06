@@ -1,19 +1,11 @@
-import { createContext, memo, useContext, type ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 
 import {
-  type IPropertyPermissions,
-  usePropertyPermissions,
-} from "@/hooks/use-property-permissions";
+  PropertyShellContext,
+} from "@/components/properties/property-shell-context-value";
+import { usePropertyPermissions } from "@/hooks/use-property-permissions";
 import type { IPropertyDetail } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
-
-export interface IPropertyShellContext {
-  permissions: IPropertyPermissions;
-  property: IPropertyDetail;
-  propertyId: string;
-}
-
-const PropertyShellContext = createContext<IPropertyShellContext | null>(null);
 
 interface PropertyShellProviderProps {
   children: ReactNode;
@@ -34,11 +26,3 @@ export const PropertyShellProvider = memo(
   }
 );
 PropertyShellProvider.displayName = "PropertyShellProvider";
-
-export function usePropertyShell(): IPropertyShellContext {
-  const context = useContext(PropertyShellContext);
-  if (!context) {
-    throw new Error("usePropertyShell must be used within PropertyShellProvider");
-  }
-  return context;
-}

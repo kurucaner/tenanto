@@ -3,8 +3,8 @@ import { Outlet } from "react-router-dom";
 
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
 import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
-import { NotificationBell } from "@/components/notifications/notification-bell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,

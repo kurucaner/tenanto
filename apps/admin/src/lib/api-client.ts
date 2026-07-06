@@ -132,6 +132,10 @@ const getDeduplicatedRefresh = (): Promise<string | null> => {
   return inFlightRefresh;
 };
 
+export const refreshAccessTokenForStream = (): Promise<string | null> => getDeduplicatedRefresh();
+
+export const getApiBaseUrlForClient = getApiBaseUrl;
+
 interface UnauthorizedBody {
   code?: string;
   error?: string;

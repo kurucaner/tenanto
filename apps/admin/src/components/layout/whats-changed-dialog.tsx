@@ -1,12 +1,5 @@
 import { memo } from "react";
 
-import {
-  RELEASE_CHANGE_LABELS,
-  RELEASE_NOTES,
-  type ReleaseChange,
-  type ReleaseChangeCategory,
-  type ReleaseNote,
-} from "@/config/release-notes";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -15,6 +8,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  RELEASE_CHANGE_LABELS,
+  RELEASE_NOTES,
+  type ReleaseChange,
+  type ReleaseChangeCategory,
+  type ReleaseNote,
+} from "@/config/release-notes";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_BADGE_CLASS: Record<ReleaseChangeCategory, string> = {

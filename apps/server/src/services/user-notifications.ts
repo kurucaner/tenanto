@@ -6,6 +6,7 @@ import {
   type UserNotificationType,
   UserType,
 } from "@/packages/shared";
+import { notificationStreamHub } from "@/services/notification-stream-hub";
 
 export interface NotifyUserInput {
   body: string;
@@ -23,6 +24,9 @@ export async function notifyUser(input: NotifyUserInput): Promise<void> {
   }
 
   await userNotificationsDb.create(input);
+  notificationStreamHub.publish(input.userId).catch((err) => {
+    console.error("[notifyUser] Failed to publish notification stream update:", err);
+  });
 }
 
 export function truncateNotificationBody(text: string, maxLength = 160): string {
