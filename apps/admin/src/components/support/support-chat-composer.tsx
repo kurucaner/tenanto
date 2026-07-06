@@ -3,7 +3,11 @@ import { SendHorizontal } from "lucide-react";
 import { type KeyboardEvent,memo, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { supportTextareaClass } from "@/components/support/support-constants";
+import {
+  supportComposerShellClass,
+  supportComposerTextareaClass,
+  supportDetailMetaClass,
+} from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
 import { supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -105,45 +109,44 @@ export const SupportChatComposer = memo(
       typeof navigator !== "undefined" && navigator.platform.includes("Mac") ? "Cmd" : "Ctrl";
 
     return (
-      <div className="shrink-0 border-t border-border/60 bg-card/80 p-3 backdrop-blur-sm md:p-4">
+      <div className={cn("shrink-0 pb-3 md:pb-4", supportDetailMetaClass)}>
         {status === "resolved" ? (
-          <p className="text-muted-foreground mb-2 text-xs">
+          <p className="text-muted-foreground mb-2 px-1 text-xs">
             You can still reply — this may reopen the ticket.
           </p>
         ) : null}
-        <div className="flex items-end gap-2">
-          <label className="sr-only" htmlFor={`${idPrefix}-composer`}>
-            {isAdmin ? "Reply to user" : "Add a follow-up message"}
-          </label>
-          <textarea
-            className={cn(
-              supportTextareaClass,
-              "max-h-40 min-h-11 flex-1 resize-none py-2.5 leading-relaxed"
-            )}
-            disabled={busy}
-            id={`${idPrefix}-composer`}
-            onChange={(e) => {
-              setReplyDraft(e.target.value);
-              adjustTextareaHeight();
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            ref={textareaRef}
-            rows={1}
-            value={replyDraft}
-          />
-          <Button
-            aria-label="Send message"
-            className="size-11 shrink-0 rounded-full"
-            disabled={busy || replyDraft.trim().length === 0}
-            onClick={handleSendReply}
-            size="icon"
-            type="button"
-          >
-            <SendHorizontal className="size-4" />
-          </Button>
+        <div className={supportComposerShellClass}>
+          <div className="flex items-end gap-2">
+            <label className="sr-only" htmlFor={`${idPrefix}-composer`}>
+              {isAdmin ? "Reply to user" : "Add a follow-up message"}
+            </label>
+            <textarea
+              className={cn(supportComposerTextareaClass, "max-h-40 flex-1")}
+              disabled={busy}
+              id={`${idPrefix}-composer`}
+              onChange={(e) => {
+                setReplyDraft(e.target.value);
+                adjustTextareaHeight();
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              ref={textareaRef}
+              rows={1}
+              value={replyDraft}
+            />
+            <Button
+              aria-label="Send message"
+              className="size-11 shrink-0 rounded-full"
+              disabled={busy || replyDraft.trim().length === 0}
+              onClick={handleSendReply}
+              size="icon"
+              type="button"
+            >
+              <SendHorizontal className="size-4" />
+            </Button>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-2 hidden text-[11px] sm:block">
+        <p className="text-muted-foreground mt-2 hidden px-1 text-[11px] sm:block">
           Press {sendShortcutLabel}+Enter to send
         </p>
       </div>

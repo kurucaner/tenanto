@@ -1,8 +1,10 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
 
+import {
+  supportDetailSectionLabelClass,
+} from "@/components/support/support-constants";
 import { SupportTicketTriageActions } from "@/components/support/support-ticket-triage-actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type SupportRequestStatus,
   type TAdminSupportRequestSettableStatus,
@@ -26,12 +28,10 @@ export const SupportTicketSidebar = memo(
     submitterName,
     ticketUserId,
   }: SupportTicketSidebarProps) => (
-    <aside className="space-y-4">
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Submitter</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-1 text-sm">
+    <aside className="space-y-6">
+      <section className="space-y-2">
+        <h2 className={supportDetailSectionLabelClass}>Submitter</h2>
+        <div className="space-y-1 text-sm">
           <p className="font-medium">{submitterName}</p>
           <Link
             className="text-primary underline-offset-2 hover:underline"
@@ -39,22 +39,18 @@ export const SupportTicketSidebar = memo(
           >
             {submitterEmail}
           </Link>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Triage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <SupportTicketTriageActions
-            busy={patchBusy}
-            layout="stack"
-            onPatchStatus={onPatchStatus}
-            status={status}
-          />
-        </CardContent>
-      </Card>
+      <section className="space-y-2">
+        <h2 className={supportDetailSectionLabelClass}>Triage</h2>
+        <SupportTicketTriageActions
+          busy={patchBusy}
+          layout="stack"
+          onPatchStatus={onPatchStatus}
+          status={status}
+        />
+      </section>
     </aside>
   )
 );

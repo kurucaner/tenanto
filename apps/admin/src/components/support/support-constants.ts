@@ -51,3 +51,23 @@ export const supportSelectClass = cn(
 export const supportTextareaClass = cn(
   "min-h-[88px] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
 );
+
+export const supportDetailMetaClass = "px-4 md:px-6 lg:px-8";
+
+export const supportDetailRailClass = "bg-muted/20 px-4 py-5 lg:bg-muted/10 lg:px-5";
+
+export const supportDetailSectionLabelClass =
+  "text-[11px] font-medium uppercase tracking-wide text-muted-foreground";
+
+export const supportComposerShellClass =
+  "rounded-2xl bg-muted/40 p-2 shadow-sm ring-1 ring-border/10";
+
+export const supportComposerTextareaClass = cn(
+  "min-h-11 w-full resize-none rounded-xl border-0 bg-transparent px-3 py-2.5 text-sm leading-relaxed outline-none focus-visible:ring-0"
+);
+
+export const supportDetailFullBleedClass = cn(
+  "-mx-6 -mb-6 flex min-h-0 w-[calc(100%+3rem)] flex-col",
+  "h-[calc(100dvh-3.5rem-1.5rem-5.5rem-env(safe-area-inset-bottom))]",
+  "md:-mx-8 md:-mb-8 md:w-[calc(100%+4rem)] md:h-[calc(100dvh-3.5rem-2rem)]"
+);

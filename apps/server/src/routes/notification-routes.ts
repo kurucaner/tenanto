@@ -3,8 +3,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { userNotificationsDb } from "@/db/user-notifications";
 import { resolveAllowedOrigin } from "@/lib/cors-headers";
 import { HttpStatus, UserType } from "@/packages/shared";
-import { notificationStreamHub } from "@/services/notification-stream-hub";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { notificationStreamHub } from "@/services/notification-stream-hub";
 
 import {
   parseNotificationListLimit,

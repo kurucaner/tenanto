@@ -2,6 +2,7 @@ import { ArrowDown } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
+import { supportDetailMetaClass } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChatStickToBottom } from "@/hooks/use-chat-stick-to-bottom";
@@ -44,8 +45,8 @@ ThreadSkeleton.displayName = "SupportChatThreadSkeleton";
 
 const DateDivider = memo(({ label }: Readonly<{ label: string }>) => (
   <div className="relative py-2" role="separator">
-    <div className="absolute inset-x-0 top-1/2 border-t border-border/60" />
-    <p className="relative mx-auto w-fit rounded-full border border-border/80 bg-card/90 px-3 py-0.5 text-[11px] font-medium text-muted-foreground backdrop-blur-sm">
+    <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-border/50 to-transparent" />
+    <p className="relative mx-auto w-fit bg-background px-3 text-[11px] font-medium text-muted-foreground">
       {label}
     </p>
   </div>
@@ -60,7 +61,7 @@ interface JumpToLatestButtonProps {
 const JumpToLatestButton = memo(({ count, onClick }: JumpToLatestButtonProps) => (
   <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
     <Button
-      className="pointer-events-auto h-8 gap-1.5 rounded-full border border-border/80 bg-card/95 px-3 text-xs shadow-md backdrop-blur-sm"
+      className="pointer-events-auto h-8 gap-1.5 rounded-full bg-background/90 px-3 text-xs shadow-lg backdrop-blur-sm"
       onClick={onClick}
       size="sm"
       type="button"
@@ -123,7 +124,7 @@ export const SupportChatThread = memo(
 
     if (isPending) {
       return (
-        <div className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3 md:px-6 lg:px-8")}>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto py-3", supportDetailMetaClass)}>
           <ThreadSkeleton />
         </div>
       );
@@ -146,7 +147,8 @@ export const SupportChatThread = memo(
       <div className="relative min-h-0 flex-1">
         <div
           className={cn(
-            "h-full min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3 md:px-6 lg:px-8"
+            "h-full min-h-0 overflow-y-auto overscroll-y-contain py-3",
+            supportDetailMetaClass
           )}
           onScroll={handleScroll}
           ref={scrollRef}

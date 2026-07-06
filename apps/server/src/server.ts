@@ -25,8 +25,8 @@ import { pushTokenRoutes } from "./routes/push-token-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
-import { notificationStreamHub } from "./services/notification-stream-hub";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
+import { notificationStreamHub } from "./services/notification-stream-hub";
 import { createFastifyLogAdapter, normalizeWinstonRecord, WinstonLogger } from "./services/winston";
 
 const pm2Instance = process.env["NODE_APP_INSTANCE"];

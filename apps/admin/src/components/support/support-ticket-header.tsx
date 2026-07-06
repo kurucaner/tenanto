@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { supportDetailMetaClass } from "@/components/support/support-constants";
 import { SupportStatusBadge } from "@/components/support/support-status-badge";
 import { SupportTicketTriageActions } from "@/components/support/support-ticket-triage-actions";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ const LiveIndicator = memo(() => {
   if (label == null) return null;
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
       <span
         aria-hidden
         className={cn(
@@ -76,22 +77,41 @@ export const SupportTicketHeader = memo(
       );
     }
 
-    return (
-      <div className="sticky top-0 z-10 space-y-3 border-b border-border/60 bg-card/90 px-4 py-4 backdrop-blur-md md:px-5">
-        <Link className="text-muted-foreground text-sm hover:underline" to="/support-requests">
-          ← Support requests
-        </Link>
+    const openedLabel = new Date(createdAt).toLocaleString();
 
-        <div className="flex flex-wrap items-center gap-2">
-          <SupportStatusBadge status={status} />
-          <Badge variant="outline">{formatSupportCategoryLabel(category)}</Badge>
-          <LiveIndicator />
-          <span className="text-muted-foreground text-xs">
-            Opened {new Date(createdAt).toLocaleString()}
+    return (
+      <div
+        className={cn(
+          "sticky top-0 z-10 space-y-3 bg-background/70 py-3 backdrop-blur-md",
+          supportDetailMetaClass
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <Link className="text-muted-foreground shrink-0 text-sm hover:underline" to="/support-requests">
+            ← Support requests
+          </Link>
+
+          <span aria-hidden className="hidden text-muted-foreground/30 sm:inline">
+            ·
+          </span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <SupportStatusBadge status={status} />
+            <Badge variant="outline">{formatSupportCategoryLabel(category)}</Badge>
+            <LiveIndicator />
+          </div>
+
+          <span
+            className="text-muted-foreground ms-auto hidden max-w-[12rem] truncate text-xs sm:inline"
+            title={openedLabel}
+          >
+            Opened {openedLabel}
+          </span>
+
+          <span className="font-mono text-[11px] text-muted-foreground" title={id}>
+            {id.length > 12 ? `${id.slice(0, 8)}…` : id}
           </span>
         </div>
-
-        <p className="font-mono text-xs text-muted-foreground">{id}</p>
 
         {mobileTriage}
       </div>

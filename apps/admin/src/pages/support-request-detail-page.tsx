@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { SupportChatSection } from "@/components/support/support-chat-section";
+import { supportDetailFullBleedClass, supportDetailMetaClass, supportDetailRailClass } from "@/components/support/support-constants";
 import { SupportTicketDetailShell } from "@/components/support/support-ticket-detail-shell";
 import { SupportTicketHeader } from "@/components/support/support-ticket-header";
 import { SupportTicketSidebar } from "@/components/support/support-ticket-sidebar";
@@ -11,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNotificationStreamContext } from "@/contexts/notification-stream-context";
 import { adminApi, supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 import {
   type ISupportRequest,
   type ISupportRequestDetail,
@@ -20,9 +22,12 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 
 const DetailLoadingShell = memo(() => (
-  <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-    <Skeleton className="h-24 w-full rounded-xl" />
-    <Skeleton className="min-h-[calc(100dvh-12rem)] w-full rounded-xl" />
+  <div className={cn(supportDetailFullBleedClass, "gap-4")}>
+    <div className={cn(supportDetailMetaClass, "space-y-3 py-3")}>
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-6 w-64" />
+    </div>
+    <Skeleton className="min-h-0 flex-1" />
   </div>
 ));
 DetailLoadingShell.displayName = "SupportDetailLoadingShell";
@@ -67,7 +72,7 @@ const SupportTicketSidebarSection = memo(
     submitterName,
     ticketUserId,
   }: SupportTicketSidebarSectionProps) => (
-    <div className="hidden border-r border-border/60 p-4 lg:block">
+    <div className={cn("hidden lg:block", supportDetailRailClass)}>
       <SupportTicketSidebar
         onPatchStatus={onPatchStatus}
         patchBusy={patchBusy}
@@ -186,7 +191,7 @@ const SupportRequestDetailPageInner = memo(() => {
 
   if (detailQuery.isError || detailQuery.data == null) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+      <div className={cn(supportDetailFullBleedClass, supportDetailMetaClass, "gap-4 py-3")}>
         <Link className="text-muted-foreground text-sm hover:underline" to="/support-requests">
           ← Support requests
         </Link>
@@ -208,39 +213,41 @@ const SupportRequestDetailPageInner = memo(() => {
   }
 
   return (
-    <SupportTicketDetailShell>
-      <SupportTicketHeaderSection
-        isAdmin={isAdmin}
-        onPatchStatus={handlePatchStatus}
-        patchBusy={busy}
-        ticket={ticket}
-      />
-
-      <div className="grid min-h-0 flex-1 overflow-hidden lg:gap-0">
-        {isAdmin ? (
-          <SupportTicketSidebarSection
-            onPatchStatus={handlePatchStatus}
-            patchBusy={busy}
-            status={ticket.status}
-            submitterEmail={submitterInfo.email}
-            submitterName={submitterInfo.name}
-            ticketUserId={submitterInfo.userId}
-          />
-        ) : null}
-
-        <SupportChatSection
-          idPrefix={`support-detail-${supportRequestId}`}
+    <div className={supportDetailFullBleedClass}>
+      <SupportTicketDetailShell>
+        <SupportTicketHeaderSection
           isAdmin={isAdmin}
-          messages={messages}
-          onListsInvalidate={invalidateLists}
-          placeholder={isAdmin ? "Write a reply to the user…" : "Add a follow-up message…"}
-          status={ticket.status}
-          supportRequestId={supportRequestId}
-          ticketUserId={ticket.userId}
-          viewer={viewer}
+          onPatchStatus={handlePatchStatus}
+          patchBusy={busy}
+          ticket={ticket}
         />
-      </div>
-    </SupportTicketDetailShell>
+
+        <div className="grid min-h-0 flex-1 overflow-hidden lg:gap-0">
+          {isAdmin ? (
+            <SupportTicketSidebarSection
+              onPatchStatus={handlePatchStatus}
+              patchBusy={busy}
+              status={ticket.status}
+              submitterEmail={submitterInfo.email}
+              submitterName={submitterInfo.name}
+              ticketUserId={submitterInfo.userId}
+            />
+          ) : null}
+
+          <SupportChatSection
+            idPrefix={`support-detail-${supportRequestId}`}
+            isAdmin={isAdmin}
+            messages={messages}
+            onListsInvalidate={invalidateLists}
+            placeholder={isAdmin ? "Write a reply to the user…" : "Add a follow-up message…"}
+            status={ticket.status}
+            supportRequestId={supportRequestId}
+            ticketUserId={ticket.userId}
+            viewer={viewer}
+          />
+        </div>
+      </SupportTicketDetailShell>
+    </div>
   );
 });
 SupportRequestDetailPageInner.displayName = "SupportRequestDetailPageInner";

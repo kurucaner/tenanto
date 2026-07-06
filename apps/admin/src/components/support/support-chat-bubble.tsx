@@ -51,10 +51,8 @@ const SupportChatBubbleInner = ({
       <div
         aria-hidden
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold",
-          isOwn
-            ? "border-primary/30 bg-primary/10 text-primary"
-            : "border-border/80 bg-muted/50 text-muted-foreground"
+          "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+          isOwn ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
         )}
       >
         {getAuthorInitials(message.authorName)}
@@ -63,17 +61,29 @@ const SupportChatBubbleInner = ({
       <div className={cn("min-w-0 space-y-1", isOwn ? "items-end text-right" : "items-start")}>
         <div
           className={cn(
-            "inline-block rounded-2xl px-3.5 py-2.5 text-left shadow-sm",
+            "inline-block rounded-2xl px-3.5 py-2.5 text-left",
             isOwn
-              ? "rounded-tr-md border border-primary/20 bg-primary/10 text-foreground"
-              : "rounded-tl-md border border-border/80 bg-muted/40 text-foreground"
+              ? "rounded-tr-md bg-primary text-primary-foreground"
+              : "rounded-tl-md bg-muted/60 text-foreground"
           )}
         >
-          <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{message.authorName}</span>
+          <div
+            className={cn(
+              "mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs",
+              isOwn ? "text-primary-foreground/80" : "text-muted-foreground"
+            )}
+          >
+            <span className={cn("font-medium", isOwn ? "text-primary-foreground" : "text-foreground")}>
+              {message.authorName}
+            </span>
             {showAuthorEmail && !isOwn ? <span>{message.authorEmail}</span> : null}
           </div>
-          <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+          <pre
+            className={cn(
+              "whitespace-pre-wrap break-words text-sm leading-relaxed",
+              isOwn ? "text-primary-foreground" : null
+            )}
+          >
             {message.body}
           </pre>
         </div>

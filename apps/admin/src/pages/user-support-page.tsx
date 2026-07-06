@@ -71,7 +71,6 @@ const UserSupportPageInner = memo(() => {
           </Button>
         ),
         eyebrow: "Support",
-        title: "Support requests",
       }}
     >
       <CreateSupportRequestDialog onOpenChange={setCreateOpen} open={createOpen} />
