@@ -53,8 +53,8 @@ export const PropertyPageShell = memo(
             <div className="ml-auto flex min-h-8 items-center gap-2">{actions}</div>
           </div>
 
-          <div className="-mx-1 overflow-x-auto px-1">
-            <div className="flex min-w-max items-center gap-1 border-b">
+          <div className="-mx-1 px-1">
+            <div className="flex flex-wrap items-center gap-1 border-b">
               {PROPERTY_SHELL_TABS.map((tab) => (
                 <NavLink
                   className={tabClass}
