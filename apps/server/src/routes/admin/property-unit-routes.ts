@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertyUnitsDb } from "@/db/property-units";
-import { isPostgresUniqueViolation } from "@/db/pg-errors";
 import {
   HttpStatus,
   type ICreatePropertyUnitBody,
@@ -13,7 +12,13 @@ import {
 } from "@/packages/shared";
 
 import { parseUuidParam } from "./admin-query-utils";
-import { duplicateUnitNumberMessage } from "./property-unit-errors";
+import {
+  duplicateUnitNumberMessage,
+  formatUnitDeleteBlockedMessage,
+  getUnitDeleteBlockerCode,
+  UNIT_DELETE_FOREIGN_KEY_FALLBACK,
+} from "./property-unit-errors";
+import { replyFromDatabaseError } from "./reply-from-database-error";
 import {
   assertPropertyMemberAccess,
   assertPropertyUnitManageAccess,
@@ -115,6 +120,11 @@ interface IPropertyParams {
   propertyId: string;
 }
 
+const unitDatabaseErrorOptions = (duplicateMessage: string) => ({
+  duplicateMessage,
+  foreignKeyFallback: UNIT_DELETE_FOREIGN_KEY_FALLBACK,
+});
+
 export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
@@ -175,10 +185,16 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         const unit = await propertyUnitsDb.create(propertyId, parsed.body);
         return reply.status(HttpStatus.CREATED).send({ unit });
       } catch (error) {
-        if (isPostgresUniqueViolation(error)) {
-          return reply.status(HttpStatus.CONFLICT).send({
-            error: duplicateUnitNumberMessage(parsed.body.unitKind ?? UnitKind.RENTABLE),
-          });
+        if (
+          replyFromDatabaseError(
+            reply,
+            error,
+            unitDatabaseErrorOptions(
+              duplicateUnitNumberMessage(parsed.body.unitKind ?? UnitKind.RENTABLE)
+            )
+          )
+        ) {
+          return;
         }
         throw error;
       }
@@ -238,10 +254,14 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         const updated = await propertyUnitsDb.update(unitId, parsed.body);
         return reply.send({ unit: updated });
       } catch (error) {
-        if (isPostgresUniqueViolation(error)) {
-          return reply.status(HttpStatus.CONFLICT).send({
-            error: duplicateUnitNumberMessage(existing.unitKind),
-          });
+        if (
+          replyFromDatabaseError(
+            reply,
+            error,
+            unitDatabaseErrorOptions(duplicateUnitNumberMessage(existing.unitKind))
+          )
+        ) {
+          return;
         }
         throw error;
       }
@@ -283,8 +303,29 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Unit not found" });
       }
 
-      await propertyUnitsDb.delete(unitId);
-      return reply.status(HttpStatus.NO_CONTENT).send();
+      const blockers = await propertyUnitsDb.getUnitDeleteBlockers(unitId);
+      if (blockers.reservationCount > 0 || blockers.incomeLineCount > 0) {
+        const code = getUnitDeleteBlockerCode(blockers);
+        const payload = {
+          error: formatUnitDeleteBlockedMessage(blockers),
+          ...(code === undefined ? {} : { code }),
+        };
+        return reply.status(HttpStatus.CONFLICT).send(payload);
+      }
+
+      try {
+        await propertyUnitsDb.delete(unitId);
+        return reply.status(HttpStatus.NO_CONTENT).send();
+      } catch (error) {
+        if (
+          replyFromDatabaseError(reply, error, {
+            foreignKeyFallback: UNIT_DELETE_FOREIGN_KEY_FALLBACK,
+          })
+        ) {
+          return;
+        }
+        throw error;
+      }
     }
   );
 };

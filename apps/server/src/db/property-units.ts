@@ -10,6 +10,11 @@ import { pool } from "./pool";
 
 const AMENITY_UNIT_LAYOUT_PLACEHOLDER = "—";
 
+export interface IUnitDeleteBlockers {
+  incomeLineCount: number;
+  reservationCount: number;
+}
+
 export const propertyUnitsDb = {
   async create(propertyId: string, input: ICreatePropertyUnitBody): Promise<IPropertyUnit> {
     const unitKind = input.unitKind ?? UnitKind.RENTABLE;
@@ -47,6 +52,23 @@ export const propertyUnitsDb = {
       [propertyId]
     );
     return result.rows.map((row) => mapPropertyUnitRow(row as Record<string, unknown>));
+  },
+
+  async getUnitDeleteBlockers(unitId: string): Promise<IUnitDeleteBlockers> {
+    const result = await pool.query<{
+      income_line_count: number;
+      reservation_count: number;
+    }>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM property_reservations WHERE unit_id = $1) AS reservation_count,
+         (SELECT COUNT(*)::int FROM property_income_lines WHERE unit_id = $1) AS income_line_count`,
+      [unitId]
+    );
+    const row = result.rows[0];
+    return {
+      incomeLineCount: row?.income_line_count ?? 0,
+      reservationCount: row?.reservation_count ?? 0,
+    };
   },
 
   async update(id: string, input: IUpdatePropertyUnitBody): Promise<IPropertyUnit | null> {
