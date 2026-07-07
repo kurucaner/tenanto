@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
 import { toAttachmentInput } from "@/lib/upload-support-attachments";
+import { validateSupportAttachmentSubmit } from "@/lib/validate-support-attachment-submit";
 import { type SupportCategory } from "@/packages/shared";
 
 export const CreateSupportRequestDialog = memo(
@@ -93,12 +94,13 @@ export const CreateSupportRequestDialog = memo(
         toast.error("Message is required");
         return;
       }
-      if (!allUploadsReady) {
-        toast.error("Wait for image uploads to finish");
-        return;
-      }
-      if (hasUploadErrors) {
-        toast.error("Fix failed uploads before submitting");
+      const attachmentError = validateSupportAttachmentSubmit({
+        allUploadsReady,
+        hasPendingUploads,
+        hasUploadErrors,
+      });
+      if (attachmentError != null) {
+        toast.error(attachmentError);
         return;
       }
       mutation.mutate();

@@ -22,7 +22,7 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { formatPhoneDisplay, PropertyRole, type IPropertyMember, type IPropertyMemberUser, type TPropertyRole } from "@/packages/shared";
+import { formatPhoneDisplay, type IPropertyMember, type IPropertyMemberUser, PropertyRole, type TPropertyRole } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [

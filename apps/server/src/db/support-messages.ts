@@ -1,7 +1,11 @@
 import type { ISupportMessage } from "@/packages/shared";
 
 import { pool } from "./pool";
-import { supportMessageAttachmentsDb } from "./support-message-attachments";
+import {
+  type SupportMessageAttachmentInsert,
+  supportMessageAttachmentsDb,
+} from "./support-message-attachments";
+import { supportStagedUploadsDb } from "./support-staged-uploads";
 
 function mapSupportMessageRow(row: Record<string, unknown>): Omit<ISupportMessage, "attachments"> {
   return {
@@ -29,26 +33,56 @@ async function attachMessageAttachments(messages: Omit<ISupportMessage, "attachm
 
 export const supportMessagesDb = {
   async create(params: {
+    attachments?: SupportMessageAttachmentInsert[];
     authorUserId: string;
     body: string;
     supportRequestId: string;
   }): Promise<ISupportMessage> {
-    const result = await pool.query(
-      `INSERT INTO support_messages (support_request_id, author_user_id, body)
-       VALUES ($1, $2, $3)
-       RETURNING *`,
-      [params.supportRequestId, params.authorUserId, params.body]
-    );
-    const author = await pool.query(`SELECT name, email FROM users WHERE id = $1`, [
-      params.authorUserId,
-    ]);
-    const authorRow = author.rows[0] as Record<string, unknown>;
-    const base = mapSupportMessageRow({
-      ...result.rows[0],
-      author_email: authorRow.email,
-      author_name: authorRow.name,
-    });
-    return { ...base, attachments: [] };
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query(
+        `INSERT INTO support_messages (support_request_id, author_user_id, body)
+         VALUES ($1, $2, $3)
+         RETURNING *`,
+        [params.supportRequestId, params.authorUserId, params.body]
+      );
+      const messageRow = result.rows[0] as Record<string, unknown>;
+      const messageId = messageRow.id as string;
+
+      if (params.attachments != null && params.attachments.length > 0) {
+        await supportStagedUploadsDb.markLinked(
+          params.attachments.map((attachment) => attachment.key),
+          client
+        );
+        await supportMessageAttachmentsDb.createMany(
+          {
+            attachments: params.attachments,
+            supportMessageId: messageId,
+          },
+          client
+        );
+      }
+
+      await client.query("COMMIT");
+
+      const author = await pool.query(`SELECT name, email FROM users WHERE id = $1`, [
+        params.authorUserId,
+      ]);
+      const authorRow = author.rows[0] as Record<string, unknown>;
+      const base = mapSupportMessageRow({
+        ...messageRow,
+        author_email: authorRow.email,
+        author_name: authorRow.name,
+      });
+      const attachments = await supportMessageAttachmentsDb.listByMessageId(messageId);
+      return { ...base, attachments };
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   async listByRequestId(supportRequestId: string): Promise<ISupportMessage[]> {

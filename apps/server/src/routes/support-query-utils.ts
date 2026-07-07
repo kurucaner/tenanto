@@ -68,21 +68,30 @@ export function parseSupportRequestPatchBody(
   return { body: { status: status as TAdminSupportRequestSettableStatus }, ok: true };
 }
 
-export function parseSupportMessageBody(
+export function parseSupportMessageCreateBody(
   raw: unknown
-): { body: string; ok: true } | { error: string; ok: false } {
+):
+  | { attachments: ISupportAttachmentInput[]; body: string; ok: true }
+  | { error: string; ok: false } {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return { error: "Body must be a JSON object", ok: false };
   }
   const record = raw as Record<string, unknown>;
   const message = typeof record["message"] === "string" ? record["message"].trim() : "";
-  if (message.length === 0) {
-    return { error: "message is required", ok: false };
+
+  const parsedAttachments = parseSupportCreateAttachments(record["attachments"]);
+  if (!parsedAttachments.ok) {
+    return { error: parsedAttachments.error, ok: false };
+  }
+
+  if (message.length === 0 && parsedAttachments.attachments.length === 0) {
+    return { error: "message or attachments are required", ok: false };
   }
   if (message.length > 2000) {
     return { error: "message must be at most 2000 characters", ok: false };
   }
-  return { body: message, ok: true };
+
+  return { attachments: parsedAttachments.attachments, body: message, ok: true };
 }
 
 export function isValidSupportCategory(value: unknown): value is SupportCategory {

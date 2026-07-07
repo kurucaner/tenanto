@@ -106,16 +106,18 @@ const SupportChatBubbleInner = ({
             </span>
             {showAuthorEmail && !isOwn ? <span>{message.authorEmail}</span> : null}
           </div>
-          <pre
-            className={cn(
-              "whitespace-pre-wrap break-words text-sm leading-relaxed",
-              isOwn ? "text-primary-foreground" : null
-            )}
-          >
-            {message.body}
-          </pre>
+          {message.body.length > 0 ? (
+            <pre
+              className={cn(
+                "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                isOwn ? "text-primary-foreground" : null
+              )}
+            >
+              {message.body}
+            </pre>
+          ) : null}
           {message.attachments.length > 0 ? (
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className={cn("grid grid-cols-2 gap-2", message.body.length > 0 && "mt-3")}>
               {message.attachments.map((attachment) => (
                 <SupportAttachmentThumbnail attachment={attachment} key={attachment.id} />
               ))}

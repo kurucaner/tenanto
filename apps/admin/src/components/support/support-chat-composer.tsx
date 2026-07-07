@@ -1,19 +1,25 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SendHorizontal } from "lucide-react";
-import { type KeyboardEvent,memo, useCallback, useRef, useState } from "react";
+import { type KeyboardEvent, memo, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { SupportAttachmentFileButton } from "@/components/support/support-attachment-file-button";
+import { SupportComposerAttachmentStrip } from "@/components/support/support-composer-attachment-strip";
 import {
+  SUPPORT_MAX_IMAGE_ATTACHMENTS,
   supportComposerShellClass,
   supportComposerTextareaClass,
   supportDetailMetaClass,
 } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
+import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { markSupportDetailLocallyUpdated } from "@/lib/support-chat-cache";
+import { toAttachmentInput } from "@/lib/upload-support-attachments";
+import { validateSupportAttachmentSubmit } from "@/lib/validate-support-attachment-submit";
 import { cn } from "@/lib/utils";
-import { type SupportRequestStatus } from "@/packages/shared";
+import { type ISupportMessageCreateBody, type SupportRequestStatus } from "@/packages/shared";
 
 export interface SupportChatComposerProps {
   disabled?: boolean;
@@ -43,6 +49,19 @@ export const SupportChatComposer = memo(
     const queryClient = useQueryClient();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [replyDraft, setReplyDraft] = useState("");
+    const {
+      addFiles,
+      allUploadsReady,
+      attachments,
+      clearAttachments,
+      dragHandlers,
+      formatFileSize,
+      hasPendingUploads,
+      hasUploadErrors,
+      isDragOver,
+      removeAttachment,
+      retryAttachment,
+    } = useSupportImageAttachments();
 
     const resetTextareaHeight = useCallback(() => {
       const node = textareaRef.current;
@@ -62,12 +81,13 @@ export const SupportChatComposer = memo(
     }, []);
 
     const replyMutation = useMutation({
-      mutationFn: (message: string) => supportApi.postMessage(supportRequestId, { message }),
+      mutationFn: (body: ISupportMessageCreateBody) => supportApi.postMessage(supportRequestId, body),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Could not send message");
       },
       onSuccess: (detail) => {
         setReplyDraft("");
+        clearAttachments();
         resetTextareaHeight();
         queryClient.setQueryData(adminQueryKeys.supportRequest(supportRequestId), detail);
 
@@ -87,16 +107,46 @@ export const SupportChatComposer = memo(
       },
     });
 
-    const busy = disabled || replyMutation.isPending;
+    const busy = disabled || replyMutation.isPending || hasPendingUploads;
+    const trimmedDraft = replyDraft.trim();
+    const canSend =
+      (trimmedDraft.length > 0 || attachments.length > 0) &&
+      allUploadsReady &&
+      !hasUploadErrors &&
+      !replyMutation.isPending;
 
     const handleSendReply = useCallback(() => {
-      const trimmed = replyDraft.trim();
-      if (trimmed.length === 0) {
-        toast.error("Message cannot be empty");
+      if (trimmedDraft.length === 0 && attachments.length === 0) {
+        toast.error("Message or image is required");
         return;
       }
-      replyMutation.mutate(trimmed);
-    }, [replyDraft, replyMutation]);
+
+      const attachmentError = validateSupportAttachmentSubmit({
+        allUploadsReady,
+        hasPendingUploads,
+        hasUploadErrors,
+      });
+      if (attachmentError != null) {
+        toast.error(attachmentError);
+        return;
+      }
+
+      const body: ISupportMessageCreateBody = {
+        message: trimmedDraft.length > 0 ? trimmedDraft : undefined,
+        attachments:
+          attachments.length > 0
+            ? attachments.map((attachment) => toAttachmentInput(attachment))
+            : undefined,
+      };
+      replyMutation.mutate(body);
+    }, [
+      allUploadsReady,
+      attachments,
+      hasPendingUploads,
+      hasUploadErrors,
+      replyMutation,
+      trimmedDraft,
+    ]);
 
     const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
       if (event.key !== "Enter" || event.shiftKey) return;
@@ -108,6 +158,8 @@ export const SupportChatComposer = memo(
     const sendShortcutLabel =
       typeof navigator !== "undefined" && navigator.platform.includes("Mac") ? "Cmd" : "Ctrl";
 
+    const canAddMore = attachments.length < SUPPORT_MAX_IMAGE_ATTACHMENTS;
+
     return (
       <div className={cn("shrink-0 pb-3 md:pb-4", supportDetailMetaClass)}>
         {status === "resolved" ? (
@@ -115,8 +167,29 @@ export const SupportChatComposer = memo(
             You can still reply — this may reopen the ticket.
           </p>
         ) : null}
-        <div className={supportComposerShellClass}>
+        <SupportComposerAttachmentStrip
+          attachments={attachments}
+          disabled={busy}
+          formatFileSize={formatFileSize}
+          onRemove={removeAttachment}
+          onRetry={retryAttachment}
+        />
+        <div
+          className={cn(
+            supportComposerShellClass,
+            isDragOver && "ring-ring/40 bg-muted/50"
+          )}
+          onDragLeave={dragHandlers.onDragLeave}
+          onDragOver={dragHandlers.onDragOver}
+          onDrop={dragHandlers.onDrop}
+        >
           <div className="flex items-end gap-2">
+            <SupportAttachmentFileButton
+              canAddMore={canAddMore}
+              disabled={busy}
+              idPrefix={idPrefix}
+              onAddFiles={addFiles}
+            />
             <label className="sr-only" htmlFor={`${idPrefix}-composer`}>
               {isAdmin ? "Reply to user" : "Add a follow-up message"}
             </label>
@@ -137,7 +210,7 @@ export const SupportChatComposer = memo(
             <Button
               aria-label="Send message"
               className="size-11 shrink-0 rounded-full"
-              disabled={busy || replyDraft.trim().length === 0}
+              disabled={busy || !canSend}
               onClick={handleSendReply}
               size="icon"
               type="button"

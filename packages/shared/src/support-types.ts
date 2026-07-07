@@ -80,7 +80,8 @@ export interface ISupportCreateBody {
 }
 
 export interface ISupportMessageCreateBody {
-  message: string;
+  attachments?: ISupportAttachmentInput[];
+  message?: string;
 }
 
 export interface ISupportAttachmentPresignFile {

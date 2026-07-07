@@ -34,7 +34,7 @@ import {
   parseSupportAttachmentPresignBody,
   parseSupportCreateAttachments,
   parseSupportListLimit,
-  parseSupportMessageBody,
+  parseSupportMessageCreateBody,
   parseSupportRequestPatchBody,
   parseUuidParam,
 } from "./support-query-utils";
@@ -137,7 +137,7 @@ function parseListQuery(
   };
 }
 
-async function verifyCreateAttachments(
+async function verifySupportAttachments(
   userId: string,
   attachments: ISupportCreateBody["attachments"],
   log?: FastifyRequest["log"]
@@ -261,7 +261,7 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsedAttachments.error });
       }
 
-      const verifiedAttachments = await verifyCreateAttachments(
+      const verifiedAttachments = await verifySupportAttachments(
         userId,
         parsedAttachments.attachments,
         request.log
@@ -382,7 +382,7 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid support request id" });
       }
 
-      const parsedBody = parseSupportMessageBody(request.body);
+      const parsedBody = parseSupportMessageCreateBody(request.body);
       if (!parsedBody.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsedBody.error });
       }
@@ -397,7 +397,20 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });
       }
 
+      const verifiedAttachments = await verifySupportAttachments(
+        request.user.userId,
+        parsedBody.attachments.length > 0 ? parsedBody.attachments : undefined,
+        request.log
+      );
+      if (!verifiedAttachments.ok) {
+        return reply
+          .status(verifiedAttachments.status)
+          .send({ error: verifiedAttachments.error });
+      }
+
       await supportMessagesDb.create({
+        attachments:
+          parsedBody.attachments.length > 0 ? parsedBody.attachments : undefined,
         authorUserId: request.user.userId,
         body: parsedBody.body,
         supportRequestId: idParsed,
@@ -421,8 +434,12 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
       }
 
       if (isAdmin) {
+        let notificationBody = parsedBody.body;
+        if (notificationBody.length === 0 && parsedBody.attachments.length > 0) {
+          notificationBody = "Sent an image";
+        }
         notifyUser({
-          body: truncateNotificationBody(parsedBody.body),
+          body: truncateNotificationBody(notificationBody),
           resourceId: idParsed,
           resourceType: "support_request",
           title: "New reply on your support request",
@@ -432,6 +449,15 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
       }
 
       publishSupportRequestUpdated(idParsed, ticket.userId, request.log);
+      for (const attachment of parsedBody.attachments) {
+        publishSupportAttachmentStatus({
+          log: request.log,
+          status: "linked",
+          storageKey: attachment.key,
+          supportRequestId: idParsed,
+          userId: request.user.userId,
+        });
+      }
 
       return reply.send(detail);
     }

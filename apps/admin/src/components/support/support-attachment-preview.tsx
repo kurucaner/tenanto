@@ -14,6 +14,7 @@ export interface SupportAttachmentPreviewProps {
   formatFileSize: (bytes: number) => string;
   onRemove: (id: string) => void;
   onRetry: (id: string) => void;
+  variant?: "compact" | "default";
 }
 
 function getStatusLabel(uploadStatus: SupportUploadStatus): string | null {
@@ -36,6 +37,7 @@ export const SupportAttachmentPreview = memo(
     formatFileSize,
     onRemove,
     onRetry,
+    variant = "default",
   }: SupportAttachmentPreviewProps) => {
     const statusLabel = getStatusLabel(attachment.uploadStatus);
     const isPending = attachment.uploadStatus === "pending" || attachment.uploadStatus === "idle";
@@ -43,6 +45,59 @@ export const SupportAttachmentPreview = memo(
       attachment.uploadStatus === "confirmed" || attachment.uploadStatus === "linked";
     const isError = attachment.uploadStatus === "error";
     const removeDisabled = disabled || isPending;
+
+    if (variant === "compact") {
+      return (
+        <li className="relative shrink-0">
+          <div className="relative size-16 overflow-hidden rounded-lg ring-1 ring-border/40">
+            <img
+              alt={attachment.file.name}
+              className="size-full object-cover"
+              src={attachment.previewUrl}
+            />
+            {isPending ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                <Loader2Icon aria-hidden className="size-4 animate-spin" />
+              </div>
+            ) : null}
+            {isConfirmed ? (
+              <div className="absolute bottom-1 left-1 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-white">
+                <CheckIcon aria-hidden className="size-2.5" />
+              </div>
+            ) : null}
+            {isError ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-background/80 p-1">
+                <span className="text-destructive text-[10px] font-medium">Failed</span>
+                <Button
+                  className="h-5 px-1.5 text-[10px]"
+                  disabled={disabled}
+                  onClick={() => onRetry(attachment.id)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+          </div>
+          <Button
+            aria-label={`Remove ${attachment.file.name}`}
+            className={cn(
+              "absolute -top-1.5 -right-1.5 size-5 rounded-full bg-background shadow-sm ring-1 ring-border/40",
+              removeDisabled && "pointer-events-none opacity-50"
+            )}
+            disabled={removeDisabled}
+            onClick={() => onRemove(attachment.id)}
+            size="icon"
+            type="button"
+            variant="ghost"
+          >
+            <XIcon className="size-3" />
+          </Button>
+        </li>
+      );
+    }
 
     return (
       <li className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">

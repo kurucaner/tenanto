@@ -1,13 +1,12 @@
 import { ImagePlus } from "lucide-react";
-import { type DragEvent,memo, useRef } from "react";
+import { type DragEvent, memo } from "react";
 
+import { SupportAttachmentFileButton } from "@/components/support/support-attachment-file-button";
 import { SupportAttachmentPreview } from "@/components/support/support-attachment-preview";
 import {
-  SUPPORT_IMAGE_ACCEPT,
   SUPPORT_MAX_IMAGE_ATTACHMENTS,
   supportAttachmentDropzoneClass,
 } from "@/components/support/support-constants";
-import { Button } from "@/components/ui/button";
 import { type SupportImageAttachment } from "@/hooks/use-support-image-attachments";
 import { cn } from "@/lib/utils";
 
@@ -39,14 +38,8 @@ export const SupportAttachmentPicker = memo(
     onRemove,
     onRetry,
   }: SupportAttachmentPickerProps) => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const dropzoneId = `${idPrefix}-attachments-dropzone`;
     const canAddMore = attachments.length < SUPPORT_MAX_IMAGE_ATTACHMENTS;
-
-    const handleBrowseClick = () => {
-      if (disabled || !canAddMore) return;
-      fileInputRef.current?.click();
-    };
 
     return (
       <div className="flex flex-col gap-2">
@@ -66,31 +59,14 @@ export const SupportAttachmentPicker = memo(
           <ImagePlus className="text-muted-foreground size-5" />
           <p className="text-muted-foreground text-center text-sm">
             Drag images here or{" "}
-            <Button
-              className="h-auto p-0 text-sm"
-              disabled={disabled || !canAddMore}
-              onClick={handleBrowseClick}
-              type="button"
+            <SupportAttachmentFileButton
+              canAddMore={canAddMore}
+              disabled={disabled}
+              idPrefix={idPrefix}
+              onAddFiles={onAddFiles}
               variant="link"
-            >
-              browse
-            </Button>
+            />
           </p>
-          <input
-            accept={SUPPORT_IMAGE_ACCEPT}
-            className="sr-only"
-            disabled={disabled || !canAddMore}
-            id={`${idPrefix}-attachments-input`}
-            multiple
-            onChange={(event) => {
-              if (event.target.files != null && event.target.files.length > 0) {
-                onAddFiles(event.target.files);
-              }
-              event.target.value = "";
-            }}
-            ref={fileInputRef}
-            type="file"
-          />
         </div>
         <p className="text-muted-foreground text-xs">
           PNG, JPG, GIF, or WebP · up to {SUPPORT_MAX_IMAGE_ATTACHMENTS} images · 5 MB each
