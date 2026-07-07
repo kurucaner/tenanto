@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 
 import { App } from "@/App";
 import { AdminThemeSync } from "@/components/admin-theme-sync";
+import { syncDocumentTitle } from "@/lib/document-title";
 import { initDatadogRum } from "@/lib/datadog-rum";
 import { queryClient } from "@/lib/query-client";
 import {
@@ -16,6 +17,7 @@ import { migrateLocalStorageKey } from "@/packages/shared";
 
 migrateLocalStorageKey(LEGACY_RELEASE_NOTES_SEEN_STORAGE_KEY, RELEASE_NOTES_SEEN_STORAGE_KEY);
 
+syncDocumentTitle();
 initDatadogRum();
 
 createRoot(document.getElementById("root")!).render(
