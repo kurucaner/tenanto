@@ -1,10 +1,11 @@
-import { memo, type ReactNode } from "react";
+import { memo } from "react";
 import { Link } from "react-router-dom";
 
 import { supportDetailMetaClass } from "@/components/support/support-constants";
 import { SupportStatusBadge } from "@/components/support/support-status-badge";
 import { SupportTicketTriageActions } from "@/components/support/support-ticket-triage-actions";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useNotificationStreamStatus } from "@/contexts/notification-stream-context";
 import { type NotificationStreamStatus } from "@/hooks/use-notification-stream";
 import { formatSupportCategoryLabel } from "@/lib/format-support-category-label";
@@ -65,35 +66,22 @@ export const SupportTicketHeader = memo(
     patchBusy,
     status,
   }: SupportTicketHeaderProps) => {
-    let mobileTriage: ReactNode = null;
-    if (isAdmin) {
-      mobileTriage = (
-        <SupportTicketTriageActions
-          busy={patchBusy}
-          className="lg:hidden"
-          onPatchStatus={onPatchStatus}
-          status={status}
-        />
-      );
-    }
-
     const openedLabel = new Date(createdAt).toLocaleString();
+    const ticketIdLabel = id.length > 12 ? `${id.slice(0, 8)}…` : id;
 
     return (
       <div
         className={cn(
-          "sticky top-0 z-10 space-y-3 bg-background/70 py-3 backdrop-blur-md",
+          "sticky top-0 z-10 space-y-2 py-3",
           supportDetailMetaClass
         )}
       >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-3">
           <Link className="text-muted-foreground shrink-0 text-sm hover:underline" to="/support-requests">
             ← Support requests
           </Link>
 
-          <span aria-hidden className="hidden text-muted-foreground/30 sm:inline">
-            ·
-          </span>
+          <Separator className="hidden h-4 sm:block" orientation="vertical" />
 
           <div className="flex flex-wrap items-center gap-2">
             <SupportStatusBadge status={status} />
@@ -101,19 +89,26 @@ export const SupportTicketHeader = memo(
             <LiveIndicator />
           </div>
 
-          <span
-            className="text-muted-foreground ms-auto hidden max-w-[12rem] truncate text-xs sm:inline"
-            title={openedLabel}
-          >
-            Opened {openedLabel}
-          </span>
-
-          <span className="font-mono text-[11px] text-muted-foreground" title={id}>
-            {id.length > 12 ? `${id.slice(0, 8)}…` : id}
-          </span>
+          {isAdmin ? (
+            <div className="ml-auto flex min-h-8 items-center gap-2">
+              <SupportTicketTriageActions
+                busy={patchBusy}
+                onPatchStatus={onPatchStatus}
+                status={status}
+              />
+            </div>
+          ) : null}
         </div>
 
-        {mobileTriage}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span title={openedLabel}>Opened {openedLabel}</span>
+          <span aria-hidden className="text-muted-foreground/30">
+            ·
+          </span>
+          <span className="font-mono text-[11px]" title={id}>
+            {ticketIdLabel}
+          </span>
+        </div>
       </div>
     );
   }

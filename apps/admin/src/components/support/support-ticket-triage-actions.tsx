@@ -11,19 +11,12 @@ const triageButtonClass = "cursor-pointer disabled:cursor-not-allowed";
 export interface SupportTicketTriageActionsProps {
   busy: boolean;
   className?: string;
-  layout?: "inline" | "stack";
   onPatchStatus: (status: TAdminSupportRequestSettableStatus) => void;
   status: SupportRequestStatus;
 }
 
 export const SupportTicketTriageActions = memo(
-  ({
-    busy,
-    className,
-    layout = "inline",
-    onPatchStatus,
-    status,
-  }: SupportTicketTriageActionsProps) => {
+  ({ busy, className, onPatchStatus, status }: SupportTicketTriageActionsProps) => {
     let content: ReactNode = null;
 
     if (status === "resolved") {
@@ -68,17 +61,7 @@ export const SupportTicketTriageActions = memo(
 
     if (content == null) return null;
 
-    return (
-      <div
-        className={
-          layout === "stack"
-            ? `flex flex-col gap-2 ${className ?? ""}`
-            : `flex flex-wrap gap-2 ${className ?? ""}`
-        }
-      >
-        {content}
-      </div>
-    );
+    return <div className={`flex flex-wrap gap-2 ${className ?? ""}`}>{content}</div>;
   }
 );
 SupportTicketTriageActions.displayName = "SupportTicketTriageActions";

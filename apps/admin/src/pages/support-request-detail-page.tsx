@@ -55,28 +55,15 @@ const SupportTicketHeaderSection = memo(
 SupportTicketHeaderSection.displayName = "SupportTicketHeaderSection";
 
 interface SupportTicketSidebarSectionProps {
-  onPatchStatus: (status: TAdminSupportRequestSettableStatus) => void;
-  patchBusy: boolean;
-  status: ISupportRequest["status"];
   submitterEmail: string;
   submitterName: string;
   ticketUserId: string;
 }
 
 const SupportTicketSidebarSection = memo(
-  ({
-    onPatchStatus,
-    patchBusy,
-    status,
-    submitterEmail,
-    submitterName,
-    ticketUserId,
-  }: SupportTicketSidebarSectionProps) => (
+  ({ submitterEmail, submitterName, ticketUserId }: SupportTicketSidebarSectionProps) => (
     <div className={cn("hidden lg:block", supportDetailRailClass)}>
       <SupportTicketSidebar
-        onPatchStatus={onPatchStatus}
-        patchBusy={patchBusy}
-        status={status}
         submitterEmail={submitterEmail}
         submitterName={submitterName}
         ticketUserId={ticketUserId}
@@ -225,9 +212,6 @@ const SupportRequestDetailPageInner = memo(() => {
         <div className="grid min-h-0 flex-1 overflow-hidden lg:gap-0">
           {isAdmin ? (
             <SupportTicketSidebarSection
-              onPatchStatus={handlePatchStatus}
-              patchBusy={busy}
-              status={ticket.status}
               submitterEmail={submitterInfo.email}
               submitterName={submitterInfo.name}
               ticketUserId={submitterInfo.userId}
