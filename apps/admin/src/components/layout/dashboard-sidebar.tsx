@@ -26,6 +26,8 @@ import { clearAppSession } from "@/lib/clear-app-session";
 import { APP_NAME, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
+
+
 const DashboardSidebarInner = memo(() => {
   const { isMobile, state } = useSidebar();
   const location = useLocation();
@@ -113,8 +115,8 @@ const DashboardSidebarInner = memo(() => {
           <span className="truncate text-xs font-medium text-sidebar-foreground">
             {user?.email ?? "—"}
           </span>
-          <span className="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
-            Signed in
+          <span className="text-[0.65rem] tracking-wider text-muted-foreground">
+            Version {import.meta.env.VITE_APP_VERSION}
           </span>
         </div>
         <Button
