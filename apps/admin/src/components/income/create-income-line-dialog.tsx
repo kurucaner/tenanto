@@ -226,7 +226,7 @@ const CreateIncomeLineDialogForm = memo(
             />
           )}
 
-          {!linkedReservation ? (
+          {linkedReservation ? null : (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="income-line-guest">Guest name (optional)</Label>
               <Input
@@ -235,7 +235,7 @@ const CreateIncomeLineDialogForm = memo(
                 value={guestName}
               />
             </div>
-          ) : null}
+          )}
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="income-line-description">Description (optional)</Label>
