@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { getNavItemsForRole, isAdminNavActive } from "@/config/admin-nav";
 import { authApi } from "@/lib/api-client";
@@ -50,11 +51,17 @@ BrandLink.displayName = "BrandLink";
 
 
 const DashboardSidebarInner = memo(() => {
-  // const { isMobile, state } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const refreshToken = useAuthStore((s) => s.refreshToken);
+
+  const handleNavClick = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }, [isMobile, setOpenMobile]);
 
   const handleLogout = useCallback(async () => {
     if (refreshToken) {
@@ -98,7 +105,7 @@ const DashboardSidebarInner = memo(() => {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
-                      <Link to={item.href}>
+                      <Link onClick={handleNavClick} to={item.href}>
                         <Icon className="size-4" />
                         <span>{item.title}</span>
                       </Link>

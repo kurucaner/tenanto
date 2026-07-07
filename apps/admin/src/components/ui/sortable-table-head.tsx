@@ -2,8 +2,8 @@ import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
 import { memo } from "react";
 
 import { TableHead } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import type { TAriaSort, TSortDirection } from "@/lib/table-sort";
+import { cn } from "@/lib/utils";
 
 interface SortableTableHeadProps {
   align?: "left" | "right";
