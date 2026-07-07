@@ -41,6 +41,7 @@ import {
   type IPropertyIncomeLinesListQuery,
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
+  type IPropertyUnit,
   type TIncomeLineType,
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
@@ -81,6 +82,295 @@ function getEntryTypeLabel(entry: TPropertyIncomeEntry): string {
   return entry.entryKind === IncomeEntryKind.STAY
     ? "Stay"
     : formatIncomeLineTypeLabel(entry.line.lineType);
+}
+
+function buildDateFilters(from: string, to: string, unitId: string) {
+  const next: { from?: string; to?: string; unitId?: string } = {};
+  if (from) next.from = from;
+  if (to) next.to = to;
+  if (unitId) next.unitId = unitId;
+  return next;
+}
+
+function buildReservationFilters(
+  dateFilters: ReturnType<typeof buildDateFilters>,
+  channel: string,
+  status: string
+): IPropertyReservationsListQuery {
+  const next: IPropertyReservationsListQuery = { ...dateFilters };
+  if (channel) next.channel = channel as IPropertyReservationsListQuery["channel"];
+  if (status) next.status = status as IPropertyReservationsListQuery["status"];
+  return next;
+}
+
+function buildLineFilters(
+  dateFilters: ReturnType<typeof buildDateFilters>,
+  incomeType: string
+): IPropertyIncomeLinesListQuery {
+  const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
+  if (incomeType && incomeType !== IncomeEntryKind.STAY) {
+    next.lineType = incomeType as TIncomeLineType;
+  }
+  return next;
+}
+
+function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
+  return entry.entryKind === IncomeEntryKind.STAY
+    ? `stay-${entry.stay.id}`
+    : `line-${entry.line.id}`;
+}
+
+function getIncomeEntryUnitId(entry: TPropertyIncomeEntry): string {
+  return entry.entryKind === IncomeEntryKind.STAY ? entry.stay.unitId : entry.line.unitId;
+}
+
+function handleDeleteLine(
+  line: IPropertyIncomeLine,
+  mutate: (line: IPropertyIncomeLine) => void
+): void {
+  if (
+    !globalThis.confirm(
+      `Delete ${formatIncomeLineTypeLabel(line.lineType)} entry? This cannot be undone.`
+    )
+  ) {
+    return;
+  }
+  mutate(line);
+}
+
+function handleDeleteStay(
+  stay: IPropertyReservation,
+  mutate: (stay: IPropertyReservation) => void
+): void {
+  if (!globalThis.confirm(`Delete stay for ${stay.guestName}? This cannot be undone.`)) {
+    return;
+  }
+  mutate(stay);
+}
+
+function buildOtherIncomePrefillFromStay(
+  stay: IPropertyReservation
+): CreateIncomeLineDialogPrefill {
+  return {
+    guestName: stay.guestName,
+    lineType: IncomeLineType.EXTRA_CLEANING,
+    reservationId: stay.id,
+    transactionDate: stay.checkOut,
+    unitId: stay.unitId,
+  };
+}
+
+function openOtherIncomeFromStay(
+  stay: IPropertyReservation,
+  actions: {
+    setCreateLineLockedStay: (stay: IPropertyReservation | null) => void;
+    setCreateLineOpen: (open: boolean) => void;
+    setCreateLinePrefill: (prefill: CreateIncomeLineDialogPrefill | null) => void;
+  }
+): void {
+  actions.setCreateLineLockedStay(stay);
+  actions.setCreateLinePrefill(buildOtherIncomePrefillFromStay(stay));
+  actions.setCreateLineOpen(true);
+}
+
+function handleCreateIncomeLineOpenChange(
+  open: boolean,
+  setCreateLineOpen: (open: boolean) => void,
+  resetCreateLineState: () => void
+): void {
+  setCreateLineOpen(open);
+  if (!open) {
+    resetCreateLineState();
+  }
+}
+
+const PropertyIncomeEntriesTable = memo(
+  ({
+    canManage,
+    entries,
+    isLoading,
+    onAddOtherIncomeFromStay,
+    onDeleteLine,
+    onDeleteStay,
+    onEditLine,
+    onEditStay,
+    unitLabelById,
+  }: {
+    canManage: boolean;
+    entries: TPropertyIncomeEntry[];
+    isLoading: boolean;
+    onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
+    onDeleteLine: (line: IPropertyIncomeLine) => void;
+    onDeleteStay: (stay: IPropertyReservation) => void;
+    onEditLine: (line: IPropertyIncomeLine) => void;
+    onEditStay: (stay: IPropertyReservation) => void;
+    unitLabelById: Map<string, string>;
+  }) => {
+    if (isLoading) {
+      return (
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Type</TableHead>
+              <TableHead>Unit</TableHead>
+              <TableHead>Guest</TableHead>
+              <TableHead>Date / Check-in</TableHead>
+              <TableHead>Check-out</TableHead>
+              <TableHead>Nights</TableHead>
+              <TableHead>Channel</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Room rate</TableHead>
+              <TableHead className="text-right">Cleaning</TableHead>
+              <TableHead className="text-right">Gross</TableHead>
+              <TableHead className="text-right">Net</TableHead>
+              {canManage ? <TableHead>Actions</TableHead> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.length === 0 ? (
+              <TableRow>
+                <TableCell className="text-muted-foreground" colSpan={canManage ? 13 : 12}>
+                  No income entries yet.
+                  {canManage ? " Add a stay or other income to get started." : ""}
+                </TableCell>
+              </TableRow>
+            ) : (
+              entries.map((entry) => (
+                <IncomeEntryRow
+                  canManage={canManage}
+                  entry={entry}
+                  key={getIncomeEntryKey(entry)}
+                  onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
+                  onDeleteLine={onDeleteLine}
+                  onDeleteStay={onDeleteStay}
+                  onEditLine={onEditLine}
+                  onEditStay={onEditStay}
+                  unitLabel={unitLabelById.get(getIncomeEntryUnitId(entry)) ?? "—"}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+);
+PropertyIncomeEntriesTable.displayName = "PropertyIncomeEntriesTable";
+
+const PropertyIncomePageDialogs = memo(
+  ({
+    createLineLockedStay,
+    createLineOpen,
+    createLinePrefill,
+    createStayOpen,
+    editIncomeLine,
+    editReservation,
+    onCreateIncomeLineOpenChange,
+    onCreateStayOpenChange,
+    onEditIncomeLineOpenChange,
+    onEditReservationOpenChange,
+    propertyId,
+    units,
+  }: {
+    createLineLockedStay: IPropertyReservation | null;
+    createLineOpen: boolean;
+    createLinePrefill: CreateIncomeLineDialogPrefill | null;
+    createStayOpen: boolean;
+    editIncomeLine: IPropertyIncomeLine | null;
+    editReservation: IPropertyReservation | null;
+    onCreateIncomeLineOpenChange: (open: boolean) => void;
+    onCreateStayOpenChange: (open: boolean) => void;
+    onEditIncomeLineOpenChange: (open: boolean) => void;
+    onEditReservationOpenChange: (open: boolean) => void;
+    propertyId: string;
+    units: IPropertyUnit[];
+  }) => (
+    <>
+      <CreateReservationDialog
+        onOpenChange={onCreateStayOpenChange}
+        open={createStayOpen}
+        propertyId={propertyId}
+      />
+      <CreateIncomeLineDialog
+        lockedStay={createLineLockedStay}
+        onOpenChange={onCreateIncomeLineOpenChange}
+        open={createLineOpen}
+        prefill={createLinePrefill}
+        propertyId={propertyId}
+      />
+      {editReservation ? (
+        <EditReservationDialog
+          key={editReservation.id}
+          onOpenChange={onEditReservationOpenChange}
+          open={true}
+          propertyId={propertyId}
+          reservation={editReservation}
+          units={units}
+        />
+      ) : null}
+      {editIncomeLine ? (
+        <EditIncomeLineDialog
+          incomeLine={editIncomeLine}
+          key={editIncomeLine.id}
+          onOpenChange={onEditIncomeLineOpenChange}
+          open={true}
+          propertyId={propertyId}
+          units={units}
+        />
+      ) : null}
+    </>
+  )
+);
+PropertyIncomePageDialogs.displayName = "PropertyIncomePageDialogs";
+
+function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): void {
+  if (!open) {
+    clearSelection();
+  }
+}
+
+const PropertyIncomePageActions = memo(
+  ({
+    onAddOtherIncome,
+    onAddStay,
+  }: {
+    onAddOtherIncome: () => void;
+    onAddStay: () => void;
+  }) => (
+    <>
+      <Button className="gap-1.5" onClick={onAddStay} size="sm" type="button" variant="outline">
+        <Plus className="size-3.5" />
+        Add Stay
+      </Button>
+      <Button className="gap-1.5" onClick={onAddOtherIncome} size="sm" type="button">
+        <Plus className="size-3.5" />
+        Add Other Income
+      </Button>
+    </>
+  )
+);
+PropertyIncomePageActions.displayName = "PropertyIncomePageActions";
+
+function useRegisterIncomePageActions(
+  canManage: boolean,
+  onAddOtherIncome: () => void,
+  onAddStay: () => void
+) {
+  usePropertyShellActions(
+    canManage ? (
+      <PropertyIncomePageActions onAddOtherIncome={onAddOtherIncome} onAddStay={onAddStay} />
+    ) : null
+  );
 }
 
 const IncomeEntryRow = memo(
@@ -223,28 +513,20 @@ const PropertyIncomePage = memo(() => {
     const [status, setStatus] = useState("");
     const [incomeType, setIncomeType] = useState("");
 
-    const dateFilters = useMemo(() => {
-      const next: { from?: string; to?: string; unitId?: string } = {};
-      if (from) next.from = from;
-      if (to) next.to = to;
-      if (unitId) next.unitId = unitId;
-      return next;
-    }, [from, to, unitId]);
+    const dateFilters = useMemo(
+      () => buildDateFilters(from, to, unitId),
+      [from, to, unitId]
+    );
 
-    const reservationFilters = useMemo<IPropertyReservationsListQuery>(() => {
-      const next: IPropertyReservationsListQuery = { ...dateFilters };
-      if (channel) next.channel = channel as IPropertyReservationsListQuery["channel"];
-      if (status) next.status = status as IPropertyReservationsListQuery["status"];
-      return next;
-    }, [channel, dateFilters, status]);
+    const reservationFilters = useMemo(
+      () => buildReservationFilters(dateFilters, channel, status),
+      [channel, dateFilters, status]
+    );
 
-    const lineFilters = useMemo<IPropertyIncomeLinesListQuery>(() => {
-      const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
-      if (incomeType && incomeType !== IncomeEntryKind.STAY) {
-        next.lineType = incomeType as TIncomeLineType;
-      }
-      return next;
-    }, [dateFilters, incomeType]);
+    const lineFilters = useMemo(
+      () => buildLineFilters(dateFilters, incomeType),
+      [dateFilters, incomeType]
+    );
 
     const reservationsQuery = useQuery({
       enabled: incomeType === "" || incomeType === IncomeEntryKind.STAY,
@@ -312,35 +594,11 @@ const PropertyIncomePage = memo(() => {
       (showStays && reservationsQuery.isPending) ||
       (showLines && incomeLinesQuery.isPending);
 
-    usePropertyShellActions(
-      canManage ? (
-        <>
-          <Button
-            className="gap-1.5"
-            onClick={() => setCreateStayOpen(true)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <Plus className="size-3.5" />
-            Add Stay
-          </Button>
-          <Button
-            className="gap-1.5"
-            onClick={() => {
-              setCreateLinePrefill(null);
-              setCreateLineLockedStay(null);
-              setCreateLineOpen(true);
-            }}
-            size="sm"
-            type="button"
-          >
-            <Plus className="size-3.5" />
-            Add Other Income
-          </Button>
-        </>
-      ) : null
-    );
+    useRegisterIncomePageActions(canManage, () => {
+      setCreateLinePrefill(null);
+      setCreateLineLockedStay(null);
+      setCreateLineOpen(true);
+    }, () => setCreateStayOpen(true));
 
     return (
       <>
@@ -400,7 +658,7 @@ const PropertyIncomePage = memo(() => {
                 <Label htmlFor="filter-channel">Channel</Label>
                 <select
                   className={reservationSelectClassName}
-                  disabled={incomeType !== "" && incomeType !== IncomeEntryKind.STAY}
+                  disabled={!showStays}
                   id="filter-channel"
                   onChange={(e) => setChannel(e.target.value)}
                   value={channel}
@@ -417,7 +675,7 @@ const PropertyIncomePage = memo(() => {
                 <Label htmlFor="filter-status">Status</Label>
                 <select
                   className={reservationSelectClassName}
-                  disabled={incomeType !== "" && incomeType !== IncomeEntryKind.STAY}
+                  disabled={!showStays}
                   id="filter-status"
                   onChange={(e) => setStatus(e.target.value)}
                   value={status}
@@ -432,144 +690,49 @@ const PropertyIncomePage = memo(() => {
               </div>
             </div>
 
-            {isLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Guest</TableHead>
-                      <TableHead>Date / Check-in</TableHead>
-                      <TableHead>Check-out</TableHead>
-                      <TableHead>Nights</TableHead>
-                      <TableHead>Channel</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Room rate</TableHead>
-                      <TableHead className="text-right">Cleaning</TableHead>
-                      <TableHead className="text-right">Gross</TableHead>
-                      <TableHead className="text-right">Net</TableHead>
-                      {canManage ? <TableHead>Actions</TableHead> : null}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          className="text-muted-foreground"
-                          colSpan={canManage ? 13 : 12}
-                        >
-                          No income entries yet.{canManage ? " Add a stay or other income to get started." : ""}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      entries.map((entry) => (
-                        <IncomeEntryRow
-                          canManage={canManage}
-                          entry={entry}
-                          key={
-                            entry.entryKind === IncomeEntryKind.STAY
-                              ? `stay-${entry.stay.id}`
-                              : `line-${entry.line.id}`
-                          }
-                          onAddOtherIncomeFromStay={(stay) => {
-                            setCreateLineLockedStay(stay);
-                            setCreateLinePrefill({
-                              guestName: stay.guestName,
-                              lineType: IncomeLineType.EXTRA_CLEANING,
-                              reservationId: stay.id,
-                              transactionDate: stay.checkOut,
-                              unitId: stay.unitId,
-                            });
-                            setCreateLineOpen(true);
-                          }}
-                          onDeleteLine={(line) => {
-                            if (
-                              !globalThis.confirm(
-                                `Delete ${formatIncomeLineTypeLabel(line.lineType)} entry? This cannot be undone.`
-                              )
-                            ) {
-                              return;
-                            }
-                            deleteLineMutation.mutate(line);
-                          }}
-                          onDeleteStay={(stay) => {
-                            if (
-                              !globalThis.confirm(
-                                `Delete stay for ${stay.guestName}? This cannot be undone.`
-                              )
-                            ) {
-                              return;
-                            }
-                            deleteStayMutation.mutate(stay);
-                          }}
-                          onEditLine={setEditIncomeLine}
-                          onEditStay={setEditReservation}
-                          unitLabel={
-                            unitLabelById.get(
-                              entry.entryKind === IncomeEntryKind.STAY
-                                ? entry.stay.unitId
-                                : entry.line.unitId
-                            ) ?? "—"
-                          }
-                        />
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+            <PropertyIncomeEntriesTable
+              canManage={canManage}
+              entries={entries}
+              isLoading={isLoading}
+              onAddOtherIncomeFromStay={(stay) =>
+                openOtherIncomeFromStay(stay, {
+                  setCreateLineLockedStay,
+                  setCreateLineOpen,
+                  setCreateLinePrefill,
+                })
+              }
+              onDeleteLine={(line) => handleDeleteLine(line, deleteLineMutation.mutate)}
+              onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
+              onEditLine={setEditIncomeLine}
+              onEditStay={setEditReservation}
+              unitLabelById={unitLabelById}
+            />
           </CardContent>
         </Card>
 
-        <CreateReservationDialog
-          onOpenChange={setCreateStayOpen}
-          open={createStayOpen}
-          propertyId={propertyId}
-        />
-        <CreateIncomeLineDialog
-          lockedStay={createLineLockedStay}
-          onOpenChange={(open) => {
-            setCreateLineOpen(open);
-            if (!open) {
+        <PropertyIncomePageDialogs
+          createLineLockedStay={createLineLockedStay}
+          createLineOpen={createLineOpen}
+          createLinePrefill={createLinePrefill}
+          createStayOpen={createStayOpen}
+          editIncomeLine={editIncomeLine}
+          editReservation={editReservation}
+          onCreateIncomeLineOpenChange={(open) =>
+            handleCreateIncomeLineOpenChange(open, setCreateLineOpen, () => {
               setCreateLinePrefill(null);
               setCreateLineLockedStay(null);
-            }
-          }}
-          open={createLineOpen}
-          prefill={createLinePrefill}
+            })
+          }
+          onCreateStayOpenChange={setCreateStayOpen}
+          onEditIncomeLineOpenChange={(open) =>
+            handleEditDialogOpenChange(open, () => setEditIncomeLine(null))
+          }
+          onEditReservationOpenChange={(open) =>
+            handleEditDialogOpenChange(open, () => setEditReservation(null))
+          }
           propertyId={propertyId}
+          units={units}
         />
-        {editReservation ? (
-          <EditReservationDialog
-            key={editReservation.id}
-            onOpenChange={(open) => {
-              if (!open) setEditReservation(null);
-            }}
-            open={true}
-            propertyId={propertyId}
-            reservation={editReservation}
-            units={units}
-          />
-        ) : null}
-        {editIncomeLine ? (
-          <EditIncomeLineDialog
-            incomeLine={editIncomeLine}
-            key={editIncomeLine.id}
-            onOpenChange={(open) => {
-              if (!open) setEditIncomeLine(null);
-            }}
-            open={true}
-            propertyId={propertyId}
-            units={units}
-          />
-        ) : null}
       </>
     );
 });
