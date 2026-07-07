@@ -1,7 +1,6 @@
 import { datadogRum } from "@datadog/browser-rum";
 
 import type { IUser } from "@/packages/shared";
-import rootPackage from "../../../../package.json";
 
 const DEFAULT_DD_SITE = "us5.datadoghq.com";
 const RUM_SERVICE = "propertyos-admin";
@@ -41,7 +40,7 @@ function getRumConfig() {
     env: import.meta.env.VITE_DD_ENV ?? import.meta.env.MODE,
     proxyUrl: normalizeProxyUrl(proxyUrl),
     site: import.meta.env.VITE_DD_SITE ?? DEFAULT_DD_SITE,
-    version: rootPackage.version,
+    version: import.meta.env.VITE_APP_VERSION
   };
 }
 
@@ -66,7 +65,7 @@ function sanitizeUrl(url: unknown): unknown {
 }
 
 export function initDatadogRum(): void {
-  if (rumInitialized || typeof globalThis.window === "undefined") {
+  if (rumInitialized ||  globalThis.window === undefined) {
     return;
   }
 
