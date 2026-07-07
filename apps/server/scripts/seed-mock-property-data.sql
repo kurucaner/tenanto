@@ -185,10 +185,7 @@ CREATE OR REPLACE FUNCTION seed_calc_stay_income(
   p_cleaning_fee NUMERIC,
   p_channel property_reservation_channel,
   p_rental_type property_unit_rental_type,
-  p_sales_tax_rate NUMERIC,
-  p_miami_dade_surtax_rate NUMERIC,
-  p_cdt_rate NUMERIC,
-  p_resort_tax_rate NUMERIC,
+  p_property_id UUID,
   p_airbnb_commission_rate NUMERIC,
   p_booking_commission_rate NUMERIC,
   p_expedia_commission_rate NUMERIC,
@@ -196,10 +193,7 @@ CREATE OR REPLACE FUNCTION seed_calc_stay_income(
 )
 RETURNS TABLE (
   gross_income NUMERIC,
-  sales_tax NUMERIC,
-  miami_dade_surtax NUMERIC,
-  convention_development_tax NUMERIC,
-  resort_tax NUMERIC,
+  tax_breakdown JSONB,
   channel_commission NUMERIC,
   net_income NUMERIC
 )
@@ -208,20 +202,13 @@ IMMUTABLE
 AS $$
 DECLARE
   v_taxable_base NUMERIC;
-  v_sales_tax NUMERIC;
-  v_miami_dade NUMERIC;
-  v_cdt NUMERIC;
-  v_resort NUMERIC;
   v_total_taxes NUMERIC;
   v_commission_rate NUMERIC;
   v_commission NUMERIC;
 BEGIN
   IF p_rental_type = 'long_term'::property_unit_rental_type THEN
     gross_income := seed_round_money(p_room_rate);
-    sales_tax := 0;
-    miami_dade_surtax := 0;
-    convention_development_tax := 0;
-    resort_tax := 0;
+    tax_breakdown := '[]'::jsonb;
     channel_commission := 0;
     net_income := seed_round_money(p_room_rate);
     RETURN NEXT;
@@ -229,11 +216,27 @@ BEGIN
   END IF;
 
   v_taxable_base := p_room_rate + p_cleaning_fee;
-  v_sales_tax := seed_round_money(v_taxable_base * p_sales_tax_rate);
-  v_miami_dade := seed_round_money(v_taxable_base * p_miami_dade_surtax_rate);
-  v_cdt := seed_round_money(v_taxable_base * p_cdt_rate);
-  v_resort := seed_round_money(v_taxable_base * p_resort_tax_rate);
-  v_total_taxes := v_sales_tax + v_miami_dade + v_cdt + v_resort;
+
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object(
+        'taxRateId', ptr.id::text,
+        'name', ptr.name,
+        'rate', ptr.rate,
+        'amount', seed_round_money(v_taxable_base * ptr.rate)
+      )
+      ORDER BY ptr.sort_order
+    ),
+    '[]'::jsonb
+  )
+  INTO tax_breakdown
+  FROM property_tax_rates ptr
+  WHERE ptr.property_id = p_property_id;
+
+  SELECT COALESCE(SUM((item->>'amount')::numeric), 0)
+  INTO v_total_taxes
+  FROM jsonb_array_elements(tax_breakdown) AS item;
+
   v_commission_rate := seed_channel_commission_rate(
     p_channel,
     p_airbnb_commission_rate,
@@ -244,10 +247,6 @@ BEGIN
   v_commission := seed_round_money(v_taxable_base * v_commission_rate);
 
   gross_income := seed_round_money(v_taxable_base + v_total_taxes);
-  sales_tax := v_sales_tax;
-  miami_dade_surtax := v_miami_dade;
-  convention_development_tax := v_cdt;
-  resort_tax := v_resort;
   channel_commission := v_commission;
   net_income := seed_round_money(v_taxable_base - v_total_taxes - v_commission);
   RETURN NEXT;
@@ -370,10 +369,6 @@ ON CONFLICT (property_id, user_id) DO NOTHING;
 -- ---------------------------------------------------------------------------
 INSERT INTO property_settings (
   property_id,
-  sales_tax_rate,
-  miami_dade_surtax_rate,
-  convention_development_tax_rate,
-  resort_tax_rate,
   airbnb_commission_rate,
   booking_commission_rate,
   expedia_commission_rate,
@@ -381,63 +376,78 @@ INSERT INTO property_settings (
 )
 SELECT
   seed.property_id,
-  seed.sales_tax_rate,
-  seed.miami_dade_surtax_rate,
-  seed.convention_development_tax_rate,
-  seed.resort_tax_rate,
   seed.airbnb_commission_rate,
   seed.booking_commission_rate,
   seed.expedia_commission_rate,
   seed.direct_commission_rate
 FROM (
   VALUES
-    -- defaults (14% total tax)
     (
       'f0000000-0000-4000-8000-000000000001'::uuid,
-      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
       0.155::numeric, 0.15::numeric, 0.15::numeric, 0.035::numeric
     ),
-    -- higher Airbnb commission
     (
       'f0000000-0000-4000-8000-000000000002'::uuid,
-      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
       0.17::numeric, 0.15::numeric, 0.16::numeric, 0.04::numeric
     ),
-    -- reduced resort tax
     (
       'f0000000-0000-4000-8000-000000000003'::uuid,
-      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.02::numeric,
       0.155::numeric, 0.14::numeric, 0.15::numeric, 0.03::numeric
     ),
-    -- long-term focused: lower direct commission
     (
       'f0000000-0000-4000-8000-000000000004'::uuid,
-      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
       0.155::numeric, 0.15::numeric, 0.15::numeric, 0.025::numeric
     ),
-    -- premium short-term: higher taxes
     (
       'f0000000-0000-4000-8000-000000000005'::uuid,
-      0.065::numeric, 0.01::numeric, 0.03::numeric, 0.045::numeric,
       0.16::numeric, 0.155::numeric, 0.155::numeric, 0.035::numeric
     ),
-    -- balanced / newer property
     (
       'f0000000-0000-4000-8000-000000000006'::uuid,
-      0.06::numeric, 0.01::numeric, 0.03::numeric, 0.04::numeric,
       0.15::numeric, 0.145::numeric, 0.145::numeric, 0.03::numeric
     )
 ) AS seed(
   property_id,
-  sales_tax_rate,
-  miami_dade_surtax_rate,
-  convention_development_tax_rate,
-  resort_tax_rate,
   airbnb_commission_rate,
   booking_commission_rate,
   expedia_commission_rate,
   direct_commission_rate
 )
+INNER JOIN properties p ON p.id = seed.property_id;
+
+INSERT INTO property_tax_rates (property_id, name, rate, sort_order)
+SELECT
+  seed.property_id,
+  seed.name,
+  seed.rate,
+  seed.sort_order
+FROM (
+  VALUES
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Sales tax', 0.06::numeric, 0),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Miami-Dade surtax', 0.01::numeric, 1),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Convention development tax (CDT)', 0.03::numeric, 2),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Resort tax', 0.04::numeric, 3),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Sales tax', 0.06::numeric, 0),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Miami-Dade surtax', 0.01::numeric, 1),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Convention development tax (CDT)', 0.03::numeric, 2),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Resort tax', 0.04::numeric, 3),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Sales tax', 0.06::numeric, 0),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Miami-Dade surtax', 0.01::numeric, 1),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Convention development tax (CDT)', 0.03::numeric, 2),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Resort tax', 0.02::numeric, 3),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Sales tax', 0.06::numeric, 0),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Miami-Dade surtax', 0.01::numeric, 1),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Convention development tax (CDT)', 0.03::numeric, 2),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Resort tax', 0.04::numeric, 3),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Sales tax', 0.065::numeric, 0),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Miami-Dade surtax', 0.01::numeric, 1),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Convention development tax (CDT)', 0.03::numeric, 2),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Resort tax', 0.045::numeric, 3),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Sales tax', 0.06::numeric, 0),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Miami-Dade surtax', 0.01::numeric, 1),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Convention development tax (CDT)', 0.03::numeric, 2),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Resort tax', 0.04::numeric, 3)
+) AS seed(property_id, name, rate, sort_order)
 INNER JOIN properties p ON p.id = seed.property_id;
 
 DO $$
@@ -508,10 +518,7 @@ INSERT INTO property_reservations (
   room_rate,
   cleaning_fee,
   gross_income,
-  sales_tax,
-  miami_dade_surtax,
-  convention_development_tax,
-  resort_tax,
+  tax_breakdown,
   channel_commission,
   net_income
 )
@@ -529,10 +536,7 @@ SELECT
   r.room_rate,
   r.cleaning_fee,
   calc.gross_income,
-  calc.sales_tax,
-  calc.miami_dade_surtax,
-  calc.convention_development_tax,
-  calc.resort_tax,
+  calc.tax_breakdown,
   calc.channel_commission,
   calc.net_income
 FROM (
@@ -540,10 +544,6 @@ FROM (
     u.property_id,
     u.id AS unit_id,
     u.rental_type,
-    ps.sales_tax_rate,
-    ps.miami_dade_surtax_rate,
-    ps.convention_development_tax_rate,
-    ps.resort_tax_rate,
     ps.airbnb_commission_rate,
     ps.booking_commission_rate,
     ps.expedia_commission_rate,
@@ -597,10 +597,7 @@ CROSS JOIN LATERAL seed_calc_stay_income(
   r.cleaning_fee,
   r.channel::property_reservation_channel,
   r.rental_type,
-  r.sales_tax_rate,
-  r.miami_dade_surtax_rate,
-  r.convention_development_tax_rate,
-  r.resort_tax_rate,
+  r.property_id,
   r.airbnb_commission_rate,
   r.booking_commission_rate,
   r.expedia_commission_rate,
@@ -621,10 +618,7 @@ INSERT INTO property_income_lines (
   description,
   guest_name,
   gross_income,
-  sales_tax,
-  miami_dade_surtax,
-  convention_development_tax,
-  resort_tax,
+  tax_breakdown,
   channel_commission,
   net_income
 )
@@ -652,10 +646,7 @@ SELECT
   description,
   guest_name,
   seed_round_money(amount),
-  0,
-  0,
-  0,
-  0,
+  '[]'::jsonb,
   0,
   seed_round_money(amount)
 FROM generate_series(1, 6) AS prop_idx

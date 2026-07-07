@@ -360,6 +360,7 @@ async function buildComputedFields(
     cleaningFee: input.cleaningFee,
     roomRate: input.roomRate,
     settings,
+    taxRates: settings.taxRates,
     unitRentalType: unit.rentalType,
   });
 

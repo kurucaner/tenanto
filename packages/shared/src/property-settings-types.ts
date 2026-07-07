@@ -1,48 +1,61 @@
+export interface IPropertyTaxRate {
+  id: string;
+  name: string;
+  propertyId: string;
+  rate: number;
+  sortOrder: number;
+}
+
+export interface IPropertyTaxRateInput {
+  id?: string;
+  name: string;
+  rate: number;
+  sortOrder: number;
+}
+
+export interface IPropertyTaxBreakdownItem {
+  amount: number;
+  name: string;
+  rate: number;
+  taxRateId: string;
+}
+
+export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "rate">[] = [
+  { name: "Sales tax", rate: 0.06 },
+  { name: "Resort tax", rate: 0.04 },
+];
+
 export interface IPropertySettings {
   airbnbCommissionRate: number;
   bookingCommissionRate: number;
-  conventionDevelopmentTaxRate: number;
   createdAt: string;
   directCommissionRate: number;
   expediaCommissionRate: number;
-  miamiDadeSurtaxRate: number;
   propertyId: string;
-  resortTaxRate: number;
-  salesTaxRate: number;
+  taxRates: IPropertyTaxRate[];
   updatedAt: string;
 }
 
 export interface IPropertySettingsDefaults {
   airbnbCommissionRate: number;
   bookingCommissionRate: number;
-  conventionDevelopmentTaxRate: number;
   directCommissionRate: number;
   expediaCommissionRate: number;
-  miamiDadeSurtaxRate: number;
-  resortTaxRate: number;
-  salesTaxRate: number;
 }
 
 export const DEFAULT_PROPERTY_SETTINGS: IPropertySettingsDefaults = {
   airbnbCommissionRate: 0.155,
   bookingCommissionRate: 0.15,
-  conventionDevelopmentTaxRate: 0.03,
   directCommissionRate: 0.035,
   expediaCommissionRate: 0.15,
-  miamiDadeSurtaxRate: 0.01,
-  resortTaxRate: 0.04,
-  salesTaxRate: 0.06,
 };
 
 export interface IUpdatePropertySettingsBody {
   airbnbCommissionRate?: number;
   bookingCommissionRate?: number;
-  conventionDevelopmentTaxRate?: number;
   directCommissionRate?: number;
   expediaCommissionRate?: number;
-  miamiDadeSurtaxRate?: number;
-  resortTaxRate?: number;
-  salesTaxRate?: number;
+  taxRates?: IPropertyTaxRateInput[];
 }
 
 export const rateToPercent = (rate: number): number => Math.round(rate * 100 * 1000) / 1000;

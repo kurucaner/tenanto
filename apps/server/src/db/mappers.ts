@@ -7,6 +7,8 @@ import {
   type IPropertyMember,
   type IPropertyReservation,
   type IPropertySettings,
+  type IPropertyTaxBreakdownItem,
+  type IPropertyTaxRate,
   type IPropertyUnit,
   type ISupportRequest,
   type IUser,
@@ -103,19 +105,49 @@ export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit 
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 
-export const mapPropertySettingsRow = (row: Record<string, unknown>): IPropertySettings => ({
+export const mapPropertyTaxRateRow = (row: Record<string, unknown>): IPropertyTaxRate => ({
+  id: row.id as string,
+  name: row.name as string,
+  propertyId: row.property_id as string,
+  rate: Number(row.rate),
+  sortOrder: Number(row.sort_order),
+});
+
+export const mapPropertySettingsRow = (
+  row: Record<string, unknown>
+): Omit<IPropertySettings, "taxRates"> => ({
   airbnbCommissionRate: Number(row.airbnb_commission_rate),
   bookingCommissionRate: Number(row.booking_commission_rate),
-  conventionDevelopmentTaxRate: Number(row.convention_development_tax_rate),
   createdAt: (row.created_at as Date).toISOString(),
   directCommissionRate: Number(row.direct_commission_rate),
   expediaCommissionRate: Number(row.expedia_commission_rate),
-  miamiDadeSurtaxRate: Number(row.miami_dade_surtax_rate),
   propertyId: row.property_id as string,
-  resortTaxRate: Number(row.resort_tax_rate),
-  salesTaxRate: Number(row.sales_tax_rate),
   updatedAt: (row.updated_at as Date).toISOString(),
 });
+
+export const parseTaxBreakdown = (raw: unknown): IPropertyTaxBreakdownItem[] => {
+  if (!Array.isArray(raw)) return [];
+
+  const items: IPropertyTaxBreakdownItem[] = [];
+  for (const entry of raw) {
+    if (entry == null || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    const taxRateId = record["taxRateId"];
+    const name = record["name"];
+    const rate = record["rate"];
+    const amount = record["amount"];
+    if (typeof taxRateId !== "string" || typeof name !== "string") {
+      continue;
+    }
+    const parsedRate = typeof rate === "number" ? rate : Number(rate);
+    const parsedAmount = typeof amount === "number" ? amount : Number(amount);
+    if (!Number.isFinite(parsedRate) || !Number.isFinite(parsedAmount)) {
+      continue;
+    }
+    items.push({ amount: parsedAmount, name, rate: parsedRate, taxRateId });
+  }
+  return items;
+};
 
 const formatDateColumn = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -128,20 +160,17 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   checkIn: formatDateColumn(row.check_in),
   checkOut: formatDateColumn(row.check_out),
   cleaningFee: Number(row.cleaning_fee),
-  conventionDevelopmentTax: Number(row.convention_development_tax),
   createdAt: (row.created_at as Date).toISOString(),
   grossIncome: Number(row.gross_income),
   guestName: row.guest_name as string,
   id: row.id as string,
-  miamiDadeSurtax: Number(row.miami_dade_surtax),
   netIncome: Number(row.net_income),
   nights: row.nights as number,
   propertyId: row.property_id as string,
   reservationNumber: (row.reservation_number as string) ?? null,
-  resortTax: Number(row.resort_tax),
   roomRate: Number(row.room_rate),
-  salesTax: Number(row.sales_tax),
   status: row.status as TReservationStatus,
+  taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   unitId: row.unit_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),
 });
@@ -149,19 +178,16 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
 export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropertyIncomeLine => ({
   amount: Number(row.amount),
   channelCommission: Number(row.channel_commission),
-  conventionDevelopmentTax: Number(row.convention_development_tax),
   createdAt: (row.created_at as Date).toISOString(),
   description: (row.description as string) ?? null,
   grossIncome: Number(row.gross_income),
   guestName: (row.guest_name as string) ?? null,
   id: row.id as string,
   lineType: row.line_type as TIncomeLineType,
-  miamiDadeSurtax: Number(row.miami_dade_surtax),
   netIncome: Number(row.net_income),
   propertyId: row.property_id as string,
   reservationId: (row.reservation_id as string) ?? null,
-  resortTax: Number(row.resort_tax),
-  salesTax: Number(row.sales_tax),
+  taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   transactionDate: formatDateColumn(row.transaction_date),
   unitId: row.unit_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),

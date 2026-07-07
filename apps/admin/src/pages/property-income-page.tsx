@@ -452,7 +452,7 @@ const PropertyIncomePage = memo(() => {
                       <TableHead>Nights</TableHead>
                       <TableHead>Channel</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Amount / Room</TableHead>
+                      <TableHead className="text-right">Room rate</TableHead>
                       <TableHead className="text-right">Cleaning</TableHead>
                       <TableHead className="text-right">Gross</TableHead>
                       <TableHead className="text-right">Net</TableHead>

@@ -106,9 +106,13 @@ export {
 // Property Settings Types
 export {
   DEFAULT_PROPERTY_SETTINGS,
+  DEFAULT_PROPERTY_TAX_RATES,
   formatRateAsPercent,
   type IPropertySettings,
   type IPropertySettingsDefaults,
+  type IPropertyTaxBreakdownItem,
+  type IPropertyTaxRate,
+  type IPropertyTaxRateInput,
   type IUpdatePropertySettingsBody,
   percentToRate,
   rateToPercent,

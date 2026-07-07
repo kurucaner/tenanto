@@ -1,4 +1,5 @@
 import type { IPropertyReservation } from "./property-reservation-types";
+import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 import type { TUnitRentalType } from "./property-types";
 
 export const IncomeLineType = {
@@ -13,19 +14,16 @@ export type TIncomeLineType = (typeof IncomeLineType)[keyof typeof IncomeLineTyp
 export interface IPropertyIncomeLine {
   amount: number;
   channelCommission: number;
-  conventionDevelopmentTax: number;
   createdAt: string;
   description: string | null;
   grossIncome: number;
   guestName: string | null;
   id: string;
   lineType: TIncomeLineType;
-  miamiDadeSurtax: number;
   netIncome: number;
   propertyId: string;
   reservationId: string | null;
-  resortTax: number;
-  salesTax: number;
+  taxBreakdown: IPropertyTaxBreakdownItem[];
   transactionDate: string;
   unitId: string;
   updatedAt: string;
@@ -33,12 +31,9 @@ export interface IPropertyIncomeLine {
 
 export interface IPropertyIncomeLineComputedFields {
   channelCommission: number;
-  conventionDevelopmentTax: number;
   grossIncome: number;
-  miamiDadeSurtax: number;
   netIncome: number;
-  resortTax: number;
-  salesTax: number;
+  taxBreakdown: IPropertyTaxBreakdownItem[];
 }
 
 export interface ICreatePropertyIncomeLineBody {

@@ -2,6 +2,8 @@ import {
   type IPropertyIncomeLineComputedFields,
   type IPropertyReservationComputedFields,
   type IPropertySettings,
+  type IPropertyTaxBreakdownItem,
+  type IPropertyTaxRate,
   ReservationChannel,
   type TReservationChannel,
   type TUnitRentalType,
@@ -43,52 +45,58 @@ function getChannelCommissionRate(
   }
 }
 
+function buildTaxBreakdown(
+  taxableBase: number,
+  taxRates: IPropertyTaxRate[]
+): IPropertyTaxBreakdownItem[] {
+  return taxRates.map((tax) => ({
+    amount: roundMoney(taxableBase * tax.rate),
+    name: tax.name,
+    rate: tax.rate,
+    taxRateId: tax.id,
+  }));
+}
+
+function sumTaxBreakdown(taxBreakdown: IPropertyTaxBreakdownItem[]): number {
+  return taxBreakdown.reduce((sum, item) => sum + item.amount, 0);
+}
+
 export interface ICalculateStayIncomeInput {
   channel: TReservationChannel;
   cleaningFee: number;
   roomRate: number;
   settings: IPropertySettings;
+  taxRates: IPropertyTaxRate[];
   unitRentalType: TUnitRentalType;
 }
 
 export function calculateStayIncome(
   input: ICalculateStayIncomeInput
 ): Omit<IPropertyReservationComputedFields, "nights"> {
-  const { channel, cleaningFee, roomRate, settings, unitRentalType } = input;
+  const { channel, cleaningFee, roomRate, settings, taxRates, unitRentalType } = input;
 
   if (unitRentalType === UnitRentalType.LONG_TERM) {
     const netIncome = roundMoney(roomRate);
     return {
       channelCommission: 0,
-      conventionDevelopmentTax: 0,
       grossIncome: netIncome,
-      miamiDadeSurtax: 0,
       netIncome,
-      resortTax: 0,
-      salesTax: 0,
+      taxBreakdown: [],
     };
   }
 
   const taxableBase = roomRate + cleaningFee;
-  const salesTax = roundMoney(taxableBase * settings.salesTaxRate);
-  const miamiDadeSurtax = roundMoney(taxableBase * settings.miamiDadeSurtaxRate);
-  const conventionDevelopmentTax = roundMoney(
-    taxableBase * settings.conventionDevelopmentTaxRate
-  );
-  const resortTax = roundMoney(taxableBase * settings.resortTaxRate);
-  const totalTaxes = salesTax + miamiDadeSurtax + conventionDevelopmentTax + resortTax;
+  const taxBreakdown = buildTaxBreakdown(taxableBase, taxRates);
+  const totalTaxes = sumTaxBreakdown(taxBreakdown);
   const channelCommission = roundMoney(taxableBase * getChannelCommissionRate(channel, settings));
   const grossIncome = roundMoney(taxableBase + totalTaxes);
   const netIncome = roundMoney(taxableBase - totalTaxes - channelCommission);
 
   return {
     channelCommission,
-    conventionDevelopmentTax,
     grossIncome,
-    miamiDadeSurtax,
     netIncome,
-    resortTax,
-    salesTax,
+    taxBreakdown,
   };
 }
 
@@ -98,11 +106,8 @@ export function calculateMiscIncomeLine(
   const netIncome = roundMoney(amount);
   return {
     channelCommission: 0,
-    conventionDevelopmentTax: 0,
     grossIncome: netIncome,
-    miamiDadeSurtax: 0,
     netIncome,
-    resortTax: 0,
-    salesTax: 0,
+    taxBreakdown: [],
   };
 }

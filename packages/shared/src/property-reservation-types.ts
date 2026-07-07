@@ -1,3 +1,4 @@
+import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 import type { TUnitRentalType } from "./property-types";
 
 export const ReservationStatus = {
@@ -24,20 +25,17 @@ export interface IPropertyReservation {
   checkIn: string;
   checkOut: string;
   cleaningFee: number;
-  conventionDevelopmentTax: number;
   createdAt: string;
   grossIncome: number;
   guestName: string;
   id: string;
-  miamiDadeSurtax: number;
   netIncome: number;
   nights: number;
   propertyId: string;
   reservationNumber: string | null;
-  resortTax: number;
   roomRate: number;
-  salesTax: number;
   status: TReservationStatus;
+  taxBreakdown: IPropertyTaxBreakdownItem[];
   unitId: string;
   updatedAt: string;
 }
@@ -81,11 +79,8 @@ export interface IPropertyReservationsListQuery {
 
 export interface IPropertyReservationComputedFields {
   channelCommission: number;
-  conventionDevelopmentTax: number;
   grossIncome: number;
-  miamiDadeSurtax: number;
   netIncome: number;
   nights: number;
-  resortTax: number;
-  salesTax: number;
+  taxBreakdown: IPropertyTaxBreakdownItem[];
 }

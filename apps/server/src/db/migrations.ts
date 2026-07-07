@@ -898,4 +898,151 @@ export const migrations: IMigration[] = [
     },
     version: 23,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN IF NOT EXISTS sales_tax NUMERIC(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS miami_dade_surtax NUMERIC(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS convention_development_tax NUMERIC(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS resort_tax NUMERIC(12,2) NOT NULL DEFAULT 0;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS sales_tax NUMERIC(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS miami_dade_surtax NUMERIC(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS convention_development_tax NUMERIC(12,2) NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS resort_tax NUMERIC(12,2) NOT NULL DEFAULT 0;
+      `);
+      await client.query(`
+        ALTER TABLE property_settings
+          ADD COLUMN IF NOT EXISTS sales_tax_rate NUMERIC(6,5) NOT NULL DEFAULT 0.06,
+          ADD COLUMN IF NOT EXISTS miami_dade_surtax_rate NUMERIC(6,5) NOT NULL DEFAULT 0.01,
+          ADD COLUMN IF NOT EXISTS convention_development_tax_rate NUMERIC(6,5) NOT NULL DEFAULT 0.03,
+          ADD COLUMN IF NOT EXISTS resort_tax_rate NUMERIC(6,5) NOT NULL DEFAULT 0.04;
+      `);
+      await client.query(`DROP TABLE IF EXISTS property_tax_rates CASCADE;`);
+      await client.query(`
+        ALTER TABLE property_reservations DROP COLUMN IF EXISTS tax_breakdown;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines DROP COLUMN IF EXISTS tax_breakdown;
+      `);
+    },
+    name: "property_tax_rates",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_tax_rates (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          rate NUMERIC(6,5) NOT NULL CHECK (rate >= 0 AND rate <= 1),
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_tax_rates_property
+        ON property_tax_rates (property_id, sort_order);
+      `);
+      await client.query(`
+        CREATE TRIGGER update_property_tax_rates_updated_at
+          BEFORE UPDATE ON property_tax_rates
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        INSERT INTO property_tax_rates (property_id, name, rate, sort_order)
+        SELECT property_id, 'Sales tax', sales_tax_rate, 0 FROM property_settings
+        UNION ALL
+        SELECT property_id, 'Miami-Dade surtax', miami_dade_surtax_rate, 1 FROM property_settings
+        UNION ALL
+        SELECT property_id, 'Convention development tax (CDT)', convention_development_tax_rate, 2 FROM property_settings
+        UNION ALL
+        SELECT property_id, 'Resort tax', resort_tax_rate, 3 FROM property_settings;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN tax_breakdown JSONB NOT NULL DEFAULT '[]'::jsonb;
+      `);
+      await client.query(`
+        UPDATE property_reservations pr
+        SET tax_breakdown = COALESCE(
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'taxRateId', ptr.id::text,
+                'name', ptr.name,
+                'rate', ptr.rate,
+                'amount', CASE ptr.sort_order
+                  WHEN 0 THEN pr.sales_tax
+                  WHEN 1 THEN pr.miami_dade_surtax
+                  WHEN 2 THEN pr.convention_development_tax
+                  WHEN 3 THEN pr.resort_tax
+                END
+              )
+              ORDER BY ptr.sort_order
+            )
+            FROM property_tax_rates ptr
+            WHERE ptr.property_id = pr.property_id
+          ),
+          '[]'::jsonb
+        );
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN tax_breakdown JSONB NOT NULL DEFAULT '[]'::jsonb;
+      `);
+      await client.query(`
+        UPDATE property_income_lines pil
+        SET tax_breakdown = COALESCE(
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'taxRateId', ptr.id::text,
+                'name', ptr.name,
+                'rate', ptr.rate,
+                'amount', CASE ptr.sort_order
+                  WHEN 0 THEN pil.sales_tax
+                  WHEN 1 THEN pil.miami_dade_surtax
+                  WHEN 2 THEN pil.convention_development_tax
+                  WHEN 3 THEN pil.resort_tax
+                END
+              )
+              ORDER BY ptr.sort_order
+            )
+            FROM property_tax_rates ptr
+            WHERE ptr.property_id = pil.property_id
+          ),
+          '[]'::jsonb
+        );
+      `);
+
+      await client.query(`
+        ALTER TABLE property_settings
+          DROP COLUMN sales_tax_rate,
+          DROP COLUMN miami_dade_surtax_rate,
+          DROP COLUMN convention_development_tax_rate,
+          DROP COLUMN resort_tax_rate;
+      `);
+      await client.query(`
+        ALTER TABLE property_reservations
+          DROP COLUMN sales_tax,
+          DROP COLUMN miami_dade_surtax,
+          DROP COLUMN convention_development_tax,
+          DROP COLUMN resort_tax;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN sales_tax,
+          DROP COLUMN miami_dade_surtax,
+          DROP COLUMN convention_development_tax,
+          DROP COLUMN resort_tax;
+      `);
+    },
+    version: 24,
+  },
 ];

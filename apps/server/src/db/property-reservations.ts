@@ -29,17 +29,14 @@ export const propertyReservationsDb = {
          room_rate,
          cleaning_fee,
          gross_income,
-         sales_tax,
-         miami_dade_surtax,
-         convention_development_tax,
-         resort_tax,
+         tax_breakdown,
          channel_commission,
          net_income
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7,
          $8::property_reservation_status,
          $9::property_reservation_channel,
-         $10, $11, $12, $13, $14, $15, $16, $17, $18
+         $10, $11, $12, $13::jsonb, $14, $15
        )
        RETURNING *`,
       [
@@ -55,10 +52,7 @@ export const propertyReservationsDb = {
         input.roomRate,
         input.cleaningFee,
         computed.grossIncome,
-        computed.salesTax,
-        computed.miamiDadeSurtax,
-        computed.conventionDevelopmentTax,
-        computed.resortTax,
+        JSON.stringify(computed.taxBreakdown),
         computed.channelCommission,
         computed.netIncome,
       ]
@@ -200,14 +194,8 @@ export const propertyReservationsDb = {
     values.push(computed.nights);
     setClauses.push(`gross_income = $${p++}`);
     values.push(computed.grossIncome);
-    setClauses.push(`sales_tax = $${p++}`);
-    values.push(computed.salesTax);
-    setClauses.push(`miami_dade_surtax = $${p++}`);
-    values.push(computed.miamiDadeSurtax);
-    setClauses.push(`convention_development_tax = $${p++}`);
-    values.push(computed.conventionDevelopmentTax);
-    setClauses.push(`resort_tax = $${p++}`);
-    values.push(computed.resortTax);
+    setClauses.push(`tax_breakdown = $${p++}::jsonb`);
+    values.push(JSON.stringify(computed.taxBreakdown));
     setClauses.push(`channel_commission = $${p++}`);
     values.push(computed.channelCommission);
     setClauses.push(`net_income = $${p++}`);

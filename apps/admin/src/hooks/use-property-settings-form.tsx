@@ -1,8 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
-import { type ReactNode,useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  PropertyTaxRatesEditor,
+  type PropertyTaxRateFormRow,
+} from "@/components/settings/property-tax-rates-editor";
 import { PercentField } from "@/components/settings/property-settings-percent-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,42 +15,53 @@ import { settingsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   DEFAULT_PROPERTY_SETTINGS,
+  DEFAULT_PROPERTY_TAX_RATES,
   formatRateAsPercent,
   type IPropertySettings,
+  type IPropertyTaxRate,
+  type IPropertyTaxRateInput,
   percentToRate,
 } from "@/packages/shared";
 
 type TSettingsFormState = {
   airbnbCommissionRate: string;
   bookingCommissionRate: string;
-  conventionDevelopmentTaxRate: string;
   directCommissionRate: string;
   expediaCommissionRate: string;
-  miamiDadeSurtaxRate: string;
-  resortTaxRate: string;
-  salesTaxRate: string;
+  taxRates: PropertyTaxRateFormRow[];
 };
+
+const MAX_TAX_NAME_LENGTH = 80;
+
+const taxRateToFormRow = (tax: IPropertyTaxRate): PropertyTaxRateFormRow => ({
+  clientId: tax.id,
+  id: tax.id,
+  name: tax.name,
+  ratePercent: formatRateAsPercent(tax.rate),
+});
 
 const settingsToFormState = (settings: IPropertySettings): TSettingsFormState => ({
   airbnbCommissionRate: formatRateAsPercent(settings.airbnbCommissionRate),
   bookingCommissionRate: formatRateAsPercent(settings.bookingCommissionRate),
-  conventionDevelopmentTaxRate: formatRateAsPercent(settings.conventionDevelopmentTaxRate),
   directCommissionRate: formatRateAsPercent(settings.directCommissionRate),
   expediaCommissionRate: formatRateAsPercent(settings.expediaCommissionRate),
-  miamiDadeSurtaxRate: formatRateAsPercent(settings.miamiDadeSurtaxRate),
-  resortTaxRate: formatRateAsPercent(settings.resortTaxRate),
-  salesTaxRate: formatRateAsPercent(settings.salesTaxRate),
+  taxRates: settings.taxRates.map(taxRateToFormRow),
 });
+
+const formTaxRatesToBody = (taxRates: PropertyTaxRateFormRow[]): IPropertyTaxRateInput[] =>
+  taxRates.map((row, index) => ({
+    ...(row.id != null ? { id: row.id } : {}),
+    name: row.name.trim(),
+    rate: percentToRate(Number(row.ratePercent)),
+    sortOrder: index,
+  }));
 
 const formStateToBody = (form: TSettingsFormState) => ({
   airbnbCommissionRate: percentToRate(Number(form.airbnbCommissionRate)),
   bookingCommissionRate: percentToRate(Number(form.bookingCommissionRate)),
-  conventionDevelopmentTaxRate: percentToRate(Number(form.conventionDevelopmentTaxRate)),
   directCommissionRate: percentToRate(Number(form.directCommissionRate)),
   expediaCommissionRate: percentToRate(Number(form.expediaCommissionRate)),
-  miamiDadeSurtaxRate: percentToRate(Number(form.miamiDadeSurtaxRate)),
-  resortTaxRate: percentToRate(Number(form.resortTaxRate)),
-  salesTaxRate: percentToRate(Number(form.salesTaxRate)),
+  taxRates: formTaxRatesToBody(form.taxRates),
 });
 
 const parsePercent = (value: string): number | null => {
@@ -76,19 +91,14 @@ export const usePropertySettingsForm = ({
   );
 
   const totalTaxPercent = useMemo(() => {
-    const values = [
-      parsePercent(form.salesTaxRate),
-      parsePercent(form.miamiDadeSurtaxRate),
-      parsePercent(form.conventionDevelopmentTaxRate),
-      parsePercent(form.resortTaxRate),
-    ];
     let total = 0;
-    for (const value of values) {
+    for (const row of form.taxRates) {
+      const value = parsePercent(row.ratePercent);
       if (value === null) return null;
       total += value;
     }
     return total;
-  }, [form]);
+  }, [form.taxRates]);
 
   const saveMutation = useMutation({
     mutationFn: () => settingsApi.update(propertyId, formStateToBody(form)),
@@ -103,7 +113,15 @@ export const usePropertySettingsForm = ({
   });
 
   const resetMutation = useMutation({
-    mutationFn: () => settingsApi.update(propertyId, DEFAULT_PROPERTY_SETTINGS),
+    mutationFn: () =>
+      settingsApi.update(propertyId, {
+        ...DEFAULT_PROPERTY_SETTINGS,
+        taxRates: DEFAULT_PROPERTY_TAX_RATES.map((tax, index) => ({
+          name: tax.name,
+          rate: tax.rate,
+          sortOrder: index,
+        })),
+      }),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Reset failed");
     },
@@ -114,16 +132,51 @@ export const usePropertySettingsForm = ({
     },
   });
 
-  const updateField = (field: keyof TSettingsFormState, value: string) => {
+  const updateField = (field: Exclude<keyof TSettingsFormState, "taxRates">, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    const fields = Object.values(form);
-    if (fields.some((v) => parsePercent(v) === null)) {
-      toast.error("All rates must be numbers between 0 and 100");
-      return;
+  const validateForm = (): boolean => {
+    const commissionFields = [
+      form.airbnbCommissionRate,
+      form.bookingCommissionRate,
+      form.directCommissionRate,
+      form.expediaCommissionRate,
+    ];
+    if (commissionFields.some((value) => parsePercent(value) === null)) {
+      toast.error("All commission rates must be numbers between 0 and 100");
+      return false;
     }
+
+    const seenNames = new Set<string>();
+    for (const row of form.taxRates) {
+      const name = row.name.trim();
+      if (name.length === 0) {
+        toast.error("Each tax must have a name");
+        return false;
+      }
+      if (name.length > MAX_TAX_NAME_LENGTH) {
+        toast.error(`Tax names must be at most ${MAX_TAX_NAME_LENGTH} characters`);
+        return false;
+      }
+      const normalized = name.toLowerCase();
+      if (seenNames.has(normalized)) {
+        toast.error("Tax names must be unique");
+        return false;
+      }
+      seenNames.add(normalized);
+
+      if (parsePercent(row.ratePercent) === null) {
+        toast.error("All tax rates must be numbers between 0 and 100");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleSave = () => {
+    if (!validateForm()) return;
     saveMutation.mutate();
   };
 
@@ -181,36 +234,11 @@ export const usePropertySettingsForm = ({
               )}
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="sales-tax"
-              label="Sales tax"
-              onChange={(v) => updateField("salesTaxRate", v)}
-              value={form.salesTaxRate}
-            />
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="miami-dade-surtax"
-              label="Miami-Dade surtax"
-              onChange={(v) => updateField("miamiDadeSurtaxRate", v)}
-              value={form.miamiDadeSurtaxRate}
-            />
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="cdt"
-              label="Convention development tax (CDT)"
-              onChange={(v) => updateField("conventionDevelopmentTaxRate", v)}
-              value={form.conventionDevelopmentTaxRate}
-            />
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="resort-tax"
-              label="Resort tax"
-              onChange={(v) => updateField("resortTaxRate", v)}
-              value={form.resortTaxRate}
-            />
-          </div>
+          <PropertyTaxRatesEditor
+            disabled={!canEdit || isPending}
+            onChange={(taxRates) => setForm((prev) => ({ ...prev, taxRates }))}
+            taxRates={form.taxRates}
+          />
         </div>
 
         <div className="space-y-4">
