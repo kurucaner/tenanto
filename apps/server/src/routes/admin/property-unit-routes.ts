@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertyUnitsDb } from "@/db/property-units";
+import { isPostgresUniqueViolation } from "@/db/pg-errors";
 import {
   HttpStatus,
   type ICreatePropertyUnitBody,
@@ -12,6 +13,7 @@ import {
 } from "@/packages/shared";
 
 import { parseUuidParam } from "./admin-query-utils";
+import { duplicateUnitNumberMessage } from "./property-unit-errors";
 import {
   assertPropertyMemberAccess,
   assertPropertyUnitManageAccess,
@@ -169,8 +171,17 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const unit = await propertyUnitsDb.create(propertyId, parsed.body);
-      return reply.status(HttpStatus.CREATED).send({ unit });
+      try {
+        const unit = await propertyUnitsDb.create(propertyId, parsed.body);
+        return reply.status(HttpStatus.CREATED).send({ unit });
+      } catch (error) {
+        if (isPostgresUniqueViolation(error)) {
+          return reply.status(HttpStatus.CONFLICT).send({
+            error: duplicateUnitNumberMessage(parsed.body.unitKind ?? UnitKind.RENTABLE),
+          });
+        }
+        throw error;
+      }
     }
   );
 
@@ -223,8 +234,17 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         });
       }
 
-      const updated = await propertyUnitsDb.update(unitId, parsed.body);
-      return reply.send({ unit: updated });
+      try {
+        const updated = await propertyUnitsDb.update(unitId, parsed.body);
+        return reply.send({ unit: updated });
+      } catch (error) {
+        if (isPostgresUniqueViolation(error)) {
+          return reply.status(HttpStatus.CONFLICT).send({
+            error: duplicateUnitNumberMessage(existing.unitKind),
+          });
+        }
+        throw error;
+      }
     }
   );
 

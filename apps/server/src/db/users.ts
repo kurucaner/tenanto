@@ -9,6 +9,7 @@ import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { AccountEvent } from "../server-types";
 import { accountEventsDb } from "./account-events";
 import { mapUserRow } from "./mappers";
+import { isPostgresUniqueViolation } from "./pg-errors";
 import { pool } from "./pool";
 
 interface CreateUserParams {
@@ -67,15 +68,6 @@ const mapRowWithDeletion = (row: Record<string, unknown>): IUserRow => ({
   deletedAt: row.deleted_at ? (row.deleted_at as Date).toISOString() : null,
   isDeleted: (row.is_deleted as boolean) ?? false,
 });
-
-function isPostgresUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code: unknown }).code === "23505"
-  );
-}
 
 export interface IListUsersPaginatedParams {
   cursor: { createdAt: string; id: string } | null;
