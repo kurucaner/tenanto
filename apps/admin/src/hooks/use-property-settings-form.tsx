@@ -50,7 +50,7 @@ const settingsToFormState = (settings: IPropertySettings): TSettingsFormState =>
 
 const formTaxRatesToBody = (taxRates: PropertyTaxRateFormRow[]): IPropertyTaxRateInput[] =>
   taxRates.map((row, index) => ({
-    ...(row.id != null ? { id: row.id } : {}),
+    ...(row.id == null ? {} : { id: row.id }),
     name: row.name.trim(),
     rate: percentToRate(Number(row.ratePercent)),
     sortOrder: index,
