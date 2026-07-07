@@ -28,12 +28,14 @@ export const EditPropertyDialog = memo(
   ({ onOpenChange, open, property }: EditPropertyDialogProps) => {
     const queryClient = useQueryClient();
     const [name, setName] = useState(property.name);
+    const [legalName, setLegalName] = useState(property.legalName ?? "");
     const [address, setAddress] = useState(property.address);
     const [phoneNumber, setPhoneNumber] = useState(property.phoneNumber ?? "");
 
     useEffect(() => {
       if (open) {
         setName(property.name);
+        setLegalName(property.legalName ?? "");
         setAddress(property.address);
         setPhoneNumber(property.phoneNumber ?? "");
       }
@@ -43,6 +45,7 @@ export const EditPropertyDialog = memo(
       mutationFn: () =>
         propertiesApi.update(property.id, {
           address: address.trim(),
+          legalName: legalName.trim() || null,
           name: name.trim(),
           phoneNumber: phoneNumber.trim() || null,
         }),
@@ -84,6 +87,18 @@ export const EditPropertyDialog = memo(
                   onChange={(e) => setName(e.target.value)}
                   required
                   value={name}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="edit-property-legal-name">Legal Name</Label>
+                  <span className="text-xs text-muted-foreground">Optional</span>
+                </div>
+                <Input
+                  id="edit-property-legal-name"
+                  onChange={(e) => setLegalName(e.target.value)}
+                  placeholder="e.g. Sunset Apartments LLC"
+                  value={legalName}
                 />
               </div>
               <div className="flex flex-col gap-1.5">

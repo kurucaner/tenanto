@@ -233,6 +233,9 @@ export const PropertyDetailPage = memo(() => {
               <span className="text-muted-foreground">Name:</span> {property.name}
             </p>
             <p>
+              <span className="text-muted-foreground">Legal name:</span> {property.legalName ?? "—"}
+            </p>
+            <p>
               <span className="text-muted-foreground">Address:</span> {property.address}
             </p>
             <p>

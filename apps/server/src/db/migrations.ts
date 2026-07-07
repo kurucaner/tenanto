@@ -1169,4 +1169,14 @@ export const migrations: IMigration[] = [
     },
     version: 25,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE properties DROP COLUMN IF EXISTS legal_name;`);
+    },
+    name: "add_property_legal_name",
+    up: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE properties ADD COLUMN legal_name VARCHAR(255);`);
+    },
+    version: 26,
+  },
 ];

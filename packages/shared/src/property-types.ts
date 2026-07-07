@@ -11,6 +11,7 @@ export interface IProperty {
   createdAt: string;
   createdBy: string;
   id: string;
+  legalName: string | null;
   memberCount: number;
   name: string;
   phoneNumber: string | null;
@@ -53,12 +54,14 @@ export interface IAdminPropertiesListQuery {
 
 export interface IAdminCreatePropertyBody {
   address: string;
+  legalName?: string;
   name: string;
   phoneNumber?: string;
 }
 
 export interface IAdminUpdatePropertyBody {
   address?: string;
+  legalName?: string | null;
   name?: string;
   phoneNumber?: string | null;
 }

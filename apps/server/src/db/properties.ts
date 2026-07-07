@@ -24,10 +24,16 @@ export const propertiesDb = {
     queryable: DbQueryable = pool
   ): Promise<IProperty> {
     const result = await queryable.query(
-      `INSERT INTO properties (name, address, phone_number, created_by)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO properties (name, address, phone_number, legal_name, created_by)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [input.name.trim(), input.address.trim(), input.phoneNumber?.trim() ?? null, createdBy]
+      [
+        input.name.trim(),
+        input.address.trim(),
+        input.phoneNumber?.trim() ?? null,
+        input.legalName?.trim() ?? null,
+        createdBy,
+      ]
     );
     const row = result.rows[0] as Record<string, unknown>;
     const propertyId = row.id as string;
@@ -237,6 +243,12 @@ export const propertiesDb = {
       setClauses.push(`phone_number = $${p++}`);
       values.push(
         input.phoneNumber != null && input.phoneNumber !== "" ? input.phoneNumber.trim() : null
+      );
+    }
+    if ("legalName" in input) {
+      setClauses.push(`legal_name = $${p++}`);
+      values.push(
+        input.legalName != null && input.legalName !== "" ? input.legalName.trim() : null
       );
     }
 

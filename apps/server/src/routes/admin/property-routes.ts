@@ -34,6 +34,46 @@ function parsePropertyRole(raw: unknown): TPropertyRole | null {
   return PROPERTY_ROLES.has(raw as TPropertyRole) ? (raw as TPropertyRole) : null;
 }
 
+const PROPERTY_LEGAL_NAME_MAX_LENGTH = 255;
+
+function parseOptionalLegalName(
+  raw: unknown
+): { error: string; ok: false } | { legalName: string | undefined; ok: true } {
+  if (raw == null || raw === "") {
+    return { legalName: undefined, ok: true };
+  }
+  if (typeof raw !== "string") {
+    return { error: "legalName must be a string", ok: false };
+  }
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return { legalName: undefined, ok: true };
+  }
+  if (trimmed.length > PROPERTY_LEGAL_NAME_MAX_LENGTH) {
+    return { error: "legalName must be at most 255 characters", ok: false };
+  }
+  return { legalName: trimmed, ok: true };
+}
+
+function parseNullableLegalName(
+  raw: unknown
+): { error: string; ok: false } | { legalName: string | null; ok: true } {
+  if (raw == null || raw === "") {
+    return { legalName: null, ok: true };
+  }
+  if (typeof raw !== "string") {
+    return { error: "legalName must be a string or null", ok: false };
+  }
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return { legalName: null, ok: true };
+  }
+  if (trimmed.length > PROPERTY_LEGAL_NAME_MAX_LENGTH) {
+    return { error: "legalName must be at most 255 characters", ok: false };
+  }
+  return { legalName: trimmed, ok: true };
+}
+
 function parseOptionalPhoneNumber(
   raw: unknown
 ): { error: string; ok: false } | { ok: true; phoneNumber: string | undefined } {
@@ -97,8 +137,17 @@ function parseCreatePropertyBody(
   if (!phoneResult.ok) {
     return { error: phoneResult.error, ok: false };
   }
+  const legalNameResult = parseOptionalLegalName(r["legalName"]);
+  if (!legalNameResult.ok) {
+    return { error: legalNameResult.error, ok: false };
+  }
   return {
-    body: { address: r["address"], name: r["name"], phoneNumber: phoneResult.phoneNumber },
+    body: {
+      address: r["address"],
+      legalName: legalNameResult.legalName,
+      name: r["name"],
+      phoneNumber: phoneResult.phoneNumber,
+    },
     ok: true,
   };
 }
@@ -130,6 +179,13 @@ function parseUpdatePropertyBody(
       return { error: phoneResult.error, ok: false };
     }
     body.phoneNumber = phoneResult.phoneNumber;
+  }
+  if ("legalName" in r) {
+    const legalNameResult = parseNullableLegalName(r["legalName"]);
+    if (!legalNameResult.ok) {
+      return { error: legalNameResult.error, ok: false };
+    }
+    body.legalName = legalNameResult.legalName;
   }
   return { body, ok: true };
 }

@@ -24,6 +24,7 @@ interface CreatePropertyDialogProps {
 export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreatePropertyDialogProps) => {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [legalName, setLegalName] = useState("");
   const [address, setAddress] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 
@@ -31,6 +32,7 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
     mutationFn: () =>
       propertiesApi.create({
         address: address.trim(),
+        legalName: legalName.trim() || undefined,
         name: name.trim(),
         phoneNumber: phoneNumber.trim() || undefined,
       }),
@@ -42,6 +44,7 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
       queryClient.invalidateQueries({ queryKey: ["admin", "properties"] });
       onOpenChange(false);
       setName("");
+      setLegalName("");
       setAddress("");
       setPhoneNumber("");
     },
@@ -72,6 +75,18 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
                 placeholder="e.g. Sunset Apartments"
                 required
                 value={name}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="create-property-legal-name">Legal Name</Label>
+                <span className="text-xs text-muted-foreground">Optional</span>
+              </div>
+              <Input
+                id="create-property-legal-name"
+                onChange={(e) => setLegalName(e.target.value)}
+                placeholder="e.g. Sunset Apartments LLC"
+                value={legalName}
               />
             </div>
             <div className="flex flex-col gap-1.5">
