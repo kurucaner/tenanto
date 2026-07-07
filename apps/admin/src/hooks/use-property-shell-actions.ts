@@ -1,15 +1,15 @@
-import { type ReactNode,useEffect } from "react";
-import { useOutletContext } from "react-router-dom";
+import { type ReactNode, useEffect, useId } from "react";
 
-export interface IPropertyShellOutletContext {
-  setActions: (actions: ReactNode) => void;
-}
+import { usePropertyShellActionsStore } from "@/components/properties/property-shell-actions-store";
 
 export function usePropertyShellActions(actions: ReactNode): void {
-  const { setActions } = useOutletContext<IPropertyShellOutletContext>();
+  const { register, unregister } = usePropertyShellActionsStore();
+  const registrationId = useId();
 
   useEffect(() => {
-    setActions(actions);
-    return () => setActions(null);
-  }, [actions, setActions]);
+    register(registrationId, actions);
+    return () => {
+      unregister(registrationId);
+    };
+  }, [actions, register, registrationId, unregister]);
 }

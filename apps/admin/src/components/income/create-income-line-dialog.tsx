@@ -24,6 +24,7 @@ import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income
 import {
   IncomeLineType,
   type IPropertyReservation,
+  type IPropertyUnit,
   type TIncomeLineType,
 } from "@/packages/shared";
 
@@ -41,6 +42,7 @@ interface CreateIncomeLineDialogProps {
   open: boolean;
   prefill?: CreateIncomeLineDialogPrefill | null;
   propertyId: string;
+  units?: IPropertyUnit[];
 }
 
 const FIELD_ID_PREFIX = "income-line";
@@ -76,10 +78,11 @@ interface CreateIncomeLineDialogFormProps {
   onClose: () => void;
   prefill?: CreateIncomeLineDialogPrefill | null;
   propertyId: string;
+  units?: IPropertyUnit[];
 }
 
 const CreateIncomeLineDialogForm = memo(
-  ({ lockedStay, onClose, prefill, propertyId }: CreateIncomeLineDialogFormProps) => {
+  ({ lockedStay, onClose, prefill, propertyId, units }: CreateIncomeLineDialogFormProps) => {
     const initialFormState = buildFormState(prefill, lockedStay);
     const queryClient = useQueryClient();
     const [lineType, setLineType] = useState<TIncomeLineType>(initialFormState.lineType);
@@ -154,6 +157,7 @@ const CreateIncomeLineDialogForm = memo(
             reservationId={reservationId}
             transactionDate={transactionDate}
             unitId={unitId}
+            units={units}
           />
 
           <IncomeLineAmountDateFields
@@ -199,7 +203,7 @@ const CreateIncomeLineDialogForm = memo(
 CreateIncomeLineDialogForm.displayName = "CreateIncomeLineDialogForm";
 
 export const CreateIncomeLineDialog = memo(
-  ({ lockedStay, onOpenChange, open, prefill, propertyId }: CreateIncomeLineDialogProps) => {
+  ({ lockedStay, onOpenChange, open, prefill, propertyId, units }: CreateIncomeLineDialogProps) => {
     const handleClose = () => {
       onOpenChange(false);
     };
@@ -213,6 +217,7 @@ export const CreateIncomeLineDialog = memo(
               onClose={handleClose}
               prefill={prefill}
               propertyId={propertyId}
+              units={units}
             />
           ) : null}
         </DialogContent>

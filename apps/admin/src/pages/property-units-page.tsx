@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -155,26 +155,38 @@ export const PropertyUnitsPage = memo(() => {
 
   const units = unitsQuery.data?.units ?? [];
 
-  usePropertyShellActions(
-    canManage ? (
-      <div className="flex items-center gap-2">
-        <Button
-          className="gap-1.5"
-          onClick={() => setCreateAmenityOpen(true)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          Add Amenity
-        </Button>
-        <Button className="gap-1.5" onClick={() => setCreateOpen(true)} size="sm" type="button">
-          <Plus className="size-3.5" />
-          Add Unit
-        </Button>
-      </div>
-    ) : null
+  const handleOpenCreateAmenity = useCallback(() => {
+    setCreateAmenityOpen(true);
+  }, []);
+
+  const handleOpenCreateUnit = useCallback(() => {
+    setCreateOpen(true);
+  }, []);
+
+  const pageActions = useMemo(
+    () =>
+      canManage ? (
+        <div className="flex items-center gap-2">
+          <Button
+            className="gap-1.5"
+            onClick={handleOpenCreateAmenity}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="size-3.5" />
+            Add Amenity
+          </Button>
+          <Button className="gap-1.5" onClick={handleOpenCreateUnit} size="sm" type="button">
+            <Plus className="size-3.5" />
+            Add Unit
+          </Button>
+        </div>
+      ) : null,
+    [canManage, handleOpenCreateAmenity, handleOpenCreateUnit]
   );
+
+  usePropertyShellActions(pageActions);
 
   return (
     <>

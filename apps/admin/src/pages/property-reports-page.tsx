@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -24,6 +24,10 @@ import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  formatReportPercent,
+  getDefaultReportDateRange,
+} from "@/lib/report-date-defaults";
+import {
   buildSalesTypeBreakdownRows,
   sortChannelSummaryRows,
   sortExpenseCategoryRows,
@@ -32,12 +36,8 @@ import {
   sortUnitSummaryRows,
 } from "@/lib/report-table-sort";
 import {
-  formatReportPercent,
-  getDefaultReportDateRange,
-} from "@/lib/report-date-defaults";
-import {
-  type IPropertyReportSummary,
   type IPropertyReportsQuery,
+  type IPropertyReportSummary,
   type TReportRentalTypeFilter,
 } from "@/packages/shared";
 
@@ -248,7 +248,7 @@ export const PropertyReportsPage = memo(() => {
   const units = unitsQuery.data?.units ?? [];
   const summary = summaryQuery.data?.summary;
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     if (!reportQuery) return;
     setIsExporting(true);
     try {
@@ -263,21 +263,26 @@ export const PropertyReportsPage = memo(() => {
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [propertyId, reportQuery]);
 
-  usePropertyShellActions(
-    <Button
-      className="gap-1.5"
-      disabled={!reportQuery || isExporting}
-      onClick={() => void handleExport()}
-      size="sm"
-      type="button"
-      variant="outline"
-    >
-      <Download className="size-3.5" />
-      {isExporting ? "Downloading…" : "Download CSV"}
-    </Button>
+  const pageActions = useMemo(
+    () => (
+      <Button
+        className="gap-1.5"
+        disabled={!reportQuery || isExporting}
+        onClick={() => void handleExport()}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <Download className="size-3.5" />
+        {isExporting ? "Downloading…" : "Download CSV"}
+      </Button>
+    ),
+    [handleExport, isExporting, reportQuery]
   );
+
+  usePropertyShellActions(pageActions);
 
   return (
     <Card>

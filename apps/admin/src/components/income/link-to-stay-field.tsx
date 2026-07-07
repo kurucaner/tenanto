@@ -57,7 +57,7 @@ export const LinkToStayField = memo(
     const reservationsQuery = useQuery({
       enabled: unitId !== "",
       queryFn: () => reservationsApi.list(propertyId, pickerFilters),
-      queryKey: adminQueryKeys.propertyReservations(propertyId, pickerFilters),
+      queryKey: adminQueryKeys.propertyReservationPicker(propertyId, pickerFilters),
     });
 
     const reservations = reservationsQuery.data?.reservations ?? [];

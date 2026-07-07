@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from "react";
+import { memo, type ReactNode, useMemo } from "react";
 
 import {
   PropertyShellContext,
@@ -17,9 +17,13 @@ export const PropertyShellProvider = memo(
   ({ children, property, propertyId }: PropertyShellProviderProps) => {
     const currentUser = useAuthStore((s) => s.user);
     const permissions = usePropertyPermissions(property, currentUser);
+    const value = useMemo(
+      () => ({ permissions, property, propertyId }),
+      [permissions, property, propertyId]
+    );
 
     return (
-      <PropertyShellContext.Provider value={{ permissions, property, propertyId }}>
+      <PropertyShellContext.Provider value={value}>
         {children}
       </PropertyShellContext.Provider>
     );

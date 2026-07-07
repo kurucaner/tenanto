@@ -182,29 +182,33 @@ export const usePropertySettingsForm = ({
 
   const isPending = saveMutation.isPending || resetMutation.isPending;
 
-  const headerActions: ReactNode = canEdit ? (
-    <>
-      <Button
-        className="gap-1.5"
-        disabled={!hasChanges || isPending}
-        onClick={handleSave}
-        size="sm"
-        type="button"
-      >
-        {saveMutation.isPending ? "Saving…" : "Save changes"}
-      </Button>
-      <Button
-        className="gap-1.5"
-        disabled={isPending}
-        onClick={() => resetMutation.mutate()}
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        {resetMutation.isPending ? "Resetting…" : "Reset to defaults"}
-      </Button>
-    </>
-  ) : undefined;
+  const headerActions: ReactNode = useMemo(
+    () =>
+      canEdit ? (
+        <>
+          <Button
+            className="gap-1.5"
+            disabled={!hasChanges || isPending}
+            onClick={handleSave}
+            size="sm"
+            type="button"
+          >
+            {saveMutation.isPending ? "Saving…" : "Save changes"}
+          </Button>
+          <Button
+            className="gap-1.5"
+            disabled={isPending}
+            onClick={() => resetMutation.mutate()}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            {resetMutation.isPending ? "Resetting…" : "Reset to defaults"}
+          </Button>
+        </>
+      ) : undefined,
+    [canEdit, hasChanges, isPending, resetMutation, saveMutation.isPending]
+  );
 
   const formContent = (
     <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">

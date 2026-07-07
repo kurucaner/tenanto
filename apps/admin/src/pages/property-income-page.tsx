@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CreateIncomeLineDialog, type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
@@ -17,7 +17,6 @@ import {
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayFeesDetailsDialog } from "@/components/income/stay-fees-details-dialog";
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useTableSort } from "@/hooks/use-table-sort";
@@ -337,6 +337,7 @@ const PropertyIncomePageDialogs = memo(
         open={createLineOpen}
         prefill={createLinePrefill}
         propertyId={propertyId}
+        units={units}
       />
       {editReservation ? (
         <EditReservationDialog
@@ -396,11 +397,15 @@ function useRegisterIncomePageActions(
   onAddOtherIncome: () => void,
   onAddStay: () => void
 ) {
-  usePropertyShellActions(
-    canManage ? (
-      <PropertyIncomePageActions onAddOtherIncome={onAddOtherIncome} onAddStay={onAddStay} />
-    ) : null
+  const pageActions = useMemo(
+    () =>
+      canManage ? (
+        <PropertyIncomePageActions onAddOtherIncome={onAddOtherIncome} onAddStay={onAddStay} />
+      ) : null,
+    [canManage, onAddOtherIncome, onAddStay]
   );
+
+  usePropertyShellActions(pageActions);
 }
 
 const IncomeEntryRow = memo(
@@ -665,11 +670,17 @@ const PropertyIncomePage = memo(() => {
       (showStays && reservationsQuery.isPending) ||
       (showLines && incomeLinesQuery.isPending);
 
-    useRegisterIncomePageActions(canManage, () => {
+    const handleAddOtherIncome = useCallback(() => {
       setCreateLinePrefill(null);
       setCreateLineLockedStay(null);
       setCreateLineOpen(true);
-    }, () => setCreateStayOpen(true));
+    }, []);
+
+    const handleAddStay = useCallback(() => {
+      setCreateStayOpen(true);
+    }, []);
+
+    useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay);
 
     return (
       <>

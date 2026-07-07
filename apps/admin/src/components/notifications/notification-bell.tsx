@@ -28,10 +28,11 @@ export const NotificationBell = memo(() => {
 
   const unreadQuery = useQuery({
     enabled: userType === UserType.USER,
+    notifyOnChangeProps: ["data", "error"],
     queryFn: () => notificationsApi.getUnreadCount(),
     queryKey: adminQueryKeys.notificationsUnreadCount(),
     refetchInterval: streamStatus === "degraded" ? 30_000 : false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: !open,
   });
 
   if (userType !== UserType.USER) {

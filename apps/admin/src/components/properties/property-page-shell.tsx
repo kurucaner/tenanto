@@ -3,16 +3,17 @@ import {
   createContext,
   memo,
   type ReactNode,
-  useCallback,
   useContext,
-  useState,
 } from "react";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 
+import {
+  PropertyShellActionsProvider,
+  PropertyShellHeaderActions,
+} from "@/components/properties/property-shell-actions-context";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
-import { type IPropertyShellOutletContext } from "@/hooks/use-property-shell-actions";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 
@@ -21,7 +22,6 @@ import { PropertyShellProvider } from "./property-shell-context";
 const PropertyShellDepthContext = createContext(false);
 
 interface PropertyPageShellProps {
-  actions?: ReactNode;
   children: ReactNode;
   propertyId: string;
   propertyName: string;
@@ -34,8 +34,28 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
       : "text-muted-foreground hover:text-foreground"
   }`;
 
+export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) => (
+  <div className="-mx-1 px-1">
+    <div className="flex flex-wrap items-center gap-1 border-b">
+      {PROPERTY_SHELL_TABS.map((tab) => (
+        <NavLink
+          className={tabClass}
+          end={tab.end}
+          key={tab.path || "overview"}
+          to={
+            tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`
+          }
+        >
+          {tab.label}
+        </NavLink>
+      ))}
+    </div>
+  </div>
+));
+PropertyShellTabs.displayName = "PropertyShellTabs";
+
 export const PropertyPageShell = memo(
-  ({ actions, children, propertyId, propertyName }: PropertyPageShellProps) => {
+  ({ children, propertyId, propertyName }: PropertyPageShellProps) => {
     const isNested = useContext(PropertyShellDepthContext);
     if (isNested) {
       throw new Error("PropertyPageShell cannot be nested inside another PropertyPageShell");
@@ -50,27 +70,10 @@ export const PropertyPageShell = memo(
             </Link>
             <Separator className="h-4" orientation="vertical" />
             <span className="text-sm font-medium text-foreground">{propertyName}</span>
-            <div className="ml-auto flex min-h-8 items-center gap-2">{actions}</div>
+            <PropertyShellHeaderActions />
           </div>
 
-          <div className="-mx-1 px-1">
-            <div className="flex flex-wrap items-center gap-1 border-b">
-              {PROPERTY_SHELL_TABS.map((tab) => (
-                <NavLink
-                  className={tabClass}
-                  end={tab.end}
-                  key={tab.path || "overview"}
-                  to={
-                    tab.path
-                      ? `/properties/${propertyId}/${tab.path}`
-                      : `/properties/${propertyId}`
-                  }
-                >
-                  {tab.label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
+          <PropertyShellTabs propertyId={propertyId} />
 
           {children}
         </div>
@@ -82,11 +85,6 @@ PropertyPageShell.displayName = "PropertyPageShell";
 
 export const PropertyShellLayout = memo(() => {
   const { propertyId } = useParams<{ propertyId: string }>();
-  const [actions, setActions] = useState<ReactNode>(null);
-
-  const handleSetActions = useCallback((next: ReactNode) => {
-    setActions(next);
-  }, []);
 
   const detailQuery = useQuery({
     enabled: Boolean(propertyId),
@@ -119,13 +117,14 @@ export const PropertyShellLayout = memo(() => {
   }
 
   const property = detailQuery.data.property;
-  const outletContext: IPropertyShellOutletContext = { setActions: handleSetActions };
 
   return (
     <PropertyShellProvider property={property} propertyId={propertyId}>
-      <PropertyPageShell actions={actions} propertyId={propertyId} propertyName={property.name}>
-        <Outlet context={outletContext} />
-      </PropertyPageShell>
+      <PropertyShellActionsProvider>
+        <PropertyPageShell propertyId={propertyId} propertyName={property.name}>
+          <Outlet />
+        </PropertyPageShell>
+      </PropertyShellActionsProvider>
     </PropertyShellProvider>
   );
 });

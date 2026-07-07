@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { memo, useCallback, useMemo, type ChangeEvent } from "react";
+import { type ChangeEvent,memo, useCallback, useMemo } from "react";
 
 import {
   INCOME_LINE_TYPE_OPTIONS,
@@ -12,9 +12,9 @@ import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-o
 import { unitsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
-  isAmenityUnit,
   type IPropertyReservation,
   type IPropertyUnit,
+  isAmenityUnit,
   type TIncomeLineType,
 } from "@/packages/shared";
 
@@ -194,7 +194,7 @@ export const IncomeLineUnitSection = memo(
     const unitsQuery = useQuery({
       enabled: unitsProp == null,
       queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnits(propertyId),
+      queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
     });
 
     const units = unitsProp ?? unitsQuery.data?.units ?? EMPTY_UNITS;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
@@ -114,14 +114,22 @@ export const PropertyExpensesPage = memo(() => {
 
   const expenses = expensesQuery.data?.expenses ?? [];
 
-  usePropertyShellActions(
-    canManage ? (
-      <Button className="gap-1.5" onClick={() => setCreateOpen(true)} size="sm" type="button">
-        <Plus className="size-3.5" />
-        Add Expense
-      </Button>
-    ) : null
+  const handleOpenCreate = useCallback(() => {
+    setCreateOpen(true);
+  }, []);
+
+  const pageActions = useMemo(
+    () =>
+      canManage ? (
+        <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
+          <Plus className="size-3.5" />
+          Add Expense
+        </Button>
+      ) : null,
+    [canManage, handleOpenCreate]
   );
+
+  usePropertyShellActions(pageActions);
 
   return (
     <>
