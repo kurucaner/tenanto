@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { FastifyReply } from "fastify";
 
 import { HttpStatus } from "@/packages/shared";
-import { replyFromDatabaseError } from "@/routes/admin/reply-from-database-error";
+
+import { replyFromDatabaseError } from "./reply-from-database-error";
 
 function createMockReply(): {
   body: unknown;
@@ -35,9 +36,13 @@ function createMockReply(): {
 describe("replyFromDatabaseError", () => {
   test("handles unique violation with duplicate override", () => {
     const mock = createMockReply();
-    const handled = replyFromDatabaseError(mock.reply, { code: "23505" }, {
-      duplicateMessage: "Custom duplicate message",
-    });
+    const handled = replyFromDatabaseError(
+      mock.reply,
+      { code: "23505" },
+      {
+        duplicateMessage: "Custom duplicate message",
+      }
+    );
 
     expect(handled).toBe(true);
     expect(mock.statusCode).toBe(HttpStatus.CONFLICT);

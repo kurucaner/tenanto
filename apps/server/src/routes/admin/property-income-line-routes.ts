@@ -65,7 +65,11 @@ function parseCreateIncomeLineBody(
   if (amount === null) return { error: "amount must be a non-negative number", ok: false };
 
   let reservationId: string | undefined;
-  if (r["reservationId"] !== undefined && r["reservationId"] !== null && r["reservationId"] !== "") {
+  if (
+    r["reservationId"] !== undefined &&
+    r["reservationId"] !== null &&
+    r["reservationId"] !== ""
+  ) {
     const parsed = parseUuidParam(r["reservationId"]);
     if (parsed === null) return { error: "reservationId must be a valid UUID", ok: false };
     reservationId = parsed;
@@ -233,11 +237,7 @@ interface IPropertyIncomeLineParams {
   propertyId: string;
 }
 
-async function resolveUnitForProperty(
-  unitId: string,
-  propertyId: string,
-  reply: FastifyReply
-) {
+async function resolveUnitForProperty(unitId: string, propertyId: string, reply: FastifyReply) {
   const unit = await propertyUnitsDb.findById(unitId);
   if (!unit || unit.propertyId !== propertyId) {
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
@@ -254,7 +254,9 @@ async function resolveReservationForProperty(
 ) {
   const reservation = await propertyReservationsDb.findById(reservationId);
   if (!reservation || reservation.propertyId !== propertyId) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Reservation not found for this property" });
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Reservation not found for this property" });
     return null;
   }
   if (incomeUnit.unitKind !== UnitKind.AMENITY && reservation.unitId !== incomeUnit.id) {
@@ -284,18 +286,13 @@ async function resolveIncomeLineTypeForProperty(
   return incomeLineType;
 }
 
-function mergeIncomeLineInput(
-  existing: IPropertyIncomeLine,
-  patch: IUpdatePropertyIncomeLineBody
-) {
+function mergeIncomeLineInput(existing: IPropertyIncomeLine, patch: IUpdatePropertyIncomeLineBody) {
   return {
     amount: patch.amount ?? existing.amount,
-    description:
-      patch.description === undefined ? existing.description : patch.description,
+    description: patch.description === undefined ? existing.description : patch.description,
     guestName: patch.guestName === undefined ? existing.guestName : patch.guestName,
     incomeLineTypeId: patch.incomeLineTypeId ?? existing.incomeLineTypeId,
-    reservationId:
-      patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
+    reservationId: patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
     transactionDate: patch.transactionDate ?? existing.transactionDate,
     unitId: patch.unitId ?? existing.unitId,
   };
@@ -411,10 +408,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
   server.patch<{ Params: IPropertyIncomeLineParams }>(
     "/properties/:propertyId/income-lines/:lineId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -484,10 +478,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
   server.delete<{ Params: IPropertyIncomeLineParams }>(
     "/properties/:propertyId/income-lines/:lineId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });

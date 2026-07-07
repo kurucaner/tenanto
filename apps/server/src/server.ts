@@ -56,10 +56,7 @@ server.register(helmet);
 server.register(rateLimit, {
   allowList: (request) => {
     const path = request.url.split("?")[0];
-    return (
-      path === "/notifications/stream" ||
-      path === "/s3-notification"
-    );
+    return path === "/notifications/stream" || path === "/s3-notification";
   },
   max: isProduction ? 20 : 100,
   timeWindow: "1 minute",

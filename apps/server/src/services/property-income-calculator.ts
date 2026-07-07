@@ -85,9 +85,7 @@ export function calculateStayIncome(
   };
 }
 
-export function calculateMiscIncomeLine(
-  amount: number
-): IPropertyIncomeLineComputedFields {
+export function calculateMiscIncomeLine(amount: number): IPropertyIncomeLineComputedFields {
   const netIncome = roundMoney(amount);
   return {
     channelCommission: 0,

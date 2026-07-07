@@ -72,17 +72,32 @@ function parseCreateExpenseBody(
   if (amount === null) return { error: "amount must be a non-negative number", ok: false };
 
   const expenseDate = parseOptionalDateString(r["expenseDate"]);
-  if (expenseDate === null && r["expenseDate"] !== undefined && r["expenseDate"] !== null && r["expenseDate"] !== "") {
+  if (
+    expenseDate === null &&
+    r["expenseDate"] !== undefined &&
+    r["expenseDate"] !== null &&
+    r["expenseDate"] !== ""
+  ) {
     return { error: "expenseDate must be a YYYY-MM-DD date", ok: false };
   }
 
   const personName = parseOptionalString(r["personName"]);
-  if (personName === null && r["personName"] !== undefined && r["personName"] !== null && typeof r["personName"] !== "string") {
+  if (
+    personName === null &&
+    r["personName"] !== undefined &&
+    r["personName"] !== null &&
+    typeof r["personName"] !== "string"
+  ) {
     return { error: "personName must be a string", ok: false };
   }
 
   const description = parseOptionalString(r["description"]);
-  if (description === null && r["description"] !== undefined && r["description"] !== null && typeof r["description"] !== "string") {
+  if (
+    description === null &&
+    r["description"] !== undefined &&
+    r["description"] !== null &&
+    typeof r["description"] !== "string"
+  ) {
     return { error: "description must be a string", ok: false };
   }
 
@@ -206,15 +221,11 @@ interface IPropertyExpenseParams {
   propertyId: string;
 }
 
-function mergeExpenseInput(
-  existing: IPropertyExpense,
-  patch: IUpdatePropertyExpenseBody
-) {
+function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExpenseBody) {
   return {
     amount: patch.amount ?? existing.amount,
     category: patch.category ?? existing.category,
-    description:
-      patch.description === undefined ? existing.description : patch.description,
+    description: patch.description === undefined ? existing.description : patch.description,
     expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
     personName: patch.personName === undefined ? existing.personName : patch.personName,
   };
@@ -299,10 +310,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
   server.patch<{ Params: IPropertyExpenseParams }>(
     "/properties/:propertyId/expenses/:expenseId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyExpenseParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyExpenseParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -355,10 +363,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
   server.delete<{ Params: IPropertyExpenseParams }>(
     "/properties/:propertyId/expenses/:expenseId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyExpenseParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyExpenseParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });

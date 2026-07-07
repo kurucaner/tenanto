@@ -40,10 +40,7 @@ export const authOtpsDb = {
     await pool.query("DELETE FROM auth_otps WHERE id = $1", [id]);
   },
 
-  async findMostRecentCreatedAt(
-    email: string,
-    purpose: OtpPurpose
-  ): Promise<Date | null> {
+  async findMostRecentCreatedAt(email: string, purpose: OtpPurpose): Promise<Date | null> {
     const normalized = normalizeEmail(email);
     const result = await pool.query(
       `SELECT created_at FROM auth_otps

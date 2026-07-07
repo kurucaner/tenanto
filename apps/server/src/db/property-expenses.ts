@@ -83,10 +83,7 @@ export const propertyExpensesDb = {
     return result.rows.map((row) => mapPropertyExpenseRow(row as Record<string, unknown>));
   },
 
-  async update(
-    id: string,
-    input: IUpdatePropertyExpenseBody
-  ): Promise<IPropertyExpense | null> {
+  async update(id: string, input: IUpdatePropertyExpenseBody): Promise<IPropertyExpense | null> {
     const setClauses: string[] = [];
     const values: unknown[] = [];
     let param = 1;

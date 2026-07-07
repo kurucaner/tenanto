@@ -128,9 +128,7 @@ export const propertyIncomeLinesDb = {
       values
     );
 
-    return result.rows.map((row) =>
-      mapPropertyIncomeLineRow(row as Record<string, unknown>)
-    );
+    return result.rows.map((row) => mapPropertyIncomeLineRow(row as Record<string, unknown>));
   },
 
   async update(

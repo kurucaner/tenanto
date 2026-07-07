@@ -15,10 +15,7 @@ function loadTemplate(name: string): string {
   return content;
 }
 
-export function renderTemplate(
-  name: string,
-  vars: Record<string, string>
-): string {
+export function renderTemplate(name: string, vars: Record<string, string>): string {
   let html = loadTemplate(name);
   for (const [key, value] of Object.entries(vars)) {
     html = html.replaceAll(`{{${key}}}`, value);

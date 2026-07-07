@@ -19,9 +19,7 @@ export const propertyTaxRatesDb = {
        ORDER BY sort_order ASC, created_at ASC`,
       [propertyId]
     );
-    return result.rows.map((row) =>
-      mapPropertyTaxRateRow(row as Record<string, unknown>)
-    );
+    return result.rows.map((row) => mapPropertyTaxRateRow(row as Record<string, unknown>));
   },
 
   async replaceAll(

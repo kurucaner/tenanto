@@ -1,8 +1,8 @@
 import { userDb } from "@/db/users";
 import { UserType } from "@/packages/shared";
-import { sendSupportReplyEmail } from "@/ses/transactional-emails";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
 import { notifyUser, truncateNotificationBody } from "@/services/user-notifications";
+import { sendSupportReplyEmail } from "@/ses/transactional-emails";
 
 export interface NotifySupportAdminReplyParams {
   attachmentCount: number;
@@ -11,10 +11,7 @@ export interface NotifySupportAdminReplyParams {
   ticketUserId: string;
 }
 
-function buildSupportReplyNotificationBody(
-  messageBody: string,
-  attachmentCount: number
-): string {
+function buildSupportReplyNotificationBody(messageBody: string, attachmentCount: number): string {
   if (messageBody.length === 0 && attachmentCount > 0) {
     return "Sent an image";
   }

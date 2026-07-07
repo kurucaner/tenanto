@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  getConstraintErrorCode,
-  getConstraintMessage,
-} from "@/db/postgres-constraint-messages";
+import { getConstraintErrorCode, getConstraintMessage } from "@/db/postgres-constraint-messages";
 
 describe("postgres constraint messages", () => {
   test("maps reservation FK to friendly delete message", () => {

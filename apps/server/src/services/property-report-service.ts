@@ -284,9 +284,7 @@ export function buildPropertyReportSummary(
     grossIncome = roundMoney(grossIncome + stay.grossIncome);
     netIncome = roundMoney(netIncome + stay.netIncome);
 
-    salesTypeBreakdown.room = roundMoney(
-      salesTypeBreakdown.room + stay.roomRate * stay.nights
-    );
+    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + stay.roomRate * stay.nights);
     salesTypeBreakdown.cleaningFromStays = roundMoney(
       salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
     );

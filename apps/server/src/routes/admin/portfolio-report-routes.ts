@@ -25,10 +25,7 @@ export const portfolioReportRoutes = async (server: FastifyInstance): Promise<vo
       }
 
       const isAdmin = request.user.userType === UserType.ADMIN;
-      const properties = await propertiesDb.listAccessibleForUser(
-        request.user.userId,
-        isAdmin
-      );
+      const properties = await propertiesDb.listAccessibleForUser(request.user.userId, isAdmin);
       const summary = await buildPortfolioReportSummary(properties, parsed.query);
       return reply.send({ summary });
     }
@@ -47,10 +44,7 @@ export const portfolioReportRoutes = async (server: FastifyInstance): Promise<vo
       }
 
       const isAdmin = request.user.userType === UserType.ADMIN;
-      const properties = await propertiesDb.listAccessibleForUser(
-        request.user.userId,
-        isAdmin
-      );
+      const properties = await propertiesDb.listAccessibleForUser(request.user.userId, isAdmin);
       const summary = await buildPortfolioReportSummary(properties, parsed.query);
       const csv = buildPortfolioReportCsv(summary);
 

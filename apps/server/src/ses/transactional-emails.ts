@@ -2,8 +2,8 @@ import type { OtpPurpose } from "@/db/auth-otps";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
-import { escapeHtml } from "./ses-utils";
 import { sendTransactionalEmail } from "./ses";
+import { escapeHtml } from "./ses-utils";
 
 export interface PropertyInviteEmailOptions {
   inviterEmail: string;

@@ -9,10 +9,7 @@ import {
   hashToken,
   signAccessToken,
 } from "@/auth/jwt";
-import {
-  isAccountPermanentlyDeletedError,
-  isIdentityConflictError,
-} from "@/constants/account";
+import { isAccountPermanentlyDeletedError, isIdentityConflictError } from "@/constants/account";
 import { accountEventsDb } from "@/db/account-events";
 import { authOtpsDb } from "@/db/auth-otps";
 import { pool } from "@/db/pool";

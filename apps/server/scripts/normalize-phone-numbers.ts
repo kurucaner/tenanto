@@ -4,8 +4,9 @@
  * Usage:
  *   bun apps/server/scripts/normalize-phone-numbers.ts
  */
-import { pool } from "../src/db/pool";
 import { normalizeToE164 } from "@/packages/shared";
+
+import { pool } from "../src/db/pool";
 
 interface IPhoneRow {
   id: string;
@@ -45,7 +46,9 @@ async function normalizePhoneNumbers(): Promise<void> {
       updated += 1;
     }
 
-    console.log(`Done. Updated ${updated}, skipped ${skipped}, unchanged ${rows.length - updated - skipped}.`);
+    console.log(
+      `Done. Updated ${updated}, skipped ${skipped}, unchanged ${rows.length - updated - skipped}.`
+    );
   } finally {
     client.release();
     await pool.end();

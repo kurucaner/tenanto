@@ -9,9 +9,7 @@ import {
 import { parseOptionalUuid } from "./admin-query-utils";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const REPORT_RENTAL_TYPES = new Set<TReportRentalTypeFilter>(
-  Object.values(ReportRentalTypeFilter)
-);
+const REPORT_RENTAL_TYPES = new Set<TReportRentalTypeFilter>(Object.values(ReportRentalTypeFilter));
 const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
 
 function parseDateString(raw: unknown): string | null {
@@ -23,9 +21,7 @@ function parseDateString(raw: unknown): string | null {
 
 function parseReservationChannel(raw: unknown): TReservationChannel | null {
   if (typeof raw !== "string") return null;
-  return RESERVATION_CHANNELS.has(raw as TReservationChannel)
-    ? (raw as TReservationChannel)
-    : null;
+  return RESERVATION_CHANNELS.has(raw as TReservationChannel) ? (raw as TReservationChannel) : null;
 }
 
 function parseReportRentalType(raw: unknown): TReportRentalTypeFilter | null {

@@ -31,10 +31,10 @@ export const pushTokenDb = {
     token: string,
     db: DbQueryable = pool
   ): Promise<void> {
-    await db.query(
-      "UPDATE push_tokens SET is_active = false WHERE user_id = $1 AND token = $2",
-      [userId, token]
-    );
+    await db.query("UPDATE push_tokens SET is_active = false WHERE user_id = $1 AND token = $2", [
+      userId,
+      token,
+    ]);
   },
 
   async findActiveByUserId(userId: string): Promise<{ token: string }[]> {

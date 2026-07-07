@@ -1,6 +1,5 @@
 const CONSTRAINT_MESSAGES: Record<string, string> = {
-  property_income_lines_unit_id_fkey:
-    "This unit cannot be deleted because it has income records",
+  property_income_lines_unit_id_fkey: "This unit cannot be deleted because it has income records",
   property_reservations_unit_id_fkey:
     "This unit cannot be deleted because it has reservation records",
   property_units_property_id_unit_number_key:

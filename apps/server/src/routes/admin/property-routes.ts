@@ -338,10 +338,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   server.get<{ Params: IPropertyParams }>(
     "/properties/:propertyId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -363,10 +360,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   server.patch<{ Params: IPropertyParams }>(
     "/properties/:propertyId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -421,10 +415,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   server.delete<{ Params: IPropertyParams }>(
     "/properties/:propertyId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -474,10 +465,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   server.post<{ Params: IPropertyParams }>(
     "/properties/:propertyId/members",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -571,7 +559,9 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         const errMsg = err instanceof Error ? err.message : "Unknown email error";
         await propertyInvitesDb.updateStatus(invite.id, "email_failed", errMsg);
         const failed = { ...invite, emailError: errMsg, status: "email_failed" as const };
-        return reply.status(HttpStatus.CREATED).send({ invite: failed, type: "invite_email_failed" });
+        return reply
+          .status(HttpStatus.CREATED)
+          .send({ invite: failed, type: "invite_email_failed" });
       }
     }
   );
@@ -579,10 +569,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   server.patch<{ Params: IPropertyMemberParams }>(
     "/properties/:propertyId/members/:userId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyMemberParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyMemberParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -633,10 +620,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
   server.delete<{ Params: IPropertyMemberParams }>(
     "/properties/:propertyId/members/:userId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyMemberParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyMemberParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });

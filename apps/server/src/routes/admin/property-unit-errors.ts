@@ -1,5 +1,5 @@
 import type { IUnitDeleteBlockers } from "@/db/property-units";
-import { UnitKind, type TUnitKind } from "@/packages/shared";
+import { type TUnitKind, UnitKind } from "@/packages/shared";
 
 export const UNIT_DELETE_FOREIGN_KEY_FALLBACK =
   "This unit cannot be deleted because it is linked to reservations or income records";

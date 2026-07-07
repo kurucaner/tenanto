@@ -22,10 +22,7 @@ import { postDiscordWebhook } from "@/services/discord-webhook";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
 import { publishSupportAttachmentStatus } from "@/services/publish-support-attachment-status";
 import { notifySupportAdminReply } from "@/services/support-notifications";
-import {
-  buildSupportStatusChangedNotification,
-  notifyUser,
-} from "@/services/user-notifications";
+import { buildSupportStatusChangedNotification, notifyUser } from "@/services/user-notifications";
 
 import {
   isValidSupportCategory,
@@ -267,9 +264,7 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         request.log
       );
       if (!verifiedAttachments.ok) {
-        return reply
-          .status(verifiedAttachments.status)
-          .send({ error: verifiedAttachments.error });
+        return reply.status(verifiedAttachments.status).send({ error: verifiedAttachments.error });
       }
 
       let detail;
@@ -403,14 +398,11 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         request.log
       );
       if (!verifiedAttachments.ok) {
-        return reply
-          .status(verifiedAttachments.status)
-          .send({ error: verifiedAttachments.error });
+        return reply.status(verifiedAttachments.status).send({ error: verifiedAttachments.error });
       }
 
       await supportMessagesDb.create({
-        attachments:
-          parsedBody.attachments.length > 0 ? parsedBody.attachments : undefined,
+        attachments: parsedBody.attachments.length > 0 ? parsedBody.attachments : undefined,
         authorUserId: request.user.userId,
         body: parsedBody.body,
         supportRequestId: idParsed,
@@ -424,10 +416,9 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         await supportRequestsDb.updateStatus(idParsed, nextStatus);
       }
 
-      const detail =
-        isAdmin
-          ? await supportRequestsDb.findDetailByIdForAdmin(idParsed)
-          : await supportRequestsDb.findDetailByIdForUser(idParsed, request.user.userId);
+      const detail = isAdmin
+        ? await supportRequestsDb.findDetailByIdForAdmin(idParsed)
+        : await supportRequestsDb.findDetailByIdForUser(idParsed, request.user.userId);
 
       if (detail == null) {
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });

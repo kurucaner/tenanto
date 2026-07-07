@@ -123,7 +123,9 @@ export const propertyReservationsDb = {
       values.push(filters.status);
     }
 
-    const joinUnits = filters.rentalType ? "INNER JOIN property_units pu ON pu.id = pr.unit_id" : "";
+    const joinUnits = filters.rentalType
+      ? "INNER JOIN property_units pu ON pu.id = pr.unit_id"
+      : "";
     if (filters.rentalType) {
       conditions.push(`pu.rental_type = $${p++}::property_unit_rental_type`);
       values.push(filters.rentalType);
@@ -141,9 +143,7 @@ export const propertyReservationsDb = {
       values
     );
 
-    return result.rows.map((row) =>
-      mapPropertyReservationRow(row as Record<string, unknown>)
-    );
+    return result.rows.map((row) => mapPropertyReservationRow(row as Record<string, unknown>));
   },
 
   async update(

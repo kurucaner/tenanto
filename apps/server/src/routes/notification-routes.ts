@@ -6,10 +6,7 @@ import { HttpStatus, UserType } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
 
-import {
-  parseNotificationListLimit,
-  parseUuidParam,
-} from "./notification-query-utils";
+import { parseNotificationListLimit, parseUuidParam } from "./notification-query-utils";
 
 export interface INotificationsListQuerystring {
   cursor?: string;
@@ -43,17 +40,9 @@ export const notificationRoutes = async (server: FastifyInstance): Promise<void>
           : undefined;
 
       const initialCount =
-        request.user.userType === UserType.USER
-          ? await userNotificationsDb.countUnread(userId)
-          : 0;
+        request.user.userType === UserType.USER ? await userNotificationsDb.countUnread(userId) : 0;
 
-      notificationStreamHub.register(
-        userId,
-        request.user.userType,
-        reply,
-        initialCount,
-        clientId
-      );
+      notificationStreamHub.register(userId, request.user.userType, reply, initialCount, clientId);
     }
   );
 

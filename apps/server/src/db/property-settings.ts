@@ -19,9 +19,7 @@ const BODY_TO_COLUMN: Record<
   expediaCommissionRate: "expedia_commission_rate",
 };
 
-async function mergeSettingsWithRelated(
-  row: Record<string, unknown>
-): Promise<IPropertySettings> {
+async function mergeSettingsWithRelated(row: Record<string, unknown>): Promise<IPropertySettings> {
   const base = mapPropertySettingsRow(row);
   const [taxRates, incomeLineTypes] = await Promise.all([
     propertyTaxRatesDb.findByProperty(base.propertyId),

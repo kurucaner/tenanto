@@ -31,10 +31,7 @@ export const homeRoutes = async (server: FastifyInstance): Promise<void> => {
     { preHandler: [server.authenticate] },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const isAdmin = request.user.userType === UserType.ADMIN;
-      const properties = await propertiesDb.listAccessibleForUser(
-        request.user.userId,
-        isAdmin
-      );
+      const properties = await propertiesDb.listAccessibleForUser(request.user.userId, isAdmin);
       const period = getHomeFinancialDateRange();
 
       if (properties.length === 0) {

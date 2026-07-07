@@ -94,9 +94,7 @@ export const supportMessagesDb = {
        ORDER BY sm.created_at ASC, sm.id ASC`,
       [supportRequestId]
     );
-    const messages = result.rows.map((row) =>
-      mapSupportMessageRow(row as Record<string, unknown>)
-    );
+    const messages = result.rows.map((row) => mapSupportMessageRow(row as Record<string, unknown>));
     return attachMessageAttachments(messages);
   },
 };

@@ -1,8 +1,4 @@
-import type {
-  IPropertyInvite,
-  TPropertyInviteStatus,
-  TPropertyRole,
-} from "@/packages/shared";
+import type { IPropertyInvite, TPropertyInviteStatus, TPropertyRole } from "@/packages/shared";
 
 import { mapPropertyInviteRow } from "./mappers";
 import { pool } from "./pool";
@@ -38,10 +34,7 @@ export const propertyInvitesDb = {
     return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
   },
 
-  async findByPropertyAndEmail(
-    propertyId: string,
-    email: string
-  ): Promise<IPropertyInvite | null> {
+  async findByPropertyAndEmail(propertyId: string, email: string): Promise<IPropertyInvite | null> {
     const result = await pool.query(
       `SELECT * FROM property_invites
        WHERE property_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))`,

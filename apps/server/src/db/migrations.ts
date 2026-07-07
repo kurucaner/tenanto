@@ -414,9 +414,7 @@ export const migrations: IMigration[] = [
       await client.query(
         `CREATE INDEX idx_property_members_property_id ON property_members(property_id);`
       );
-      await client.query(
-        `CREATE INDEX idx_property_members_user_id ON property_members(user_id);`
-      );
+      await client.query(`CREATE INDEX idx_property_members_user_id ON property_members(user_id);`);
     },
     version: 11,
   },

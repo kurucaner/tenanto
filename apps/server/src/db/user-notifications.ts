@@ -26,9 +26,7 @@ function mapUserNotificationRow(row: Record<string, unknown>): IUserNotification
     readAt: row.read_at != null ? (row.read_at as Date).toISOString() : null,
     resourceId: (row.resource_id as string) ?? null,
     resourceType:
-      resourceType === "property" || resourceType === "support_request"
-        ? resourceType
-        : null,
+      resourceType === "property" || resourceType === "support_request" ? resourceType : null,
     title: row.title as string,
     type: row.type as UserNotificationType,
   };

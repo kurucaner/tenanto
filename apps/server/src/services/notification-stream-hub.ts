@@ -7,7 +7,12 @@ import { Client } from "pg";
 import { pool } from "@/db/pool";
 import { userNotificationsDb } from "@/db/user-notifications";
 import { buildSseCorsHeaders } from "@/lib/cors-headers";
-import { type INotificationStreamEvent, type IUserNotification, type TSupportStagedUploadStatus, UserType } from "@/packages/shared";
+import {
+  type INotificationStreamEvent,
+  type IUserNotification,
+  type TSupportStagedUploadStatus,
+  UserType,
+} from "@/packages/shared";
 
 const NOTIFY_CHANNEL = "user_notifications";
 const MAX_CONNECTIONS_PER_USER = 5;

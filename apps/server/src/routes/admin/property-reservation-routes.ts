@@ -17,10 +17,7 @@ import {
   UnitKind,
   UnitRentalType,
 } from "@/packages/shared";
-import {
-  calculateNights,
-  calculateStayIncome,
-} from "@/services/property-income-calculator";
+import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
 import {
@@ -43,16 +40,12 @@ function parseDateString(raw: unknown): string | null {
 
 function parseReservationStatus(raw: unknown): TReservationStatus | null {
   if (typeof raw !== "string") return null;
-  return RESERVATION_STATUSES.has(raw as TReservationStatus)
-    ? (raw as TReservationStatus)
-    : null;
+  return RESERVATION_STATUSES.has(raw as TReservationStatus) ? (raw as TReservationStatus) : null;
 }
 
 function parseReservationChannel(raw: unknown): TReservationChannel | null {
   if (typeof raw !== "string") return null;
-  return RESERVATION_CHANNELS.has(raw as TReservationChannel)
-    ? (raw as TReservationChannel)
-    : null;
+  return RESERVATION_CHANNELS.has(raw as TReservationChannel) ? (raw as TReservationChannel) : null;
 }
 
 function parseMoney(raw: unknown): number | null {
@@ -462,11 +455,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       const computed = await buildComputedFields(propertyId, parsed.body, reply);
       if (!computed) return;
 
-      const reservation = await propertyReservationsDb.create(
-        propertyId,
-        parsed.body,
-        computed
-      );
+      const reservation = await propertyReservationsDb.create(propertyId, parsed.body, computed);
       return reply.status(HttpStatus.CREATED).send({ reservation });
     }
   );
@@ -518,11 +507,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       const computed = await buildComputedFields(propertyId, merged, reply);
       if (!computed) return;
 
-      const reservation = await propertyReservationsDb.update(
-        reservationId,
-        parsed.body,
-        computed
-      );
+      const reservation = await propertyReservationsDb.update(reservationId, parsed.body, computed);
       return reply.send({ reservation });
     }
   );

@@ -10,10 +10,7 @@ import {
 } from "@/packages/shared";
 
 import { parseUuidParam } from "./admin-query-utils";
-import {
-  assertPropertyMemberAccess,
-  assertPropertyStructureAccess,
-} from "./property-route-access";
+import { assertPropertyMemberAccess, assertPropertyStructureAccess } from "./property-route-access";
 
 const COMMISSION_FIELDS: Array<
   Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">
@@ -101,12 +98,12 @@ function parseTaxRates(
   return { ok: true, taxRates };
 }
 
-function parseIncomeLineTypes(
-  raw: unknown
-): { error: string; incomeLineTypes: IPropertyIncomeLineTypeInput[]; ok: false } | {
-  incomeLineTypes: IPropertyIncomeLineTypeInput[];
-  ok: true;
-} {
+function parseIncomeLineTypes(raw: unknown):
+  | { error: string; incomeLineTypes: IPropertyIncomeLineTypeInput[]; ok: false }
+  | {
+      incomeLineTypes: IPropertyIncomeLineTypeInput[];
+      ok: true;
+    } {
   if (!Array.isArray(raw)) {
     return { error: "incomeLineTypes must be an array", incomeLineTypes: [], ok: false };
   }
@@ -243,9 +240,7 @@ async function validateIncomeLineTypeRemoval(
   incoming: IPropertyIncomeLineTypeInput[]
 ): Promise<{ error: string; ok: false } | { ok: true }> {
   const existing = await propertyIncomeLineTypesDb.findByProperty(propertyId);
-  const incomingIds = new Set(
-    incoming.flatMap((input) => (input.id != null ? [input.id] : []))
-  );
+  const incomingIds = new Set(incoming.flatMap((input) => (input.id != null ? [input.id] : [])));
   const removed = existing.filter((type) => !incomingIds.has(type.id));
 
   for (const type of removed) {
