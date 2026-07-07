@@ -116,7 +116,7 @@ UnitRow.displayName = "UnitRow";
 
 export const PropertyUnitsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
-  const canManage = permissions.canManageStructure;
+  const canManage = permissions.canManageUnits;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [createAmenityOpen, setCreateAmenityOpen] = useState(false);

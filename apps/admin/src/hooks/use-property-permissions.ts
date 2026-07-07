@@ -8,6 +8,7 @@ export interface IPropertyPermissions {
   canManageLedger: boolean;
   canManageMembers: boolean;
   canManageStructure: boolean;
+  canManageUnits: boolean;
   canView: boolean;
   isAdmin: boolean;
   isCreator: boolean;
@@ -21,7 +22,9 @@ export function derivePropertyPermissions(
   const isCreator = Boolean(property && currentUser && property.createdBy === currentUser.id);
   const callerMembership = property?.members.find((m) => m.userId === currentUser?.id);
   const isOwnerMember = callerMembership?.role === PropertyRole.OWNER;
+  const isManagerMember = callerMembership?.role === PropertyRole.MANAGER;
   const canManageStructure = isAdmin || isCreator || isOwnerMember;
+  const canManageUnits = isAdmin || isCreator || isOwnerMember || isManagerMember;
   const canManageLedger = isCreator || isOwnerMember;
   const canView = isAdmin || isCreator || Boolean(callerMembership);
 
@@ -30,6 +33,7 @@ export function derivePropertyPermissions(
     canManageLedger,
     canManageMembers: canManageStructure,
     canManageStructure,
+    canManageUnits,
     canView,
     isAdmin,
     isCreator,

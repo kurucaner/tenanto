@@ -339,12 +339,12 @@ flowchart LR
 
 ## Access control (all phases)
 
-| Action | Admin | Creator | Owner member | Manager / Accountant |
-|--------|-------|---------|--------------|----------------------|
-| View property data | Yes | Yes | Yes | Yes (member) |
-| Manage units | Yes | Yes | Yes | No |
-| Edit settings | Yes | Yes | Yes | No |
-| Add/edit income & expenses | No | Yes | Yes | No |
-| View reports | Yes | Yes | Yes | Yes |
+| Action | Admin | Creator | Owner member | Manager | Accountant |
+|--------|-------|---------|--------------|---------|------------|
+| View property data | Yes | Yes | Yes | Yes (member) | Yes (member) |
+| Manage units | Yes | Yes | Yes | Yes | No |
+| Edit settings | Yes | Yes | Yes | No | No |
+| Add/edit income & expenses | No | Yes | Yes | No | No |
+| View reports | Yes | Yes | Yes | Yes | Yes |
 
-Finalize manager/accountant write permissions when planning Phase 4.
+Manager unit/amenity write access is implemented; accountant and ledger write permissions remain Phase 4.

@@ -14,7 +14,7 @@ import {
 import { parseUuidParam } from "./admin-query-utils";
 import {
   assertPropertyMemberAccess,
-  assertPropertyStructureAccess,
+  assertPropertyUnitManageAccess,
 } from "./property-route-access";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
@@ -155,14 +155,14 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyStructureAccess(
+      const canManageUnits = await assertPropertyUnitManageAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage units"
+        "Only property owners and managers can manage units"
       );
-      if (!isOwner) return;
+      if (!canManageUnits) return;
 
       const parsed = parseCreateUnitBody(request.body);
       if (!parsed.ok) {
@@ -195,14 +195,14 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyStructureAccess(
+      const canManageUnits = await assertPropertyUnitManageAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage units"
+        "Only property owners and managers can manage units"
       );
-      if (!isOwner) return;
+      if (!canManageUnits) return;
 
       const existing = await propertyUnitsDb.findById(unitId);
       if (!existing || existing.propertyId !== propertyId) {
@@ -249,14 +249,14 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const isOwner = await assertPropertyStructureAccess(
+      const canManageUnits = await assertPropertyUnitManageAccess(
         propertyId,
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage units"
+        "Only property owners and managers can manage units"
       );
-      if (!isOwner) return;
+      if (!canManageUnits) return;
 
       const existing = await propertyUnitsDb.findById(unitId);
       if (!existing || existing.propertyId !== propertyId) {
