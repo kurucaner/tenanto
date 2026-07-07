@@ -7,7 +7,10 @@ import { toast } from "sonner";
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
 import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
-import { ReportSectionTable } from "@/components/reports/report-section-table";
+import {
+  ReportSectionTable,
+  type ReportTableColumnDef,
+} from "@/components/reports/report-section-table";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,18 +18,201 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { reportsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  buildSalesTypeBreakdownRows,
+  sortChannelSummaryRows,
+  sortExpenseCategoryRows,
+  sortMonthSummaryRows,
+  sortSalesTypeRows,
+  sortUnitSummaryRows,
+} from "@/lib/report-table-sort";
+import {
   formatReportPercent,
   getDefaultReportDateRange,
 } from "@/lib/report-date-defaults";
 import {
+  type IPropertyReportSummary,
   type IPropertyReportsQuery,
   type TReportRentalTypeFilter,
 } from "@/packages/shared";
+
+const SALES_TYPE_COLUMNS: ReportTableColumnDef[] = [
+  { id: "type", label: "Type" },
+  { id: "amount", align: "right", label: "Amount" },
+];
+
+const CHANNEL_COLUMNS: ReportTableColumnDef[] = [
+  { id: "channel", label: "Channel" },
+  { id: "gross", align: "right", label: "Gross" },
+  { id: "commission", align: "right", label: "Commission" },
+  { id: "stays", align: "right", label: "Stays" },
+];
+
+const UNIT_COLUMNS: ReportTableColumnDef[] = [
+  { id: "unit", label: "Unit" },
+  { id: "gross", align: "right", label: "Gross" },
+  { id: "net", align: "right", label: "Net" },
+  { id: "bookedNights", align: "right", label: "Booked nights" },
+  { id: "availableNights", align: "right", label: "Available nights" },
+  { id: "occupancy", align: "right", label: "Occupancy" },
+  { id: "adr", align: "right", label: "ADR" },
+];
+
+const MONTH_COLUMNS: ReportTableColumnDef[] = [
+  { id: "month", label: "Month" },
+  { id: "gross", align: "right", label: "Gross" },
+  { id: "net", align: "right", label: "Net" },
+  { id: "expenses", align: "right", label: "Expenses" },
+  { id: "operationalNet", align: "right", label: "Operational net" },
+];
+
+const EXPENSE_COLUMNS: ReportTableColumnDef[] = [
+  { id: "category", label: "Category" },
+  { id: "amount", align: "right", label: "Amount" },
+];
+
+const PropertyReportTables = memo(({ summary }: { summary: IPropertyReportSummary }) => {
+  const salesTypeSort = useTableSort("amount", "desc");
+  const channelSort = useTableSort("gross", "desc");
+  const unitSort = useTableSort("unit", "asc");
+  const monthSort = useTableSort("month", "asc");
+  const expenseSort = useTableSort("amount", "desc");
+
+  const salesTypeRows = useMemo(
+    () =>
+      sortSalesTypeRows(
+        buildSalesTypeBreakdownRows(summary.salesTypeBreakdown),
+        salesTypeSort.sortState
+      ),
+    [salesTypeSort.sortState, summary.salesTypeBreakdown]
+  );
+
+  const channelRows = useMemo(
+    () => sortChannelSummaryRows(summary.channelSummary, channelSort.sortState),
+    [channelSort.sortState, summary.channelSummary]
+  );
+
+  const unitRows = useMemo(
+    () => sortUnitSummaryRows(summary.byUnit, unitSort.sortState),
+    [summary.byUnit, unitSort.sortState]
+  );
+
+  const monthRows = useMemo(
+    () => sortMonthSummaryRows(summary.byMonth, monthSort.sortState),
+    [monthSort.sortState, summary.byMonth]
+  );
+
+  const expenseRows = useMemo(
+    () => sortExpenseCategoryRows(summary.expenseByCategory, expenseSort.sortState),
+    [expenseSort.sortState, summary.expenseByCategory]
+  );
+
+  return (
+    <div className="space-y-6">
+      <ReportSummaryCards totals={summary.totals} />
+
+      <ReportSectionTable
+        columns={SALES_TYPE_COLUMNS}
+        getColumnAriaSort={salesTypeSort.getColumnAriaSort}
+        getColumnDirection={salesTypeSort.getColumnDirection}
+        isEmpty={false}
+        onSortColumn={salesTypeSort.toggleSort}
+        title="Sales-type breakdown"
+      >
+        {salesTypeRows.map((row) => (
+          <TableRow key={row.id}>
+            <TableCell>{row.label}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.amount)}</TableCell>
+          </TableRow>
+        ))}
+      </ReportSectionTable>
+
+      <ReportSectionTable
+        columns={CHANNEL_COLUMNS}
+        getColumnAriaSort={channelSort.getColumnAriaSort}
+        getColumnDirection={channelSort.getColumnDirection}
+        isEmpty={summary.channelSummary.length === 0}
+        onSortColumn={channelSort.toggleSort}
+        title="Channel summary"
+      >
+        {channelRows.map((row) => (
+          <TableRow key={row.channel}>
+            <TableCell>{formatChannelLabel(row.channel)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.grossIncome)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.channelCommission)}</TableCell>
+            <TableCell className="text-right">{row.stayCount}</TableCell>
+          </TableRow>
+        ))}
+      </ReportSectionTable>
+
+      <ReportSectionTable
+        columns={UNIT_COLUMNS}
+        getColumnAriaSort={unitSort.getColumnAriaSort}
+        getColumnDirection={unitSort.getColumnDirection}
+        isEmpty={summary.byUnit.length === 0}
+        onSortColumn={unitSort.toggleSort}
+        title="Per-unit income and occupancy"
+      >
+        {unitRows.map((row) => (
+          <TableRow key={row.unitId}>
+            <TableCell>{row.unitNumber}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.grossIncome)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.netIncome)}</TableCell>
+            <TableCell className="text-right">{row.bookedNights}</TableCell>
+            <TableCell className="text-right">{row.availableNights}</TableCell>
+            <TableCell className="text-right">{formatReportPercent(row.occupancyRate)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.adr)}</TableCell>
+          </TableRow>
+        ))}
+      </ReportSectionTable>
+
+      <p className="text-muted-foreground text-xs">
+        Property expenses total: {formatMoney(summary.propertyExpensesTotal)} (not split by unit)
+      </p>
+
+      <ReportSectionTable
+        columns={MONTH_COLUMNS}
+        getColumnAriaSort={monthSort.getColumnAriaSort}
+        getColumnDirection={monthSort.getColumnDirection}
+        isEmpty={summary.byMonth.length === 0}
+        onSortColumn={monthSort.toggleSort}
+        title="Monthly trend"
+      >
+        {monthRows.map((row) => (
+          <TableRow key={row.month}>
+            <TableCell>{row.month}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.grossIncome)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.netIncome)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.expenses)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.operationalNet)}</TableCell>
+          </TableRow>
+        ))}
+      </ReportSectionTable>
+
+      <ReportSectionTable
+        columns={EXPENSE_COLUMNS}
+        getColumnAriaSort={expenseSort.getColumnAriaSort}
+        getColumnDirection={expenseSort.getColumnDirection}
+        isEmpty={summary.expenseByCategory.length === 0}
+        onSortColumn={expenseSort.toggleSort}
+        title="Expenses by category"
+      >
+        {expenseRows.map((row) => (
+          <TableRow key={row.category}>
+            <TableCell>{formatExpenseCategoryLabel(row.category)}</TableCell>
+            <TableCell className="text-right">{formatMoney(row.amount)}</TableCell>
+          </TableRow>
+        ))}
+      </ReportSectionTable>
+    </div>
+  );
+});
+PropertyReportTables.displayName = "PropertyReportTables";
 
 export const PropertyReportsPage = memo(() => {
   const { propertyId } = usePropertyShell();
@@ -126,121 +312,7 @@ export const PropertyReportsPage = memo(() => {
               : "Failed to load report"}
           </p>
         ) : (
-          <div className="space-y-6">
-            <ReportSummaryCards totals={summary.totals} />
-
-            <ReportSectionTable
-              columns={["Type", "Amount"]}
-              isEmpty={false}
-              title="Sales-type breakdown"
-            >
-              <TableRow>
-                <TableCell>Room</TableCell>
-                <TableCell className="text-right">
-                  {formatMoney(summary.salesTypeBreakdown.room)}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Cleaning (total)</TableCell>
-                <TableCell className="text-right">
-                  {formatMoney(summary.salesTypeBreakdown.totalCleaning)}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Extra cleaning</TableCell>
-                <TableCell className="text-right">
-                  {formatMoney(summary.salesTypeBreakdown.extraCleaning)}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Extra service</TableCell>
-                <TableCell className="text-right">
-                  {formatMoney(summary.salesTypeBreakdown.extraService)}
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>Beach rental</TableCell>
-                <TableCell className="text-right">
-                  {formatMoney(summary.salesTypeBreakdown.beachRental)}
-                </TableCell>
-              </TableRow>
-            </ReportSectionTable>
-
-            <ReportSectionTable
-              columns={["Channel", "Gross", "Commission", "Stays"]}
-              isEmpty={summary.channelSummary.length === 0}
-              title="Channel summary"
-            >
-              {summary.channelSummary.map((row) => (
-                <TableRow key={row.channel}>
-                  <TableCell>{formatChannelLabel(row.channel)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.grossIncome)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.channelCommission)}</TableCell>
-                  <TableCell className="text-right">{row.stayCount}</TableCell>
-                </TableRow>
-              ))}
-            </ReportSectionTable>
-
-            <ReportSectionTable
-              columns={[
-                "Unit",
-                "Gross",
-                "Net",
-                "Booked nights",
-                "Available nights",
-                "Occupancy",
-                "ADR",
-              ]}
-              isEmpty={summary.byUnit.length === 0}
-              title="Per-unit income and occupancy"
-            >
-              {summary.byUnit.map((row) => (
-                <TableRow key={row.unitId}>
-                  <TableCell>{row.unitNumber}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.grossIncome)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.netIncome)}</TableCell>
-                  <TableCell className="text-right">{row.bookedNights}</TableCell>
-                  <TableCell className="text-right">{row.availableNights}</TableCell>
-                  <TableCell className="text-right">{formatReportPercent(row.occupancyRate)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.adr)}</TableCell>
-                </TableRow>
-              ))}
-            </ReportSectionTable>
-
-            <p className="text-muted-foreground text-xs">
-              Property expenses total: {formatMoney(summary.propertyExpensesTotal)} (not split by
-              unit)
-            </p>
-
-            <ReportSectionTable
-              columns={["Month", "Gross", "Net", "Expenses", "Operational net"]}
-              isEmpty={summary.byMonth.length === 0}
-              title="Monthly trend"
-            >
-              {summary.byMonth.map((row) => (
-                <TableRow key={row.month}>
-                  <TableCell>{row.month}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.grossIncome)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.netIncome)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.expenses)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.operationalNet)}</TableCell>
-                </TableRow>
-              ))}
-            </ReportSectionTable>
-
-            <ReportSectionTable
-              columns={["Category", "Amount"]}
-              isEmpty={summary.expenseByCategory.length === 0}
-              title="Expenses by category"
-            >
-              {summary.expenseByCategory.map((row) => (
-                <TableRow key={row.category}>
-                  <TableCell>{formatExpenseCategoryLabel(row.category)}</TableCell>
-                  <TableCell className="text-right">{formatMoney(row.amount)}</TableCell>
-                </TableRow>
-              ))}
-            </ReportSectionTable>
-          </div>
+          <PropertyReportTables summary={summary} />
         )}
       </CardContent>
     </Card>

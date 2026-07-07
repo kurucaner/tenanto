@@ -1,10 +1,15 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
 
-import { ReportSectionTable } from "@/components/reports/report-section-table";
+import {
+  ReportSectionTable,
+  type ReportTableColumnDef,
+} from "@/components/reports/report-section-table";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { formatMoney } from "@/lib/format-money";
-import { buildPropertyReportsPath,formatReportPercent } from "@/lib/report-date-defaults";
+import { sortPortfolioPropertyRows } from "@/lib/report-table-sort";
+import { buildPropertyReportsPath, formatReportPercent } from "@/lib/report-date-defaults";
 import type { IPortfolioPropertyReportRow } from "@/packages/shared";
 
 interface PortfolioPropertyTableProps {
@@ -13,6 +18,15 @@ interface PortfolioPropertyTableProps {
   rentalType?: string;
   to: string;
 }
+
+const PORTFOLIO_COLUMNS: ReportTableColumnDef[] = [
+  { id: "property", label: "Property" },
+  { id: "netIncome", align: "right", label: "Net income" },
+  { id: "expenses", align: "right", label: "Expenses" },
+  { id: "operationalNet", align: "right", label: "Operational net" },
+  { id: "occupancy", align: "right", label: "Occupancy" },
+  { id: "adr", align: "right", label: "ADR" },
+];
 
 function aggregateOccupancy(row: IPortfolioPropertyReportRow): number {
   const { byUnit } = row.summary;
@@ -31,41 +45,49 @@ function aggregateAdr(row: IPortfolioPropertyReportRow): number {
 }
 
 export const PortfolioPropertyTable = memo(
-  ({ from, properties, rentalType, to }: PortfolioPropertyTableProps) => (
-    <ReportSectionTable
-      columns={[
-        "Property",
-        "Net income",
-        "Expenses",
-        "Operational net",
-        "Occupancy",
-        "ADR",
-      ]}
-      isEmpty={properties.length === 0}
-      title="Per-property breakdown"
-    >
-      {properties.map((row) => (
-        <TableRow key={row.propertyId}>
-          <TableCell>
-            <Link
-              className="font-medium text-foreground hover:underline"
-              to={buildPropertyReportsPath(row.propertyId, from, to, rentalType)}
-            >
-              {row.propertyName}
-            </Link>
-          </TableCell>
-          <TableCell className="text-right">{formatMoney(row.summary.totals.netIncome)}</TableCell>
-          <TableCell className="text-right">
-            {formatMoney(row.summary.totals.totalExpenses)}
-          </TableCell>
-          <TableCell className="text-right">
-            {formatMoney(row.summary.totals.operationalNet)}
-          </TableCell>
-          <TableCell className="text-right">{formatReportPercent(aggregateOccupancy(row))}</TableCell>
-          <TableCell className="text-right">{formatMoney(aggregateAdr(row))}</TableCell>
-        </TableRow>
-      ))}
-    </ReportSectionTable>
-  )
+  ({ from, properties, rentalType, to }: PortfolioPropertyTableProps) => {
+    const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useTableSort(
+      "netIncome",
+      "desc"
+    );
+
+    const sortedProperties = useMemo(
+      () => sortPortfolioPropertyRows(properties, sortState),
+      [properties, sortState]
+    );
+
+    return (
+      <ReportSectionTable
+        columns={PORTFOLIO_COLUMNS}
+        getColumnAriaSort={getColumnAriaSort}
+        getColumnDirection={getColumnDirection}
+        isEmpty={properties.length === 0}
+        onSortColumn={toggleSort}
+        title="Per-property breakdown"
+      >
+        {sortedProperties.map((row) => (
+          <TableRow key={row.propertyId}>
+            <TableCell>
+              <Link
+                className="font-medium text-foreground hover:underline"
+                to={buildPropertyReportsPath(row.propertyId, from, to, rentalType)}
+              >
+                {row.propertyName}
+              </Link>
+            </TableCell>
+            <TableCell className="text-right">{formatMoney(row.summary.totals.netIncome)}</TableCell>
+            <TableCell className="text-right">
+              {formatMoney(row.summary.totals.totalExpenses)}
+            </TableCell>
+            <TableCell className="text-right">
+              {formatMoney(row.summary.totals.operationalNet)}
+            </TableCell>
+            <TableCell className="text-right">{formatReportPercent(aggregateOccupancy(row))}</TableCell>
+            <TableCell className="text-right">{formatMoney(aggregateAdr(row))}</TableCell>
+          </TableRow>
+        ))}
+      </ReportSectionTable>
+    );
+  }
 );
 PortfolioPropertyTable.displayName = "PortfolioPropertyTable";

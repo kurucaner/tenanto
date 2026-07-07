@@ -323,6 +323,17 @@ html.dark .admin-dashboard-shell {
     radial-gradient(ellipse 85% 55% at 0% 100%, var(--admin-surface-glow-b), transparent 52%);
 }
 
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

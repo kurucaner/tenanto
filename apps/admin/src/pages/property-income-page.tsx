@@ -17,6 +17,7 @@ import {
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayFeesDetailsDialog } from "@/components/income/stay-fees-details-dialog";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,14 +27,19 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useTableSort } from "@/hooks/use-table-sort";
 import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
+import {
+  getEntryUnitId,
+  sortIncomeEntries,
+  type TIncomeEntrySortColumnId,
+} from "@/lib/income-entry-sort";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
@@ -72,14 +78,29 @@ function buildMergedEntries(
     }
   }
 
-  return entries.sort((a, b) => getEntryDate(b).localeCompare(getEntryDate(a)));
+  return entries;
 }
 
-function getEntryDate(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY
-    ? entry.stay.checkIn
-    : entry.line.transactionDate;
-}
+const INCOME_TABLE_COLUMNS: {
+  align?: "left" | "right";
+  id: TIncomeEntrySortColumnId;
+  label: string;
+  sortable?: boolean;
+}[] = [
+  { id: "type", label: "Type" },
+  { id: "unit", label: "Unit" },
+  { id: "guest", label: "Guest" },
+  { id: "date", label: "Date / Check-in" },
+  { id: "checkOut", label: "Check-out" },
+  { id: "nights", label: "Nights" },
+  { id: "channel", label: "Channel" },
+  { id: "status", label: "Status" },
+  { id: "roomRate", label: "Room rate / night", align: "right" },
+  { id: "cleaning", label: "Cleaning", align: "right" },
+  { id: "taxesFees", label: "Taxes & Fees", align: "right" },
+  { id: "gross", label: "Gross", align: "right" },
+  { id: "net", label: "Net", align: "right" },
+];
 
 function buildDateFilters(from: string, to: string, unitId: string) {
   const next: { from?: string; to?: string; unitId?: string } = {};
@@ -115,10 +136,6 @@ function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
   return entry.entryKind === IncomeEntryKind.STAY
     ? `stay-${entry.stay.id}`
     : `line-${entry.line.id}`;
-}
-
-function getIncomeEntryUnitId(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY ? entry.stay.unitId : entry.line.unitId;
 }
 
 function handleDeleteLine(
@@ -185,6 +202,8 @@ const PropertyIncomeEntriesTable = memo(
   ({
     canManage,
     entries,
+    getColumnAriaSort,
+    getColumnDirection,
     isLoading,
     onAddOtherIncomeFromStay,
     onDeleteLine,
@@ -192,10 +211,13 @@ const PropertyIncomeEntriesTable = memo(
     onEditLine,
     onEditStay,
     onShowFeesDetails,
+    onSortColumn,
     unitLabelById,
   }: {
     canManage: boolean;
     entries: TPropertyIncomeEntry[];
+    getColumnAriaSort: (columnId: string) => "ascending" | "descending" | "none";
+    getColumnDirection: (columnId: string) => "asc" | "desc" | null;
     isLoading: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine) => void;
@@ -203,6 +225,7 @@ const PropertyIncomeEntriesTable = memo(
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
     onShowFeesDetails: (stay: IPropertyReservation) => void;
+    onSortColumn: (columnId: string) => void;
     unitLabelById: Map<string, string>;
   }) => {
     if (isLoading) {
@@ -220,20 +243,25 @@ const PropertyIncomeEntriesTable = memo(
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Guest</TableHead>
-              <TableHead>Date / Check-in</TableHead>
-              <TableHead>Check-out</TableHead>
-              <TableHead>Nights</TableHead>
-              <TableHead>Channel</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Room rate / night</TableHead>
-              <TableHead className="text-right">Cleaning</TableHead>
-              <TableHead className="text-right">Taxes &amp; Fees</TableHead>
-              <TableHead className="text-right">Gross</TableHead>
-              <TableHead className="text-right">Net</TableHead>
-              {canManage ? <TableHead>Actions</TableHead> : null}
+              {INCOME_TABLE_COLUMNS.map((column) => (
+                <SortableTableHead
+                  align={column.align}
+                  ariaSort={getColumnAriaSort(column.id)}
+                  direction={getColumnDirection(column.id)}
+                  key={column.id}
+                  label={column.label}
+                  onSort={() => onSortColumn(column.id)}
+                />
+              ))}
+              {canManage ? (
+                <SortableTableHead
+                  ariaSort="none"
+                  direction={null}
+                  label="Actions"
+                  onSort={() => {}}
+                  sortable={false}
+                />
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -256,7 +284,7 @@ const PropertyIncomeEntriesTable = memo(
                   onEditLine={onEditLine}
                   onEditStay={onEditStay}
                   onShowFeesDetails={onShowFeesDetails}
-                  unitLabel={unitLabelById.get(getIncomeEntryUnitId(entry)) ?? "—"}
+                  unitLabel={unitLabelById.get(getEntryUnitId(entry)) ?? "—"}
                 />
               ))
             )}
@@ -543,6 +571,12 @@ const PropertyIncomePage = memo(() => {
     const [channel, setChannel] = useState("");
     const [status, setStatus] = useState("");
     const [incomeType, setIncomeType] = useState("");
+    const {
+      getColumnAriaSort,
+      getColumnDirection,
+      sortState,
+      toggleSort,
+    } = useTableSort("date", "desc");
 
     const dateFilters = useMemo(
       () => buildDateFilters(from, to, unitId),
@@ -617,6 +651,11 @@ const PropertyIncomePage = memo(() => {
           incomeType
         ),
       [incomeLinesQuery.data?.incomeLines, incomeType, reservationsQuery.data?.reservations]
+    );
+
+    const sortedEntries = useMemo(
+      () => sortIncomeEntries(entries, sortState, unitLabelById),
+      [entries, sortState, unitLabelById]
     );
 
     const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
@@ -723,7 +762,9 @@ const PropertyIncomePage = memo(() => {
 
             <PropertyIncomeEntriesTable
               canManage={canManage}
-              entries={entries}
+              entries={sortedEntries}
+              getColumnAriaSort={getColumnAriaSort}
+              getColumnDirection={getColumnDirection}
               isLoading={isLoading}
               onAddOtherIncomeFromStay={(stay) =>
                 openOtherIncomeFromStay(stay, {
@@ -737,6 +778,7 @@ const PropertyIncomePage = memo(() => {
               onEditLine={setEditIncomeLine}
               onEditStay={setEditReservation}
               onShowFeesDetails={setFeesDetailsStay}
+              onSortColumn={toggleSort}
               unitLabelById={unitLabelById}
             />
           </CardContent>
