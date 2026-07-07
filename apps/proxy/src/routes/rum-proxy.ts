@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { isAllowedRumPath } from "../lib/intake-origin";
+import { parseIngestTarget, type IngestTarget } from "../lib/parse-ingest-target";
 
 const SENSITIVE_REQUEST_HEADERS = new Set([
   "authorization",
@@ -53,13 +54,24 @@ function buildTargetUrl(
   return query.length > 0 ? `${origin}${pathname}?${query}` : `${origin}${pathname}`;
 }
 
+function getRequestSearch(request: FastifyRequest): string {
+  return request.url.includes("?") ? `?${request.url.split("?")[1]}` : "";
+}
+
+function getLegacyTarget(request: FastifyRequest): IngestTarget {
+  return {
+    pathname: request.url.split("?")[0] ?? "/",
+    search: getRequestSearch(request),
+  };
+}
+
 async function forwardRumRequest(
   request: FastifyRequest,
   reply: FastifyReply,
-  intakeOrigin: string
+  intakeOrigin: string,
+  target: IngestTarget
 ): Promise<void> {
-  const pathname = request.url.split("?")[0] ?? "/";
-  const search = request.url.includes("?") ? `?${request.url.split("?")[1]}` : "";
+  const { pathname, search } = target;
   const queryParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
   const subdomain = queryParams.get("ddforwardSubdomain");
   const clientIp = getClientIp(request);
@@ -135,7 +147,25 @@ export async function registerRumProxyRoutes(
   });
 
   fastify.route({
-    handler: async (request, reply) => forwardRumRequest(request, reply, intakeOrigin),
+    handler: async (request, reply) => {
+      const search = getRequestSearch(request);
+      const queryParams = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+      const target = parseIngestTarget(queryParams.get("t"));
+
+      if (!target) {
+        console.log("[proxy] rejected invalid ingest target");
+        return reply.code(400).send({ error: "Invalid ingest target" });
+      }
+
+      return forwardRumRequest(request, reply, intakeOrigin, target);
+    },
+    method: ["POST"],
+    url: "/ingest",
+  });
+
+  fastify.route({
+    handler: async (request, reply) =>
+      forwardRumRequest(request, reply, intakeOrigin, getLegacyTarget(request)),
     method: ["POST"],
     url: "/*",
   });

@@ -45,6 +45,18 @@ function getRumConfig() {
   };
 }
 
+export function buildObfuscatedProxyUrl(
+  proxyUrl: string,
+  options: { parameters: string; path: string; subdomain?: string }
+): string {
+  const params = new URLSearchParams(options.parameters);
+  if (options.subdomain) {
+    params.set("ddforwardSubdomain", options.subdomain);
+  }
+  const target = `${options.path}?${params.toString()}`;
+  return `${proxyUrl}/ingest?t=${encodeURIComponent(target)}`;
+}
+
 function sanitizeUrl(url: unknown): unknown {
   if (typeof url !== "string") {
     return url;
@@ -80,13 +92,8 @@ export function initDatadogRum(): void {
     clientToken: config.clientToken,
     defaultPrivacyLevel: "mask-user-input",
     env: config.env,
-    proxy: (options: { parameters: string; path: string; subdomain?: string }) => {
-      const params = new URLSearchParams(options.parameters);
-      if (options.subdomain) {
-        params.set("ddforwardSubdomain", options.subdomain);
-      }
-      return `${config.proxyUrl}${options.path}?${params.toString()}`;
-    },
+    proxy: (options: { parameters: string; path: string; subdomain?: string }) =>
+      buildObfuscatedProxyUrl(config.proxyUrl, options),
     service: RUM_SERVICE,
     sessionReplaySampleRate: 0,
     sessionSampleRate: 100,
