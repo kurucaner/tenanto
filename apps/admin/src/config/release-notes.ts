@@ -33,6 +33,106 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "2026.4.0",
+    version: "2026.4.0",
+    publishedAt: "2026-07-07",
+    summary: "More control over taxes and income types, amenity units, and a clearer income table.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "You can now set up your own tax names and rates in each property's Settings.",
+      },
+      {
+        category: "new",
+        description:
+          "You can choose which other income types appear when you add income — Extra cleaning and Beach equipment rental are included by default, and you can add or rename your own.",
+      },
+      {
+        category: "new",
+        description:
+          "You can add amenity units (such as a pool or parking) separately from rentable rooms.",
+      },
+      {
+        category: "new",
+        description:
+          "You can record other income on an amenity and link it to a guest's stay when needed.",
+      },
+      {
+        category: "new",
+        description:
+          "Property managers can now add, edit, and remove units and amenities.",
+      },
+      {
+        category: "new",
+        description:
+          "You can add an optional legal name on the property overview.",
+      },
+      {
+        category: "new",
+        description:
+          "You can attach photos when you reply to a support ticket.",
+      },
+      {
+        category: "new",
+        description:
+          "Tap column headers on Income and Reports to sort the table.",
+      },
+      {
+        category: "new",
+        description:
+          "Income rows now use color-coded labels for type, booking channel, and stay status.",
+      },
+      {
+        category: "new",
+        description:
+          "You can see a taxes and fees breakdown for each stay on the Income page.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Add Other Income form responds faster when you change the unit.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property tabs and notifications stay steady while you're working in a dialog.",
+      },
+      {
+        category: "improved",
+        description: "Support photo uploads are more reliable.",
+      },
+      {
+        category: "improved",
+        description:
+          "On your phone, bottom navigation labels are fully readable and stay on screen.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Property tabs on small screens wrap instead of forcing sideways scrolling.",
+      },
+      {
+        category: "fixed",
+        description:
+          "You now get a clear message if a unit or amenity name is already in use.",
+      },
+      {
+        category: "fixed",
+        description:
+          "You now get a clear message if a unit can't be deleted because it still has stays or income.",
+      },
+      {
+        category: "fixed",
+        description: "Deleting an income entry or stay now works reliably.",
+      },
+      {
+        category: "fixed",
+        description: "Support reply buttons now show the expected click cursor.",
+      },
+    ],
+  },
+  {
     id: "2026.3.0",
     version: "2026.3.0",
     publishedAt: "2026-07-06",
