@@ -101,7 +101,7 @@ export const CreateReservationDialog = memo(
       <Dialog onOpenChange={handleClose} open={open}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Add Income</DialogTitle>
+            <DialogTitle>Add Stay</DialogTitle>
             <DialogDescription>Record a stay-based income entry for this property.</DialogDescription>
           </DialogHeader>
 

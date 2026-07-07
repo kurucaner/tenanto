@@ -3,11 +3,11 @@ import { Settings2 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  PropertyTaxRatesEditor,
-  type PropertyTaxRateFormRow,
-} from "@/components/settings/property-tax-rates-editor";
 import { PercentField } from "@/components/settings/property-settings-percent-field";
+import {
+  type PropertyTaxRateFormRow,
+  PropertyTaxRatesEditor,
+} from "@/components/settings/property-tax-rates-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
