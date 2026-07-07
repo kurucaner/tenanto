@@ -1,12 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  INCOME_LINE_TYPE_OPTIONS,
-  incomeLineSelectClassName,
-} from "@/components/income/income-line-form-options";
-import { LinkToStayField } from "@/components/income/link-to-stay-field";
+  IncomeLineAmountDateFields,
+  IncomeLineDescriptionField,
+  IncomeLineGuestField,
+  IncomeLineTypeField,
+  IncomeLineUnitSection,
+} from "@/components/income/income-line-form-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,18 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
-import { incomeLinesApi, reservationsApi } from "@/lib/api-client";
+import { incomeLinesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { adminQueryKeys } from "@/lib/query-keys";
-import { buildStayLinkPickerFilters } from "@/lib/stay-link-picker-filters";
 import {
   type IPropertyIncomeLine,
   type IPropertyUnit,
-  isAmenityUnit,
   type TIncomeLineType,
 } from "@/packages/shared";
 
@@ -38,6 +34,8 @@ interface EditIncomeLineDialogProps {
   propertyId: string;
   units: IPropertyUnit[];
 }
+
+const FIELD_ID_PREFIX = "edit-income-line";
 
 export const EditIncomeLineDialog = memo(
   ({ incomeLine, onOpenChange, open, propertyId, units }: EditIncomeLineDialogProps) => {
@@ -50,25 +48,10 @@ export const EditIncomeLineDialog = memo(
     const [description, setDescription] = useState(incomeLine.description ?? "");
     const [guestName, setGuestName] = useState(incomeLine.guestName ?? "");
 
-    const selectedUnit = units.find((unit) => unit.id === unitId);
-    const forAmenityUnit = selectedUnit != null && isAmenityUnit(selectedUnit);
-
-    const pickerFilters = useMemo(
-      () =>
-        buildStayLinkPickerFilters({
-          forAmenityUnit,
-          includeReservationId: reservationId || undefined,
-          transactionDate: transactionDate || undefined,
-          unitId,
-        }),
-      [forAmenityUnit, reservationId, transactionDate, unitId]
-    );
-
-    const reservationsQuery = useQuery({
-      enabled: open && unitId !== "",
-      queryFn: () => reservationsApi.list(propertyId, pickerFilters),
-      queryKey: adminQueryKeys.propertyReservations(propertyId, pickerFilters),
-    });
+    const handleUnitChange = useCallback((nextUnitId: string) => {
+      setUnitId(nextUnitId);
+      setReservationId("");
+    }, []);
 
     const mutation = useMutation({
       mutationFn: () =>
@@ -91,16 +74,13 @@ export const EditIncomeLineDialog = memo(
       },
     });
 
-    const linkedReservation = useMemo(() => {
-      if (!reservationId) return null;
-      return reservationsQuery.data?.reservations.find((r) => r.id === reservationId) ?? null;
-    }, [reservationId, reservationsQuery.data?.reservations]);
-
     const canSubmit =
       unitId !== "" &&
       transactionDate !== "" &&
       amount !== "" &&
       !mutation.isPending;
+
+    const showGuestField = reservationId === "";
 
     return (
       <Dialog onOpenChange={() => onOpenChange(false)} open={open}>
@@ -111,90 +91,46 @@ export const EditIncomeLineDialog = memo(
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-income-line-type">Income type</Label>
-              <select
-                className={incomeLineSelectClassName}
-                id="edit-income-line-type"
-                onChange={(e) => setLineType(e.target.value as TIncomeLineType)}
-                value={lineType}
-              >
-                {INCOME_LINE_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <IncomeLineTypeField
+              fieldIdPrefix={FIELD_ID_PREFIX}
+              onChange={setLineType}
+              value={lineType}
+            />
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-income-line-unit">Unit</Label>
-              <select
-                className={incomeLineSelectClassName}
-                id="edit-income-line-unit"
-                onChange={(e) => {
-                  setUnitId(e.target.value);
-                  setReservationId("");
-                }}
-                value={unitId}
-              >
-                <IncomeUnitSelectOptions units={units} />
-              </select>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-income-line-amount">Amount</Label>
-                <Input
-                  autoFocus
-                  id="edit-income-line-amount"
-                  inputMode="decimal"
-                  onChange={(e) => setAmount(e.target.value)}
-                  type="text"
-                  value={amount}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-income-line-date">Date</Label>
-                <Input
-                  id="edit-income-line-date"
-                  onChange={(e) => setTransactionDate(e.target.value)}
-                  type="date"
-                  value={transactionDate}
-                />
-              </div>
-            </div>
-
-            <LinkToStayField
-              forAmenityUnit={forAmenityUnit}
-              id="edit-income-line-reservation"
+            <IncomeLineUnitSection
+              fieldIdPrefix={FIELD_ID_PREFIX}
               includeReservationId={incomeLine.reservationId ?? undefined}
               onReservationIdChange={setReservationId}
+              onUnitChange={handleUnitChange}
               propertyId={propertyId}
               reservationId={reservationId}
               transactionDate={transactionDate}
               unitId={unitId}
+              units={units}
             />
 
-            {!linkedReservation ? (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-income-line-guest">Guest name (optional)</Label>
-                <Input
-                  id="edit-income-line-guest"
-                  onChange={(e) => setGuestName(e.target.value)}
-                  value={guestName}
-                />
-              </div>
+            <IncomeLineAmountDateFields
+              amount={amount}
+              autoFocusAmount
+              fieldIdPrefix={FIELD_ID_PREFIX}
+              onAmountChange={setAmount}
+              onDateChange={setTransactionDate}
+              transactionDate={transactionDate}
+            />
+
+            {showGuestField ? (
+              <IncomeLineGuestField
+                fieldIdPrefix={FIELD_ID_PREFIX}
+                onChange={setGuestName}
+                value={guestName}
+              />
             ) : null}
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-income-line-description">Description (optional)</Label>
-              <Input
-                id="edit-income-line-description"
-                onChange={(e) => setDescription(e.target.value)}
-                value={description}
-              />
-            </div>
+            <IncomeLineDescriptionField
+              fieldIdPrefix={FIELD_ID_PREFIX}
+              onChange={setDescription}
+              value={description}
+            />
 
             <p className="text-muted-foreground text-xs">
               Current net: {formatMoney(incomeLine.netIncome)} (recalculated on save)

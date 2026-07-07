@@ -1,13 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  formatIncomeLineTypeLabel,
-  INCOME_LINE_TYPE_OPTIONS,
-  incomeLineSelectClassName,
-} from "@/components/income/income-line-form-options";
-import { LinkToStayField, LockedStaySummary } from "@/components/income/link-to-stay-field";
+  IncomeLineAmountDateFields,
+  IncomeLineDescriptionField,
+  IncomeLineGuestField,
+  IncomeLineTypeField,
+  IncomeLineUnitSection,
+} from "@/components/income/income-line-form-fields";
+import { formatIncomeLineTypeLabel } from "@/components/income/income-line-form-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,17 +19,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
-import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
+import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { adminQueryKeys } from "@/lib/query-keys";
-import { buildStayLinkPickerFilters } from "@/lib/stay-link-picker-filters";
 import {
   IncomeLineType,
   type IPropertyReservation,
-  isAmenityUnit,
   type TIncomeLineType,
 } from "@/packages/shared";
 
@@ -46,6 +42,8 @@ interface CreateIncomeLineDialogProps {
   prefill?: CreateIncomeLineDialogPrefill | null;
   propertyId: string;
 }
+
+const FIELD_ID_PREFIX = "income-line";
 
 const defaultFormState = {
   amount: "",
@@ -92,31 +90,13 @@ const CreateIncomeLineDialogForm = memo(
     const [description, setDescription] = useState(initialFormState.description);
     const [guestName, setGuestName] = useState(initialFormState.guestName);
 
-    const unitsQuery = useQuery({
-      queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnits(propertyId),
-    });
-
-    const units = unitsQuery.data?.units ?? [];
-    const selectedUnit = units.find((unit) => unit.id === unitId);
-    const forAmenityUnit = selectedUnit != null && isAmenityUnit(selectedUnit);
-
-    const pickerFilters = useMemo(
-      () =>
-        buildStayLinkPickerFilters({
-          forAmenityUnit,
-          includeReservationId: reservationId || undefined,
-          transactionDate: transactionDate || undefined,
-          unitId,
-        }),
-      [forAmenityUnit, reservationId, transactionDate, unitId]
+    const handleUnitChange = useCallback(
+      (nextUnitId: string) => {
+        setUnitId(nextUnitId);
+        if (!lockedStay) setReservationId("");
+      },
+      [lockedStay]
     );
-
-    const reservationsQuery = useQuery({
-      enabled: unitId !== "" && !lockedStay,
-      queryFn: () => reservationsApi.list(propertyId, pickerFilters),
-      queryKey: adminQueryKeys.propertyReservations(propertyId, pickerFilters),
-    });
 
     const mutation = useMutation({
       mutationFn: () =>
@@ -139,17 +119,13 @@ const CreateIncomeLineDialogForm = memo(
       },
     });
 
-    const linkedReservation = useMemo(() => {
-      if (lockedStay) return lockedStay;
-      if (!reservationId) return null;
-      return reservationsQuery.data?.reservations.find((r) => r.id === reservationId) ?? null;
-    }, [lockedStay, reservationId, reservationsQuery.data?.reservations]);
-
     const canSubmit =
       unitId !== "" &&
       transactionDate !== "" &&
       amount !== "" &&
       !mutation.isPending;
+
+    const showGuestField = !lockedStay && reservationId === "";
 
     return (
       <>
@@ -163,94 +139,45 @@ const CreateIncomeLineDialogForm = memo(
         </DialogHeader>
 
         <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="income-line-type">Income type</Label>
-            <select
-              className={incomeLineSelectClassName}
-              id="income-line-type"
-              onChange={(e) => setLineType(e.target.value as TIncomeLineType)}
-              value={lineType}
-            >
-              {INCOME_LINE_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <IncomeLineTypeField
+            fieldIdPrefix={FIELD_ID_PREFIX}
+            onChange={setLineType}
+            value={lineType}
+          />
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="income-line-unit">Unit</Label>
-            <select
-              className={incomeLineSelectClassName}
-              disabled={Boolean(lockedStay)}
-              id="income-line-unit"
-              onChange={(e) => {
-                setUnitId(e.target.value);
-                if (!lockedStay) setReservationId("");
-              }}
-              value={unitId}
-            >
-              <IncomeUnitSelectOptions emptyOptionLabel="Select unit…" units={units} />
-            </select>
-          </div>
+          <IncomeLineUnitSection
+            fieldIdPrefix={FIELD_ID_PREFIX}
+            lockedStay={lockedStay}
+            onReservationIdChange={setReservationId}
+            onUnitChange={handleUnitChange}
+            propertyId={propertyId}
+            reservationId={reservationId}
+            transactionDate={transactionDate}
+            unitId={unitId}
+          />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="income-line-amount">Amount</Label>
-              <Input
-                autoFocus
-                id="income-line-amount"
-                inputMode="decimal"
-                onChange={(e) => setAmount(e.target.value)}
-                type="text"
-                value={amount}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="income-line-date">Date</Label>
-              <Input
-                id="income-line-date"
-                onChange={(e) => setTransactionDate(e.target.value)}
-                type="date"
-                value={transactionDate}
-              />
-            </div>
-          </div>
+          <IncomeLineAmountDateFields
+            amount={amount}
+            autoFocusAmount
+            fieldIdPrefix={FIELD_ID_PREFIX}
+            onAmountChange={setAmount}
+            onDateChange={setTransactionDate}
+            transactionDate={transactionDate}
+          />
 
-          {lockedStay ? (
-            <LockedStaySummary stay={lockedStay} />
-          ) : (
-            <LinkToStayField
-              forAmenityUnit={forAmenityUnit}
-              id="income-line-reservation"
-              onReservationIdChange={setReservationId}
-              propertyId={propertyId}
-              reservationId={reservationId}
-              transactionDate={transactionDate}
-              unitId={unitId}
+          {showGuestField ? (
+            <IncomeLineGuestField
+              fieldIdPrefix={FIELD_ID_PREFIX}
+              onChange={setGuestName}
+              value={guestName}
             />
-          )}
+          ) : null}
 
-          {linkedReservation ? null : (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="income-line-guest">Guest name (optional)</Label>
-              <Input
-                id="income-line-guest"
-                onChange={(e) => setGuestName(e.target.value)}
-                value={guestName}
-              />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="income-line-description">Description (optional)</Label>
-            <Input
-              id="income-line-description"
-              onChange={(e) => setDescription(e.target.value)}
-              value={description}
-            />
-          </div>
+          <IncomeLineDescriptionField
+            fieldIdPrefix={FIELD_ID_PREFIX}
+            onChange={setDescription}
+            value={description}
+          />
 
           <p className="text-muted-foreground text-xs">
             {formatIncomeLineTypeLabel(lineType)}: no taxes or channel commission applied.
