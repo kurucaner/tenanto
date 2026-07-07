@@ -33,8 +33,8 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    id: "2016.3.0",
-    version: "2016.3.0",
+    id: "2026.3.0",
+    version: "2026.3.0",
     publishedAt: "2026-07-06",
     summary: "Portfolio finances on Home, a smoother support chat, and photo attachments.",
     changes: [
@@ -80,8 +80,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
-    id: "2016.2.0",
-    version: "2016.2.0",
+    id: "2026.2.0",
+    version: "2026.2.0",
     publishedAt: "2026-07-06",
     summary: "Support, notifications, and easier navigation on your phone.",
     changes: [
@@ -140,8 +140,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
-    id: "2016.1.0",
-    version: "2016.1.0",
+    id: "2026.1.0",
+    version: "2026.1.0",
     publishedAt: "2026-07-05",
     summary: "Portfolio reports and a clearer property workspace.",
     changes: [
@@ -164,8 +164,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
-    id: "2016.0.0",
-    version: "2016.0.0",
+    id: "2026.0.0",
+    version: "2026.0.0",
     publishedAt: "2026-06-15",
     summary: "Track income and expenses for each property.",
     changes: [
