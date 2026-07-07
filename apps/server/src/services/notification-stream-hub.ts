@@ -169,6 +169,10 @@ class NotificationStreamHub {
     return this.connections.get(userId)?.size ?? 0;
   }
 
+  isUserConnected(userId: string): boolean {
+    return this.getConnectionCount(userId) > 0;
+  }
+
   async publish(userId: string, options?: { notification?: IUserNotification }): Promise<void> {
     await pool.query(`SELECT pg_notify($1, $2)`, [
       NOTIFY_CHANNEL,

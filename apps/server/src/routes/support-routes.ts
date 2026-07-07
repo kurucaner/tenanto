@@ -21,10 +21,10 @@ import { generateUploadUrl, headObject } from "@/s3/s3-commands";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
 import { publishSupportAttachmentStatus } from "@/services/publish-support-attachment-status";
+import { notifySupportAdminReply } from "@/services/support-notifications";
 import {
   buildSupportStatusChangedNotification,
   notifyUser,
-  truncateNotificationBody,
 } from "@/services/user-notifications";
 
 import {
@@ -434,17 +434,11 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
       }
 
       if (isAdmin) {
-        let notificationBody = parsedBody.body;
-        if (notificationBody.length === 0 && parsedBody.attachments.length > 0) {
-          notificationBody = "Sent an image";
-        }
-        notifyUser({
-          body: truncateNotificationBody(notificationBody),
-          resourceId: idParsed,
-          resourceType: "support_request",
-          title: "New reply on your support request",
-          type: "support_request_reply",
-          userId: ticket.userId,
+        notifySupportAdminReply({
+          attachmentCount: parsedBody.attachments.length,
+          messageBody: parsedBody.body,
+          supportRequestId: idParsed,
+          ticketUserId: ticket.userId,
         }).catch((err) => request.log.error(err));
       }
 

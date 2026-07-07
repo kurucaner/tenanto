@@ -2,6 +2,7 @@ import type { OtpPurpose } from "@/db/auth-otps";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
+import { escapeHtml } from "./ses-utils";
 import { sendTransactionalEmail } from "./ses";
 
 export interface PropertyInviteEmailOptions {
@@ -10,8 +11,19 @@ export interface PropertyInviteEmailOptions {
   role: string;
 }
 
+export interface SupportReplyEmailOptions {
+  messagePreview: string;
+  supportRequestId: string;
+}
+
 const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
+const ADMIN_APP_URL = process.env.ADMIN_APP_URL;
+
+function buildSupportTicketUrl(supportRequestId: string): string {
+  const base = (ADMIN_APP_URL ?? "").replace(/\/$/, "");
+  return `${base}/support-requests/${encodeURIComponent(supportRequestId)}`;
+}
 
 function getSubject(purpose: OtpPurpose): string {
   switch (purpose) {
@@ -81,6 +93,24 @@ export async function sendPropertyInviteEmail(
     inviterEmail: opts.inviterEmail,
     propertyName: opts.propertyName,
     role: opts.role,
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendSupportReplyEmail(
+  to: string,
+  opts: SupportReplyEmailOptions
+): Promise<void> {
+  const ticketUrl = buildSupportTicketUrl(opts.supportRequestId);
+  const subject = "New reply on your support request";
+  const text = `Support replied to your request:\n\n${opts.messagePreview}\n\nView reply: ${ticketUrl}`;
+
+  const html = renderTemplate("support-reply.html", {
+    appName: APP_NAME,
+    baseUrl: (ADMIN_APP_URL ?? "").replace(/\/$/, ""),
+    messagePreview: escapeHtml(opts.messagePreview),
+    ticketUrl,
   });
 
   await sendTransactionalEmail({ html, subject, text, to });

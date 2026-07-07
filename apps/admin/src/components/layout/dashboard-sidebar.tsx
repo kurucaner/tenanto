@@ -26,6 +26,29 @@ import { clearAppSession } from "@/lib/clear-app-session";
 import { APP_NAME, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
+const BrandLink = memo(() => {
+  return (
+    <Link
+      aria-label={`${APP_NAME} — home`}
+      className="group flex min-w-0 w-full flex-col gap-0.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:py-1"
+      to="/home"
+    >
+      <span className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
+        {APP_NAME}
+      </span>
+      <img
+        alt=""
+        aria-hidden
+        className="hidden size-8 shrink-0 rounded-md object-cover transition-opacity group-hover:opacity-90 group-data-[collapsible=icon]:block"
+        height={32}
+        src="/brand-icon.webp"
+        width={32}
+        loading="eager"
+      />
+    </Link>
+  );
+})
+
 
 
 const DashboardSidebarInner = memo(() => {
@@ -49,38 +72,19 @@ const DashboardSidebarInner = memo(() => {
 
   const brandCollapsedTooltip = !isMobile && state === "collapsed";
 
-  const brandLink = (
-    <Link
-      aria-label={`${APP_NAME} — home`}
-      className="group flex min-w-0 w-full flex-col gap-0.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:py-1"
-      to="/home"
-    >
-      <span className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
-        {APP_NAME}
-      </span>
-      <img
-        alt=""
-        aria-hidden
-        className="hidden size-8 shrink-0 rounded-md object-cover transition-opacity group-hover:opacity-90 group-data-[collapsible=icon]:block"
-        height={32}
-        src="/brand-icon.png"
-        width={32}
-      />
-    </Link>
-  );
 
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px]">
         {brandCollapsedTooltip ? (
           <Tooltip>
-            <TooltipTrigger asChild>{brandLink}</TooltipTrigger>
+            <TooltipTrigger asChild><BrandLink /></TooltipTrigger>
             <TooltipContent align="center" side="right">
               {APP_NAME} · Home
             </TooltipContent>
           </Tooltip>
         ) : (
-          brandLink
+          <BrandLink />
         )}
       </SidebarHeader>
       <SidebarContent className="gap-0 px-2 pt-4">
