@@ -30,24 +30,25 @@ const BrandLink = memo(() => {
   return (
     <Link
       aria-label={`${APP_NAME} — home`}
-      className="group flex min-w-0 w-full flex-col gap-0.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:py-1"
+      className="group flex min-w-0 w-full items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:py-1"
       to="/home"
     >
-      <span className="font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
-        {APP_NAME}
-      </span>
       <img
         alt=""
         aria-hidden
-        className="hidden size-8 shrink-0 rounded-md object-cover transition-opacity group-hover:opacity-90 group-data-[collapsible=icon]:block"
+        className="size-8 min-h-8 min-w-8 max-w-none shrink-0 rounded-md object-contain transition-opacity group-hover:opacity-90"
         height={32}
         src="/brand-icon.webp"
         width={32}
         loading="eager"
       />
+      <span className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
+        {APP_NAME}
+      </span>
     </Link>
   );
-})
+});
+BrandLink.displayName = "BrandLink";
 
 
 
@@ -75,7 +76,7 @@ const DashboardSidebarInner = memo(() => {
 
   return (
     <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px]">
+      <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px] group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
         {brandCollapsedTooltip ? (
           <Tooltip>
             <TooltipTrigger asChild><BrandLink /></TooltipTrigger>

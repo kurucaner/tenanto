@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
@@ -96,15 +96,24 @@ const UsersListPageInner = memo(() => {
 
   const users = data?.pages.flatMap((p: IAdminUsersListResponse) => p.users) ?? [];
 
-  let loadMoreButtonLabel: string;
-  if (isFetchingNextPage) {
-    loadMoreButtonLabel = "Loading…";
-  } else if (hasNextPage) {
-    loadMoreButtonLabel = "Load more";
-  } else {
-    loadMoreButtonLabel = "End of list";
-  }
+  const loadMoreButtonLabel = useMemo(() => {
+    if (isFetchingNextPage) {
+      return "Loading…";
+    } else if (hasNextPage) {
+      return "Load more";
+    } else {
+      return "End of list";
+    }
+  }, [isFetchingNextPage, hasNextPage]);
 
+  const handleLoadMore = useCallback(() => {
+    fetchNextPage();
+  }, [fetchNextPage]);
+
+  const isLoadMoreButtonDisabled = useMemo(() => {
+    return !hasNextPage || isFetchingNextPage || isFetching;
+  }, [hasNextPage, isFetchingNextPage, isFetching]);
+  
   return (
     <AdminPageLayout
       gap={6}
@@ -198,8 +207,8 @@ const UsersListPageInner = memo(() => {
               </Table>
               <div className="flex justify-center border-t p-4">
                 <Button
-                  disabled={!hasNextPage || isFetchingNextPage || isFetching}
-                  onClick={() => fetchNextPage()}
+                  disabled={isLoadMoreButtonDisabled}
+                  onClick={handleLoadMore}
                   type="button"
                   variant="outline"
                 >

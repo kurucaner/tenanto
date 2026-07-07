@@ -73,14 +73,15 @@ const PropertiesListPageInner = memo(() => {
 
   const properties = data?.pages.flatMap((p: IAdminPropertiesListResponse) => p.items) ?? [];
 
-  let loadMoreButtonLabel: string;
-  if (isFetchingNextPage) {
-    loadMoreButtonLabel = "Loading…";
-  } else if (hasNextPage) {
-    loadMoreButtonLabel = "Load more";
-  } else {
-    loadMoreButtonLabel = "End of list";
-  }
+  const loadMoreButtonLabel = useMemo(() => {
+    if (isFetchingNextPage) {
+      return "Loading…";
+    } else if (hasNextPage) {
+      return "Load more";
+    } else {
+      return "End of list";
+    }
+  }, [isFetchingNextPage, hasNextPage]);
 
   return (
     <AdminPageLayout gap={6}>
