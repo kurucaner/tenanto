@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { IncomeEntryKind, IncomeLineType, type TIncomeLineType } from "@/packages/shared";
+import { IncomeEntryKind, type IPropertyIncomeLineType } from "@/packages/shared";
 
 export const incomeLineSelectClassName = cn(
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",
@@ -7,19 +7,30 @@ export const incomeLineSelectClassName = cn(
   "dark:bg-input/30"
 );
 
-export const INCOME_LINE_TYPE_OPTIONS: { label: string; value: TIncomeLineType }[] = [
-  { label: "Cleaning only", value: IncomeLineType.CLEANING_ONLY },
-  { label: "Extra cleaning", value: IncomeLineType.EXTRA_CLEANING },
-  { label: "Extra service", value: IncomeLineType.EXTRA_SERVICE },
-  { label: "Beach equipment rental", value: IncomeLineType.BEACH_EQUIPMENT_RENTAL },
-];
+export interface IncomeLineTypeOption {
+  label: string;
+  value: string;
+}
 
-export const INCOME_TYPE_FILTER_OPTIONS = [
-  { label: "All types", value: "" },
-  { label: "Stay", value: IncomeEntryKind.STAY },
-  ...INCOME_LINE_TYPE_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value })),
-];
+export function buildIncomeLineTypeOptions(
+  types: Pick<IPropertyIncomeLineType, "id" | "name">[]
+): IncomeLineTypeOption[] {
+  return types.map((type) => ({ label: type.name, value: type.id }));
+}
 
-export function formatIncomeLineTypeLabel(lineType: TIncomeLineType): string {
-  return INCOME_LINE_TYPE_OPTIONS.find((opt) => opt.value === lineType)?.label ?? lineType;
+export function buildIncomeTypeFilterOptions(
+  types: Pick<IPropertyIncomeLineType, "id" | "name">[]
+): { label: string; value: string }[] {
+  return [
+    { label: "All types", value: "" },
+    { label: "Stay", value: IncomeEntryKind.STAY },
+    ...buildIncomeLineTypeOptions(types),
+  ];
+}
+
+export function formatIncomeLineTypeLabel(
+  incomeLineTypeId: string,
+  types: Pick<IPropertyIncomeLineType, "id" | "name">[]
+): string {
+  return types.find((type) => type.id === incomeLineTypeId)?.name ?? incomeLineTypeId;
 }

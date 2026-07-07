@@ -6,10 +6,11 @@ import {
 
 import { mapPropertySettingsRow } from "./mappers";
 import { pool } from "./pool";
+import { propertyIncomeLineTypesDb } from "./property-income-line-types";
 import { propertyTaxRatesDb } from "./property-tax-rates";
 
 const BODY_TO_COLUMN: Record<
-  Exclude<keyof IUpdatePropertySettingsBody, "taxRates">,
+  Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">,
   string
 > = {
   airbnbCommissionRate: "airbnb_commission_rate",
@@ -18,12 +19,15 @@ const BODY_TO_COLUMN: Record<
   expediaCommissionRate: "expedia_commission_rate",
 };
 
-async function mergeSettingsWithTaxRates(
+async function mergeSettingsWithRelated(
   row: Record<string, unknown>
 ): Promise<IPropertySettings> {
   const base = mapPropertySettingsRow(row);
-  const taxRates = await propertyTaxRatesDb.findByProperty(base.propertyId);
-  return { ...base, taxRates };
+  const [taxRates, incomeLineTypes] = await Promise.all([
+    propertyTaxRatesDb.findByProperty(base.propertyId),
+    propertyIncomeLineTypesDb.findByProperty(base.propertyId),
+  ]);
+  return { ...base, incomeLineTypes, taxRates };
 }
 
 export const propertySettingsDb = {
@@ -32,7 +36,7 @@ export const propertySettingsDb = {
       propertyId,
     ]);
     if (result.rows.length === 0) return null;
-    return mergeSettingsWithTaxRates(result.rows[0] as Record<string, unknown>);
+    return mergeSettingsWithRelated(result.rows[0] as Record<string, unknown>);
   },
 
   async getOrCreateDefaults(propertyId: string): Promise<IPropertySettings> {
@@ -54,7 +58,10 @@ export const propertySettingsDb = {
       ]
     );
 
-    await propertyTaxRatesDb.seedDefaults(propertyId);
+    await Promise.all([
+      propertyTaxRatesDb.seedDefaults(propertyId),
+      propertyIncomeLineTypesDb.seedDefaults(propertyId),
+    ]);
 
     const settings = await propertySettingsDb.findByProperty(propertyId);
     if (!settings) {
@@ -72,7 +79,7 @@ export const propertySettingsDb = {
     let p = 1;
 
     for (const key of Object.keys(BODY_TO_COLUMN) as Array<
-      Exclude<keyof IUpdatePropertySettingsBody, "taxRates">
+      Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">
     >) {
       const value = input[key];
       if (value === undefined) continue;
@@ -91,7 +98,7 @@ export const propertySettingsDb = {
       values
     );
     if (result.rows.length === 0) return null;
-    return mergeSettingsWithTaxRates(result.rows[0] as Record<string, unknown>);
+    return mergeSettingsWithRelated(result.rows[0] as Record<string, unknown>);
   },
 
   async updateWithTaxRates(
@@ -106,12 +113,16 @@ export const propertySettingsDb = {
         await propertyTaxRatesDb.replaceAll(propertyId, input.taxRates, client);
       }
 
+      if (input.incomeLineTypes != null) {
+        await propertyIncomeLineTypesDb.replaceAll(propertyId, input.incomeLineTypes, client);
+      }
+
       const setClauses: string[] = [];
       const values: unknown[] = [];
       let p = 1;
 
       for (const key of Object.keys(BODY_TO_COLUMN) as Array<
-        Exclude<keyof IUpdatePropertySettingsBody, "taxRates">
+        Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">
       >) {
         const value = input[key];
         if (value === undefined) continue;

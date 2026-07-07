@@ -9,6 +9,14 @@ import type {
 import { mapPropertyIncomeLineRow } from "./mappers";
 import { pool } from "./pool";
 
+const INCOME_LINE_SELECT = `
+  SELECT
+    pil.*,
+    ilt.name AS income_line_type_name
+  FROM property_income_lines pil
+  INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
+`;
+
 export const propertyIncomeLinesDb = {
   async create(
     propertyId: string,
@@ -16,7 +24,7 @@ export const propertyIncomeLinesDb = {
       amount: number;
       description: string | null;
       guestName: string | null;
-      lineType: ICreatePropertyIncomeLineBody["lineType"];
+      incomeLineTypeId: ICreatePropertyIncomeLineBody["incomeLineTypeId"];
       reservationId: string | null;
       transactionDate: string;
       unitId: string;
@@ -28,7 +36,7 @@ export const propertyIncomeLinesDb = {
          property_id,
          unit_id,
          reservation_id,
-         line_type,
+         income_line_type_id,
          amount,
          transaction_date,
          description,
@@ -38,7 +46,7 @@ export const propertyIncomeLinesDb = {
          channel_commission,
          net_income
        ) VALUES (
-         $1, $2, $3, $4::property_income_line_type, $5, $6, $7, $8,
+         $1, $2, $3, $4, $5, $6, $7, $8,
          $9, $10::jsonb, $11, $12
        )
        RETURNING *`,
@@ -46,7 +54,7 @@ export const propertyIncomeLinesDb = {
         propertyId,
         input.unitId,
         input.reservationId,
-        input.lineType,
+        input.incomeLineTypeId,
         input.amount,
         input.transactionDate,
         input.description,
@@ -57,7 +65,11 @@ export const propertyIncomeLinesDb = {
         computed.netIncome,
       ]
     );
-    return mapPropertyIncomeLineRow(result.rows[0] as Record<string, unknown>);
+    const created = await propertyIncomeLinesDb.findById(result.rows[0].id as string);
+    if (!created) {
+      throw new Error("Failed to load created income line");
+    }
+    return created;
   },
 
   async delete(id: string): Promise<boolean> {
@@ -66,7 +78,7 @@ export const propertyIncomeLinesDb = {
   },
 
   async findById(id: string): Promise<IPropertyIncomeLine | null> {
-    const result = await pool.query(`SELECT * FROM property_income_lines WHERE id = $1`, [id]);
+    const result = await pool.query(`${INCOME_LINE_SELECT} WHERE pil.id = $1`, [id]);
     if (result.rows.length === 0) return null;
     return mapPropertyIncomeLineRow(result.rows[0] as Record<string, unknown>);
   },
@@ -91,9 +103,9 @@ export const propertyIncomeLinesDb = {
       conditions.push(`pil.unit_id = $${p++}`);
       values.push(filters.unitId);
     }
-    if (filters.lineType) {
-      conditions.push(`pil.line_type = $${p++}::property_income_line_type`);
-      values.push(filters.lineType);
+    if (filters.incomeLineTypeId) {
+      conditions.push(`pil.income_line_type_id = $${p++}`);
+      values.push(filters.incomeLineTypeId);
     }
     if (filters.reservationId) {
       conditions.push(`pil.reservation_id = $${p++}`);
@@ -109,8 +121,7 @@ export const propertyIncomeLinesDb = {
     }
 
     const result = await pool.query(
-      `SELECT pil.*
-       FROM property_income_lines pil
+      `${INCOME_LINE_SELECT}
        ${joinUnits}
        WHERE ${conditions.join(" AND ")}
        ORDER BY pil.transaction_date DESC, pil.created_at DESC`,
@@ -139,9 +150,9 @@ export const propertyIncomeLinesDb = {
       setClauses.push(`reservation_id = $${param++}`);
       values.push(input.reservationId);
     }
-    if (input.lineType !== undefined) {
-      setClauses.push(`line_type = $${param++}::property_income_line_type`);
-      values.push(input.lineType);
+    if (input.incomeLineTypeId !== undefined) {
+      setClauses.push(`income_line_type_id = $${param++}`);
+      values.push(input.incomeLineTypeId);
     }
     if (input.transactionDate !== undefined) {
       setClauses.push(`transaction_date = $${param++}`);
@@ -171,10 +182,10 @@ export const propertyIncomeLinesDb = {
 
     values.push(id);
     const result = await pool.query(
-      `UPDATE property_income_lines SET ${setClauses.join(", ")} WHERE id = $${param} RETURNING *`,
+      `UPDATE property_income_lines SET ${setClauses.join(", ")} WHERE id = $${param} RETURNING id`,
       values
     );
     if (result.rows.length === 0) return null;
-    return mapPropertyIncomeLineRow(result.rows[0] as Record<string, unknown>);
+    return propertyIncomeLinesDb.findById(id);
   },
 };

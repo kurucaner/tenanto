@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { type ChangeEvent,memo, useCallback, useMemo } from "react";
 
 import {
-  INCOME_LINE_TYPE_OPTIONS,
   incomeLineSelectClassName,
+  type IncomeLineTypeOption,
 } from "@/components/income/income-line-form-options";
 import { LinkToStayField, LockedStaySummary } from "@/components/income/link-to-stay-field";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,6 @@ import {
   type IPropertyReservation,
   type IPropertyUnit,
   isAmenityUnit,
-  type TIncomeLineType,
 } from "@/packages/shared";
 
 const EMPTY_UNITS: IPropertyUnit[] = [];
@@ -25,15 +24,16 @@ interface FieldIdPrefixProps {
 }
 
 interface IncomeLineTypeFieldProps extends FieldIdPrefixProps {
-  onChange: (lineType: TIncomeLineType) => void;
-  value: TIncomeLineType;
+  onChange: (incomeLineTypeId: string) => void;
+  options: IncomeLineTypeOption[];
+  value: string;
 }
 
 export const IncomeLineTypeField = memo(
-  ({ fieldIdPrefix, onChange, value }: IncomeLineTypeFieldProps) => {
+  ({ fieldIdPrefix, onChange, options, value }: IncomeLineTypeFieldProps) => {
     const handleChange = useCallback(
       (e: ChangeEvent<HTMLSelectElement>) => {
-        onChange(e.target.value as TIncomeLineType);
+        onChange(e.target.value);
       },
       [onChange]
     );
@@ -43,15 +43,20 @@ export const IncomeLineTypeField = memo(
         <Label htmlFor={`${fieldIdPrefix}-type`}>Income type</Label>
         <select
           className={incomeLineSelectClassName}
+          disabled={options.length === 0}
           id={`${fieldIdPrefix}-type`}
           onChange={handleChange}
           value={value}
         >
-          {INCOME_LINE_TYPE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
+          {options.length === 0 ? (
+            <option value="">No income types configured</option>
+          ) : (
+            options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))
+          )}
         </select>
       </div>
     );

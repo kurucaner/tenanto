@@ -80,6 +80,16 @@ WHERE property_id IN (
   'f0000000-0000-4000-8000-000000000006'::uuid
 );
 
+DELETE FROM property_income_line_types
+WHERE property_id IN (
+  'f0000000-0000-4000-8000-000000000001'::uuid,
+  'f0000000-0000-4000-8000-000000000002'::uuid,
+  'f0000000-0000-4000-8000-000000000003'::uuid,
+  'f0000000-0000-4000-8000-000000000004'::uuid,
+  'f0000000-0000-4000-8000-000000000005'::uuid,
+  'f0000000-0000-4000-8000-000000000006'::uuid
+);
+
 DELETE FROM property_reservations
 WHERE property_id IN (
   'f0000000-0000-4000-8000-000000000001'::uuid,
@@ -454,6 +464,40 @@ FROM (
 ) AS seed(property_id, name, rate, sort_order)
 INNER JOIN properties p ON p.id = seed.property_id;
 
+INSERT INTO property_income_line_types (property_id, name, sort_order)
+SELECT
+  seed.property_id,
+  seed.name,
+  seed.sort_order
+FROM (
+  VALUES
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Extra cleaning', 0),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Beach equipment rental', 1),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Cleaning only', 2),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Extra service', 3),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Extra cleaning', 0),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Beach equipment rental', 1),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Cleaning only', 2),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Extra service', 3),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Extra cleaning', 0),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Beach equipment rental', 1),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Cleaning only', 2),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Extra service', 3),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Extra cleaning', 0),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Beach equipment rental', 1),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Cleaning only', 2),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Extra service', 3),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Extra cleaning', 0),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Beach equipment rental', 1),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Cleaning only', 2),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Extra service', 3),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Extra cleaning', 0),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Beach equipment rental', 1),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Cleaning only', 2),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Extra service', 3)
+) AS seed(property_id, name, sort_order)
+INNER JOIN properties p ON p.id = seed.property_id;
+
 DO $$
 DECLARE
   settings_count INTEGER;
@@ -617,7 +661,7 @@ INSERT INTO property_income_lines (
   property_id,
   unit_id,
   reservation_id,
-  line_type,
+  income_line_type_id,
   amount,
   transaction_date,
   description,
@@ -641,7 +685,7 @@ SELECT
     )
     ELSE NULL
   END,
-  line_type::property_income_line_type,
+  ilt.id,
   amount,
   (
     date_trunc('month', CURRENT_DATE)::date
@@ -684,7 +728,15 @@ CROSS JOIN LATERAL (
       ELSE 'Beach chairs and umbrella rental'
     END AS description,
     (ARRAY['Guest A', 'Guest B', 'Walk-in', NULL])[1 + (line_idx % 4)] AS guest_name
-) AS meta;
+) AS meta
+INNER JOIN property_income_line_types ilt
+  ON ilt.property_id = u.property_id
+ AND ilt.name = CASE meta.line_type
+   WHEN 'cleaning_only' THEN 'Cleaning only'
+   WHEN 'extra_cleaning' THEN 'Extra cleaning'
+   WHEN 'extra_service' THEN 'Extra service'
+   ELSE 'Beach equipment rental'
+ END;
 
 -- ---------------------------------------------------------------------------
 -- Expenses (~12 per property, varied categories)

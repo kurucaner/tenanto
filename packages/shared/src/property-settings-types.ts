@@ -25,12 +25,18 @@ export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "r
   { name: "Resort tax", rate: 0.04 },
 ];
 
+import type {
+  IPropertyIncomeLineType,
+  IPropertyIncomeLineTypeInput,
+} from "./property-income-line-type-config";
+
 export interface IPropertySettings {
   airbnbCommissionRate: number;
   bookingCommissionRate: number;
   createdAt: string;
   directCommissionRate: number;
   expediaCommissionRate: number;
+  incomeLineTypes: IPropertyIncomeLineType[];
   propertyId: string;
   taxRates: IPropertyTaxRate[];
   updatedAt: string;
@@ -55,6 +61,7 @@ export interface IUpdatePropertySettingsBody {
   bookingCommissionRate?: number;
   directCommissionRate?: number;
   expediaCommissionRate?: number;
+  incomeLineTypes?: IPropertyIncomeLineTypeInput[];
   taxRates?: IPropertyTaxRateInput[];
 }
 

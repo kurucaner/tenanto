@@ -1,4 +1,3 @@
-import { formatIncomeLineTypeLabel } from "@/components/income/income-line-form-options";
 import { formatChannelLabel, formatStatusLabel } from "@/components/income/reservation-form-options";
 import {
   compareDates,
@@ -35,9 +34,11 @@ function getEntryDate(entry: TPropertyIncomeEntry): string {
 }
 
 function getEntryTypeLabel(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY
-    ? "Stay"
-    : formatIncomeLineTypeLabel(entry.line.lineType);
+  if (entry.entryKind === IncomeEntryKind.STAY) {
+    return "Stay";
+  }
+
+  return entry.line.incomeLineTypeName ?? entry.line.incomeLineTypeId;
 }
 
 function getEntryUnitId(entry: TPropertyIncomeEntry): string {

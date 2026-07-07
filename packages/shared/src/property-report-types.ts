@@ -26,14 +26,16 @@ export interface IPropertyReportTotals {
   totalExpenses: number;
 }
 
+export interface IPropertyReportOtherIncomeByType {
+  amount: number;
+  incomeLineTypeId: string;
+  name: string;
+}
+
 export interface IPropertyReportSalesTypeBreakdown {
-  beachRental: number;
   cleaningFromStays: number;
-  cleaningOnly: number;
-  extraCleaning: number;
-  extraService: number;
+  otherIncomeByType: IPropertyReportOtherIncomeByType[];
   room: number;
-  totalCleaning: number;
 }
 
 export interface IPropertyReportChannelSummary {

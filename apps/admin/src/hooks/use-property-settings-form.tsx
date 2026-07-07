@@ -3,6 +3,10 @@ import { Settings2 } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  type PropertyIncomeLineTypeFormRow,
+  PropertyIncomeLineTypesEditor,
+} from "@/components/settings/property-income-line-types-editor";
 import { PercentField } from "@/components/settings/property-settings-percent-field";
 import {
   type PropertyTaxRateFormRow,
@@ -17,6 +21,8 @@ import {
   DEFAULT_PROPERTY_SETTINGS,
   DEFAULT_PROPERTY_TAX_RATES,
   formatRateAsPercent,
+  type IPropertyIncomeLineType,
+  type IPropertyIncomeLineTypeInput,
   type IPropertySettings,
   type IPropertyTaxRate,
   type IPropertyTaxRateInput,
@@ -28,10 +34,12 @@ type TSettingsFormState = {
   bookingCommissionRate: string;
   directCommissionRate: string;
   expediaCommissionRate: string;
+  incomeLineTypes: PropertyIncomeLineTypeFormRow[];
   taxRates: PropertyTaxRateFormRow[];
 };
 
 const MAX_TAX_NAME_LENGTH = 80;
+const MAX_INCOME_TYPE_NAME_LENGTH = 80;
 
 const taxRateToFormRow = (tax: IPropertyTaxRate): PropertyTaxRateFormRow => ({
   clientId: tax.id,
@@ -40,11 +48,18 @@ const taxRateToFormRow = (tax: IPropertyTaxRate): PropertyTaxRateFormRow => ({
   ratePercent: formatRateAsPercent(tax.rate),
 });
 
+const incomeLineTypeToFormRow = (type: IPropertyIncomeLineType): PropertyIncomeLineTypeFormRow => ({
+  clientId: type.id,
+  id: type.id,
+  name: type.name,
+});
+
 const settingsToFormState = (settings: IPropertySettings): TSettingsFormState => ({
   airbnbCommissionRate: formatRateAsPercent(settings.airbnbCommissionRate),
   bookingCommissionRate: formatRateAsPercent(settings.bookingCommissionRate),
   directCommissionRate: formatRateAsPercent(settings.directCommissionRate),
   expediaCommissionRate: formatRateAsPercent(settings.expediaCommissionRate),
+  incomeLineTypes: settings.incomeLineTypes.map(incomeLineTypeToFormRow),
   taxRates: settings.taxRates.map(taxRateToFormRow),
 });
 
@@ -56,11 +71,21 @@ const formTaxRatesToBody = (taxRates: PropertyTaxRateFormRow[]): IPropertyTaxRat
     sortOrder: index,
   }));
 
+const formIncomeLineTypesToBody = (
+  incomeLineTypes: PropertyIncomeLineTypeFormRow[]
+): IPropertyIncomeLineTypeInput[] =>
+  incomeLineTypes.map((row, index) => ({
+    ...(row.id == null ? {} : { id: row.id }),
+    name: row.name.trim(),
+    sortOrder: index,
+  }));
+
 const formStateToBody = (form: TSettingsFormState) => ({
   airbnbCommissionRate: percentToRate(Number(form.airbnbCommissionRate)),
   bookingCommissionRate: percentToRate(Number(form.bookingCommissionRate)),
   directCommissionRate: percentToRate(Number(form.directCommissionRate)),
   expediaCommissionRate: percentToRate(Number(form.expediaCommissionRate)),
+  incomeLineTypes: formIncomeLineTypesToBody(form.incomeLineTypes),
   taxRates: formTaxRatesToBody(form.taxRates),
 });
 
@@ -132,7 +157,10 @@ export const usePropertySettingsForm = ({
     },
   });
 
-  const updateField = (field: Exclude<keyof TSettingsFormState, "taxRates">, value: string) => {
+  const updateField = (
+    field: Exclude<keyof TSettingsFormState, "incomeLineTypes" | "taxRates">,
+    value: string
+  ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -148,7 +176,7 @@ export const usePropertySettingsForm = ({
       return false;
     }
 
-    const seenNames = new Set<string>();
+    const seenTaxNames = new Set<string>();
     for (const row of form.taxRates) {
       const name = row.name.trim();
       if (name.length === 0) {
@@ -160,16 +188,37 @@ export const usePropertySettingsForm = ({
         return false;
       }
       const normalized = name.toLowerCase();
-      if (seenNames.has(normalized)) {
+      if (seenTaxNames.has(normalized)) {
         toast.error("Tax names must be unique");
         return false;
       }
-      seenNames.add(normalized);
+      seenTaxNames.add(normalized);
 
       if (parsePercent(row.ratePercent) === null) {
         toast.error("All tax rates must be numbers between 0 and 100");
         return false;
       }
+    }
+
+    const seenIncomeTypeNames = new Set<string>();
+    for (const row of form.incomeLineTypes) {
+      const name = row.name.trim();
+      if (name.length === 0) {
+        toast.error("Each other income type must have a name");
+        return false;
+      }
+      if (name.length > MAX_INCOME_TYPE_NAME_LENGTH) {
+        toast.error(
+          `Income type names must be at most ${MAX_INCOME_TYPE_NAME_LENGTH} characters`
+        );
+        return false;
+      }
+      const normalized = name.toLowerCase();
+      if (seenIncomeTypeNames.has(normalized)) {
+        toast.error("Income type names must be unique");
+        return false;
+      }
+      seenIncomeTypeNames.add(normalized);
     }
 
     return true;
@@ -218,7 +267,7 @@ export const usePropertySettingsForm = ({
           <CardTitle className="text-lg">Property settings</CardTitle>
         </div>
         <CardDescription>
-          Tax and channel commission rates used for short-term income calculations.
+          Tax, other income types, and channel commission rates used for income calculations.
         </CardDescription>
         <p className="text-muted-foreground text-xs">
           Last updated: {new Date(settings.updatedAt).toLocaleString()}
@@ -226,6 +275,20 @@ export const usePropertySettingsForm = ({
       </CardHeader>
       <Separator />
       <CardContent className="space-y-8 pt-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium">Other income types</h3>
+            <p className="text-muted-foreground text-xs">
+              Types available when adding other income and filtering the income table.
+            </p>
+          </div>
+          <PropertyIncomeLineTypesEditor
+            disabled={!canEdit || isPending}
+            incomeLineTypes={form.incomeLineTypes}
+            onChange={(incomeLineTypes) => setForm((prev) => ({ ...prev, incomeLineTypes }))}
+          />
+        </div>
+
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-medium">Tax rates</h3>

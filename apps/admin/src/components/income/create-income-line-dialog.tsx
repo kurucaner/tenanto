@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -9,7 +9,10 @@ import {
   IncomeLineTypeField,
   IncomeLineUnitSection,
 } from "@/components/income/income-line-form-fields";
-import { formatIncomeLineTypeLabel } from "@/components/income/income-line-form-options";
+import {
+  buildIncomeLineTypeOptions,
+  formatIncomeLineTypeLabel,
+} from "@/components/income/income-line-form-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,21 +25,22 @@ import {
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
-  IncomeLineType,
+  type IPropertyIncomeLineType,
   type IPropertyReservation,
   type IPropertyUnit,
-  type TIncomeLineType,
+  resolveDefaultIncomeLineTypeId,
 } from "@/packages/shared";
 
 export interface CreateIncomeLineDialogPrefill {
   guestName?: string;
-  lineType?: TIncomeLineType;
+  incomeLineTypeId?: string;
   reservationId?: string;
   transactionDate?: string;
   unitId?: string;
 }
 
 interface CreateIncomeLineDialogProps {
+  incomeLineTypes: IPropertyIncomeLineType[];
   lockedStay?: IPropertyReservation | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -47,33 +51,26 @@ interface CreateIncomeLineDialogProps {
 
 const FIELD_ID_PREFIX = "income-line";
 
-const defaultFormState = {
-  amount: "",
-  description: "",
-  guestName: "",
-  lineType: IncomeLineType.EXTRA_CLEANING as TIncomeLineType,
-  reservationId: "",
-  transactionDate: "",
-  unitId: "",
-};
-
 function buildFormState(
+  incomeLineTypes: IPropertyIncomeLineType[],
   prefill?: CreateIncomeLineDialogPrefill | null,
   lockedStay?: IPropertyReservation | null
 ) {
+  const defaultIncomeLineTypeId = resolveDefaultIncomeLineTypeId(incomeLineTypes);
+
   return {
-    amount: defaultFormState.amount,
-    description: defaultFormState.description,
-    guestName: prefill?.guestName ?? lockedStay?.guestName ?? defaultFormState.guestName,
-    lineType: prefill?.lineType ?? defaultFormState.lineType,
-    reservationId: prefill?.reservationId ?? lockedStay?.id ?? defaultFormState.reservationId,
-    transactionDate:
-      prefill?.transactionDate ?? lockedStay?.checkOut ?? defaultFormState.transactionDate,
-    unitId: prefill?.unitId ?? lockedStay?.unitId ?? defaultFormState.unitId,
+    amount: "",
+    description: "",
+    guestName: prefill?.guestName ?? lockedStay?.guestName ?? "",
+    incomeLineTypeId: prefill?.incomeLineTypeId ?? defaultIncomeLineTypeId,
+    reservationId: prefill?.reservationId ?? lockedStay?.id ?? "",
+    transactionDate: prefill?.transactionDate ?? lockedStay?.checkOut ?? "",
+    unitId: prefill?.unitId ?? lockedStay?.unitId ?? "",
   };
 }
 
 interface CreateIncomeLineDialogFormProps {
+  incomeLineTypes: IPropertyIncomeLineType[];
   lockedStay?: IPropertyReservation | null;
   onClose: () => void;
   prefill?: CreateIncomeLineDialogPrefill | null;
@@ -82,10 +79,21 @@ interface CreateIncomeLineDialogFormProps {
 }
 
 const CreateIncomeLineDialogForm = memo(
-  ({ lockedStay, onClose, prefill, propertyId, units }: CreateIncomeLineDialogFormProps) => {
-    const initialFormState = buildFormState(prefill, lockedStay);
+  ({
+    incomeLineTypes,
+    lockedStay,
+    onClose,
+    prefill,
+    propertyId,
+    units,
+  }: CreateIncomeLineDialogFormProps) => {
+    const initialFormState = buildFormState(incomeLineTypes, prefill, lockedStay);
     const queryClient = useQueryClient();
-    const [lineType, setLineType] = useState<TIncomeLineType>(initialFormState.lineType);
+    const incomeLineTypeOptions = useMemo(
+      () => buildIncomeLineTypeOptions(incomeLineTypes),
+      [incomeLineTypes]
+    );
+    const [incomeLineTypeId, setIncomeLineTypeId] = useState(initialFormState.incomeLineTypeId);
     const [unitId, setUnitId] = useState(initialFormState.unitId);
     const [amount, setAmount] = useState(initialFormState.amount);
     const [transactionDate, setTransactionDate] = useState(initialFormState.transactionDate);
@@ -107,7 +115,7 @@ const CreateIncomeLineDialogForm = memo(
           amount: Number(amount) || 0,
           description: description.trim() || undefined,
           guestName: guestName.trim() || undefined,
-          lineType,
+          incomeLineTypeId,
           reservationId: reservationId || undefined,
           transactionDate,
           unitId,
@@ -126,6 +134,7 @@ const CreateIncomeLineDialogForm = memo(
       unitId !== "" &&
       transactionDate !== "" &&
       amount !== "" &&
+      incomeLineTypeId !== "" &&
       !mutation.isPending;
 
     const showGuestField = !lockedStay && reservationId === "";
@@ -144,8 +153,9 @@ const CreateIncomeLineDialogForm = memo(
         <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
           <IncomeLineTypeField
             fieldIdPrefix={FIELD_ID_PREFIX}
-            onChange={setLineType}
-            value={lineType}
+            onChange={setIncomeLineTypeId}
+            options={incomeLineTypeOptions}
+            value={incomeLineTypeId}
           />
 
           <IncomeLineUnitSection
@@ -184,7 +194,8 @@ const CreateIncomeLineDialogForm = memo(
           />
 
           <p className="text-muted-foreground text-xs">
-            {formatIncomeLineTypeLabel(lineType)}: no taxes or channel commission applied.
+            {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel
+            commission applied.
           </p>
         </div>
 
@@ -203,7 +214,15 @@ const CreateIncomeLineDialogForm = memo(
 CreateIncomeLineDialogForm.displayName = "CreateIncomeLineDialogForm";
 
 export const CreateIncomeLineDialog = memo(
-  ({ lockedStay, onOpenChange, open, prefill, propertyId, units }: CreateIncomeLineDialogProps) => {
+  ({
+    incomeLineTypes,
+    lockedStay,
+    onOpenChange,
+    open,
+    prefill,
+    propertyId,
+    units,
+  }: CreateIncomeLineDialogProps) => {
     const handleClose = () => {
       onOpenChange(false);
     };
@@ -213,6 +232,7 @@ export const CreateIncomeLineDialog = memo(
         <DialogContent className="sm:max-w-[520px]">
           {open ? (
             <CreateIncomeLineDialogForm
+              incomeLineTypes={incomeLineTypes}
               lockedStay={lockedStay}
               onClose={handleClose}
               prefill={prefill}

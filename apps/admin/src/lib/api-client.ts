@@ -628,7 +628,7 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
   if (query.unitId) params.set("unitId", query.unitId);
-  if (query.lineType) params.set("lineType", query.lineType);
+  if (query.incomeLineTypeId) params.set("incomeLineTypeId", query.incomeLineTypeId);
   if (query.reservationId) params.set("reservationId", query.reservationId);
   const search = params.toString();
   return search ? `?${search}` : "";

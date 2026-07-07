@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -9,6 +9,7 @@ import {
   IncomeLineTypeField,
   IncomeLineUnitSection,
 } from "@/components/income/income-line-form-fields";
+import { buildIncomeLineTypeOptions } from "@/components/income/income-line-form-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,12 +24,13 @@ import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
   type IPropertyIncomeLine,
+  type IPropertyIncomeLineType,
   type IPropertyUnit,
-  type TIncomeLineType,
 } from "@/packages/shared";
 
 interface EditIncomeLineDialogProps {
   incomeLine: IPropertyIncomeLine;
+  incomeLineTypes: IPropertyIncomeLineType[];
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
@@ -38,9 +40,20 @@ interface EditIncomeLineDialogProps {
 const FIELD_ID_PREFIX = "edit-income-line";
 
 export const EditIncomeLineDialog = memo(
-  ({ incomeLine, onOpenChange, open, propertyId, units }: EditIncomeLineDialogProps) => {
+  ({
+    incomeLine,
+    incomeLineTypes,
+    onOpenChange,
+    open,
+    propertyId,
+    units,
+  }: EditIncomeLineDialogProps) => {
     const queryClient = useQueryClient();
-    const [lineType, setLineType] = useState<TIncomeLineType>(incomeLine.lineType);
+    const incomeLineTypeOptions = useMemo(
+      () => buildIncomeLineTypeOptions(incomeLineTypes),
+      [incomeLineTypes]
+    );
+    const [incomeLineTypeId, setIncomeLineTypeId] = useState(incomeLine.incomeLineTypeId);
     const [unitId, setUnitId] = useState(incomeLine.unitId);
     const [amount, setAmount] = useState(String(incomeLine.amount));
     const [transactionDate, setTransactionDate] = useState(incomeLine.transactionDate);
@@ -59,7 +72,7 @@ export const EditIncomeLineDialog = memo(
           amount: Number(amount) || 0,
           description: description.trim() || null,
           guestName: guestName.trim() || null,
-          lineType,
+          incomeLineTypeId,
           reservationId: reservationId || null,
           transactionDate,
           unitId,
@@ -78,28 +91,31 @@ export const EditIncomeLineDialog = memo(
       unitId !== "" &&
       transactionDate !== "" &&
       amount !== "" &&
+      incomeLineTypeId !== "" &&
       !mutation.isPending;
 
     const showGuestField = reservationId === "";
 
     return (
-      <Dialog onOpenChange={() => onOpenChange(false)} open={open}>
+      <Dialog onOpenChange={onOpenChange} open={open}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Edit Other Income</DialogTitle>
-            <DialogDescription>Update misc income details and amount.</DialogDescription>
+            <DialogDescription>
+              Current amount: {formatMoney(incomeLine.amount)} on {incomeLine.transactionDate}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
             <IncomeLineTypeField
               fieldIdPrefix={FIELD_ID_PREFIX}
-              onChange={setLineType}
-              value={lineType}
+              onChange={setIncomeLineTypeId}
+              options={incomeLineTypeOptions}
+              value={incomeLineTypeId}
             />
 
             <IncomeLineUnitSection
               fieldIdPrefix={FIELD_ID_PREFIX}
-              includeReservationId={incomeLine.reservationId ?? undefined}
               onReservationIdChange={setReservationId}
               onUnitChange={handleUnitChange}
               propertyId={propertyId}
@@ -111,7 +127,6 @@ export const EditIncomeLineDialog = memo(
 
             <IncomeLineAmountDateFields
               amount={amount}
-              autoFocusAmount
               fieldIdPrefix={FIELD_ID_PREFIX}
               onAmountChange={setAmount}
               onDateChange={setTransactionDate}
@@ -131,10 +146,6 @@ export const EditIncomeLineDialog = memo(
               onChange={setDescription}
               value={description}
             />
-
-            <p className="text-muted-foreground text-xs">
-              Current net: {formatMoney(incomeLine.netIncome)} (recalculated on save)
-            </p>
           </div>
 
           <DialogFooter>
@@ -147,7 +158,7 @@ export const EditIncomeLineDialog = memo(
               Cancel
             </Button>
             <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">
-              {mutation.isPending ? "Saving…" : "Save Changes"}
+              {mutation.isPending ? "Saving…" : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

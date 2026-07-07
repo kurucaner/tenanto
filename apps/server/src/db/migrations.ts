@@ -1200,4 +1200,132 @@ export const migrations: IMigration[] = [
     },
     version: 27,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_income_line_type AS ENUM (
+            'cleaning_only',
+            'extra_cleaning',
+            'extra_service',
+            'beach_equipment_rental'
+          );
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN line_type property_income_line_type;
+      `);
+      await client.query(`
+        UPDATE property_income_lines pil
+        SET line_type = CASE ilt.name
+          WHEN 'Extra cleaning' THEN 'extra_cleaning'::property_income_line_type
+          WHEN 'Beach equipment rental' THEN 'beach_equipment_rental'::property_income_line_type
+          WHEN 'Cleaning only' THEN 'cleaning_only'::property_income_line_type
+          WHEN 'Extra service' THEN 'extra_service'::property_income_line_type
+          ELSE 'extra_cleaning'::property_income_line_type
+        END
+        FROM property_income_line_types ilt
+        WHERE ilt.id = pil.income_line_type_id;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ALTER COLUMN line_type SET NOT NULL;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_income_line_type_id;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN income_line_type_id;
+      `);
+      await client.query(`DROP TABLE IF EXISTS property_income_line_types;`);
+    },
+    name: "property_income_line_types",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_income_line_types (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          name VARCHAR(80) NOT NULL,
+          sort_order INT NOT NULL DEFAULT 0,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order)
+        SELECT p.id, 'Extra cleaning', 0
+        FROM properties p
+        UNION ALL
+        SELECT p.id, 'Beach equipment rental', 1
+        FROM properties p;
+      `);
+
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order)
+        SELECT DISTINCT pil.property_id, 'Cleaning only', 2
+        FROM property_income_lines pil
+        WHERE pil.line_type = 'cleaning_only'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM property_income_line_types t
+            WHERE t.property_id = pil.property_id
+              AND t.name = 'Cleaning only'
+          );
+      `);
+
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order)
+        SELECT DISTINCT pil.property_id, 'Extra service', 3
+        FROM property_income_lines pil
+        WHERE pil.line_type = 'extra_service'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM property_income_line_types t
+            WHERE t.property_id = pil.property_id
+              AND t.name = 'Extra service'
+          );
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN income_line_type_id UUID REFERENCES property_income_line_types(id);
+      `);
+
+      await client.query(`
+        UPDATE property_income_lines pil
+        SET income_line_type_id = t.id
+        FROM property_income_line_types t
+        WHERE t.property_id = pil.property_id
+          AND (
+            (pil.line_type = 'extra_cleaning' AND t.name = 'Extra cleaning')
+            OR (pil.line_type = 'beach_equipment_rental' AND t.name = 'Beach equipment rental')
+            OR (pil.line_type = 'cleaning_only' AND t.name = 'Cleaning only')
+            OR (pil.line_type = 'extra_service' AND t.name = 'Extra service')
+          );
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ALTER COLUMN income_line_type_id SET NOT NULL;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN line_type;
+      `);
+
+      await client.query(`DROP TYPE property_income_line_type;`);
+
+      await client.query(`
+        CREATE INDEX idx_property_income_lines_income_line_type_id
+          ON property_income_lines(income_line_type_id);
+      `);
+    },
+    version: 28,
+  },
 ];

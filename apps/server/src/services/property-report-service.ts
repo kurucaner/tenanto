@@ -4,7 +4,6 @@ import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
   getExpenseCategoryMeta,
-  IncomeLineType,
   type IPortfolioPropertyReportRow,
   type IPortfolioReportSummary,
   type IPropertyExpense,
@@ -12,6 +11,7 @@ import {
   type IPropertyReportChannelSummary,
   type IPropertyReportExpenseCategory,
   type IPropertyReportMonthSummary,
+  type IPropertyReportOtherIncomeByType,
   type IPropertyReportSalesTypeBreakdown,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
@@ -162,14 +162,44 @@ export async function loadReportData(
 
 function initSalesBreakdown(): IPropertyReportSalesTypeBreakdown {
   return {
-    beachRental: 0,
     cleaningFromStays: 0,
-    cleaningOnly: 0,
-    extraCleaning: 0,
-    extraService: 0,
+    otherIncomeByType: [],
     room: 0,
-    totalCleaning: 0,
   };
+}
+
+function addOtherIncomeToBreakdown(
+  breakdown: IPropertyReportSalesTypeBreakdown,
+  line: IPropertyIncomeLine
+): void {
+  const typeName = line.incomeLineTypeName ?? line.incomeLineTypeId;
+  const existing = breakdown.otherIncomeByType.find(
+    (row) => row.incomeLineTypeId === line.incomeLineTypeId
+  );
+  if (existing) {
+    existing.amount = roundMoney(existing.amount + line.amount);
+    return;
+  }
+
+  breakdown.otherIncomeByType.push({
+    amount: line.amount,
+    incomeLineTypeId: line.incomeLineTypeId,
+    name: typeName,
+  });
+}
+
+function mergeOtherIncomeByType(
+  target: IPropertyReportOtherIncomeByType[],
+  source: IPropertyReportOtherIncomeByType[]
+): void {
+  for (const row of source) {
+    const existing = target.find((entry) => entry.name === row.name);
+    if (existing) {
+      existing.amount = roundMoney(existing.amount + row.amount);
+      continue;
+    }
+    target.push({ ...row });
+  }
 }
 
 function initChannelMap(): Map<TReservationChannel, IPropertyReportChannelSummary> {
@@ -287,22 +317,7 @@ export function buildPropertyReportSummary(
     grossIncome = roundMoney(grossIncome + line.grossIncome);
     netIncome = roundMoney(netIncome + line.netIncome);
 
-    switch (line.lineType) {
-      case IncomeLineType.CLEANING_ONLY:
-        salesTypeBreakdown.cleaningOnly = roundMoney(salesTypeBreakdown.cleaningOnly + line.amount);
-        break;
-      case IncomeLineType.EXTRA_CLEANING:
-        salesTypeBreakdown.extraCleaning = roundMoney(
-          salesTypeBreakdown.extraCleaning + line.amount
-        );
-        break;
-      case IncomeLineType.EXTRA_SERVICE:
-        salesTypeBreakdown.extraService = roundMoney(salesTypeBreakdown.extraService + line.amount);
-        break;
-      case IncomeLineType.BEACH_EQUIPMENT_RENTAL:
-        salesTypeBreakdown.beachRental = roundMoney(salesTypeBreakdown.beachRental + line.amount);
-        break;
-    }
+    addOtherIncomeToBreakdown(salesTypeBreakdown, line);
 
     const unit = unitMap.get(line.unitId);
     if (unit) {
@@ -313,9 +328,7 @@ export function buildPropertyReportSummary(
     addToMonth(monthMap, monthFromDate(line.transactionDate), line.grossIncome, line.netIncome);
   }
 
-  salesTypeBreakdown.totalCleaning = roundMoney(
-    salesTypeBreakdown.cleaningFromStays + salesTypeBreakdown.cleaningOnly
-  );
+  salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
 
   for (const expense of expenses) {
     const meta = getExpenseCategoryMeta(expense.category);
@@ -445,20 +458,9 @@ export function rollupSummaries(
     salesTypeBreakdown.cleaningFromStays = roundMoney(
       salesTypeBreakdown.cleaningFromStays + summary.salesTypeBreakdown.cleaningFromStays
     );
-    salesTypeBreakdown.cleaningOnly = roundMoney(
-      salesTypeBreakdown.cleaningOnly + summary.salesTypeBreakdown.cleaningOnly
-    );
-    salesTypeBreakdown.extraCleaning = roundMoney(
-      salesTypeBreakdown.extraCleaning + summary.salesTypeBreakdown.extraCleaning
-    );
-    salesTypeBreakdown.extraService = roundMoney(
-      salesTypeBreakdown.extraService + summary.salesTypeBreakdown.extraService
-    );
-    salesTypeBreakdown.beachRental = roundMoney(
-      salesTypeBreakdown.beachRental + summary.salesTypeBreakdown.beachRental
-    );
-    salesTypeBreakdown.totalCleaning = roundMoney(
-      salesTypeBreakdown.totalCleaning + summary.salesTypeBreakdown.totalCleaning
+    mergeOtherIncomeByType(
+      salesTypeBreakdown.otherIncomeByType,
+      summary.salesTypeBreakdown.otherIncomeByType
     );
 
     for (const row of summary.channelSummary) {
@@ -507,6 +509,7 @@ export function rollupSummaries(
   );
 
   const channelSummary = [...channelMap.values()].sort((a, b) => b.grossIncome - a.grossIncome);
+  salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
   const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
@@ -578,11 +581,9 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += csvRow(["Sales Type Breakdown"]);
   next += csvRow(["Room", summary.salesTypeBreakdown.room]);
   next += csvRow(["Cleaning (stays)", summary.salesTypeBreakdown.cleaningFromStays]);
-  next += csvRow(["Cleaning only", summary.salesTypeBreakdown.cleaningOnly]);
-  next += csvRow(["Total cleaning", summary.salesTypeBreakdown.totalCleaning]);
-  next += csvRow(["Extra cleaning", summary.salesTypeBreakdown.extraCleaning]);
-  next += csvRow(["Extra service", summary.salesTypeBreakdown.extraService]);
-  next += csvRow(["Beach rental", summary.salesTypeBreakdown.beachRental]);
+  for (const row of summary.salesTypeBreakdown.otherIncomeByType) {
+    next += csvRow([row.name, row.amount]);
+  }
   next += "\n";
   next += csvRow(["Channel Summary", "Gross Income", "Commission", "Stays"]);
   for (const row of summary.channelSummary) {

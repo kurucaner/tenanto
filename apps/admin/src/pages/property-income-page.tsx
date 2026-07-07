@@ -8,7 +8,7 @@ import { CreateReservationDialog } from "@/components/income/create-reservation-
 import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialog";
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
-import { formatIncomeLineTypeLabel, INCOME_TYPE_FILTER_OPTIONS, incomeLineSelectClassName } from "@/components/income/income-line-form-options";
+import { buildIncomeTypeFilterOptions, incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
 import {
   CHANNEL_OPTIONS,
@@ -34,7 +34,7 @@ import { PropertyUnitSelectOptions } from "@/components/units/property-unit-sele
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useTableSort } from "@/hooks/use-table-sort";
-import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
+import { incomeLinesApi, reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import {
   getEntryUnitId,
@@ -46,13 +46,13 @@ import { adminQueryKeys } from "@/lib/query-keys";
 import {
   getStayTaxesAndFeesTotal,
   IncomeEntryKind,
-  IncomeLineType,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
+  type IPropertyIncomeLineType,
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertyUnit,
-  type TIncomeLineType,
+  resolveDefaultIncomeLineTypeId,
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
 
@@ -73,7 +73,7 @@ function buildMergedEntries(
 
   if (showLines) {
     for (const line of incomeLines) {
-      if (incomeTypeFilter === "" || line.lineType === incomeTypeFilter) {
+      if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
         entries.push({ entryKind: IncomeEntryKind.LINE, line });
       }
     }
@@ -128,7 +128,7 @@ function buildLineFilters(
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
-    next.lineType = incomeType as TIncomeLineType;
+    next.incomeLineTypeId = incomeType;
   }
   return next;
 }
@@ -143,9 +143,10 @@ function handleDeleteLine(
   line: IPropertyIncomeLine,
   mutate: (line: IPropertyIncomeLine) => void
 ): void {
+  const typeLabel = line.incomeLineTypeName ?? line.incomeLineTypeId;
   if (
     !globalThis.confirm(
-      `Delete ${formatIncomeLineTypeLabel(line.lineType)} entry? This cannot be undone.`
+      `Delete ${typeLabel} entry? This cannot be undone.`
     )
   ) {
     return;
@@ -164,11 +165,12 @@ function handleDeleteStay(
 }
 
 function buildOtherIncomePrefillFromStay(
-  stay: IPropertyReservation
+  stay: IPropertyReservation,
+  incomeLineTypes: IPropertyIncomeLineType[]
 ): CreateIncomeLineDialogPrefill {
   return {
     guestName: stay.guestName,
-    lineType: IncomeLineType.EXTRA_CLEANING,
+    incomeLineTypeId: resolveDefaultIncomeLineTypeId(incomeLineTypes),
     reservationId: stay.id,
     transactionDate: stay.checkOut,
     unitId: stay.unitId,
@@ -177,6 +179,7 @@ function buildOtherIncomePrefillFromStay(
 
 function openOtherIncomeFromStay(
   stay: IPropertyReservation,
+  incomeLineTypes: IPropertyIncomeLineType[],
   actions: {
     setCreateLineLockedStay: (stay: IPropertyReservation | null) => void;
     setCreateLineOpen: (open: boolean) => void;
@@ -184,7 +187,7 @@ function openOtherIncomeFromStay(
   }
 ): void {
   actions.setCreateLineLockedStay(stay);
-  actions.setCreateLinePrefill(buildOtherIncomePrefillFromStay(stay));
+  actions.setCreateLinePrefill(buildOtherIncomePrefillFromStay(stay, incomeLineTypes));
   actions.setCreateLineOpen(true);
 }
 
@@ -305,6 +308,7 @@ const PropertyIncomePageDialogs = memo(
     createStayOpen,
     editIncomeLine,
     editReservation,
+    incomeLineTypes,
     onCreateIncomeLineOpenChange,
     onCreateStayOpenChange,
     onEditIncomeLineOpenChange,
@@ -318,6 +322,7 @@ const PropertyIncomePageDialogs = memo(
     createStayOpen: boolean;
     editIncomeLine: IPropertyIncomeLine | null;
     editReservation: IPropertyReservation | null;
+    incomeLineTypes: IPropertyIncomeLineType[];
     onCreateIncomeLineOpenChange: (open: boolean) => void;
     onCreateStayOpenChange: (open: boolean) => void;
     onEditIncomeLineOpenChange: (open: boolean) => void;
@@ -332,6 +337,7 @@ const PropertyIncomePageDialogs = memo(
         propertyId={propertyId}
       />
       <CreateIncomeLineDialog
+        incomeLineTypes={incomeLineTypes}
         lockedStay={createLineLockedStay}
         onOpenChange={onCreateIncomeLineOpenChange}
         open={createLineOpen}
@@ -352,6 +358,7 @@ const PropertyIncomePageDialogs = memo(
       {editIncomeLine ? (
         <EditIncomeLineDialog
           incomeLine={editIncomeLine}
+          incomeLineTypes={incomeLineTypes}
           key={editIncomeLine.id}
           onOpenChange={onEditIncomeLineOpenChange}
           open={true}
@@ -512,7 +519,11 @@ const IncomeEntryRow = memo(
     return (
       <TableRow>
         <TableCell>
-          <IncomeEntryTypeBadge entryKind={IncomeEntryKind.LINE} lineType={line.lineType} />
+          <IncomeEntryTypeBadge
+            entryKind={IncomeEntryKind.LINE}
+            incomeLineTypeId={line.incomeLineTypeId}
+            label={line.incomeLineTypeName ?? line.incomeLineTypeId}
+          />
         </TableCell>
         <TableCell className="font-medium">{unitLabel}</TableCell>
         <TableCell>{line.guestName ?? "—"}</TableCell>
@@ -616,7 +627,21 @@ const PropertyIncomePage = memo(() => {
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
+    const settingsQuery = useQuery({
+      queryFn: () => settingsApi.get(propertyId),
+      queryKey: adminQueryKeys.propertySettings(propertyId),
+    });
+
     const units = unitsQuery.data?.units ?? [];
+    const incomeLineTypes = useMemo(
+      () => settingsQuery.data?.settings.incomeLineTypes ?? [],
+      [settingsQuery.data?.settings.incomeLineTypes]
+    );
+
+    const incomeTypeFilterOptions = useMemo(
+      () => buildIncomeTypeFilterOptions(incomeLineTypes),
+      [incomeLineTypes]
+    );
 
     const unitLabelById = useMemo(
       () =>
@@ -724,7 +749,7 @@ const PropertyIncomePage = memo(() => {
                   onChange={(e) => setIncomeType(e.target.value)}
                   value={incomeType}
                 >
-                  {INCOME_TYPE_FILTER_OPTIONS.map((opt) => (
+                  {incomeTypeFilterOptions.map((opt) => (
                     <option key={opt.value || "all"} value={opt.value}>
                       {opt.label}
                     </option>
@@ -774,7 +799,7 @@ const PropertyIncomePage = memo(() => {
               getColumnDirection={getColumnDirection}
               isLoading={isLoading}
               onAddOtherIncomeFromStay={(stay) =>
-                openOtherIncomeFromStay(stay, {
+                openOtherIncomeFromStay(stay, incomeLineTypes, {
                   setCreateLineLockedStay,
                   setCreateLineOpen,
                   setCreateLinePrefill,
@@ -808,6 +833,7 @@ const PropertyIncomePage = memo(() => {
           createStayOpen={createStayOpen}
           editIncomeLine={editIncomeLine}
           editReservation={editReservation}
+          incomeLineTypes={incomeLineTypes}
           onCreateIncomeLineOpenChange={(open) =>
             handleCreateIncomeLineOpenChange(open, setCreateLineOpen, () => {
               setCreateLinePrefill(null);

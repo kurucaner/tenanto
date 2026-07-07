@@ -1,5 +1,5 @@
-import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
+import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import {
   compareDates,
   compareNumbers,
@@ -8,11 +8,12 @@ import {
   sortRows,
 } from "@/lib/table-sort";
 import type {
+  IPortfolioPropertyReportRow,
   IPropertyReportChannelSummary,
   IPropertyReportExpenseCategory,
   IPropertyReportMonthSummary,
+  IPropertyReportSalesTypeBreakdown,
   IPropertyReportUnitSummary,
-  IPortfolioPropertyReportRow,
 } from "@/packages/shared";
 
 export interface ISalesTypeBreakdownRow {
@@ -21,20 +22,27 @@ export interface ISalesTypeBreakdownRow {
   label: string;
 }
 
-export function buildSalesTypeBreakdownRows(breakdown: {
-  beachRental: number;
-  extraCleaning: number;
-  extraService: number;
-  room: number;
-  totalCleaning: number;
-}): ISalesTypeBreakdownRow[] {
-  return [
+export function buildSalesTypeBreakdownRows(
+  breakdown: IPropertyReportSalesTypeBreakdown
+): ISalesTypeBreakdownRow[] {
+  const rows: ISalesTypeBreakdownRow[] = [
     { amount: breakdown.room, id: "room", label: "Room" },
-    { amount: breakdown.totalCleaning, id: "totalCleaning", label: "Cleaning (total)" },
-    { amount: breakdown.extraCleaning, id: "extraCleaning", label: "Extra cleaning" },
-    { amount: breakdown.extraService, id: "extraService", label: "Extra service" },
-    { amount: breakdown.beachRental, id: "beachRental", label: "Beach rental" },
+    {
+      amount: breakdown.cleaningFromStays,
+      id: "cleaningFromStays",
+      label: "Cleaning (stays)",
+    },
   ];
+
+  for (const row of breakdown.otherIncomeByType) {
+    rows.push({
+      amount: row.amount,
+      id: row.incomeLineTypeId,
+      label: row.name,
+    });
+  }
+
+  return rows;
 }
 
 function sortByStringField<T>(rows: T[], sortState: ISortState, getValue: (row: T) => string) {

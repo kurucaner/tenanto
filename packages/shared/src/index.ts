@@ -133,17 +133,24 @@ export {
   type TReservationStatus,
 } from "./property-reservation-types";
 
+// Property Income Line Type Config
+export {
+  DEFAULT_EXTRA_CLEANING_TYPE_NAME,
+  DEFAULT_PROPERTY_INCOME_LINE_TYPES,
+  type IPropertyIncomeLineType,
+  type IPropertyIncomeLineTypeInput,
+  resolveDefaultIncomeLineTypeId,
+} from "./property-income-line-type-config";
+
 // Property Income Line Types
 export {
   type ICreatePropertyIncomeLineBody,
   IncomeEntryKind,
-  IncomeLineType,
   type IPropertyIncomeLine,
   type IPropertyIncomeLineComputedFields,
   type IPropertyIncomeLinesListQuery,
   type IUpdatePropertyIncomeLineBody,
   type TIncomeEntryKind,
-  type TIncomeLineType,
   type TPropertyIncomeEntry,
 } from "./property-income-line-types";
 
@@ -170,6 +177,7 @@ export {
   type IPropertyReportChannelSummary,
   type IPropertyReportExpenseCategory,
   type IPropertyReportMonthSummary,
+  type IPropertyReportOtherIncomeByType,
   type IPropertyReportSalesTypeBreakdown,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,

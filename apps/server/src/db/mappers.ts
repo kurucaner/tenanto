@@ -3,6 +3,7 @@ import {
   type IProperty,
   type IPropertyExpense,
   type IPropertyIncomeLine,
+  type IPropertyIncomeLineType,
   type IPropertyInvite,
   type IPropertyMember,
   type IPropertyReservation,
@@ -15,7 +16,6 @@ import {
   type SupportCategory,
   type SupportRequestStatus,
   type TExpenseCategory,
-  type TIncomeLineType,
   toIso,
   type TPropertyInviteStatus,
   type TPropertyRole,
@@ -115,9 +115,18 @@ export const mapPropertyTaxRateRow = (row: Record<string, unknown>): IPropertyTa
   sortOrder: Number(row.sort_order),
 });
 
+export const mapPropertyIncomeLineTypeRow = (
+  row: Record<string, unknown>
+): IPropertyIncomeLineType => ({
+  id: row.id as string,
+  name: row.name as string,
+  propertyId: row.property_id as string,
+  sortOrder: Number(row.sort_order),
+});
+
 export const mapPropertySettingsRow = (
   row: Record<string, unknown>
-): Omit<IPropertySettings, "taxRates"> => ({
+): Omit<IPropertySettings, "incomeLineTypes" | "taxRates"> => ({
   airbnbCommissionRate: Number(row.airbnb_commission_rate),
   bookingCommissionRate: Number(row.booking_commission_rate),
   createdAt: (row.created_at as Date).toISOString(),
@@ -185,7 +194,9 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
   grossIncome: Number(row.gross_income),
   guestName: (row.guest_name as string) ?? null,
   id: row.id as string,
-  lineType: row.line_type as TIncomeLineType,
+  incomeLineTypeId: row.income_line_type_id as string,
+  incomeLineTypeName:
+    typeof row.income_line_type_name === "string" ? row.income_line_type_name : undefined,
   netIncome: Number(row.net_income),
   propertyId: row.property_id as string,
   reservationId: (row.reservation_id as string) ?? null,

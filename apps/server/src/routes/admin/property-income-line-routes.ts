@@ -1,16 +1,15 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { propertyIncomeLineTypesDb } from "@/db/property-income-line-types";
 import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
   HttpStatus,
   type ICreatePropertyIncomeLineBody,
-  IncomeLineType,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IUpdatePropertyIncomeLineBody,
-  type TIncomeLineType,
   type TUnitKind,
   UnitKind,
 } from "@/packages/shared";
@@ -22,8 +21,6 @@ import {
   assertPropertyMemberAccess,
 } from "./property-route-access";
 
-const INCOME_LINE_TYPES = new Set<TIncomeLineType>(Object.values(IncomeLineType));
-
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseDateString(raw: unknown): string | null {
@@ -33,9 +30,9 @@ function parseDateString(raw: unknown): string | null {
   return raw.trim();
 }
 
-function parseIncomeLineType(raw: unknown): TIncomeLineType | null {
+function parseIncomeLineTypeId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  return INCOME_LINE_TYPES.has(raw as TIncomeLineType) ? (raw as TIncomeLineType) : null;
+  return parseUuidParam(raw);
 }
 
 function parseMoney(raw: unknown): number | null {
@@ -51,12 +48,9 @@ function parseCreateIncomeLineBody(
   }
   const r = raw as Record<string, unknown>;
 
-  const lineType = parseIncomeLineType(r["lineType"]);
-  if (lineType === null) {
-    return {
-      error: `lineType must be one of: ${[...INCOME_LINE_TYPES].join(", ")}`,
-      ok: false,
-    };
+  const incomeLineTypeId = parseIncomeLineTypeId(r["incomeLineTypeId"]);
+  if (incomeLineTypeId === null) {
+    return { error: "incomeLineTypeId must be a valid UUID", ok: false };
   }
 
   const unitId = parseUuidParam(r["unitId"]);
@@ -98,7 +92,7 @@ function parseCreateIncomeLineBody(
       amount,
       description,
       guestName,
-      lineType,
+      incomeLineTypeId,
       reservationId,
       transactionDate,
       unitId,
@@ -110,7 +104,7 @@ function parseCreateIncomeLineBody(
 const UPDATE_FIELDS = [
   "unitId",
   "reservationId",
-  "lineType",
+  "incomeLineTypeId",
   "amount",
   "transactionDate",
   "description",
@@ -133,15 +127,12 @@ function parseUpdateIncomeLineBody(
 
   const body: IUpdatePropertyIncomeLineBody = {};
 
-  if ("lineType" in r) {
-    const lineType = parseIncomeLineType(r["lineType"]);
-    if (lineType === null) {
-      return {
-        error: `lineType must be one of: ${[...INCOME_LINE_TYPES].join(", ")}`,
-        ok: false,
-      };
+  if ("incomeLineTypeId" in r) {
+    const incomeLineTypeId = parseIncomeLineTypeId(r["incomeLineTypeId"]);
+    if (incomeLineTypeId === null) {
+      return { error: "incomeLineTypeId must be a valid UUID", ok: false };
     }
-    body.lineType = lineType;
+    body.incomeLineTypeId = incomeLineTypeId;
   }
   if ("unitId" in r) {
     const unitId = parseUuidParam(r["unitId"]);
@@ -217,15 +208,12 @@ function parseIncomeLinesListQuery(
     if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
     if (unitId) filters.unitId = unitId;
   }
-  if (query["lineType"] !== undefined && query["lineType"] !== "") {
-    const lineType = parseIncomeLineType(query["lineType"]);
-    if (lineType === null) {
-      return {
-        error: `lineType must be one of: ${[...INCOME_LINE_TYPES].join(", ")}`,
-        ok: false,
-      };
+  if (query["incomeLineTypeId"] !== undefined && query["incomeLineTypeId"] !== "") {
+    const incomeLineTypeId = parseIncomeLineTypeId(query["incomeLineTypeId"]);
+    if (incomeLineTypeId === null) {
+      return { error: "incomeLineTypeId must be a valid UUID", ok: false };
     }
-    filters.lineType = lineType;
+    filters.incomeLineTypeId = incomeLineTypeId;
   }
   if (query["reservationId"] !== undefined && query["reservationId"] !== "") {
     const reservationId = parseOptionalUuid(query["reservationId"]);
@@ -278,6 +266,24 @@ async function resolveReservationForProperty(
   return reservation;
 }
 
+async function resolveIncomeLineTypeForProperty(
+  incomeLineTypeId: string,
+  propertyId: string,
+  reply: FastifyReply
+) {
+  const incomeLineType = await propertyIncomeLineTypesDb.findByIdForProperty(
+    incomeLineTypeId,
+    propertyId
+  );
+  if (!incomeLineType) {
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Income type not found for this property" });
+    return null;
+  }
+  return incomeLineType;
+}
+
 function mergeIncomeLineInput(
   existing: IPropertyIncomeLine,
   patch: IUpdatePropertyIncomeLineBody
@@ -287,7 +293,7 @@ function mergeIncomeLineInput(
     description:
       patch.description === undefined ? existing.description : patch.description,
     guestName: patch.guestName === undefined ? existing.guestName : patch.guestName,
-    lineType: patch.lineType ?? existing.lineType,
+    incomeLineTypeId: patch.incomeLineTypeId ?? existing.incomeLineTypeId,
     reservationId:
       patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
     transactionDate: patch.transactionDate ?? existing.transactionDate,
@@ -359,6 +365,13 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
+      const incomeLineType = await resolveIncomeLineTypeForProperty(
+        parsed.body.incomeLineTypeId,
+        propertyId,
+        reply
+      );
+      if (!incomeLineType) return;
+
       const unit = await resolveUnitForProperty(parsed.body.unitId, propertyId, reply);
       if (!unit) return;
 
@@ -383,7 +396,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           amount: parsed.body.amount,
           description: parsed.body.description?.trim() || null,
           guestName,
-          lineType: parsed.body.lineType,
+          incomeLineTypeId: incomeLineType.id,
           reservationId,
           transactionDate: parsed.body.transactionDate,
           unitId: parsed.body.unitId,
@@ -439,6 +452,14 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       }
 
       const merged = mergeIncomeLineInput(existing, parsed.body);
+
+      const incomeLineType = await resolveIncomeLineTypeForProperty(
+        merged.incomeLineTypeId,
+        propertyId,
+        reply
+      );
+      if (!incomeLineType) return;
+
       const unit = await resolveUnitForProperty(merged.unitId, propertyId, reply);
       if (!unit) return;
 

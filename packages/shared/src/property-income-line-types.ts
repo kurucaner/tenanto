@@ -1,15 +1,5 @@
 import type { IPropertyReservation } from "./property-reservation-types";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
-import type { TUnitRentalType } from "./property-types";
-
-export const IncomeLineType = {
-  BEACH_EQUIPMENT_RENTAL: "beach_equipment_rental",
-  CLEANING_ONLY: "cleaning_only",
-  EXTRA_CLEANING: "extra_cleaning",
-  EXTRA_SERVICE: "extra_service",
-} as const;
-
-export type TIncomeLineType = (typeof IncomeLineType)[keyof typeof IncomeLineType];
 
 export interface IPropertyIncomeLine {
   amount: number;
@@ -19,7 +9,8 @@ export interface IPropertyIncomeLine {
   grossIncome: number;
   guestName: string | null;
   id: string;
-  lineType: TIncomeLineType;
+  incomeLineTypeId: string;
+  incomeLineTypeName?: string;
   netIncome: number;
   propertyId: string;
   reservationId: string | null;
@@ -40,7 +31,7 @@ export interface ICreatePropertyIncomeLineBody {
   amount: number;
   description?: string;
   guestName?: string;
-  lineType: TIncomeLineType;
+  incomeLineTypeId: string;
   reservationId?: string;
   transactionDate: string;
   unitId: string;
@@ -50,7 +41,7 @@ export interface IUpdatePropertyIncomeLineBody {
   amount?: number;
   description?: string | null;
   guestName?: string | null;
-  lineType?: TIncomeLineType;
+  incomeLineTypeId?: string;
   reservationId?: string | null;
   transactionDate?: string;
   unitId?: string;
@@ -58,8 +49,8 @@ export interface IUpdatePropertyIncomeLineBody {
 
 export interface IPropertyIncomeLinesListQuery {
   from?: string;
-  lineType?: TIncomeLineType;
-  rentalType?: TUnitRentalType;
+  incomeLineTypeId?: string;
+  rentalType?: import("./property-types").TUnitRentalType;
   reservationId?: string;
   to?: string;
   unitId?: string;
