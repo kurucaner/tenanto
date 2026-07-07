@@ -11,15 +11,12 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
-  useSidebar,
 } from "@/components/ui/sidebar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getNavItemsForRole, isAdminNavActive } from "@/config/admin-nav";
 import { authApi } from "@/lib/api-client";
 import { clearAppSession } from "@/lib/clear-app-session";
@@ -53,7 +50,7 @@ BrandLink.displayName = "BrandLink";
 
 
 const DashboardSidebarInner = memo(() => {
-  const { isMobile, state } = useSidebar();
+  // const { isMobile, state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -71,12 +68,12 @@ const DashboardSidebarInner = memo(() => {
     navigate("/login", { replace: true });
   }, [refreshToken, navigate]);
 
-  const brandCollapsedTooltip = !isMobile && state === "collapsed";
+  // const brandCollapsedTooltip = !isMobile && state === "collapsed";
 
 
   return (
     <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px] group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
+      {/* <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px] group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
         {brandCollapsedTooltip ? (
           <Tooltip>
             <TooltipTrigger asChild><BrandLink /></TooltipTrigger>
@@ -87,7 +84,7 @@ const DashboardSidebarInner = memo(() => {
         ) : (
           <BrandLink />
         )}
-      </SidebarHeader>
+      </SidebarHeader> */}
       <SidebarContent className="gap-0 px-2 pt-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-widest text-muted-foreground/90">

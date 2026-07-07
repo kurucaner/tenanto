@@ -2,13 +2,13 @@ import { memo, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from "@/components/ui/chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
 import type { IPropertyReportExpenseCategory } from "@/packages/shared";
 

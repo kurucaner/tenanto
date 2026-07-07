@@ -1,15 +1,15 @@
 import { memo, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  type ChartConfig,
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from "@/components/ui/chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
 import type { IPropertyReportMonthSummary } from "@/packages/shared";
 
