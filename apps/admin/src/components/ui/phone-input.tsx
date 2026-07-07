@@ -1,15 +1,14 @@
-import { memo, useEffect, useId, useMemo, useState } from "react";
+import { memo, useId, useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import {
+  type CountryCode,
   formatNationalAsYouType,
   getMaxNationalDigits,
   getPhoneCountryOptions,
   isValidPhone,
   parsePhoneToParts,
-  PHONE_DEFAULT_COUNTRY,
   toE164,
-  type CountryCode,
 } from "@/packages/shared";
 
 import { Input } from "./input";
@@ -23,6 +22,18 @@ import {
 } from "./select";
 
 const PHONE_COUNTRIES = getPhoneCountryOptions();
+
+function formatNationalDisplay(country: CountryCode, nationalNumber: string): string {
+  return nationalNumber ? formatNationalAsYouType(country, nationalNumber) : "";
+}
+
+function getPhoneInputState(value: string) {
+  const parts = parsePhoneToParts(value);
+  return {
+    country: parts.country,
+    nationalDisplay: formatNationalDisplay(parts.country, parts.nationalNumber),
+  };
+}
 
 interface PhoneInputProps {
   className?: string;
@@ -47,18 +58,17 @@ export const PhoneInput = memo(
     const generatedId = useId();
     const id = externalId ?? generatedId;
     const [touched, setTouched] = useState(false);
-    const [country, setCountry] = useState<CountryCode>(PHONE_DEFAULT_COUNTRY);
-    const [nationalDisplay, setNationalDisplay] = useState("");
+    const initialPhoneState = getPhoneInputState(value);
+    const [country, setCountry] = useState<CountryCode>(initialPhoneState.country);
+    const [nationalDisplay, setNationalDisplay] = useState(initialPhoneState.nationalDisplay);
+    const [prevValue, setPrevValue] = useState(value);
 
-    useEffect(() => {
-      const parts = parsePhoneToParts(value);
-      setCountry(parts.country);
-      setNationalDisplay(
-        parts.nationalNumber
-          ? formatNationalAsYouType(parts.country, parts.nationalNumber)
-          : ""
-      );
-    }, [value]);
+    if (value !== prevValue) {
+      const nextPhoneState = getPhoneInputState(value);
+      setPrevValue(value);
+      setCountry(nextPhoneState.country);
+      setNationalDisplay(nextPhoneState.nationalDisplay);
+    }
 
     const dialCode = useMemo(
       () => PHONE_COUNTRIES.find((option) => option.code === country)?.dialCode ?? "+1",

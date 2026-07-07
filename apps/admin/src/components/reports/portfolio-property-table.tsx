@@ -8,8 +8,8 @@ import {
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useTableSort } from "@/hooks/use-table-sort";
 import { formatMoney } from "@/lib/format-money";
-import { sortPortfolioPropertyRows } from "@/lib/report-table-sort";
 import { buildPropertyReportsPath, formatReportPercent } from "@/lib/report-date-defaults";
+import { sortPortfolioPropertyRows } from "@/lib/report-table-sort";
 import type { IPortfolioPropertyReportRow } from "@/packages/shared";
 
 interface PortfolioPropertyTableProps {

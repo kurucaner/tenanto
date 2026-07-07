@@ -5,13 +5,19 @@ import {
   reservationSelectClassName,
 } from "@/components/income/reservation-form-options";
 import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-options";
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { cn } from "@/lib/utils";
 import type { IPropertyUnit } from "@/packages/shared";
 
 const reportSelectClassName = cn(reservationSelectClassName, "bg-background");
+
+function getReportFiltersGridClass(filterCount: number): string {
+  if (filterCount >= 5) return "md:grid-cols-2 lg:grid-cols-5";
+  if (filterCount >= 4) return "md:grid-cols-2 lg:grid-cols-4";
+  return "md:grid-cols-2 lg:grid-cols-3";
+}
 
 export interface ReportFiltersBarProps {
   channel?: string;
@@ -46,12 +52,7 @@ export const ReportFiltersBar = memo(
     units = [],
   }: ReportFiltersBarProps) => {
     const filterCount = 2 + (showUnitFilter ? 1 : 0) + (showChannelFilter ? 1 : 0) + 1;
-    const gridClass =
-      filterCount >= 5
-        ? "md:grid-cols-2 lg:grid-cols-5"
-        : filterCount >= 4
-          ? "md:grid-cols-2 lg:grid-cols-4"
-          : "md:grid-cols-2 lg:grid-cols-3";
+    const gridClass = getReportFiltersGridClass(filterCount);
 
     return (
       <div className="space-y-4">

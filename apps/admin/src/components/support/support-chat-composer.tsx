@@ -17,8 +17,8 @@ import { supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { markSupportDetailLocallyUpdated } from "@/lib/support-chat-cache";
 import { toAttachmentInput } from "@/lib/upload-support-attachments";
-import { validateSupportAttachmentSubmit } from "@/lib/validate-support-attachment-submit";
 import { cn } from "@/lib/utils";
+import { validateSupportAttachmentSubmit } from "@/lib/validate-support-attachment-submit";
 import { type ISupportMessageCreateBody, type SupportRequestStatus } from "@/packages/shared";
 
 export interface SupportChatComposerProps {

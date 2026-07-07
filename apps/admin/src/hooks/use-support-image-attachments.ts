@@ -241,6 +241,7 @@ export function useSupportImageAttachments() {
       for (const attachment of attachmentsRef.current) {
         revokePreviewUrl(attachment.previewUrl);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       for (const unsubscribe of unsubscribeByAttachmentIdRef.current.values()) {
         unsubscribe();
       }
