@@ -92,6 +92,17 @@ const rawRequest = async (path: string, options: RequestOptions = {}): Promise<R
   });
 };
 
+const parseJsonResponse = async <T>(response: Response): Promise<T> => {
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  const text = await response.text();
+  if (!text) {
+    return undefined as T;
+  }
+  return JSON.parse(text) as T;
+};
+
 const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   const response = await rawRequest(path, options);
   if (!response.ok) {
@@ -100,7 +111,7 @@ const request = async <T>(path: string, options: RequestInit = {}): Promise<T> =
     (err as Error & { code?: string }).code = body.code;
     throw err;
   }
-  return response.json() as Promise<T>;
+  return parseJsonResponse<T>(response);
 };
 
 let inFlightRefresh: Promise<string | null> | null = null;
@@ -164,7 +175,7 @@ const authenticatedRequest = async <T>(
   });
 
   if (response.ok) {
-    return response.json() as Promise<T>;
+    return parseJsonResponse<T>(response);
   }
 
   if (response.status === 403) {
