@@ -45,6 +45,110 @@ function isDuplicateAttachment(
   );
 }
 
+type AddFileRejection = "duplicate" | "invalid_type" | "max_count" | "oversized";
+
+type ProcessIncomingFileResult =
+  | { accepted: false; rejection: AddFileRejection }
+  | { accepted: true; attachment: SupportImageAttachment };
+
+type AddFilesRejectionFlags = Record<AddFileRejection, boolean>;
+
+function createEmptyRejectionFlags(): AddFilesRejectionFlags {
+  return {
+    duplicate: false,
+    invalid_type: false,
+    max_count: false,
+    oversized: false,
+  };
+}
+
+function processIncomingFile(
+  file: File,
+  nextAttachments: SupportImageAttachment[]
+): ProcessIncomingFileResult {
+  if (!SUPPORT_ALLOWED_IMAGE_MIME_TYPE_SET.has(file.type)) {
+    return { accepted: false, rejection: "invalid_type" };
+  }
+
+  if (file.size > SUPPORT_MAX_IMAGE_BYTES) {
+    return { accepted: false, rejection: "oversized" };
+  }
+
+  if (isDuplicateAttachment(nextAttachments, file)) {
+    return { accepted: false, rejection: "duplicate" };
+  }
+
+  if (nextAttachments.length >= SUPPORT_MAX_IMAGE_ATTACHMENTS) {
+    return { accepted: false, rejection: "max_count" };
+  }
+
+  const id = createAttachmentId();
+  return {
+    accepted: true,
+    attachment: {
+      file,
+      id,
+      previewUrl: URL.createObjectURL(file),
+      uploadStatus: "idle",
+    },
+  };
+}
+
+function showOversizedFileToast(fileName: string): void {
+  toast.error(`${fileName} exceeds the 5 MB limit`);
+}
+
+function showAddFilesRejectionToasts(rejections: AddFilesRejectionFlags): void {
+  if (rejections.invalid_type) {
+    toast.error("Only image files are supported");
+  }
+
+  if (rejections.max_count) {
+    toast.error(`You can attach up to ${SUPPORT_MAX_IMAGE_ATTACHMENTS} images`);
+  }
+
+  if (
+    rejections.duplicate &&
+    !rejections.max_count &&
+    !rejections.invalid_type &&
+    !rejections.oversized
+  ) {
+    toast.error("Some images were already added");
+  }
+}
+
+function collectIncomingAttachments(
+  incoming: File[],
+  current: SupportImageAttachment[]
+): {
+  nextAttachments: SupportImageAttachment[];
+  rejections: AddFilesRejectionFlags;
+  uploadsToStart: { file: File; id: string }[];
+} {
+  const nextAttachments = [...current];
+  const uploadsToStart: { file: File; id: string }[] = [];
+  const rejections = createEmptyRejectionFlags();
+
+  for (const file of incoming) {
+    const result = processIncomingFile(file, nextAttachments);
+    if (!result.accepted) {
+      rejections[result.rejection] = true;
+      if (result.rejection === "oversized") {
+        showOversizedFileToast(file.name);
+      }
+      if (result.rejection === "max_count") {
+        break;
+      }
+      continue;
+    }
+
+    nextAttachments.push(result.attachment);
+    uploadsToStart.push({ file: result.attachment.file, id: result.attachment.id });
+  }
+
+  return { nextAttachments, rejections, uploadsToStart };
+}
+
 export function useSupportImageAttachments() {
   const [attachments, setAttachments] = useState<SupportImageAttachment[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -150,56 +254,12 @@ export function useSupportImageAttachments() {
       if (incoming.length === 0) return;
 
       const current = attachmentsRef.current;
-      const nextAttachments = [...current];
-      const uploadsToStart: { file: File; id: string }[] = [];
-      let rejectedType = false;
-      let rejectedSize = false;
-      let rejectedDuplicate = false;
-      let rejectedCount = false;
+      const { nextAttachments, rejections, uploadsToStart } = collectIncomingAttachments(
+        incoming,
+        current
+      );
 
-      for (const file of incoming) {
-        if (!SUPPORT_ALLOWED_IMAGE_MIME_TYPE_SET.has(file.type)) {
-          rejectedType = true;
-          continue;
-        }
-
-        if (file.size > SUPPORT_MAX_IMAGE_BYTES) {
-          rejectedSize = true;
-          toast.error(`${file.name} exceeds the 5 MB limit`);
-          continue;
-        }
-
-        if (isDuplicateAttachment(nextAttachments, file)) {
-          rejectedDuplicate = true;
-          continue;
-        }
-
-        if (nextAttachments.length >= SUPPORT_MAX_IMAGE_ATTACHMENTS) {
-          rejectedCount = true;
-          break;
-        }
-
-        const id = createAttachmentId();
-        nextAttachments.push({
-          file,
-          id,
-          previewUrl: URL.createObjectURL(file),
-          uploadStatus: "idle",
-        });
-        uploadsToStart.push({ file, id });
-      }
-
-      if (rejectedType) {
-        toast.error("Only image files are supported");
-      }
-
-      if (rejectedCount) {
-        toast.error(`You can attach up to ${SUPPORT_MAX_IMAGE_ATTACHMENTS} images`);
-      }
-
-      if (rejectedDuplicate && !rejectedCount && !rejectedType && !rejectedSize) {
-        toast.error("Some images were already added");
-      }
+      showAddFilesRejectionToasts(rejections);
 
       if (nextAttachments.length !== current.length) {
         setAttachments(nextAttachments);
