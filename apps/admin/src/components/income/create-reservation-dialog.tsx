@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
-import { PropertyUnitSelectOptions } from "@/components/income/property-unit-select-options";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import {
   CHANNEL_OPTIONS,
   reservationSelectClassName,
@@ -115,7 +115,7 @@ export const CreateReservationDialog = memo(
                 onChange={(e) => setUnitId(e.target.value)}
                 value={unitId}
               >
-                <PropertyUnitSelectOptions includeEmptyOption units={units} />
+                <PropertyUnitSelectOptions emptyOptionLabel="Select unit…" units={units} />
               </select>
             </div>
 

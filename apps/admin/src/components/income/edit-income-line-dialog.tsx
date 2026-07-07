@@ -7,7 +7,7 @@ import {
   incomeLineSelectClassName,
 } from "@/components/income/income-line-form-options";
 import { LinkToStayField } from "@/components/income/link-to-stay-field";
-import { PropertyUnitSelectOptions } from "@/components/income/property-unit-select-options";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

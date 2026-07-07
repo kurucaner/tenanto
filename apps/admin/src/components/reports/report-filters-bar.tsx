@@ -5,6 +5,7 @@ import {
   reservationSelectClassName,
 } from "@/components/income/reservation-form-options";
 import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-options";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -82,12 +83,7 @@ export const ReportFiltersBar = memo(
                 onChange={(e) => onUnitChange?.(e.target.value)}
                 value={unitId}
               >
-                <option value="">All units</option>
-                {units.map((unit) => (
-                  <option key={unit.id} value={unit.id}>
-                    {unit.unitNumber}
-                  </option>
-                ))}
+                <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
               </select>
             </div>
           ) : null}

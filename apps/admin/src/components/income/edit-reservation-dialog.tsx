@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
-import { PropertyUnitSelectOptions } from "@/components/income/property-unit-select-options";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import {
   CHANNEL_OPTIONS,
   reservationSelectClassName,

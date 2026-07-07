@@ -3,14 +3,14 @@ import { memo } from "react";
 import { formatPropertyUnitSelectLabel, type IPropertyUnit } from "@/packages/shared";
 
 interface PropertyUnitSelectOptionsProps {
-  includeEmptyOption?: boolean;
+  emptyOptionLabel?: string;
   units: IPropertyUnit[];
 }
 
 export const PropertyUnitSelectOptions = memo(
-  ({ includeEmptyOption = false, units }: PropertyUnitSelectOptionsProps) => (
+  ({ emptyOptionLabel, units }: PropertyUnitSelectOptionsProps) => (
     <>
-      {includeEmptyOption ? <option value="">Select unit…</option> : null}
+      {emptyOptionLabel ? <option value="">{emptyOptionLabel}</option> : null}
       {units.map((unit) => (
         <option key={unit.id} value={unit.id}>
           {formatPropertyUnitSelectLabel(unit)}

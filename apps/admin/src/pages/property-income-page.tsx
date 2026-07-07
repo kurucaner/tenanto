@@ -17,6 +17,7 @@ import {
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayFeesDetailsDialog } from "@/components/income/stay-fees-details-dialog";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -701,12 +702,7 @@ const PropertyIncomePage = memo(() => {
                   onChange={(e) => setUnitId(e.target.value)}
                   value={unitId}
                 >
-                  <option value="">All units</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.unitNumber}
-                    </option>
-                  ))}
+                  <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
                 </select>
               </div>
               <div className="space-y-1.5">
