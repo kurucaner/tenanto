@@ -20,9 +20,9 @@ import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { ReportsPage } from "@/pages/reports-page";
+import { SupportPage } from "@/pages/support-page";
 import { SupportRequestDetailPage } from "@/pages/support-request-detail-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
-import { SupportPage } from "@/pages/user-support-page";
 import { UsersListPage } from "@/pages/users-list-page";
 
 const ADMIN_ONLY = [UserType.ADMIN];
