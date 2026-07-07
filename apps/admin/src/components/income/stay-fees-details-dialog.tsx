@@ -73,13 +73,13 @@ export const StayFeesDetailsDialog = memo(
                 <FeeLineRow
                   amount={tax.amount}
                   key={tax.taxRateId}
-                  label={`${tax.name} (${formatRateAsPercent(tax.rate)})`}
+                  label={`${tax.name} (${formatRateAsPercent(tax.rate)}%)`}
                 />
               ))}
               {stay.channelCommission > 0 ? (
                 <FeeLineRow
                   amount={stay.channelCommission}
-                  label={`Channel commission (${formatChannelLabel(stay.channel)})`}
+                  label={`Channel commission (${formatChannelLabel(stay.channel)} ${formatRateAsPercent(stay.channelCommissionRate)}%)`}
                 />
               ) : null}
             </div>

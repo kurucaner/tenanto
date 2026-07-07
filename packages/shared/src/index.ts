@@ -189,8 +189,10 @@ export {
 
 // Property income utilities
 export {
+  getChannelCommissionRate,
   getStayTaxesAndFeesTotal,
   sumTaxBreakdown,
+  type TChannelCommissionSettings,
 } from "./property-income-utils";
 
 // Property unit utilities

@@ -22,6 +22,8 @@ export type TReservationChannel = (typeof ReservationChannel)[keyof typeof Reser
 export interface IPropertyReservation {
   channel: TReservationChannel;
   channelCommission: number;
+  /** Decimal rate used when commission was calculated (e.g. 0.155). */
+  channelCommissionRate: number;
   checkIn: string;
   checkOut: string;
   cleaningFee: number;
@@ -79,6 +81,7 @@ export interface IPropertyReservationsListQuery {
 
 export interface IPropertyReservationComputedFields {
   channelCommission: number;
+  channelCommissionRate: number;
   grossIncome: number;
   netIncome: number;
   nights: number;

@@ -206,6 +206,7 @@ RETURNS TABLE (
   gross_income NUMERIC,
   tax_breakdown JSONB,
   channel_commission NUMERIC,
+  channel_commission_rate NUMERIC,
   net_income NUMERIC
 )
 LANGUAGE plpgsql
@@ -224,6 +225,7 @@ BEGIN
     gross_income := v_room_total;
     tax_breakdown := '[]'::jsonb;
     channel_commission := 0;
+    channel_commission_rate := 0;
     net_income := v_room_total;
     RETURN NEXT;
     RETURN;
@@ -262,6 +264,7 @@ BEGIN
 
   gross_income := seed_round_money(v_taxable_base + v_total_taxes);
   channel_commission := v_commission;
+  channel_commission_rate := v_commission_rate;
   net_income := seed_round_money(v_taxable_base - v_total_taxes - v_commission);
   RETURN NEXT;
 END;
@@ -568,6 +571,7 @@ INSERT INTO property_reservations (
   gross_income,
   tax_breakdown,
   channel_commission,
+  channel_commission_rate,
   net_income
 )
 SELECT
@@ -586,6 +590,7 @@ SELECT
   calc.gross_income,
   calc.tax_breakdown,
   calc.channel_commission,
+  calc.channel_commission_rate,
   calc.net_income
 FROM (
   SELECT

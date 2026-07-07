@@ -31,12 +31,13 @@ export const propertyReservationsDb = {
          gross_income,
          tax_breakdown,
          channel_commission,
+         channel_commission_rate,
          net_income
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7,
          $8::property_reservation_status,
          $9::property_reservation_channel,
-         $10, $11, $12, $13::jsonb, $14, $15
+         $10, $11, $12, $13::jsonb, $14, $15, $16
        )
        RETURNING *`,
       [
@@ -54,6 +55,7 @@ export const propertyReservationsDb = {
         computed.grossIncome,
         JSON.stringify(computed.taxBreakdown),
         computed.channelCommission,
+        computed.channelCommissionRate,
         computed.netIncome,
       ]
     );
@@ -198,6 +200,8 @@ export const propertyReservationsDb = {
     values.push(JSON.stringify(computed.taxBreakdown));
     setClauses.push(`channel_commission = $${p++}`);
     values.push(computed.channelCommission);
+    setClauses.push(`channel_commission_rate = $${p++}`);
+    values.push(computed.channelCommissionRate);
     setClauses.push(`net_income = $${p++}`);
     values.push(computed.netIncome);
 

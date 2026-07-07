@@ -1328,4 +1328,37 @@ export const migrations: IMigration[] = [
     },
     version: 28,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          DROP COLUMN IF EXISTS channel_commission_rate;
+      `);
+    },
+    name: "add_property_reservations_channel_commission_rate",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN channel_commission_rate NUMERIC(6,5) NOT NULL DEFAULT 0;
+      `);
+
+      await client.query(`
+        UPDATE property_reservations pr
+        SET channel_commission_rate = CASE
+          WHEN pu.rental_type = 'long_term'::property_unit_rental_type THEN 0
+          WHEN pr.channel_commission = 0 THEN 0
+          ELSE CASE pr.channel
+            WHEN 'airbnb'::property_reservation_channel THEN ps.airbnb_commission_rate
+            WHEN 'booking'::property_reservation_channel THEN ps.booking_commission_rate
+            WHEN 'expedia'::property_reservation_channel THEN ps.expedia_commission_rate
+            WHEN 'direct'::property_reservation_channel THEN ps.direct_commission_rate
+          END
+        END
+        FROM property_units pu
+        INNER JOIN property_settings ps ON ps.property_id = pu.property_id
+        WHERE pu.id = pr.unit_id;
+      `);
+    },
+    version: 29,
+  },
 ];

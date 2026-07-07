@@ -1,10 +1,10 @@
 import {
+  getChannelCommissionRate,
   type IPropertyIncomeLineComputedFields,
   type IPropertyReservationComputedFields,
   type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
-  ReservationChannel,
   sumTaxBreakdown,
   type TReservationChannel,
   type TUnitRentalType,
@@ -28,22 +28,6 @@ export function calculateNights(checkIn: string, checkOut: string): number {
     throw new Error("Check-out must be after check-in");
   }
   return nights;
-}
-
-function getChannelCommissionRate(
-  channel: TReservationChannel,
-  settings: IPropertySettings
-): number {
-  switch (channel) {
-    case ReservationChannel.AIRBNB:
-      return settings.airbnbCommissionRate;
-    case ReservationChannel.BOOKING:
-      return settings.bookingCommissionRate;
-    case ReservationChannel.EXPEDIA:
-      return settings.expediaCommissionRate;
-    case ReservationChannel.DIRECT:
-      return settings.directCommissionRate;
-  }
 }
 
 function buildTaxBreakdown(
@@ -77,6 +61,7 @@ export function calculateStayIncome(
   if (unitRentalType === UnitRentalType.LONG_TERM) {
     return {
       channelCommission: 0,
+      channelCommissionRate: 0,
       grossIncome: roomTotal,
       netIncome: roomTotal,
       taxBreakdown: [],
@@ -86,12 +71,14 @@ export function calculateStayIncome(
   const taxableBase = roundMoney(roomTotal + cleaningFee);
   const taxBreakdown = buildTaxBreakdown(taxableBase, taxRates);
   const totalTaxes = sumTaxBreakdown(taxBreakdown);
-  const channelCommission = roundMoney(taxableBase * getChannelCommissionRate(channel, settings));
+  const channelCommissionRate = getChannelCommissionRate(channel, settings);
+  const channelCommission = roundMoney(taxableBase * channelCommissionRate);
   const grossIncome = roundMoney(taxableBase + totalTaxes);
   const netIncome = roundMoney(taxableBase - totalTaxes - channelCommission);
 
   return {
     channelCommission,
+    channelCommissionRate,
     grossIncome,
     netIncome,
     taxBreakdown,

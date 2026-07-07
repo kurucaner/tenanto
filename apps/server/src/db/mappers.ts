@@ -168,6 +168,7 @@ const formatDateColumn = (value: unknown): string => {
 export const mapPropertyReservationRow = (row: Record<string, unknown>): IPropertyReservation => ({
   channel: row.channel as TReservationChannel,
   channelCommission: Number(row.channel_commission),
+  channelCommissionRate: Number(row.channel_commission_rate),
   checkIn: formatDateColumn(row.check_in),
   checkOut: formatDateColumn(row.check_out),
   cleaningFee: Number(row.cleaning_fee),
