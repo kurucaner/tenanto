@@ -14,6 +14,7 @@ import {
   type TReservationChannel,
   type TReservationStatus,
   type TUnitRentalType,
+  UnitKind,
   UnitRentalType,
 } from "@/packages/shared";
 import {
@@ -316,7 +317,7 @@ interface IPropertyReservationParams {
   reservationId: string;
 }
 
-async function resolveUnitForProperty(
+async function resolveRentableUnitForProperty(
   unitId: string,
   propertyId: string,
   reply: FastifyReply
@@ -324,6 +325,12 @@ async function resolveUnitForProperty(
   const unit = await propertyUnitsDb.findById(unitId);
   if (!unit || unit.propertyId !== propertyId) {
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
+    return null;
+  }
+  if (unit.unitKind === UnitKind.AMENITY) {
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Stays can only be added to rentable units." });
     return null;
   }
   return unit;
@@ -341,7 +348,7 @@ async function buildComputedFields(
   },
   reply: FastifyReply
 ) {
-  const unit = await resolveUnitForProperty(input.unitId, propertyId, reply);
+  const unit = await resolveRentableUnitForProperty(input.unitId, propertyId, reply);
   if (!unit) return null;
 
   let nights: number;

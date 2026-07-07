@@ -7,7 +7,6 @@ import {
   incomeLineSelectClassName,
 } from "@/components/income/income-line-form-options";
 import { LinkToStayField } from "@/components/income/link-to-stay-field";
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,13 +18,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi, reservationsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { buildStayLinkPickerFilters } from "@/lib/stay-link-picker-filters";
-import type { IPropertyIncomeLine, IPropertyUnit } from "@/packages/shared";
-import { type TIncomeLineType } from "@/packages/shared";
+import {
+  type IPropertyIncomeLine,
+  type IPropertyUnit,
+  isAmenityUnit,
+  type TIncomeLineType,
+} from "@/packages/shared";
 
 interface EditIncomeLineDialogProps {
   incomeLine: IPropertyIncomeLine;
@@ -46,14 +50,18 @@ export const EditIncomeLineDialog = memo(
     const [description, setDescription] = useState(incomeLine.description ?? "");
     const [guestName, setGuestName] = useState(incomeLine.guestName ?? "");
 
+    const selectedUnit = units.find((unit) => unit.id === unitId);
+    const forAmenityUnit = selectedUnit != null && isAmenityUnit(selectedUnit);
+
     const pickerFilters = useMemo(
       () =>
         buildStayLinkPickerFilters({
+          forAmenityUnit,
           includeReservationId: reservationId || undefined,
           transactionDate: transactionDate || undefined,
           unitId,
         }),
-      [reservationId, transactionDate, unitId]
+      [forAmenityUnit, reservationId, transactionDate, unitId]
     );
 
     const reservationsQuery = useQuery({
@@ -130,7 +138,7 @@ export const EditIncomeLineDialog = memo(
                 }}
                 value={unitId}
               >
-                <PropertyUnitSelectOptions units={units} />
+                <IncomeUnitSelectOptions units={units} />
               </select>
             </div>
 
@@ -158,6 +166,7 @@ export const EditIncomeLineDialog = memo(
             </div>
 
             <LinkToStayField
+              forAmenityUnit={forAmenityUnit}
               id="edit-income-line-reservation"
               includeReservationId={incomeLine.reservationId ?? undefined}
               onReservationIdChange={setReservationId}

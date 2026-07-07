@@ -102,6 +102,7 @@ export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit 
   layout: row.layout as string,
   propertyId: row.property_id as string,
   rentalType: row.rental_type as TUnitRentalType,
+  unitKind: (row.unit_kind as IPropertyUnit["unitKind"]) ?? "rentable",
   unitNumber: row.unit_number as string,
   updatedAt: (row.updated_at as Date).toISOString(),
 });

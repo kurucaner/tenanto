@@ -99,7 +99,9 @@ export {
   type TAddPropertyMemberResponse,
   type TPropertyInviteStatus,
   type TPropertyRole,
+  type TUnitKind,
   type TUnitRentalType,
+  UnitKind,
   UnitRentalType,
 } from "./property-types";
 
@@ -185,8 +187,13 @@ export {
 
 // Property unit utilities
 export {
+  filterAmenityUnits,
+  filterRentableUnits,
   formatPropertyUnitSelectLabel,
+  formatUnitKindLabel,
   formatUnitRentalTypeLabel,
+  isAmenityUnit,
+  isRentableUnit,
 } from "./property-unit-utils";
 
 // Helpers

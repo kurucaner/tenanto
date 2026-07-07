@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import {
   CHANNEL_OPTIONS,
   reservationSelectClassName,
@@ -19,10 +18,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { reservationsApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  filterRentableUnits,
   ReservationChannel,
   ReservationStatus,
   type TReservationChannel,
@@ -90,7 +91,7 @@ export const CreateReservationDialog = memo(
       setCleaningFee("");
     };
 
-    const units = unitsQuery.data?.units ?? [];
+    const units = filterRentableUnits(unitsQuery.data?.units ?? []);
     const canSubmit =
       unitId !== "" &&
       guestName.trim() !== "" &&

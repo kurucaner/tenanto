@@ -1179,4 +1179,25 @@ export const migrations: IMigration[] = [
     },
     version: 26,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE property_units DROP COLUMN IF EXISTS unit_kind;`);
+      await client.query(`DROP TYPE IF EXISTS property_unit_kind;`);
+    },
+    name: "add_property_unit_kind",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_unit_kind AS ENUM ('rentable', 'amenity');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE property_units
+          ADD COLUMN unit_kind property_unit_kind NOT NULL DEFAULT 'rentable';
+      `);
+    },
+    version: 27,
+  },
 ];

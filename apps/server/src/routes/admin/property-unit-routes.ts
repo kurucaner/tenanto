@@ -5,7 +5,9 @@ import {
   HttpStatus,
   type ICreatePropertyUnitBody,
   type IUpdatePropertyUnitBody,
+  type TUnitKind,
   type TUnitRentalType,
+  UnitKind,
   UnitRentalType,
 } from "@/packages/shared";
 
@@ -16,10 +18,16 @@ import {
 } from "./property-route-access";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
+const UNIT_KINDS = new Set<TUnitKind>(Object.values(UnitKind));
 
 function parseRentalType(raw: unknown): TUnitRentalType | null {
   if (typeof raw !== "string") return null;
   return UNIT_RENTAL_TYPES.has(raw as TUnitRentalType) ? (raw as TUnitRentalType) : null;
+}
+
+function parseUnitKind(raw: unknown): TUnitKind {
+  if (typeof raw !== "string") return UnitKind.RENTABLE;
+  return UNIT_KINDS.has(raw as TUnitKind) ? (raw as TUnitKind) : UnitKind.RENTABLE;
 }
 
 function parseCreateUnitBody(
@@ -32,6 +40,15 @@ function parseCreateUnitBody(
   if (typeof r["unitNumber"] !== "string" || r["unitNumber"].trim() === "") {
     return { error: "unitNumber is required", ok: false };
   }
+
+  const unitKind = parseUnitKind(r["unitKind"]);
+  if (unitKind === UnitKind.AMENITY) {
+    return {
+      body: { unitKind, unitNumber: r["unitNumber"].trim() },
+      ok: true,
+    };
+  }
+
   if (typeof r["layout"] !== "string" || r["layout"].trim() === "") {
     return { error: "layout is required", ok: false };
   }
@@ -42,7 +59,15 @@ function parseCreateUnitBody(
       ok: false,
     };
   }
-  return { body: { layout: r["layout"].trim(), rentalType, unitNumber: r["unitNumber"].trim() }, ok: true };
+  return {
+    body: {
+      layout: r["layout"].trim(),
+      rentalType,
+      unitKind: UnitKind.RENTABLE,
+      unitNumber: r["unitNumber"].trim(),
+    },
+    ok: true,
+  };
 }
 
 function parseUpdateUnitBody(
@@ -187,6 +212,15 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       const parsed = parseUpdateUnitBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      if (
+        existing.unitKind === UnitKind.AMENITY &&
+        (parsed.body.layout !== undefined || parsed.body.rentalType !== undefined)
+      ) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({
+          error: "Amenity units can only update the name",
+        });
       }
 
       const updated = await propertyUnitsDb.update(unitId, parsed.body);

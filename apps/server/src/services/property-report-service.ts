@@ -18,6 +18,8 @@ import {
   type IPropertyReportUnitSummary,
   type IPropertyReservation,
   type IPropertyUnit,
+  isAmenityUnit,
+  isRentableUnit,
   ReportRentalTypeFilter,
   ReservationChannel,
   ReservationStatus,
@@ -75,21 +77,26 @@ function resolveRentalTypeFilter(
 }
 
 function filterUnits(units: IPropertyUnit[], query: IPropertyReportsQuery): IPropertyUnit[] {
-  let scoped = units;
-  const rentalType = resolveRentalTypeFilter(query.rentalType);
-  if (rentalType) {
-    scoped = scoped.filter((unit) => unit.rentalType === rentalType);
-  }
   if (query.unitId) {
-    scoped = scoped.filter((unit) => unit.id === query.unitId);
+    const match = units.find((unit) => unit.id === query.unitId);
+    return match ? [match] : [];
   }
-  return scoped;
+
+  const rentalType = resolveRentalTypeFilter(query.rentalType);
+  let rentable = units.filter(isRentableUnit);
+  const amenities = units.filter(isAmenityUnit);
+
+  if (rentalType) {
+    rentable = rentable.filter((unit) => unit.rentalType === rentalType);
+  }
+
+  return [...rentable, ...amenities];
 }
 
 function shouldIncludeExpenses(units: IPropertyUnit[], query: IPropertyReportsQuery): boolean {
   const rentalType = resolveRentalTypeFilter(query.rentalType);
   if (!rentalType) return true;
-  return units.some((unit) => unit.rentalType === rentalType);
+  return units.some((unit) => isRentableUnit(unit) && unit.rentalType === rentalType);
 }
 
 function listMonthsInRange(from: string, to: string): string[] {
@@ -184,7 +191,7 @@ function initUnitMap(units: IPropertyUnit[], from: string, to: string) {
         adr: 0,
         adrNights: 0,
         adrRoomTotal: 0,
-        availableNights: days,
+        availableNights: isAmenityUnit(unit) ? 0 : days,
         bookedNights: 0,
         grossIncome: 0,
         netIncome: 0,

@@ -8,7 +8,6 @@ import {
   incomeLineSelectClassName,
 } from "@/components/income/income-line-form-options";
 import { LinkToStayField, LockedStaySummary } from "@/components/income/link-to-stay-field";
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi, reservationsApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -27,6 +27,7 @@ import { buildStayLinkPickerFilters } from "@/lib/stay-link-picker-filters";
 import {
   IncomeLineType,
   type IPropertyReservation,
+  isAmenityUnit,
   type TIncomeLineType,
 } from "@/packages/shared";
 
@@ -96,14 +97,19 @@ const CreateIncomeLineDialogForm = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
+    const units = unitsQuery.data?.units ?? [];
+    const selectedUnit = units.find((unit) => unit.id === unitId);
+    const forAmenityUnit = selectedUnit != null && isAmenityUnit(selectedUnit);
+
     const pickerFilters = useMemo(
       () =>
         buildStayLinkPickerFilters({
+          forAmenityUnit,
           includeReservationId: reservationId || undefined,
           transactionDate: transactionDate || undefined,
           unitId,
         }),
-      [reservationId, transactionDate, unitId]
+      [forAmenityUnit, reservationId, transactionDate, unitId]
     );
 
     const reservationsQuery = useQuery({
@@ -133,7 +139,6 @@ const CreateIncomeLineDialogForm = memo(
       },
     });
 
-    const units = unitsQuery.data?.units ?? [];
     const linkedReservation = useMemo(() => {
       if (lockedStay) return lockedStay;
       if (!reservationId) return null;
@@ -186,7 +191,7 @@ const CreateIncomeLineDialogForm = memo(
               }}
               value={unitId}
             >
-              <PropertyUnitSelectOptions emptyOptionLabel="Select unit…" units={units} />
+              <IncomeUnitSelectOptions emptyOptionLabel="Select unit…" units={units} />
             </select>
           </div>
 
@@ -217,6 +222,7 @@ const CreateIncomeLineDialogForm = memo(
             <LockedStaySummary stay={lockedStay} />
           ) : (
             <LinkToStayField
+              forAmenityUnit={forAmenityUnit}
               id="income-line-reservation"
               onReservationIdChange={setReservationId}
               propertyId={propertyId}

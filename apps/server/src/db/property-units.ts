@@ -3,17 +3,27 @@ import type {
   IPropertyUnit,
   IUpdatePropertyUnitBody,
 } from "@/packages/shared";
+import { UnitKind, UnitRentalType } from "@/packages/shared";
 
 import { mapPropertyUnitRow } from "./mappers";
 import { pool } from "./pool";
 
+const AMENITY_UNIT_LAYOUT_PLACEHOLDER = "—";
+
 export const propertyUnitsDb = {
   async create(propertyId: string, input: ICreatePropertyUnitBody): Promise<IPropertyUnit> {
+    const unitKind = input.unitKind ?? UnitKind.RENTABLE;
+    const isAmenity = unitKind === UnitKind.AMENITY;
+    const layout = isAmenity ? AMENITY_UNIT_LAYOUT_PLACEHOLDER : (input.layout?.trim() ?? "");
+    const rentalType = isAmenity
+      ? UnitRentalType.SHORT_TERM
+      : (input.rentalType ?? UnitRentalType.SHORT_TERM);
+
     const result = await pool.query(
-      `INSERT INTO property_units (property_id, unit_number, rental_type, layout)
-       VALUES ($1, $2, $3::property_unit_rental_type, $4)
+      `INSERT INTO property_units (property_id, unit_number, rental_type, layout, unit_kind)
+       VALUES ($1, $2, $3::property_unit_rental_type, $4, $5::property_unit_kind)
        RETURNING *`,
-      [propertyId, input.unitNumber.trim(), input.rentalType, input.layout.trim()]
+      [propertyId, input.unitNumber.trim(), rentalType, layout, unitKind]
     );
     return mapPropertyUnitRow(result.rows[0] as Record<string, unknown>);
   },
@@ -33,13 +43,16 @@ export const propertyUnitsDb = {
     const result = await pool.query(
       `SELECT * FROM property_units
        WHERE property_id = $1
-       ORDER BY unit_number ASC`,
+       ORDER BY unit_kind ASC, unit_number ASC`,
       [propertyId]
     );
     return result.rows.map((row) => mapPropertyUnitRow(row as Record<string, unknown>));
   },
 
   async update(id: string, input: IUpdatePropertyUnitBody): Promise<IPropertyUnit | null> {
+    const existing = await propertyUnitsDb.findById(id);
+    if (existing == null) return null;
+
     const setClauses: string[] = [];
     const values: unknown[] = [];
     let p = 1;
@@ -48,16 +61,18 @@ export const propertyUnitsDb = {
       setClauses.push(`unit_number = $${p++}`);
       values.push(input.unitNumber.trim());
     }
-    if (input.rentalType !== undefined) {
-      setClauses.push(`rental_type = $${p++}::property_unit_rental_type`);
-      values.push(input.rentalType);
-    }
-    if (input.layout !== undefined) {
-      setClauses.push(`layout = $${p++}`);
-      values.push(input.layout.trim());
+    if (existing.unitKind === UnitKind.RENTABLE) {
+      if (input.rentalType !== undefined) {
+        setClauses.push(`rental_type = $${p++}::property_unit_rental_type`);
+        values.push(input.rentalType);
+      }
+      if (input.layout !== undefined) {
+        setClauses.push(`layout = $${p++}`);
+        values.push(input.layout.trim());
+      }
     }
 
-    if (setClauses.length === 0) return propertyUnitsDb.findById(id);
+    if (setClauses.length === 0) return existing;
 
     values.push(id);
     const result = await pool.query(

@@ -82,19 +82,28 @@ export const UnitRentalType = {
 
 export type TUnitRentalType = (typeof UnitRentalType)[keyof typeof UnitRentalType];
 
+export const UnitKind = {
+  AMENITY: "amenity",
+  RENTABLE: "rentable",
+} as const;
+
+export type TUnitKind = (typeof UnitKind)[keyof typeof UnitKind];
+
 export interface IPropertyUnit {
   createdAt: string;
   id: string;
   layout: string;
   propertyId: string;
   rentalType: TUnitRentalType;
+  unitKind: TUnitKind;
   unitNumber: string;
   updatedAt: string;
 }
 
 export interface ICreatePropertyUnitBody {
-  layout: string;
-  rentalType: TUnitRentalType;
+  layout?: string;
+  rentalType?: TUnitRentalType;
+  unitKind?: TUnitKind;
   unitNumber: string;
 }
 

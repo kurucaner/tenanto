@@ -11,6 +11,8 @@ import {
   type IPropertyIncomeLinesListQuery,
   type IUpdatePropertyIncomeLineBody,
   type TIncomeLineType,
+  type TUnitKind,
+  UnitKind,
 } from "@/packages/shared";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
@@ -259,7 +261,7 @@ async function resolveUnitForProperty(
 async function resolveReservationForProperty(
   reservationId: string,
   propertyId: string,
-  unitId: string,
+  incomeUnit: { id: string; unitKind: TUnitKind },
   reply: FastifyReply
 ) {
   const reservation = await propertyReservationsDb.findById(reservationId);
@@ -267,7 +269,7 @@ async function resolveReservationForProperty(
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Reservation not found for this property" });
     return null;
   }
-  if (reservation.unitId !== unitId) {
+  if (incomeUnit.unitKind !== UnitKind.AMENITY && reservation.unitId !== incomeUnit.id) {
     void reply
       .status(HttpStatus.BAD_REQUEST)
       .send({ error: "Reservation must belong to the selected unit" });
@@ -367,7 +369,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         const reservation = await resolveReservationForProperty(
           reservationId,
           propertyId,
-          parsed.body.unitId,
+          unit,
           reply
         );
         if (!reservation) return;
@@ -444,7 +446,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         const reservation = await resolveReservationForProperty(
           merged.reservationId,
           propertyId,
-          merged.unitId,
+          unit,
           reply
         );
         if (!reservation) return;
