@@ -66,7 +66,7 @@ const MobileBottomNavInner = memo(() => {
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+      className="w-full shrink-0 border-t border-border/60 bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <div
         className="mx-auto flex max-w-lg items-stretch"

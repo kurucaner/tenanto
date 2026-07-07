@@ -1,15 +1,12 @@
 /** Tab row content height (icon + label + padding). Excludes safe-area inset. */
 export const MOBILE_BOTTOM_NAV_HEIGHT = "4rem";
 
-/** Extra scroll clearance above the fixed nav on mobile pages. */
-export const MOBILE_BOTTOM_NAV_SCROLL_BUFFER = "2rem";
+/** Locks the admin shell to one viewport on mobile so the in-flow bottom nav stays visible. */
+export const MOBILE_ADMIN_SHELL_HEIGHT_CLASS = "max-md:h-svh max-md:min-h-0";
 
-export const MOBILE_BOTTOM_NAV_OFFSET = `calc(${MOBILE_BOTTOM_NAV_HEIGHT} + ${MOBILE_BOTTOM_NAV_SCROLL_BUFFER} + env(safe-area-inset-bottom))`;
-
-/** Main content bottom padding on mobile (nav + buffer + safe area). */
-export const MOBILE_BOTTOM_NAV_CONTENT_PADDING_CLASS =
-  "max-md:pb-[calc(4rem+2rem+env(safe-area-inset-bottom))]";
+/** Applied to SidebarProvider to prevent page-level scroll on mobile. */
+export const MOBILE_ADMIN_SHELL_OVERFLOW_CLASS = "max-md:overflow-hidden";
 
 /** Support full-bleed mobile height deduction (header + page padding + nav area). */
 export const MOBILE_BOTTOM_NAV_SUPPORT_BLEED_HEIGHT_CLASS =
-  "h-[calc(100dvh-3.5rem-1.5rem-4rem-2rem-env(safe-area-inset-bottom))]";
+  "h-[calc(100dvh-3.5rem-1.5rem-4rem-env(safe-area-inset-bottom))]";

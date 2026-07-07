@@ -11,7 +11,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { MOBILE_BOTTOM_NAV_CONTENT_PADDING_CLASS } from "@/config/mobile-layout";
+import {
+  MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
+  MOBILE_ADMIN_SHELL_OVERFLOW_CLASS,
+} from "@/config/mobile-layout";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
@@ -28,9 +31,17 @@ const AdminLayoutInner = memo(() => {
 
   return (
     <NotificationStreamContext.Provider value={streamContextValue}>
-      <SidebarProvider>
+      <SidebarProvider
+        className={cn(MOBILE_ADMIN_SHELL_HEIGHT_CLASS, MOBILE_ADMIN_SHELL_OVERFLOW_CLASS)}
+      >
         <DashboardSidebar />
-        <SidebarInset className="admin-app-surface overflow-hidden">
+        <SidebarInset
+          className={cn(
+            "admin-app-surface overflow-hidden",
+            MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
+            "max-md:h-full md:min-h-svh"
+          )}
+        >
           <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
             <SidebarTrigger className="hidden md:inline-flex" />
             <div className="ms-auto flex shrink-0 items-center gap-2">
@@ -39,12 +50,7 @@ const AdminLayoutInner = memo(() => {
               <AdminThemeSwitcher compact />
             </div>
           </header>
-          <div
-            className={cn(
-              "flex flex-1 flex-col overflow-auto p-6 md:p-8 md:pb-8",
-              MOBILE_BOTTOM_NAV_CONTENT_PADDING_CLASS
-            )}
-          >
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6 md:p-8 md:pb-8">
             <Outlet />
           </div>
           <MobileBottomNav />
