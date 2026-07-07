@@ -46,7 +46,10 @@ export const SupportAttachmentFileButton = memo(
         ) : (
           <Button
             aria-label="Attach images"
-            className={cn("size-11 shrink-0 rounded-full", className)}
+            className={cn(
+              "size-11 shrink-0 cursor-pointer rounded-full disabled:cursor-not-allowed",
+              className
+            )}
             disabled={inputDisabled}
             onClick={handleClick}
             size="icon"

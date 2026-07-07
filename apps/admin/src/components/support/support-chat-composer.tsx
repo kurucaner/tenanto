@@ -209,7 +209,7 @@ export const SupportChatComposer = memo(
             />
             <Button
               aria-label="Send message"
-              className="size-11 shrink-0 rounded-full"
+              className="size-11 shrink-0 cursor-pointer rounded-full disabled:cursor-not-allowed"
               disabled={busy || !canSend}
               onClick={handleSendReply}
               size="icon"
