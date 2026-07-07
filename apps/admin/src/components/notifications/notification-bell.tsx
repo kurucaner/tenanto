@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import { NotificationList } from "@/components/notifications/notification-list";
 import { Button } from "@/components/ui/button";
@@ -21,10 +21,10 @@ export const NotificationBell = memo(() => {
   const [open, setOpen] = useState(false);
   const { setSuppressToasts, status: streamStatus } = useNotificationStreamContext();
 
-  const handleOpenChange = (nextOpen: boolean): void => {
+  const handleOpenChange = useCallback((nextOpen: boolean): void => {
     setOpen(nextOpen);
     setSuppressToasts(nextOpen);
-  };
+  }, [setSuppressToasts]);
 
   const unreadQuery = useQuery({
     enabled: userType === UserType.USER,
@@ -35,11 +35,12 @@ export const NotificationBell = memo(() => {
     refetchOnWindowFocus: !open,
   });
 
+  const unreadCount = useMemo(() => unreadQuery.data?.count ?? 0, [unreadQuery.data?.count]);
+  
   if (userType !== UserType.USER) {
     return null;
   }
 
-  const unreadCount = unreadQuery.data?.count ?? 0;
 
   return (
     <DropdownMenu onOpenChange={handleOpenChange} open={open}>

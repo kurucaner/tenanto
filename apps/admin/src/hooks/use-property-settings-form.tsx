@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PercentField } from "@/components/settings/property-settings-percent-field";
@@ -136,7 +136,7 @@ export const usePropertySettingsForm = ({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = useCallback((): boolean => {
     const commissionFields = [
       form.airbnbCommissionRate,
       form.bookingCommissionRate,
@@ -173,12 +173,12 @@ export const usePropertySettingsForm = ({
     }
 
     return true;
-  };
+  }, [form]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (!validateForm()) return;
     saveMutation.mutate();
-  };
+  }, [saveMutation, validateForm]);
 
   const isPending = saveMutation.isPending || resetMutation.isPending;
 
@@ -207,7 +207,7 @@ export const usePropertySettingsForm = ({
           </Button>
         </>
       ) : undefined,
-    [canEdit, hasChanges, isPending, resetMutation, saveMutation.isPending]
+    [canEdit, handleSave, hasChanges, isPending, resetMutation, saveMutation.isPending]
   );
 
   const formContent = (
