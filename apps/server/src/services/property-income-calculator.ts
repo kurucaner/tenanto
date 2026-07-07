@@ -21,7 +21,7 @@ export function calculateNights(checkIn: string, checkOut: string): number {
   const start = Date.parse(`${checkIn}T00:00:00Z`);
   const end = Date.parse(`${checkOut}T00:00:00Z`);
   if (!Number.isFinite(start) || !Number.isFinite(end)) {
-    throw new Error("Invalid check-in or check-out date");
+    throw new TypeError("Invalid check-in or check-out date");
   }
   const nights = Math.round((end - start) / MS_PER_DAY);
   if (nights < 1) {
