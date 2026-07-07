@@ -7,14 +7,15 @@ import { CreateIncomeLineDialog, type CreateIncomeLineDialogPrefill } from "@/co
 import { CreateReservationDialog } from "@/components/income/create-reservation-dialog";
 import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialog";
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
+import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
 import { formatIncomeLineTypeLabel, INCOME_TYPE_FILTER_OPTIONS, incomeLineSelectClassName } from "@/components/income/income-line-form-options";
+import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
 import {
   CHANNEL_OPTIONS,
-  formatChannelLabel,
-  formatStatusLabel,
   reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
+import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayFeesDetailsDialog } from "@/components/income/stay-fees-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,12 +79,6 @@ function getEntryDate(entry: TPropertyIncomeEntry): string {
   return entry.entryKind === IncomeEntryKind.STAY
     ? entry.stay.checkIn
     : entry.line.transactionDate;
-}
-
-function getEntryTypeLabel(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY
-    ? "Stay"
-    : formatIncomeLineTypeLabel(entry.line.lineType);
 }
 
 function buildDateFilters(from: string, to: string, unitId: string) {
@@ -408,14 +403,20 @@ const IncomeEntryRow = memo(
 
       return (
         <TableRow>
-          <TableCell>{getEntryTypeLabel(entry)}</TableCell>
+          <TableCell>
+            <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
+          </TableCell>
           <TableCell className="font-medium">{unitLabel}</TableCell>
           <TableCell>{stay.guestName}</TableCell>
           <TableCell>{stay.checkIn}</TableCell>
           <TableCell>{stay.checkOut}</TableCell>
           <TableCell>{stay.nights}</TableCell>
-          <TableCell>{formatChannelLabel(stay.channel)}</TableCell>
-          <TableCell>{formatStatusLabel(stay.status)}</TableCell>
+          <TableCell>
+            <ReservationChannelBadge channel={stay.channel} />
+          </TableCell>
+          <TableCell>
+            <ReservationStatusBadge status={stay.status} />
+          </TableCell>
           <TableCell className="text-right">{formatMoney(stay.roomRate)}</TableCell>
           <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
           <TableCell className="text-right">
@@ -476,7 +477,9 @@ const IncomeEntryRow = memo(
     const { line } = entry;
     return (
       <TableRow>
-        <TableCell>{getEntryTypeLabel(entry)}</TableCell>
+        <TableCell>
+          <IncomeEntryTypeBadge entryKind={IncomeEntryKind.LINE} lineType={line.lineType} />
+        </TableCell>
         <TableCell className="font-medium">{unitLabel}</TableCell>
         <TableCell>{line.guestName ?? "—"}</TableCell>
         <TableCell>{line.transactionDate}</TableCell>
