@@ -7,6 +7,7 @@ import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
 import {
   type INotificationStreamSupportAttachmentUpdatedData,
   type TSupportStagedUploadStatus,
+  UserType,
 } from "@/packages/shared";
 
 function isSupportStagedUploadStatus(value: unknown): value is TSupportStagedUploadStatus {
@@ -33,13 +34,21 @@ export function parseSupportAttachmentUpdatedData(
 export function handleSupportRequestUpdated(
   queryClient: QueryClient,
   supportRequestId: string,
-  pathname: string
+  pathname: string,
+  userType: UserType
 ): void {
   if (document.visibilityState !== "visible") return;
+
+  if (userType === UserType.ADMIN) {
+    queryClient.invalidateQueries({ queryKey: ["admin", "support-requests"] });
+  } else {
+    queryClient.invalidateQueries({ queryKey: ["support", "list"] });
+  }
+
   if (pathname !== `/support-requests/${supportRequestId}`) return;
   if (shouldSkipSupportDetailRefresh(supportRequestId)) return;
 
-  void queryClient.fetchQuery({
+  queryClient.fetchQuery({
     queryFn: () => supportApi.get(supportRequestId),
     queryKey: adminQueryKeys.supportRequest(supportRequestId),
     staleTime: 0,
@@ -49,7 +58,8 @@ export function handleSupportRequestUpdated(
 export function handleSupportAttachmentUpdated(
   queryClient: QueryClient,
   data: INotificationStreamSupportAttachmentUpdatedData,
-  pathname: string
+  pathname: string,
+  userType: UserType
 ): void {
   notifySupportAttachmentStatus(data.storageKey, data.status);
 
@@ -58,6 +68,6 @@ export function handleSupportAttachmentUpdated(
     data.supportRequestId != null &&
     document.visibilityState === "visible"
   ) {
-    handleSupportRequestUpdated(queryClient, data.supportRequestId, pathname);
+    handleSupportRequestUpdated(queryClient, data.supportRequestId, pathname, userType);
   }
 }

@@ -51,6 +51,8 @@ export interface ISupportRequest {
 }
 
 export interface ISupportRequestListItem extends ISupportRequest {
+  /** True when the most recent message was sent by the ticket submitter. */
+  lastMessageFromSubmitter: boolean;
   lastMessagePreview: string;
   messageCount: number;
 }

@@ -222,15 +222,20 @@ export function useNotificationStream(
 
       if (event.type === "support_request.updated") {
         const supportRequestId = event.data.supportRequestId;
-        if (typeof supportRequestId === "string") {
-          handleSupportRequestUpdated(queryClient, supportRequestId, pathnameRef.current);
+        if (typeof supportRequestId === "string" && userType != null) {
+          handleSupportRequestUpdated(
+            queryClient,
+            supportRequestId,
+            pathnameRef.current,
+            userType
+          );
         }
       }
 
       if (event.type === "support_attachment.updated") {
         const parsed = parseSupportAttachmentUpdatedData(event.data);
-        if (parsed != null) {
-          handleSupportAttachmentUpdated(queryClient, parsed, pathnameRef.current);
+        if (parsed != null && userType != null) {
+          handleSupportAttachmentUpdated(queryClient, parsed, pathnameRef.current, userType);
         }
       }
     };

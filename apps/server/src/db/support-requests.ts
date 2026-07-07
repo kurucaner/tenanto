@@ -32,15 +32,28 @@ const LIST_AGGREGATES = `
    WHERE sm.support_request_id = sr.id
    ORDER BY sm.created_at DESC, sm.id DESC
    LIMIT 1) AS last_message_preview,
+  (SELECT sm.author_user_id
+   FROM support_messages sm
+   WHERE sm.support_request_id = sr.id
+   ORDER BY sm.created_at DESC, sm.id DESC
+   LIMIT 1) AS last_message_author_user_id,
   (SELECT COUNT(*)::int
    FROM support_messages sm
    WHERE sm.support_request_id = sr.id) AS message_count
 `;
 
+function mapLastMessageFromSubmitter(row: Record<string, unknown>): boolean {
+  const authorUserId = row.last_message_author_user_id;
+  const submitterUserId = row.user_id as string;
+  if (typeof authorUserId !== "string") return false;
+  return authorUserId === submitterUserId;
+}
+
 function mapSupportRequestListRow(row: Record<string, unknown>): ISupportRequestListItem {
   const base = mapSupportRequestRow(row);
   return {
     ...base,
+    lastMessageFromSubmitter: mapLastMessageFromSubmitter(row),
     lastMessagePreview: (row.last_message_preview as string) ?? "",
     messageCount: (row.message_count as number) ?? 0,
   };

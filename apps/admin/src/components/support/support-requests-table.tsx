@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { SupportStatusBadge } from "@/components/support/support-status-badge";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -24,6 +25,9 @@ function isAdminRow(row: TSupportTableRow): row is IAdminSupportRequestListItem 
 const SupportRequestTableRow = memo(
   ({ row, variant }: Readonly<{ row: TSupportTableRow; variant: "admin" | "user" }>) => {
     const navigate = useNavigate();
+    const showReplyHighlight =
+      row.status !== "resolved" &&
+      (variant === "admin" ? row.lastMessageFromSubmitter : !row.lastMessageFromSubmitter);
 
     return (
       <TableRow
@@ -52,9 +56,31 @@ const SupportRequestTableRow = memo(
           </TableCell>
         ) : null}
         <TableCell className="max-w-[min(20rem,36vw)]">
-          <p className="text-muted-foreground line-clamp-2 whitespace-pre-wrap break-words">
-            {row.lastMessagePreview}
-          </p>
+          <div className="flex flex-wrap items-start gap-2">
+            <p
+              className={
+                showReplyHighlight
+                  ? "line-clamp-2 whitespace-pre-wrap break-words font-medium text-foreground"
+                  : "text-muted-foreground line-clamp-2 whitespace-pre-wrap break-words"
+              }
+            >
+              {row.lastMessagePreview}
+            </p>
+            {variant === "admin" &&
+            row.lastMessageFromSubmitter &&
+            row.status !== "resolved" ? (
+              <Badge className="shrink-0" variant="outline">
+                Needs reply
+              </Badge>
+            ) : null}
+            {variant === "user" &&
+            !row.lastMessageFromSubmitter &&
+            row.status !== "resolved" ? (
+              <Badge className="shrink-0" variant="outline">
+                New reply
+              </Badge>
+            ) : null}
+          </div>
           {row.messageCount > 1 ? (
             <p className="text-muted-foreground mt-1 text-xs">{row.messageCount} messages</p>
           ) : null}

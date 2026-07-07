@@ -1,5 +1,5 @@
 import { LogOut } from "lucide-react";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { SidebarWhatsChanged } from "@/components/layout/sidebar-whats-changed";
@@ -35,7 +35,7 @@ const DashboardSidebarInner = memo(() => {
   const user = useAuthStore((s) => s.user);
   const refreshToken = useAuthStore((s) => s.refreshToken);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     if (refreshToken) {
       try {
         await authApi.logout(refreshToken);
@@ -45,7 +45,7 @@ const DashboardSidebarInner = memo(() => {
     }
     clearAppSession();
     navigate("/login", { replace: true });
-  };
+  }, [refreshToken, navigate]);
 
   const brandCollapsedTooltip = !isMobile && state === "collapsed";
 
