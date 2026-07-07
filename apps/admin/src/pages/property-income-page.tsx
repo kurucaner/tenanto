@@ -306,12 +306,11 @@ const PropertyIncomePage = memo(() => {
       [incomeLinesQuery.data?.incomeLines, incomeType, reservationsQuery.data?.reservations]
     );
 
+    const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
+    const showLines = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
     const isLoading =
-      incomeType === IncomeEntryKind.STAY
-        ? reservationsQuery.isPending
-        : incomeType === ""
-          ? reservationsQuery.isPending || incomeLinesQuery.isPending
-          : incomeLinesQuery.isPending;
+      (showStays && reservationsQuery.isPending) ||
+      (showLines && incomeLinesQuery.isPending);
 
     usePropertyShellActions(
       canManage ? (
