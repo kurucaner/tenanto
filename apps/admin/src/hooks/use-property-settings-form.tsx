@@ -227,10 +227,10 @@ export const usePropertySettingsForm = ({
             <h3 className="text-sm font-medium">Tax rates</h3>
             <p className="text-muted-foreground text-xs">
               Applied to net room rate + cleaning fee for short-term stays.
-              {totalTaxPercent !== null ? (
-                <> Total tax: {totalTaxPercent.toFixed(1)}%</>
-              ) : (
+              {totalTaxPercent === null ? (
                 <> Enter valid percentages to see total.</>
+              ) : (
+                <> Total tax: {totalTaxPercent.toFixed(1)}%</>
               )}
             </p>
           </div>
