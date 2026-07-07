@@ -26,9 +26,7 @@ function createClientId(): string {
 export const PropertyTaxRatesEditor = memo(
   ({ disabled = false, onChange, taxRates }: PropertyTaxRatesEditorProps) => {
     const updateRow = (clientId: string, patch: Partial<PropertyTaxRateFormRow>) => {
-      onChange(
-        taxRates.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row))
-      );
+      onChange(taxRates.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row)));
     };
 
     const removeRow = (clientId: string) => {

@@ -23,10 +23,7 @@ import { reportsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
 import { adminQueryKeys } from "@/lib/query-keys";
-import {
-  formatReportPercent,
-  getDefaultReportDateRange,
-} from "@/lib/report-date-defaults";
+import { formatReportPercent, getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import {
   buildSalesTypeBreakdownRows,
   sortChannelSummaryRows,
@@ -304,7 +301,9 @@ export const PropertyReportsPage = memo(() => {
         />
 
         {!reportQuery ? (
-          <p className="text-muted-foreground text-sm">Select a valid date range to load reports.</p>
+          <p className="text-muted-foreground text-sm">
+            Select a valid date range to load reports.
+          </p>
         ) : summaryQuery.isPending ? (
           <div className="space-y-3">
             <Skeleton className="h-20 w-full" />

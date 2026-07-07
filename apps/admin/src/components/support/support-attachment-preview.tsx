@@ -113,9 +113,7 @@ export const SupportAttachmentPreview = memo(
             {statusLabel != null ? (
               <>
                 <span aria-hidden>·</span>
-                {isPending ? (
-                  <Loader2Icon aria-hidden className="size-3 animate-spin" />
-                ) : null}
+                {isPending ? <Loader2Icon aria-hidden className="size-3 animate-spin" /> : null}
                 {isConfirmed ? <CheckIcon aria-hidden className="size-3 text-emerald-600" /> : null}
                 <span className={cn(isError && "text-destructive")}>{statusLabel}</span>
               </>

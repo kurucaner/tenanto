@@ -1,5 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Building2, History, Home, LifeBuoy, SlidersHorizontal, Users } from "lucide-react";
+import {
+  BarChart3,
+  Building2,
+  History,
+  Home,
+  LifeBuoy,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 
 import { UserType } from "@/packages/shared";
 

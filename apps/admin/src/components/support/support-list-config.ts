@@ -2,10 +2,7 @@ import { type AdminPageIntroProps } from "@/components/admin-page-intro";
 import { type TAppliedSupportFilters } from "@/components/support/support-constants";
 import { adminApi, supportApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import {
-  type IAdminSupportRequestListItem,
-  type ISupportRequestListItem,
-} from "@/packages/shared";
+import { type IAdminSupportRequestListItem, type ISupportRequestListItem } from "@/packages/shared";
 
 export type TSupportListVariant = "admin" | "user";
 

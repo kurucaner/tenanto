@@ -25,9 +25,7 @@ interface LinkToStayFieldProps {
 }
 
 function formatStayOptionLabel(reservation: IPropertyReservation): string {
-  const numberSuffix = reservation.reservationNumber
-    ? ` · #${reservation.reservationNumber}`
-    : "";
+  const numberSuffix = reservation.reservationNumber ? ` · #${reservation.reservationNumber}` : "";
   return `${reservation.guestName}${numberSuffix} · ${reservation.checkIn} → ${reservation.checkOut}`;
 }
 

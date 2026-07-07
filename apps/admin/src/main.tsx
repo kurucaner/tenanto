@@ -22,7 +22,6 @@ initDatadogRum();
 
 // UptimeMesh.init('ef6a1e0e30dede2a8230f30606c7af678d995862408569349c92e1121893eb97');
 
-
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <AdminThemeSync />

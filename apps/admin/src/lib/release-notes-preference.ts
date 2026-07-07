@@ -20,7 +20,11 @@ function onSeenReleaseStorageEvent(event: StorageEvent) {
 
 export function subscribeSeenRelease(onStoreChange: () => void): () => void {
   seenReleaseListeners.add(onStoreChange);
-  if (typeof globalThis !== "undefined" && "addEventListener" in globalThis && !storageListenerAttached) {
+  if (
+    typeof globalThis !== "undefined" &&
+    "addEventListener" in globalThis &&
+    !storageListenerAttached
+  ) {
     globalThis.addEventListener("storage", onSeenReleaseStorageEvent);
     storageListenerAttached = true;
   }

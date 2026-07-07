@@ -69,7 +69,9 @@ export const CreateSupportRequestDialog = memo(
     const mutation = useMutation({
       mutationFn: async () => {
         const attachmentInputs =
-          attachments.length > 0 ? attachments.map((attachment) => toAttachmentInput(attachment)) : undefined;
+          attachments.length > 0
+            ? attachments.map((attachment) => toAttachmentInput(attachment))
+            : undefined;
 
         return supportApi.create({
           attachments: attachmentInputs,

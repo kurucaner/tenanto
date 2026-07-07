@@ -1,10 +1,4 @@
-import {
-  type DragEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -36,10 +30,7 @@ function createAttachmentId(): string {
   return crypto.randomUUID();
 }
 
-function isDuplicateAttachment(
-  attachments: SupportImageAttachment[],
-  file: File
-): boolean {
+function isDuplicateAttachment(attachments: SupportImageAttachment[], file: File): boolean {
   return attachments.some(
     (attachment) => attachment.file.name === file.name && attachment.file.size === file.size
   );

@@ -44,9 +44,7 @@ export const EditReservationDialog = memo(
     const rentableUnits = filterRentableUnits(units);
     const [unitId, setUnitId] = useState(reservation.unitId);
     const [guestName, setGuestName] = useState(reservation.guestName);
-    const [reservationNumber, setReservationNumber] = useState(
-      reservation.reservationNumber ?? ""
-    );
+    const [reservationNumber, setReservationNumber] = useState(reservation.reservationNumber ?? "");
     const [checkIn, setCheckIn] = useState(reservation.checkIn);
     const [checkOut, setCheckOut] = useState(reservation.checkOut);
     const [status, setStatus] = useState<TReservationStatus>(reservation.status);

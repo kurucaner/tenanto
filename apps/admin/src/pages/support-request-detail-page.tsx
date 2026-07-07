@@ -4,7 +4,11 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { SupportChatSection } from "@/components/support/support-chat-section";
-import { supportDetailFullBleedClass, supportDetailMetaClass, supportDetailRailClass } from "@/components/support/support-constants";
+import {
+  supportDetailFullBleedClass,
+  supportDetailMetaClass,
+  supportDetailRailClass,
+} from "@/components/support/support-constants";
 import { SupportTicketDetailShell } from "@/components/support/support-ticket-detail-shell";
 import { SupportTicketHeader } from "@/components/support/support-ticket-header";
 import { SupportTicketSidebar } from "@/components/support/support-ticket-sidebar";

@@ -14,10 +14,7 @@ import { portfolioReportsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
-import {
-  type IPropertyReportsQuery,
-  type TReportRentalTypeFilter,
-} from "@/packages/shared";
+import { type IPropertyReportsQuery, type TReportRentalTypeFilter } from "@/packages/shared";
 
 export const ReportsPage = memo(() => {
   const defaults = useMemo(() => getDefaultReportDateRange(), []);
@@ -87,7 +84,9 @@ export const ReportsPage = memo(() => {
           />
 
           {!reportQuery ? (
-            <p className="text-muted-foreground text-sm">Select a valid date range to load reports.</p>
+            <p className="text-muted-foreground text-sm">
+              Select a valid date range to load reports.
+            </p>
           ) : summaryQuery.isPending ? (
             <div className="space-y-3">
               <Skeleton className="h-20 w-full" />

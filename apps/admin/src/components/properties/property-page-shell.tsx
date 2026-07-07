@@ -1,10 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  createContext,
-  memo,
-  type ReactNode,
-  useContext,
-} from "react";
+import { createContext, memo, type ReactNode, useContext } from "react";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 
 import {
@@ -42,9 +37,7 @@ export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) =
           className={tabClass}
           end={tab.end}
           key={tab.path || "overview"}
-          to={
-            tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`
-          }
+          to={tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`}
         >
           {tab.label}
         </NavLink>
@@ -109,9 +102,7 @@ export const PropertyShellLayout = memo(() => {
   if (detailQuery.isError || !detailQuery.data?.property) {
     return (
       <p className="text-destructive text-sm">
-        {detailQuery.error instanceof Error
-          ? detailQuery.error.message
-          : "Property not found"}
+        {detailQuery.error instanceof Error ? detailQuery.error.message : "Property not found"}
       </p>
     );
   }

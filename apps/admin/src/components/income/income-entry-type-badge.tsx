@@ -7,8 +7,7 @@ type IncomeEntryTypeBadgeProps =
   | { entryKind: typeof IncomeEntryKind.STAY }
   | { entryKind: typeof IncomeEntryKind.LINE; incomeLineTypeId: string; label: string };
 
-const STAY_CLASS_NAME =
-  "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+const STAY_CLASS_NAME = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
 
 const INCOME_TYPE_BADGE_CLASSES = [
   "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
@@ -22,7 +21,8 @@ const INCOME_TYPE_BADGE_CLASSES = [
 function getIncomeTypeBadgeClassName(incomeLineTypeId: string): string {
   let hash = 0;
   for (let index = 0; index < incomeLineTypeId.length; index += 1) {
-    hash = (hash + incomeLineTypeId.charCodeAt(index) * (index + 1)) % INCOME_TYPE_BADGE_CLASSES.length;
+    hash =
+      (hash + incomeLineTypeId.charCodeAt(index) * (index + 1)) % INCOME_TYPE_BADGE_CLASSES.length;
   }
   return INCOME_TYPE_BADGE_CLASSES[hash] ?? INCOME_TYPE_BADGE_CLASSES[0];
 }

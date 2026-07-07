@@ -208,9 +208,7 @@ export const usePropertySettingsForm = ({
         return false;
       }
       if (name.length > MAX_INCOME_TYPE_NAME_LENGTH) {
-        toast.error(
-          `Income type names must be at most ${MAX_INCOME_TYPE_NAME_LENGTH} characters`
-        );
+        toast.error(`Income type names must be at most ${MAX_INCOME_TYPE_NAME_LENGTH} characters`);
         return false;
       }
       const normalized = name.toLowerCase();

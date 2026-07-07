@@ -21,10 +21,13 @@ export const NotificationBell = memo(() => {
   const [open, setOpen] = useState(false);
   const { setSuppressToasts, status: streamStatus } = useNotificationStreamContext();
 
-  const handleOpenChange = useCallback((nextOpen: boolean): void => {
-    setOpen(nextOpen);
-    setSuppressToasts(nextOpen);
-  }, [setSuppressToasts]);
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean): void => {
+      setOpen(nextOpen);
+      setSuppressToasts(nextOpen);
+    },
+    [setSuppressToasts]
+  );
 
   const unreadQuery = useQuery({
     enabled: userType === UserType.USER,
@@ -36,11 +39,10 @@ export const NotificationBell = memo(() => {
   });
 
   const unreadCount = useMemo(() => unreadQuery.data?.count ?? 0, [unreadQuery.data?.count]);
-  
+
   if (userType !== UserType.USER) {
     return null;
   }
-
 
   return (
     <DropdownMenu onOpenChange={handleOpenChange} open={open}>

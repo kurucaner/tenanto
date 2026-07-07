@@ -50,7 +50,9 @@ export const PropertyShellActionsContext = createContext<PropertyShellActionsSto
 export function usePropertyShellActionsStore(): PropertyShellActionsStore {
   const store = useContext(PropertyShellActionsContext);
   if (store == null) {
-    throw new Error("PropertyShellActionsContext is missing. Wrap with PropertyShellActionsProvider.");
+    throw new Error(
+      "PropertyShellActionsContext is missing. Wrap with PropertyShellActionsProvider."
+    );
   }
   return store;
 }

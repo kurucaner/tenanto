@@ -19,7 +19,11 @@ import {
 } from "@/components/ui/table";
 import { type IAdminPropertiesListQuery, propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { formatPhoneDisplay, type IAdminPropertiesListResponse, type IProperty } from "@/packages/shared";
+import {
+  formatPhoneDisplay,
+  type IAdminPropertiesListResponse,
+  type IProperty,
+} from "@/packages/shared";
 
 const LIMIT = 25;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -28,10 +32,7 @@ const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
   const navigate = useNavigate();
 
   return (
-    <TableRow
-      className="cursor-pointer"
-      onClick={() => navigate(`/properties/${property.id}`)}
-    >
+    <TableRow className="cursor-pointer" onClick={() => navigate(`/properties/${property.id}`)}>
       <TableCell className="font-medium">{property.name}</TableCell>
       <TableCell className="max-w-[260px] truncate text-sm">{property.address}</TableCell>
       <TableCell className="text-sm">{formatPhoneDisplay(property.phoneNumber)}</TableCell>

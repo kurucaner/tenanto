@@ -13,7 +13,8 @@ interface LayoutPickerProps {
 }
 
 export const LayoutPicker = memo(({ id, onChange, value }: LayoutPickerProps) => {
-  const isOther = value !== "" && !PRESET_LAYOUTS.includes(value as (typeof PRESET_LAYOUTS)[number]);
+  const isOther =
+    value !== "" && !PRESET_LAYOUTS.includes(value as (typeof PRESET_LAYOUTS)[number]);
 
   const [customRooms, setCustomRooms] = useState(() => {
     if (isOther) return value.split("+")[0] ?? "";

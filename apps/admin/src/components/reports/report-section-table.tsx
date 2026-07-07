@@ -1,13 +1,7 @@
 import { memo, type ReactNode } from "react";
 
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import type { TSortDirection } from "@/lib/table-sort";
 
 export interface ReportTableColumnDef {

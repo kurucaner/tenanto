@@ -113,7 +113,7 @@ const UsersListPageInner = memo(() => {
   const isLoadMoreButtonDisabled = useMemo(() => {
     return !hasNextPage || isFetchingNextPage || isFetching;
   }, [hasNextPage, isFetchingNextPage, isFetching]);
-  
+
   return (
     <AdminPageLayout
       gap={6}
@@ -138,11 +138,7 @@ const UsersListPageInner = memo(() => {
                 value={qInput}
               />
             </div>
-            <Button
-              onClick={() => setAppliedQ(qInput.trim())}
-              type="button"
-              variant="secondary"
-            >
+            <Button onClick={() => setAppliedQ(qInput.trim())} type="button" variant="secondary">
               Apply search
             </Button>
             <div className="flex flex-col gap-2">
@@ -170,7 +166,9 @@ const UsersListPageInner = memo(() => {
       </Card>
 
       {error ? (
-        <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Error"}</p>
+        <p className="text-destructive text-sm">
+          {error instanceof Error ? error.message : "Error"}
+        </p>
       ) : null}
 
       <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">

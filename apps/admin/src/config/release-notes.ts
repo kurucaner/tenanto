@@ -40,8 +40,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     changes: [
       {
         category: "new",
-        description:
-          "You can now set up your own tax names and rates in each property's Settings.",
+        description: "You can now set up your own tax names and rates in each property's Settings.",
       },
       {
         category: "new",
@@ -60,23 +59,19 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "new",
-        description:
-          "Property managers can now add, edit, and remove units and amenities.",
+        description: "Property managers can now add, edit, and remove units and amenities.",
       },
       {
         category: "new",
-        description:
-          "You can add an optional legal name on the property overview.",
+        description: "You can add an optional legal name on the property overview.",
       },
       {
         category: "new",
-        description:
-          "You can attach photos when you reply to a support ticket.",
+        description: "You can attach photos when you reply to a support ticket.",
       },
       {
         category: "new",
-        description:
-          "Tap column headers on Income and Reports to sort the table.",
+        description: "Tap column headers on Income and Reports to sort the table.",
       },
       {
         category: "new",
@@ -85,13 +80,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "new",
-        description:
-          "You can see a taxes and fees breakdown for each stay on the Income page.",
+        description: "You can see a taxes and fees breakdown for each stay on the Income page.",
       },
       {
         category: "improved",
-        description:
-          "The Add Other Income form responds faster when you change the unit.",
+        description: "The Add Other Income form responds faster when you change the unit.",
       },
       {
         category: "improved",
@@ -109,13 +102,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "fixed",
-        description:
-          "Property tabs on small screens wrap instead of forcing sideways scrolling.",
+        description: "Property tabs on small screens wrap instead of forcing sideways scrolling.",
       },
       {
         category: "fixed",
-        description:
-          "You now get a clear message if a unit or amenity name is already in use.",
+        description: "You now get a clear message if a unit or amenity name is already in use.",
       },
       {
         category: "fixed",
@@ -255,7 +246,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "improved",
-        description: "Each property now has one place for units, income, expenses, reports, and settings.",
+        description:
+          "Each property now has one place for units, income, expenses, reports, and settings.",
       },
       {
         category: "fixed",

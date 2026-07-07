@@ -81,7 +81,8 @@ export const SupportChatComposer = memo(
     }, []);
 
     const replyMutation = useMutation({
-      mutationFn: (body: ISupportMessageCreateBody) => supportApi.postMessage(supportRequestId, body),
+      mutationFn: (body: ISupportMessageCreateBody) =>
+        supportApi.postMessage(supportRequestId, body),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Could not send message");
       },
@@ -175,10 +176,7 @@ export const SupportChatComposer = memo(
           onRetry={retryAttachment}
         />
         <div
-          className={cn(
-            supportComposerShellClass,
-            isDragOver && "ring-ring/40 bg-muted/50"
-          )}
+          className={cn(supportComposerShellClass, isDragOver && "ring-ring/40 bg-muted/50")}
           onDragLeave={dragHandlers.onDragLeave}
           onDragOver={dragHandlers.onDragOver}
           onDrop={dragHandlers.onDrop}

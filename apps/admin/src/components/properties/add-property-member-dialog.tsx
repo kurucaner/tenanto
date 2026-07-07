@@ -82,8 +82,8 @@ export const AddPropertyMemberDialog = memo(
           <DialogHeader>
             <DialogTitle>Add Member</DialogTitle>
             <DialogDescription>
-              Enter the email address of the person you want to add. If they're not on the
-              platform yet, they'll receive an invitation email.
+              Enter the email address of the person you want to add. If they're not on the platform
+              yet, they'll receive an invitation email.
             </DialogDescription>
           </DialogHeader>
 
@@ -100,9 +100,7 @@ export const AddPropertyMemberDialog = memo(
                 type="email"
                 value={email}
               />
-              {emailError ? (
-                <p className="text-xs text-destructive">{emailError}</p>
-              ) : null}
+              {emailError ? <p className="text-xs text-destructive">{emailError}</p> : null}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -127,14 +125,15 @@ export const AddPropertyMemberDialog = memo(
           </div>
 
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={handleClose} type="button" variant="outline">
+            <Button
+              disabled={mutation.isPending}
+              onClick={handleClose}
+              type="button"
+              variant="outline"
+            >
               Cancel
             </Button>
-            <Button
-              disabled={!canSubmit}
-              onClick={() => mutation.mutate()}
-              type="button"
-            >
+            <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">
               {mutation.isPending ? "Sending…" : "Add Member"}
             </Button>
           </DialogFooter>

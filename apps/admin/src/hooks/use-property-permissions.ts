@@ -44,8 +44,5 @@ export function usePropertyPermissions(
   property: IPropertyDetail | undefined,
   currentUser: IUser | null | undefined
 ): IPropertyPermissions {
-  return useMemo(
-    () => derivePropertyPermissions(property, currentUser),
-    [currentUser, property]
-  );
+  return useMemo(() => derivePropertyPermissions(property, currentUser), [currentUser, property]);
 }

@@ -69,9 +69,7 @@ export const CreateUnitDialog = memo(
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Add Unit</DialogTitle>
-            <DialogDescription>
-              Add a room or apartment unit to this property.
-            </DialogDescription>
+            <DialogDescription>Add a room or apartment unit to this property.</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-5 px-6 py-5">

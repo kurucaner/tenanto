@@ -14,9 +14,11 @@ export const AdminPageIntro = memo(
   ({ actions, className, description, eyebrow, title }: AdminPageIntroProps) => (
     <header className={cn("flex flex-wrap items-start justify-between gap-4", className)}>
       <div className="flex min-w-0 flex-col gap-2">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          {eyebrow}
+        </p>
         {title ? (
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {title}
           </h1>
         ) : null}
@@ -28,6 +30,6 @@ export const AdminPageIntro = memo(
         <div className="ml-auto flex min-h-8 shrink-0 items-center gap-2">{actions}</div>
       ) : null}
     </header>
-  ),
+  )
 );
 AdminPageIntro.displayName = "AdminPageIntro";

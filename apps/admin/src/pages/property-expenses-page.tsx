@@ -29,7 +29,11 @@ import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { type IPropertyExpense, type IPropertyExpensesListQuery, type TExpenseCategory } from "@/packages/shared";
+import {
+  type IPropertyExpense,
+  type IPropertyExpensesListQuery,
+  type TExpenseCategory,
+} from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({

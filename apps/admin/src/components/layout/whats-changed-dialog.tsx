@@ -38,7 +38,10 @@ function formatPublishedDate(isoDate: string): string {
 const ReleaseChangeItem = memo(({ change }: Readonly<{ change: ReleaseChange }>) => (
   <li className="flex gap-2.5 text-sm leading-relaxed text-foreground">
     <Badge
-      className={cn("mt-0.5 h-5 shrink-0 px-2 text-[0.65rem] uppercase tracking-wide", CATEGORY_BADGE_CLASS[change.category])}
+      className={cn(
+        "mt-0.5 h-5 shrink-0 px-2 text-[0.65rem] uppercase tracking-wide",
+        CATEGORY_BADGE_CLASS[change.category]
+      )}
       variant="outline"
     >
       {RELEASE_CHANGE_LABELS[change.category]}
@@ -80,9 +83,7 @@ export const WhatsChangedDialog = memo(({ onOpenChange, open }: WhatsChangedDial
     <DialogContent className="max-w-xl">
       <DialogHeader>
         <DialogTitle>What&apos;s changed</DialogTitle>
-        <DialogDescription>
-          Recent improvements and fixes to your workspace.
-        </DialogDescription>
+        <DialogDescription>Recent improvements and fixes to your workspace.</DialogDescription>
       </DialogHeader>
       <div className="flex max-h-[min(60vh,520px)] flex-col gap-6 overflow-y-auto px-6 py-5">
         {RELEASE_NOTES.map((note, index) => (

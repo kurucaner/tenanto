@@ -25,14 +25,12 @@ function getTaxableSubtotal(stay: IPropertyReservation): number {
   return Math.round((stay.roomRate * stay.nights + stay.cleaningFee) * 100) / 100;
 }
 
-const FeeLineRow = memo(
-  ({ amount, label }: { amount: number; label: string }) => (
-    <div className="flex items-center justify-between gap-4 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums">{formatMoney(amount)}</span>
-    </div>
-  )
-);
+const FeeLineRow = memo(({ amount, label }: { amount: number; label: string }) => (
+  <div className="flex items-center justify-between gap-4 text-sm">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="tabular-nums">{formatMoney(amount)}</span>
+  </div>
+));
 FeeLineRow.displayName = "FeeLineRow";
 
 export const StayFeesDetailsDialog = memo(

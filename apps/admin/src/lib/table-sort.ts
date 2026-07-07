@@ -33,10 +33,7 @@ export function sortRows<T>(
   return sorted;
 }
 
-export function getAriaSort(
-  columnId: string,
-  sortState: ISortState
-): TAriaSort {
+export function getAriaSort(columnId: string, sortState: ISortState): TAriaSort {
   if (sortState.columnId !== columnId) {
     return "none";
   }

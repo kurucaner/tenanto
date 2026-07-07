@@ -48,8 +48,6 @@ const BrandLink = memo(() => {
 });
 BrandLink.displayName = "BrandLink";
 
-
-
 const DashboardSidebarInner = memo(() => {
   const { isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
@@ -76,7 +74,6 @@ const DashboardSidebarInner = memo(() => {
   }, [refreshToken, navigate]);
 
   // const brandCollapsedTooltip = !isMobile && state === "collapsed";
-
 
   return (
     <Sidebar collapsible="icon" variant="inset">

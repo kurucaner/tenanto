@@ -44,6 +44,6 @@ export const AdminAuditEventDetails = memo(
       ) : null}
       <AuditDiffSnippet event={event} />
     </div>
-  ),
+  )
 );
 AdminAuditEventDetails.displayName = "AdminAuditEventDetails";

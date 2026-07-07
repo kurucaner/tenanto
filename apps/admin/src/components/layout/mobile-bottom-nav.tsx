@@ -3,11 +3,7 @@ import { memo, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { useSidebar } from "@/components/ui/sidebar";
-import {
-  type AdminNavItem,
-  getMobileBottomNavItems,
-  isAdminNavActive,
-} from "@/config/admin-nav";
+import { type AdminNavItem, getMobileBottomNavItems, isAdminNavActive } from "@/config/admin-nav";
 import { MOBILE_BOTTOM_NAV_HEIGHT } from "@/config/mobile-layout";
 import { cn } from "@/lib/utils";
 import { UserType } from "@/packages/shared";
@@ -31,10 +27,7 @@ const MobileBottomNavItem = memo(({ active, item }: MobileBottomNavItemProps) =>
       to={item.href}
     >
       {active ? (
-        <span
-          aria-hidden
-          className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-foreground"
-        />
+        <span aria-hidden className="absolute inset-x-2 top-0 h-0.5 rounded-full bg-foreground" />
       ) : null}
       <span
         className={cn(
@@ -44,7 +37,9 @@ const MobileBottomNavItem = memo(({ active, item }: MobileBottomNavItemProps) =>
       >
         <Icon aria-hidden className="size-5 shrink-0" />
       </span>
-      <span className="max-w-full truncate text-[0.65rem] font-medium leading-tight">{item.title}</span>
+      <span className="max-w-full truncate text-[0.65rem] font-medium leading-tight">
+        {item.title}
+      </span>
     </Link>
   );
 });

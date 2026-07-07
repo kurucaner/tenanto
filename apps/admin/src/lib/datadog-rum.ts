@@ -40,7 +40,7 @@ function getRumConfig() {
     env: import.meta.env.VITE_DD_ENV ?? import.meta.env.MODE,
     proxyUrl: normalizeProxyUrl(proxyUrl),
     site: import.meta.env.VITE_DD_SITE ?? DEFAULT_DD_SITE,
-    version: import.meta.env.VITE_APP_VERSION
+    version: import.meta.env.VITE_APP_VERSION,
   };
 }
 
@@ -65,7 +65,7 @@ function sanitizeUrl(url: unknown): unknown {
 }
 
 export function initDatadogRum(): void {
-  if (rumInitialized ||  globalThis.window === undefined) {
+  if (rumInitialized || globalThis.window === undefined) {
     return;
   }
 
@@ -139,10 +139,7 @@ export function trackDatadogRumView(name: string): void {
   datadogRum.startView({ name });
 }
 
-export function trackDatadogRumError(
-  error: unknown,
-  context?: Record<string, unknown>
-): void {
+export function trackDatadogRumError(error: unknown, context?: Record<string, unknown>): void {
   if (!rumInitialized) {
     return;
   }

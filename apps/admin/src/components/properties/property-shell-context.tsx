@@ -1,8 +1,6 @@
 import { memo, type ReactNode, useMemo } from "react";
 
-import {
-  PropertyShellContext,
-} from "@/components/properties/property-shell-context-value";
+import { PropertyShellContext } from "@/components/properties/property-shell-context-value";
 import { usePropertyPermissions } from "@/hooks/use-property-permissions";
 import type { IPropertyDetail } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,11 +20,7 @@ export const PropertyShellProvider = memo(
       [permissions, property, propertyId]
     );
 
-    return (
-      <PropertyShellContext.Provider value={value}>
-        {children}
-      </PropertyShellContext.Provider>
-    );
+    return <PropertyShellContext.Provider value={value}>{children}</PropertyShellContext.Provider>;
   }
 );
 PropertyShellProvider.displayName = "PropertyShellProvider";

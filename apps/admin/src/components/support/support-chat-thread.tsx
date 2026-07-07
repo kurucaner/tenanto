@@ -7,10 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChatStickToBottom } from "@/hooks/use-chat-stick-to-bottom";
 import { groupSupportMessagesByDay } from "@/lib/group-support-messages";
-import {
-  isOwnSupportMessage,
-  type ISupportMessageViewer,
-} from "@/lib/support-message-ownership";
+import { isOwnSupportMessage, type ISupportMessageViewer } from "@/lib/support-message-ownership";
 import { cn } from "@/lib/utils";
 import { type ISupportMessage } from "@/packages/shared";
 

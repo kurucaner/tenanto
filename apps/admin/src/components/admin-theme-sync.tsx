@@ -27,7 +27,11 @@ function getServerDarkPreset(): DarkPreset {
 /** Keeps `document.documentElement` in sync with stored choice, system preference, and other tabs. */
 export function AdminThemeSync() {
   const choice = useSyncExternalStore(subscribeStoredTheme, readStoredTheme, getServerThemeChoice);
-  const preset = useSyncExternalStore(subscribeStoredDarkPreset, readStoredDarkPreset, getServerDarkPreset);
+  const preset = useSyncExternalStore(
+    subscribeStoredDarkPreset,
+    readStoredDarkPreset,
+    getServerDarkPreset
+  );
 
   useLayoutEffect(() => {
     applyTheme(choice, false);

@@ -1,9 +1,5 @@
 import { cn } from "@/lib/utils";
-import {
-  ExpenseCategory,
-  getExpenseCategoryMeta,
-  type TExpenseCategory,
-} from "@/packages/shared";
+import { ExpenseCategory, getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared";
 
 export const expenseSelectClassName = cn(
   "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",

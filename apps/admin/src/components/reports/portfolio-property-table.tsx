@@ -75,14 +75,18 @@ export const PortfolioPropertyTable = memo(
                 {row.propertyName}
               </Link>
             </TableCell>
-            <TableCell className="text-right">{formatMoney(row.summary.totals.netIncome)}</TableCell>
+            <TableCell className="text-right">
+              {formatMoney(row.summary.totals.netIncome)}
+            </TableCell>
             <TableCell className="text-right">
               {formatMoney(row.summary.totals.totalExpenses)}
             </TableCell>
             <TableCell className="text-right">
               {formatMoney(row.summary.totals.operationalNet)}
             </TableCell>
-            <TableCell className="text-right">{formatReportPercent(aggregateOccupancy(row))}</TableCell>
+            <TableCell className="text-right">
+              {formatReportPercent(aggregateOccupancy(row))}
+            </TableCell>
             <TableCell className="text-right">{formatMoney(aggregateAdr(row))}</TableCell>
           </TableRow>
         ))}

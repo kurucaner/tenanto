@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "vite preview"
+    "start": "vite preview",
+    "prettier": "prettier --write ."
   },
   "dependencies": {
     "@/packages/shared": "workspace:*",

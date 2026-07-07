@@ -9,7 +9,9 @@ import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const rootPackage = JSON.parse(readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8")) as { version: string };
+const rootPackage = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8")
+) as { version: string };
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],

@@ -29,7 +29,7 @@ export const AdminThemeSwitcher = memo(function AdminThemeSwitcher({
       if (mode === next) return;
       applyTheme(next);
     },
-    [mode],
+    [mode]
   );
 
   return (

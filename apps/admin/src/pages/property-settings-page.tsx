@@ -10,7 +10,15 @@ import { adminQueryKeys } from "@/lib/query-keys";
 import { type IPropertySettings } from "@/packages/shared";
 
 const PropertySettingsForm = memo(
-  ({ canEdit, propertyId, settings }: { canEdit: boolean; propertyId: string; settings: IPropertySettings }) => {
+  ({
+    canEdit,
+    propertyId,
+    settings,
+  }: {
+    canEdit: boolean;
+    propertyId: string;
+    settings: IPropertySettings;
+  }) => {
     const { formContent, headerActions } = usePropertySettingsForm({
       canEdit,
       propertyId,

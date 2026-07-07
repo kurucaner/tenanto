@@ -5,7 +5,11 @@ import { useLocation } from "react-router-dom";
 
 import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-client";
 import { NOTIFICATION_STREAM_CLIENT_ID_KEY } from "@/lib/notification-stream-constants";
-import { handleSupportAttachmentUpdated, handleSupportRequestUpdated, parseSupportAttachmentUpdatedData } from "@/lib/notification-stream-handlers";
+import {
+  handleSupportAttachmentUpdated,
+  handleSupportRequestUpdated,
+  parseSupportAttachmentUpdatedData,
+} from "@/lib/notification-stream-handlers";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { showNotificationToast } from "@/lib/show-notification-toast";
 import {
@@ -223,12 +227,7 @@ export function useNotificationStream(
       if (event.type === "support_request.updated") {
         const supportRequestId = event.data.supportRequestId;
         if (typeof supportRequestId === "string" && userType != null) {
-          handleSupportRequestUpdated(
-            queryClient,
-            supportRequestId,
-            pathnameRef.current,
-            userType
-          );
+          handleSupportRequestUpdated(queryClient, supportRequestId, pathnameRef.current, userType);
         }
       }
 

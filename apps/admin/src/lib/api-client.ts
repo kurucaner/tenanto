@@ -490,10 +490,10 @@ export const adminApi = {
     supportApi.postMessage(id, body),
 
   patchSupportRequest: (id: string, body: IAdminSupportRequestPatchBody) =>
-    authenticatedRequest<IAdminSupportRequestPatchResponse>(
-      `/support/${encodeURIComponent(id)}`,
-      { body: JSON.stringify(body), method: "PATCH" }
-    ),
+    authenticatedRequest<IAdminSupportRequestPatchResponse>(`/support/${encodeURIComponent(id)}`, {
+      body: JSON.stringify(body),
+      method: "PATCH",
+    }),
 };
 
 export const propertiesApi = {
@@ -514,10 +514,10 @@ export const propertiesApi = {
     ),
 
   update: (propertyId: string, body: IAdminUpdatePropertyBody) =>
-    authenticatedRequest<{ property: IProperty }>(
-      `/properties/${encodeURIComponent(propertyId)}`,
-      { body: JSON.stringify(body), method: "PATCH" }
-    ),
+    authenticatedRequest<{ property: IProperty }>(`/properties/${encodeURIComponent(propertyId)}`, {
+      body: JSON.stringify(body),
+      method: "PATCH",
+    }),
 
   delete: (propertyId: string) =>
     authenticatedRequest<void>(`/properties/${encodeURIComponent(propertyId)}`, {

@@ -27,5 +27,9 @@ function getServerResolvedAdminDark(): boolean {
 
 /** True when the admin UI should show dark appearance (matches `html.dark` after `applyTheme`). */
 export function useResolvedAdminDark(): boolean {
-  return useSyncExternalStore(subscribeResolvedAdminDark, readResolvedAdminDark, getServerResolvedAdminDark);
+  return useSyncExternalStore(
+    subscribeResolvedAdminDark,
+    readResolvedAdminDark,
+    getServerResolvedAdminDark
+  );
 }

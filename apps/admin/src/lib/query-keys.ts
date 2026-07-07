@@ -1,7 +1,4 @@
-import type {
-  IAdminPropertiesListQuery,
-  IAdminUsersListQuery,
-} from "@/lib/api-client";
+import type { IAdminPropertiesListQuery, IAdminUsersListQuery } from "@/lib/api-client";
 import type {
   IAdminAuditEventsListQuery,
   IAdminSupportRequestsListQuery,
@@ -50,4 +47,3 @@ export const adminQueryKeys = {
   notificationsUnreadCount: () => ["notifications", "unread-count"] as const,
   notificationsList: () => ["notifications", "list"] as const,
 };
-

@@ -3,12 +3,18 @@ import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { CreateIncomeLineDialog, type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
+import {
+  CreateIncomeLineDialog,
+  type CreateIncomeLineDialogPrefill,
+} from "@/components/income/create-income-line-dialog";
 import { CreateReservationDialog } from "@/components/income/create-reservation-dialog";
 import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialog";
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
-import { buildIncomeTypeFilterOptions, incomeLineSelectClassName } from "@/components/income/income-line-form-options";
+import {
+  buildIncomeTypeFilterOptions,
+  incomeLineSelectClassName,
+} from "@/components/income/income-line-form-options";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
 import {
   CHANNEL_OPTIONS,
@@ -23,13 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
@@ -144,11 +144,7 @@ function handleDeleteLine(
   mutate: (line: IPropertyIncomeLine) => void
 ): void {
   const typeLabel = line.incomeLineTypeName ?? line.incomeLineTypeId;
-  if (
-    !globalThis.confirm(
-      `Delete ${typeLabel} entry? This cannot be undone.`
-    )
-  ) {
+  if (!globalThis.confirm(`Delete ${typeLabel} entry? This cannot be undone.`)) {
     return;
   }
   mutate(line);
@@ -378,13 +374,7 @@ function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): 
 }
 
 const PropertyIncomePageActions = memo(
-  ({
-    onAddOtherIncome,
-    onAddStay,
-  }: {
-    onAddOtherIncome: () => void;
-    onAddStay: () => void;
-  }) => (
+  ({ onAddOtherIncome, onAddStay }: { onAddOtherIncome: () => void; onAddStay: () => void }) => (
     <>
       <Button className="gap-1.5" onClick={onAddStay} size="sm" type="button" variant="outline">
         <Plus className="size-3.5" />
@@ -568,290 +558,281 @@ const IncomeEntryRow = memo(
 IncomeEntryRow.displayName = "IncomeEntryRow";
 
 const PropertyIncomePage = memo(() => {
-    const { permissions, propertyId } = usePropertyShell();
-    const canManage = permissions.canManageLedger;
-    const queryClient = useQueryClient();
-    const [createStayOpen, setCreateStayOpen] = useState(false);
-    const [createLineOpen, setCreateLineOpen] = useState(false);
-    const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
-      null
-    );
-    const [createLineLockedStay, setCreateLineLockedStay] = useState<IPropertyReservation | null>(
-      null
-    );
-    const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
-    const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
-    const [feesDetailsStay, setFeesDetailsStay] = useState<IPropertyReservation | null>(null);
-    const [from, setFrom] = useState("");
-    const [to, setTo] = useState("");
-    const [unitId, setUnitId] = useState("");
-    const [channel, setChannel] = useState("");
-    const [status, setStatus] = useState("");
-    const [incomeType, setIncomeType] = useState("");
-    const {
-      getColumnAriaSort,
-      getColumnDirection,
-      sortState,
-      toggleSort,
-    } = useTableSort("date", "desc");
+  const { permissions, propertyId } = usePropertyShell();
+  const canManage = permissions.canManageLedger;
+  const queryClient = useQueryClient();
+  const [createStayOpen, setCreateStayOpen] = useState(false);
+  const [createLineOpen, setCreateLineOpen] = useState(false);
+  const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
+    null
+  );
+  const [createLineLockedStay, setCreateLineLockedStay] = useState<IPropertyReservation | null>(
+    null
+  );
+  const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
+  const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
+  const [feesDetailsStay, setFeesDetailsStay] = useState<IPropertyReservation | null>(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [unitId, setUnitId] = useState("");
+  const [channel, setChannel] = useState("");
+  const [status, setStatus] = useState("");
+  const [incomeType, setIncomeType] = useState("");
+  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useTableSort(
+    "date",
+    "desc"
+  );
 
-    const dateFilters = useMemo(
-      () => buildDateFilters(from, to, unitId),
-      [from, to, unitId]
-    );
+  const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
 
-    const reservationFilters = useMemo(
-      () => buildReservationFilters(dateFilters, channel, status),
-      [channel, dateFilters, status]
-    );
+  const reservationFilters = useMemo(
+    () => buildReservationFilters(dateFilters, channel, status),
+    [channel, dateFilters, status]
+  );
 
-    const lineFilters = useMemo(
-      () => buildLineFilters(dateFilters, incomeType),
-      [dateFilters, incomeType]
-    );
+  const lineFilters = useMemo(
+    () => buildLineFilters(dateFilters, incomeType),
+    [dateFilters, incomeType]
+  );
 
-    const reservationsQuery = useQuery({
-      enabled: incomeType === "" || incomeType === IncomeEntryKind.STAY,
-      queryFn: () => reservationsApi.list(propertyId, reservationFilters),
-      queryKey: adminQueryKeys.propertyReservations(propertyId, reservationFilters),
-    });
+  const reservationsQuery = useQuery({
+    enabled: incomeType === "" || incomeType === IncomeEntryKind.STAY,
+    queryFn: () => reservationsApi.list(propertyId, reservationFilters),
+    queryKey: adminQueryKeys.propertyReservations(propertyId, reservationFilters),
+  });
 
-    const incomeLinesQuery = useQuery({
-      enabled: incomeType === "" || incomeType !== IncomeEntryKind.STAY,
-      queryFn: () => incomeLinesApi.list(propertyId, lineFilters),
-      queryKey: adminQueryKeys.propertyIncomeLines(propertyId, lineFilters),
-    });
+  const incomeLinesQuery = useQuery({
+    enabled: incomeType === "" || incomeType !== IncomeEntryKind.STAY,
+    queryFn: () => incomeLinesApi.list(propertyId, lineFilters),
+    queryKey: adminQueryKeys.propertyIncomeLines(propertyId, lineFilters),
+  });
 
-    const unitsQuery = useQuery({
-      queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnits(propertyId),
-    });
+  const unitsQuery = useQuery({
+    queryFn: () => unitsApi.list(propertyId),
+    queryKey: adminQueryKeys.propertyUnits(propertyId),
+  });
 
-    const settingsQuery = useQuery({
-      queryFn: () => settingsApi.get(propertyId),
-      queryKey: adminQueryKeys.propertySettings(propertyId),
-    });
+  const settingsQuery = useQuery({
+    queryFn: () => settingsApi.get(propertyId),
+    queryKey: adminQueryKeys.propertySettings(propertyId),
+  });
 
-    const units = unitsQuery.data?.units ?? [];
-    const incomeLineTypes = useMemo(
-      () => settingsQuery.data?.settings.incomeLineTypes ?? [],
-      [settingsQuery.data?.settings.incomeLineTypes]
-    );
+  const units = unitsQuery.data?.units ?? [];
+  const incomeLineTypes = useMemo(
+    () => settingsQuery.data?.settings.incomeLineTypes ?? [],
+    [settingsQuery.data?.settings.incomeLineTypes]
+  );
 
-    const incomeTypeFilterOptions = useMemo(
-      () => buildIncomeTypeFilterOptions(incomeLineTypes),
-      [incomeLineTypes]
-    );
+  const incomeTypeFilterOptions = useMemo(
+    () => buildIncomeTypeFilterOptions(incomeLineTypes),
+    [incomeLineTypes]
+  );
 
-    const unitLabelById = useMemo(
-      () =>
-        new Map(
-          (unitsQuery.data?.units ?? []).map((unit) => [unit.id, unit.unitNumber])
-        ),
-      [unitsQuery.data?.units]
-    );
+  const unitLabelById = useMemo(
+    () => new Map((unitsQuery.data?.units ?? []).map((unit) => [unit.id, unit.unitNumber])),
+    [unitsQuery.data?.units]
+  );
 
-    const deleteStayMutation = useMutation({
-      mutationFn: (reservation: IPropertyReservation) =>
-        reservationsApi.delete(propertyId, reservation.id),
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to delete stay");
-      },
-      onSuccess: () => {
-        toast.success("Stay deleted");
-        invalidatePropertyIncomeCaches(queryClient, propertyId);
-      },
-    });
+  const deleteStayMutation = useMutation({
+    mutationFn: (reservation: IPropertyReservation) =>
+      reservationsApi.delete(propertyId, reservation.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to delete stay");
+    },
+    onSuccess: () => {
+      toast.success("Stay deleted");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
 
-    const deleteLineMutation = useMutation({
-      mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.delete(propertyId, line.id),
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to delete other income");
-      },
-      onSuccess: () => {
-        toast.success("Other income deleted");
-        invalidatePropertyIncomeCaches(queryClient, propertyId);
-      },
-    });
+  const deleteLineMutation = useMutation({
+    mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.delete(propertyId, line.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to delete other income");
+    },
+    onSuccess: () => {
+      toast.success("Other income deleted");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
 
-    const entries = useMemo(
-      () =>
-        buildMergedEntries(
-          reservationsQuery.data?.reservations ?? [],
-          incomeLinesQuery.data?.incomeLines ?? [],
-          incomeType
-        ),
-      [incomeLinesQuery.data?.incomeLines, incomeType, reservationsQuery.data?.reservations]
-    );
+  const entries = useMemo(
+    () =>
+      buildMergedEntries(
+        reservationsQuery.data?.reservations ?? [],
+        incomeLinesQuery.data?.incomeLines ?? [],
+        incomeType
+      ),
+    [incomeLinesQuery.data?.incomeLines, incomeType, reservationsQuery.data?.reservations]
+  );
 
-    const sortedEntries = useMemo(
-      () => sortIncomeEntries(entries, sortState, unitLabelById),
-      [entries, sortState, unitLabelById]
-    );
+  const sortedEntries = useMemo(
+    () => sortIncomeEntries(entries, sortState, unitLabelById),
+    [entries, sortState, unitLabelById]
+  );
 
-    const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
-    const showLines = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
-    const isLoading =
-      (showStays && reservationsQuery.isPending) ||
-      (showLines && incomeLinesQuery.isPending);
+  const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
+  const showLines = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
+  const isLoading =
+    (showStays && reservationsQuery.isPending) || (showLines && incomeLinesQuery.isPending);
 
-    const handleAddOtherIncome = useCallback(() => {
-      setCreateLinePrefill(null);
-      setCreateLineLockedStay(null);
-      setCreateLineOpen(true);
-    }, []);
+  const handleAddOtherIncome = useCallback(() => {
+    setCreateLinePrefill(null);
+    setCreateLineLockedStay(null);
+    setCreateLineOpen(true);
+  }, []);
 
-    const handleAddStay = useCallback(() => {
-      setCreateStayOpen(true);
-    }, []);
+  const handleAddStay = useCallback(() => {
+    setCreateStayOpen(true);
+  }, []);
 
-    useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay);
+  useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay);
 
-    return (
-      <>
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-from">From</Label>
-                <Input
-                  id="filter-from"
-                  onChange={(e) => setFrom(e.target.value)}
-                  type="date"
-                  value={from}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-to">To</Label>
-                <Input
-                  id="filter-to"
-                  onChange={(e) => setTo(e.target.value)}
-                  type="date"
-                  value={to}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-unit">Unit</Label>
-                <select
-                  className={reservationSelectClassName}
-                  id="filter-unit"
-                  onChange={(e) => setUnitId(e.target.value)}
-                  value={unitId}
-                >
-                  <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-income-type">Income type</Label>
-                <select
-                  className={incomeLineSelectClassName}
-                  id="filter-income-type"
-                  onChange={(e) => setIncomeType(e.target.value)}
-                  value={incomeType}
-                >
-                  {incomeTypeFilterOptions.map((opt) => (
-                    <option key={opt.value || "all"} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-channel">Channel</Label>
-                <select
-                  className={reservationSelectClassName}
-                  disabled={!showStays}
-                  id="filter-channel"
-                  onChange={(e) => setChannel(e.target.value)}
-                  value={channel}
-                >
-                  <option value="">All channels</option>
-                  {CHANNEL_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="filter-status">Status</Label>
-                <select
-                  className={reservationSelectClassName}
-                  disabled={!showStays}
-                  id="filter-status"
-                  onChange={(e) => setStatus(e.target.value)}
-                  value={status}
-                >
-                  <option value="">All statuses</option>
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+  return (
+    <>
+      <Card>
+        <CardContent className="space-y-4 p-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-from">From</Label>
+              <Input
+                id="filter-from"
+                onChange={(e) => setFrom(e.target.value)}
+                type="date"
+                value={from}
+              />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-to">To</Label>
+              <Input
+                id="filter-to"
+                onChange={(e) => setTo(e.target.value)}
+                type="date"
+                value={to}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-unit">Unit</Label>
+              <select
+                className={reservationSelectClassName}
+                id="filter-unit"
+                onChange={(e) => setUnitId(e.target.value)}
+                value={unitId}
+              >
+                <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-income-type">Income type</Label>
+              <select
+                className={incomeLineSelectClassName}
+                id="filter-income-type"
+                onChange={(e) => setIncomeType(e.target.value)}
+                value={incomeType}
+              >
+                {incomeTypeFilterOptions.map((opt) => (
+                  <option key={opt.value || "all"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-channel">Channel</Label>
+              <select
+                className={reservationSelectClassName}
+                disabled={!showStays}
+                id="filter-channel"
+                onChange={(e) => setChannel(e.target.value)}
+                value={channel}
+              >
+                <option value="">All channels</option>
+                {CHANNEL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="filter-status">Status</Label>
+              <select
+                className={reservationSelectClassName}
+                disabled={!showStays}
+                id="filter-status"
+                onChange={(e) => setStatus(e.target.value)}
+                value={status}
+              >
+                <option value="">All statuses</option>
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-            <PropertyIncomeEntriesTable
-              canManage={canManage}
-              entries={sortedEntries}
-              getColumnAriaSort={getColumnAriaSort}
-              getColumnDirection={getColumnDirection}
-              isLoading={isLoading}
-              onAddOtherIncomeFromStay={(stay) =>
-                openOtherIncomeFromStay(stay, incomeLineTypes, {
-                  setCreateLineLockedStay,
-                  setCreateLineOpen,
-                  setCreateLinePrefill,
-                })
-              }
-              onDeleteLine={(line) => handleDeleteLine(line, deleteLineMutation.mutate)}
-              onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
-              onEditLine={setEditIncomeLine}
-              onEditStay={setEditReservation}
-              onShowFeesDetails={setFeesDetailsStay}
-              onSortColumn={toggleSort}
-              unitLabelById={unitLabelById}
-            />
-          </CardContent>
-        </Card>
-
-        <StayFeesDetailsDialog
-          onOpenChange={(open) => {
-            if (!open) {
-              setFeesDetailsStay(null);
+          <PropertyIncomeEntriesTable
+            canManage={canManage}
+            entries={sortedEntries}
+            getColumnAriaSort={getColumnAriaSort}
+            getColumnDirection={getColumnDirection}
+            isLoading={isLoading}
+            onAddOtherIncomeFromStay={(stay) =>
+              openOtherIncomeFromStay(stay, incomeLineTypes, {
+                setCreateLineLockedStay,
+                setCreateLineOpen,
+                setCreateLinePrefill,
+              })
             }
-          }}
-          open={feesDetailsStay !== null}
-          stay={feesDetailsStay}
-        />
+            onDeleteLine={(line) => handleDeleteLine(line, deleteLineMutation.mutate)}
+            onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
+            onEditLine={setEditIncomeLine}
+            onEditStay={setEditReservation}
+            onShowFeesDetails={setFeesDetailsStay}
+            onSortColumn={toggleSort}
+            unitLabelById={unitLabelById}
+          />
+        </CardContent>
+      </Card>
 
-        <PropertyIncomePageDialogs
-          createLineLockedStay={createLineLockedStay}
-          createLineOpen={createLineOpen}
-          createLinePrefill={createLinePrefill}
-          createStayOpen={createStayOpen}
-          editIncomeLine={editIncomeLine}
-          editReservation={editReservation}
-          incomeLineTypes={incomeLineTypes}
-          onCreateIncomeLineOpenChange={(open) =>
-            handleCreateIncomeLineOpenChange(open, setCreateLineOpen, () => {
-              setCreateLinePrefill(null);
-              setCreateLineLockedStay(null);
-            })
+      <StayFeesDetailsDialog
+        onOpenChange={(open) => {
+          if (!open) {
+            setFeesDetailsStay(null);
           }
-          onCreateStayOpenChange={setCreateStayOpen}
-          onEditIncomeLineOpenChange={(open) =>
-            handleEditDialogOpenChange(open, () => setEditIncomeLine(null))
-          }
-          onEditReservationOpenChange={(open) =>
-            handleEditDialogOpenChange(open, () => setEditReservation(null))
-          }
-          propertyId={propertyId}
-          units={units}
-        />
-      </>
-    );
+        }}
+        open={feesDetailsStay !== null}
+        stay={feesDetailsStay}
+      />
+
+      <PropertyIncomePageDialogs
+        createLineLockedStay={createLineLockedStay}
+        createLineOpen={createLineOpen}
+        createLinePrefill={createLinePrefill}
+        createStayOpen={createStayOpen}
+        editIncomeLine={editIncomeLine}
+        editReservation={editReservation}
+        incomeLineTypes={incomeLineTypes}
+        onCreateIncomeLineOpenChange={(open) =>
+          handleCreateIncomeLineOpenChange(open, setCreateLineOpen, () => {
+            setCreateLinePrefill(null);
+            setCreateLineLockedStay(null);
+          })
+        }
+        onCreateStayOpenChange={setCreateStayOpen}
+        onEditIncomeLineOpenChange={(open) =>
+          handleEditDialogOpenChange(open, () => setEditIncomeLine(null))
+        }
+        onEditReservationOpenChange={(open) =>
+          handleEditDialogOpenChange(open, () => setEditReservation(null))
+        }
+        propertyId={propertyId}
+        units={units}
+      />
+    </>
+  );
 });
 PropertyIncomePage.displayName = "PropertyIncomePage";
 

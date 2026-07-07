@@ -1,7 +1,4 @@
-import {
-  type InfiniteData,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
+import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { memo, useMemo } from "react";
 
 import { AdminAuditEventDetails } from "@/components/admin-audit-shared";

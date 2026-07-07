@@ -104,7 +104,9 @@ export const CreateReservationDialog = memo(
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Add Stay</DialogTitle>
-            <DialogDescription>Record a stay-based income entry for this property.</DialogDescription>
+            <DialogDescription>
+              Record a stay-based income entry for this property.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
@@ -218,7 +220,12 @@ export const CreateReservationDialog = memo(
           </div>
 
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={handleClose} type="button" variant="outline">
+            <Button
+              disabled={mutation.isPending}
+              onClick={handleClose}
+              type="button"
+              variant="outline"
+            >
               Cancel
             </Button>
             <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">

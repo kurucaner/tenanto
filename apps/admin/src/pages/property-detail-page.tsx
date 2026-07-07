@@ -22,7 +22,13 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { formatPhoneDisplay, type IPropertyMember, type IPropertyMemberUser, PropertyRole, type TPropertyRole } from "@/packages/shared";
+import {
+  formatPhoneDisplay,
+  type IPropertyMember,
+  type IPropertyMemberUser,
+  PropertyRole,
+  type TPropertyRole,
+} from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
@@ -239,7 +245,8 @@ export const PropertyDetailPage = memo(() => {
               <span className="text-muted-foreground">Address:</span> {property.address}
             </p>
             <p>
-              <span className="text-muted-foreground">Phone:</span> {formatPhoneDisplay(property.phoneNumber)}
+              <span className="text-muted-foreground">Phone:</span>{" "}
+              {formatPhoneDisplay(property.phoneNumber)}
             </p>
             <p>
               <span className="text-muted-foreground">Created:</span>{" "}

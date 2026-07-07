@@ -40,10 +40,7 @@ export function buildStayLinkPickerFilters(input: {
 
   if (input.transactionDate) {
     filters.checkInTo = addDaysToIsoDate(input.transactionDate, STAY_PICKER_DATE_WINDOW_DAYS);
-    filters.checkOutFrom = addDaysToIsoDate(
-      input.transactionDate,
-      -STAY_PICKER_DATE_WINDOW_DAYS
-    );
+    filters.checkOutFrom = addDaysToIsoDate(input.transactionDate, -STAY_PICKER_DATE_WINDOW_DAYS);
   } else {
     filters.checkOutFrom = daysAgoIsoDate(RECENT_STAY_PICKER_DAYS);
   }

@@ -1,7 +1,4 @@
-import {
-  ReportRentalTypeFilter,
-  type TReportRentalTypeFilter,
-} from "@/packages/shared";
+import { ReportRentalTypeFilter, type TReportRentalTypeFilter } from "@/packages/shared";
 
 export const RENTAL_TYPE_FILTER_OPTIONS: { label: string; value: TReportRentalTypeFilter | "" }[] =
   [

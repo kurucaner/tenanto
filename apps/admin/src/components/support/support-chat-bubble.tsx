@@ -11,18 +11,12 @@ export interface SupportChatBubbleProps {
   showAuthorEmail?: boolean;
 }
 
-function areAttachmentsEqual(
-  prev: ISupportAttachment[],
-  next: ISupportAttachment[]
-): boolean {
+function areAttachmentsEqual(prev: ISupportAttachment[], next: ISupportAttachment[]): boolean {
   if (prev.length !== next.length) return false;
   return prev.every((attachment, index) => attachment.id === next[index]?.id);
 }
 
-function areBubblePropsEqual(
-  prev: SupportChatBubbleProps,
-  next: SupportChatBubbleProps
-): boolean {
+function areBubblePropsEqual(prev: SupportChatBubbleProps, next: SupportChatBubbleProps): boolean {
   return (
     prev.isOwn === next.isOwn &&
     prev.shouldAnimate === next.shouldAnimate &&
@@ -101,7 +95,9 @@ const SupportChatBubbleInner = ({
               isOwn ? "text-primary-foreground/80" : "text-muted-foreground"
             )}
           >
-            <span className={cn("font-medium", isOwn ? "text-primary-foreground" : "text-foreground")}>
+            <span
+              className={cn("font-medium", isOwn ? "text-primary-foreground" : "text-foreground")}
+            >
               {message.authorName}
             </span>
             {showAuthorEmail && !isOwn ? <span>{message.authorEmail}</span> : null}

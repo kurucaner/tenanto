@@ -45,9 +45,7 @@ const LiveIndicator = memo(() => {
         aria-hidden
         className={cn(
           "size-1.5 rounded-full",
-          streamStatus === "connected"
-            ? "animate-pulse bg-emerald-500"
-            : "bg-amber-500"
+          streamStatus === "connected" ? "animate-pulse bg-emerald-500" : "bg-amber-500"
         )}
       />
       {label}
@@ -70,14 +68,12 @@ export const SupportTicketHeader = memo(
     const ticketIdLabel = id.length > 12 ? `${id.slice(0, 8)}…` : id;
 
     return (
-      <div
-        className={cn(
-          "sticky top-0 z-10 space-y-2 py-3",
-          supportDetailMetaClass
-        )}
-      >
+      <div className={cn("sticky top-0 z-10 space-y-2 py-3", supportDetailMetaClass)}>
         <div className="flex flex-wrap items-center gap-3">
-          <Link className="text-muted-foreground shrink-0 text-sm hover:underline" to="/support-requests">
+          <Link
+            className="text-muted-foreground shrink-0 text-sm hover:underline"
+            to="/support-requests"
+          >
             ← Support requests
           </Link>
 

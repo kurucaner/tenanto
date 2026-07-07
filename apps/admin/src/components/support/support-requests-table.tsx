@@ -11,10 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  type IAdminSupportRequestListItem,
-  type ISupportRequestListItem,
-} from "@/packages/shared";
+import { type IAdminSupportRequestListItem, type ISupportRequestListItem } from "@/packages/shared";
 
 type TSupportTableRow = ISupportRequestListItem | IAdminSupportRequestListItem;
 
@@ -66,16 +63,12 @@ const SupportRequestTableRow = memo(
             >
               {row.lastMessagePreview}
             </p>
-            {variant === "admin" &&
-            row.lastMessageFromSubmitter &&
-            row.status !== "resolved" ? (
+            {variant === "admin" && row.lastMessageFromSubmitter && row.status !== "resolved" ? (
               <Badge className="shrink-0" variant="outline">
                 Needs reply
               </Badge>
             ) : null}
-            {variant === "user" &&
-            !row.lastMessageFromSubmitter &&
-            row.status !== "resolved" ? (
+            {variant === "user" && !row.lastMessageFromSubmitter && row.status !== "resolved" ? (
               <Badge className="shrink-0" variant="outline">
                 New reply
               </Badge>

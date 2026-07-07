@@ -1,4 +1,7 @@
-import { formatChannelLabel, formatStatusLabel } from "@/components/income/reservation-form-options";
+import {
+  formatChannelLabel,
+  formatStatusLabel,
+} from "@/components/income/reservation-form-options";
 import {
   compareDates,
   compareNumbers,
@@ -28,9 +31,7 @@ export type TIncomeEntrySortColumnId =
   | "net";
 
 function getEntryDate(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY
-    ? entry.stay.checkIn
-    : entry.line.transactionDate;
+  return entry.entryKind === IncomeEntryKind.STAY ? entry.stay.checkIn : entry.line.transactionDate;
 }
 
 function getEntryTypeLabel(entry: TPropertyIncomeEntry): string {

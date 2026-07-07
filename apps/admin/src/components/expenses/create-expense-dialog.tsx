@@ -14,11 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { expensesApi } from "@/lib/api-client";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
-import {
-  ExpenseCategory,
-  getExpenseCategoryMeta,
-  type TExpenseCategory,
-} from "@/packages/shared";
+import { ExpenseCategory, getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared";
 
 interface CreateExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -94,7 +90,12 @@ export const CreateExpenseDialog = memo(
           </div>
 
           <DialogFooter>
-            <Button disabled={mutation.isPending} onClick={handleClose} type="button" variant="outline">
+            <Button
+              disabled={mutation.isPending}
+              onClick={handleClose}
+              type="button"
+              variant="outline"
+            >
               Cancel
             </Button>
             <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">

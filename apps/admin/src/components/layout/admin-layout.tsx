@@ -6,11 +6,7 @@ import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
   MOBILE_ADMIN_SHELL_OVERFLOW_CLASS,

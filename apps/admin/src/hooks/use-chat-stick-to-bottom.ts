@@ -1,4 +1,4 @@
-import { type RefObject,useCallback, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
 
 const NEAR_BOTTOM_THRESHOLD_PX = 80;
 
