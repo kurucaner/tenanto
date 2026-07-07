@@ -11,9 +11,11 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { MOBILE_BOTTOM_NAV_CONTENT_PADDING_CLASS } from "@/config/mobile-layout";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
+import { cn } from "@/lib/utils";
 
 const AdminLayoutInner = memo(() => {
   const resolvedDark = useResolvedAdminDark();
@@ -37,7 +39,12 @@ const AdminLayoutInner = memo(() => {
               <AdminThemeSwitcher compact />
             </div>
           </header>
-          <div className="flex flex-1 flex-col overflow-auto p-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-8">
+          <div
+            className={cn(
+              "flex flex-1 flex-col overflow-auto p-6 md:p-8 md:pb-8",
+              MOBILE_BOTTOM_NAV_CONTENT_PADDING_CLASS
+            )}
+          >
             <Outlet />
           </div>
           <MobileBottomNav />

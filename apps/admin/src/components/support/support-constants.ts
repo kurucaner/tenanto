@@ -1,17 +1,14 @@
+import { MOBILE_BOTTOM_NAV_SUPPORT_BLEED_HEIGHT_CLASS } from "@/config/mobile-layout";
 import { cn } from "@/lib/utils";
 import {
   SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
-  SUPPORT_MAX_IMAGE_ATTACHMENTS,
-  SUPPORT_MAX_IMAGE_BYTES,
   type SupportCategory,
   type SupportRequestStatus,
 } from "@/packages/shared";
 
-export {
-  SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
-  SUPPORT_MAX_IMAGE_ATTACHMENTS,
-  SUPPORT_MAX_IMAGE_BYTES,
-};
+export { SUPPORT_MAX_IMAGE_ATTACHMENTS, SUPPORT_MAX_IMAGE_BYTES } from "@/packages/shared";
+
+export { SUPPORT_ALLOWED_IMAGE_MIME_TYPES };
 
 export const STATUS_OPTIONS: { label: string; value: "" | SupportRequestStatus }[] = [
   { label: "All statuses", value: "" },
@@ -88,6 +85,6 @@ export const supportComposerTextareaClass = cn(
 
 export const supportDetailFullBleedClass = cn(
   "-mx-6 -mb-6 flex min-h-0 w-[calc(100%+3rem)] flex-col",
-  "h-[calc(100dvh-3.5rem-1.5rem-5.5rem-env(safe-area-inset-bottom))]",
+  MOBILE_BOTTOM_NAV_SUPPORT_BLEED_HEIGHT_CLASS,
   "md:-mx-8 md:-mb-8 md:w-[calc(100%+4rem)] md:h-[calc(100dvh-3.5rem-2rem)]"
 );

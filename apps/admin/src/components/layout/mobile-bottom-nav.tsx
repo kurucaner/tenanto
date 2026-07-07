@@ -8,6 +8,7 @@ import {
   getMobileBottomNavItems,
   isAdminNavActive,
 } from "@/config/admin-nav";
+import { MOBILE_BOTTOM_NAV_HEIGHT } from "@/config/mobile-layout";
 import { cn } from "@/lib/utils";
 import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
@@ -43,7 +44,7 @@ const MobileBottomNavItem = memo(({ active, item }: MobileBottomNavItemProps) =>
       >
         <Icon aria-hidden className="size-5 shrink-0" />
       </span>
-      <span className="max-w-full truncate text-[0.65rem] font-medium">{item.title}</span>
+      <span className="max-w-full truncate text-[0.65rem] font-medium leading-tight">{item.title}</span>
     </Link>
   );
 });
@@ -67,7 +68,10 @@ const MobileBottomNavInner = memo(() => {
       aria-label="Main navigation"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
-      <div className="mx-auto flex h-14 max-w-lg items-stretch">
+      <div
+        className="mx-auto flex max-w-lg items-stretch"
+        style={{ minHeight: MOBILE_BOTTOM_NAV_HEIGHT }}
+      >
         {primary.map((item) => (
           <MobileBottomNavItem
             active={isAdminNavActive(item, location.pathname)}
@@ -99,7 +103,7 @@ const MobileBottomNavInner = memo(() => {
           >
             <MoreHorizontal aria-hidden className="size-5 shrink-0" />
           </span>
-          <span className="max-w-full truncate text-[0.65rem] font-medium">More</span>
+          <span className="max-w-full truncate text-[0.65rem] font-medium leading-tight">More</span>
         </button>
       </div>
     </nav>
