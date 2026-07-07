@@ -358,6 +358,7 @@ async function buildComputedFields(
   const income = calculateStayIncome({
     channel: input.channel,
     cleaningFee: input.cleaningFee,
+    nights,
     roomRate: input.roomRate,
     settings,
     taxRates: settings.taxRates,

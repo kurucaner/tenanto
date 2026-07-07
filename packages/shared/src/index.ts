@@ -177,6 +177,18 @@ export {
   type TReportRentalTypeFilter,
 } from "./property-report-types";
 
+// Property income utilities
+export {
+  getStayTaxesAndFeesTotal,
+  sumTaxBreakdown,
+} from "./property-income-utils";
+
+// Property unit utilities
+export {
+  formatPropertyUnitSelectLabel,
+  formatUnitRentalTypeLabel,
+} from "./property-unit-utils";
+
 // Helpers
 export { sleep, toIso } from "./helpers";
 

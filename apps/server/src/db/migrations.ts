@@ -1045,4 +1045,128 @@ export const migrations: IMigration[] = [
     },
     version: 24,
   },
+  {
+    down: async (_client: TDBClient) => {
+      // No rollback for recalculated stay income values.
+    },
+    name: "recalculate_stay_income_per_night_room_rate",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE OR REPLACE FUNCTION migrate_recalc_stay_income(
+          p_nights INTEGER,
+          p_room_rate NUMERIC,
+          p_cleaning_fee NUMERIC,
+          p_channel property_reservation_channel,
+          p_rental_type property_unit_rental_type,
+          p_property_id UUID,
+          p_airbnb_commission_rate NUMERIC,
+          p_booking_commission_rate NUMERIC,
+          p_expedia_commission_rate NUMERIC,
+          p_direct_commission_rate NUMERIC
+        )
+        RETURNS TABLE (
+          gross_income NUMERIC,
+          tax_breakdown JSONB,
+          channel_commission NUMERIC,
+          net_income NUMERIC
+        )
+        LANGUAGE plpgsql
+        IMMUTABLE
+        AS $$
+        DECLARE
+          v_room_total NUMERIC;
+          v_taxable_base NUMERIC;
+          v_total_taxes NUMERIC;
+          v_commission_rate NUMERIC;
+          v_commission NUMERIC;
+        BEGIN
+          v_room_total := ROUND(p_room_rate * p_nights, 2);
+
+          IF p_rental_type = 'long_term'::property_unit_rental_type THEN
+            gross_income := v_room_total;
+            tax_breakdown := '[]'::jsonb;
+            channel_commission := 0;
+            net_income := v_room_total;
+            RETURN NEXT;
+            RETURN;
+          END IF;
+
+          v_taxable_base := ROUND(v_room_total + p_cleaning_fee, 2);
+
+          SELECT COALESCE(
+            jsonb_agg(
+              jsonb_build_object(
+                'taxRateId', ptr.id::text,
+                'name', ptr.name,
+                'rate', ptr.rate,
+                'amount', ROUND(v_taxable_base * ptr.rate, 2)
+              )
+              ORDER BY ptr.sort_order
+            ),
+            '[]'::jsonb
+          )
+          INTO tax_breakdown
+          FROM property_tax_rates ptr
+          WHERE ptr.property_id = p_property_id;
+
+          SELECT COALESCE(SUM((item->>'amount')::numeric), 0)
+          INTO v_total_taxes
+          FROM jsonb_array_elements(tax_breakdown) AS item;
+
+          v_commission_rate := CASE p_channel
+            WHEN 'airbnb'::property_reservation_channel THEN p_airbnb_commission_rate
+            WHEN 'booking'::property_reservation_channel THEN p_booking_commission_rate
+            WHEN 'expedia'::property_reservation_channel THEN p_expedia_commission_rate
+            WHEN 'direct'::property_reservation_channel THEN p_direct_commission_rate
+          END;
+          v_commission := ROUND(v_taxable_base * v_commission_rate, 2);
+
+          gross_income := ROUND(v_taxable_base + v_total_taxes, 2);
+          channel_commission := v_commission;
+          net_income := ROUND(v_taxable_base - v_total_taxes - v_commission, 2);
+          RETURN NEXT;
+        END;
+        $$;
+      `);
+
+      await client.query(`
+        UPDATE property_reservations pr
+        SET
+          gross_income = sub.gross_income,
+          tax_breakdown = sub.tax_breakdown,
+          channel_commission = sub.channel_commission,
+          net_income = sub.net_income
+        FROM (
+          SELECT
+            pr_inner.id,
+            calc.gross_income,
+            calc.tax_breakdown,
+            calc.channel_commission,
+            calc.net_income
+          FROM property_reservations pr_inner
+          INNER JOIN property_units pu ON pr_inner.unit_id = pu.id
+          INNER JOIN property_settings ps ON ps.property_id = pr_inner.property_id
+          CROSS JOIN LATERAL migrate_recalc_stay_income(
+            pr_inner.nights,
+            pr_inner.room_rate,
+            pr_inner.cleaning_fee,
+            pr_inner.channel,
+            pu.rental_type,
+            pr_inner.property_id,
+            ps.airbnb_commission_rate,
+            ps.booking_commission_rate,
+            ps.expedia_commission_rate,
+            ps.direct_commission_rate
+          ) calc
+        ) sub
+        WHERE pr.id = sub.id;
+      `);
+
+      await client.query(`DROP FUNCTION IF EXISTS migrate_recalc_stay_income(
+        INTEGER, NUMERIC, NUMERIC, property_reservation_channel, property_unit_rental_type,
+        UUID, NUMERIC, NUMERIC, NUMERIC, NUMERIC
+      );`);
+    },
+    version: 25,
+  },
 ];

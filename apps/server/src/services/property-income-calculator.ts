@@ -5,6 +5,7 @@ import {
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
   ReservationChannel,
+  sumTaxBreakdown,
   type TReservationChannel,
   type TUnitRentalType,
   UnitRentalType,
@@ -57,13 +58,10 @@ function buildTaxBreakdown(
   }));
 }
 
-function sumTaxBreakdown(taxBreakdown: IPropertyTaxBreakdownItem[]): number {
-  return taxBreakdown.reduce((sum, item) => sum + item.amount, 0);
-}
-
 export interface ICalculateStayIncomeInput {
   channel: TReservationChannel;
   cleaningFee: number;
+  nights: number;
   roomRate: number;
   settings: IPropertySettings;
   taxRates: IPropertyTaxRate[];
@@ -73,19 +71,19 @@ export interface ICalculateStayIncomeInput {
 export function calculateStayIncome(
   input: ICalculateStayIncomeInput
 ): Omit<IPropertyReservationComputedFields, "nights"> {
-  const { channel, cleaningFee, roomRate, settings, taxRates, unitRentalType } = input;
+  const { channel, cleaningFee, nights, roomRate, settings, taxRates, unitRentalType } = input;
+  const roomTotal = roundMoney(roomRate * nights);
 
   if (unitRentalType === UnitRentalType.LONG_TERM) {
-    const netIncome = roundMoney(roomRate);
     return {
       channelCommission: 0,
-      grossIncome: netIncome,
-      netIncome,
+      grossIncome: roomTotal,
+      netIncome: roomTotal,
       taxBreakdown: [],
     };
   }
 
-  const taxableBase = roomRate + cleaningFee;
+  const taxableBase = roundMoney(roomTotal + cleaningFee);
   const taxBreakdown = buildTaxBreakdown(taxableBase, taxRates);
   const totalTaxes = sumTaxBreakdown(taxBreakdown);
   const channelCommission = roundMoney(taxableBase * getChannelCommissionRate(channel, settings));

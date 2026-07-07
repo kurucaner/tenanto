@@ -15,6 +15,7 @@ import {
   reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
+import { StayFeesDetailsDialog } from "@/components/income/stay-fees-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  getStayTaxesAndFeesTotal,
   IncomeEntryKind,
   IncomeLineType,
   type IPropertyIncomeLine,
@@ -194,6 +196,7 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
+    onShowFeesDetails,
     unitLabelById,
   }: {
     canManage: boolean;
@@ -204,6 +207,7 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
+    onShowFeesDetails: (stay: IPropertyReservation) => void;
     unitLabelById: Map<string, string>;
   }) => {
     if (isLoading) {
@@ -229,8 +233,9 @@ const PropertyIncomeEntriesTable = memo(
               <TableHead>Nights</TableHead>
               <TableHead>Channel</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Room rate</TableHead>
+              <TableHead className="text-right">Room rate / night</TableHead>
               <TableHead className="text-right">Cleaning</TableHead>
+              <TableHead className="text-right">Taxes &amp; Fees</TableHead>
               <TableHead className="text-right">Gross</TableHead>
               <TableHead className="text-right">Net</TableHead>
               {canManage ? <TableHead>Actions</TableHead> : null}
@@ -239,7 +244,7 @@ const PropertyIncomeEntriesTable = memo(
           <TableBody>
             {entries.length === 0 ? (
               <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={canManage ? 13 : 12}>
+                <TableCell className="text-muted-foreground" colSpan={canManage ? 14 : 13}>
                   No income entries yet.
                   {canManage ? " Add a stay or other income to get started." : ""}
                 </TableCell>
@@ -255,6 +260,7 @@ const PropertyIncomeEntriesTable = memo(
                   onDeleteStay={onDeleteStay}
                   onEditLine={onEditLine}
                   onEditStay={onEditStay}
+                  onShowFeesDetails={onShowFeesDetails}
                   unitLabel={unitLabelById.get(getIncomeEntryUnitId(entry)) ?? "—"}
                 />
               ))
@@ -382,6 +388,7 @@ const IncomeEntryRow = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
+    onShowFeesDetails,
     unitLabel,
   }: {
     canManage: boolean;
@@ -391,10 +398,14 @@ const IncomeEntryRow = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
+    onShowFeesDetails: (stay: IPropertyReservation) => void;
     unitLabel: string;
   }) => {
     if (entry.entryKind === IncomeEntryKind.STAY) {
       const { stay } = entry;
+      const taxesAndFeesTotal = getStayTaxesAndFeesTotal(stay);
+      const showFeesDetails = taxesAndFeesTotal > 0;
+
       return (
         <TableRow>
           <TableCell>{getEntryTypeLabel(entry)}</TableCell>
@@ -407,6 +418,21 @@ const IncomeEntryRow = memo(
           <TableCell>{formatStatusLabel(stay.status)}</TableCell>
           <TableCell className="text-right">{formatMoney(stay.roomRate)}</TableCell>
           <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
+          <TableCell className="text-right">
+            <div className="flex flex-col items-end gap-1">
+              <span>{showFeesDetails ? formatMoney(taxesAndFeesTotal) : "—"}</span>
+              {showFeesDetails ? (
+                <Button
+                  className="h-auto px-0 py-0 text-xs"
+                  onClick={() => onShowFeesDetails(stay)}
+                  type="button"
+                  variant="link"
+                >
+                  Details
+                </Button>
+              ) : null}
+            </div>
+          </TableCell>
           <TableCell className="text-right">{formatMoney(stay.grossIncome)}</TableCell>
           <TableCell className="text-right font-medium">{formatMoney(stay.netIncome)}</TableCell>
           {canManage ? (
@@ -460,6 +486,7 @@ const IncomeEntryRow = memo(
         <TableCell>—</TableCell>
         <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
         <TableCell className="text-right">—</TableCell>
+        <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
         <TableCell className="text-right font-medium">{formatMoney(line.netIncome)}</TableCell>
         {canManage ? (
@@ -506,6 +533,7 @@ const PropertyIncomePage = memo(() => {
     );
     const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
     const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
+    const [feesDetailsStay, setFeesDetailsStay] = useState<IPropertyReservation | null>(null);
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
     const [unitId, setUnitId] = useState("");
@@ -705,10 +733,21 @@ const PropertyIncomePage = memo(() => {
               onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
               onEditLine={setEditIncomeLine}
               onEditStay={setEditReservation}
+              onShowFeesDetails={setFeesDetailsStay}
               unitLabelById={unitLabelById}
             />
           </CardContent>
         </Card>
+
+        <StayFeesDetailsDialog
+          onOpenChange={(open) => {
+            if (!open) {
+              setFeesDetailsStay(null);
+            }
+          }}
+          open={feesDetailsStay !== null}
+          stay={feesDetailsStay}
+        />
 
         <PropertyIncomePageDialogs
           createLineLockedStay={createLineLockedStay}

@@ -181,6 +181,7 @@ AS $$
 $$;
 
 CREATE OR REPLACE FUNCTION seed_calc_stay_income(
+  p_nights INTEGER,
   p_room_rate NUMERIC,
   p_cleaning_fee NUMERIC,
   p_channel property_reservation_channel,
@@ -201,21 +202,24 @@ LANGUAGE plpgsql
 IMMUTABLE
 AS $$
 DECLARE
+  v_room_total NUMERIC;
   v_taxable_base NUMERIC;
   v_total_taxes NUMERIC;
   v_commission_rate NUMERIC;
   v_commission NUMERIC;
 BEGIN
+  v_room_total := seed_round_money(p_room_rate * p_nights);
+
   IF p_rental_type = 'long_term'::property_unit_rental_type THEN
-    gross_income := seed_round_money(p_room_rate);
+    gross_income := v_room_total;
     tax_breakdown := '[]'::jsonb;
     channel_commission := 0;
-    net_income := seed_round_money(p_room_rate);
+    net_income := v_room_total;
     RETURN NEXT;
     RETURN;
   END IF;
 
-  v_taxable_base := p_room_rate + p_cleaning_fee;
+  v_taxable_base := seed_round_money(v_room_total + p_cleaning_fee);
 
   SELECT COALESCE(
     jsonb_agg(
@@ -593,6 +597,7 @@ FROM (
   INNER JOIN property_settings ps ON ps.property_id = u.property_id
 ) AS r
 CROSS JOIN LATERAL seed_calc_stay_income(
+  r.nights,
   r.room_rate,
   r.cleaning_fee,
   r.channel::property_reservation_channel,
@@ -773,8 +778,8 @@ CROSS JOIN (
 -- Drop temporary helper functions
 -- ---------------------------------------------------------------------------
 DROP FUNCTION IF EXISTS seed_calc_stay_income(
-  NUMERIC, NUMERIC, property_reservation_channel, property_unit_rental_type,
-  NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC, NUMERIC
+  INTEGER, NUMERIC, NUMERIC, property_reservation_channel, property_unit_rental_type,
+  UUID, NUMERIC, NUMERIC, NUMERIC, NUMERIC
 );
 DROP FUNCTION IF EXISTS seed_channel_commission_rate(
   property_reservation_channel, NUMERIC, NUMERIC, NUMERIC, NUMERIC

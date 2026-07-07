@@ -21,10 +21,10 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import type { IPropertyUnit } from "@/packages/shared";
-import { UnitRentalType } from "@/packages/shared";
+import type { IPropertyUnit, TUnitRentalType } from "@/packages/shared";
+import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
 
-const RentalTypeBadge = memo(({ type }: { type: string }) => {
+const RentalTypeBadge = memo(({ type }: { type: TUnitRentalType }) => {
   const isShort = type === UnitRentalType.SHORT_TERM;
   return (
     <span
@@ -34,7 +34,7 @@ const RentalTypeBadge = memo(({ type }: { type: string }) => {
           : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
       }`}
     >
-      {isShort ? "Short Term" : "Long Term"}
+      {formatUnitRentalTypeLabel(type)}
     </span>
   );
 });

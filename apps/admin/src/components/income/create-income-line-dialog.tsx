@@ -8,6 +8,7 @@ import {
   incomeLineSelectClassName,
 } from "@/components/income/income-line-form-options";
 import { LinkToStayField, LockedStaySummary } from "@/components/income/link-to-stay-field";
+import { PropertyUnitSelectOptions } from "@/components/income/property-unit-select-options";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -182,12 +183,7 @@ export const CreateIncomeLineDialog = memo(
                 }}
                 value={unitId}
               >
-                <option value="">Select unit…</option>
-                {units.map((unit) => (
-                  <option key={unit.id} value={unit.id}>
-                    {unit.unitNumber} ({unit.layout})
-                  </option>
-                ))}
+                <PropertyUnitSelectOptions includeEmptyOption units={units} />
               </select>
             </div>
 
