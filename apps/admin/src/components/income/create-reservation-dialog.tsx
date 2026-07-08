@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -23,6 +23,12 @@ import { reservationsApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  getMinCheckOutDate,
+  getTodayLocalIsoDate,
+  isValidStayDateRange,
+  shouldClearCheckOutOnCheckInChange,
+} from "@/lib/reservation-date-utils";
+import {
   ReservationChannel,
   ReservationStatus,
   type TReservationChannel,
@@ -33,11 +39,6 @@ interface CreateReservationDialogProps {
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
-}
-
-function getTodayLocalIsoDate(): string {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export const CreateReservationDialog = memo(
@@ -95,14 +96,23 @@ export const CreateReservationDialog = memo(
       setCleaningFee("");
     };
 
+    const handleCheckInChange = useCallback((nextCheckIn: string) => {
+      setCheckIn(nextCheckIn);
+      setCheckOut((currentCheckOut) =>
+        shouldClearCheckOutOnCheckInChange(nextCheckIn, currentCheckOut) ? "" : currentCheckOut
+      );
+    }, []);
+
     const units = unitsQuery.data?.units ?? [];
     const minCheckInDate = getTodayLocalIsoDate();
+    const minCheckOutDate = getMinCheckOutDate(checkIn);
     const canSubmit =
       unitId !== "" &&
       guestName.trim() !== "" &&
       checkIn !== "" &&
       checkIn >= minCheckInDate &&
       checkOut !== "" &&
+      isValidStayDateRange(checkIn, checkOut) &&
       !mutation.isPending;
 
     return (
@@ -153,7 +163,7 @@ export const CreateReservationDialog = memo(
                 <Input
                   id="check-in"
                   min={minCheckInDate}
-                  onChange={(e) => setCheckIn(e.target.value)}
+                  onChange={(e) => handleCheckInChange(e.target.value)}
                   type="date"
                   value={checkIn}
                 />
@@ -162,6 +172,7 @@ export const CreateReservationDialog = memo(
                 <Label htmlFor="check-out">Check-out</Label>
                 <Input
                   id="check-out"
+                  min={minCheckOutDate}
                   onChange={(e) => setCheckOut(e.target.value)}
                   type="date"
                   value={checkOut}

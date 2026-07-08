@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -22,6 +22,11 @@ import { PropertyUnitSelectOptions } from "@/components/units/property-unit-sele
 import { reservationsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import {
+  getMinCheckOutDate,
+  isValidStayDateRange,
+  shouldClearCheckOutOnCheckInChange,
+} from "@/lib/reservation-date-utils";
 import {
   type IPropertyReservation,
   type IPropertyUnit,
@@ -73,11 +78,20 @@ export const EditReservationDialog = memo(
       },
     });
 
+    const handleCheckInChange = useCallback((nextCheckIn: string) => {
+      setCheckIn(nextCheckIn);
+      setCheckOut((currentCheckOut) =>
+        shouldClearCheckOutOnCheckInChange(nextCheckIn, currentCheckOut) ? "" : currentCheckOut
+      );
+    }, []);
+
+    const minCheckOutDate = getMinCheckOutDate(checkIn);
     const canSubmit =
       unitId !== "" &&
       guestName.trim() !== "" &&
       checkIn !== "" &&
       checkOut !== "" &&
+      isValidStayDateRange(checkIn, checkOut) &&
       !mutation.isPending;
 
     return (
@@ -125,7 +139,7 @@ export const EditReservationDialog = memo(
                 <Label htmlFor="edit-check-in">Check-in</Label>
                 <Input
                   id="edit-check-in"
-                  onChange={(e) => setCheckIn(e.target.value)}
+                  onChange={(e) => handleCheckInChange(e.target.value)}
                   type="date"
                   value={checkIn}
                 />
@@ -134,12 +148,17 @@ export const EditReservationDialog = memo(
                 <Label htmlFor="edit-check-out">Check-out</Label>
                 <Input
                   id="edit-check-out"
+                  min={minCheckOutDate}
                   onChange={(e) => setCheckOut(e.target.value)}
                   type="date"
                   value={checkOut}
                 />
               </div>
             </div>
+
+            <p className="text-muted-foreground text-xs">
+              Check-out must be at least one night after check-in.
+            </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
