@@ -38,6 +38,7 @@ import { incomeLinesApi, reservationsApi, settingsApi, unitsApi } from "@/lib/ap
 import { formatMoney } from "@/lib/format-money";
 import {
   getEntryUnitId,
+  resolveIncomeUnitLabel,
   sortIncomeEntries,
   type TIncomeEntrySortColumnId,
 } from "@/lib/income-entry-sort";
@@ -284,7 +285,7 @@ const PropertyIncomeEntriesTable = memo(
                   onEditLine={onEditLine}
                   onEditStay={onEditStay}
                   onShowFeesDetails={onShowFeesDetails}
-                  unitLabel={unitLabelById.get(getEntryUnitId(entry)) ?? "—"}
+                  unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
                 />
               ))
             )}

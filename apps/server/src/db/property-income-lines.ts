@@ -27,7 +27,7 @@ export const propertyIncomeLinesDb = {
       incomeLineTypeId: ICreatePropertyIncomeLineBody["incomeLineTypeId"];
       reservationId: string | null;
       transactionDate: string;
-      unitId: string;
+      unitId: string | null;
     },
     computed: IPropertyIncomeLineComputedFields
   ): Promise<IPropertyIncomeLine> {

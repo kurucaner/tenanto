@@ -215,7 +215,7 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
   reservationId: (row.reservation_id as string) ?? null,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   transactionDate: formatDateColumn(row.transaction_date),
-  unitId: row.unit_id as string,
+  unitId: (row.unit_id as string | null) ?? null,
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 

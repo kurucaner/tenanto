@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
@@ -54,7 +55,7 @@ export const EditIncomeLineDialog = memo(
       [incomeLineTypes]
     );
     const [incomeLineTypeId, setIncomeLineTypeId] = useState(incomeLine.incomeLineTypeId);
-    const [unitId, setUnitId] = useState(incomeLine.unitId);
+    const [unitId, setUnitId] = useState(incomeLine.unitId ?? PROPERTY_AMENITY_UNIT_VALUE);
     const [amount, setAmount] = useState(String(incomeLine.amount));
     const [transactionDate, setTransactionDate] = useState(incomeLine.transactionDate);
     const [reservationId, setReservationId] = useState(incomeLine.reservationId ?? "");
@@ -75,7 +76,7 @@ export const EditIncomeLineDialog = memo(
           incomeLineTypeId,
           reservationId: reservationId || null,
           transactionDate,
-          unitId,
+          unitId: unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : unitId,
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update other income");
@@ -116,6 +117,7 @@ export const EditIncomeLineDialog = memo(
 
             <IncomeLineUnitSection
               fieldIdPrefix={FIELD_ID_PREFIX}
+              includePropertyAmenityOption
               onReservationIdChange={setReservationId}
               onUnitChange={handleUnitChange}
               propertyId={propertyId}

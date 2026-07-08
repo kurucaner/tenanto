@@ -52,7 +52,8 @@ export interface IPropertyReportUnitSummary {
   grossIncome: number;
   netIncome: number;
   occupancyRate: number;
-  rentalType: TUnitRentalType;
+  // null for the synthetic "Property Amenity" row (income not tied to a rentable unit).
+  rentalType: TUnitRentalType | null;
   unitId: string;
   unitNumber: string;
 }

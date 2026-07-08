@@ -1437,4 +1437,15 @@ export const migrations: IMigration[] = [
     },
     version: 32,
   },
+  {
+    down: async (client: TDBClient) => {
+      // Reverts to NOT NULL; fails if any property-amenity (null unit) rows exist.
+      await client.query(`ALTER TABLE property_income_lines ALTER COLUMN unit_id SET NOT NULL;`);
+    },
+    name: "property_income_lines_unit_id_nullable",
+    up: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE property_income_lines ALTER COLUMN unit_id DROP NOT NULL;`);
+    },
+    version: 33,
+  },
 ];

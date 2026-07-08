@@ -56,8 +56,12 @@ function parseCreateIncomeLineBody(
     return { error: "incomeLineTypeId must be a valid UUID", ok: false };
   }
 
-  const unitId = parseUuidParam(r["unitId"]);
-  if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
+  // A missing/empty/null unitId means "Property Amenity" — income not tied to a unit.
+  let unitId: string | null = null;
+  if (r["unitId"] !== undefined && r["unitId"] !== null && r["unitId"] !== "") {
+    unitId = parseUuidParam(r["unitId"]);
+    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
+  }
 
   const transactionDate = parseDateString(r["transactionDate"]);
   if (!transactionDate) {
@@ -142,9 +146,13 @@ function parseUpdateIncomeLineBody(
     body.incomeLineTypeId = incomeLineTypeId;
   }
   if ("unitId" in r) {
-    const unitId = parseUuidParam(r["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-    body.unitId = unitId;
+    if (r["unitId"] === null || r["unitId"] === "") {
+      body.unitId = null;
+    } else {
+      const unitId = parseUuidParam(r["unitId"]);
+      if (unitId === null) return { error: "unitId must be a valid UUID or null", ok: false };
+      body.unitId = unitId;
+    }
   }
   if ("transactionDate" in r) {
     const transactionDate = parseDateString(r["transactionDate"]);
@@ -252,7 +260,7 @@ async function resolveUnitForProperty(unitId: string, propertyId: string, reply:
 async function resolveReservationForProperty(
   reservationId: string,
   propertyId: string,
-  incomeUnitId: string,
+  incomeUnitId: string | null,
   reply: FastifyReply
 ) {
   const reservation = await propertyReservationsDb.findById(reservationId);
@@ -262,7 +270,8 @@ async function resolveReservationForProperty(
       .send({ error: "Reservation not found for this property" });
     return null;
   }
-  if (reservation.unitId !== incomeUnitId) {
+  // Property-amenity income (no unit) can still link to any stay in the property.
+  if (incomeUnitId !== null && reservation.unitId !== incomeUnitId) {
     void reply
       .status(HttpStatus.BAD_REQUEST)
       .send({ error: "Reservation must belong to the selected unit" });
@@ -297,7 +306,7 @@ function mergeIncomeLineInput(existing: IPropertyIncomeLine, patch: IUpdatePrope
     incomeLineTypeId: patch.incomeLineTypeId ?? existing.incomeLineTypeId,
     reservationId: patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
     transactionDate: patch.transactionDate ?? existing.transactionDate,
-    unitId: patch.unitId ?? existing.unitId,
+    unitId: patch.unitId === undefined ? existing.unitId : patch.unitId,
   };
 }
 
@@ -378,8 +387,11 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (!incomeLineType) return;
 
-      const unit = await resolveUnitForProperty(parsed.body.unitId, propertyId, reply);
-      if (!unit) return;
+      const unitId = parsed.body.unitId ?? null;
+      if (unitId !== null) {
+        const unit = await resolveUnitForProperty(unitId, propertyId, reply);
+        if (!unit) return;
+      }
 
       let reservationId: string | null = parsed.body.reservationId ?? null;
       let guestName: string | null = parsed.body.guestName?.trim() || null;
@@ -388,7 +400,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         const reservation = await resolveReservationForProperty(
           reservationId,
           propertyId,
-          unit.id,
+          unitId,
           reply
         );
         if (!reservation) return;
@@ -405,7 +417,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           incomeLineTypeId: incomeLineType.id,
           reservationId,
           transactionDate: parsed.body.transactionDate,
-          unitId: parsed.body.unitId,
+          unitId,
         },
         computed
       );
@@ -463,14 +475,16 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (!incomeLineType) return;
 
-      const unit = await resolveUnitForProperty(merged.unitId, propertyId, reply);
-      if (!unit) return;
+      if (merged.unitId !== null) {
+        const unit = await resolveUnitForProperty(merged.unitId, propertyId, reply);
+        if (!unit) return;
+      }
 
       if (merged.reservationId) {
         const reservation = await resolveReservationForProperty(
           merged.reservationId,
           propertyId,
-          unit.id,
+          merged.unitId,
           reply
         );
         if (!reservation) return;

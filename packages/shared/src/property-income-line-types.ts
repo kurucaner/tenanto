@@ -1,6 +1,10 @@
 import type { IPropertyReservation } from "./property-reservation-types";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 
+// A null `unitId` on an income line means it is not tied to a specific rentable unit —
+// i.e. property-level "Property Amenity" income (pool, parking, vending, etc.).
+export const PROPERTY_AMENITY_UNIT_LABEL = "Property Amenity";
+
 export interface IPropertyIncomeLine {
   amount: number;
   channelCommission: number;
@@ -16,7 +20,7 @@ export interface IPropertyIncomeLine {
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   transactionDate: string;
-  unitId: string;
+  unitId: string | null;
   updatedAt: string;
 }
 
@@ -34,7 +38,7 @@ export interface ICreatePropertyIncomeLineBody {
   incomeLineTypeId: string;
   reservationId?: string;
   transactionDate: string;
-  unitId: string;
+  unitId?: string | null;
 }
 
 export interface IUpdatePropertyIncomeLineBody {
@@ -44,7 +48,7 @@ export interface IUpdatePropertyIncomeLineBody {
   incomeLineTypeId?: string;
   reservationId?: string | null;
   transactionDate?: string;
-  unitId?: string;
+  unitId?: string | null;
 }
 
 export interface IPropertyIncomeLinesListQuery {

@@ -12,6 +12,7 @@ import {
 import {
   getStayTaxesAndFeesTotal,
   IncomeEntryKind,
+  PROPERTY_AMENITY_UNIT_LABEL,
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
 
@@ -42,8 +43,17 @@ function getEntryTypeLabel(entry: TPropertyIncomeEntry): string {
   return entry.line.incomeLineTypeName ?? entry.line.incomeLineTypeId;
 }
 
-function getEntryUnitId(entry: TPropertyIncomeEntry): string {
+function getEntryUnitId(entry: TPropertyIncomeEntry): string | null {
   return entry.entryKind === IncomeEntryKind.STAY ? entry.stay.unitId : entry.line.unitId;
+}
+
+// Resolves the Unit column label; a null unit means property-amenity income.
+function resolveIncomeUnitLabel(
+  unitId: string | null,
+  unitLabelById: Map<string, string>
+): string {
+  if (unitId === null) return PROPERTY_AMENITY_UNIT_LABEL;
+  return unitLabelById.get(unitId) ?? "—";
 }
 
 function getIncomeEntrySortValue(
@@ -88,7 +98,7 @@ function getIncomeEntrySortValue(
     case "type":
       return getEntryTypeLabel(entry);
     case "unit":
-      return unitLabelById.get(line.unitId) ?? "";
+      return resolveIncomeUnitLabel(line.unitId, unitLabelById);
     case "guest":
       return line.guestName ?? "";
     case "date":
@@ -144,4 +154,4 @@ export function sortIncomeEntries(
   });
 }
 
-export { getEntryDate, getEntryUnitId };
+export { getEntryDate, getEntryUnitId, resolveIncomeUnitLabel };

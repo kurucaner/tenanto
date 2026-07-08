@@ -18,6 +18,7 @@ import {
   type IPropertyReportUnitSummary,
   type IPropertyReservation,
   type IPropertyUnit,
+  PROPERTY_AMENITY_UNIT_LABEL,
   ReportRentalTypeFilter,
   ReservationChannel,
   ReservationStatus,
@@ -136,7 +137,12 @@ export async function loadReportData(
   const includeExpenses = shouldIncludeExpenses(allUnits, query);
 
   const scopedReservations = reservations.filter((stay) => unitIds.has(stay.unitId));
-  const scopedLines = incomeLines.filter((line) => unitIds.has(line.unitId));
+  // Property-amenity lines (null unit) aren't tied to a rental type, so include them only
+  // when no rental-type filter is narrowing the report.
+  const rentalTypeFilterActive = resolveRentalTypeFilter(query.rentalType) !== undefined;
+  const scopedLines = incomeLines.filter((line) =>
+    line.unitId === null ? !rentalTypeFilterActive : unitIds.has(line.unitId)
+  );
   const scopedExpenses = includeExpenses
     ? allExpenses.filter(
         (expense) =>
@@ -272,6 +278,8 @@ export function buildPropertyReportSummary(
   let grossIncome = 0;
   let netIncome = 0;
   let propertyExpensesTotal = 0;
+  let amenityGrossIncome = 0;
+  let amenityNetIncome = 0;
 
   for (const stay of reservations) {
     grossIncome = roundMoney(grossIncome + stay.grossIncome);
@@ -310,10 +318,16 @@ export function buildPropertyReportSummary(
 
     addOtherIncomeToBreakdown(salesTypeBreakdown, line);
 
-    const unit = unitMap.get(line.unitId);
-    if (unit) {
-      unit.grossIncome = roundMoney(unit.grossIncome + line.grossIncome);
-      unit.netIncome = roundMoney(unit.netIncome + line.netIncome);
+    if (line.unitId === null) {
+      // Property-amenity income: not tied to a rentable unit — its own bucket.
+      amenityGrossIncome = roundMoney(amenityGrossIncome + line.grossIncome);
+      amenityNetIncome = roundMoney(amenityNetIncome + line.netIncome);
+    } else {
+      const unit = unitMap.get(line.unitId);
+      if (unit) {
+        unit.grossIncome = roundMoney(unit.grossIncome + line.grossIncome);
+        unit.netIncome = roundMoney(unit.netIncome + line.netIncome);
+      }
     }
 
     addToMonth(monthMap, monthFromDate(line.transactionDate), line.grossIncome, line.netIncome);
@@ -351,6 +365,20 @@ export function buildPropertyReportSummary(
     unitId: unit.unitId,
     unitNumber: unit.unitNumber,
   }));
+
+  if (amenityGrossIncome !== 0 || amenityNetIncome !== 0) {
+    byUnit.push({
+      adr: 0,
+      availableNights: 0,
+      bookedNights: 0,
+      grossIncome: amenityGrossIncome,
+      netIncome: amenityNetIncome,
+      occupancyRate: 0,
+      rentalType: null,
+      unitId: "property-amenity",
+      unitNumber: PROPERTY_AMENITY_UNIT_LABEL,
+    });
+  }
 
   const byMonth: IPropertyReportMonthSummary[] = [...monthMap.values()].map((month) => ({
     ...month,

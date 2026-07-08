@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
@@ -125,7 +126,7 @@ const CreateIncomeLineDialogForm = memo(
           incomeLineTypeId,
           reservationId: reservationId || undefined,
           transactionDate,
-          unitId,
+          unitId: unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : unitId,
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to create other income");
@@ -169,6 +170,7 @@ const CreateIncomeLineDialogForm = memo(
 
           <IncomeLineUnitSection
             fieldIdPrefix={FIELD_ID_PREFIX}
+            includePropertyAmenityOption={!lockedStay}
             lockedStay={lockedStay}
             onReservationIdChange={setReservationId}
             onUnitChange={handleUnitChange}

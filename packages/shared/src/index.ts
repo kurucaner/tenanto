@@ -151,6 +151,7 @@ export {
   type IPropertyIncomeLineComputedFields,
   type IPropertyIncomeLinesListQuery,
   type IUpdatePropertyIncomeLineBody,
+  PROPERTY_AMENITY_UNIT_LABEL,
   type TIncomeEntryKind,
   type TPropertyIncomeEntry,
 } from "./property-income-line-types";

@@ -172,6 +172,7 @@ export const IncomeLineDescriptionField = memo(
 IncomeLineDescriptionField.displayName = "IncomeLineDescriptionField";
 
 interface IncomeLineUnitSectionProps extends FieldIdPrefixProps {
+  includePropertyAmenityOption?: boolean;
   includeReservationId?: string;
   lockedStay?: IPropertyReservation | null;
   onReservationIdChange: (reservationId: string) => void;
@@ -186,6 +187,7 @@ interface IncomeLineUnitSectionProps extends FieldIdPrefixProps {
 export const IncomeLineUnitSection = memo(
   ({
     fieldIdPrefix,
+    includePropertyAmenityOption,
     includeReservationId,
     lockedStay,
     onReservationIdChange,
@@ -224,6 +226,7 @@ export const IncomeLineUnitSection = memo(
           >
             <IncomeUnitSelectOptions
               emptyOptionLabel={unitsProp == null ? "Select unit…" : undefined}
+              includePropertyAmenityOption={includePropertyAmenityOption}
               units={units}
             />
           </select>
