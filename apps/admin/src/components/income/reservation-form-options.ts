@@ -26,10 +26,6 @@ export const CHANNEL_OPTIONS: { label: string; value: TReservationChannel }[] = 
   { label: "Direct", value: ReservationChannel.DIRECT },
 ];
 
-export function formatChannelLabel(channel: TReservationChannel): string {
-  return CHANNEL_OPTIONS.find((opt) => opt.value === channel)?.label ?? channel;
-}
-
 export function formatStatusLabel(status: TReservationStatus): string {
   return STATUS_OPTIONS.find((opt) => opt.value === status)?.label ?? status;
 }

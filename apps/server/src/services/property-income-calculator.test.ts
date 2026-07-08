@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildStayCommissionBreakdown,
+  buildStayGrossBreakdown,
+  buildStayNetPayoutBreakdown,
+  buildStayTaxesBreakdown,
   getStayNetPayout,
+  getStayTaxableBase,
+  getStayTaxesTotal,
   type IPropertySettings,
   type IPropertyTaxRate,
   ReservationChannel,
@@ -33,6 +39,91 @@ function calc(channel: (typeof ReservationChannel)[keyof typeof ReservationChann
     unitRentalType: UnitRentalType.SHORT_TERM,
   });
 }
+
+function toStayBreakdownInput(
+  channel: (typeof ReservationChannel)[keyof typeof ReservationChannel],
+  result: ReturnType<typeof calculateStayIncome>,
+  roomTotal: number,
+  cleaningFee: number,
+  nights: number
+) {
+  return {
+    channel,
+    channelCommission: result.channelCommission,
+    channelCommissionRate: result.channelCommissionRate,
+    cleaningFee,
+    grossIncome: result.grossIncome,
+    netIncome: result.netIncome,
+    nights,
+    roomTotal,
+    taxBreakdown: result.taxBreakdown,
+  };
+}
+
+function sumSignedGrossLines(input: ReturnType<typeof toStayBreakdownInput>): number {
+  const breakdown = buildStayGrossBreakdown(input);
+  const taxableBase = getStayTaxableBase(input.roomTotal, input.cleaningFee);
+  const taxesTotal = getStayTaxesTotal(input);
+  const resortLine = breakdown.lines.find((line) => line.label === "Resort tax");
+  const resortAdjustment = resortLine?.amount ?? 0;
+
+  return Math.round((taxableBase + taxesTotal - resortAdjustment) * 100) / 100;
+}
+
+function sumSignedNetPayoutLines(input: ReturnType<typeof toStayBreakdownInput>): number {
+  const breakdown = buildStayNetPayoutBreakdown(input);
+  const taxableBase = getStayTaxableBase(input.roomTotal, input.cleaningFee);
+  const resortLine = breakdown.lines.find((line) => line.label === "Resort tax");
+  const resortAdjustment = resortLine?.amount ?? 0;
+
+  return Math.round((taxableBase - input.channelCommission - resortAdjustment) * 100) / 100;
+}
+
+describe("stay calculation breakdowns", () => {
+  test("Airbnb breakdown totals match calculated stay income", () => {
+    const result = calc(ReservationChannel.AIRBNB);
+    const stay = toStayBreakdownInput(ReservationChannel.AIRBNB, result, 1000, 0, 10);
+
+    expect(buildStayTaxesBreakdown(stay).total).toBe(getStayTaxesTotal(stay));
+    expect(buildStayCommissionBreakdown(stay).total).toBe(result.channelCommission);
+    expect(buildStayGrossBreakdown(stay).total).toBe(result.grossIncome);
+    expect(buildStayNetPayoutBreakdown(stay).total).toBe(getStayNetPayout(stay));
+    expect(sumSignedGrossLines(stay)).toBe(result.grossIncome);
+    expect(sumSignedNetPayoutLines(stay)).toBe(getStayNetPayout(stay));
+  });
+
+  test("Booking breakdown totals match calculated stay income", () => {
+    const result = calc(ReservationChannel.BOOKING);
+    const stay = toStayBreakdownInput(ReservationChannel.BOOKING, result, 1000, 0, 10);
+
+    expect(buildStayTaxesBreakdown(stay).total).toBe(100);
+    expect(buildStayCommissionBreakdown(stay).total).toBe(150);
+    expect(buildStayGrossBreakdown(stay).total).toBe(1100);
+    expect(buildStayNetPayoutBreakdown(stay).total).toBe(850);
+    expect(sumSignedGrossLines(stay)).toBe(1100);
+    expect(sumSignedNetPayoutLines(stay)).toBe(850);
+  });
+
+  test("Expedia breakdown reflects room-total-only commission base", () => {
+    const result = calculateStayIncome({
+      channel: ReservationChannel.EXPEDIA,
+      cleaningFee: 100,
+      nights: 5,
+      roomTotal: 900,
+      settings: SETTINGS,
+      taxRates: TAX_RATES,
+      unitRentalType: UnitRentalType.SHORT_TERM,
+    });
+    const stay = toStayBreakdownInput(ReservationChannel.EXPEDIA, result, 900, 100, 5);
+    const commissionBreakdown = buildStayCommissionBreakdown(stay);
+
+    expect(commissionBreakdown.total).toBe(135);
+    expect(commissionBreakdown.lines[0]?.note).toBe("Commission base");
+    expect(commissionBreakdown.lines[1]?.note).toBe("Excluded from commission base");
+    expect(buildStayGrossBreakdown(stay).total).toBe(1100);
+    expect(buildStayNetPayoutBreakdown(stay).total).toBe(865);
+  });
+});
 
 describe("calculateStayIncome — Airbnb resort tax exclusion", () => {
   test("Airbnb excludes resort tax from gross and payout", () => {

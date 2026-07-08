@@ -192,14 +192,22 @@ export {
 
 // Property income utilities
 export {
+  buildStayCommissionBreakdown,
+  buildStayGrossBreakdown,
+  buildStayNetPayoutBreakdown,
+  buildStayTaxesBreakdown,
   getChannelCommissionRate,
   getResortTaxAmount,
   getStayAverageDailyRate,
   getStayCommissionBase,
   getStayNetPayout,
+  getStayTaxableBase,
   getStayTaxesTotal,
   sumTaxBreakdown,
+  type IStayCalculationBreakdown,
+  type IStayCalculationLine,
   type TChannelCommissionSettings,
+  type TStayCalculationMetric,
 } from "./property-income-utils";
 
 // Property unit utilities

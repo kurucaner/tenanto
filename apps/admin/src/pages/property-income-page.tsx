@@ -27,7 +27,7 @@ import {
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
-import { StayTaxesDetailsDialog } from "@/components/income/stay-taxes-details-dialog";
+import { StayCalculationDetailsDialog } from "@/components/income/stay-calculation-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,6 +62,7 @@ import {
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
   type TPropertyIncomeEntry,
+  type TStayCalculationMetric,
 } from "@/packages/shared";
 
 function buildMergedEntries(
@@ -250,7 +251,7 @@ const PropertyIncomeEntriesTable = memo(
     onEditStay,
     onRestoreLine,
     onRestoreStay,
-    onShowTaxesDetails,
+    onShowCalculationDetails,
     onSortColumn,
     unitLabelById,
   }: {
@@ -266,7 +267,10 @@ const PropertyIncomeEntriesTable = memo(
     onEditStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
-    onShowTaxesDetails: (stay: IPropertyReservation) => void;
+    onShowCalculationDetails: (
+      stay: IPropertyReservation,
+      metric: TStayCalculationMetric
+    ) => void;
     onSortColumn: (columnId: string) => void;
     unitLabelById: Map<string, string>;
   }) => {
@@ -328,7 +332,7 @@ const PropertyIncomeEntriesTable = memo(
                   onEditStay={onEditStay}
                   onRestoreLine={onRestoreLine}
                   onRestoreStay={onRestoreStay}
-                  onShowTaxesDetails={onShowTaxesDetails}
+                  onShowCalculationDetails={onShowCalculationDetails}
                   unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
                 />
               ))
@@ -434,6 +438,31 @@ const PropertyIncomePageActions = memo(
 );
 PropertyIncomePageActions.displayName = "PropertyIncomePageActions";
 
+const StayCalculationDetailsLink = memo(({ onClick }: { onClick: () => void }) => (
+  <Button className="h-auto px-0 py-0 text-xs" onClick={onClick} type="button" variant="link">
+    Details
+  </Button>
+));
+StayCalculationDetailsLink.displayName = "StayCalculationDetailsLink";
+
+const StayMetricCell = memo(
+  ({
+    amountLabel,
+    onShowDetails,
+    showDetails,
+  }: {
+    amountLabel: string;
+    onShowDetails: () => void;
+    showDetails: boolean;
+  }) => (
+    <div className="flex flex-col items-end gap-1">
+      <span>{amountLabel}</span>
+      {showDetails ? <StayCalculationDetailsLink onClick={onShowDetails} /> : null}
+    </div>
+  )
+);
+StayMetricCell.displayName = "StayMetricCell";
+
 function useRegisterIncomePageActions(
   canManage: boolean,
   onAddOtherIncome: () => void,
@@ -461,7 +490,7 @@ const IncomeEntryRow = memo(
     onEditStay,
     onRestoreLine,
     onRestoreStay,
-    onShowTaxesDetails,
+    onShowCalculationDetails,
     unitLabel,
   }: {
     canManage: boolean;
@@ -473,13 +502,18 @@ const IncomeEntryRow = memo(
     onEditStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
-    onShowTaxesDetails: (stay: IPropertyReservation) => void;
+    onShowCalculationDetails: (
+      stay: IPropertyReservation,
+      metric: TStayCalculationMetric
+    ) => void;
     unitLabel: string;
   }) => {
     if (entry.entryKind === IncomeEntryKind.STAY) {
       const { stay } = entry;
       const taxesTotal = getStayTaxesTotal(stay);
       const showTaxesDetails = taxesTotal > 0;
+      const showCommissionDetails = stay.channelCommission > 0;
+      const netPayout = getStayNetPayout(stay);
 
       return (
         <TableRow className={stay.isDeleted ? deletedRowClassName : undefined}>
@@ -512,25 +546,33 @@ const IncomeEntryRow = memo(
           </TableCell>
           <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
           <TableCell className="text-right">
-            <div className="flex flex-col items-end gap-1">
-              <span>{taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}</span>
-              {showTaxesDetails ? (
-                <Button
-                  className="h-auto px-0 py-0 text-xs"
-                  onClick={() => onShowTaxesDetails(stay)}
-                  type="button"
-                  variant="link"
-                >
-                  Details
-                </Button>
-              ) : null}
-            </div>
+            <StayMetricCell
+              amountLabel={taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}
+              onShowDetails={() => onShowCalculationDetails(stay, "taxes")}
+              showDetails={showTaxesDetails}
+            />
           </TableCell>
           <TableCell className="text-right">
-            {stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
+            <StayMetricCell
+              amountLabel={stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
+              onShowDetails={() => onShowCalculationDetails(stay, "commission")}
+              showDetails={showCommissionDetails}
+            />
           </TableCell>
-          <TableCell className="text-right">{formatMoney(stay.grossIncome)}</TableCell>
-          <TableCell className="text-right">{formatMoney(getStayNetPayout(stay))}</TableCell>
+          <TableCell className="text-right">
+            <StayMetricCell
+              amountLabel={formatMoney(stay.grossIncome)}
+              onShowDetails={() => onShowCalculationDetails(stay, "gross")}
+              showDetails={true}
+            />
+          </TableCell>
+          <TableCell className="text-right">
+            <StayMetricCell
+              amountLabel={formatMoney(netPayout)}
+              onShowDetails={() => onShowCalculationDetails(stay, "netPayout")}
+              showDetails={true}
+            />
+          </TableCell>
           {canManage ? (
             <TableCell>
               <div className="flex items-center gap-1">
@@ -657,7 +699,10 @@ const PropertyIncomePage = memo(() => {
   );
   const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
   const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
-  const [taxesDetailsStay, setTaxesDetailsStay] = useState<IPropertyReservation | null>(null);
+  const [calculationDetails, setCalculationDetails] = useState<{
+    metric: TStayCalculationMetric;
+    stay: IPropertyReservation;
+  } | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [unitId, setUnitId] = useState("");
@@ -902,21 +947,22 @@ const PropertyIncomePage = memo(() => {
             onEditStay={setEditReservation}
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
             onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
-            onShowTaxesDetails={setTaxesDetailsStay}
+            onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
             onSortColumn={toggleSort}
             unitLabelById={unitLabelById}
           />
         </CardContent>
       </Card>
 
-      <StayTaxesDetailsDialog
+      <StayCalculationDetailsDialog
+        metric={calculationDetails?.metric ?? null}
         onOpenChange={(open) => {
           if (!open) {
-            setTaxesDetailsStay(null);
+            setCalculationDetails(null);
           }
         }}
-        open={taxesDetailsStay !== null}
-        stay={taxesDetailsStay}
+        open={calculationDetails !== null}
+        stay={calculationDetails?.stay ?? null}
       />
 
       <PropertyIncomePageDialogs

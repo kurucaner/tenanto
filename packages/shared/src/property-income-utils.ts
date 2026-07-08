@@ -1,13 +1,45 @@
-import type { IPropertyReservation } from "./property-reservation-types";
 import {
   ReservationChannel,
+  type IPropertyReservation,
   type TReservationChannel,
 } from "./property-reservation-types";
 import {
+  formatRateAsPercent,
   type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   RESORT_TAX_NAME,
 } from "./property-settings-types";
+
+export type TStayCalculationMetric = "commission" | "gross" | "netPayout" | "taxes";
+
+export interface IStayCalculationLine {
+  amount: number;
+  displayValue?: string;
+  emphasis?: "normal" | "subtotal" | "total";
+  label: string;
+  note?: string;
+  sign?: "+" | "−" | "=";
+}
+
+export interface IStayCalculationBreakdown {
+  footnote?: string;
+  lines: IStayCalculationLine[];
+  total: number;
+  totalLabel: string;
+}
+
+type TStayBreakdownInput = Pick<
+  IPropertyReservation,
+  | "channel"
+  | "channelCommission"
+  | "channelCommissionRate"
+  | "cleaningFee"
+  | "grossIncome"
+  | "netIncome"
+  | "nights"
+  | "roomTotal"
+  | "taxBreakdown"
+>;
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -78,4 +110,134 @@ export function getResortTaxAmount(taxBreakdown: IPropertyTaxBreakdownItem[]): n
     (tax) => tax.name.trim().toLowerCase() === RESORT_TAX_NAME.toLowerCase()
   );
   return item ? roundMoney(item.amount) : 0;
+}
+
+export function getStayTaxableBase(roomTotal: number, cleaningFee: number): number {
+  return roundMoney(roomTotal + cleaningFee);
+}
+
+function getAirbnbResortAdjustment(
+  channel: TReservationChannel,
+  taxBreakdown: IPropertyTaxBreakdownItem[]
+): number {
+  return channel === ReservationChannel.AIRBNB ? getResortTaxAmount(taxBreakdown) : 0;
+}
+
+export function buildStayTaxesBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
+  const taxableBase = getStayTaxableBase(stay.roomTotal, stay.cleaningFee);
+  const taxesTotal = getStayTaxesTotal(stay);
+
+  const lines: IStayCalculationLine[] = [
+    { amount: stay.roomTotal, label: "Room total" },
+    { amount: stay.cleaningFee, label: "Cleaning fee" },
+    { amount: taxableBase, emphasis: "subtotal", label: "Taxable subtotal" },
+    ...stay.taxBreakdown.map((tax) => ({
+      amount: tax.amount,
+      label: `${tax.name} (${formatRateAsPercent(tax.rate)}%)`,
+    })),
+  ];
+
+  return {
+    lines,
+    total: taxesTotal,
+    totalLabel: "Total taxes",
+  };
+}
+
+export function buildStayCommissionBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
+  const commissionBase = getStayCommissionBase(stay.channel, stay.roomTotal, stay.cleaningFee);
+  const rateLabel = formatRateAsPercent(stay.channelCommissionRate);
+  const lines: IStayCalculationLine[] = [];
+
+  if (stay.channel === ReservationChannel.EXPEDIA) {
+    lines.push({
+      amount: stay.roomTotal,
+      label: "Room total",
+      note: "Commission base",
+    });
+    if (stay.cleaningFee > 0) {
+      lines.push({
+        amount: stay.cleaningFee,
+        label: "Cleaning fee",
+        note: "Excluded from commission base",
+      });
+    }
+  } else {
+    lines.push({
+      amount: commissionBase,
+      label: "Commission base",
+      note: "Room total + cleaning fee",
+    });
+  }
+
+  lines.push({
+    amount: stay.channelCommissionRate,
+    displayValue: `${rateLabel}%`,
+    label: "Channel commission rate",
+  });
+  lines.push({
+    amount: stay.channelCommission,
+    emphasis: "total",
+    label: "Commission",
+    note: `Commission base × ${rateLabel}%`,
+  });
+
+  return {
+    lines,
+    total: stay.channelCommission,
+    totalLabel: "Commission",
+  };
+}
+
+export function buildStayGrossBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
+  const taxableBase = getStayTaxableBase(stay.roomTotal, stay.cleaningFee);
+  const taxesTotal = getStayTaxesTotal(stay);
+  const resortAdjustment = getAirbnbResortAdjustment(stay.channel, stay.taxBreakdown);
+
+  const lines: IStayCalculationLine[] = [
+    { amount: taxableBase, emphasis: "subtotal", label: "Taxable base" },
+    { amount: taxesTotal, label: "Total taxes", sign: "+" },
+  ];
+
+  if (resortAdjustment > 0) {
+    lines.push({
+      amount: resortAdjustment,
+      label: "Resort tax",
+      note: "Remitted by Airbnb",
+      sign: "−",
+    });
+  }
+
+  return {
+    lines,
+    total: stay.grossIncome,
+    totalLabel: "Gross",
+  };
+}
+
+export function buildStayNetPayoutBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
+  const taxableBase = getStayTaxableBase(stay.roomTotal, stay.cleaningFee);
+  const resortAdjustment = getAirbnbResortAdjustment(stay.channel, stay.taxBreakdown);
+  const netPayout = getStayNetPayout(stay);
+
+  const lines: IStayCalculationLine[] = [
+    { amount: taxableBase, emphasis: "subtotal", label: "Taxable base" },
+    { amount: stay.channelCommission, label: "Channel commission", sign: "−" },
+  ];
+
+  if (resortAdjustment > 0) {
+    lines.push({
+      amount: resortAdjustment,
+      label: "Resort tax",
+      note: "Remitted by Airbnb",
+      sign: "−",
+    });
+  }
+
+  return {
+    footnote: "Also equals net income + total taxes",
+    lines,
+    total: netPayout,
+    totalLabel: "Net payout",
+  };
 }
