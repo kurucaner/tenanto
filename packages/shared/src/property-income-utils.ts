@@ -3,7 +3,11 @@ import {
   ReservationChannel,
   type TReservationChannel,
 } from "./property-reservation-types";
-import type { IPropertySettings, IPropertyTaxBreakdownItem } from "./property-settings-types";
+import {
+  type IPropertySettings,
+  type IPropertyTaxBreakdownItem,
+  RESORT_TAX_NAME,
+} from "./property-settings-types";
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -48,4 +52,13 @@ export function getStayNetPayout(
 // Total applicable taxes only (excludes channel commission).
 export function getStayTaxesTotal(stay: Pick<IPropertyReservation, "taxBreakdown">): number {
   return roundMoney(sumTaxBreakdown(stay.taxBreakdown));
+}
+
+// Amount of the "Resort tax" line in a tax breakdown, matched by name (case-insensitive),
+// or 0 if the property has no resort tax.
+export function getResortTaxAmount(taxBreakdown: IPropertyTaxBreakdownItem[]): number {
+  const item = taxBreakdown.find(
+    (tax) => tax.name.trim().toLowerCase() === RESORT_TAX_NAME.toLowerCase()
+  );
+  return item ? roundMoney(item.amount) : 0;
 }

@@ -1448,4 +1448,45 @@ export const migrations: IMigration[] = [
     },
     version: 33,
   },
+  {
+    // Airbnb now excludes the resort tax from gross and payout. Backfill existing Airbnb
+    // reservations by subtracting their stored "Resort tax" breakdown amount from
+    // gross_income and net_income (uses the snapshot amount, not current tax settings).
+    down: async (client: TDBClient) => {
+      await client.query(`
+        UPDATE property_reservations pr
+        SET gross_income = ROUND((pr.gross_income + rt.resort_amount)::numeric, 2),
+            net_income   = ROUND((pr.net_income   + rt.resort_amount)::numeric, 2)
+        FROM (
+          SELECT r.id, COALESCE((
+              SELECT (elem->>'amount')::numeric
+              FROM jsonb_array_elements(COALESCE(r.tax_breakdown, '[]'::jsonb)) AS elem
+              WHERE lower(elem->>'name') = lower('Resort tax') LIMIT 1
+            ), 0) AS resort_amount
+          FROM property_reservations r
+          WHERE r.channel = 'airbnb'
+        ) rt
+        WHERE pr.id = rt.id AND rt.resort_amount <> 0;
+      `);
+    },
+    name: "backfill_airbnb_exclude_resort_tax",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        UPDATE property_reservations pr
+        SET gross_income = ROUND((pr.gross_income - rt.resort_amount)::numeric, 2),
+            net_income   = ROUND((pr.net_income   - rt.resort_amount)::numeric, 2)
+        FROM (
+          SELECT r.id, COALESCE((
+              SELECT (elem->>'amount')::numeric
+              FROM jsonb_array_elements(COALESCE(r.tax_breakdown, '[]'::jsonb)) AS elem
+              WHERE lower(elem->>'name') = lower('Resort tax') LIMIT 1
+            ), 0) AS resort_amount
+          FROM property_reservations r
+          WHERE r.channel = 'airbnb'
+        ) rt
+        WHERE pr.id = rt.id AND rt.resort_amount <> 0;
+      `);
+    },
+    version: 34,
+  },
 ];

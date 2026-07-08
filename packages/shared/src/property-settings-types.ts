@@ -20,9 +20,13 @@ export interface IPropertyTaxBreakdownItem {
   taxRateId: string;
 }
 
+// Name of the resort tax line. Airbnb income excludes this tax from gross/net payout;
+// it is matched by name since tax rates have no stable type/category.
+export const RESORT_TAX_NAME = "Resort tax";
+
 export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "rate">[] = [
   { name: "Sales tax", rate: 0.06 },
-  { name: "Resort tax", rate: 0.04 },
+  { name: RESORT_TAX_NAME, rate: 0.04 },
 ];
 
 import type {

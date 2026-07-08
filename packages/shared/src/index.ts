@@ -116,6 +116,7 @@ export {
   type IUpdatePropertySettingsBody,
   percentToRate,
   rateToPercent,
+  RESORT_TAX_NAME,
 } from "./property-settings-types";
 
 // Property Reservation Types
@@ -192,6 +193,7 @@ export {
 // Property income utilities
 export {
   getChannelCommissionRate,
+  getResortTaxAmount,
   getStayNetPayout,
   getStayTaxesTotal,
   sumTaxBreakdown,

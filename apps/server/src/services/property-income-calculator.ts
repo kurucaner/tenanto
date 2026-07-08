@@ -1,10 +1,12 @@
 import {
   getChannelCommissionRate,
+  getResortTaxAmount,
   type IPropertyIncomeLineComputedFields,
   type IPropertyReservationComputedFields,
   type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
+  ReservationChannel,
   sumTaxBreakdown,
   type TReservationChannel,
   type TUnitRentalType,
@@ -73,8 +75,12 @@ export function calculateStayIncome(
   const totalTaxes = sumTaxBreakdown(taxBreakdown);
   const channelCommissionRate = getChannelCommissionRate(channel, settings);
   const channelCommission = roundMoney(taxableBase * channelCommissionRate);
-  const grossIncome = roundMoney(taxableBase + totalTaxes);
-  const netIncome = roundMoney(taxableBase - totalTaxes - channelCommission);
+  // Airbnb remits the resort tax directly, so it is excluded from the host's gross and
+  // withheld from the payout (netIncome). Other channels keep the standard formula.
+  const resortAdjustment =
+    channel === ReservationChannel.AIRBNB ? getResortTaxAmount(taxBreakdown) : 0;
+  const grossIncome = roundMoney(taxableBase + totalTaxes - resortAdjustment);
+  const netIncome = roundMoney(taxableBase - totalTaxes - channelCommission - resortAdjustment);
 
   return {
     channelCommission,
