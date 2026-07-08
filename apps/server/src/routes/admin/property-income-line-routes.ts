@@ -353,7 +353,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage income entries"
+        "Only property owners and managers can manage income entries"
       );
       if (!isOwner) return;
 
@@ -431,7 +431,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage income entries"
+        "Only property owners and managers can manage income entries"
       );
       if (!isOwner) return;
 
@@ -501,7 +501,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage income entries"
+        "Only property owners and managers can manage income entries"
       );
       if (!isOwner) return;
 

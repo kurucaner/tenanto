@@ -286,7 +286,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage expenses"
+        "Only property owners and managers can manage expenses"
       );
       if (!isOwner) return;
 
@@ -333,7 +333,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage expenses"
+        "Only property owners and managers can manage expenses"
       );
       if (!isOwner) return;
 
@@ -386,7 +386,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         request.user.userId,
         request.user.userType,
         reply,
-        "Only property owners can manage expenses"
+        "Only property owners and managers can manage expenses"
       );
       if (!isOwner) return;
 

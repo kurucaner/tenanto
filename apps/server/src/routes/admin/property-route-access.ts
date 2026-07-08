@@ -5,6 +5,7 @@ import { propertyMembersDb } from "@/db/property-members";
 import { HttpStatus, PropertyRole, UserType } from "@/packages/shared";
 
 const UNIT_MANAGE_ROLES = new Set<string>([PropertyRole.OWNER, PropertyRole.MANAGER]);
+const LEDGER_WRITE_ROLES = new Set<string>([PropertyRole.OWNER, PropertyRole.MANAGER]);
 
 export async function assertPropertyMemberAccess(
   propertyId: string,
@@ -77,10 +78,11 @@ export async function assertPropertyUnitManageAccess(
 export async function assertPropertyLedgerWriteAccess(
   propertyId: string,
   userId: string,
-  _userType: string,
+  userType: string,
   reply: FastifyReply,
-  forbiddenMessage = "Only property owners can manage income and expenses"
+  forbiddenMessage = "Only property owners and managers can manage income and expenses"
 ): Promise<boolean> {
+  if (userType === UserType.ADMIN) return true;
   const property = await propertiesDb.findById(propertyId);
   if (!property) {
     void reply.status(HttpStatus.NOT_FOUND).send({ error: "Property not found" });
@@ -88,7 +90,7 @@ export async function assertPropertyLedgerWriteAccess(
   }
   if (property.createdBy === userId) return true;
   const membership = await propertyMembersDb.findOne(propertyId, userId);
-  if (membership?.role !== PropertyRole.OWNER) {
+  if (!membership || !LEDGER_WRITE_ROLES.has(membership.role)) {
     void reply.status(HttpStatus.FORBIDDEN).send({ error: forbiddenMessage });
     return false;
   }

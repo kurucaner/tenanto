@@ -64,7 +64,7 @@ function makeProperty(members: IPropertyMember[]): IPropertyDetail {
 }
 
 describe("derivePropertyPermissions", () => {
-  test("manager member can manage units but not structure", () => {
+  test("manager member can manage units and ledger but not structure", () => {
     const permissions = derivePropertyPermissions(
       makeProperty([makeMember(managerId, PropertyRole.MANAGER)]),
       makeUser(managerId, UserType.USER)
@@ -72,7 +72,7 @@ describe("derivePropertyPermissions", () => {
 
     expect(permissions.canManageUnits).toBe(true);
     expect(permissions.canManageStructure).toBe(false);
-    expect(permissions.canManageLedger).toBe(false);
+    expect(permissions.canManageLedger).toBe(true);
     expect(permissions.canView).toBe(true);
   });
 
@@ -118,6 +118,7 @@ describe("derivePropertyPermissions", () => {
 
     expect(permissions.canManageUnits).toBe(true);
     expect(permissions.canManageStructure).toBe(true);
+    expect(permissions.canManageLedger).toBe(true);
     expect(permissions.canView).toBe(true);
   });
 });

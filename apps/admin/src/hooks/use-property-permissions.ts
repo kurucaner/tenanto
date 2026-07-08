@@ -25,7 +25,7 @@ export function derivePropertyPermissions(
   const isManagerMember = callerMembership?.role === PropertyRole.MANAGER;
   const canManageStructure = isAdmin || isCreator || isOwnerMember;
   const canManageUnits = isAdmin || isCreator || isOwnerMember || isManagerMember;
-  const canManageLedger = isCreator || isOwnerMember;
+  const canManageLedger = isAdmin || isCreator || isOwnerMember || isManagerMember;
   const canView = isAdmin || isCreator || Boolean(callerMembership);
 
   return {
