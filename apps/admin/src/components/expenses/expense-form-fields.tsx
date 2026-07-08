@@ -15,6 +15,7 @@ interface ExpenseFormFieldsProps {
   description: string;
   expenseDate: string;
   idPrefix: string;
+  maxDate?: string;
   onAmountChange: (value: string) => void;
   onCategoryChange: (value: TExpenseCategory) => void;
   onDescriptionChange: (value: string) => void;
@@ -30,6 +31,7 @@ export const ExpenseFormFields = memo(
     description,
     expenseDate,
     idPrefix,
+    maxDate,
     onAmountChange,
     onCategoryChange,
     onDescriptionChange,
@@ -74,6 +76,7 @@ export const ExpenseFormFields = memo(
             <Label htmlFor={`${idPrefix}-date`}>Date (optional)</Label>
             <Input
               id={`${idPrefix}-date`}
+              max={maxDate}
               onChange={(e) => onExpenseDateChange(e.target.value)}
               type="date"
               value={expenseDate}

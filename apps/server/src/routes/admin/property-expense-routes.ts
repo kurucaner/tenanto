@@ -29,6 +29,11 @@ function parseDateString(raw: unknown): string | null {
   return raw.trim();
 }
 
+function getTodayUtcIsoDate(): string {
+  const date = new Date();
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
 function parseOptionalDateString(raw: unknown): string | null | undefined {
   if (raw === undefined) return undefined;
   if (raw === null || raw === "") return null;
@@ -293,6 +298,15 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
       const parsed = parseCreateExpenseBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      if (
+        parsed.body.expenseDate !== undefined &&
+        parsed.body.expenseDate > getTodayUtcIsoDate()
+      ) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "Expense date cannot be in the future" });
       }
 
       const expense = await propertyExpensesDb.create(propertyId, {

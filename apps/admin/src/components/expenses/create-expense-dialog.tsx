@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { expensesApi } from "@/lib/api-client";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
+import { getTodayLocalIsoDate, isDateOnOrBefore } from "@/lib/reservation-date-utils";
 import { ExpenseCategory, getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared";
 
 interface CreateExpenseDialogProps {
@@ -60,8 +61,12 @@ export const CreateExpenseDialog = memo(
     };
 
     const meta = getExpenseCategoryMeta(category);
+    const maxExpenseDate = getTodayLocalIsoDate();
+    const hasValidExpenseDate =
+      expenseDate === "" || isDateOnOrBefore(expenseDate, maxExpenseDate);
     const canSubmit =
       amount !== "" &&
+      hasValidExpenseDate &&
       !mutation.isPending &&
       (!meta.requiresDescription || description.trim() !== "");
 
@@ -80,6 +85,7 @@ export const CreateExpenseDialog = memo(
               description={description}
               expenseDate={expenseDate}
               idPrefix="create-expense"
+              maxDate={maxExpenseDate}
               onAmountChange={setAmount}
               onCategoryChange={setCategory}
               onDescriptionChange={setDescription}

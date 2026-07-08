@@ -28,6 +28,11 @@ function parseDateString(raw: unknown): string | null {
   return raw.trim();
 }
 
+function getTodayUtcIsoDate(): string {
+  const date = new Date();
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
 function parseIncomeLineTypeId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   return parseUuidParam(raw);
@@ -358,6 +363,12 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       const parsed = parseCreateIncomeLineBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      if (parsed.body.transactionDate > getTodayUtcIsoDate()) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "Transaction date cannot be in the future" });
       }
 
       const incomeLineType = await resolveIncomeLineTypeForProperty(

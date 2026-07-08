@@ -25,6 +25,11 @@ import {
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
+  clampToMaxLocalIsoDate,
+  getTodayLocalIsoDate,
+  isDateOnOrBefore,
+} from "@/lib/reservation-date-utils";
+import {
   type IPropertyIncomeLineType,
   type IPropertyReservation,
   type IPropertyUnit,
@@ -57,6 +62,8 @@ function buildFormState(
   lockedStay?: IPropertyReservation | null
 ) {
   const defaultIncomeLineTypeId = resolveDefaultIncomeLineTypeId(incomeLineTypes);
+  const maxTransactionDate = getTodayLocalIsoDate();
+  const rawTransactionDate = prefill?.transactionDate ?? lockedStay?.checkOut ?? "";
 
   return {
     amount: "",
@@ -64,7 +71,7 @@ function buildFormState(
     guestName: prefill?.guestName ?? lockedStay?.guestName ?? "",
     incomeLineTypeId: prefill?.incomeLineTypeId ?? defaultIncomeLineTypeId,
     reservationId: prefill?.reservationId ?? lockedStay?.id ?? "",
-    transactionDate: prefill?.transactionDate ?? lockedStay?.checkOut ?? "",
+    transactionDate: clampToMaxLocalIsoDate(rawTransactionDate, maxTransactionDate),
     unitId: prefill?.unitId ?? lockedStay?.unitId ?? "",
   };
 }
@@ -130,9 +137,11 @@ const CreateIncomeLineDialogForm = memo(
       },
     });
 
+    const maxTransactionDate = getTodayLocalIsoDate();
     const canSubmit =
       unitId !== "" &&
       transactionDate !== "" &&
+      isDateOnOrBefore(transactionDate, maxTransactionDate) &&
       amount !== "" &&
       incomeLineTypeId !== "" &&
       !mutation.isPending;
@@ -174,6 +183,7 @@ const CreateIncomeLineDialogForm = memo(
             amount={amount}
             autoFocusAmount
             fieldIdPrefix={FIELD_ID_PREFIX}
+            maxDate={maxTransactionDate}
             onAmountChange={setAmount}
             onDateChange={setTransactionDate}
             transactionDate={transactionDate}
@@ -192,6 +202,8 @@ const CreateIncomeLineDialogForm = memo(
             onChange={setDescription}
             value={description}
           />
+
+          <p className="text-muted-foreground text-xs">Date cannot be in the future.</p>
 
           <p className="text-muted-foreground text-xs">
             {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel

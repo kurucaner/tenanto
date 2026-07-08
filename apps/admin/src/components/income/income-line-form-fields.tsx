@@ -63,6 +63,7 @@ IncomeLineTypeField.displayName = "IncomeLineTypeField";
 interface IncomeLineAmountDateFieldsProps extends FieldIdPrefixProps {
   amount: string;
   autoFocusAmount?: boolean;
+  maxDate?: string;
   onAmountChange: (amount: string) => void;
   onDateChange: (transactionDate: string) => void;
   transactionDate: string;
@@ -73,6 +74,7 @@ export const IncomeLineAmountDateFields = memo(
     amount,
     autoFocusAmount = false,
     fieldIdPrefix,
+    maxDate,
     onAmountChange,
     onDateChange,
     transactionDate,
@@ -108,6 +110,7 @@ export const IncomeLineAmountDateFields = memo(
           <Label htmlFor={`${fieldIdPrefix}-date`}>Date</Label>
           <Input
             id={`${fieldIdPrefix}-date`}
+            max={maxDate}
             onChange={handleDateChange}
             type="date"
             value={transactionDate}
