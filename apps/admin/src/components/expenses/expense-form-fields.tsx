@@ -5,6 +5,7 @@ import {
   expenseSelectClassName,
   getExpenseCategoryHint,
 } from "@/components/expenses/expense-form-options";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared";
@@ -21,7 +22,9 @@ interface ExpenseFormFieldsProps {
   onDescriptionChange: (value: string) => void;
   onExpenseDateChange: (value: string) => void;
   onPersonNameChange: (value: string) => void;
+  onTaxFreeChange: (value: boolean) => void;
   personName: string;
+  taxFree: boolean;
 }
 
 export const ExpenseFormFields = memo(
@@ -37,7 +40,9 @@ export const ExpenseFormFields = memo(
     onDescriptionChange,
     onExpenseDateChange,
     onPersonNameChange,
+    onTaxFreeChange,
     personName,
+    taxFree,
   }: ExpenseFormFieldsProps) => {
     const meta = getExpenseCategoryMeta(category);
     const hint = getExpenseCategoryHint(category);
@@ -115,6 +120,15 @@ export const ExpenseFormFields = memo(
             />
           </div>
         )}
+
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={taxFree}
+            id={`${idPrefix}-tax-free`}
+            onCheckedChange={(checked) => onTaxFreeChange(checked === true)}
+          />
+          <Label htmlFor={`${idPrefix}-tax-free`}>Tax-free expense</Label>
+        </div>
 
         {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
       </>

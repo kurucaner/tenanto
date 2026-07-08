@@ -17,6 +17,7 @@ export const propertyExpensesDb = {
       description: string | null;
       expenseDate: string | null;
       personName: string | null;
+      taxFree: boolean;
     }
   ): Promise<IPropertyExpense> {
     const result = await pool.query(
@@ -26,8 +27,9 @@ export const propertyExpensesDb = {
          amount,
          expense_date,
          person_name,
-         description
-       ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6)
+         description,
+         tax_free
+       ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         propertyId,
@@ -36,6 +38,7 @@ export const propertyExpensesDb = {
         input.expenseDate,
         input.personName,
         input.description,
+        input.taxFree,
       ]
     );
     return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
@@ -107,6 +110,10 @@ export const propertyExpensesDb = {
     if (input.description !== undefined) {
       setClauses.push(`description = $${param++}`);
       values.push(input.description);
+    }
+    if (input.taxFree !== undefined) {
+      setClauses.push(`tax_free = $${param++}`);
+      values.push(input.taxFree);
     }
 
     if (setClauses.length === 0) {

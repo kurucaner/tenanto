@@ -57,6 +57,11 @@ function parseOptionalString(raw: unknown): string | null | undefined {
   return raw.trim();
 }
 
+function parseBoolean(raw: unknown): boolean | null {
+  if (typeof raw !== "boolean") return null;
+  return raw;
+}
+
 function parseCreateExpenseBody(
   raw: unknown
 ): { body: ICreatePropertyExpenseBody; ok: true } | { error: string; ok: false } {
@@ -106,6 +111,13 @@ function parseCreateExpenseBody(
     return { error: "description must be a string", ok: false };
   }
 
+  let taxFree: boolean | undefined;
+  if (r["taxFree"] !== undefined) {
+    const parsedTaxFree = parseBoolean(r["taxFree"]);
+    if (parsedTaxFree === null) return { error: "taxFree must be a boolean", ok: false };
+    taxFree = parsedTaxFree;
+  }
+
   const categoryError = validateExpenseCategoryFields(category, {
     description: description ?? undefined,
   });
@@ -118,12 +130,20 @@ function parseCreateExpenseBody(
       description: description ?? undefined,
       expenseDate: expenseDate ?? undefined,
       personName: personName ?? undefined,
+      taxFree,
     },
     ok: true,
   };
 }
 
-const UPDATE_FIELDS = ["category", "amount", "expenseDate", "personName", "description"] as const;
+const UPDATE_FIELDS = [
+  "category",
+  "amount",
+  "expenseDate",
+  "personName",
+  "description",
+  "taxFree",
+] as const;
 
 function parseUpdateExpenseBody(
   raw: unknown
@@ -181,6 +201,12 @@ function parseUpdateExpenseBody(
     body.description = description ?? null;
   }
 
+  if (r["taxFree"] !== undefined) {
+    const taxFree = parseBoolean(r["taxFree"]);
+    if (taxFree === null) return { error: "taxFree must be a boolean", ok: false };
+    body.taxFree = taxFree;
+  }
+
   if (Object.keys(body).length === 0) {
     return { error: "At least one field is required", ok: false };
   }
@@ -233,6 +259,7 @@ function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExp
     description: patch.description === undefined ? existing.description : patch.description,
     expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
     personName: patch.personName === undefined ? existing.personName : patch.personName,
+    taxFree: patch.taxFree ?? existing.taxFree,
   };
 }
 
@@ -315,6 +342,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         description: parsed.body.description?.trim() || null,
         expenseDate: parsed.body.expenseDate ?? null,
         personName: parsed.body.personName?.trim() || null,
+        taxFree: parsed.body.taxFree ?? false,
       });
 
       return reply.status(HttpStatus.CREATED).send({ expense });

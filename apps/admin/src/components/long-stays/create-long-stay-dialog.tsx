@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -62,13 +62,13 @@ export const CreateLongStayDialog = memo(
       },
     });
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
       onOpenChange(false);
       setGuestName("");
       setLeaseStartDate(getTodayLocalIsoDate());
       setTermMonths(DEFAULT_TERM_MONTHS);
       setMonthlyRent("");
-    };
+    }, [onOpenChange]);
 
     const canSubmit =
       guestName.trim() !== "" &&
@@ -85,9 +85,7 @@ export const CreateLongStayDialog = memo(
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Add Long Stay</DialogTitle>
-            <DialogDescription>
-              Add a lease for unit {unit.unitNumber}.
-            </DialogDescription>
+            <DialogDescription>Add a lease for unit {unit.unitNumber}.</DialogDescription>
           </DialogHeader>
 
           <div className="flex flex-col gap-5 px-6 py-5">
@@ -130,7 +128,12 @@ export const CreateLongStayDialog = memo(
               <Input
                 id="long-stay-monthly-rent"
                 inputMode="decimal"
-                onChange={(e) => setMonthlyRent(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next === "" || /^\d*(\.\d*)?$/.test(next)) {
+                    setMonthlyRent(next);
+                  }
+                }}
                 type="text"
                 value={monthlyRent}
               />

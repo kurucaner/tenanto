@@ -31,6 +31,7 @@ export const CreateExpenseDialog = memo(
     const [expenseDate, setExpenseDate] = useState("");
     const [personName, setPersonName] = useState("");
     const [description, setDescription] = useState("");
+    const [taxFree, setTaxFree] = useState(false);
 
     const mutation = useMutation({
       mutationFn: () =>
@@ -40,6 +41,7 @@ export const CreateExpenseDialog = memo(
           description: description.trim() || undefined,
           expenseDate: expenseDate || undefined,
           personName: personName.trim() || undefined,
+          taxFree,
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to create expense");
@@ -58,6 +60,7 @@ export const CreateExpenseDialog = memo(
       setExpenseDate("");
       setPersonName("");
       setDescription("");
+      setTaxFree(false);
     };
 
     const meta = getExpenseCategoryMeta(category);
@@ -91,7 +94,9 @@ export const CreateExpenseDialog = memo(
               onDescriptionChange={setDescription}
               onExpenseDateChange={setExpenseDate}
               onPersonNameChange={setPersonName}
+              onTaxFreeChange={setTaxFree}
               personName={personName}
+              taxFree={taxFree}
             />
           </div>
 

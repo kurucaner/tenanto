@@ -228,5 +228,6 @@ export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyEx
   id: row.id as string,
   personName: (row.person_name as string) ?? null,
   propertyId: row.property_id as string,
+  taxFree: row.tax_free as boolean,
   updatedAt: (row.updated_at as Date).toISOString(),
 });

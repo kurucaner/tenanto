@@ -1425,4 +1425,16 @@ export const migrations: IMigration[] = [
     },
     version: 31,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE property_expenses DROP COLUMN IF EXISTS tax_free;`);
+    },
+    name: "add_property_expenses_tax_free",
+    up: async (client: TDBClient) => {
+      await client.query(
+        `ALTER TABLE property_expenses ADD COLUMN IF NOT EXISTS tax_free BOOLEAN NOT NULL DEFAULT FALSE;`
+      );
+    },
+    version: 32,
+  },
 ];

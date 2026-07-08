@@ -34,6 +34,7 @@ export interface IPropertyExpense {
   id: string;
   personName: string | null;
   propertyId: string;
+  taxFree: boolean;
   updatedAt: string;
 }
 
@@ -43,6 +44,7 @@ export interface ICreatePropertyExpenseBody {
   description?: string;
   expenseDate?: string;
   personName?: string;
+  taxFree?: boolean;
 }
 
 export interface IUpdatePropertyExpenseBody {
@@ -51,6 +53,7 @@ export interface IUpdatePropertyExpenseBody {
   description?: string | null;
   expenseDate?: string | null;
   personName?: string | null;
+  taxFree?: boolean;
 }
 
 export interface IPropertyExpensesListQuery {
