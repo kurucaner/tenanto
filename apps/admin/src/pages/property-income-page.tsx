@@ -378,7 +378,7 @@ const PropertyIncomePageActions = memo(
     <>
       <Button className="gap-1.5" onClick={onAddStay} size="sm" type="button" variant="outline">
         <Plus className="size-3.5" />
-        Add Stay
+        Add Short Stay
       </Button>
       <Button className="gap-1.5" onClick={onAddOtherIncome} size="sm" type="button">
         <Plus className="size-3.5" />

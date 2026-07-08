@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -33,6 +33,7 @@ import {
   ReservationStatus,
   type TReservationChannel,
   type TReservationStatus,
+  UnitRentalType,
 } from "@/packages/shared";
 
 interface CreateReservationDialogProps {
@@ -103,7 +104,13 @@ export const CreateReservationDialog = memo(
       );
     }, []);
 
-    const units = unitsQuery.data?.units ?? [];
+    const shortTermUnits = useMemo(
+      () =>
+        (unitsQuery.data?.units ?? []).filter(
+          (unit) => unit.rentalType === UnitRentalType.SHORT_TERM
+        ),
+      [unitsQuery.data?.units]
+    );
     const minCheckInDate = getTodayLocalIsoDate();
     const minCheckOutDate = getMinCheckOutDate(checkIn);
     const canSubmit =
@@ -119,9 +126,9 @@ export const CreateReservationDialog = memo(
       <Dialog onOpenChange={handleClose} open={open}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Add Stay</DialogTitle>
+            <DialogTitle>Add Short Stay</DialogTitle>
             <DialogDescription>
-              Record a stay-based income entry for this property.
+              Record guest stay income for a short-term unit.
             </DialogDescription>
           </DialogHeader>
 
@@ -134,8 +141,13 @@ export const CreateReservationDialog = memo(
                 onChange={(e) => setUnitId(e.target.value)}
                 value={unitId}
               >
-                <PropertyUnitSelectOptions emptyOptionLabel="Select unit…" units={units} />
+                <PropertyUnitSelectOptions emptyOptionLabel="Select unit…" units={shortTermUnits} />
               </select>
+              {!unitsQuery.isLoading && shortTermUnits.length === 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  No short-term units configured. Add a short-term unit to record stay income.
+                </p>
+              ) : null}
             </div>
 
             <div className="flex flex-col gap-1.5">

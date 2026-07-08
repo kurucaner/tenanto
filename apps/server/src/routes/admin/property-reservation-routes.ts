@@ -337,10 +337,18 @@ async function buildComputedFields(
     roomRate: number;
     unitId: string;
   },
-  reply: FastifyReply
+  reply: FastifyReply,
+  options?: { requireShortTermUnit?: boolean }
 ) {
   const unit = await resolveRentableUnitForProperty(input.unitId, propertyId, reply);
   if (!unit) return null;
+
+  if (options?.requireShortTermUnit && unit.rentalType !== UnitRentalType.SHORT_TERM) {
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Reservations can only be created for short-term units" });
+    return null;
+  }
 
   let nights: number;
   try {
@@ -456,7 +464,9 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
           .send({ error: "Check-in cannot be in the past" });
       }
 
-      const computed = await buildComputedFields(propertyId, parsed.body, reply);
+      const computed = await buildComputedFields(propertyId, parsed.body, reply, {
+        requireShortTermUnit: true,
+      });
       if (!computed) return;
 
       const reservation = await propertyReservationsDb.create(propertyId, parsed.body, computed);
