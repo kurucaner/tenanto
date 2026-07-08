@@ -35,6 +35,11 @@ interface CreateReservationDialogProps {
   propertyId: string;
 }
 
+function getTodayLocalIsoDate(): string {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 export const CreateReservationDialog = memo(
   ({ onOpenChange, open, propertyId }: CreateReservationDialogProps) => {
     const queryClient = useQueryClient();
@@ -91,10 +96,12 @@ export const CreateReservationDialog = memo(
     };
 
     const units = unitsQuery.data?.units ?? [];
+    const minCheckInDate = getTodayLocalIsoDate();
     const canSubmit =
       unitId !== "" &&
       guestName.trim() !== "" &&
       checkIn !== "" &&
+      checkIn >= minCheckInDate &&
       checkOut !== "" &&
       !mutation.isPending;
 
@@ -145,6 +152,7 @@ export const CreateReservationDialog = memo(
                 <Label htmlFor="check-in">Check-in</Label>
                 <Input
                   id="check-in"
+                  min={minCheckInDate}
                   onChange={(e) => setCheckIn(e.target.value)}
                   type="date"
                   value={checkIn}
