@@ -211,6 +211,44 @@ const PropertyReportTables = memo(({ summary }: { summary: IPropertyReportSummar
 });
 PropertyReportTables.displayName = "PropertyReportTables";
 
+interface PropertyReportBodyProps {
+  error: unknown;
+  isError: boolean;
+  isPending: boolean;
+  reportQuery: IPropertyReportsQuery | null;
+  summary: IPropertyReportSummary | undefined;
+}
+
+const PropertyReportBody = memo(
+  ({ error, isError, isPending, reportQuery, summary }: PropertyReportBodyProps) => {
+    if (!reportQuery) {
+      return (
+        <p className="text-muted-foreground text-sm">Select a valid date range to load reports.</p>
+      );
+    }
+
+    if (isPending) {
+      return (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      );
+    }
+
+    if (isError || !summary) {
+      return (
+        <p className="text-destructive text-sm">
+          {error instanceof Error ? error.message : "Failed to load report"}
+        </p>
+      );
+    }
+
+    return <PropertyReportTables summary={summary} />;
+  }
+);
+PropertyReportBody.displayName = "PropertyReportBody";
+
 export const PropertyReportsPage = memo(() => {
   const { propertyId } = usePropertyShell();
   const [searchParams] = useSearchParams();
@@ -300,24 +338,13 @@ export const PropertyReportsPage = memo(() => {
           units={units}
         />
 
-        {!reportQuery ? (
-          <p className="text-muted-foreground text-sm">
-            Select a valid date range to load reports.
-          </p>
-        ) : summaryQuery.isPending ? (
-          <div className="space-y-3">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-        ) : summaryQuery.isError || !summary ? (
-          <p className="text-destructive text-sm">
-            {summaryQuery.error instanceof Error
-              ? summaryQuery.error.message
-              : "Failed to load report"}
-          </p>
-        ) : (
-          <PropertyReportTables summary={summary} />
-        )}
+        <PropertyReportBody
+          error={summaryQuery.error}
+          isError={summaryQuery.isError}
+          isPending={summaryQuery.isPending}
+          reportQuery={reportQuery}
+          summary={summary}
+        />
       </CardContent>
     </Card>
   );
