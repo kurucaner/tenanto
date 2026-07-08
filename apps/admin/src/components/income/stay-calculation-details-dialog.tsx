@@ -1,6 +1,9 @@
 import { memo } from "react";
 
-import { CalculationLineRow, CalculationTotalRow } from "@/components/income/calculation-line-row";
+import {
+  CalculationBreakdownSections,
+  CalculationTotalRow,
+} from "@/components/income/calculation-line-row";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +19,7 @@ import {
   buildStayTaxesBreakdown,
   getStayAverageDailyRate,
   type IPropertyReservation,
+  type IStayCalculationLine,
   type TStayCalculationMetric,
 } from "@/packages/shared";
 
@@ -54,6 +58,17 @@ function getTaxesRoomLabel(stay: IPropertyReservation): string {
   return `Room (${formatMoney(stay.roomTotal)} total, ${formatMoney(avgDailyRate)}/night × ${stay.nights} nights)`;
 }
 
+function withTaxesRoomLabel(
+  baseLines: IStayCalculationLine[],
+  stay: IPropertyReservation
+): IStayCalculationLine[] {
+  if (baseLines.length === 0) {
+    return baseLines;
+  }
+
+  return [{ ...baseLines[0]!, label: getTaxesRoomLabel(stay) }, ...baseLines.slice(1)];
+}
+
 export const StayCalculationDetailsDialog = memo(
   ({ metric, onOpenChange, open, stay }: StayCalculationDetailsDialogProps) => {
     if (!stay || !metric) {
@@ -61,11 +76,7 @@ export const StayCalculationDetailsDialog = memo(
     }
 
     const breakdown = getBreakdown(metric, stay);
-
-    const lines =
-      metric === "taxes" && breakdown.lines[0]
-        ? [{ ...breakdown.lines[0], label: getTaxesRoomLabel(stay) }, ...breakdown.lines.slice(1)]
-        : breakdown.lines;
+    const baseLines = metric === "taxes" ? withTaxesRoomLabel(breakdown.baseLines, stay) : breakdown.baseLines;
 
     return (
       <Dialog onOpenChange={onOpenChange} open={open}>
@@ -78,50 +89,7 @@ export const StayCalculationDetailsDialog = memo(
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-            <div className="flex flex-col gap-2">
-              {metric === "taxes" ? (
-                <>
-                  <div className="flex flex-col gap-2 border-b pb-4">
-                    {lines.slice(0, 3).map((line, index) => (
-                      <CalculationLineRow
-                        amount={line.amount}
-                        displayValue={line.displayValue}
-                        emphasis={line.emphasis}
-                        key={`${line.label}-${index}`}
-                        label={line.label}
-                        note={line.note}
-                        sign={line.sign}
-                      />
-                    ))}
-                  </div>
-                  {lines.slice(3).map((line, index) => (
-                    <CalculationLineRow
-                      amount={line.amount}
-                      displayValue={line.displayValue}
-                      emphasis={line.emphasis}
-                      key={`${line.label}-${index + 3}`}
-                      label={line.label}
-                      note={line.note}
-                      sign={line.sign}
-                    />
-                  ))}
-                </>
-              ) : (
-                lines.map((line, index) =>
-                  line.emphasis === "total" ? null : (
-                    <CalculationLineRow
-                      amount={line.amount}
-                      displayValue={line.displayValue}
-                      emphasis={line.emphasis}
-                      key={`${line.label}-${index}`}
-                      label={line.label}
-                      note={line.note}
-                      sign={line.sign}
-                    />
-                  )
-                )
-              )}
-            </div>
+            <CalculationBreakdownSections baseLines={baseLines} detailLines={breakdown.detailLines} />
 
             <CalculationTotalRow amount={breakdown.total} label={breakdown.totalLabel} />
 

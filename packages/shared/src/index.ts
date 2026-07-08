@@ -203,9 +203,11 @@ export {
   getStayNetPayout,
   getStayTaxableBase,
   getStayTaxesTotal,
+  isOperandInMetric,
   sumTaxBreakdown,
   type IStayCalculationBreakdown,
   type IStayCalculationLine,
+  type TBreakdownOperand,
   type TChannelCommissionSettings,
   type TStayCalculationMetric,
 } from "./property-income-utils";

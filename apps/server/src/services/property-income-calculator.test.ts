@@ -8,6 +8,7 @@ import {
   getStayNetPayout,
   getStayTaxableBase,
   getStayTaxesTotal,
+  isOperandInMetric,
   type IPropertySettings,
   type IPropertyTaxRate,
   ReservationChannel,
@@ -64,7 +65,7 @@ function sumSignedGrossLines(input: ReturnType<typeof toStayBreakdownInput>): nu
   const breakdown = buildStayGrossBreakdown(input);
   const taxableBase = getStayTaxableBase(input.roomTotal, input.cleaningFee);
   const taxesTotal = getStayTaxesTotal(input);
-  const resortLine = breakdown.lines.find((line) => line.label === "Resort tax");
+  const resortLine = breakdown.detailLines.find((line) => line.label === "Resort tax");
   const resortAdjustment = resortLine?.amount ?? 0;
 
   return Math.round((taxableBase + taxesTotal - resortAdjustment) * 100) / 100;
@@ -73,11 +74,34 @@ function sumSignedGrossLines(input: ReturnType<typeof toStayBreakdownInput>): nu
 function sumSignedNetPayoutLines(input: ReturnType<typeof toStayBreakdownInput>): number {
   const breakdown = buildStayNetPayoutBreakdown(input);
   const taxableBase = getStayTaxableBase(input.roomTotal, input.cleaningFee);
-  const resortLine = breakdown.lines.find((line) => line.label === "Resort tax");
+  const resortLine = breakdown.detailLines.find((line) => line.label === "Resort tax");
   const resortAdjustment = resortLine?.amount ?? 0;
 
   return Math.round((taxableBase - input.channelCommission - resortAdjustment) * 100) / 100;
 }
+
+function getBreakdownLineLabels(
+  breakdown: ReturnType<typeof buildStayCommissionBreakdown>
+): string[] {
+  return [...breakdown.baseLines, ...breakdown.detailLines].map((line) => line.label);
+}
+
+describe("isOperandInMetric", () => {
+  test("taxes always includes cleaning fee as an operand", () => {
+    expect(isOperandInMetric("cleaningFee", "taxes", ReservationChannel.EXPEDIA)).toBe(true);
+    expect(isOperandInMetric("roomTotal", "taxes", ReservationChannel.BOOKING)).toBe(true);
+  });
+
+  test("commission excludes cleaning fee for Expedia only", () => {
+    expect(isOperandInMetric("cleaningFee", "commission", ReservationChannel.EXPEDIA)).toBe(false);
+    expect(isOperandInMetric("cleaningFee", "commission", ReservationChannel.BOOKING)).toBe(true);
+  });
+
+  test("gross and net payout use aggregated taxable base operands", () => {
+    expect(isOperandInMetric("cleaningFee", "gross", ReservationChannel.BOOKING)).toBe(false);
+    expect(isOperandInMetric("roomTotal", "netPayout", ReservationChannel.AIRBNB)).toBe(false);
+  });
+});
 
 describe("stay calculation breakdowns", () => {
   test("Airbnb breakdown totals match calculated stay income", () => {
@@ -116,12 +140,25 @@ describe("stay calculation breakdowns", () => {
     });
     const stay = toStayBreakdownInput(ReservationChannel.EXPEDIA, result, 900, 100, 5);
     const commissionBreakdown = buildStayCommissionBreakdown(stay);
+    const taxesBreakdown = buildStayTaxesBreakdown(stay);
 
     expect(commissionBreakdown.total).toBe(135);
-    expect(commissionBreakdown.lines[0]?.note).toBe("Commission base");
-    expect(commissionBreakdown.lines[1]?.note).toBe("Excluded from commission base");
+    expect(commissionBreakdown.baseLines[0]?.note).toBe("Commission base");
+    expect(getBreakdownLineLabels(commissionBreakdown)).not.toContain("Cleaning fee");
+    expect(taxesBreakdown.baseLines.some((line) => line.label === "Cleaning fee")).toBe(true);
     expect(buildStayGrossBreakdown(stay).total).toBe(1100);
     expect(buildStayNetPayoutBreakdown(stay).total).toBe(865);
+  });
+
+  test("taxes breakdown still shows cleaning fee when amount is zero", () => {
+    const result = calc(ReservationChannel.BOOKING);
+    const stay = toStayBreakdownInput(ReservationChannel.BOOKING, result, 1000, 0, 10);
+    const cleaningLine = buildStayTaxesBreakdown(stay).baseLines.find(
+      (line) => line.label === "Cleaning fee"
+    );
+
+    expect(cleaningLine).toBeDefined();
+    expect(cleaningLine?.amount).toBe(0);
   });
 });
 

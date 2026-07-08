@@ -1,6 +1,6 @@
 import {
-  ReservationChannel,
   type IPropertyReservation,
+  ReservationChannel,
   type TReservationChannel,
 } from "./property-reservation-types";
 import {
@@ -12,6 +12,8 @@ import {
 
 export type TStayCalculationMetric = "commission" | "gross" | "netPayout" | "taxes";
 
+export type TBreakdownOperand = "cleaningFee" | "roomTotal";
+
 export interface IStayCalculationLine {
   amount: number;
   displayValue?: string;
@@ -22,10 +24,32 @@ export interface IStayCalculationLine {
 }
 
 export interface IStayCalculationBreakdown {
+  baseLines: IStayCalculationLine[];
+  detailLines: IStayCalculationLine[];
   footnote?: string;
-  lines: IStayCalculationLine[];
   total: number;
   totalLabel: string;
+}
+
+// Whether an operand appears as its own line in a metric's Details breakdown.
+// Keep in sync with getStayCommissionBase and docs/CALCULATION_RULES.md.
+export function isOperandInMetric(
+  operand: TBreakdownOperand,
+  metric: TStayCalculationMetric,
+  channel: TReservationChannel
+): boolean {
+  switch (metric) {
+    case "taxes":
+      return true;
+    case "commission":
+      if (operand === "cleaningFee") {
+        return channel !== ReservationChannel.EXPEDIA;
+      }
+      return true;
+    case "gross":
+    case "netPayout":
+      return false;
+  }
 }
 
 type TStayBreakdownInput = Pick<
@@ -127,18 +151,16 @@ export function buildStayTaxesBreakdown(stay: TStayBreakdownInput): IStayCalcula
   const taxableBase = getStayTaxableBase(stay.roomTotal, stay.cleaningFee);
   const taxesTotal = getStayTaxesTotal(stay);
 
-  const lines: IStayCalculationLine[] = [
-    { amount: stay.roomTotal, label: "Room total" },
-    { amount: stay.cleaningFee, label: "Cleaning fee" },
-    { amount: taxableBase, emphasis: "subtotal", label: "Taxable subtotal" },
-    ...stay.taxBreakdown.map((tax) => ({
+  return {
+    baseLines: [
+      { amount: stay.roomTotal, label: "Room total" },
+      { amount: stay.cleaningFee, label: "Cleaning fee" },
+      { amount: taxableBase, emphasis: "subtotal", label: "Taxable subtotal" },
+    ],
+    detailLines: stay.taxBreakdown.map((tax) => ({
       amount: tax.amount,
       label: `${tax.name} (${formatRateAsPercent(tax.rate)}%)`,
     })),
-  ];
-
-  return {
-    lines,
     total: taxesTotal,
     totalLabel: "Total taxes",
   };
@@ -147,43 +169,39 @@ export function buildStayTaxesBreakdown(stay: TStayBreakdownInput): IStayCalcula
 export function buildStayCommissionBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
   const commissionBase = getStayCommissionBase(stay.channel, stay.roomTotal, stay.cleaningFee);
   const rateLabel = formatRateAsPercent(stay.channelCommissionRate);
-  const lines: IStayCalculationLine[] = [];
 
-  if (stay.channel === ReservationChannel.EXPEDIA) {
-    lines.push({
-      amount: stay.roomTotal,
-      label: "Room total",
-      note: "Commission base",
-    });
-    if (stay.cleaningFee > 0) {
-      lines.push({
-        amount: stay.cleaningFee,
-        label: "Cleaning fee",
-        note: "Excluded from commission base",
-      });
-    }
-  } else {
-    lines.push({
-      amount: commissionBase,
-      label: "Commission base",
-      note: "Room total + cleaning fee",
-    });
-  }
-
-  lines.push({
-    amount: stay.channelCommissionRate,
-    displayValue: `${rateLabel}%`,
-    label: "Channel commission rate",
-  });
-  lines.push({
-    amount: stay.channelCommission,
-    emphasis: "total",
-    label: "Commission",
-    note: `Commission base × ${rateLabel}%`,
-  });
+  const baseLines: IStayCalculationLine[] =
+    stay.channel === ReservationChannel.EXPEDIA
+      ? [
+          {
+            amount: stay.roomTotal,
+            label: "Room total",
+            note: "Commission base",
+          },
+        ]
+      : [
+          {
+            amount: commissionBase,
+            label: "Commission base",
+            note: "Room total + cleaning fee",
+          },
+        ];
 
   return {
-    lines,
+    baseLines,
+    detailLines: [
+      {
+        amount: stay.channelCommissionRate,
+        displayValue: `${rateLabel}%`,
+        label: "Channel commission rate",
+      },
+      {
+        amount: stay.channelCommission,
+        emphasis: "total",
+        label: "Commission",
+        note: `Commission base × ${rateLabel}%`,
+      },
+    ],
     total: stay.channelCommission,
     totalLabel: "Commission",
   };
@@ -194,13 +212,12 @@ export function buildStayGrossBreakdown(stay: TStayBreakdownInput): IStayCalcula
   const taxesTotal = getStayTaxesTotal(stay);
   const resortAdjustment = getAirbnbResortAdjustment(stay.channel, stay.taxBreakdown);
 
-  const lines: IStayCalculationLine[] = [
-    { amount: taxableBase, emphasis: "subtotal", label: "Taxable base" },
+  const detailLines: IStayCalculationLine[] = [
     { amount: taxesTotal, label: "Total taxes", sign: "+" },
   ];
 
   if (resortAdjustment > 0) {
-    lines.push({
+    detailLines.push({
       amount: resortAdjustment,
       label: "Resort tax",
       note: "Remitted by Airbnb",
@@ -209,7 +226,8 @@ export function buildStayGrossBreakdown(stay: TStayBreakdownInput): IStayCalcula
   }
 
   return {
-    lines,
+    baseLines: [{ amount: taxableBase, emphasis: "subtotal", label: "Taxable subtotal" }],
+    detailLines,
     total: stay.grossIncome,
     totalLabel: "Gross",
   };
@@ -220,13 +238,12 @@ export function buildStayNetPayoutBreakdown(stay: TStayBreakdownInput): IStayCal
   const resortAdjustment = getAirbnbResortAdjustment(stay.channel, stay.taxBreakdown);
   const netPayout = getStayNetPayout(stay);
 
-  const lines: IStayCalculationLine[] = [
-    { amount: taxableBase, emphasis: "subtotal", label: "Taxable base" },
+  const detailLines: IStayCalculationLine[] = [
     { amount: stay.channelCommission, label: "Channel commission", sign: "−" },
   ];
 
   if (resortAdjustment > 0) {
-    lines.push({
+    detailLines.push({
       amount: resortAdjustment,
       label: "Resort tax",
       note: "Remitted by Airbnb",
@@ -235,8 +252,9 @@ export function buildStayNetPayoutBreakdown(stay: TStayBreakdownInput): IStayCal
   }
 
   return {
+    baseLines: [{ amount: taxableBase, emphasis: "subtotal", label: "Taxable subtotal" }],
+    detailLines,
     footnote: "Also equals net income + total taxes",
-    lines,
     total: netPayout,
     totalLabel: "Net payout",
   };
