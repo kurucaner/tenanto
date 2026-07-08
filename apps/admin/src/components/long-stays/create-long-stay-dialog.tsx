@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
+import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { calculateLeaseEndDate } from "@/lib/lease-date-utils";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import type { IPropertyUnit } from "@/packages/shared";
@@ -129,10 +130,7 @@ export const CreateLongStayDialog = memo(
                 id="long-stay-monthly-rent"
                 inputMode="decimal"
                 onChange={(e) => {
-                  const next = e.target.value;
-                  if (next === "" || /^\d*(\.\d*)?$/.test(next)) {
-                    setMonthlyRent(next);
-                  }
+                  if (isValidDecimalInput(e.target.value)) setMonthlyRent(e.target.value);
                 }}
                 type="text"
                 value={monthlyRent}

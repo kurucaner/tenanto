@@ -8,6 +8,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared";
 
 interface ExpenseFormFieldsProps {
@@ -72,7 +73,9 @@ export const ExpenseFormFields = memo(
               autoFocus
               id={`${idPrefix}-amount`}
               inputMode="decimal"
-              onChange={(e) => onAmountChange(e.target.value)}
+              onChange={(e) => {
+                if (isValidDecimalInput(e.target.value)) onAmountChange(e.target.value);
+              }}
               type="text"
               value={amount}
             />

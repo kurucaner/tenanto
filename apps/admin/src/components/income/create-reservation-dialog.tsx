@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { reservationsApi, unitsApi } from "@/lib/api-client";
+import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
@@ -231,7 +232,9 @@ export const CreateReservationDialog = memo(
                 <Input
                   id="room-rate"
                   inputMode="decimal"
-                  onChange={(e) => setRoomRate(e.target.value)}
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) setRoomRate(e.target.value);
+                  }}
                   type="text"
                   value={roomRate}
                 />
@@ -241,7 +244,9 @@ export const CreateReservationDialog = memo(
                 <Input
                   id="cleaning-fee"
                   inputMode="decimal"
-                  onChange={(e) => setCleaningFee(e.target.value)}
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) setCleaningFee(e.target.value);
+                  }}
                   type="text"
                   value={cleaningFee}
                 />

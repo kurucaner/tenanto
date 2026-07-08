@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
 import { unitsApi } from "@/lib/api-client";
+import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { type IPropertyReservation, type IPropertyUnit } from "@/packages/shared";
 
@@ -81,7 +82,7 @@ export const IncomeLineAmountDateFields = memo(
   }: IncomeLineAmountDateFieldsProps) => {
     const handleAmountChange = useCallback(
       (e: ChangeEvent<HTMLInputElement>) => {
-        onAmountChange(e.target.value);
+        if (isValidDecimalInput(e.target.value)) onAmountChange(e.target.value);
       },
       [onAmountChange]
     );
