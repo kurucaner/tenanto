@@ -126,12 +126,6 @@ const INCOME_TABLE_COLUMNS: {
     info: "Room total + cleaning fee − channel commission (before taxes).",
     label: "Net Payout",
   },
-  {
-    align: "right",
-    id: "net",
-    info: "Room total + cleaning fee − taxes − channel commission.",
-    label: "Net Income",
-  },
 ];
 
 function buildDateFilters(from: string, to: string, unitId: string) {
@@ -299,7 +293,7 @@ const PropertyIncomeEntriesTable = memo(
           <TableBody>
             {entries.length === 0 ? (
               <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={canManage ? 16 : 15}>
+                <TableCell className="text-muted-foreground" colSpan={canManage ? 15 : 14}>
                   No income entries yet.
                   {canManage ? " Add a stay or other income to get started." : ""}
                 </TableCell>
@@ -503,7 +497,6 @@ const IncomeEntryRow = memo(
           </TableCell>
           <TableCell className="text-right">{formatMoney(stay.grossIncome)}</TableCell>
           <TableCell className="text-right">{formatMoney(getStayNetPayout(stay))}</TableCell>
-          <TableCell className="text-right font-medium">{formatMoney(stay.netIncome)}</TableCell>
           {canManage ? (
             <TableCell>
               <div className="flex items-center gap-1">
@@ -565,7 +558,6 @@ const IncomeEntryRow = memo(
         <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
         <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
-        <TableCell className="text-right font-medium">{formatMoney(line.netIncome)}</TableCell>
         {canManage ? (
           <TableCell>
             <div className="flex items-center gap-1">
