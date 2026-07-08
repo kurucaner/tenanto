@@ -22,7 +22,7 @@ import {
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
-import { StayFeesDetailsDialog } from "@/components/income/stay-fees-details-dialog";
+import { StayTaxesDetailsDialog } from "@/components/income/stay-taxes-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,7 +46,6 @@ import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   getStayNetPayout,
-  getStayTaxesAndFeesTotal,
   getStayTaxesTotal,
   IncomeEntryKind,
   type IPropertyIncomeLine,
@@ -235,7 +234,7 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
-    onShowFeesDetails,
+    onShowTaxesDetails,
     onSortColumn,
     unitLabelById,
   }: {
@@ -249,7 +248,7 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
-    onShowFeesDetails: (stay: IPropertyReservation) => void;
+    onShowTaxesDetails: (stay: IPropertyReservation) => void;
     onSortColumn: (columnId: string) => void;
     unitLabelById: Map<string, string>;
   }) => {
@@ -309,7 +308,7 @@ const PropertyIncomeEntriesTable = memo(
                   onDeleteStay={onDeleteStay}
                   onEditLine={onEditLine}
                   onEditStay={onEditStay}
-                  onShowFeesDetails={onShowFeesDetails}
+                  onShowTaxesDetails={onShowTaxesDetails}
                   unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
                 />
               ))
@@ -440,7 +439,7 @@ const IncomeEntryRow = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
-    onShowFeesDetails,
+    onShowTaxesDetails,
     unitLabel,
   }: {
     canManage: boolean;
@@ -450,14 +449,13 @@ const IncomeEntryRow = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
-    onShowFeesDetails: (stay: IPropertyReservation) => void;
+    onShowTaxesDetails: (stay: IPropertyReservation) => void;
     unitLabel: string;
   }) => {
     if (entry.entryKind === IncomeEntryKind.STAY) {
       const { stay } = entry;
-      const taxesAndFeesTotal = getStayTaxesAndFeesTotal(stay);
-      const showFeesDetails = taxesAndFeesTotal > 0;
       const taxesTotal = getStayTaxesTotal(stay);
+      const showTaxesDetails = taxesTotal > 0;
 
       return (
         <TableRow>
@@ -480,10 +478,10 @@ const IncomeEntryRow = memo(
           <TableCell className="text-right">
             <div className="flex flex-col items-end gap-1">
               <span>{taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}</span>
-              {showFeesDetails ? (
+              {showTaxesDetails ? (
                 <Button
                   className="h-auto px-0 py-0 text-xs"
-                  onClick={() => onShowFeesDetails(stay)}
+                  onClick={() => onShowTaxesDetails(stay)}
                   type="button"
                   variant="link"
                 >
@@ -602,7 +600,7 @@ const PropertyIncomePage = memo(() => {
   );
   const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
   const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
-  const [feesDetailsStay, setFeesDetailsStay] = useState<IPropertyReservation | null>(null);
+  const [taxesDetailsStay, setTaxesDetailsStay] = useState<IPropertyReservation | null>(null);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [unitId, setUnitId] = useState("");
@@ -821,21 +819,21 @@ const PropertyIncomePage = memo(() => {
             onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
             onEditLine={setEditIncomeLine}
             onEditStay={setEditReservation}
-            onShowFeesDetails={setFeesDetailsStay}
+            onShowTaxesDetails={setTaxesDetailsStay}
             onSortColumn={toggleSort}
             unitLabelById={unitLabelById}
           />
         </CardContent>
       </Card>
 
-      <StayFeesDetailsDialog
+      <StayTaxesDetailsDialog
         onOpenChange={(open) => {
           if (!open) {
-            setFeesDetailsStay(null);
+            setTaxesDetailsStay(null);
           }
         }}
-        open={feesDetailsStay !== null}
-        stay={feesDetailsStay}
+        open={taxesDetailsStay !== null}
+        stay={taxesDetailsStay}
       />
 
       <PropertyIncomePageDialogs

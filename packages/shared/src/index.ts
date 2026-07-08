@@ -193,7 +193,6 @@ export {
 export {
   getChannelCommissionRate,
   getStayNetPayout,
-  getStayTaxesAndFeesTotal,
   getStayTaxesTotal,
   sumTaxBreakdown,
   type TChannelCommissionSettings,

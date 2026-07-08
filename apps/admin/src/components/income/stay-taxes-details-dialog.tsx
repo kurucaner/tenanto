@@ -1,6 +1,5 @@
 import { memo } from "react";
 
-import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import {
   Dialog,
   DialogContent,
@@ -11,11 +10,11 @@ import {
 import { formatMoney } from "@/lib/format-money";
 import {
   formatRateAsPercent,
-  getStayTaxesAndFeesTotal,
+  getStayTaxesTotal,
   type IPropertyReservation,
 } from "@/packages/shared";
 
-interface StayFeesDetailsDialogProps {
+interface StayTaxesDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   open: boolean;
   stay: IPropertyReservation | null;
@@ -33,13 +32,13 @@ const FeeLineRow = memo(({ amount, label }: { amount: number; label: string }) =
 ));
 FeeLineRow.displayName = "FeeLineRow";
 
-export const StayFeesDetailsDialog = memo(
-  ({ onOpenChange, open, stay }: StayFeesDetailsDialogProps) => {
+export const StayTaxesDetailsDialog = memo(
+  ({ onOpenChange, open, stay }: StayTaxesDetailsDialogProps) => {
     if (!stay) {
       return null;
     }
 
-    const taxesAndFeesTotal = getStayTaxesAndFeesTotal(stay);
+    const taxesTotal = getStayTaxesTotal(stay);
     const roomTotal = Math.round(stay.roomRate * stay.nights * 100) / 100;
     const taxableSubtotal = getTaxableSubtotal(stay);
 
@@ -47,7 +46,7 @@ export const StayFeesDetailsDialog = memo(
       <Dialog onOpenChange={onOpenChange} open={open}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
-            <DialogTitle>Taxes &amp; fees</DialogTitle>
+            <DialogTitle>Taxes</DialogTitle>
             <DialogDescription>
               {stay.guestName} · {stay.checkIn} to {stay.checkOut}
             </DialogDescription>
@@ -74,17 +73,11 @@ export const StayFeesDetailsDialog = memo(
                   label={`${tax.name} (${formatRateAsPercent(tax.rate)}%)`}
                 />
               ))}
-              {stay.channelCommission > 0 ? (
-                <FeeLineRow
-                  amount={stay.channelCommission}
-                  label={`Channel commission (${formatChannelLabel(stay.channel)} ${formatRateAsPercent(stay.channelCommissionRate)}%)`}
-                />
-              ) : null}
             </div>
 
             <div className="flex items-center justify-between gap-4 border-t pt-4 text-sm font-medium">
-              <span>Total taxes &amp; fees</span>
-              <span className="tabular-nums">{formatMoney(taxesAndFeesTotal)}</span>
+              <span>Total taxes</span>
+              <span className="tabular-nums">{formatMoney(taxesTotal)}</span>
             </div>
           </div>
         </DialogContent>
@@ -92,4 +85,4 @@ export const StayFeesDetailsDialog = memo(
     );
   }
 );
-StayFeesDetailsDialog.displayName = "StayFeesDetailsDialog";
+StayTaxesDetailsDialog.displayName = "StayTaxesDetailsDialog";
