@@ -227,6 +227,12 @@ export const CreateReservationDialog = memo(
               </div>
             </div>
 
+            {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
+              <p className="text-muted-foreground text-xs">
+                Expedia commission is calculated on room total only.
+              </p>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <ReservationRoomTotalField
                 checkIn={checkIn}

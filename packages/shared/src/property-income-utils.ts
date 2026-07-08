@@ -61,6 +61,16 @@ export function getStayAverageDailyRate(
   return roundMoney(stay.roomTotal / stay.nights);
 }
 
+export function getStayCommissionBase(
+  channel: TReservationChannel,
+  roomTotal: number,
+  cleaningFee: number
+): number {
+  const base =
+    channel === ReservationChannel.EXPEDIA ? roomTotal : roundMoney(roomTotal + cleaningFee);
+  return roundMoney(base);
+}
+
 // Amount of the "Resort tax" line in a tax breakdown, matched by name (case-insensitive),
 // or 0 if the property has no resort tax.
 export function getResortTaxAmount(taxBreakdown: IPropertyTaxBreakdownItem[]): number {

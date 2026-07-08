@@ -32,6 +32,7 @@ import {
 import {
   type IPropertyReservation,
   type IPropertyUnit,
+  ReservationChannel,
   type TReservationChannel,
   type TReservationStatus,
 } from "@/packages/shared";
@@ -194,6 +195,12 @@ export const EditReservationDialog = memo(
                 </select>
               </div>
             </div>
+
+            {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
+              <p className="text-muted-foreground text-xs">
+                Expedia commission is calculated on room total only.
+              </p>
+            ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <ReservationRoomTotalField

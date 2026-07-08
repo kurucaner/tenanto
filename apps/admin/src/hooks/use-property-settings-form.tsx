@@ -310,7 +310,7 @@ export const usePropertySettingsForm = ({
           <div>
             <h3 className="text-sm font-medium">Channel commissions</h3>
             <p className="text-muted-foreground text-xs">
-              Applied to net room rate + cleaning fee based on booking channel.
+              Applied to room total + cleaning fee for most channels. Expedia uses room total only.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -328,13 +328,16 @@ export const usePropertySettingsForm = ({
               onChange={(v) => updateField("bookingCommissionRate", v)}
               value={form.bookingCommissionRate}
             />
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="expedia-commission"
-              label="Expedia"
-              onChange={(v) => updateField("expediaCommissionRate", v)}
-              value={form.expediaCommissionRate}
-            />
+            <div className="flex flex-col gap-1.5">
+              <PercentField
+                disabled={!canEdit || isPending}
+                id="expedia-commission"
+                label="Expedia"
+                onChange={(v) => updateField("expediaCommissionRate", v)}
+                value={form.expediaCommissionRate}
+              />
+              <p className="text-muted-foreground text-xs">Commission base excludes cleaning fee.</p>
+            </div>
             <PercentField
               disabled={!canEdit || isPending}
               id="direct-commission"

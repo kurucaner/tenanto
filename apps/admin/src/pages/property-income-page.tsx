@@ -116,7 +116,7 @@ const INCOME_TABLE_COLUMNS: {
   {
     align: "right",
     id: "commission",
-    info: "Booking channel's commission.",
+    info: "Channel commission. Expedia applies the rate to room total only (cleaning fee excluded).",
     label: "Commission",
   },
   {

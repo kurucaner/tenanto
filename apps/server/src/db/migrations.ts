@@ -1563,4 +1563,23 @@ export const migrations: IMigration[] = [
     },
     version: 36,
   },
+  {
+    down: async (_client: TDBClient) => {
+      // Irreversible: cannot restore prior Expedia commission amounts.
+    },
+    name: "backfill_expedia_commission_base",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        UPDATE property_reservations
+        SET
+          channel_commission = ROUND(room_total * channel_commission_rate, 2),
+          net_income = ROUND(
+            net_income + channel_commission - ROUND(room_total * channel_commission_rate, 2),
+            2
+          )
+        WHERE channel = 'expedia'::property_reservation_channel;
+      `);
+    },
+    version: 37,
+  },
 ];

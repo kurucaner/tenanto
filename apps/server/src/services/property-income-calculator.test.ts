@@ -68,3 +68,38 @@ describe("calculateStayIncome — Airbnb resort tax exclusion", () => {
     expect(result.netIncome).toBe(785);
   });
 });
+
+describe("calculateStayIncome — Expedia commission base", () => {
+  test("Expedia commission excludes cleaning fee from base", () => {
+    const result = calculateStayIncome({
+      channel: ReservationChannel.EXPEDIA,
+      cleaningFee: 100,
+      nights: 5,
+      roomTotal: 900,
+      settings: SETTINGS,
+      taxRates: TAX_RATES,
+      unitRentalType: UnitRentalType.SHORT_TERM,
+    });
+    const stay = { netIncome: result.netIncome, taxBreakdown: result.taxBreakdown };
+
+    // taxable base = 1000; taxes = 100; commission = 900 * 0.15 = 135
+    expect(result.channelCommission).toBe(135);
+    expect(result.grossIncome).toBe(1100);
+    expect(result.netIncome).toBe(765);
+    expect(getStayNetPayout(stay)).toBe(865);
+  });
+
+  test("Booking still uses room total + cleaning fee for commission", () => {
+    const result = calculateStayIncome({
+      channel: ReservationChannel.BOOKING,
+      cleaningFee: 100,
+      nights: 5,
+      roomTotal: 900,
+      settings: SETTINGS,
+      taxRates: TAX_RATES,
+      unitRentalType: UnitRentalType.SHORT_TERM,
+    });
+
+    expect(result.channelCommission).toBe(150);
+  });
+});

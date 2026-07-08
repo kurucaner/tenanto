@@ -218,6 +218,7 @@ DECLARE
   v_total_taxes NUMERIC;
   v_commission_rate NUMERIC;
   v_commission NUMERIC;
+  v_commission_base NUMERIC;
 BEGIN
   v_room_total := seed_round_money(p_room_total);
 
@@ -260,7 +261,11 @@ BEGIN
     p_expedia_commission_rate,
     p_direct_commission_rate
   );
-  v_commission := seed_round_money(v_taxable_base * v_commission_rate);
+  v_commission_base := CASE
+    WHEN p_channel = 'expedia'::property_reservation_channel THEN v_room_total
+    ELSE v_taxable_base
+  END;
+  v_commission := seed_round_money(v_commission_base * v_commission_rate);
 
   gross_income := seed_round_money(v_taxable_base + v_total_taxes);
   channel_commission := v_commission;
