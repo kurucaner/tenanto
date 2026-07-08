@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { type ChangeEvent, memo, useCallback } from "react";
+import { type ChangeEvent, memo, useCallback, useMemo } from "react";
 
 import {
   incomeLineSelectClassName,
@@ -204,7 +204,11 @@ export const IncomeLineUnitSection = memo(
       queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
     });
 
-    const units = unitsProp ?? unitsQuery.data?.units ?? EMPTY_UNITS;
+    const units = useMemo(() => {
+      const source = unitsProp ?? unitsQuery.data?.units ?? EMPTY_UNITS;
+      if (unitsProp != null) return source;
+      return source.filter((unit) => !unit.isDeleted);
+    }, [unitsProp, unitsQuery.data?.units]);
 
     const handleUnitChange = useCallback(
       (e: ChangeEvent<HTMLSelectElement>) => {

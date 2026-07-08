@@ -108,7 +108,7 @@ export const CreateReservationDialog = memo(
     const shortTermUnits = useMemo(
       () =>
         (unitsQuery.data?.units ?? []).filter(
-          (unit) => unit.rentalType === UnitRentalType.SHORT_TERM
+          (unit) => unit.rentalType === UnitRentalType.SHORT_TERM && !unit.isDeleted
         ),
       [unitsQuery.data?.units]
     );

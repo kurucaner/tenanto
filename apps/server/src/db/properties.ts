@@ -56,7 +56,7 @@ export const propertiesDb = {
     const result = await pool.query(
       `SELECT p.*, COUNT(pm.id)::int AS member_count,
               (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id) AS unit_count
+               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
        WHERE p.id = $1
@@ -71,7 +71,7 @@ export const propertiesDb = {
     const propertyResult = await pool.query(
       `SELECT p.*, COUNT(pm.id)::int AS member_count,
               (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id) AS unit_count,
+               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count,
               u.name AS creator_name, u.email AS creator_email
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
@@ -160,7 +160,7 @@ export const propertiesDb = {
     const result = await pool.query(
       `SELECT p.*, COUNT(pm.id)::int AS member_count,
               (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id) AS unit_count
+               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
        ${whereClause}
@@ -212,7 +212,7 @@ export const propertiesDb = {
     const result = await pool.query(
       `SELECT p.*, COUNT(pm.id)::int AS member_count,
               (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id) AS unit_count
+               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
        ${whereClause}

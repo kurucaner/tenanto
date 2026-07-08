@@ -72,11 +72,6 @@ export const propertyIncomeLinesDb = {
     return created;
   },
 
-  async delete(id: string): Promise<boolean> {
-    const result = await pool.query(`DELETE FROM property_income_lines WHERE id = $1`, [id]);
-    return (result.rowCount ?? 0) > 0;
-  },
-
   async findById(id: string): Promise<IPropertyIncomeLine | null> {
     const result = await pool.query(`${INCOME_LINE_SELECT} WHERE pil.id = $1`, [id]);
     if (result.rows.length === 0) return null;
@@ -85,11 +80,16 @@ export const propertyIncomeLinesDb = {
 
   async findByProperty(
     propertyId: string,
-    filters: IPropertyIncomeLinesListQuery = {}
+    filters: IPropertyIncomeLinesListQuery = {},
+    includeDeleted = false
   ): Promise<IPropertyIncomeLine[]> {
     const conditions = ["pil.property_id = $1"];
     const values: unknown[] = [propertyId];
     let p = 2;
+
+    if (!includeDeleted) {
+      conditions.push("pil.is_deleted = false");
+    }
 
     if (filters.from) {
       conditions.push(`pil.transaction_date >= $${p++}`);
@@ -129,6 +129,22 @@ export const propertyIncomeLinesDb = {
     );
 
     return result.rows.map((row) => mapPropertyIncomeLineRow(row as Record<string, unknown>));
+  },
+
+  async restore(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_income_lines SET is_deleted = false, deleted_at = NULL WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async softDelete(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_income_lines SET is_deleted = true, deleted_at = NOW() WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
   },
 
   async update(

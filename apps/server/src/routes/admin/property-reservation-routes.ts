@@ -15,6 +15,7 @@ import {
   type TReservationStatus,
   type TUnitRentalType,
   UnitRentalType,
+  UserType,
 } from "@/packages/shared";
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
@@ -23,6 +24,7 @@ import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
 } from "./property-route-access";
+import { rejectIfDeleted } from "./reject-if-deleted";
 
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
 const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
@@ -324,6 +326,10 @@ async function resolveRentableUnitForProperty(
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
     return null;
   }
+  if (unit.isDeleted) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit has been deleted" });
+    return null;
+  }
   return unit;
 }
 
@@ -422,7 +428,12 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const reservations = await propertyReservationsDb.findByProperty(propertyId, parsed.filters);
+      const includeDeleted = request.user.userType === UserType.ADMIN;
+      const reservations = await propertyReservationsDb.findByProperty(
+        propertyId,
+        parsed.filters,
+        includeDeleted
+      );
       return reply.send({ reservations });
     }
   );
@@ -512,6 +523,8 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Reservation not found" });
       }
 
+      if (rejectIfDeleted(existing, reply, "reservation")) return;
+
       const parsed = parseUpdateReservationBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
@@ -564,7 +577,35 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Reservation not found" });
       }
 
-      await propertyReservationsDb.delete(reservationId);
+      if (rejectIfDeleted(existing, reply, "reservation")) return;
+
+      await propertyReservationsDb.softDelete(reservationId);
+      return reply.status(HttpStatus.NO_CONTENT).send();
+    }
+  );
+
+  server.post<{ Params: IPropertyReservationParams }>(
+    "/properties/:propertyId/reservations/:reservationId/restore",
+    { preHandler: [server.authenticate, server.requireAdmin] },
+    async (
+      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const reservationId = parseUuidParam(request.params.reservationId);
+      if (reservationId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      }
+
+      const existing = await propertyReservationsDb.findById(reservationId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Reservation not found" });
+      }
+
+      await propertyReservationsDb.restore(reservationId);
       return reply.status(HttpStatus.NO_CONTENT).send();
     }
   );

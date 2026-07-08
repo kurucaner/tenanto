@@ -9,6 +9,7 @@ import {
   type IPropertyExpensesListQuery,
   type IUpdatePropertyExpenseBody,
   type TExpenseCategory,
+  UserType,
   validateExpenseCategoryFields,
 } from "@/packages/shared";
 
@@ -17,6 +18,7 @@ import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
 } from "./property-route-access";
+import { rejectIfDeleted } from "./reject-if-deleted";
 
 const EXPENSE_CATEGORIES = new Set<TExpenseCategory>(Object.values(ExpenseCategory));
 
@@ -291,7 +293,12 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const expenses = await propertyExpensesDb.findByProperty(propertyId, parsed.filters);
+      const includeDeleted = request.user.userType === UserType.ADMIN;
+      const expenses = await propertyExpensesDb.findByProperty(
+        propertyId,
+        parsed.filters,
+        includeDeleted
+      );
       return reply.send({ expenses });
     }
   );
@@ -384,6 +391,8 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Expense not found" });
       }
 
+      if (rejectIfDeleted(existing, reply, "expense")) return;
+
       const parsed = parseUpdateExpenseBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
@@ -437,7 +446,32 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Expense not found" });
       }
 
-      await propertyExpensesDb.delete(expenseId);
+      if (rejectIfDeleted(existing, reply, "expense")) return;
+
+      await propertyExpensesDb.softDelete(expenseId);
+      return reply.status(HttpStatus.NO_CONTENT).send();
+    }
+  );
+
+  server.post<{ Params: IPropertyExpenseParams }>(
+    "/properties/:propertyId/expenses/:expenseId/restore",
+    { preHandler: [server.authenticate, server.requireAdmin] },
+    async (request: FastifyRequest<{ Params: IPropertyExpenseParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const expenseId = parseUuidParam(request.params.expenseId);
+      if (expenseId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid expenseId" });
+      }
+
+      const existing = await propertyExpensesDb.findById(expenseId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Expense not found" });
+      }
+
+      await propertyExpensesDb.restore(expenseId);
       return reply.status(HttpStatus.NO_CONTENT).send();
     }
   );

@@ -10,6 +10,7 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IUpdatePropertyIncomeLineBody,
+  UserType,
 } from "@/packages/shared";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
@@ -18,6 +19,7 @@ import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
 } from "./property-route-access";
+import { rejectIfDeleted } from "./reject-if-deleted";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -254,6 +256,10 @@ async function resolveUnitForProperty(unitId: string, propertyId: string, reply:
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
     return null;
   }
+  if (unit.isDeleted) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit has been deleted" });
+    return null;
+  }
   return unit;
 }
 
@@ -268,6 +274,10 @@ async function resolveReservationForProperty(
     void reply
       .status(HttpStatus.BAD_REQUEST)
       .send({ error: "Reservation not found for this property" });
+    return null;
+  }
+  if (reservation.isDeleted) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Reservation has been deleted" });
     return null;
   }
   // Property-amenity income (no unit) can still link to any stay in the property.
@@ -338,7 +348,12 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const incomeLines = await propertyIncomeLinesDb.findByProperty(propertyId, parsed.filters);
+      const includeDeleted = request.user.userType === UserType.ADMIN;
+      const incomeLines = await propertyIncomeLinesDb.findByProperty(
+        propertyId,
+        parsed.filters,
+        includeDeleted
+      );
       return reply.send({ incomeLines });
     }
   );
@@ -461,6 +476,8 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Income line not found" });
       }
 
+      if (rejectIfDeleted(existing, reply, "income line")) return;
+
       const parsed = parseUpdateIncomeLineBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
@@ -533,7 +550,32 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Income line not found" });
       }
 
-      await propertyIncomeLinesDb.delete(lineId);
+      if (rejectIfDeleted(existing, reply, "income line")) return;
+
+      await propertyIncomeLinesDb.softDelete(lineId);
+      return reply.status(HttpStatus.NO_CONTENT).send();
+    }
+  );
+
+  server.post<{ Params: IPropertyIncomeLineParams }>(
+    "/properties/:propertyId/income-lines/:lineId/restore",
+    { preHandler: [server.authenticate, server.requireAdmin] },
+    async (request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const lineId = parseUuidParam(request.params.lineId);
+      if (lineId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid lineId" });
+      }
+
+      const existing = await propertyIncomeLinesDb.findById(lineId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Income line not found" });
+      }
+
+      await propertyIncomeLinesDb.restore(lineId);
       return reply.status(HttpStatus.NO_CONTENT).send();
     }
   );

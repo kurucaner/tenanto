@@ -62,11 +62,6 @@ export const propertyReservationsDb = {
     return mapPropertyReservationRow(result.rows[0] as Record<string, unknown>);
   },
 
-  async delete(id: string): Promise<boolean> {
-    const result = await pool.query(`DELETE FROM property_reservations WHERE id = $1`, [id]);
-    return (result.rowCount ?? 0) > 0;
-  },
-
   async findById(id: string): Promise<IPropertyReservation | null> {
     const result = await pool.query(`SELECT * FROM property_reservations WHERE id = $1`, [id]);
     if (result.rows.length === 0) return null;
@@ -75,7 +70,8 @@ export const propertyReservationsDb = {
 
   async findByProperty(
     propertyId: string,
-    filters: IPropertyReservationsListQuery = {}
+    filters: IPropertyReservationsListQuery = {},
+    includeDeleted = false
   ): Promise<IPropertyReservation[]> {
     const conditions = ["pr.property_id = $1"];
     const values: unknown[] = [propertyId];
@@ -131,6 +127,10 @@ export const propertyReservationsDb = {
       values.push(filters.rentalType);
     }
 
+    if (!includeDeleted) {
+      conditions.push("pr.is_deleted = false");
+    }
+
     const limitClause =
       filters.limit != null && filters.limit > 0 ? ` LIMIT ${Math.floor(filters.limit)}` : "";
 
@@ -144,6 +144,22 @@ export const propertyReservationsDb = {
     );
 
     return result.rows.map((row) => mapPropertyReservationRow(row as Record<string, unknown>));
+  },
+
+  async restore(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_reservations SET is_deleted = false, deleted_at = NULL WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async softDelete(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_reservations SET is_deleted = true, deleted_at = NOW() WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
   },
 
   async update(

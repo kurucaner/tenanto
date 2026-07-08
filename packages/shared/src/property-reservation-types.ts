@@ -28,9 +28,11 @@ export interface IPropertyReservation {
   checkOut: string;
   cleaningFee: number;
   createdAt: string;
+  deletedAt: string | null;
   grossIncome: number;
   guestName: string;
   id: string;
+  isDeleted: boolean;
   netIncome: number;
   nights: number;
   propertyId: string;

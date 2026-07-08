@@ -39,6 +39,13 @@ export const runMigrations = async (pool: Pool): Promise<void> => {
 
 type TDBClient = Pool | PoolClient;
 
+const SOFT_DELETE_TABLES = [
+  "property_reservations",
+  "property_income_lines",
+  "property_expenses",
+  "property_units",
+] as const;
+
 interface IMigration {
   down: (client: TDBClient) => Promise<void>;
   name: string;
@@ -1488,5 +1495,27 @@ export const migrations: IMigration[] = [
       `);
     },
     version: 34,
+  },
+  {
+    down: async (client: TDBClient) => {
+      for (const table of SOFT_DELETE_TABLES) {
+        await client.query(`
+          ALTER TABLE ${table}
+            DROP COLUMN IF EXISTS is_deleted,
+            DROP COLUMN IF EXISTS deleted_at;
+        `);
+      }
+    },
+    name: "add_soft_delete_columns",
+    up: async (client: TDBClient) => {
+      for (const table of SOFT_DELETE_TABLES) {
+        await client.query(`
+          ALTER TABLE ${table}
+            ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+        `);
+      }
+    },
+    version: 35,
   },
 ];

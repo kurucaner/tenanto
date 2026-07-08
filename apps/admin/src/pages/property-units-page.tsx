@@ -3,6 +3,11 @@ import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  DeletedBadge,
+  deletedRowClassName,
+  RestoreEntityButton,
+} from "@/components/deleted-badge";
 import { CreateLongStayDialog } from "@/components/long-stays/create-long-stay-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,16 +52,23 @@ const UnitRow = memo(
     onAddLongStay,
     onDelete,
     onEdit,
+    onRestore,
     unit,
   }: {
     canManage: boolean;
     onAddLongStay: (unit: IPropertyUnit) => void;
     onDelete: (unit: IPropertyUnit) => void;
     onEdit: (unit: IPropertyUnit) => void;
+    onRestore: (unit: IPropertyUnit) => void;
     unit: IPropertyUnit;
   }) => (
-    <TableRow>
-      <TableCell className="font-medium">{unit.unitNumber}</TableCell>
+    <TableRow className={unit.isDeleted ? deletedRowClassName : undefined}>
+      <TableCell className="font-medium">
+        <div className="flex items-center gap-2">
+          {unit.unitNumber}
+          {unit.isDeleted ? <DeletedBadge /> : null}
+        </div>
+      </TableCell>
       <TableCell>{unit.layout}</TableCell>
       <TableCell>
         <RentalTypeBadge type={unit.rentalType} />
@@ -67,35 +79,44 @@ const UnitRow = memo(
       {canManage ? (
         <TableCell>
           <div className="flex items-center gap-1">
-            {unit.rentalType === UnitRentalType.LONG_TERM ? (
-              <Button
-                aria-label="Add long stay"
-                onClick={() => onAddLongStay(unit)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <CirclePlus className="size-3.5" />
-              </Button>
-            ) : null}
-            <Button
-              aria-label="Edit unit"
-              onClick={() => onEdit(unit)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-            <Button
-              aria-label="Delete unit"
-              onClick={() => onDelete(unit)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Trash2 className="size-3.5 text-destructive" />
-            </Button>
+            {unit.isDeleted ? (
+              <RestoreEntityButton
+                ariaLabel="Restore unit"
+                onClick={() => onRestore(unit)}
+              />
+            ) : (
+              <>
+                {unit.rentalType === UnitRentalType.LONG_TERM ? (
+                  <Button
+                    aria-label="Add long stay"
+                    onClick={() => onAddLongStay(unit)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <CirclePlus className="size-3.5" />
+                  </Button>
+                ) : null}
+                <Button
+                  aria-label="Edit unit"
+                  onClick={() => onEdit(unit)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  aria-label="Delete unit"
+                  onClick={() => onDelete(unit)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-3.5 text-destructive" />
+                </Button>
+              </>
+            )}
           </div>
         </TableCell>
       ) : null}
@@ -123,13 +144,30 @@ export const PropertyUnitsPage = memo(() => {
       toast.error(e instanceof Error ? e.message : "Failed to delete");
     },
     onSuccess: () => {
-      toast.success("Deleted");
+      toast.success("Unit deleted");
+      invalidatePropertyUnitCaches(queryClient, propertyId);
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (unit: IPropertyUnit) => unitsApi.restore(propertyId, unit.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to restore unit");
+    },
+    onSuccess: () => {
+      toast.success("Unit restored");
       invalidatePropertyUnitCaches(queryClient, propertyId);
     },
   });
 
   const handleDelete = (unit: IPropertyUnit) => {
-    if (!globalThis.confirm(`Delete unit ${unit.unitNumber}? This cannot be undone.`)) return;
+    if (
+      !globalThis.confirm(
+        `Delete unit ${unit.unitNumber}? It will be hidden from lists. Platform admins can restore it.`
+      )
+    ) {
+      return;
+    }
     deleteMutation.mutate(unit);
   };
 
@@ -188,6 +226,7 @@ export const PropertyUnitsPage = memo(() => {
                       onAddLongStay={setLongStayUnit}
                       onDelete={handleDelete}
                       onEdit={setEditUnit}
+                      onRestore={(item) => restoreMutation.mutate(item)}
                       unit={unit}
                     />
                   ))

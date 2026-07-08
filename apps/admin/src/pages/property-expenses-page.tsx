@@ -3,6 +3,11 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  DeletedBadge,
+  deletedRowClassName,
+  RestoreEntityButton,
+} from "@/components/deleted-badge";
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import {
@@ -42,14 +47,21 @@ const ExpenseRow = memo(
     expense,
     onDelete,
     onEdit,
+    onRestore,
   }: {
     canManage: boolean;
     expense: IPropertyExpense;
     onDelete: (expense: IPropertyExpense) => void;
     onEdit: (expense: IPropertyExpense) => void;
+    onRestore: (expense: IPropertyExpense) => void;
   }) => (
-    <TableRow>
-      <TableCell>{formatExpenseCategoryLabel(expense.category)}</TableCell>
+    <TableRow className={expense.isDeleted ? deletedRowClassName : undefined}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {formatExpenseCategoryLabel(expense.category)}
+          {expense.isDeleted ? <DeletedBadge /> : null}
+        </div>
+      </TableCell>
       <TableCell>{expense.expenseDate ?? "—"}</TableCell>
       <TableCell>{expense.personName ?? "—"}</TableCell>
       <TableCell className="max-w-[240px] truncate">{expense.description ?? "—"}</TableCell>
@@ -60,24 +72,33 @@ const ExpenseRow = memo(
       {canManage ? (
         <TableCell>
           <div className="flex items-center gap-1">
-            <Button
-              aria-label="Edit expense"
-              onClick={() => onEdit(expense)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-            <Button
-              aria-label="Delete expense"
-              onClick={() => onDelete(expense)}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Trash2 className="size-3.5 text-destructive" />
-            </Button>
+            {expense.isDeleted ? (
+              <RestoreEntityButton
+                ariaLabel="Restore expense"
+                onClick={() => onRestore(expense)}
+              />
+            ) : (
+              <>
+                <Button
+                  aria-label="Edit expense"
+                  onClick={() => onEdit(expense)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  aria-label="Delete expense"
+                  onClick={() => onDelete(expense)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-3.5 text-destructive" />
+                </Button>
+              </>
+            )}
           </div>
         </TableCell>
       ) : null}
@@ -116,6 +137,17 @@ export const PropertyExpensesPage = memo(() => {
     },
     onSuccess: () => {
       toast.success("Expense deleted");
+      invalidatePropertyExpenseCaches(queryClient, propertyId);
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (expense: IPropertyExpense) => expensesApi.restore(propertyId, expense.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to restore expense");
+    },
+    onSuccess: () => {
+      toast.success("Expense restored");
       invalidatePropertyExpenseCaches(queryClient, propertyId);
     },
   });
@@ -216,7 +248,7 @@ export const PropertyExpensesPage = memo(() => {
                         onDelete={(item) => {
                           if (
                             !globalThis.confirm(
-                              `Delete ${formatExpenseCategoryLabel(item.category)} expense? This cannot be undone.`
+                              `Delete ${formatExpenseCategoryLabel(item.category)} expense? It will be hidden from reports. Platform admins can restore it.`
                             )
                           ) {
                             return;
@@ -224,6 +256,7 @@ export const PropertyExpensesPage = memo(() => {
                           deleteMutation.mutate(item);
                         }}
                         onEdit={setEditExpense}
+                        onRestore={(item) => restoreMutation.mutate(item)}
                       />
                     ))
                   )}

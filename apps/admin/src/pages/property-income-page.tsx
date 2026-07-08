@@ -4,6 +4,11 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  DeletedBadge,
+  deletedRowClassName,
+  RestoreEntityButton,
+} from "@/components/deleted-badge";
+import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
 } from "@/components/income/create-income-line-dialog";
@@ -168,7 +173,11 @@ function handleDeleteLine(
   mutate: (line: IPropertyIncomeLine) => void
 ): void {
   const typeLabel = line.incomeLineTypeName ?? line.incomeLineTypeId;
-  if (!globalThis.confirm(`Delete ${typeLabel} entry? This cannot be undone.`)) {
+  if (
+    !globalThis.confirm(
+      `Delete ${typeLabel} entry? It will be hidden from reports. Platform admins can restore it.`
+    )
+  ) {
     return;
   }
   mutate(line);
@@ -178,7 +187,11 @@ function handleDeleteStay(
   stay: IPropertyReservation,
   mutate: (stay: IPropertyReservation) => void
 ): void {
-  if (!globalThis.confirm(`Delete stay for ${stay.guestName}? This cannot be undone.`)) {
+  if (
+    !globalThis.confirm(
+      `Delete stay for ${stay.guestName}? It will be hidden from reports. Platform admins can restore it.`
+    )
+  ) {
     return;
   }
   mutate(stay);
@@ -234,6 +247,8 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
+    onRestoreLine,
+    onRestoreStay,
     onShowTaxesDetails,
     onSortColumn,
     unitLabelById,
@@ -248,6 +263,8 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
+    onRestoreLine: (line: IPropertyIncomeLine) => void;
+    onRestoreStay: (stay: IPropertyReservation) => void;
     onShowTaxesDetails: (stay: IPropertyReservation) => void;
     onSortColumn: (columnId: string) => void;
     unitLabelById: Map<string, string>;
@@ -308,6 +325,8 @@ const PropertyIncomeEntriesTable = memo(
                   onDeleteStay={onDeleteStay}
                   onEditLine={onEditLine}
                   onEditStay={onEditStay}
+                  onRestoreLine={onRestoreLine}
+                  onRestoreStay={onRestoreStay}
                   onShowTaxesDetails={onShowTaxesDetails}
                   unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
                 />
@@ -439,6 +458,8 @@ const IncomeEntryRow = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
+    onRestoreLine,
+    onRestoreStay,
     onShowTaxesDetails,
     unitLabel,
   }: {
@@ -449,6 +470,8 @@ const IncomeEntryRow = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
+    onRestoreLine: (line: IPropertyIncomeLine) => void;
+    onRestoreStay: (stay: IPropertyReservation) => void;
     onShowTaxesDetails: (stay: IPropertyReservation) => void;
     unitLabel: string;
   }) => {
@@ -458,9 +481,12 @@ const IncomeEntryRow = memo(
       const showTaxesDetails = taxesTotal > 0;
 
       return (
-        <TableRow>
+        <TableRow className={stay.isDeleted ? deletedRowClassName : undefined}>
           <TableCell>
-            <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
+            <div className="flex items-center gap-2">
+              <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
+              {stay.isDeleted ? <DeletedBadge /> : null}
+            </div>
           </TableCell>
           <TableCell className="font-medium">{unitLabel}</TableCell>
           <TableCell>{stay.guestName}</TableCell>
@@ -498,34 +524,43 @@ const IncomeEntryRow = memo(
           {canManage ? (
             <TableCell>
               <div className="flex items-center gap-1">
-                <Button
-                  aria-label="Add other income for this stay"
-                  onClick={() => onAddOtherIncomeFromStay(stay)}
-                  size="icon-sm"
-                  title="Add other income"
-                  type="button"
-                  variant="ghost"
-                >
-                  <CirclePlus className="size-3.5" />
-                </Button>
-                <Button
-                  aria-label="Edit stay"
-                  onClick={() => onEditStay(stay)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  aria-label="Delete stay"
-                  onClick={() => onDeleteStay(stay)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
+                {stay.isDeleted ? (
+                  <RestoreEntityButton
+                    ariaLabel="Restore stay"
+                    onClick={() => onRestoreStay(stay)}
+                  />
+                ) : (
+                  <>
+                    <Button
+                      aria-label="Add other income for this stay"
+                      onClick={() => onAddOtherIncomeFromStay(stay)}
+                      size="icon-sm"
+                      title="Add other income"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <CirclePlus className="size-3.5" />
+                    </Button>
+                    <Button
+                      aria-label="Edit stay"
+                      onClick={() => onEditStay(stay)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      aria-label="Delete stay"
+                      onClick={() => onDeleteStay(stay)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 className="size-3.5 text-destructive" />
+                    </Button>
+                  </>
+                )}
               </div>
             </TableCell>
           ) : null}
@@ -535,13 +570,16 @@ const IncomeEntryRow = memo(
 
     const { line } = entry;
     return (
-      <TableRow>
+      <TableRow className={line.isDeleted ? deletedRowClassName : undefined}>
         <TableCell>
-          <IncomeEntryTypeBadge
-            entryKind={IncomeEntryKind.LINE}
-            incomeLineTypeId={line.incomeLineTypeId}
-            label={line.incomeLineTypeName ?? line.incomeLineTypeId}
-          />
+          <div className="flex items-center gap-2">
+            <IncomeEntryTypeBadge
+              entryKind={IncomeEntryKind.LINE}
+              incomeLineTypeId={line.incomeLineTypeId}
+              label={line.incomeLineTypeName ?? line.incomeLineTypeId}
+            />
+            {line.isDeleted ? <DeletedBadge /> : null}
+          </div>
         </TableCell>
         <TableCell className="font-medium">{unitLabel}</TableCell>
         <TableCell>{line.guestName ?? "—"}</TableCell>
@@ -559,24 +597,33 @@ const IncomeEntryRow = memo(
         {canManage ? (
           <TableCell>
             <div className="flex items-center gap-1">
-              <Button
-                aria-label="Edit other income"
-                onClick={() => onEditLine(line)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                aria-label="Delete other income"
-                onClick={() => onDeleteLine(line)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 className="size-3.5 text-destructive" />
-              </Button>
+              {line.isDeleted ? (
+                <RestoreEntityButton
+                  ariaLabel="Restore other income"
+                  onClick={() => onRestoreLine(line)}
+                />
+              ) : (
+                <>
+                  <Button
+                    aria-label="Edit other income"
+                    onClick={() => onEditLine(line)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    aria-label="Delete other income"
+                    onClick={() => onDeleteLine(line)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </Button>
+                </>
+              )}
             </div>
           </TableCell>
         ) : null}
@@ -646,7 +693,8 @@ const PropertyIncomePage = memo(() => {
     queryKey: adminQueryKeys.propertySettings(propertyId),
   });
 
-  const units = unitsQuery.data?.units ?? [];
+  const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
+  const activeUnits = useMemo(() => units.filter((unit) => !unit.isDeleted), [units]);
   const incomeLineTypes = useMemo(
     () => settingsQuery.data?.settings.incomeLineTypes ?? [],
     [settingsQuery.data?.settings.incomeLineTypes]
@@ -681,6 +729,29 @@ const PropertyIncomePage = memo(() => {
     },
     onSuccess: () => {
       toast.success("Other income deleted");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
+
+  const restoreStayMutation = useMutation({
+    mutationFn: (reservation: IPropertyReservation) =>
+      reservationsApi.restore(propertyId, reservation.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to restore stay");
+    },
+    onSuccess: () => {
+      toast.success("Stay restored");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
+
+  const restoreLineMutation = useMutation({
+    mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.restore(propertyId, line.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to restore other income");
+    },
+    onSuccess: () => {
+      toast.success("Other income restored");
       invalidatePropertyIncomeCaches(queryClient, propertyId);
     },
   });
@@ -819,6 +890,8 @@ const PropertyIncomePage = memo(() => {
             onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
             onEditLine={setEditIncomeLine}
             onEditStay={setEditReservation}
+            onRestoreLine={(line) => restoreLineMutation.mutate(line)}
+            onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
             onShowTaxesDetails={setTaxesDetailsStay}
             onSortColumn={toggleSort}
             unitLabelById={unitLabelById}
@@ -858,7 +931,7 @@ const PropertyIncomePage = memo(() => {
           handleEditDialogOpenChange(open, () => setEditReservation(null))
         }
         propertyId={propertyId}
-        units={units}
+        units={activeUnits}
       />
     </>
   );
