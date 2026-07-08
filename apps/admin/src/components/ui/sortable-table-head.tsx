@@ -65,6 +65,7 @@ export const SortableTableHead = memo(
     return (
       <TableHead aria-sort={ariaSort} className={align === "right" ? "text-right" : undefined}>
         <span className={cn("inline-flex items-center gap-1", align === "right" && "justify-end")}>
+          {info ? <ColumnInfoTooltip label={label} text={info} /> : null}
           <button
             className={cn(
               "inline-flex items-center gap-1 rounded-sm font-medium transition-colors",
@@ -76,7 +77,6 @@ export const SortableTableHead = memo(
             {label}
             <SortIcon direction={direction} />
           </button>
-          {info ? <ColumnInfoTooltip label={label} text={info} /> : null}
         </span>
       </TableHead>
     );
