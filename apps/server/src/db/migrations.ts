@@ -1390,4 +1390,39 @@ export const migrations: IMigration[] = [
     },
     version: 30,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_long_stays CASCADE;`);
+    },
+    name: "create_property_long_stays",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_long_stays (
+          id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id       UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          unit_id           UUID NOT NULL REFERENCES property_units(id) ON DELETE RESTRICT,
+          guest_name        VARCHAR(255) NOT NULL,
+          lease_start_date  DATE NOT NULL,
+          term_months       INTEGER NOT NULL,
+          monthly_rent      NUMERIC(12,2) NOT NULL DEFAULT 0,
+          created_at        TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at        TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_long_stays_updated_at
+          BEFORE UPDATE ON property_long_stays
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(
+        `CREATE INDEX idx_property_long_stays_property_id ON property_long_stays(property_id);`
+      );
+      await client.query(
+        `CREATE INDEX idx_property_long_stays_unit_id ON property_long_stays(unit_id);`
+      );
+    },
+    version: 31,
+  },
 ];

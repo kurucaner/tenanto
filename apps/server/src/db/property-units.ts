@@ -10,6 +10,7 @@ import { pool } from "./pool";
 
 export interface IUnitDeleteBlockers {
   incomeLineCount: number;
+  longStayCount: number;
   reservationCount: number;
 }
 
@@ -53,16 +54,19 @@ export const propertyUnitsDb = {
   async getUnitDeleteBlockers(unitId: string): Promise<IUnitDeleteBlockers> {
     const result = await pool.query<{
       income_line_count: number;
+      long_stay_count: number;
       reservation_count: number;
     }>(
       `SELECT
          (SELECT COUNT(*)::int FROM property_reservations WHERE unit_id = $1) AS reservation_count,
-         (SELECT COUNT(*)::int FROM property_income_lines WHERE unit_id = $1) AS income_line_count`,
+         (SELECT COUNT(*)::int FROM property_income_lines WHERE unit_id = $1) AS income_line_count,
+         (SELECT COUNT(*)::int FROM property_long_stays WHERE unit_id = $1) AS long_stay_count`,
       [unitId]
     );
     const row = result.rows[0];
     return {
       incomeLineCount: row?.income_line_count ?? 0,
+      longStayCount: row?.long_stay_count ?? 0,
       reservationCount: row?.reservation_count ?? 0,
     };
   },

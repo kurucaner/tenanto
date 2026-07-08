@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { CreateLongStayDialog } from "@/components/long-stays/create-long-stay-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,11 +44,13 @@ RentalTypeBadge.displayName = "RentalTypeBadge";
 const UnitRow = memo(
   ({
     canManage,
+    onAddLongStay,
     onDelete,
     onEdit,
     unit,
   }: {
     canManage: boolean;
+    onAddLongStay: (unit: IPropertyUnit) => void;
     onDelete: (unit: IPropertyUnit) => void;
     onEdit: (unit: IPropertyUnit) => void;
     unit: IPropertyUnit;
@@ -64,6 +67,17 @@ const UnitRow = memo(
       {canManage ? (
         <TableCell>
           <div className="flex items-center gap-1">
+            {unit.rentalType === UnitRentalType.LONG_TERM ? (
+              <Button
+                aria-label="Add long stay"
+                onClick={() => onAddLongStay(unit)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <CirclePlus className="size-3.5" />
+              </Button>
+            ) : null}
             <Button
               aria-label="Edit unit"
               onClick={() => onEdit(unit)}
@@ -96,6 +110,7 @@ export const PropertyUnitsPage = memo(() => {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
+  const [longStayUnit, setLongStayUnit] = useState<IPropertyUnit | null>(null);
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
@@ -170,6 +185,7 @@ export const PropertyUnitsPage = memo(() => {
                     <UnitRow
                       canManage={canManage}
                       key={unit.id}
+                      onAddLongStay={setLongStayUnit}
                       onDelete={handleDelete}
                       onEdit={setEditUnit}
                       unit={unit}
@@ -192,6 +208,17 @@ export const PropertyUnitsPage = memo(() => {
           open={true}
           propertyId={propertyId}
           unit={editUnit}
+        />
+      ) : null}
+      {longStayUnit ? (
+        <CreateLongStayDialog
+          key={longStayUnit.id}
+          onOpenChange={(open) => {
+            if (!open) setLongStayUnit(null);
+          }}
+          open={true}
+          propertyId={propertyId}
+          unit={longStayUnit}
         />
       ) : null}
     </>

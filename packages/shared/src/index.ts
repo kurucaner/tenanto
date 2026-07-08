@@ -131,6 +131,9 @@ export {
   type TReservationStatus,
 } from "./property-reservation-types";
 
+// Property Long Stay Types
+export type { ICreatePropertyLongStayBody, IPropertyLongStay } from "./property-long-stay-types";
+
 // Property Income Line Type Config
 export {
   DEFAULT_EXTRA_CLEANING_TYPE_NAME,

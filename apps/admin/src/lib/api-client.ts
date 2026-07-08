@@ -16,6 +16,7 @@ import {
   type IAppConfig,
   type ICreatePropertyExpenseBody,
   type ICreatePropertyIncomeLineBody,
+  type ICreatePropertyLongStayBody,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type IHomeFinancialOverview,
@@ -26,6 +27,7 @@ import {
   type IPropertyExpensesListQuery,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
+  type IPropertyLongStay,
   type IPropertyMember,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
@@ -566,6 +568,14 @@ export const unitsApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+};
+
+export const longStaysApi = {
+  create: (propertyId: string, body: ICreatePropertyLongStayBody) =>
+    authenticatedRequest<{ longStay: IPropertyLongStay }>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays`,
+      { body: JSON.stringify(body), method: "POST" }
     ),
 };
 

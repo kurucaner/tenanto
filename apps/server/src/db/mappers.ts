@@ -5,6 +5,7 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLineType,
   type IPropertyInvite,
+  type IPropertyLongStay,
   type IPropertyMember,
   type IPropertyReservation,
   type IPropertySettings,
@@ -182,6 +183,18 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   roomRate: Number(row.room_rate),
   status: row.status as TReservationStatus,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
+  unitId: row.unit_id as string,
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay => ({
+  createdAt: (row.created_at as Date).toISOString(),
+  guestName: row.guest_name as string,
+  id: row.id as string,
+  leaseStartDate: formatDateColumn(row.lease_start_date),
+  monthlyRent: Number(row.monthly_rent),
+  propertyId: row.property_id as string,
+  termMonths: row.term_months as number,
   unitId: row.unit_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),
 });

@@ -276,7 +276,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       }
 
       const blockers = await propertyUnitsDb.getUnitDeleteBlockers(unitId);
-      if (blockers.reservationCount > 0 || blockers.incomeLineCount > 0) {
+      if (blockers.reservationCount > 0 || blockers.incomeLineCount > 0 || blockers.longStayCount > 0) {
         const code = getUnitDeleteBlockerCode(blockers);
         const payload = {
           error: formatUnitDeleteBlockedMessage(blockers),
