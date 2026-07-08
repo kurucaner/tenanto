@@ -6,9 +6,16 @@ import { notifySupportAttachmentStatus } from "@/lib/support-attachment-status-r
 import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
 import {
   type INotificationStreamSupportAttachmentUpdatedData,
+  type IUserNotification,
   type TSupportStagedUploadStatus,
   UserType,
 } from "@/packages/shared";
+
+function isPropertyMembershipNotification(
+  type: string
+): type is "property_member_added" | "property_member_removed" {
+  return type === "property_member_added" || type === "property_member_removed";
+}
 
 function isSupportStagedUploadStatus(value: unknown): value is TSupportStagedUploadStatus {
   return value === "pending" || value === "confirmed" || value === "linked";
@@ -29,6 +36,23 @@ export function parseSupportAttachmentUpdatedData(
     storageKey,
     ...(typeof supportRequestId === "string" ? { supportRequestId } : {}),
   };
+}
+
+export function handlePropertyMembershipNotification(
+  queryClient: QueryClient,
+  notification: IUserNotification
+): void {
+  if (!isPropertyMembershipNotification(notification.type)) {
+    return;
+  }
+
+  queryClient.invalidateQueries({ queryKey: ["admin", "properties"] });
+
+  if (notification.resourceId != null) {
+    queryClient.invalidateQueries({
+      queryKey: adminQueryKeys.propertyDetail(notification.resourceId),
+    });
+  }
 }
 
 export function handleSupportRequestUpdated(

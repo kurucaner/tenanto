@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-client";
 import { NOTIFICATION_STREAM_CLIENT_ID_KEY } from "@/lib/notification-stream-constants";
 import {
+  handlePropertyMembershipNotification,
   handleSupportAttachmentUpdated,
   handleSupportRequestUpdated,
   parseSupportAttachmentUpdatedData,
@@ -216,9 +217,11 @@ export function useNotificationStream(
       }
 
       if (event.type === "notifications.new") {
-        if (userType === UserType.USER && !suppressToastsRef.current) {
-          const notification = parseStreamNotification(event.data.notification);
-          if (notification != null) {
+        const notification = parseStreamNotification(event.data.notification);
+        if (notification != null && userType === UserType.USER) {
+          handlePropertyMembershipNotification(queryClient, notification);
+
+          if (!suppressToastsRef.current) {
             showNotificationToast(notification);
           }
         }
