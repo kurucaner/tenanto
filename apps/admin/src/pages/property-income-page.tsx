@@ -50,6 +50,7 @@ import {
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  getStayAverageDailyRate,
   getStayNetPayout,
   getStayTaxesTotal,
   IncomeEntryKind,
@@ -104,7 +105,7 @@ const INCOME_TABLE_COLUMNS: {
   { id: "nights", label: "Nights" },
   { id: "channel", label: "Channel" },
   { id: "status", label: "Status" },
-  { id: "roomRate", label: "Room rate / night", align: "right" },
+  { id: "roomTotal", label: "Room total", align: "right" },
   { id: "cleaning", label: "Cleaning", align: "right" },
   {
     align: "right",
@@ -499,7 +500,16 @@ const IncomeEntryRow = memo(
           <TableCell>
             <ReservationStatusBadge status={stay.status} />
           </TableCell>
-          <TableCell className="text-right">{formatMoney(stay.roomRate)}</TableCell>
+          <TableCell className="text-right">
+            <div className="flex flex-col items-end">
+              <span>{formatMoney(stay.roomTotal)}</span>
+              {stay.nights > 1 ? (
+                <span className="text-muted-foreground text-xs">
+                  {formatMoney(getStayAverageDailyRate(stay))}/night
+                </span>
+              ) : null}
+            </div>
+          </TableCell>
           <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
           <TableCell className="text-right">
             <div className="flex flex-col items-end gap-1">

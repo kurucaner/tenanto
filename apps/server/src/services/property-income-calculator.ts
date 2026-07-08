@@ -48,7 +48,7 @@ export interface ICalculateStayIncomeInput {
   channel: TReservationChannel;
   cleaningFee: number;
   nights: number;
-  roomRate: number;
+  roomTotal: number;
   settings: IPropertySettings;
   taxRates: IPropertyTaxRate[];
   unitRentalType: TUnitRentalType;
@@ -57,8 +57,9 @@ export interface ICalculateStayIncomeInput {
 export function calculateStayIncome(
   input: ICalculateStayIncomeInput
 ): Omit<IPropertyReservationComputedFields, "nights"> {
-  const { channel, cleaningFee, nights, roomRate, settings, taxRates, unitRentalType } = input;
-  const roomTotal = roundMoney(roomRate * nights);
+  const { channel, cleaningFee, roomTotal: inputRoomTotal, settings, taxRates, unitRentalType } =
+    input;
+  const roomTotal = roundMoney(inputRoomTotal);
 
   if (unitRentalType === UnitRentalType.LONG_TERM) {
     return {

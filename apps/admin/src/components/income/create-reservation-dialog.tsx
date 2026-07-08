@@ -7,6 +7,7 @@ import {
   reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
+import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,7 +54,7 @@ export const CreateReservationDialog = memo(
     const [checkOut, setCheckOut] = useState("");
     const [status, setStatus] = useState<TReservationStatus>(ReservationStatus.ACTIVE);
     const [channel, setChannel] = useState<TReservationChannel>(ReservationChannel.AIRBNB);
-    const [roomRate, setRoomRate] = useState("");
+    const [roomTotal, setRoomTotal] = useState("");
     const [cleaningFee, setCleaningFee] = useState("");
 
     const unitsQuery = useQuery({
@@ -71,7 +72,7 @@ export const CreateReservationDialog = memo(
           cleaningFee: Number(cleaningFee) || 0,
           guestName: guestName.trim(),
           reservationNumber: reservationNumber.trim() || undefined,
-          roomRate: Number(roomRate) || 0,
+          roomTotal: Number(roomTotal) || 0,
           status,
           unitId,
         }),
@@ -94,7 +95,7 @@ export const CreateReservationDialog = memo(
       setCheckOut("");
       setStatus(ReservationStatus.ACTIVE);
       setChannel(ReservationChannel.AIRBNB);
-      setRoomRate("");
+      setRoomTotal("");
       setCleaningFee("");
     };
 
@@ -227,18 +228,13 @@ export const CreateReservationDialog = memo(
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="room-rate">Room rate (per night)</Label>
-                <Input
-                  id="room-rate"
-                  inputMode="decimal"
-                  onChange={(e) => {
-                    if (isValidDecimalInput(e.target.value)) setRoomRate(e.target.value);
-                  }}
-                  type="text"
-                  value={roomRate}
-                />
-              </div>
+              <ReservationRoomTotalField
+                checkIn={checkIn}
+                checkOut={checkOut}
+                id="room-total"
+                onChange={setRoomTotal}
+                value={roomTotal}
+              />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cleaning-fee">Cleaning fee</Label>
                 <Input

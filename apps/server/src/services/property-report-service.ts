@@ -285,7 +285,7 @@ export function buildPropertyReportSummary(
     grossIncome = roundMoney(grossIncome + stay.grossIncome);
     netIncome = roundMoney(netIncome + stay.netIncome);
 
-    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + stay.roomRate * stay.nights);
+    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + stay.roomTotal);
     salesTypeBreakdown.cleaningFromStays = roundMoney(
       salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
     );
@@ -304,7 +304,7 @@ export function buildPropertyReportSummary(
       if (isOccupancyStay(stay.status)) {
         const booked = nightsOverlappingRange(stay.checkIn, stay.checkOut, query.from, query.to);
         unit.bookedNights += booked;
-        unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomRate * stay.nights);
+        unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomTotal);
         unit.adrNights += stay.nights;
       }
     }

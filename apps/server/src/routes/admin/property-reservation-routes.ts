@@ -95,8 +95,8 @@ function parseCreateReservationBody(
     };
   }
 
-  const roomRate = parseMoney(r["roomRate"]);
-  if (roomRate === null) return { error: "roomRate must be a non-negative number", ok: false };
+  const roomTotal = parseMoney(r["roomTotal"]);
+  if (roomTotal === null) return { error: "roomTotal must be a non-negative number", ok: false };
 
   const cleaningFee = parseMoney(r["cleaningFee"]);
   if (cleaningFee === null) {
@@ -119,7 +119,7 @@ function parseCreateReservationBody(
       cleaningFee,
       guestName: r["guestName"].trim(),
       reservationNumber,
-      roomRate,
+      roomTotal,
       status,
       unitId,
     },
@@ -135,7 +135,7 @@ const UPDATE_FIELDS = [
   "checkOut",
   "status",
   "channel",
-  "roomRate",
+  "roomTotal",
   "cleaningFee",
 ] as const;
 
@@ -196,10 +196,10 @@ function parseUpdateReservationBody(
     }
     body.channel = channel;
   }
-  if ("roomRate" in r) {
-    const roomRate = parseMoney(r["roomRate"]);
-    if (roomRate === null) return { error: "roomRate must be a non-negative number", ok: false };
-    body.roomRate = roomRate;
+  if ("roomTotal" in r) {
+    const roomTotal = parseMoney(r["roomTotal"]);
+    if (roomTotal === null) return { error: "roomTotal must be a non-negative number", ok: false };
+    body.roomTotal = roomTotal;
   }
   if ("cleaningFee" in r) {
     const cleaningFee = parseMoney(r["cleaningFee"]);
@@ -340,7 +340,7 @@ async function buildComputedFields(
     checkIn: string;
     checkOut: string;
     cleaningFee: number;
-    roomRate: number;
+    roomTotal: number;
     unitId: string;
   },
   reply: FastifyReply,
@@ -371,7 +371,7 @@ async function buildComputedFields(
     channel: input.channel,
     cleaningFee: input.cleaningFee,
     nights,
-    roomRate: input.roomRate,
+    roomTotal: input.roomTotal,
     settings,
     taxRates: settings.taxRates,
     unitRentalType: unit.rentalType,
@@ -394,7 +394,7 @@ function mergeReservationInput(
       patch.reservationNumber === undefined
         ? (existing.reservationNumber ?? undefined)
         : (patch.reservationNumber ?? undefined),
-    roomRate: patch.roomRate ?? existing.roomRate,
+    roomTotal: patch.roomTotal ?? existing.roomTotal,
     status: patch.status ?? existing.status,
     unitId: patch.unitId ?? existing.unitId,
   };

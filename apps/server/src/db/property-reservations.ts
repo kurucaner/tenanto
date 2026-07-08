@@ -26,7 +26,7 @@ export const propertyReservationsDb = {
          nights,
          status,
          channel,
-         room_rate,
+         room_total,
          cleaning_fee,
          gross_income,
          tax_breakdown,
@@ -50,7 +50,7 @@ export const propertyReservationsDb = {
         computed.nights,
         input.status,
         input.channel,
-        input.roomRate,
+        input.roomTotal,
         input.cleaningFee,
         computed.grossIncome,
         JSON.stringify(computed.taxBreakdown),
@@ -199,9 +199,9 @@ export const propertyReservationsDb = {
       setClauses.push(`channel = $${p++}::property_reservation_channel`);
       values.push(input.channel);
     }
-    if (input.roomRate !== undefined) {
-      setClauses.push(`room_rate = $${p++}`);
-      values.push(input.roomRate);
+    if (input.roomTotal !== undefined) {
+      setClauses.push(`room_total = $${p++}`);
+      values.push(input.roomTotal);
     }
     if (input.cleaningFee !== undefined) {
       setClauses.push(`cleaning_fee = $${p++}`);

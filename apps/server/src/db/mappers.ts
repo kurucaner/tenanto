@@ -184,7 +184,7 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   nights: row.nights as number,
   propertyId: row.property_id as string,
   reservationNumber: (row.reservation_number as string) ?? null,
-  roomRate: Number(row.room_rate),
+  roomTotal: Number(row.room_total),
   status: row.status as TReservationStatus,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   unitId: row.unit_id as string,

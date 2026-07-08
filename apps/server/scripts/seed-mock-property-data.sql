@@ -192,7 +192,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION seed_calc_stay_income(
   p_nights INTEGER,
-  p_room_rate NUMERIC,
+  p_room_total NUMERIC,
   p_cleaning_fee NUMERIC,
   p_channel property_reservation_channel,
   p_rental_type property_unit_rental_type,
@@ -219,7 +219,7 @@ DECLARE
   v_commission_rate NUMERIC;
   v_commission NUMERIC;
 BEGIN
-  v_room_total := seed_round_money(p_room_rate * p_nights);
+  v_room_total := seed_round_money(p_room_total);
 
   IF p_rental_type = 'long_term'::property_unit_rental_type THEN
     gross_income := v_room_total;
@@ -566,7 +566,7 @@ INSERT INTO property_reservations (
   nights,
   status,
   channel,
-  room_rate,
+  room_total,
   cleaning_fee,
   gross_income,
   tax_breakdown,
@@ -585,7 +585,7 @@ SELECT
   r.nights,
   r.status::property_reservation_status,
   r.channel::property_reservation_channel,
-  r.room_rate,
+  r.room_total,
   r.cleaning_fee,
   calc.gross_income,
   calc.tax_breakdown,
@@ -625,9 +625,12 @@ FROM (
     (ARRAY['airbnb', 'booking', 'expedia', 'direct'])[1 + ((prop_idx + stay_idx) % 4)] AS channel,
     CASE
       WHEN u.rental_type = 'long_term'::property_unit_rental_type
-        THEN seed_round_money(1800 + (prop_idx * 120) + (stay_idx * 35))
-      ELSE seed_round_money(120 + (prop_idx * 15) + (stay_idx * 8) + ((prop_idx + stay_idx) % 5) * 20)
-    END AS room_rate,
+        THEN seed_round_money((1800 + (prop_idx * 120) + (stay_idx * 35)) * (2 + ((prop_idx + stay_idx) % 6)))
+      ELSE seed_round_money(
+        (120 + (prop_idx * 15) + (stay_idx * 8) + ((prop_idx + stay_idx) % 5) * 20)
+        * (2 + ((prop_idx + stay_idx) % 6))
+      )
+    END AS room_total,
     CASE
       WHEN u.rental_type = 'long_term'::property_unit_rental_type THEN 0
       ELSE seed_round_money(65 + ((prop_idx + stay_idx) % 4) * 15)
@@ -647,7 +650,7 @@ FROM (
 ) AS r
 CROSS JOIN LATERAL seed_calc_stay_income(
   r.nights,
-  r.room_rate,
+  r.room_total,
   r.cleaning_fee,
   r.channel::property_reservation_channel,
   r.rental_type,

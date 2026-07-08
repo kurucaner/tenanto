@@ -27,7 +27,7 @@ function calc(channel: (typeof ReservationChannel)[keyof typeof ReservationChann
     channel,
     cleaningFee: 0,
     nights: 10,
-    roomRate: 100,
+    roomTotal: 1000,
     settings: SETTINGS,
     taxRates,
     unitRentalType: UnitRentalType.SHORT_TERM,

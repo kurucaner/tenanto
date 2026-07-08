@@ -6,7 +6,8 @@ Short-stay reservations only. All amounts are rounded to 2 decimal places.
 
 | Term | Formula |
 |------|---------|
-| **Room total** | `room rate × nights` |
+| **Room total** | Stored lodging amount for the stay (what operators enter from booking confirmations) |
+| **Avg / night** | `room total ÷ nights` (display only, not stored) |
 | **Taxable base** | `room total + cleaning fee` |
 | **Taxes** | Each property tax rate applied to the taxable base (e.g. Sales tax, Resort tax) |
 | **Total taxes** | Sum of all tax line amounts |

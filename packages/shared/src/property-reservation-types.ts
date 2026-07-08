@@ -37,7 +37,7 @@ export interface IPropertyReservation {
   nights: number;
   propertyId: string;
   reservationNumber: string | null;
-  roomRate: number;
+  roomTotal: number;
   status: TReservationStatus;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   unitId: string;
@@ -51,7 +51,7 @@ export interface ICreatePropertyReservationBody {
   cleaningFee: number;
   guestName: string;
   reservationNumber?: string;
-  roomRate: number;
+  roomTotal: number;
   status: TReservationStatus;
   unitId: string;
 }
@@ -63,7 +63,7 @@ export interface IUpdatePropertyReservationBody {
   cleaningFee?: number;
   guestName?: string;
   reservationNumber?: string | null;
-  roomRate?: number;
+  roomTotal?: number;
   status?: TReservationStatus;
   unitId?: string;
 }

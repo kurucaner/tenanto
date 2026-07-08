@@ -54,6 +54,13 @@ export function getStayTaxesTotal(stay: Pick<IPropertyReservation, "taxBreakdown
   return roundMoney(sumTaxBreakdown(stay.taxBreakdown));
 }
 
+export function getStayAverageDailyRate(
+  stay: Pick<IPropertyReservation, "nights" | "roomTotal">
+): number {
+  if (stay.nights < 1) return 0;
+  return roundMoney(stay.roomTotal / stay.nights);
+}
+
 // Amount of the "Resort tax" line in a tax breakdown, matched by name (case-insensitive),
 // or 0 if the property has no resort tax.
 export function getResortTaxAmount(taxBreakdown: IPropertyTaxBreakdownItem[]): number {

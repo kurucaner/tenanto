@@ -1518,4 +1518,49 @@ export const migrations: IMigration[] = [
     },
     version: 35,
   },
+  {
+    down: async (_client: TDBClient) => {
+      // Irreversible: room_total cannot be losslessly converted back to per-night room_rate.
+    },
+    name: "room_rate_to_room_total",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          IF EXISTS (SELECT 1 FROM property_reservations WHERE nights < 1) THEN
+            RAISE EXCEPTION 'room_total migration: nights must be >= 1';
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN IF NOT EXISTS room_total NUMERIC(12,2);
+      `);
+
+      await client.query(`
+        UPDATE property_reservations
+        SET room_total = ROUND(room_rate * nights, 2)
+        WHERE room_total IS NULL;
+      `);
+
+      await client.query(`
+        DO $$ BEGIN
+          IF EXISTS (SELECT 1 FROM property_reservations WHERE room_total IS NULL) THEN
+            RAISE EXCEPTION 'room_total migration: backfill incomplete';
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ALTER COLUMN room_total SET NOT NULL,
+          ALTER COLUMN room_total SET DEFAULT 0;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations DROP COLUMN room_rate;
+      `);
+    },
+    version: 36,
+  },
 ];

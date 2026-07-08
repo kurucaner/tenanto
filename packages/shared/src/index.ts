@@ -194,6 +194,7 @@ export {
 export {
   getChannelCommissionRate,
   getResortTaxAmount,
+  getStayAverageDailyRate,
   getStayNetPayout,
   getStayTaxesTotal,
   sumTaxBreakdown,

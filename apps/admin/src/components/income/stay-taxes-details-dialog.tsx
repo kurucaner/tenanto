@@ -10,6 +10,7 @@ import {
 import { formatMoney } from "@/lib/format-money";
 import {
   formatRateAsPercent,
+  getStayAverageDailyRate,
   getStayTaxesTotal,
   type IPropertyReservation,
 } from "@/packages/shared";
@@ -21,7 +22,7 @@ interface StayTaxesDetailsDialogProps {
 }
 
 function getTaxableSubtotal(stay: IPropertyReservation): number {
-  return Math.round((stay.roomRate * stay.nights + stay.cleaningFee) * 100) / 100;
+  return Math.round((stay.roomTotal + stay.cleaningFee) * 100) / 100;
 }
 
 const FeeLineRow = memo(({ amount, label }: { amount: number; label: string }) => (
@@ -39,8 +40,12 @@ export const StayTaxesDetailsDialog = memo(
     }
 
     const taxesTotal = getStayTaxesTotal(stay);
-    const roomTotal = Math.round(stay.roomRate * stay.nights * 100) / 100;
+    const avgDailyRate = getStayAverageDailyRate(stay);
     const taxableSubtotal = getTaxableSubtotal(stay);
+    const roomLabel =
+      stay.nights === 1
+        ? `Room (${formatMoney(stay.roomTotal)} total)`
+        : `Room (${formatMoney(stay.roomTotal)} total, ${formatMoney(avgDailyRate)}/night × ${stay.nights} nights)`;
 
     return (
       <Dialog onOpenChange={onOpenChange} open={open}>
@@ -54,10 +59,7 @@ export const StayTaxesDetailsDialog = memo(
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-2 border-b pb-4">
-              <FeeLineRow
-                amount={roomTotal}
-                label={`Room (${formatMoney(stay.roomRate)} × ${stay.nights} ${stay.nights === 1 ? "night" : "nights"})`}
-              />
+              <FeeLineRow amount={stay.roomTotal} label={roomLabel} />
               <FeeLineRow amount={stay.cleaningFee} label="Cleaning fee" />
               <div className="flex items-center justify-between gap-4 text-sm font-medium">
                 <span>Taxable subtotal</span>
