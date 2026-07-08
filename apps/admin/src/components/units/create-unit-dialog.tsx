@@ -17,7 +17,7 @@ import { LayoutPicker } from "@/components/units/layout-picker";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { cn } from "@/lib/utils";
-import { type TUnitRentalType, UnitKind, UnitRentalType } from "@/packages/shared";
+import { type TUnitRentalType, UnitRentalType } from "@/packages/shared";
 
 const RENTAL_TYPE_OPTIONS: { label: string; value: TUnitRentalType }[] = [
   { label: "Short Term", value: UnitRentalType.SHORT_TERM },
@@ -42,7 +42,6 @@ export const CreateUnitDialog = memo(
         unitsApi.create(propertyId, {
           layout: layout.trim(),
           rentalType,
-          unitKind: UnitKind.RENTABLE,
           unitNumber: unitNumber.trim(),
         }),
       onError: (e) => {

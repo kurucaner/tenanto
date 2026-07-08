@@ -14,7 +14,6 @@ import {
   type TReservationChannel,
   type TReservationStatus,
   type TUnitRentalType,
-  UnitKind,
   UnitRentalType,
 } from "@/packages/shared";
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
@@ -318,12 +317,6 @@ async function resolveRentableUnitForProperty(
   const unit = await propertyUnitsDb.findById(unitId);
   if (!unit || unit.propertyId !== propertyId) {
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
-    return null;
-  }
-  if (unit.unitKind === UnitKind.AMENITY) {
-    void reply
-      .status(HttpStatus.BAD_REQUEST)
-      .send({ error: "Stays can only be added to rentable units." });
     return null;
   }
   return unit;

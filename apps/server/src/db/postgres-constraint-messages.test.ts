@@ -21,7 +21,7 @@ describe("postgres constraint messages", () => {
 
   test("maps unique unit number constraint", () => {
     expect(getConstraintMessage("property_units_property_id_unit_number_key", "fallback")).toBe(
-      "A unit or amenity with this name already exists on this property"
+      "A unit with this name already exists on this property"
     );
     expect(getConstraintErrorCode("property_units_property_id_unit_number_key")).toBe(
       "DUPLICATE_UNIT_NUMBER"

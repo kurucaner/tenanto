@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { type ChangeEvent, memo, useCallback, useMemo } from "react";
+import { type ChangeEvent, memo, useCallback } from "react";
 
 import {
   incomeLineSelectClassName,
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
 import { unitsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { type IPropertyReservation, type IPropertyUnit, isAmenityUnit } from "@/packages/shared";
+import { type IPropertyReservation, type IPropertyUnit } from "@/packages/shared";
 
 const EMPTY_UNITS: IPropertyUnit[] = [];
 
@@ -200,9 +200,6 @@ export const IncomeLineUnitSection = memo(
 
     const units = unitsProp ?? unitsQuery.data?.units ?? EMPTY_UNITS;
 
-    const selectedUnit = useMemo(() => units.find((unit) => unit.id === unitId), [units, unitId]);
-    const forAmenityUnit = selectedUnit != null && isAmenityUnit(selectedUnit);
-
     const handleUnitChange = useCallback(
       (e: ChangeEvent<HTMLSelectElement>) => {
         onUnitChange(e.target.value);
@@ -232,7 +229,6 @@ export const IncomeLineUnitSection = memo(
           <LockedStaySummary stay={lockedStay} />
         ) : (
           <LinkToStayField
-            forAmenityUnit={forAmenityUnit}
             id={`${fieldIdPrefix}-reservation`}
             includeReservationId={includeReservationId}
             onReservationIdChange={onReservationIdChange}

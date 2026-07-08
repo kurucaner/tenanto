@@ -1,13 +1,10 @@
 import type { IUnitDeleteBlockers } from "@/db/property-units";
-import { type TUnitKind, UnitKind } from "@/packages/shared";
 
 export const UNIT_DELETE_FOREIGN_KEY_FALLBACK =
   "This unit cannot be deleted because it is linked to reservations or income records";
 
-export function duplicateUnitNumberMessage(unitKind: TUnitKind): string {
-  return unitKind === UnitKind.AMENITY
-    ? "An amenity with this name already exists on this property"
-    : "A unit with this number already exists on this property";
+export function duplicateUnitNumberMessage(): string {
+  return "A unit with this number already exists on this property";
 }
 
 export function formatUnitDeleteBlockedMessage(blockers: IUnitDeleteBlockers): string {

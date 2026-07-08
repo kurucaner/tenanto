@@ -21,18 +21,14 @@ export function daysAgoIsoDate(days: number): string {
 }
 
 export function buildStayLinkPickerFilters(input: {
-  forAmenityUnit?: boolean;
   includeReservationId?: string;
   transactionDate?: string;
   unitId: string;
 }): IPropertyReservationsListQuery {
   const filters: IPropertyReservationsListQuery = {
     limit: STAY_PICKER_LIMIT,
+    unitId: input.unitId,
   };
-
-  if (!input.forAmenityUnit && input.unitId) {
-    filters.unitId = input.unitId;
-  }
 
   if (input.includeReservationId) {
     filters.includeReservationId = input.includeReservationId;

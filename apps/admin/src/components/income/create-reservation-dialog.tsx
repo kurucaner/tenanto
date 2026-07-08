@@ -23,7 +23,6 @@ import { reservationsApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
-  filterRentableUnits,
   ReservationChannel,
   ReservationStatus,
   type TReservationChannel,
@@ -91,7 +90,7 @@ export const CreateReservationDialog = memo(
       setCleaningFee("");
     };
 
-    const units = filterRentableUnits(unitsQuery.data?.units ?? []);
+    const units = unitsQuery.data?.units ?? [];
     const canSubmit =
       unitId !== "" &&
       guestName.trim() !== "" &&

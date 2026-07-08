@@ -23,7 +23,6 @@ import { reservationsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
-  filterRentableUnits,
   type IPropertyReservation,
   type IPropertyUnit,
   type TReservationChannel,
@@ -41,7 +40,6 @@ interface EditReservationDialogProps {
 export const EditReservationDialog = memo(
   ({ onOpenChange, open, propertyId, reservation, units }: EditReservationDialogProps) => {
     const queryClient = useQueryClient();
-    const rentableUnits = filterRentableUnits(units);
     const [unitId, setUnitId] = useState(reservation.unitId);
     const [guestName, setGuestName] = useState(reservation.guestName);
     const [reservationNumber, setReservationNumber] = useState(reservation.reservationNumber ?? "");
@@ -99,7 +97,7 @@ export const EditReservationDialog = memo(
                 onChange={(e) => setUnitId(e.target.value)}
                 value={unitId}
               >
-                <PropertyUnitSelectOptions units={rentableUnits} />
+                <PropertyUnitSelectOptions units={units} />
               </select>
             </div>
 

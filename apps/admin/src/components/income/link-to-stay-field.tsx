@@ -14,7 +14,6 @@ import type { IPropertyReservation } from "@/packages/shared";
 
 interface LinkToStayFieldProps {
   disabled?: boolean;
-  forAmenityUnit?: boolean;
   id: string;
   includeReservationId?: string;
   onReservationIdChange: (reservationId: string) => void;
@@ -32,7 +31,6 @@ function formatStayOptionLabel(reservation: IPropertyReservation): string {
 export const LinkToStayField = memo(
   ({
     disabled = false,
-    forAmenityUnit = false,
     id,
     includeReservationId,
     onReservationIdChange,
@@ -44,12 +42,11 @@ export const LinkToStayField = memo(
     const pickerFilters = useMemo(
       () =>
         buildStayLinkPickerFilters({
-          forAmenityUnit,
           includeReservationId: includeReservationId || reservationId || undefined,
           transactionDate: transactionDate || undefined,
           unitId,
         }),
-      [forAmenityUnit, includeReservationId, reservationId, transactionDate, unitId]
+      [includeReservationId, reservationId, transactionDate, unitId]
     );
 
     const reservationsQuery = useQuery({
@@ -87,9 +84,7 @@ export const LinkToStayField = memo(
               ? "Loading stays…"
               : reservations.length === 0
                 ? "No matching stays found. Adjust the date or leave unlinked."
-                : forAmenityUnit
-                  ? `Showing all property stays. ${helperText}`
-                  : `Showing stays for this unit. ${helperText}`}
+                : `Showing stays for this unit. ${helperText}`}
         </p>
       </div>
     );

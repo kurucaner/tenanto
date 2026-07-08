@@ -1,19 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { UnitKind } from "@/packages/shared";
-
 import { duplicateUnitNumberMessage, formatUnitDeleteBlockedMessage } from "./property-unit-errors";
 
 describe("duplicateUnitNumberMessage", () => {
-  test("returns unit message for rentable kind", () => {
-    expect(duplicateUnitNumberMessage(UnitKind.RENTABLE)).toBe(
+  test("returns unit duplicate message", () => {
+    expect(duplicateUnitNumberMessage()).toBe(
       "A unit with this number already exists on this property"
-    );
-  });
-
-  test("returns amenity message for amenity kind", () => {
-    expect(duplicateUnitNumberMessage(UnitKind.AMENITY)).toBe(
-      "An amenity with this name already exists on this property"
     );
   });
 });

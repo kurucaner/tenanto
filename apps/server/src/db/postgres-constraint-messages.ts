@@ -3,7 +3,7 @@ const CONSTRAINT_MESSAGES: Record<string, string> = {
   property_reservations_unit_id_fkey:
     "This unit cannot be deleted because it has reservation records",
   property_units_property_id_unit_number_key:
-    "A unit or amenity with this name already exists on this property",
+    "A unit with this name already exists on this property",
 };
 
 const CONSTRAINT_ERROR_CODES: Record<string, string> = {
