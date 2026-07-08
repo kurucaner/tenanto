@@ -33,6 +33,72 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "2026.5.0",
+    version: "2026.5.0",
+    publishedAt: "2026-07-08",
+    summary:
+      "Long-term stays, a clearer Income table with a new Net Payout column, tax-free expenses, and property-wide income.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "You can now record long-term stays. Add the guest, lease start date, term in months, and monthly rent — the lease end date is worked out for you.",
+      },
+      {
+        category: "new",
+        description:
+          "The Income table has a new Net Payout column — what you keep after the booking channel's commission but before taxes.",
+      },
+      {
+        category: "new",
+        description:
+          "Hover the info icon on an Income column header to see, in plain words, how that amount is worked out.",
+      },
+      {
+        category: "new",
+        description:
+          "You can now mark an expense as tax-free, and see which expenses are tax-free at a glance in the list.",
+      },
+      {
+        category: "new",
+        description:
+          "When adding other income, choose Property Amenity for money that isn't tied to a specific room — such as a pool, parking, or vending machine.",
+      },
+      {
+        category: "new",
+        description:
+          "Each stay's booking channel commission now appears in its taxes and fees breakdown.",
+      },
+      {
+        category: "improved",
+        description: "The Income table's Net column is now called Net Income, so its meaning is clearer.",
+      },
+      {
+        category: "improved",
+        description:
+          "Adding a stay is now called Add Short Stay and only lists your short-term rooms, keeping short and long-term stays separate.",
+      },
+      {
+        category: "improved",
+        description:
+          "Money fields — rent, room rate, cleaning fee, and amounts — now accept numbers only, with up to two decimal places.",
+      },
+      {
+        category: "improved",
+        description: "The sidebar now remembers whether you left it open or collapsed.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Check-in and check-out dates on stays now follow sensible rules, so you can't pick dates that don't make sense.",
+      },
+      {
+        category: "fixed",
+        description: "Dates on other income and expenses can no longer be set in the future.",
+      },
+    ],
+  },
+  {
     id: "2026.4.0",
     version: "2026.4.0",
     publishedAt: "2026-07-07",
