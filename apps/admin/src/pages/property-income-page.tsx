@@ -116,13 +116,13 @@ const INCOME_TABLE_COLUMNS: {
   {
     align: "right",
     id: "gross",
-    info: "Room total + cleaning fee + taxes.",
+    info: "Total billed for the stay, including taxes.",
     label: "Gross",
   },
   {
     align: "right",
     id: "netPayout",
-    info: "Room total + cleaning fee − channel commission (before taxes).",
+    info: "What you keep after the booking channel's commission.",
     label: "Net Payout",
   },
 ];
