@@ -45,6 +45,7 @@ import {
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  getStayNetPayout,
   getStayTaxesAndFeesTotal,
   IncomeEntryKind,
   type IPropertyIncomeLine,
@@ -86,6 +87,7 @@ function buildMergedEntries(
 const INCOME_TABLE_COLUMNS: {
   align?: "left" | "right";
   id: TIncomeEntrySortColumnId;
+  info?: string;
   label: string;
   sortable?: boolean;
 }[] = [
@@ -99,9 +101,30 @@ const INCOME_TABLE_COLUMNS: {
   { id: "status", label: "Status" },
   { id: "roomRate", label: "Room rate / night", align: "right" },
   { id: "cleaning", label: "Cleaning", align: "right" },
-  { id: "taxesFees", label: "Taxes & Fees", align: "right" },
-  { id: "gross", label: "Gross", align: "right" },
-  { id: "net", label: "Net", align: "right" },
+  {
+    align: "right",
+    id: "taxesFees",
+    info: "Applicable taxes + channel commission.",
+    label: "Taxes & Fees",
+  },
+  {
+    align: "right",
+    id: "gross",
+    info: "Room total + cleaning fee + taxes.",
+    label: "Gross",
+  },
+  {
+    align: "right",
+    id: "netPayout",
+    info: "Room total + cleaning fee − channel commission (before taxes).",
+    label: "Net Payout",
+  },
+  {
+    align: "right",
+    id: "net",
+    info: "Room total + cleaning fee − taxes − channel commission.",
+    label: "Net Income",
+  },
 ];
 
 function buildDateFilters(from: string, to: string, unitId: string) {
@@ -249,6 +272,7 @@ const PropertyIncomeEntriesTable = memo(
                   align={column.align}
                   ariaSort={getColumnAriaSort(column.id)}
                   direction={getColumnDirection(column.id)}
+                  info={column.info}
                   key={column.id}
                   label={column.label}
                   onSort={() => onSortColumn(column.id)}
@@ -268,7 +292,7 @@ const PropertyIncomeEntriesTable = memo(
           <TableBody>
             {entries.length === 0 ? (
               <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={canManage ? 14 : 13}>
+                <TableCell className="text-muted-foreground" colSpan={canManage ? 15 : 14}>
                   No income entries yet.
                   {canManage ? " Add a stay or other income to get started." : ""}
                 </TableCell>
@@ -467,6 +491,7 @@ const IncomeEntryRow = memo(
             </div>
           </TableCell>
           <TableCell className="text-right">{formatMoney(stay.grossIncome)}</TableCell>
+          <TableCell className="text-right">{formatMoney(getStayNetPayout(stay))}</TableCell>
           <TableCell className="text-right font-medium">{formatMoney(stay.netIncome)}</TableCell>
           {canManage ? (
             <TableCell>
@@ -527,6 +552,7 @@ const IncomeEntryRow = memo(
         <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
+        <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
         <TableCell className="text-right font-medium">{formatMoney(line.netIncome)}</TableCell>
         {canManage ? (
           <TableCell>

@@ -42,3 +42,11 @@ export function getStayTaxesAndFeesTotal(
 ): number {
   return roundMoney(sumTaxBreakdown(stay.taxBreakdown) + stay.channelCommission);
 }
+
+// Net Payout = taxable base − channel commission (revenue after the channel's cut, before
+// taxes). Equivalent to netIncome + total taxes, since netIncome already removes taxes too.
+export function getStayNetPayout(
+  stay: Pick<IPropertyReservation, "netIncome" | "taxBreakdown">
+): number {
+  return roundMoney(stay.netIncome + sumTaxBreakdown(stay.taxBreakdown));
+}

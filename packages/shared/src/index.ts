@@ -192,6 +192,7 @@ export {
 // Property income utilities
 export {
   getChannelCommissionRate,
+  getStayNetPayout,
   getStayTaxesAndFeesTotal,
   sumTaxBreakdown,
   type TChannelCommissionSettings,

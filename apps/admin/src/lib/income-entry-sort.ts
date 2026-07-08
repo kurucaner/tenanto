@@ -10,6 +10,7 @@ import {
   sortRows,
 } from "@/lib/table-sort";
 import {
+  getStayNetPayout,
   getStayTaxesAndFeesTotal,
   IncomeEntryKind,
   PROPERTY_AMENITY_UNIT_LABEL,
@@ -29,6 +30,7 @@ export type TIncomeEntrySortColumnId =
   | "cleaning"
   | "taxesFees"
   | "gross"
+  | "netPayout"
   | "net";
 
 function getEntryDate(entry: TPropertyIncomeEntry): string {
@@ -88,6 +90,8 @@ function getIncomeEntrySortValue(
         return getStayTaxesAndFeesTotal(stay);
       case "gross":
         return stay.grossIncome;
+      case "netPayout":
+        return getStayNetPayout(stay);
       case "net":
         return stay.netIncome;
     }
@@ -119,6 +123,8 @@ function getIncomeEntrySortValue(
       return 0;
     case "gross":
       return line.grossIncome;
+    case "netPayout":
+      return line.netIncome;
     case "net":
       return line.netIncome;
   }
