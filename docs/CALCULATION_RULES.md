@@ -12,13 +12,14 @@ Short-stay reservations only. All amounts are rounded to 2 decimal places.
 | **Taxes** | Each property tax rate applied to the taxable base (e.g. Sales tax, Resort tax) |
 | **Total taxes** | Sum of all tax line amounts |
 | **Resort tax** | The tax line named `Resort tax` (matched by name) |
-| **Commission** | `taxable base × channel commission rate` |
+| **Commission base** | Usually `taxable base` (room total + cleaning fee); **Expedia uses room total only** |
+| **Commission** | `commission base × channel commission rate` |
 
 ---
 
-## Standard rules (Booking, Expedia, Direct, …)
+## Standard rules (Booking, Direct, …)
 
-Resort tax is treated like any other tax.
+Resort tax is treated like any other tax. Commission is calculated on **taxable base** (room total + cleaning fee).
 
 | Metric | Formula |
 |--------|---------|
@@ -33,6 +34,26 @@ Net payout is also `net income + total taxes` — taxes are removed in net incom
 - Gross = **1100**
 - Net income = **750**
 - Net payout = **850**
+
+---
+
+## Expedia — Commission base exception
+
+Expedia commission is calculated on **room total only**. Cleaning fee is included in taxable base and taxes, but **excluded from commission**.
+
+| Metric | Formula |
+|--------|---------|
+| **Commission base** | `room total` (cleaning fee excluded) |
+| **Commission** | `room total × Expedia commission rate` |
+| **Gross income** | `taxable base + total taxes` (unchanged) |
+| **Net income** | `taxable base − total taxes − commission` |
+| **Net payout** | `taxable base − commission` |
+
+**Example** — room total `900`, cleaning fee `100`, taxable base `1000`, taxes `100`, Expedia rate `15%`:
+
+- Commission = 900 × 0.15 = **135** (not 1000 × 0.15 = 150)
+- Net income = 1000 − 100 − 135 = **765**
+- Net payout = 1000 − 135 = **865**
 
 ---
 
@@ -58,10 +79,11 @@ Resort tax is **excluded from gross** and **deducted again in net payout** (on t
 
 ## Quick comparison
 
-| | Gross includes resort tax? | Net payout subtracts resort tax? |
-|--|:---:|:---:|
-| **Standard channels** | Yes | No (only commission is subtracted) |
-| **Airbnb (current)** | No | Yes |
+| Channel | Commission base | Gross includes resort tax? | Net payout subtracts resort tax? |
+|---------|-----------------|:--------------------------:|:--------------------------------:|
+| **Booking, Direct, …** | Room total + cleaning fee | Yes | No |
+| **Expedia** | Room total only | Yes | No |
+| **Airbnb** | Room total + cleaning fee | No | Yes |
 
 ---
 
