@@ -20,14 +20,14 @@ export const IncomeUnitSelectOptions = memo(
   ({ emptyOptionLabel, includePropertyAmenityOption, units }: IncomeUnitSelectOptionsProps) => (
     <>
       {emptyOptionLabel ? <option value="">{emptyOptionLabel}</option> : null}
+      {includePropertyAmenityOption ? (
+        <option value={PROPERTY_AMENITY_UNIT_VALUE}>{PROPERTY_AMENITY_UNIT_LABEL}</option>
+      ) : null}
       {units.map((unit) => (
         <option key={unit.id} value={unit.id}>
           {formatPropertyUnitSelectLabel(unit)}
         </option>
       ))}
-      {includePropertyAmenityOption ? (
-        <option value={PROPERTY_AMENITY_UNIT_VALUE}>{PROPERTY_AMENITY_UNIT_LABEL}</option>
-      ) : null}
     </>
   )
 );
