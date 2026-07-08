@@ -50,3 +50,8 @@ export function getStayNetPayout(
 ): number {
   return roundMoney(stay.netIncome + sumTaxBreakdown(stay.taxBreakdown));
 }
+
+// Total applicable taxes only (excludes channel commission).
+export function getStayTaxesTotal(stay: Pick<IPropertyReservation, "taxBreakdown">): number {
+  return roundMoney(sumTaxBreakdown(stay.taxBreakdown));
+}

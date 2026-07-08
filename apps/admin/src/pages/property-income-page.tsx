@@ -47,6 +47,7 @@ import { adminQueryKeys } from "@/lib/query-keys";
 import {
   getStayNetPayout,
   getStayTaxesAndFeesTotal,
+  getStayTaxesTotal,
   IncomeEntryKind,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
@@ -103,9 +104,15 @@ const INCOME_TABLE_COLUMNS: {
   { id: "cleaning", label: "Cleaning", align: "right" },
   {
     align: "right",
-    id: "taxesFees",
-    info: "Applicable taxes + channel commission.",
-    label: "Taxes & Fees",
+    id: "taxes",
+    info: "Applicable taxes on the room + cleaning subtotal.",
+    label: "Taxes",
+  },
+  {
+    align: "right",
+    id: "commission",
+    info: "Booking channel's commission.",
+    label: "Commission",
   },
   {
     align: "right",
@@ -292,7 +299,7 @@ const PropertyIncomeEntriesTable = memo(
           <TableBody>
             {entries.length === 0 ? (
               <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={canManage ? 15 : 14}>
+                <TableCell className="text-muted-foreground" colSpan={canManage ? 16 : 15}>
                   No income entries yet.
                   {canManage ? " Add a stay or other income to get started." : ""}
                 </TableCell>
@@ -456,6 +463,7 @@ const IncomeEntryRow = memo(
       const { stay } = entry;
       const taxesAndFeesTotal = getStayTaxesAndFeesTotal(stay);
       const showFeesDetails = taxesAndFeesTotal > 0;
+      const taxesTotal = getStayTaxesTotal(stay);
 
       return (
         <TableRow>
@@ -477,7 +485,7 @@ const IncomeEntryRow = memo(
           <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
           <TableCell className="text-right">
             <div className="flex flex-col items-end gap-1">
-              <span>{showFeesDetails ? formatMoney(taxesAndFeesTotal) : "—"}</span>
+              <span>{taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}</span>
               {showFeesDetails ? (
                 <Button
                   className="h-auto px-0 py-0 text-xs"
@@ -489,6 +497,9 @@ const IncomeEntryRow = memo(
                 </Button>
               ) : null}
             </div>
+          </TableCell>
+          <TableCell className="text-right">
+            {stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
           </TableCell>
           <TableCell className="text-right">{formatMoney(stay.grossIncome)}</TableCell>
           <TableCell className="text-right">{formatMoney(getStayNetPayout(stay))}</TableCell>
@@ -549,6 +560,7 @@ const IncomeEntryRow = memo(
         <TableCell>—</TableCell>
         <TableCell>—</TableCell>
         <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
+        <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">—</TableCell>
         <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
