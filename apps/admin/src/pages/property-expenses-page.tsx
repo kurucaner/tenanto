@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
@@ -145,6 +146,11 @@ export const PropertyExpensesPage = memo(() => {
     },
   });
 
+  const { deleteConfirmationDialog, requestDelete } = useDeleteConfirmation<IPropertyExpense>(
+    deleteMutation.isPending,
+    (expense, onDeleted) => deleteMutation.mutate(expense, { onSuccess: onDeleted })
+  );
+
   const restoreMutation = useMutation({
     mutationFn: (expense: IPropertyExpense) => expensesApi.restore(propertyId, expense.id),
     onError: (e) => {
@@ -161,6 +167,17 @@ export const PropertyExpensesPage = memo(() => {
   const handleOpenCreate = useCallback(() => {
     setCreateOpen(true);
   }, []);
+
+  const handleDeleteExpense = useCallback(
+    (expense: IPropertyExpense) => {
+      requestDelete({
+        description: `Delete ${formatExpenseCategoryLabel(expense.category)} expense? It will be hidden from reports.`,
+        target: expense,
+        title: "Delete expense",
+      });
+    },
+    [requestDelete]
+  );
 
   const pageActions = useMemo(
     () =>
@@ -249,16 +266,7 @@ export const PropertyExpensesPage = memo(() => {
                         canManage={canManage}
                         expense={expense}
                         key={expense.id}
-                        onDelete={(item) => {
-                          if (
-                            !globalThis.confirm(
-                              `Delete ${formatExpenseCategoryLabel(item.category)} expense? It will be hidden from reports. Platform admins can restore it.`
-                            )
-                          ) {
-                            return;
-                          }
-                          deleteMutation.mutate(item);
-                        }}
+                        onDelete={handleDeleteExpense}
                         onEdit={setEditExpense}
                         onRestore={(item) => restoreMutation.mutate(item)}
                       />
@@ -270,6 +278,8 @@ export const PropertyExpensesPage = memo(() => {
           )}
         </CardContent>
       </Card>
+
+      {deleteConfirmationDialog}
 
       <CreateExpenseDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
       {editExpense ? (

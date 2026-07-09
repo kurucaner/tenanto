@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
+import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
@@ -198,6 +199,11 @@ export const PropertyUnitsPage = memo(() => {
     },
   });
 
+  const { deleteConfirmationDialog, requestDelete } = useDeleteConfirmation<IPropertyUnit>(
+    deleteMutation.isPending,
+    (unit, onDeleted) => deleteMutation.mutate(unit, { onSuccess: onDeleted })
+  );
+
   const restoreMutation = useMutation({
     mutationFn: (unit: IPropertyUnit) => unitsApi.restore(propertyId, unit.id),
     onError: (e) => {
@@ -209,16 +215,16 @@ export const PropertyUnitsPage = memo(() => {
     },
   });
 
-  const handleDelete = (unit: IPropertyUnit) => {
-    if (
-      !globalThis.confirm(
-        `Delete unit ${unit.unitNumber}? It will be hidden from lists. Platform admins can restore it.`
-      )
-    ) {
-      return;
-    }
-    deleteMutation.mutate(unit);
-  };
+  const handleDelete = useCallback(
+    (unit: IPropertyUnit) => {
+      requestDelete({
+        description: `Delete unit ${unit.unitNumber}? It will be hidden from lists. Platform admins can restore it.`,
+        target: unit,
+        title: "Delete unit",
+      });
+    },
+    [requestDelete]
+  );
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
 
@@ -294,6 +300,8 @@ export const PropertyUnitsPage = memo(() => {
           )}
         </CardContent>
       </Card>
+
+      {deleteConfirmationDialog}
 
       <CreateUnitDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
       {editUnit ? (

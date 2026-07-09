@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { propertiesApi } from "@/lib/api-client";
@@ -49,7 +50,7 @@ const MemberTableRow = memo(
     creatorUserId: string;
     member: IPropertyMember;
     onChangeRole: (userId: string, role: TPropertyRole) => void;
-    onRemove: (userId: string) => void;
+    onRemove: (member: IPropertyMember) => void;
   }) => {
     const canEditMember = canManageMembers && member.userId !== creatorUserId;
 
@@ -83,7 +84,7 @@ const MemberTableRow = memo(
               </select>
               <Button
                 aria-label="Remove member"
-                onClick={() => onRemove(member.userId)}
+                onClick={() => onRemove(member)}
                 size="icon-sm"
                 type="button"
                 variant="ghost"
@@ -184,15 +185,27 @@ export const PropertyDetailPage = memo(() => {
     },
   });
 
+  const { deleteConfirmationDialog, requestDelete } = useDeleteConfirmation<IPropertyMember>(
+    removeMemberMutation.isPending,
+    (member, onDeleted) => removeMemberMutation.mutate(member.userId, { onSuccess: onDeleted })
+  );
+
   const handleDelete = useCallback(() => {
     if (!globalThis.confirm("Delete this property? This cannot be undone.")) return;
     deleteMutation.mutate();
   }, [deleteMutation]);
 
-  const handleRemoveMember = (userId: string) => {
-    if (!globalThis.confirm("Remove this member from the property?")) return;
-    removeMemberMutation.mutate(userId);
-  };
+  const handleRemoveMember = useCallback(
+    (member: IPropertyMember) => {
+      requestDelete({
+        confirmLabel: "Remove",
+        description: `Remove ${member.user.name} from this property?`,
+        target: member,
+        title: "Remove member",
+      });
+    },
+    [requestDelete]
+  );
 
   const headerActions = useMemo(
     () =>
@@ -318,6 +331,8 @@ export const PropertyDetailPage = memo(() => {
           </Table>
         </CardContent>
       </Card>
+
+      {deleteConfirmationDialog}
 
       <EditPropertyDialog onOpenChange={setEditOpen} open={editOpen} property={property} />
       <AddPropertyMemberDialog

@@ -33,6 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
+import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
@@ -184,35 +185,6 @@ function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
   return entry.entryKind === IncomeEntryKind.STAY
     ? `stay-${entry.stay.id}`
     : `line-${entry.line.id}`;
-}
-
-function handleDeleteLine(
-  line: IPropertyIncomeLine,
-  mutate: (line: IPropertyIncomeLine) => void
-): void {
-  const typeLabel = line.incomeLineTypeName ?? line.incomeLineTypeId;
-  if (
-    !globalThis.confirm(
-      `Delete ${typeLabel} entry? It will be hidden from reports. Platform admins can restore it.`
-    )
-  ) {
-    return;
-  }
-  mutate(line);
-}
-
-function handleDeleteStay(
-  stay: IPropertyReservation,
-  mutate: (stay: IPropertyReservation) => void
-): void {
-  if (
-    !globalThis.confirm(
-      `Delete stay for ${stay.guestName}? It will be hidden from reports. Platform admins can restore it.`
-    )
-  ) {
-    return;
-  }
-  mutate(stay);
 }
 
 function buildOtherIncomePrefillFromStay(
@@ -857,6 +829,20 @@ const PropertyIncomePage = memo(() => {
     },
   });
 
+  const {
+    deleteConfirmationDialog: lineDeleteConfirmationDialog,
+    requestDelete: requestLineDelete,
+  } = useDeleteConfirmation<IPropertyIncomeLine>(deleteLineMutation.isPending, (line, onDeleted) =>
+    deleteLineMutation.mutate(line, { onSuccess: onDeleted })
+  );
+
+  const {
+    deleteConfirmationDialog: stayDeleteConfirmationDialog,
+    requestDelete: requestStayDelete,
+  } = useDeleteConfirmation<IPropertyReservation>(deleteStayMutation.isPending, (stay, onDeleted) =>
+    deleteStayMutation.mutate(stay, { onSuccess: onDeleted })
+  );
+
   const restoreStayMutation = useMutation({
     mutationFn: (reservation: IPropertyReservation) =>
       reservationsApi.restore(propertyId, reservation.id),
@@ -909,6 +895,28 @@ const PropertyIncomePage = memo(() => {
   const handleAddStay = useCallback(() => {
     setCreateStayOpen(true);
   }, []);
+
+  const handleDeleteLine = useCallback(
+    (line: IPropertyIncomeLine) => {
+      requestLineDelete({
+        description: `Delete ${line.incomeLineTypeName ?? line.incomeLineTypeId} entry? It will be hidden from reports.`,
+        target: line,
+        title: "Delete other income",
+      });
+    },
+    [requestLineDelete]
+  );
+
+  const handleDeleteStay = useCallback(
+    (stay: IPropertyReservation) => {
+      requestStayDelete({
+        description: `Delete stay for ${stay.guestName}? It will be hidden from reports.`,
+        target: stay,
+        title: "Delete stay",
+      });
+    },
+    [requestStayDelete]
+  );
 
   useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay);
 
@@ -1010,8 +1018,8 @@ const PropertyIncomePage = memo(() => {
                 setCreateLinePrefill,
               })
             }
-            onDeleteLine={(line) => handleDeleteLine(line, deleteLineMutation.mutate)}
-            onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
+            onDeleteLine={handleDeleteLine}
+            onDeleteStay={handleDeleteStay}
             onEditLine={setEditIncomeLine}
             onEditStay={setEditReservation}
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
@@ -1033,6 +1041,9 @@ const PropertyIncomePage = memo(() => {
         open={calculationDetails !== null}
         stay={calculationDetails?.stay ?? null}
       />
+
+      {lineDeleteConfirmationDialog}
+      {stayDeleteConfirmationDialog}
 
       <PropertyIncomePageDialogs
         createLineLockedStay={createLineLockedStay}
