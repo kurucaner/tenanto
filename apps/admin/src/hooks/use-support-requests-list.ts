@@ -1,4 +1,4 @@
-import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
+import { type InfiniteData, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { type TAppliedSupportFilters } from "@/components/support/support-constants";
@@ -6,9 +6,11 @@ import {
   type TSupportListPageResponse,
   type TSupportListVariantConfig,
 } from "@/components/support/support-list-config";
+import { getIsListRefetching, refreshInfiniteList } from "@/lib/list-query-refetch";
 import { type SupportCategory, type SupportRequestStatus } from "@/packages/shared";
 
 export function useSupportRequestsList(config: TSupportListVariantConfig) {
+  const queryClient = useQueryClient();
   const [statusInput, setStatusInput] = useState("");
   const [categoryInput, setCategoryInput] = useState("");
   const [applied, setApplied] = useState<TAppliedSupportFilters>({});
@@ -42,6 +44,10 @@ export function useSupportRequestsList(config: TSupportListVariantConfig) {
     });
   }, [categoryInput, statusInput]);
 
+  const refresh = useCallback(async () => {
+    await refreshInfiniteList(queryClient, config.getQueryKey(applied));
+  }, [applied, config, queryClient]);
+
   return {
     applyFilters,
     categoryInput,
@@ -49,8 +55,11 @@ export function useSupportRequestsList(config: TSupportListVariantConfig) {
     fetchNextPage: listQuery.fetchNextPage,
     hasNextPage: listQuery.hasNextPage,
     isError: listQuery.isError,
+    isFetching: listQuery.isFetching,
     isFetchingNextPage: listQuery.isFetchingNextPage,
     isPending: listQuery.isPending,
+    isRefetching: getIsListRefetching(listQuery),
+    refresh,
     rows,
     setCategoryInput,
     setStatusInput,

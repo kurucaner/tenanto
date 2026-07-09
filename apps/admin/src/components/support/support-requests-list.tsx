@@ -1,11 +1,12 @@
 import { LifeBuoy } from "lucide-react";
 import { memo } from "react";
 
+import { RefetchButton } from "@/components/data/refetch-button";
 import { SupportFiltersBar } from "@/components/support/support-filters-bar";
 import { type TSupportListVariantConfig } from "@/components/support/support-list-config";
 import { SupportRequestsTable } from "@/components/support/support-requests-table";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSupportRequestsList } from "@/hooks/use-support-requests-list";
 
@@ -24,6 +25,8 @@ export const SupportRequestsList = memo(
       isError,
       isFetchingNextPage,
       isPending,
+      isRefetching,
+      refresh,
       rows,
       setCategoryInput,
       setStatusInput,
@@ -54,6 +57,9 @@ export const SupportRequestsList = memo(
         <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-base">Requests</CardTitle>
+            <CardAction>
+              <RefetchButton isRefetching={isRefetching} onRefetch={refresh} />
+            </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {isPending ? (
