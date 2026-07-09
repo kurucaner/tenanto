@@ -1,6 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import {
   IncomeLineAmountDateFields,
@@ -24,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
+import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import {
   clampToMaxLocalIsoDate,
@@ -57,11 +61,41 @@ interface CreateIncomeLineDialogProps {
 
 const FIELD_ID_PREFIX = "income-line";
 
-function buildFormState(
+function isRequiredNonNegativeMoney(value: string): boolean {
+  if (!isValidDecimalInput(value)) {
+    return false;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0;
+}
+
+const createIncomeLineSchema = z.object({
+  amount: z
+    .string()
+    .min(1, "Amount is required")
+    .refine(isRequiredNonNegativeMoney, {
+      message: "Amount must be a non-negative number",
+    }),
+  description: z.string(),
+  guestName: z.string(),
+  incomeLineTypeId: z.string().min(1, "Income type is required"),
+  reservationId: z.string(),
+  transactionDate: z
+    .string()
+    .min(1, "Date is required")
+    .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
+      message: "Date cannot be in the future",
+    }),
+  unitId: z.string().min(1, "Unit is required"),
+});
+
+type TCreateIncomeLineFormValues = z.infer<typeof createIncomeLineSchema>;
+
+function getDefaultValues(
   incomeLineTypes: IPropertyIncomeLineType[],
   prefill?: CreateIncomeLineDialogPrefill | null,
   lockedStay?: IPropertyReservation | null
-) {
+): TCreateIncomeLineFormValues {
   const defaultIncomeLineTypeId = resolveDefaultIncomeLineTypeId(incomeLineTypes);
   const maxTransactionDate = getTodayLocalIsoDate();
   const rawTransactionDate = prefill?.transactionDate ?? lockedStay?.checkOut ?? "";
@@ -95,38 +129,32 @@ const CreateIncomeLineDialogForm = memo(
     propertyId,
     units,
   }: CreateIncomeLineDialogFormProps) => {
-    const initialFormState = buildFormState(incomeLineTypes, prefill, lockedStay);
     const queryClient = useQueryClient();
+    const form = useForm<TCreateIncomeLineFormValues>({
+      defaultValues: getDefaultValues(incomeLineTypes, prefill, lockedStay),
+      resolver: zodResolver(createIncomeLineSchema),
+    });
+
     const incomeLineTypeOptions = useMemo(
       () => buildIncomeLineTypeOptions(incomeLineTypes),
       [incomeLineTypes]
     );
-    const [incomeLineTypeId, setIncomeLineTypeId] = useState(initialFormState.incomeLineTypeId);
-    const [unitId, setUnitId] = useState(initialFormState.unitId);
-    const [amount, setAmount] = useState(initialFormState.amount);
-    const [transactionDate, setTransactionDate] = useState(initialFormState.transactionDate);
-    const [reservationId, setReservationId] = useState(initialFormState.reservationId);
-    const [description, setDescription] = useState(initialFormState.description);
-    const [guestName, setGuestName] = useState(initialFormState.guestName);
 
-    const handleUnitChange = useCallback(
-      (nextUnitId: string) => {
-        setUnitId(nextUnitId);
-        if (!lockedStay) setReservationId("");
-      },
-      [lockedStay]
-    );
+    const incomeLineTypeId = form.watch("incomeLineTypeId");
+    const reservationId = form.watch("reservationId");
+    const transactionDate = form.watch("transactionDate");
+    const maxTransactionDate = getTodayLocalIsoDate();
 
     const mutation = useMutation({
-      mutationFn: () =>
+      mutationFn: (values: TCreateIncomeLineFormValues) =>
         incomeLinesApi.create(propertyId, {
-          amount: Number(amount) || 0,
-          description: description.trim() || undefined,
-          guestName: guestName.trim() || undefined,
-          incomeLineTypeId,
-          reservationId: reservationId || undefined,
-          transactionDate,
-          unitId: unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : unitId,
+          amount: Number(values.amount) || 0,
+          description: values.description.trim() || undefined,
+          guestName: values.guestName.trim() || undefined,
+          incomeLineTypeId: values.incomeLineTypeId,
+          reservationId: values.reservationId || undefined,
+          transactionDate: values.transactionDate,
+          unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to create other income");
@@ -138,19 +166,15 @@ const CreateIncomeLineDialogForm = memo(
       },
     });
 
-    const maxTransactionDate = getTodayLocalIsoDate();
-    const canSubmit =
-      unitId !== "" &&
-      transactionDate !== "" &&
-      isDateOnOrBefore(transactionDate, maxTransactionDate) &&
-      amount !== "" &&
-      incomeLineTypeId !== "" &&
-      !mutation.isPending;
+    const onSubmit = form.handleSubmit((values) => {
+      mutation.mutate(values);
+    });
 
+    const { errors, isSubmitting } = form.formState;
     const showGuestField = !lockedStay && reservationId === "";
 
     return (
-      <>
+      <form onSubmit={onSubmit}>
         <DialogHeader>
           <DialogTitle>Add Other Income</DialogTitle>
           <DialogDescription>
@@ -161,48 +185,109 @@ const CreateIncomeLineDialogForm = memo(
         </DialogHeader>
 
         <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-          <IncomeLineTypeField
-            fieldIdPrefix={FIELD_ID_PREFIX}
-            onChange={setIncomeLineTypeId}
-            options={incomeLineTypeOptions}
-            value={incomeLineTypeId}
+          <Controller
+            control={form.control}
+            name="incomeLineTypeId"
+            render={({ field }) => (
+              <div className="flex flex-col gap-1.5">
+                <IncomeLineTypeField
+                  fieldIdPrefix={FIELD_ID_PREFIX}
+                  onChange={field.onChange}
+                  options={incomeLineTypeOptions}
+                  value={field.value}
+                />
+                {errors.incomeLineTypeId ? (
+                  <p className="text-xs text-destructive">{errors.incomeLineTypeId.message}</p>
+                ) : null}
+              </div>
+            )}
           />
 
-          <IncomeLineUnitSection
-            fieldIdPrefix={FIELD_ID_PREFIX}
-            includePropertyAmenityOption={!lockedStay}
-            lockedStay={lockedStay}
-            onReservationIdChange={setReservationId}
-            onUnitChange={handleUnitChange}
-            propertyId={propertyId}
-            reservationId={reservationId}
-            transactionDate={transactionDate}
-            unitId={unitId}
-            units={units}
+          <Controller
+            control={form.control}
+            name="unitId"
+            render={({ field }) => (
+              <div className="flex flex-col gap-1.5">
+                <IncomeLineUnitSection
+                  fieldIdPrefix={FIELD_ID_PREFIX}
+                  includePropertyAmenityOption={!lockedStay}
+                  lockedStay={lockedStay}
+                  onReservationIdChange={(nextReservationId) => {
+                    form.setValue("reservationId", nextReservationId);
+                  }}
+                  onUnitChange={(nextUnitId) => {
+                    field.onChange(nextUnitId);
+                    if (!lockedStay) {
+                      form.setValue("reservationId", "");
+                    }
+                  }}
+                  propertyId={propertyId}
+                  reservationId={reservationId}
+                  transactionDate={transactionDate}
+                  unitId={field.value}
+                  units={units}
+                />
+                {errors.unitId ? (
+                  <p className="text-xs text-destructive">{errors.unitId.message}</p>
+                ) : null}
+              </div>
+            )}
           />
 
-          <IncomeLineAmountDateFields
-            amount={amount}
-            autoFocusAmount
-            fieldIdPrefix={FIELD_ID_PREFIX}
-            maxDate={maxTransactionDate}
-            onAmountChange={setAmount}
-            onDateChange={setTransactionDate}
-            transactionDate={transactionDate}
+          <Controller
+            control={form.control}
+            name="amount"
+            render={({ field: amountField }) => (
+              <Controller
+                control={form.control}
+                name="transactionDate"
+                render={({ field: dateField }) => (
+                  <div className="flex flex-col gap-1.5">
+                    <IncomeLineAmountDateFields
+                      amount={amountField.value}
+                      autoFocusAmount
+                      fieldIdPrefix={FIELD_ID_PREFIX}
+                      maxDate={maxTransactionDate}
+                      onAmountChange={amountField.onChange}
+                      onDateChange={dateField.onChange}
+                      transactionDate={dateField.value}
+                    />
+                    {errors.amount ? (
+                      <p className="text-xs text-destructive">{errors.amount.message}</p>
+                    ) : null}
+                    {errors.transactionDate ? (
+                      <p className="text-xs text-destructive">{errors.transactionDate.message}</p>
+                    ) : null}
+                  </div>
+                )}
+              />
+            )}
           />
 
           {showGuestField ? (
-            <IncomeLineGuestField
-              fieldIdPrefix={FIELD_ID_PREFIX}
-              onChange={setGuestName}
-              value={guestName}
+            <Controller
+              control={form.control}
+              name="guestName"
+              render={({ field }) => (
+                <IncomeLineGuestField
+                  fieldIdPrefix={FIELD_ID_PREFIX}
+                  onChange={field.onChange}
+                  value={field.value}
+                />
+              )}
             />
           ) : null}
 
-          <IncomeLineDescriptionField
-            fieldIdPrefix={FIELD_ID_PREFIX}
-            onChange={setDescription}
-            value={description}
+          <Controller
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <IncomeLineDescriptionField
+                fieldIdPrefix={FIELD_ID_PREFIX}
+                onChange={field.onChange}
+                value={field.value}
+              />
+            )}
           />
 
           <p className="text-muted-foreground text-xs">Date cannot be in the future.</p>
@@ -217,11 +302,11 @@ const CreateIncomeLineDialogForm = memo(
           <Button disabled={mutation.isPending} onClick={onClose} type="button" variant="outline">
             Cancel
           </Button>
-          <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">
+          <Button disabled={mutation.isPending || isSubmitting} type="submit">
             {mutation.isPending ? "Creating…" : "Add Other Income"}
           </Button>
         </DialogFooter>
-      </>
+      </form>
     );
   }
 );
@@ -237,16 +322,24 @@ export const CreateIncomeLineDialog = memo(
     propertyId,
     units,
   }: CreateIncomeLineDialogProps) => {
-    const handleClose = () => {
-      onOpenChange(false);
-    };
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        onOpenChange(nextOpen);
+      },
+      [onOpenChange]
+    );
+
+    const handleClose = useCallback(() => {
+      handleOpenChange(false);
+    }, [handleOpenChange]);
 
     return (
-      <Dialog onOpenChange={handleClose} open={open}>
+      <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[520px]">
           {open ? (
             <CreateIncomeLineDialogForm
               incomeLineTypes={incomeLineTypes}
+              key={`${lockedStay?.id ?? "standalone"}-${prefill?.reservationId ?? "new"}`}
               lockedStay={lockedStay}
               onClose={handleClose}
               prefill={prefill}
