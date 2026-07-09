@@ -8,6 +8,16 @@ export const EXPENSE_CSV_IMPORT_MAX_TEXT_BYTES = 51_200;
 
 export type TExpenseImportFileStatus = "error" | "irrelevant" | "parsed";
 
+export interface IExpenseCsvExtractedRow {
+  amount: number;
+  bankCategory?: string;
+  bankType?: string;
+  description: string;
+  expenseDate?: string;
+  rowIndex: number;
+  sourceFileName: string;
+}
+
 export interface IExpenseImportParsedRow {
   amount: number;
   category: TExpenseCategory;

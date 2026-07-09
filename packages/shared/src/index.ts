@@ -184,6 +184,7 @@ export {
   EXPENSE_CSV_IMPORT_MAX_ROWS_TOTAL,
   EXPENSE_CSV_IMPORT_MAX_TEXT_BYTES,
   formatExpenseCategoryLabelsForPrompt,
+  type IExpenseCsvExtractedRow,
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
   type IExpenseImportFileResult,

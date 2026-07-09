@@ -2,11 +2,10 @@ import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import OpenAI from "openai";
 
+import { propertyExpenseCategoriesDb } from "@/db/property-expense-categories";
 import { propertyExpensesDb } from "@/db/property-expenses";
-import {
-  getOpenAiApiKey,
-  isExpenseCsvImportEnabled,
-} from "@/lib/expense-csv-import-gate";
+import { getOpenAiApiKey, isExpenseCsvImportEnabled } from "@/lib/expense-csv-import-gate";
+import { extractExpenseRowsFromCsv } from "@/lib/expense-csv-row-extractor";
 import {
   parseCreateExpenseBody,
   validateExpenseDateNotInFuture,
@@ -22,8 +21,12 @@ import {
   type IExpenseImportFileResult,
   type IExpenseImportParsedRow,
   type IExpenseImportParseResponse,
+  type TExpenseCategory,
 } from "@/packages/shared";
-import { extractExpensesFromCsvText } from "@/services/openai-expense-import-service";
+import {
+  categorizeExtractedExpenseRows,
+  mergeExtractedRowsWithCategories,
+} from "@/services/openai-expense-import-service";
 import { WinstonLogger } from "@/services/winston";
 
 import { parseUuidParam } from "./admin-query-utils";
@@ -156,7 +159,8 @@ async function readMultipartCsvFiles(
 async function parseUploadedCsvFile(
   client: OpenAI,
   fileName: string,
-  buffer: Buffer
+  buffer: Buffer,
+  allowedCategories: readonly TExpenseCategory[]
 ): Promise<IExpenseImportFileResult> {
   const csvText = truncateCsvText(buffer.toString("utf8").trim());
   if (csvText === "") {
@@ -173,50 +177,64 @@ async function parseUploadedCsvFile(
     originalBytes: buffer.length,
   });
 
+  const extracted = extractExpenseRowsFromCsv(csvText, fileName);
+  if ("error" in extracted) {
+    return {
+      fileName,
+      message: extracted.error,
+      status: "error",
+    };
+  }
+
+  if (extracted.rows.length === 0) {
+    return {
+      fileName,
+      message: "No charge transactions were found in this file.",
+      status: "irrelevant",
+    };
+  }
+
+  if (extracted.rows.length > EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE) {
+    return {
+      fileName,
+      message: `This file has more than ${EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE} expense rows.`,
+      status: "error",
+    };
+  }
+
   try {
-    const result = await extractExpensesFromCsvText(client, fileName, csvText);
-    if ("error" in result) {
+    const categorization = await categorizeExtractedExpenseRows(
+      client,
+      extracted.rows,
+      allowedCategories,
+      fileName
+    );
+    if ("error" in categorization) {
       WinstonLogger.warn("expense_csv_import_file_parse_error", {
-        error: result.error,
+        error: categorization.error,
         fileName,
       });
       return {
         fileName,
-        message: result.error,
+        message: categorization.error,
         status: "error",
       };
     }
 
-    if (result.status === "irrelevant") {
-      return {
+    if (categorization.assignments.length !== extracted.rows.length) {
+      WinstonLogger.warn("expense_csv_import_row_count_mismatch", {
+        assignmentCount: categorization.assignments.length,
+        extractedCount: extracted.rows.length,
         fileName,
-        message: result.message,
-        status: "irrelevant",
-      };
+      });
     }
 
-    if (result.expenses.length === 0) {
-      return {
-        fileName,
-        message: "No expense rows were found in this file.",
-        status: "irrelevant",
-      };
-    }
-
-    if (result.expenses.length > EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE) {
-      return {
-        fileName,
-        message: `This file has more than ${EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE} expense rows.`,
-        status: "error",
-      };
-    }
-
-    const rows = result.expenses.map((row, index) =>
-      buildParsedRow(fileName, index + 1, row)
-    );
+    const mergedRows = mergeExtractedRowsWithCategories(extracted.rows, categorization.assignments);
+    const rows = mergedRows.map((row) => buildParsedRow(fileName, row.rowIndex, row));
 
     return {
       fileName,
+      message: `${extracted.rows.length} charge transaction(s) found and categorized`,
       rows,
       status: "parsed",
     };
@@ -229,7 +247,7 @@ async function parseUploadedCsvFile(
     });
     return {
       fileName,
-      message: "Failed to parse this file with AI.",
+      message: "Failed to categorize this file with AI.",
       status: "error",
     };
   }
@@ -333,8 +351,11 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
       }
 
       const client = new OpenAI({ apiKey });
+      const allowedCategories = await propertyExpenseCategoriesDb.listValues();
       const settled = await Promise.allSettled(
-        fileRead.files.map((file) => parseUploadedCsvFile(client, file.fileName, file.buffer))
+        fileRead.files.map((file) =>
+          parseUploadedCsvFile(client, file.fileName, file.buffer, allowedCategories)
+        )
       );
 
       const files: IExpenseImportFileResult[] = settled.map((result, index) => {
