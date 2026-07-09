@@ -289,7 +289,6 @@ export const PropertyReportsPage = memo(() => {
 
   const units = unitsQuery.data?.units ?? [];
   const summary = summaryQuery.data?.summary;
-  console.log("data from server", summaryQuery.data);
   const handleExport = useCallback(async () => {
     if (!reportQuery) return;
     setIsExporting(true);
