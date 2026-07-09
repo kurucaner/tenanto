@@ -58,7 +58,10 @@ export interface IEndPropertyLongStayBody {
 }
 
 export interface IUpdatePropertyLongStayBody {
-  secondaryTenants: IPropertyLongStaySecondaryTenant[];
+  guestName?: string;
+  secondaryTenants?: IPropertyLongStaySecondaryTenant[];
+  tenantEmail?: string | null;
+  tenantPhone?: string | null;
 }
 
 export interface IPropertyLongStayRentMonth {

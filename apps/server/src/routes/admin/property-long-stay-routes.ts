@@ -145,6 +145,20 @@ function parseSecondaryTenant(raw: unknown): IPropertyLongStaySecondaryTenant | 
   };
 }
 
+function parseNullableContactField(
+  raw: unknown,
+  fieldName: string
+): { ok: true; value: string | null } | { error: string; ok: false } {
+  if (raw === null) {
+    return { ok: true, value: null };
+  }
+  if (typeof raw !== "string") {
+    return { error: `${fieldName} must be a string or null`, ok: false };
+  }
+  const trimmed = raw.trim();
+  return { ok: true, value: trimmed === "" ? null : trimmed };
+}
+
 function parseUpdateLongStayBody(
   raw: unknown
 ): { body: IUpdatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -152,29 +166,63 @@ function parseUpdateLongStayBody(
     return { error: "Body must be a JSON object", ok: false };
   }
   const r = raw as Record<string, unknown>;
-  if (!("secondaryTenants" in r)) {
-    return { error: "secondaryTenants is required", ok: false };
-  }
-  if (!Array.isArray(r["secondaryTenants"])) {
-    return { error: "secondaryTenants must be an array", ok: false };
-  }
-  if (r["secondaryTenants"].length > MAX_SECONDARY_TENANTS) {
-    return {
-      error: `secondaryTenants cannot exceed ${MAX_SECONDARY_TENANTS} items`,
-      ok: false,
-    };
-  }
+  const body: IUpdatePropertyLongStayBody = {};
+  let hasField = false;
 
-  const secondaryTenants: IPropertyLongStaySecondaryTenant[] = [];
-  for (const item of r["secondaryTenants"]) {
-    const tenant = parseSecondaryTenant(item);
-    if (!tenant) {
-      return { error: "Each secondary tenant must have a non-empty name", ok: false };
+  if ("guestName" in r) {
+    hasField = true;
+    if (typeof r["guestName"] !== "string" || r["guestName"].trim() === "") {
+      return { error: "guestName must be a non-empty string", ok: false };
     }
-    secondaryTenants.push(tenant);
+    body.guestName = r["guestName"].trim();
   }
 
-  return { body: { secondaryTenants }, ok: true };
+  if ("tenantEmail" in r) {
+    hasField = true;
+    const parsedEmail = parseNullableContactField(r["tenantEmail"], "tenantEmail");
+    if (!parsedEmail.ok) {
+      return parsedEmail;
+    }
+    body.tenantEmail = parsedEmail.value;
+  }
+
+  if ("tenantPhone" in r) {
+    hasField = true;
+    const parsedPhone = parseNullableContactField(r["tenantPhone"], "tenantPhone");
+    if (!parsedPhone.ok) {
+      return parsedPhone;
+    }
+    body.tenantPhone = parsedPhone.value;
+  }
+
+  if ("secondaryTenants" in r) {
+    hasField = true;
+    if (!Array.isArray(r["secondaryTenants"])) {
+      return { error: "secondaryTenants must be an array", ok: false };
+    }
+    if (r["secondaryTenants"].length > MAX_SECONDARY_TENANTS) {
+      return {
+        error: `secondaryTenants cannot exceed ${MAX_SECONDARY_TENANTS} items`,
+        ok: false,
+      };
+    }
+
+    const secondaryTenants: IPropertyLongStaySecondaryTenant[] = [];
+    for (const item of r["secondaryTenants"]) {
+      const tenant = parseSecondaryTenant(item);
+      if (!tenant) {
+        return { error: "Each secondary tenant must have a non-empty name", ok: false };
+      }
+      secondaryTenants.push(tenant);
+    }
+    body.secondaryTenants = secondaryTenants;
+  }
+
+  if (!hasField) {
+    return { error: "At least one updatable field is required", ok: false };
+  }
+
+  return { body, ok: true };
 }
 
 function parseLongStaysListQuery(
@@ -382,10 +430,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       }
 
       try {
-        const longStay = await propertyLongStaysDb.updateSecondaryTenants(
-          longStayId,
-          parsed.body.secondaryTenants
-        );
+        const longStay = await propertyLongStaysDb.updateLease(longStayId, parsed.body);
         return reply.send({ longStay });
       } catch (error) {
         if (error instanceof LongStayNotActiveError) {

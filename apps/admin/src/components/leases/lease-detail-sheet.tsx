@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleDollarSign, Plus, X } from "lucide-react";
+import { Check, CircleDollarSign, Pencil, Plus, X } from "lucide-react";
 import { memo, useState } from "react";
 import { toast } from "sonner";
 
 import { AddSecondaryTenantDialog } from "@/components/leases/add-secondary-tenant-dialog";
+import { EditPrimaryTenantDialog } from "@/components/leases/edit-primary-tenant-dialog";
+import { EditSecondaryTenantDialog } from "@/components/leases/edit-secondary-tenant-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -14,6 +16,7 @@ import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   type IPropertyLongStay,
+  type IPropertyLongStaySecondaryTenant,
   PropertyLongStayStatus,
 } from "@/packages/shared";
 
@@ -39,6 +42,14 @@ function formatMonthLabel(month: string): string {
   });
 }
 
+function TenantContactLine({ label, value }: { label: string; value: string | null }) {
+  return (
+    <p className="text-muted-foreground text-xs">
+      {value ?? <span className="italic">Not set ({label})</span>}
+    </p>
+  );
+}
+
 export const LeaseDetailSheet = memo(
   ({
     canManage,
@@ -51,6 +62,11 @@ export const LeaseDetailSheet = memo(
   }: LeaseDetailSheetProps) => {
     const queryClient = useQueryClient();
     const [addSecondaryOpen, setAddSecondaryOpen] = useState(false);
+    const [editPrimaryOpen, setEditPrimaryOpen] = useState(false);
+    const [editingSecondary, setEditingSecondary] = useState<{
+      index: number;
+      tenant: IPropertyLongStaySecondaryTenant;
+    } | null>(null);
 
     const detailQuery = useQuery({
       enabled: open && lease != null,
@@ -81,6 +97,8 @@ export const LeaseDetailSheet = memo(
     const detail = detailQuery.data;
     const displayLease = detail?.longStay ?? lease;
     const rentSchedule = detail?.rentSchedule ?? [];
+    const canEditTenants =
+      canManage && displayLease?.status === PropertyLongStayStatus.ACTIVE;
 
     return (
       <>
@@ -114,14 +132,23 @@ export const LeaseDetailSheet = memo(
                   <div>
                     <h3 className="mb-3 text-sm font-medium">Tenants</h3>
                     <div className="space-y-3 rounded-md border p-3">
-                      <div>
-                        <p className="text-muted-foreground text-xs">Primary tenant</p>
-                        <p className="font-medium">{displayLease.guestName}</p>
-                        {displayLease.tenantEmail ? (
-                          <p className="text-muted-foreground text-xs">{displayLease.tenantEmail}</p>
-                        ) : null}
-                        {displayLease.tenantPhone ? (
-                          <p className="text-muted-foreground text-xs">{displayLease.tenantPhone}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-muted-foreground text-xs">Primary tenant</p>
+                          <p className="font-medium">{displayLease.guestName}</p>
+                          <TenantContactLine label="email" value={displayLease.tenantEmail} />
+                          <TenantContactLine label="phone" value={displayLease.tenantPhone} />
+                        </div>
+                        {canEditTenants ? (
+                          <Button
+                            aria-label="Edit primary tenant"
+                            onClick={() => setEditPrimaryOpen(true)}
+                            size="icon-sm"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
                         ) : null}
                       </div>
 
@@ -135,37 +162,41 @@ export const LeaseDetailSheet = memo(
                             >
                               <div>
                                 <p className="text-sm font-medium">{tenant.name}</p>
-                                {tenant.email ? (
-                                  <p className="text-muted-foreground text-xs">{tenant.email}</p>
-                                ) : null}
-                                {tenant.phone ? (
-                                  <p className="text-muted-foreground text-xs">{tenant.phone}</p>
-                                ) : null}
+                                <TenantContactLine label="email" value={tenant.email} />
+                                <TenantContactLine label="phone" value={tenant.phone} />
                               </div>
-                              {canManage &&
-                              displayLease.status === PropertyLongStayStatus.ACTIVE ? (
-                                <Button
-                                  aria-label={`Remove ${tenant.name}`}
-                                  disabled={removeMutation.isPending}
-                                  onClick={() => removeMutation.mutate(index)}
-                                  size="icon-sm"
-                                  type="button"
-                                  variant="ghost"
-                                >
-                                  <X className="size-3.5" />
-                                </Button>
+                              {canEditTenants ? (
+                                <div className="flex items-center">
+                                  <Button
+                                    aria-label={`Edit ${tenant.name}`}
+                                    onClick={() => setEditingSecondary({ index, tenant })}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="ghost"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    aria-label={`Remove ${tenant.name}`}
+                                    disabled={removeMutation.isPending}
+                                    onClick={() => removeMutation.mutate(index)}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="ghost"
+                                  >
+                                    <X className="size-3.5" />
+                                  </Button>
+                                </div>
                               ) : null}
                             </div>
                           ))}
                         </div>
                       ) : null}
 
-                      {canManage && displayLease.status === PropertyLongStayStatus.ACTIVE ? (
+                      {canEditTenants ? (
                         <Button
                           className="gap-1.5"
-                          disabled={
-                            displayLease.secondaryTenants.length >= MAX_SECONDARY_TENANTS
-                          }
+                          disabled={displayLease.secondaryTenants.length >= MAX_SECONDARY_TENANTS}
                           onClick={() => setAddSecondaryOpen(true)}
                           size="sm"
                           type="button"
@@ -257,11 +288,37 @@ export const LeaseDetailSheet = memo(
 
         {displayLease && addSecondaryOpen ? (
           <AddSecondaryTenantDialog
-            key={displayLease.id}
+            key={`${displayLease.id}-add-secondary`}
             lease={displayLease}
             onOpenChange={setAddSecondaryOpen}
             open={true}
             propertyId={propertyId}
+          />
+        ) : null}
+
+        {displayLease && editPrimaryOpen ? (
+          <EditPrimaryTenantDialog
+            key={`${displayLease.id}-edit-primary`}
+            lease={displayLease}
+            onOpenChange={setEditPrimaryOpen}
+            open={true}
+            propertyId={propertyId}
+          />
+        ) : null}
+
+        {displayLease && editingSecondary ? (
+          <EditSecondaryTenantDialog
+            key={`${displayLease.id}-edit-secondary-${editingSecondary.index}`}
+            lease={displayLease}
+            onOpenChange={(nextOpen) => {
+              if (!nextOpen) {
+                setEditingSecondary(null);
+              }
+            }}
+            open={true}
+            propertyId={propertyId}
+            tenant={editingSecondary.tenant}
+            tenantIndex={editingSecondary.index}
           />
         ) : null}
       </>

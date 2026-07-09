@@ -2,8 +2,8 @@ import type {
   ICreatePropertyLongStayBody,
   IPropertyLongStay,
   IPropertyLongStayRentMonth,
-  IPropertyLongStaySecondaryTenant,
   IPropertyLongStaysListQuery,
+  IUpdatePropertyLongStayBody,
 } from "@/packages/shared";
 import {
   calculateLeaseEndDate,
@@ -173,17 +173,38 @@ export const propertyLongStaysDb = {
     return result.rows.map((row) => mapPropertyLongStayRow(row as Record<string, unknown>));
   },
 
-  async updateSecondaryTenants(
-    id: string,
-    secondaryTenants: IPropertyLongStaySecondaryTenant[]
-  ): Promise<IPropertyLongStay> {
+  async updateLease(id: string, patch: IUpdatePropertyLongStayBody): Promise<IPropertyLongStay> {
+    const setClauses: string[] = [];
+    const values: unknown[] = [id];
+    let paramIndex = 2;
+
+    if (patch.guestName !== undefined) {
+      setClauses.push(`guest_name = $${paramIndex++}`);
+      values.push(patch.guestName.trim());
+    }
+    if (patch.tenantEmail !== undefined) {
+      setClauses.push(`tenant_email = $${paramIndex++}`);
+      values.push(patch.tenantEmail?.trim() || null);
+    }
+    if (patch.tenantPhone !== undefined) {
+      setClauses.push(`tenant_phone = $${paramIndex++}`);
+      values.push(patch.tenantPhone?.trim() || null);
+    }
+    if (patch.secondaryTenants !== undefined) {
+      setClauses.push(`secondary_tenants = $${paramIndex++}::jsonb`);
+      values.push(JSON.stringify(patch.secondaryTenants));
+    }
+
+    values.push(PropertyLongStayStatus.ACTIVE);
+    const statusParamIndex = paramIndex;
+
     const result = await pool.query(
       `UPDATE property_long_stays
-       SET secondary_tenants = $2::jsonb
+       SET ${setClauses.join(", ")}
        WHERE id = $1
-         AND status = $3::property_long_stay_status
+         AND status = $${statusParamIndex}::property_long_stay_status
        RETURNING *`,
-      [id, JSON.stringify(secondaryTenants), PropertyLongStayStatus.ACTIVE]
+      values
     );
     if (result.rows.length === 0) {
       const existing = await propertyLongStaysDb.findById(id);
