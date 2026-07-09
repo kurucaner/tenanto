@@ -16,7 +16,71 @@ import { downloadReportCsv } from "@/lib/download-report-csv";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import { type IPropertyReportsQuery, type TReportRentalTypeFilter } from "@/packages/shared";
+import {
+  type IPortfolioReportSummary,
+  type IPropertyReportsQuery,
+  type TReportRentalTypeFilter,
+} from "@/packages/shared";
+
+interface PortfolioReportBodyProps {
+  error: unknown;
+  from: string;
+  isError: boolean;
+  isPending: boolean;
+  rentalType: string;
+  reportQuery: IPropertyReportsQuery | null;
+  summary: IPortfolioReportSummary | undefined;
+  to: string;
+}
+
+const PortfolioReportBody = memo(
+  ({
+    error,
+    from,
+    isError,
+    isPending,
+    rentalType,
+    reportQuery,
+    summary,
+    to,
+  }: PortfolioReportBodyProps) => {
+    if (!reportQuery) {
+      return (
+        <p className="text-muted-foreground text-sm">Select a valid date range to load reports.</p>
+      );
+    }
+
+    if (isPending) {
+      return (
+        <div className="space-y-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      );
+    }
+
+    if (isError || !summary) {
+      return (
+        <p className="text-destructive text-sm">
+          {error instanceof Error ? error.message : "Failed to load report"}
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        <ReportSummaryCards totals={summary.totals.totals} />
+        <PortfolioPropertyTable
+          from={from}
+          properties={summary.properties}
+          rentalType={rentalType || undefined}
+          to={to}
+        />
+      </div>
+    );
+  }
+);
+PortfolioReportBody.displayName = "PortfolioReportBody";
 
 export const ReportsPage = memo(() => {
   const defaults = useMemo(() => getDefaultReportDateRange(), []);
@@ -92,32 +156,16 @@ export const ReportsPage = memo(() => {
             to={to}
           />
 
-          {!reportQuery ? (
-            <p className="text-muted-foreground text-sm">
-              Select a valid date range to load reports.
-            </p>
-          ) : summaryQuery.isPending ? (
-            <div className="space-y-3">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-40 w-full" />
-            </div>
-          ) : summaryQuery.isError || !summary ? (
-            <p className="text-destructive text-sm">
-              {summaryQuery.error instanceof Error
-                ? summaryQuery.error.message
-                : "Failed to load report"}
-            </p>
-          ) : (
-            <div className="space-y-6">
-              <ReportSummaryCards totals={summary.totals.totals} />
-              <PortfolioPropertyTable
-                from={from}
-                properties={summary.properties}
-                rentalType={rentalType || undefined}
-                to={to}
-              />
-            </div>
-          )}
+          <PortfolioReportBody
+            error={summaryQuery.error}
+            from={from}
+            isError={summaryQuery.isError}
+            isPending={summaryQuery.isPending}
+            rentalType={rentalType}
+            reportQuery={reportQuery}
+            summary={summary}
+            to={to}
+          />
         </CardContent>
       </Card>
     </AdminPageLayout>
