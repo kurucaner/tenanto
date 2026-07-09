@@ -7,16 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
+import { useRecentProperties } from "@/hooks/use-recent-properties";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { PROPERTIES_SEARCH_DEBOUNCE_MS } from "@/lib/properties-list-constants";
 import { buildPropertySwitchPath } from "@/lib/property-switch-navigation";
 import { cn } from "@/lib/utils";
 import { type IProperty } from "@/packages/shared";
 
+type TPropertySwitcherRow = Pick<IProperty, "address" | "id" | "name">;
+
 interface PropertySwitcherOptionProps {
   isSelected: boolean;
   onSelect: (propertyId: string) => void;
-  property: IProperty;
+  property: TPropertySwitcherRow;
 }
 
 const PropertySwitcherOption = memo(
@@ -41,6 +44,11 @@ const PropertySwitcherOption = memo(
 );
 PropertySwitcherOption.displayName = "PropertySwitcherOption";
 
+const PropertySwitcherSectionLabel = memo(({ children }: { children: string }) => (
+  <p className="text-muted-foreground px-2 pt-2 pb-1 text-xs font-medium">{children}</p>
+));
+PropertySwitcherSectionLabel.displayName = "PropertySwitcherSectionLabel";
+
 interface PropertySwitcherProps {
   propertyId: string;
   propertyName: string;
@@ -53,6 +61,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   const [open, setOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const recentProperties = useRecentProperties();
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -78,22 +87,35 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
     return undefined;
   }, [open]);
 
-  const {
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isError,
-    isFetchingNextPage,
-    isPending,
-    properties,
-  } = usePropertiesInfiniteList({ q: debouncedQuery });
+  const { error, fetchNextPage, hasNextPage, isError, isFetchingNextPage, isPending, properties } =
+    usePropertiesInfiniteList({ q: debouncedQuery });
+
+  const isSearching = debouncedQuery.length > 0;
+
+  const recentIds = useMemo(
+    () => new Set(recentProperties.map((property) => property.id)),
+    [recentProperties]
+  );
+
+  const allProperties = useMemo(
+    () => (isSearching ? properties : properties.filter((property) => !recentIds.has(property.id))),
+    [isSearching, properties, recentIds]
+  );
 
   const loadMoreButtonLabel = useMemo(
     () => getInfiniteListLoadMoreLabel({ hasNextPage: hasNextPage ?? false, isFetchingNextPage }),
     [hasNextPage, isFetchingNextPage]
   );
 
-  const showStaticName = !debouncedQuery && properties.length === 1 && !isPending;
+  const showStaticName = !isSearching && properties.length === 1 && !isPending;
+  const showRecentSection = !isSearching && recentProperties.length > 0;
+  const showAllPropertiesSection = !isSearching && (allProperties.length > 0 || showRecentSection);
+  const showEmptyState =
+    !isPending &&
+    !isError &&
+    (isSearching
+      ? properties.length === 0
+      : recentProperties.length === 0 && allProperties.length === 0);
 
   const handleSelect = (nextPropertyId: string) => {
     setOpen(false);
@@ -152,10 +174,23 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
               {error instanceof Error ? error.message : "Failed to load properties"}
             </p>
           ) : null}
-          {!isPending && !isError && properties.length === 0 ? (
+          {showEmptyState ? (
             <p className="text-muted-foreground px-2 py-3 text-sm">No properties found</p>
           ) : null}
-          {!isPending && !isError
+          {showRecentSection ? (
+            <>
+              <PropertySwitcherSectionLabel>Recent</PropertySwitcherSectionLabel>
+              {recentProperties.map((property) => (
+                <PropertySwitcherOption
+                  isSelected={property.id === propertyId}
+                  key={property.id}
+                  onSelect={handleSelect}
+                  property={property}
+                />
+              ))}
+            </>
+          ) : null}
+          {!isPending && !isError && isSearching
             ? properties.map((property) => (
                 <PropertySwitcherOption
                   isSelected={property.id === propertyId}
@@ -165,7 +200,24 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
                 />
               ))
             : null}
-          {!isPending && !isError && properties.length > 0 ? (
+          {!isPending && !isError && showAllPropertiesSection ? (
+            <>
+              {showRecentSection ? (
+                <PropertySwitcherSectionLabel>All properties</PropertySwitcherSectionLabel>
+              ) : null}
+              {allProperties.map((property) => (
+                <PropertySwitcherOption
+                  isSelected={property.id === propertyId}
+                  key={property.id}
+                  onSelect={handleSelect}
+                  property={property}
+                />
+              ))}
+            </>
+          ) : null}
+          {!isPending &&
+          !isError &&
+          (isSearching ? properties.length > 0 : properties.length > 0) ? (
             <div className="border-border border-t p-1">
               <Button
                 className="w-full"

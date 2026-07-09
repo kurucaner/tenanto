@@ -1,5 +1,5 @@
 import { Building2, Plus, Search } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
@@ -79,10 +79,18 @@ const PropertiesListPageInner = memo(() => {
     [hasNextPage, isFetchingNextPage]
   );
 
+  const handleNewPropertyClick = useCallback(() => {
+    setCreateOpen(true);
+  }, []);
+
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
+  }, []);
+
   return (
     <AdminPageLayout gap={6}>
       <div className="flex items-center justify-end gap-4">
-        <Button className="shrink-0 gap-2" onClick={() => setCreateOpen(true)} type="button">
+        <Button className="shrink-0 gap-2" onClick={handleNewPropertyClick} type="button">
           <Plus className="size-4" />
           New Property
         </Button>
@@ -92,7 +100,7 @@ const PropertiesListPageInner = memo(() => {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          onChange={(e) => setSearchInput(e.target.value)}
+          onChange={handleSearchInputChange}
           placeholder="Search by name or address…"
           value={searchInput}
         />

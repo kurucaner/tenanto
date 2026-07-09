@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { createContext, memo, type ReactNode, useContext } from "react";
+import { createContext, memo, type ReactNode, useContext, useEffect } from "react";
 import { Link, NavLink, Outlet, useParams } from "react-router-dom";
 
 import {
@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { recordRecentProperty } from "@/lib/recent-properties-storage";
+import { type IPropertyDetail } from "@/packages/shared";
 
 import { PropertyShellProvider } from "./property-shell-context";
 
@@ -77,6 +79,29 @@ export const PropertyPageShell = memo(
 );
 PropertyPageShell.displayName = "PropertyPageShell";
 
+const PropertyShellLayoutContent = memo(
+  ({ property, propertyId }: { property: IPropertyDetail; propertyId: string }) => {
+    useEffect(() => {
+      recordRecentProperty({
+        address: property.address,
+        id: property.id,
+        name: property.name,
+      });
+    }, [property.address, property.id, property.name]);
+
+    return (
+      <PropertyShellProvider property={property} propertyId={propertyId}>
+        <PropertyShellActionsProvider>
+          <PropertyPageShell propertyId={propertyId} propertyName={property.name}>
+            <Outlet />
+          </PropertyPageShell>
+        </PropertyShellActionsProvider>
+      </PropertyShellProvider>
+    );
+  }
+);
+PropertyShellLayoutContent.displayName = "PropertyShellLayoutContent";
+
 export const PropertyShellLayout = memo(() => {
   const { propertyId } = useParams<{ propertyId: string }>();
 
@@ -110,14 +135,6 @@ export const PropertyShellLayout = memo(() => {
 
   const property = detailQuery.data.property;
 
-  return (
-    <PropertyShellProvider property={property} propertyId={propertyId}>
-      <PropertyShellActionsProvider>
-        <PropertyPageShell propertyId={propertyId} propertyName={property.name}>
-          <Outlet />
-        </PropertyPageShell>
-      </PropertyShellActionsProvider>
-    </PropertyShellProvider>
-  );
+  return <PropertyShellLayoutContent property={property} propertyId={propertyId} />;
 });
 PropertyShellLayout.displayName = "PropertyShellLayout";

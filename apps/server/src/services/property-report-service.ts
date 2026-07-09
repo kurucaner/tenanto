@@ -31,8 +31,6 @@ import {
 } from "@/packages/shared";
 import { roundMoney } from "@/services/property-income-calculator";
 
-import { WinstonLogger } from "./winston";
-
 const MS_PER_DAY = 86_400_000;
 
 export interface IReportData {
@@ -154,16 +152,6 @@ export async function loadReportData(
           (expense.expenseDate >= query.from && expense.expenseDate <= query.to)
       )
     : [];
-
-  WinstonLogger.info("[TAX_DEBUG_v1] loadReportData", {
-    reservationCount: scopedReservations.length,
-    sample: scopedReservations.slice(0, 3).map((stay) => ({
-      checkIn: stay.checkIn,
-      id: stay.id,
-      taxBreakdown: stay.taxBreakdown,
-    })),
-    staysWithTaxes: scopedReservations.filter((stay) => stay.taxBreakdown.length > 0).length,
-  });
 
   return {
     expenses: scopedExpenses,
@@ -360,14 +348,6 @@ export function buildPropertyReportSummary(
     for (const taxItem of stay.taxBreakdown) {
       addTaxToMap(taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
     }
-
-    if (stay.taxBreakdown.length > 0) {
-      WinstonLogger.info("[TAX_DEBUG_v1] stay tax ingested", {
-        stayId: stay.id,
-        taxBreakdown: stay.taxBreakdown,
-        taxMapSize: taxMap.size,
-      });
-    }
   }
 
   for (const line of incomeLines) {
@@ -451,11 +431,6 @@ export function buildPropertyReportSummary(
     .sort((a, b) => b.amount - a.amount);
   const taxSummary = taxMapToSummary(taxMap);
 
-  WinstonLogger.info("[TAX_DEBUG_v1] taxMap result", {
-    taxMapSize: taxMap.size,
-    taxSummary,
-  });
-
   const totalExpenses = propertyExpensesTotal;
 
   const result: IPropertyReportSummary = {
@@ -475,11 +450,6 @@ export function buildPropertyReportSummary(
       totalExpenses,
     },
   };
-
-  WinstonLogger.info("[TAX_DEBUG_v1] buildPropertyReportSummary return", {
-    hasTaxSummaryKey: "taxSummary" in result,
-    keys: Object.keys(result),
-  });
 
   return result;
 }
