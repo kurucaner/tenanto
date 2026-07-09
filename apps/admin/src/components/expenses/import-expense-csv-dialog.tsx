@@ -109,8 +109,13 @@ export const ImportExpenseCsvDialog = memo(
     );
 
     const addFiles = useCallback((incoming: FileList | File[]) => {
+      const picked = Array.from(incoming);
+      if (picked.length === 0) {
+        return;
+      }
+
       setSelectedFiles((current) => {
-        const { files, rejections } = processExpenseCsvIncomingFiles(current, incoming);
+        const { files, rejections } = processExpenseCsvIncomingFiles(current, picked);
         const message = formatExpenseCsvRejections(rejections);
         if (message) {
           toast.error(message);
@@ -229,7 +234,7 @@ export const ImportExpenseCsvDialog = memo(
                       className="sr-only"
                       multiple
                       onChange={(e) => {
-                        if (e.target.files) {
+                        if (e.target.files && e.target.files.length > 0) {
                           addFiles(e.target.files);
                         }
                         e.target.value = "";
