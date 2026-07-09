@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import {
   Table,
   TableBody,
@@ -25,15 +26,16 @@ import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { longStaysApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { sortUnits } from "@/lib/unit-sort";
 import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyUnit,
   PropertyLongStayStatus,
-  type TUnitRentalType,
 } from "@/packages/shared";
 import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
 
@@ -164,6 +166,10 @@ export const PropertyUnitsPage = memo(() => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
   const [startLeaseUnit, setStartLeaseUnit] = useState<IPropertyUnit | null>(null);
+  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
+    defaultColumnId: "type",
+    defaultDirection: "asc",
+  });
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
@@ -220,16 +226,7 @@ export const PropertyUnitsPage = memo(() => {
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
 
-  const sortedUnits = useMemo(() => {
-    const rentalTypeOrder = (type: TUnitRentalType) =>
-      type === UnitRentalType.SHORT_TERM ? 0 : 1;
-
-    return [...units].sort((a, b) => {
-      const typeDiff = rentalTypeOrder(a.rentalType) - rentalTypeOrder(b.rentalType);
-      if (typeDiff !== 0) return typeDiff;
-      return a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true });
-    });
-  }, [units]);
+  const sortedUnits = useMemo(() => sortUnits(units, sortState), [sortState, units]);
 
   const handleOpenCreateUnit = useCallback(() => {
     setCreateOpen(true);
@@ -264,7 +261,12 @@ export const PropertyUnitsPage = memo(() => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Layout</TableHead>
-                  <TableHead>Type</TableHead>
+                  <SortableTableHead
+                    ariaSort={getColumnAriaSort("type")}
+                    direction={getColumnDirection("type")}
+                    label="Type"
+                    onSort={() => toggleSort("type")}
+                  />
                   <TableHead>Occupancy</TableHead>
                   <TableHead>Added</TableHead>
                   {canManage ? <TableHead>Actions</TableHead> : null}
