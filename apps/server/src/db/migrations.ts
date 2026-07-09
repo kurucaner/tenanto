@@ -1754,4 +1754,16 @@ export const migrations: IMigration[] = [
     },
     version: 40,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(
+        `ALTER TABLE property_expenses ADD COLUMN IF NOT EXISTS person_name VARCHAR(255);`
+      );
+    },
+    name: "drop_property_expenses_person_name",
+    up: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE property_expenses DROP COLUMN IF EXISTS person_name;`);
+    },
+    version: 41,
+  },
 ];

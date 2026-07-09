@@ -302,7 +302,6 @@ export const ImportExpenseCsvDialog = memo(
                             <col style={{ minWidth: 120, width: 120 }} />
                             <col style={{ minWidth: 180, width: 180 }} />
                             <col style={{ minWidth: 140, width: 140 }} />
-                            <col style={{ minWidth: 120, width: 120 }} />
                             <col style={{ minWidth: 160, width: 160 }} />
                             <col style={{ minWidth: 90, width: 90 }} />
                             <col style={{ minWidth: 120, width: 120 }} />
@@ -313,7 +312,6 @@ export const ImportExpenseCsvDialog = memo(
                               <TableHead>File</TableHead>
                               <TableHead className="whitespace-normal">Category</TableHead>
                               <TableHead>Date</TableHead>
-                              <TableHead>Person</TableHead>
                               <TableHead className="whitespace-normal">Description</TableHead>
                               <TableHead>Tax</TableHead>
                               <TableHead

@@ -258,7 +258,6 @@ export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyEx
   expenseDate: row.expense_date == null ? null : formatDateColumn(row.expense_date),
   id: row.id as string,
   isDeleted: (row.is_deleted as boolean) ?? false,
-  personName: (row.person_name as string) ?? null,
   propertyId: row.property_id as string,
   taxFree: row.tax_free as boolean,
   updatedAt: (row.updated_at as Date).toISOString(),

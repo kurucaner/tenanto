@@ -760,7 +760,6 @@ INSERT INTO property_expenses (
   category,
   amount,
   expense_date,
-  person_name,
   description
 )
 SELECT
@@ -769,7 +768,6 @@ SELECT
   category::property_expense_category,
   amount,
   expense_date,
-  person_name,
   description
 FROM (
   SELECT
@@ -782,7 +780,6 @@ FROM (
       - INTERVAL '5 months'
       + ((prop_idx * 19 + expense_idx * 23) % 180) * INTERVAL '1 day'
     )::date AS expense_date,
-    person_name,
     description
   FROM generate_series(1, 6) AS prop_idx
   CROSS JOIN generate_series(1, 12) AS expense_idx
@@ -809,11 +806,6 @@ FROM (
           ELSE 75 + (expense_idx * 8)
         END
       ) AS amount,
-      CASE expense_idx
-        WHEN 5 THEN 'Maria Clean Co'
-        WHEN 6 THEN 'Building Manager'
-        ELSE NULL
-      END AS person_name,
       CASE expense_idx
         WHEN 7 THEN 'HVAC filter replacement'
         WHEN 8 THEN 'Paint and hardware supplies'

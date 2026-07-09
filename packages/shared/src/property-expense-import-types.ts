@@ -23,7 +23,6 @@ export interface IExpenseImportParsedRow {
   category: TExpenseCategory;
   description?: string;
   expenseDate?: string;
-  personName?: string;
   rowIndex: number;
   sourceFileName: string;
   taxFree?: boolean;

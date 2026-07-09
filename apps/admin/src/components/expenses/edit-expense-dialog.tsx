@@ -34,7 +34,6 @@ export const EditExpenseDialog = memo(
     const [category, setCategory] = useState<TExpenseCategory>(expense.category);
     const [amount, setAmount] = useState(String(expense.amount));
     const [expenseDate, setExpenseDate] = useState(expense.expenseDate ?? "");
-    const [personName, setPersonName] = useState(expense.personName ?? "");
     const [description, setDescription] = useState(expense.description ?? "");
     const [taxFree, setTaxFree] = useState(expense.taxFree);
 
@@ -45,7 +44,6 @@ export const EditExpenseDialog = memo(
           category,
           description: description.trim() || null,
           expenseDate: expenseDate || null,
-          personName: personName.trim() || null,
           taxFree,
         }),
       onError: (e) => {
@@ -83,9 +81,7 @@ export const EditExpenseDialog = memo(
               onCategoryChange={setCategory}
               onDescriptionChange={setDescription}
               onExpenseDateChange={setExpenseDate}
-              onPersonNameChange={setPersonName}
               onTaxFreeChange={setTaxFree}
-              personName={personName}
               taxFree={taxFree}
             />
 

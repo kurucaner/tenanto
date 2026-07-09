@@ -16,7 +16,6 @@ export const propertyExpensesDb = {
       category: ICreatePropertyExpenseBody["category"];
       description: string | null;
       expenseDate: string | null;
-      personName: string | null;
       taxFree: boolean;
     }
   ): Promise<IPropertyExpense> {
@@ -26,17 +25,15 @@ export const propertyExpensesDb = {
          category,
          amount,
          expense_date,
-         person_name,
          description,
          tax_free
-       ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6, $7)
+       ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6)
        RETURNING *`,
       [
         propertyId,
         input.category,
         input.amount,
         input.expenseDate,
-        input.personName,
         input.description,
         input.taxFree,
       ]
@@ -51,7 +48,6 @@ export const propertyExpensesDb = {
       category: ICreatePropertyExpenseBody["category"];
       description: string | null;
       expenseDate: string | null;
-      personName: string | null;
       taxFree: boolean;
     }>
   ): Promise<IPropertyExpense[]> {
@@ -71,17 +67,15 @@ export const propertyExpensesDb = {
              category,
              amount,
              expense_date,
-             person_name,
              description,
              tax_free
-           ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6, $7)
+           ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6)
            RETURNING *`,
           [
             propertyId,
             input.category,
             input.amount,
             input.expenseDate,
-            input.personName,
             input.description,
             input.taxFree,
           ]
@@ -173,10 +167,6 @@ export const propertyExpensesDb = {
     if (input.expenseDate !== undefined) {
       setClauses.push(`expense_date = $${param++}`);
       values.push(input.expenseDate);
-    }
-    if (input.personName !== undefined) {
-      setClauses.push(`person_name = $${param++}`);
-      values.push(input.personName);
     }
     if (input.description !== undefined) {
       setClauses.push(`description = $${param++}`);

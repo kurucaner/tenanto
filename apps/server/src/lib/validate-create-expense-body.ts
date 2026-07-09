@@ -78,16 +78,6 @@ export function parseCreateExpenseBody(
     return { error: "expenseDate must be a YYYY-MM-DD date", ok: false };
   }
 
-  const personName = parseOptionalString(r["personName"]);
-  if (
-    personName === null &&
-    r["personName"] !== undefined &&
-    r["personName"] !== null &&
-    typeof r["personName"] !== "string"
-  ) {
-    return { error: "personName must be a string", ok: false };
-  }
-
   const description = parseOptionalString(r["description"]);
   if (
     description === null &&
@@ -116,7 +106,6 @@ export function parseCreateExpenseBody(
       category,
       description: description ?? undefined,
       expenseDate: expenseDate ?? undefined,
-      personName: personName ?? undefined,
       taxFree,
     },
     ok: true,

@@ -41,7 +41,6 @@ const createExpenseSchema = z
       .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
         message: "Date cannot be in the future",
       }),
-    personName: z.string(),
     taxFree: z.boolean(),
   })
   .superRefine((values, ctx) => {
@@ -65,7 +64,6 @@ function getDefaultValues(): TCreateExpenseFormValues {
     category: ExpenseCategory.ELECTRICITY,
     description: "",
     expenseDate: getTodayLocalIsoDate(),
-    personName: "",
     taxFree: false,
   };
 }
@@ -91,7 +89,6 @@ export const CreateExpenseDialog = memo(
           category: values.category,
           description: values.description.trim() || undefined,
           expenseDate: values.expenseDate,
-          personName: values.personName.trim() || undefined,
           taxFree: values.taxFree,
         }),
       onError: (e) => {
@@ -120,7 +117,7 @@ export const CreateExpenseDialog = memo(
 
     const { errors, isSubmitting } = form.formState;
     const maxExpenseDate = getTodayLocalIsoDate();
-    const { amount, category, description, expenseDate, personName, taxFree } = form.watch();
+    const { amount, category, description, expenseDate, taxFree } = form.watch();
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -147,9 +144,7 @@ export const CreateExpenseDialog = memo(
                 onCategoryChange={(value) => form.setValue("category", value)}
                 onDescriptionChange={(value) => form.setValue("description", value)}
                 onExpenseDateChange={(value) => form.setValue("expenseDate", value)}
-                onPersonNameChange={(value) => form.setValue("personName", value)}
                 onTaxFreeChange={(value) => form.setValue("taxFree", value)}
-                personName={personName}
                 taxFree={taxFree}
               />
             </div>

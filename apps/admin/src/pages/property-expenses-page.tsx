@@ -66,7 +66,6 @@ const ExpenseRow = memo(
         </div>
       </TableCell>
       <TableCell>{expense.expenseDate ?? "—"}</TableCell>
-      <TableCell>{expense.personName ?? "—"}</TableCell>
       <TableCell className="max-w-[240px] truncate">{expense.description ?? "—"}</TableCell>
       <TableCell>{expense.taxFree ? <Badge variant="secondary">Tax-free</Badge> : "—"}</TableCell>
       <TableCell className="text-right font-medium">{formatMoney(expense.amount)}</TableCell>
@@ -266,7 +265,6 @@ export const PropertyExpensesPage = memo(() => {
                   <TableRow>
                     <TableHead>Category</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Person</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Tax</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -276,7 +274,7 @@ export const PropertyExpensesPage = memo(() => {
                 <TableBody>
                   {expenses.length === 0 ? (
                     <TableRow>
-                      <TableCell className="text-muted-foreground" colSpan={canManage ? 7 : 6}>
+                      <TableCell className="text-muted-foreground" colSpan={canManage ? 6 : 5}>
                         No expenses yet.
                         {canManage ? " Add an expense to get started." : ""}
                       </TableCell>

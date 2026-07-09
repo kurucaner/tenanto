@@ -34,7 +34,6 @@ export interface IPropertyExpense {
   expenseDate: string | null;
   id: string;
   isDeleted: boolean;
-  personName: string | null;
   propertyId: string;
   taxFree: boolean;
   updatedAt: string;
@@ -45,7 +44,6 @@ export interface ICreatePropertyExpenseBody {
   category: TExpenseCategory;
   description?: string;
   expenseDate?: string;
-  personName?: string;
   taxFree?: boolean;
 }
 
@@ -54,7 +52,6 @@ export interface IUpdatePropertyExpenseBody {
   category?: TExpenseCategory;
   description?: string | null;
   expenseDate?: string | null;
-  personName?: string | null;
   taxFree?: boolean;
 }
 
@@ -68,7 +65,6 @@ export interface IExpenseCategoryMeta {
   isAnnualAmount: boolean;
   isCommission: boolean;
   requiresDescription: boolean;
-  showsPersonName: boolean;
 }
 
 const COMMISSION_CATEGORIES = new Set<TExpenseCategory>([
@@ -87,8 +83,6 @@ export function getExpenseCategoryMeta(category: TExpenseCategory): IExpenseCate
       category === ExpenseCategory.MATERIAL ||
       category === ExpenseCategory.MAINTENANCE ||
       category === ExpenseCategory.OTHER,
-    showsPersonName:
-      category === ExpenseCategory.CLEANING || category === ExpenseCategory.SALARY,
   };
 }
 

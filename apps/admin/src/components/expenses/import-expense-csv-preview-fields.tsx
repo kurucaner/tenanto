@@ -72,16 +72,6 @@ function renderDateInput({ idPrefix, onChange, row }: PreviewFieldContext) {
   );
 }
 
-function renderPersonInput({ idPrefix, onChange, row }: PreviewFieldContext) {
-  return (
-    <Input
-      id={`${idPrefix}-person`}
-      onChange={(e) => onChange({ ...row, personName: e.target.value })}
-      value={row.personName ?? ""}
-    />
-  );
-}
-
 function renderDescriptionInput({ idPrefix, onChange, row }: PreviewFieldContext) {
   return (
     <Input
@@ -159,12 +149,6 @@ export const ImportExpenseCsvPreviewFields = memo(
           <div className="flex flex-col gap-1.5">
             <Label htmlFor={`${idPrefix}-amount`}>Amount</Label>
             {renderAmountInput(context)}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel htmlFor={`${idPrefix}-person`} optional>
-              Person
-            </FieldLabel>
-            {renderPersonInput(context)}
           </div>
           <div className="flex flex-col justify-end gap-1.5">{renderTaxFreeInput(context)}</div>
         </div>
@@ -261,7 +245,6 @@ export const ImportExpenseCsvPreviewTableRow = memo(
         </TableCell>
         <TableCell className="whitespace-normal">{renderCategorySelect(context)}</TableCell>
         <TableCell>{renderDateInput(context)}</TableCell>
-        <TableCell>{renderPersonInput(context)}</TableCell>
         <TableCell className="whitespace-normal">{renderDescriptionInput(context)}</TableCell>
         <TableCell>{renderTaxFreeInput(context, "text-xs")}</TableCell>
         <TableCell className={STICKY_AMOUNT_CELL_CLASS_NAME}>

@@ -70,7 +70,6 @@ function buildParsedRow(
     category: IExpenseImportParsedRow["category"];
     description?: string;
     expenseDate?: string;
-    personName?: string;
     taxFree?: boolean;
   }
 ): IExpenseImportParsedRow {
@@ -79,7 +78,6 @@ function buildParsedRow(
     category: row.category,
     description: row.description,
     expenseDate: row.expenseDate,
-    personName: row.personName,
     taxFree: row.taxFree,
   };
 
@@ -108,7 +106,6 @@ function buildParsedRow(
     category: parsed.body.category,
     description: parsed.body.description,
     expenseDate: parsed.body.expenseDate,
-    personName: parsed.body.personName,
     rowIndex,
     sourceFileName,
     taxFree: parsed.body.taxFree,
@@ -272,7 +269,6 @@ function validateCommitRows(
       category: row.category,
       description: row.description,
       expenseDate: row.expenseDate,
-      personName: row.personName,
       taxFree: row.taxFree,
     });
     if (!parsed.ok) {
@@ -289,7 +285,6 @@ function validateCommitRows(
       category: parsed.body.category,
       description: parsed.body.description,
       expenseDate: parsed.body.expenseDate,
-      personName: parsed.body.personName,
       rowIndex: row.rowIndex,
       sourceFileName: row.sourceFileName,
       taxFree: parsed.body.taxFree,
@@ -437,7 +432,6 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
           category: row.category,
           description: row.description?.trim() || null,
           expenseDate: row.expenseDate ?? null,
-          personName: row.personName?.trim() || null,
           taxFree: row.taxFree ?? false,
         }))
       );

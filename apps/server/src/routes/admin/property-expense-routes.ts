@@ -54,7 +54,6 @@ const UPDATE_FIELDS = [
   "category",
   "amount",
   "expenseDate",
-  "personName",
   "description",
   "taxFree",
 ] as const;
@@ -97,14 +96,6 @@ function parseUpdateExpenseBody(
       return { error: "expenseDate must be a YYYY-MM-DD date", ok: false };
     }
     body.expenseDate = expenseDate ?? null;
-  }
-
-  if (r["personName"] !== undefined) {
-    const personName = parseOptionalString(r["personName"]);
-    if (personName === null && r["personName"] !== null && typeof r["personName"] !== "string") {
-      return { error: "personName must be a string", ok: false };
-    }
-    body.personName = personName ?? null;
   }
 
   if (r["description"] !== undefined) {
@@ -172,7 +163,6 @@ function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExp
     category: patch.category ?? existing.category,
     description: patch.description === undefined ? existing.description : patch.description,
     expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
-    personName: patch.personName === undefined ? existing.personName : patch.personName,
     taxFree: patch.taxFree ?? existing.taxFree,
   };
 }
@@ -258,7 +248,6 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         category: parsed.body.category,
         description: parsed.body.description?.trim() || null,
         expenseDate: parsed.body.expenseDate ?? null,
-        personName: parsed.body.personName?.trim() || null,
         taxFree: parsed.body.taxFree ?? false,
       });
 

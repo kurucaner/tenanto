@@ -34,7 +34,6 @@ describe("parseCreateExpenseBody", () => {
       amount: 120.5,
       category: ExpenseCategory.CLEANING,
       expenseDate: "2026-01-15",
-      personName: "Alex",
       taxFree: false,
     });
 

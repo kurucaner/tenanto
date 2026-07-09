@@ -27,9 +27,7 @@ interface ExpenseFormFieldsProps {
   onCategoryChange: (value: TExpenseCategory) => void;
   onDescriptionChange: (value: string) => void;
   onExpenseDateChange: (value: string) => void;
-  onPersonNameChange: (value: string) => void;
   onTaxFreeChange: (value: boolean) => void;
-  personName: string;
   taxFree: boolean;
 }
 
@@ -49,9 +47,7 @@ export const ExpenseFormFields = memo(
     onCategoryChange,
     onDescriptionChange,
     onExpenseDateChange,
-    onPersonNameChange,
     onTaxFreeChange,
-    personName,
     taxFree,
   }: ExpenseFormFieldsProps) => {
     const meta = getExpenseCategoryMeta(category);
@@ -106,19 +102,6 @@ export const ExpenseFormFields = memo(
             ) : null}
           </div>
         </div>
-
-        {meta.showsPersonName ? (
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel htmlFor={`${idPrefix}-person`} optional>
-              Person name
-            </FieldLabel>
-            <Input
-              id={`${idPrefix}-person`}
-              onChange={(e) => onPersonNameChange(e.target.value)}
-              value={personName}
-            />
-          </div>
-        ) : null}
 
         {meta.requiresDescription ? (
           <div className="flex flex-col gap-1.5">
