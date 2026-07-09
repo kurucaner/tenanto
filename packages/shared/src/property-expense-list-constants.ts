@@ -1,0 +1,2 @@
+export const EXPENSES_LIST_LIMIT = 50;
+export const EXPENSES_LIST_MAX_LIMIT = 100;

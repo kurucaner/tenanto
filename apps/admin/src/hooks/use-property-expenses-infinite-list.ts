@@ -2,9 +2,9 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { expensesApi } from "@/lib/api-client";
-import { EXPENSES_LIST_LIMIT } from "@/lib/expenses-list-constants";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  EXPENSES_LIST_LIMIT,
   type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
 } from "@/packages/shared";

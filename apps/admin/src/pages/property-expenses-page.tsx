@@ -38,6 +38,7 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
+import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -300,6 +301,14 @@ export const PropertyExpensesPage = memo(() => {
                 </TableBody>
               </Table>
               <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
+              {expenses.length > 0 && !hasNextPage && !isFetchingNextPage ? (
+                <p className="text-muted-foreground pt-3 text-center text-sm">
+                  {getInfiniteListLoadMoreLabel({
+                    hasNextPage: false,
+                    isFetchingNextPage: false,
+                  })}
+                </p>
+              ) : null}
             </div>
           )}
         </CardContent>

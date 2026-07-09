@@ -204,6 +204,10 @@ export {
   type TExpenseCategory,
   validateExpenseCategoryFields,
 } from "./property-expense-types";
+export {
+  EXPENSES_LIST_LIMIT,
+  EXPENSES_LIST_MAX_LIMIT,
+} from "./property-expense-list-constants";
 
 // Home Financial Overview Types
 export type { IHomeFinancialOverview } from "./home-financial-overview-types";

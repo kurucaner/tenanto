@@ -9,6 +9,8 @@ import {
 } from "@/lib/validate-create-expense-body";
 import {
   ExpenseCategory,
+  EXPENSES_LIST_LIMIT,
+  EXPENSES_LIST_MAX_LIMIT,
   HttpStatus,
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
@@ -27,12 +29,10 @@ import {
 import { rejectIfDeleted } from "./reject-if-deleted";
 
 const EXPENSE_CATEGORIES = new Set<TExpenseCategory>(Object.values(ExpenseCategory));
-const EXPENSES_LIST_DEFAULT_LIMIT = 50;
-const EXPENSES_LIST_MAX_LIMIT = 100;
 
 function parseExpensesListLimit(raw: unknown): number {
   const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
-  if (!Number.isFinite(n) || n < 1) return EXPENSES_LIST_DEFAULT_LIMIT;
+  if (!Number.isFinite(n) || n < 1) return EXPENSES_LIST_LIMIT;
   return Math.min(EXPENSES_LIST_MAX_LIMIT, Math.floor(n));
 }
 
