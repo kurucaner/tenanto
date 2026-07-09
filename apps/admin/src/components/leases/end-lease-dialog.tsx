@@ -47,6 +47,7 @@ export const EndLeaseDialog = memo(
   ({ lease, onOpenChange, open, propertyId }: EndLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const maxDate = getTodayLocalIsoDate();
+    console.log("maxDate", maxDate);
 
     const form = useForm<TEndLeaseFormValues>({
       defaultValues: {

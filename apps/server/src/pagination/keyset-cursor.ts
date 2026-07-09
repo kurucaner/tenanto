@@ -69,3 +69,49 @@ export function encodeExpenseKeysetCursor(
     "base64url"
   );
 }
+
+/**
+ * Lease list keyset cursor (v1): leaseStartDate (YYYY-MM-DD) + createdAt + id.
+ * Matches ORDER BY lease_start_date DESC, created_at DESC, id DESC.
+ */
+export type LeaseKeysetCursorV1 = {
+  createdAt: string;
+  id: string;
+  leaseStartDate: string;
+};
+
+export function decodeLeaseKeysetCursor(raw: string): LeaseKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      createdAt?: unknown;
+      id?: unknown;
+      leaseStartDate?: unknown;
+    };
+    if (
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.leaseStartDate !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+      leaseStartDate: parsed.leaseStartDate,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeLeaseKeysetCursor(
+  leaseStartDate: string,
+  createdAt: Date | string,
+  id: string
+): string {
+  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
+  return Buffer.from(JSON.stringify({ createdAt: iso, id, leaseStartDate }), "utf8").toString(
+    "base64url"
+  );
+}

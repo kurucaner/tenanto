@@ -11,9 +11,44 @@ import {
   PropertyLongStayStatus,
   transactionDateToMonth,
 } from "@/packages/shared";
+import {
+  decodeLeaseKeysetCursor,
+  encodeLeaseKeysetCursor,
+} from "@/pagination/keyset-cursor";
+import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapPropertyLongStayRow } from "./mappers";
 import { pool } from "./pool";
+
+function buildPropertyLongStayListConditions(
+  propertyId: string,
+  filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">
+): { conditions: string[]; values: unknown[] } {
+  const conditions = ["property_id = $1"];
+  const values: unknown[] = [propertyId];
+  let p = 2;
+
+  if (filters.status) {
+    conditions.push(`status = $${p++}::property_long_stay_status`);
+    values.push(filters.status);
+  }
+  if (filters.unitId) {
+    conditions.push(`unit_id = $${p++}`);
+    values.push(filters.unitId);
+  }
+
+  return { conditions, values };
+}
+
+function formatLeaseStartDateForCursor(leaseStartDate: unknown): string {
+  if (leaseStartDate instanceof Date) {
+    return leaseStartDate.toISOString().slice(0, 10);
+  }
+  if (typeof leaseStartDate === "string") {
+    return leaseStartDate.slice(0, 10);
+  }
+  throw new TypeError("invalid lease_start_date");
+}
 
 export class ActiveLongStayConflictError extends Error {
   constructor() {
@@ -149,20 +184,9 @@ export const propertyLongStaysDb = {
 
   async listByProperty(
     propertyId: string,
-    filters: IPropertyLongStaysListQuery = {}
+    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId"> = {}
   ): Promise<IPropertyLongStay[]> {
-    const conditions = ["property_id = $1"];
-    const values: unknown[] = [propertyId];
-    let p = 2;
-
-    if (filters.status) {
-      conditions.push(`status = $${p++}::property_long_stay_status`);
-      values.push(filters.status);
-    }
-    if (filters.unitId) {
-      conditions.push(`unit_id = $${p++}`);
-      values.push(filters.unitId);
-    }
+    const { conditions, values } = buildPropertyLongStayListConditions(propertyId, filters);
 
     const result = await pool.query(
       `SELECT * FROM property_long_stays
@@ -171,6 +195,48 @@ export const propertyLongStaysDb = {
       values
     );
     return result.rows.map((row) => mapPropertyLongStayRow(row as Record<string, unknown>));
+  },
+
+  async listPaginatedByProperty(
+    propertyId: string,
+    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">,
+    options: { cursor?: string; limit: number }
+  ): Promise<{ longStays: IPropertyLongStay[]; nextCursor: string | null }> {
+    const { conditions, values } = buildPropertyLongStayListConditions(propertyId, filters);
+    let p = values.length + 1;
+
+    if (options.cursor != null && options.cursor !== "") {
+      const decoded = decodeLeaseKeysetCursor(options.cursor);
+      conditions.push(
+        `(lease_start_date, created_at, id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
+      );
+      values.push(decoded.leaseStartDate, decoded.createdAt, decoded.id);
+    }
+
+    const limitParam = p;
+    values.push(options.limit + 1);
+
+    const result = await pool.query(
+      `SELECT * FROM property_long_stays
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY lease_start_date DESC, created_at DESC, id DESC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
+      encodeLeaseKeysetCursor(
+        formatLeaseStartDateForCursor(last.lease_start_date),
+        last.created_at as Date | string,
+        last.id as string
+      )
+    );
+
+    return {
+      longStays: pageRows.map((row) => mapPropertyLongStayRow(row)),
+      nextCursor,
+    };
   },
 
   async updateLease(id: string, patch: IUpdatePropertyLongStayBody): Promise<IPropertyLongStay> {

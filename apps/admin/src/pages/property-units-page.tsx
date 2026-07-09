@@ -21,10 +21,11 @@ import {
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
 import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
+import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
-import { longStaysApi, unitsApi } from "@/lib/api-client";
+import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { sortUnits } from "@/lib/unit-sort";
@@ -32,7 +33,6 @@ import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyUnit,
-  PropertyLongStayStatus,
   TUnitRentalType,
 } from "@/packages/shared";
 import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
@@ -171,20 +171,15 @@ export const PropertyUnitsPage = memo(() => {
     queryKey: adminQueryKeys.propertyUnits(propertyId),
   });
 
-  const activeLeasesQuery = useQuery({
-    queryFn: () => longStaysApi.list(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, {
-      status: PropertyLongStayStatus.ACTIVE,
-    }),
-  });
+  const { activeLeases } = usePropertyActiveLeases(propertyId);
 
   const activeLeaseByUnitId = useMemo(() => {
     const map = new Map<string, IPropertyLongStay>();
-    for (const lease of activeLeasesQuery.data?.longStays ?? []) {
+    for (const lease of activeLeases) {
       map.set(lease.unitId, lease);
     }
     return map;
-  }, [activeLeasesQuery.data?.longStays]);
+  }, [activeLeases]);
 
   const occupiedUnitIds = useMemo(() => new Set(activeLeaseByUnitId.keys()), [activeLeaseByUnitId]);
 

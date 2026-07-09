@@ -40,12 +40,15 @@ export interface ICreatePropertyLongStayBody {
 }
 
 export interface IPropertyLongStaysListQuery {
+  cursor?: string;
+  limit?: number;
   status?: TPropertyLongStayStatus;
   unitId?: string;
 }
 
 export interface IPropertyLongStaysListResponse {
   longStays: IPropertyLongStay[];
+  nextCursor: string | null;
 }
 
 export interface IPropertyLongStayDetailResponse {

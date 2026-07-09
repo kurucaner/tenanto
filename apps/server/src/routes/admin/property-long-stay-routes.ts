@@ -14,10 +14,13 @@ import {
   type IPropertyLongStaySecondaryTenant,
   type IPropertyLongStaysListQuery,
   type IUpdatePropertyLongStayBody,
+  LEASES_LIST_LIMIT,
+  LEASES_LIST_MAX_LIMIT,
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
   UnitRentalType,
 } from "@/packages/shared";
+import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
@@ -242,10 +245,23 @@ function parseUpdateLongStayBody(
   return { body, ok: true };
 }
 
+function parseLongStaysListLimit(raw: unknown): number {
+  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+  if (!Number.isFinite(n) || n < 1) return LEASES_LIST_LIMIT;
+  return Math.min(LEASES_LIST_MAX_LIMIT, Math.floor(n));
+}
+
 function parseLongStaysListQuery(
   query: Record<string, unknown>
-): { filters: IPropertyLongStaysListQuery; ok: true } | { error: string; ok: false } {
-  const filters: IPropertyLongStaysListQuery = {};
+):
+  | {
+      cursor?: string;
+      filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">;
+      limit: number;
+      ok: true;
+    }
+  | { error: string; ok: false } {
+  const filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId"> = {};
 
   if (query["status"] !== undefined && query["status"] !== "") {
     const status = query["status"];
@@ -261,7 +277,11 @@ function parseLongStaysListQuery(
     if (unitId) filters.unitId = unitId;
   }
 
-  return { filters, ok: true };
+  const limit = parseLongStaysListLimit(query["limit"]);
+  const cursor =
+    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
+
+  return { cursor, filters, limit, ok: true };
 }
 
 async function resolveLongTermUnitForProperty(
@@ -324,8 +344,20 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const longStays = await propertyLongStaysDb.listByProperty(propertyId, parsed.filters);
-      return reply.send({ longStays });
+      if (parsed.cursor != null) {
+        try {
+          decodeLeaseKeysetCursor(parsed.cursor);
+        } catch {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+        }
+      }
+
+      const { longStays, nextCursor } = await propertyLongStaysDb.listPaginatedByProperty(
+        propertyId,
+        parsed.filters,
+        { cursor: parsed.cursor, limit: parsed.limit }
+      );
+      return reply.send({ longStays, nextCursor });
     }
   );
 

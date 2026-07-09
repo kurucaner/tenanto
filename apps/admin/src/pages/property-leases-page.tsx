@@ -25,11 +25,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
+import {
+  type TPropertyLongStaysListFilters,
+  usePropertyLongStaysInfiniteList,
+} from "@/hooks/use-property-long-stays-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
-import { longStaysApi, settingsApi, unitsApi } from "@/lib/api-client";
+import { settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
+import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
@@ -38,7 +45,6 @@ import {
   formatPropertyUnitSelectLabel,
   getLeaseOccupancyNames,
   type IPropertyLongStay,
-  type IPropertyLongStaysListQuery,
   PropertyLongStayStatus,
   resolveRentIncomeLineTypeId,
   type TPropertyLongStayStatus,
@@ -169,8 +175,8 @@ export const PropertyLeasesPage = memo(() => {
     null
   );
 
-  const listQueryFilters = useMemo((): IPropertyLongStaysListQuery => {
-    const query: IPropertyLongStaysListQuery = {};
+  const listQueryFilters = useMemo((): TPropertyLongStaysListFilters => {
+    const query: TPropertyLongStaysListFilters = {};
     if (status) {
       query.status = status as TPropertyLongStayStatus;
     }
@@ -180,17 +186,16 @@ export const PropertyLeasesPage = memo(() => {
     return query;
   }, [status, unitId]);
 
-  const leasesQuery = useQuery({
-    queryFn: () => longStaysApi.list(propertyId, listQueryFilters),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, listQueryFilters),
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending, longStays } =
+    usePropertyLongStaysInfiniteList(propertyId, listQueryFilters);
+
+  const scrollSentinelRef = useInfiniteScrollTrigger({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   });
 
-  const activeLeasesQuery = useQuery({
-    queryFn: () => longStaysApi.list(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, {
-      status: PropertyLongStayStatus.ACTIVE,
-    }),
-  });
+  const { activeLeases } = usePropertyActiveLeases(propertyId);
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
@@ -222,11 +227,11 @@ export const PropertyLeasesPage = memo(() => {
 
   const occupiedUnitIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const lease of activeLeasesQuery.data?.longStays ?? []) {
+    for (const lease of activeLeases) {
       ids.add(lease.unitId);
     }
     return ids;
-  }, [activeLeasesQuery.data?.longStays]);
+  }, [activeLeases]);
 
   const handleOpenCreate = useCallback(() => {
     setCreateOpen(true);
@@ -253,7 +258,7 @@ export const PropertyLeasesPage = memo(() => {
     [rentIncomeLineTypeId]
   );
 
-  const leases = leasesQuery.data?.longStays ?? [];
+  const leases = longStays;
 
   return (
     <>
@@ -289,47 +294,65 @@ export const PropertyLeasesPage = memo(() => {
             </FilterField>
           </div>
 
-          {leasesQuery.isPending ? (
+          {isPending ? (
             <div className="space-y-3 p-6">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Start</TableHead>
-                  <TableHead>End</TableHead>
-                  <TableHead className="text-right">Rent/mo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leases.length === 0 ? (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={7}>
-                      No leases yet.{canManage ? " Start a lease to get started." : ""}
-                    </TableCell>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>End</TableHead>
+                    <TableHead className="text-right">Rent/mo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  leases.map((lease) => (
-                    <LeaseRow
-                      canManage={canManage}
-                      key={lease.id}
-                      lease={lease}
-                      onEndLease={setEndLease}
-                      onRecordRent={handleRecordRent}
-                      onView={setDetailLease}
-                      unitLabel={unitLabelById.get(lease.unitId) ?? lease.unitId}
-                    />
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {leases.length === 0 ? (
+                    <TableRow>
+                      <TableCell className="text-muted-foreground" colSpan={7}>
+                        No leases yet.{canManage ? " Start a lease to get started." : ""}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    leases.map((lease) => (
+                      <LeaseRow
+                        canManage={canManage}
+                        key={lease.id}
+                        lease={lease}
+                        onEndLease={setEndLease}
+                        onRecordRent={handleRecordRent}
+                        onView={setDetailLease}
+                        unitLabel={unitLabelById.get(lease.unitId) ?? lease.unitId}
+                      />
+                    ))
+                  )}
+                  {isFetchingNextPage ? (
+                    <TableRow>
+                      <TableCell colSpan={7}>
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+              <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
+              {leases.length > 0 && !hasNextPage && !isFetchingNextPage ? (
+                <p className="text-muted-foreground py-3 text-center text-sm">
+                  {getInfiniteListLoadMoreLabel({
+                    hasNextPage: false,
+                    isFetchingNextPage: false,
+                  })}
+                </p>
+              ) : null}
+            </>
           )}
         </CardContent>
       </Card>
