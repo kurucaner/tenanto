@@ -5,6 +5,7 @@ import {
   buildReportChartSegments,
   incomeCompositionToSegments,
   type IPropertyReportUnitSummary,
+  otherIncomeTypeToSegments,
   PROPERTY_AMENITY_UNIT_ID,
 } from "./property-report-chart-utils";
 import { UnitRentalType } from "./property-types";
@@ -154,5 +155,33 @@ describe("incomeCompositionToSegments", () => {
 
     expect(segments).toHaveLength(3);
     expect(segments.reduce((sum, segment) => sum + segment.value, 0)).toBe(1550);
+  });
+});
+
+describe("otherIncomeTypeToSegments", () => {
+  test("excludes room and cleaning fee from segments", () => {
+    const segments = otherIncomeTypeToSegments({
+      cleaningFromStays: 980,
+      otherIncomeByType: [
+        { amount: 3500, incomeLineTypeId: "type-beach", name: "Beach equipment rental" },
+        { amount: 2015, incomeLineTypeId: "type-service", name: "Extra service" },
+      ],
+      room: 12766,
+    });
+
+    expect(segments).toHaveLength(2);
+    expect(segments.some((segment) => segment.label === "Room")).toBe(false);
+    expect(segments.some((segment) => segment.label === "Cleaning fee")).toBe(false);
+    expect(segments.reduce((sum, segment) => sum + segment.value, 0)).toBe(5515);
+  });
+
+  test("returns empty segments when there is no other income", () => {
+    const segments = otherIncomeTypeToSegments({
+      cleaningFromStays: 500,
+      otherIncomeByType: [],
+      room: 10000,
+    });
+
+    expect(segments).toEqual([]);
   });
 });

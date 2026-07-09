@@ -4,7 +4,7 @@ import { ReportChannelChart } from "@/components/reports/charts/report-channel-c
 import { ReportExpenseBreakdownChart } from "@/components/reports/charts/report-expense-breakdown-chart";
 import { ReportIncomeCompositionChart } from "@/components/reports/charts/report-income-composition-chart";
 import { ReportIncomeExpensesChart } from "@/components/reports/charts/report-income-expenses-chart";
-import { ReportSalesTypeChart } from "@/components/reports/charts/report-sales-type-chart";
+import { ReportOtherIncomeTypesChart } from "@/components/reports/charts/report-other-income-types-chart";
 import { ReportTaxChart } from "@/components/reports/charts/report-tax-chart";
 import type { IPropertyReportSummary } from "@/packages/shared";
 
@@ -20,8 +20,8 @@ export const ReportChartsSection = memo(({ summary }: ReportChartsSectionProps) 
         salesTypeBreakdown={summary.salesTypeBreakdown}
       />
       <ReportChannelChart channelSummary={summary.channelSummary} />
+      <ReportOtherIncomeTypesChart salesTypeBreakdown={summary.salesTypeBreakdown} />
       <ReportTaxChart taxSummary={summary.taxSummary} />
-      <ReportSalesTypeChart salesTypeBreakdown={summary.salesTypeBreakdown} />
     </div>
     <div className="grid gap-4 lg:grid-cols-2">
       <ReportIncomeExpensesChart byMonth={summary.byMonth} />

@@ -123,19 +123,16 @@ export function channelSummaryToSegments(
   );
 }
 
-export function salesTypeToSegments(
+export function otherIncomeTypeToSegments(
   breakdown: IPropertyReportSalesTypeBreakdown
 ): IReportChartSegment[] {
-  const items = [
-    { id: "room", label: "Room", value: breakdown.room },
-    { id: "cleaningFromStays", label: "Cleaning fee", value: breakdown.cleaningFromStays },
-    ...breakdown.otherIncomeByType.map((row) => ({
+  return buildReportChartSegments(
+    breakdown.otherIncomeByType.map((row) => ({
       id: row.incomeLineTypeId,
       label: row.name,
       value: row.amount,
-    })),
-  ];
-  return buildReportChartSegments(items);
+    }))
+  );
 }
 
 export function taxSummaryToSegments(

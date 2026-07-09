@@ -201,8 +201,8 @@ export {
   type IIncomeCompositionBreakdown,
   incomeCompositionToSegments,
   type IReportChartSegment,
+  otherIncomeTypeToSegments,
   PROPERTY_AMENITY_UNIT_ID,
-  salesTypeToSegments,
   taxSummaryToSegments,
 } from "./property-report-chart-utils";
 
