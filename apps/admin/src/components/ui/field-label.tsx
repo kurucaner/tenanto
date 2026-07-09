@@ -1,4 +1,4 @@
-import { type ComponentProps,memo } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { Label } from "@/components/ui/label";
 import { OptionalTag } from "@/components/ui/optional-tag";

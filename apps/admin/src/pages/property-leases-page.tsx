@@ -3,7 +3,10 @@ import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { FilterField } from "@/components/filters/filter-field";
-import { CreateIncomeLineDialog, type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
+import {
+  CreateIncomeLineDialog,
+  type CreateIncomeLineDialogPrefill,
+} from "@/components/income/create-income-line-dialog";
 import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { LeaseDetailSheet } from "@/components/leases/lease-detail-sheet";
@@ -29,10 +32,7 @@ import { longStaysApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
-import {
-  clampToMaxLocalIsoDate,
-  getTodayLocalIsoDate,
-} from "@/lib/reservation-date-utils";
+import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   formatPropertyUnitSelectLabel,
@@ -110,9 +110,7 @@ const LeaseRow = memo(
         <TableCell>{endDate}</TableCell>
         <TableCell className="text-right">{formatMoney(lease.monthlyRent)}</TableCell>
         <TableCell>
-          <Badge
-            variant={lease.status === PropertyLongStayStatus.ACTIVE ? "default" : "secondary"}
-          >
+          <Badge variant={lease.status === PropertyLongStayStatus.ACTIVE ? "default" : "secondary"}>
             {lease.status === PropertyLongStayStatus.ACTIVE ? "Active" : "Ended"}
           </Badge>
         </TableCell>
@@ -189,7 +187,9 @@ export const PropertyLeasesPage = memo(() => {
 
   const activeLeasesQuery = useQuery({
     queryFn: () => longStaysApi.list(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
+    queryKey: adminQueryKeys.propertyLongStays(propertyId, {
+      status: PropertyLongStayStatus.ACTIVE,
+    }),
   });
 
   const unitsQuery = useQuery({

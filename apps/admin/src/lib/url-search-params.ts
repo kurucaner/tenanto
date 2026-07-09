@@ -51,8 +51,7 @@ export function parseSortParam(
   defaultColumn: string,
   defaultDir: TSortDirection
 ): ISortState {
-  const direction: TSortDirection =
-    dirRaw === "asc" || dirRaw === "desc" ? dirRaw : defaultDir;
+  const direction: TSortDirection = dirRaw === "asc" || dirRaw === "desc" ? dirRaw : defaultDir;
   return {
     columnId: columnRaw?.trim() ? columnRaw : defaultColumn,
     direction,

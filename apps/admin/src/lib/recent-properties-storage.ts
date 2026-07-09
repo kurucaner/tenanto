@@ -19,8 +19,7 @@ let cachedRecentPropertiesSnapshot: IRecentProperty[] = EMPTY_RECENT_PROPERTIES;
 
 function setRecentPropertiesSnapshot(raw: string | null, snapshot: IRecentProperty[]): void {
   cachedRecentPropertiesRaw = raw;
-  cachedRecentPropertiesSnapshot =
-    snapshot.length === 0 ? EMPTY_RECENT_PROPERTIES : snapshot;
+  cachedRecentPropertiesSnapshot = snapshot.length === 0 ? EMPTY_RECENT_PROPERTIES : snapshot;
 }
 
 function loadRecentPropertiesSnapshot(): IRecentProperty[] {

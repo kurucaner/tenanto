@@ -2,10 +2,7 @@ import { memo, useMemo } from "react";
 
 import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import { ReportDonutChart } from "@/components/reports/charts/report-donut-chart";
-import {
-  channelSummaryToSegments,
-  type IPropertyReportChannelSummary,
-} from "@/packages/shared";
+import { channelSummaryToSegments, type IPropertyReportChannelSummary } from "@/packages/shared";
 
 interface ReportChannelChartProps {
   channelSummary: IPropertyReportChannelSummary[];

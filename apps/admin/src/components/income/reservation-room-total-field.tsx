@@ -20,9 +20,7 @@ export const ReservationRoomTotalField = memo(
     const nights = calculateStayNights(checkIn, checkOut);
     const roomTotal = Number(value) || 0;
     const avgDailyRate =
-      nights > 0 && roomTotal > 0
-        ? getStayAverageDailyRate({ nights, roomTotal })
-        : null;
+      nights > 0 && roomTotal > 0 ? getStayAverageDailyRate({ nights, roomTotal }) : null;
 
     return (
       <div className="flex flex-col gap-1.5">

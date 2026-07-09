@@ -43,94 +43,100 @@ interface EndLeaseDialogProps {
   propertyId: string;
 }
 
-export const EndLeaseDialog = memo(({ lease, onOpenChange, open, propertyId }: EndLeaseDialogProps) => {
-  const queryClient = useQueryClient();
-  const maxDate = getTodayLocalIsoDate();
+export const EndLeaseDialog = memo(
+  ({ lease, onOpenChange, open, propertyId }: EndLeaseDialogProps) => {
+    const queryClient = useQueryClient();
+    const maxDate = getTodayLocalIsoDate();
 
-  const form = useForm<TEndLeaseFormValues>({
-    defaultValues: {
-      actualEndDate: clampToMaxLocalIsoDate(maxDate, maxDate),
-    },
-    resolver: zodResolver(
-      endLeaseSchema.refine((values) => values.actualEndDate >= lease.leaseStartDate, {
-        message: "Move-out date cannot be before lease start date",
-        path: ["actualEndDate"],
-      })
-    ),
-  });
+    const form = useForm<TEndLeaseFormValues>({
+      defaultValues: {
+        actualEndDate: clampToMaxLocalIsoDate(maxDate, maxDate),
+      },
+      resolver: zodResolver(
+        endLeaseSchema.refine((values) => values.actualEndDate >= lease.leaseStartDate, {
+          message: "Move-out date cannot be before lease start date",
+          path: ["actualEndDate"],
+        })
+      ),
+    });
 
-  const mutation = useMutation({
-    mutationFn: (values: TEndLeaseFormValues) =>
-      longStaysApi.end(propertyId, lease.id, { actualEndDate: values.actualEndDate }),
-    onError: (e) => {
-      toast.error(e instanceof Error ? e.message : "Failed to end lease");
-    },
-    onSuccess: () => {
-      toast.success("Lease ended");
-      invalidatePropertyLongStayCaches(queryClient, propertyId);
-      handleOpenChange(false);
-    },
-  });
+    const mutation = useMutation({
+      mutationFn: (values: TEndLeaseFormValues) =>
+        longStaysApi.end(propertyId, lease.id, { actualEndDate: values.actualEndDate }),
+      onError: (e) => {
+        toast.error(e instanceof Error ? e.message : "Failed to end lease");
+      },
+      onSuccess: () => {
+        toast.success("Lease ended");
+        invalidatePropertyLongStayCaches(queryClient, propertyId);
+        handleOpenChange(false);
+      },
+    });
 
-  const handleOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (!nextOpen) {
-        form.reset({ actualEndDate: clampToMaxLocalIsoDate(maxDate, maxDate) });
-      }
-      onOpenChange(nextOpen);
-    },
-    [form, maxDate, onOpenChange]
-  );
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        if (!nextOpen) {
+          form.reset({ actualEndDate: clampToMaxLocalIsoDate(maxDate, maxDate) });
+        }
+        onOpenChange(nextOpen);
+      },
+      [form, maxDate, onOpenChange]
+    );
 
-  const onSubmit = form.handleSubmit((values) => {
-    mutation.mutate(values);
-  });
+    const onSubmit = form.handleSubmit((values) => {
+      mutation.mutate(values);
+    });
 
-  const { errors, isSubmitting } = form.formState;
+    const { errors, isSubmitting } = form.formState;
 
-  return (
-    <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>End Lease</DialogTitle>
-          <DialogDescription>
-            End the lease for {lease.guestName}. The unit will become vacant.
-          </DialogDescription>
-        </DialogHeader>
+    return (
+      <Dialog onOpenChange={handleOpenChange} open={open}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>End Lease</DialogTitle>
+            <DialogDescription>
+              End the lease for {lease.guestName}. The unit will become vacant.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form onSubmit={onSubmit}>
-          <div className="flex flex-col gap-4 px-6 py-5">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="end-lease-date">Move-out Date</Label>
-              <Input
-                id="end-lease-date"
-                max={maxDate}
-                min={lease.leaseStartDate}
-                type="date"
-                {...form.register("actualEndDate")}
-              />
-              {errors.actualEndDate ? (
-                <p className="text-xs text-destructive">{errors.actualEndDate.message}</p>
-              ) : null}
+          <form onSubmit={onSubmit}>
+            <div className="flex flex-col gap-4 px-6 py-5">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="end-lease-date">Move-out Date</Label>
+                <Input
+                  id="end-lease-date"
+                  max={maxDate}
+                  min={lease.leaseStartDate}
+                  type="date"
+                  {...form.register("actualEndDate")}
+                />
+                {errors.actualEndDate ? (
+                  <p className="text-xs text-destructive">{errors.actualEndDate.message}</p>
+                ) : null}
+              </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button
-              disabled={mutation.isPending}
-              onClick={() => handleOpenChange(false)}
-              type="button"
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button disabled={mutation.isPending || isSubmitting} type="submit" variant="destructive">
-              {mutation.isPending ? "Ending…" : "End Lease"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-});
+            <DialogFooter>
+              <Button
+                disabled={mutation.isPending}
+                onClick={() => handleOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={mutation.isPending || isSubmitting}
+                type="submit"
+                variant="destructive"
+              >
+                {mutation.isPending ? "Ending…" : "End Lease"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+);
 EndLeaseDialog.displayName = "EndLeaseDialog";

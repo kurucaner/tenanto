@@ -334,10 +334,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      if (
-        parsed.body.expenseDate !== undefined &&
-        parsed.body.expenseDate > getTodayUtcIsoDate()
-      ) {
+      if (parsed.body.expenseDate !== undefined && parsed.body.expenseDate > getTodayUtcIsoDate()) {
         return reply
           .status(HttpStatus.BAD_REQUEST)
           .send({ error: "Expense date cannot be in the future" });

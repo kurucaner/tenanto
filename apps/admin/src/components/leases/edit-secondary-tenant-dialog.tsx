@@ -111,7 +111,9 @@ export const EditSecondaryTenantDialog = memo(
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Edit Secondary Tenant</DialogTitle>
-            <DialogDescription>Update this secondary tenant&apos;s contact information.</DialogDescription>
+            <DialogDescription>
+              Update this secondary tenant&apos;s contact information.
+            </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={onSubmit}>

@@ -1588,12 +1588,8 @@ export const migrations: IMigration[] = [
         ALTER TABLE property_income_lines
           DROP CONSTRAINT IF EXISTS property_income_lines_reservation_or_long_stay_exclusive;
       `);
-      await client.query(
-        `DROP INDEX IF EXISTS idx_property_income_lines_long_stay_id;`
-      );
-      await client.query(
-        `ALTER TABLE property_income_lines DROP COLUMN IF EXISTS long_stay_id;`
-      );
+      await client.query(`DROP INDEX IF EXISTS idx_property_income_lines_long_stay_id;`);
+      await client.query(`ALTER TABLE property_income_lines DROP COLUMN IF EXISTS long_stay_id;`);
       await client.query(`DROP INDEX IF EXISTS idx_property_long_stays_active_unit;`);
       await client.query(`DROP INDEX IF EXISTS idx_property_long_stays_property_status;`);
       await client.query(`

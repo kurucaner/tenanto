@@ -21,7 +21,10 @@ import {
 
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
-import { assertPropertyLedgerWriteAccess, assertPropertyMemberAccess } from "./property-route-access";
+import {
+  assertPropertyLedgerWriteAccess,
+  assertPropertyMemberAccess,
+} from "./property-route-access";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_TERM_MONTHS = 60;
@@ -130,9 +133,7 @@ function parseEndLongStayBody(
 
 function parseSecondaryTenant(
   raw: unknown
-):
-  | { ok: true; tenant: IPropertyLongStaySecondaryTenant }
-  | { error: string; ok: false } {
+): { ok: true; tenant: IPropertyLongStaySecondaryTenant } | { error: string; ok: false } {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return { error: "Each secondary tenant must have a non-empty name", ok: false };
   }

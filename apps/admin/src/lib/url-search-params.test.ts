@@ -72,9 +72,9 @@ describe("serializeSortParam", () => {
 
 describe("readBooleanParam", () => {
   test("parses true and falls back to default", () => {
-    expect(readBooleanParam(new URLSearchParams("includeDeleted=true"), "includeDeleted", false)).toBe(
-      true
-    );
+    expect(
+      readBooleanParam(new URLSearchParams("includeDeleted=true"), "includeDeleted", false)
+    ).toBe(true);
     expect(readBooleanParam(new URLSearchParams(), "includeDeleted", false)).toBe(false);
   });
 });

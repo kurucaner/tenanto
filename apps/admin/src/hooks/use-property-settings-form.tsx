@@ -336,7 +336,9 @@ export const usePropertySettingsForm = ({
                 onChange={(v) => updateField("expediaCommissionRate", v)}
                 value={form.expediaCommissionRate}
               />
-              <p className="text-muted-foreground text-xs">Commission base excludes cleaning fee.</p>
+              <p className="text-muted-foreground text-xs">
+                Commission base excludes cleaning fee.
+              </p>
             </div>
             <PercentField
               disabled={!canEdit || isPending}

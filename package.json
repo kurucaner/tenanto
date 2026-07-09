@@ -27,6 +27,10 @@
     "lint:server": "npm run --filter server lint",
     "lint:web": "npm run --filter web lint",
     "lint:admin": "npm run --filter admin lint",
+    "prettier:mobile": "cd apps/mobile && npm run prettier",
+    "prettier:web": "npm run --filter web prettier",
+    "prettier:server": "npm run --filter server prettier",
+    "prettier:admin": "npm run --filter admin prettier",
     "logaway": "logaway",
     "reset:node_modules": "rm -rf node_modules && rm bun.lock && cd apps/mobile && rm -rf node_modules && cd ../web && rm -rf node_modules && cd ../server && rm -rf node_modules && cd ../admin && rm -rf node_modules"
   },

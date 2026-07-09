@@ -8,7 +8,13 @@ import { EditPrimaryTenantDialog } from "@/components/leases/edit-primary-tenant
 import { EditSecondaryTenantDialog } from "@/components/leases/edit-secondary-tenant-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { longStaysApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
@@ -86,7 +92,9 @@ export const LeaseDetailSheet = memo(
         if (!displayLease) {
           throw new Error("Lease not found");
         }
-        const nextTenants = displayLease.secondaryTenants.filter((_, index) => index !== tenantIndex);
+        const nextTenants = displayLease.secondaryTenants.filter(
+          (_, index) => index !== tenantIndex
+        );
         return longStaysApi.update(propertyId, displayLease.id, {
           secondaryTenants: nextTenants,
         });
@@ -103,8 +111,7 @@ export const LeaseDetailSheet = memo(
     const detail = detailQuery.data;
     const displayLease = detail?.longStay ?? lease;
     const rentSchedule = detail?.rentSchedule ?? [];
-    const canEditTenants =
-      canManage && displayLease?.status === PropertyLongStayStatus.ACTIVE;
+    const canEditTenants = canManage && displayLease?.status === PropertyLongStayStatus.ACTIVE;
 
     return (
       <>

@@ -3,11 +3,7 @@ import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  DeletedBadge,
-  deletedRowClassName,
-  RestoreEntityButton,
-} from "@/components/deleted-badge";
+import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +32,7 @@ import {
   type IPropertyLongStay,
   type IPropertyUnit,
   PropertyLongStayStatus,
+  TUnitRentalType,
 } from "@/packages/shared";
 import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
 
@@ -113,10 +110,7 @@ const UnitRow = memo(
           <TableCell>
             <div className="flex items-center gap-1">
               {unit.isDeleted ? (
-                <RestoreEntityButton
-                  ariaLabel="Restore unit"
-                  onClick={() => onRestore(unit)}
-                />
+                <RestoreEntityButton ariaLabel="Restore unit" onClick={() => onRestore(unit)} />
               ) : (
                 <>
                   {isLongTerm && isVacant ? (
@@ -178,7 +172,9 @@ export const PropertyUnitsPage = memo(() => {
 
   const activeLeasesQuery = useQuery({
     queryFn: () => longStaysApi.list(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
+    queryKey: adminQueryKeys.propertyLongStays(propertyId, {
+      status: PropertyLongStayStatus.ACTIVE,
+    }),
   });
 
   const activeLeaseByUnitId = useMemo(() => {

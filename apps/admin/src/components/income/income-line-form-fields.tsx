@@ -5,7 +5,11 @@ import {
   incomeLineSelectClassName,
   type IncomeLineTypeOption,
 } from "@/components/income/income-line-form-options";
-import { LinkToStayField, LockedLeaseSummary, LockedStaySummary } from "@/components/income/link-to-stay-field";
+import {
+  LinkToStayField,
+  LockedLeaseSummary,
+  LockedStaySummary,
+} from "@/components/income/link-to-stay-field";
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +17,11 @@ import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-o
 import { unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { type IPropertyLongStay, type IPropertyReservation, type IPropertyUnit } from "@/packages/shared";
+import {
+  type IPropertyLongStay,
+  type IPropertyReservation,
+  type IPropertyUnit,
+} from "@/packages/shared";
 
 const EMPTY_UNITS: IPropertyUnit[] = [];
 

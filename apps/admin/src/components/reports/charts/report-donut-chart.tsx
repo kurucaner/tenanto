@@ -36,7 +36,10 @@ export const ReportDonutChart = memo(
     title,
     totalLabel = "Total",
   }: ReportDonutChartProps) => {
-    const total = useMemo(() => segments.reduce((sum, segment) => sum + segment.value, 0), [segments]);
+    const total = useMemo(
+      () => segments.reduce((sum, segment) => sum + segment.value, 0),
+      [segments]
+    );
 
     const chartConfig = useMemo(() => {
       const config: ChartConfig = {};
@@ -130,11 +133,7 @@ export const ReportDonutChart = memo(
                         <tspan className="fill-muted-foreground text-xs" x={cx} y={cy - 8}>
                           {totalLabel}
                         </tspan>
-                        <tspan
-                          className="fill-foreground text-sm font-semibold"
-                          x={cx}
-                          y={cy + 12}
-                        >
+                        <tspan className="fill-foreground text-sm font-semibold" x={cx} y={cy + 12}>
                           {formatMoney(total)}
                         </tspan>
                       </text>

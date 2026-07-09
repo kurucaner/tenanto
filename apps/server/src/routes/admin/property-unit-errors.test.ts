@@ -38,6 +38,8 @@ describe("formatUnitDeleteBlockedMessage", () => {
   test("describes all three blockers", () => {
     expect(
       formatUnitDeleteBlockedMessage({ incomeLineCount: 3, longStayCount: 2, reservationCount: 1 })
-    ).toBe("This unit cannot be deleted because it has reservation and income and long stay records");
+    ).toBe(
+      "This unit cannot be deleted because it has reservation and income and long stay records"
+    );
   });
 });

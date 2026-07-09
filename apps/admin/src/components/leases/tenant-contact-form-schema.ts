@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { type IPropertyLongStaySecondaryTenant,isValidE164, normalizeToE164 } from "@/packages/shared";
+import {
+  type IPropertyLongStaySecondaryTenant,
+  isValidE164,
+  normalizeToE164,
+} from "@/packages/shared";
 
 export const tenantPhoneFieldSchema = z.string().refine((value) => isValidE164(value.trim()), {
   message: "Enter a valid phone number",
@@ -18,7 +22,9 @@ function normalizeTenantPhone(value: string): string | null {
   return normalizeToE164(value.trim()) ?? null;
 }
 
-export function toSecondaryTenant(values: TTenantContactFormValues): IPropertyLongStaySecondaryTenant {
+export function toSecondaryTenant(
+  values: TTenantContactFormValues
+): IPropertyLongStaySecondaryTenant {
   return {
     email: values.tenantEmail.trim() || null,
     name: values.name.trim(),

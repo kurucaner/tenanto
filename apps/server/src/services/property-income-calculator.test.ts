@@ -29,7 +29,10 @@ const TAX_RATES: IPropertyTaxRate[] = [
 ];
 
 // base = 100 * 10 + 0 = 1000; salesTax = 60; resortTax = 40; totalTaxes = 100.
-function calc(channel: (typeof ReservationChannel)[keyof typeof ReservationChannel], taxRates = TAX_RATES) {
+function calc(
+  channel: (typeof ReservationChannel)[keyof typeof ReservationChannel],
+  taxRates = TAX_RATES
+) {
   return calculateStayIncome({
     channel,
     cleaningFee: 0,
@@ -185,7 +188,9 @@ describe("calculateStayIncome — Airbnb resort tax exclusion", () => {
     expect(result.grossIncome).toBe(1100);
     // netIncome = base - totalTaxes - commission = 1000 - 100 - 150 = 750
     expect(result.netIncome).toBe(750);
-    expect(getStayNetPayout({ netIncome: result.netIncome, taxBreakdown: result.taxBreakdown })).toBe(850);
+    expect(
+      getStayNetPayout({ netIncome: result.netIncome, taxBreakdown: result.taxBreakdown })
+    ).toBe(850);
   });
 
   test("Airbnb with no resort tax is unchanged", () => {

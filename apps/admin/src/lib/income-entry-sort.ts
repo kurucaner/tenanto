@@ -51,10 +51,7 @@ function getEntryUnitId(entry: TPropertyIncomeEntry): string | null {
 }
 
 // Resolves the Unit column label; a null unit means property-amenity income.
-function resolveIncomeUnitLabel(
-  unitId: string | null,
-  unitLabelById: Map<string, string>
-): string {
+function resolveIncomeUnitLabel(unitId: string | null, unitLabelById: Map<string, string>): string {
   if (unitId === null) return PROPERTY_AMENITY_UNIT_LABEL;
   return unitLabelById.get(unitId) ?? "—";
 }

@@ -71,8 +71,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "improved",
-        description:
-          "Support requests can be refreshed from the table without reloading the page.",
+        description: "Support requests can be refreshed from the table without reloading the page.",
       },
       {
         category: "fixed",
@@ -86,8 +85,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "fixed",
-        description:
-          "Tables show a subtle loading indicator while data is refreshing.",
+        description: "Tables show a subtle loading indicator while data is refreshing.",
       },
       {
         category: "fixed",

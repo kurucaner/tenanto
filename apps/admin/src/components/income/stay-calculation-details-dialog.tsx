@@ -76,7 +76,8 @@ export const StayCalculationDetailsDialog = memo(
     }
 
     const breakdown = getBreakdown(metric, stay);
-    const baseLines = metric === "taxes" ? withTaxesRoomLabel(breakdown.baseLines, stay) : breakdown.baseLines;
+    const baseLines =
+      metric === "taxes" ? withTaxesRoomLabel(breakdown.baseLines, stay) : breakdown.baseLines;
 
     return (
       <Dialog onOpenChange={onOpenChange} open={open}>
@@ -89,7 +90,10 @@ export const StayCalculationDetailsDialog = memo(
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-            <CalculationBreakdownSections baseLines={baseLines} detailLines={breakdown.detailLines} />
+            <CalculationBreakdownSections
+              baseLines={baseLines}
+              detailLines={breakdown.detailLines}
+            />
 
             <CalculationTotalRow amount={breakdown.total} label={breakdown.totalLabel} />
 
