@@ -1,4 +1,3 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { Building2, Plus, Search } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,18 +16,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
-import { type IAdminPropertiesListQuery, propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
+import { PROPERTIES_SEARCH_DEBOUNCE_MS } from "@/lib/properties-list-constants";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import {
-  formatPhoneDisplay,
-  type IAdminPropertiesListResponse,
-  type IProperty,
-} from "@/packages/shared";
-
-const LIMIT = 25;
-const SEARCH_DEBOUNCE_MS = 300;
+import { formatPhoneDisplay, type IProperty } from "@/packages/shared";
 
 const PROPERTIES_URL_FILTER_SCHEMA = defineUrlFilterSchema<{ q: string }>({
   q: { defaultValue: "" },
@@ -67,38 +60,24 @@ const PropertiesListPageInner = memo(() => {
       if (trimmed !== q) {
         setFilter("q", trimmed);
       }
-    }, SEARCH_DEBOUNCE_MS);
+    }, PROPERTIES_SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(id);
   }, [q, searchInput, setFilter]);
 
-  const listFilters = useMemo<Omit<IAdminPropertiesListQuery, "cursor">>(
-    () => ({
-      limit: LIMIT,
-      q: q || undefined,
-    }),
-    [q]
+  const {
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    properties,
+  } = usePropertiesInfiniteList({ q });
+
+  const loadMoreButtonLabel = useMemo(
+    () => getInfiniteListLoadMoreLabel({ hasNextPage: hasNextPage ?? false, isFetchingNextPage }),
+    [hasNextPage, isFetchingNextPage]
   );
-
-  const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
-    useInfiniteQuery({
-      getNextPageParam: (lastPage: IAdminPropertiesListResponse) =>
-        lastPage.nextCursor ?? undefined,
-      initialPageParam: undefined as string | undefined,
-      queryFn: ({ pageParam }) => propertiesApi.list({ ...listFilters, cursor: pageParam }),
-      queryKey: adminQueryKeys.propertiesList(listFilters),
-    });
-
-  const properties = data?.pages.flatMap((p: IAdminPropertiesListResponse) => p.items) ?? [];
-
-  const loadMoreButtonLabel = useMemo(() => {
-    if (isFetchingNextPage) {
-      return "Loading…";
-    } else if (hasNextPage) {
-      return "Load more";
-    } else {
-      return "End of list";
-    }
-  }, [isFetchingNextPage, hasNextPage]);
 
   return (
     <AdminPageLayout gap={6}>

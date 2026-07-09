@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -7,15 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
-import { propertiesApi } from "@/lib/api-client";
+import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
+import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
+import { PROPERTIES_SEARCH_DEBOUNCE_MS } from "@/lib/properties-list-constants";
 import { buildPropertySwitchPath } from "@/lib/property-switch-navigation";
-import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { type IProperty } from "@/packages/shared";
-
-const LIST_LIMIT = 25;
-const SEARCH_DEBOUNCE_MS = 300;
-const LIST_STALE_TIME_MS = 60_000;
 
 interface PropertySwitcherOptionProps {
   isSelected: boolean;
@@ -61,7 +57,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   useEffect(() => {
     const id = setTimeout(() => {
       setDebouncedQuery(searchInput.trim());
-    }, SEARCH_DEBOUNCE_MS);
+    }, PROPERTIES_SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(id);
   }, [searchInput]);
 
@@ -82,22 +78,22 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
     return undefined;
   }, [open]);
 
-  const listFilters = useMemo(
-    () => ({
-      limit: LIST_LIMIT,
-      q: debouncedQuery || undefined,
-    }),
-    [debouncedQuery]
+  const {
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isPending,
+    properties,
+  } = usePropertiesInfiniteList({ q: debouncedQuery });
+
+  const loadMoreButtonLabel = useMemo(
+    () => getInfiniteListLoadMoreLabel({ hasNextPage: hasNextPage ?? false, isFetchingNextPage }),
+    [hasNextPage, isFetchingNextPage]
   );
 
-  const propertiesQuery = useQuery({
-    queryFn: () => propertiesApi.list(listFilters),
-    queryKey: adminQueryKeys.propertiesList(listFilters),
-    staleTime: LIST_STALE_TIME_MS,
-  });
-
-  const properties = propertiesQuery.data?.items ?? [];
-  const showStaticName = !debouncedQuery && properties.length === 1 && !propertiesQuery.isPending;
+  const showStaticName = !debouncedQuery && properties.length === 1 && !isPending;
 
   const handleSelect = (nextPropertyId: string) => {
     setOpen(false);
@@ -144,24 +140,22 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
           />
         </div>
         <div aria-label="Properties" className="max-h-64 overflow-y-auto p-1" role="listbox">
-          {propertiesQuery.isPending ? (
+          {isPending ? (
             <div className="space-y-1 p-1">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
           ) : null}
-          {propertiesQuery.isError ? (
+          {isError ? (
             <p className="text-destructive px-2 py-3 text-sm">
-              {propertiesQuery.error instanceof Error
-                ? propertiesQuery.error.message
-                : "Failed to load properties"}
+              {error instanceof Error ? error.message : "Failed to load properties"}
             </p>
           ) : null}
-          {!propertiesQuery.isPending && !propertiesQuery.isError && properties.length === 0 ? (
+          {!isPending && !isError && properties.length === 0 ? (
             <p className="text-muted-foreground px-2 py-3 text-sm">No properties found</p>
           ) : null}
-          {!propertiesQuery.isPending && !propertiesQuery.isError
+          {!isPending && !isError
             ? properties.map((property) => (
                 <PropertySwitcherOption
                   isSelected={property.id === propertyId}
@@ -171,6 +165,20 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
                 />
               ))
             : null}
+          {!isPending && !isError && properties.length > 0 ? (
+            <div className="border-border border-t p-1">
+              <Button
+                className="w-full"
+                disabled={!hasNextPage || isFetchingNextPage}
+                onClick={() => fetchNextPage()}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {loadMoreButtonLabel}
+              </Button>
+            </div>
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>
