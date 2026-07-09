@@ -18,11 +18,16 @@ export interface SupportReplyEmailOptions {
 
 const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
-const ADMIN_APP_URL = process.env.ADMIN_APP_URL;
+const PLATFORM_APP_URL = process.env.PLATFORM_APP_URL;
 
 function buildSupportTicketUrl(supportRequestId: string): string {
-  const base = (ADMIN_APP_URL ?? "").replace(/\/$/, "");
+  const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
   return `${base}/support-requests/${encodeURIComponent(supportRequestId)}`;
+}
+
+function buildRegisterUrl(): string {
+  const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
+  return `${base}/signup`;
 }
 
 function getSubject(purpose: OtpPurpose): string {
@@ -84,15 +89,18 @@ export async function sendPropertyInviteEmail(
   to: string,
   opts: PropertyInviteEmailOptions
 ): Promise<void> {
+  const registerUrl = buildRegisterUrl();
+  const roleLabel = opts.role.charAt(0).toUpperCase() + opts.role.slice(1);
   const subject = `You've been invited to join ${opts.propertyName} on ${APP_NAME}`;
-  const text = `${opts.inviterEmail} has invited you to join the property management for ${opts.propertyName} as a ${opts.role}. Sign up at ${WEB_APP_URL} using this email address to accept.`;
+  const text = `${opts.inviterEmail} has invited you to join the property management for ${opts.propertyName} as a ${roleLabel}. Register now at ${registerUrl} using this email address to accept.`;
 
   const html = renderTemplate("property-invite.html", {
     appName: APP_NAME,
     baseUrl: WEB_APP_URL ?? "",
     inviterEmail: opts.inviterEmail,
     propertyName: opts.propertyName,
-    role: opts.role,
+    registerUrl,
+    role: roleLabel,
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
@@ -108,7 +116,7 @@ export async function sendSupportReplyEmail(
 
   const html = renderTemplate("support-reply.html", {
     appName: APP_NAME,
-    baseUrl: (ADMIN_APP_URL ?? "").replace(/\/$/, ""),
+    baseUrl: (PLATFORM_APP_URL ?? "").replace(/\/$/, ""),
     messagePreview: escapeHtml(opts.messagePreview),
     ticketUrl,
   });

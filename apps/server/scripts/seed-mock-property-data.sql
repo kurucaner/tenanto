@@ -2,7 +2,7 @@
 --
 -- Prerequisites:
 --   - Migrations applied (v17+)
---   - User with email user@tenanto.xyz exists (or update seed_config below)
+--   - User with email user@propertyos.xyz exists (or update seed_config below)
 --
 -- Creates:
 --   - 6 properties owned by the configured seed owner (created_by + owner member row)
@@ -36,7 +36,7 @@ BEGIN;
 -- ---------------------------------------------------------------------------
 CREATE TEMP TABLE seed_config (owner_email TEXT NOT NULL) ON COMMIT DROP;
 
-INSERT INTO seed_config (owner_email) VALUES ('user@tenanto.xyz');
+INSERT INTO seed_config (owner_email) VALUES ('user@propertyos.xyz');
 
 -- ---------------------------------------------------------------------------
 -- Resolve owner (pre-flight)

@@ -1,6 +1,6 @@
 import { isProduction } from "./environment";
 
-const PRODUCTION_ORIGINS = [process.env["WEB_APP_URL"], process.env["ADMIN_APP_URL"]].filter(
+const PRODUCTION_ORIGINS = [process.env["WEB_APP_URL"], process.env["PLATFORM_APP_URL"]].filter(
   (value): value is string => value != null && value !== ""
 );
 

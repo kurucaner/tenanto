@@ -2,7 +2,7 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       /** Base URL for the admin app (e.g. https://admin.propertyos.app) - used for magic links in emails */
-      ADMIN_APP_URL: string;
+      PLATFORM_APP_URL: string;
       /** Base URL for the API (e.g. https://api.propertyos.app) - used for unsubscribe links and Lambda forwards */
       API_PUBLIC_URL: string;
       /** AWS credentials */
