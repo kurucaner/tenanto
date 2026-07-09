@@ -28,7 +28,7 @@ export default defineConfig({
     host: true,
     port: Number(process.env.PORT) || 4173,
     strictPort: true,
-    allowedHosts: [".edgium.tech"],
+    allowedHosts: [".propertyos.app"],
   },
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPackage.version),
