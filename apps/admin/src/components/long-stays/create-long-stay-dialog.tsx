@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { calculateLeaseEndDate } from "@/lib/lease-date-utils";
+import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import type { IPropertyUnit } from "@/packages/shared";
 
@@ -33,19 +34,7 @@ const createLongStaySchema = z.object({
     .refine((value) => value >= getTodayLocalIsoDate(), {
       message: "Lease start date cannot be in the past",
     }),
-  monthlyRent: z
-    .string()
-    .min(1, "Monthly rent is required")
-    .refine(
-      (value) => {
-        if (!isValidDecimalInput(value)) {
-          return false;
-        }
-        const parsed = Number(value);
-        return Number.isFinite(parsed) && parsed > 0;
-      },
-      { message: "Monthly rent must be greater than 0" }
-    ),
+  monthlyRent: requiredPositiveMoneyField("Monthly rent"),
   termMonths: z
     .string()
     .min(1, "Term is required")

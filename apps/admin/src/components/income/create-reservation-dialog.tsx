@@ -26,6 +26,7 @@ import { PropertyUnitSelectOptions } from "@/components/units/property-unit-sele
 import { reservationsApi, unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { optionalNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   getMinCheckOutDate,
@@ -34,17 +35,6 @@ import {
   shouldClearCheckOutOnCheckInChange,
 } from "@/lib/reservation-date-utils";
 import { ReservationChannel, ReservationStatus, UnitRentalType } from "@/packages/shared";
-
-function isOptionalNonNegativeMoney(value: string): boolean {
-  if (value === "") {
-    return true;
-  }
-  if (!isValidDecimalInput(value)) {
-    return false;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0;
-}
 
 const createReservationSchema = z
   .object({
@@ -56,14 +46,10 @@ const createReservationSchema = z
     ]),
     checkIn: z.string().min(1, "Check-in is required"),
     checkOut: z.string().min(1, "Check-out is required"),
-    cleaningFee: z.string().refine(isOptionalNonNegativeMoney, {
-      message: "Cleaning fee must be a non-negative number",
-    }),
+    cleaningFee: optionalNonNegativeMoneyField("Cleaning fee must be a non-negative number"),
     guestName: z.string().trim().min(1, "Guest name is required"),
     reservationNumber: z.string(),
-    roomTotal: z.string().refine(isOptionalNonNegativeMoney, {
-      message: "Room total must be a non-negative number",
-    }),
+    roomTotal: optionalNonNegativeMoneyField("Room total must be a non-negative number"),
     status: z.enum([
       ReservationStatus.ACTIVE,
       ReservationStatus.CANCELED,

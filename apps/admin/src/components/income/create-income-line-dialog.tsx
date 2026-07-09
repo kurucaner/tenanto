@@ -27,8 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
-import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import {
   clampToMaxLocalIsoDate,
   getTodayLocalIsoDate,
@@ -61,21 +61,8 @@ interface CreateIncomeLineDialogProps {
 
 const FIELD_ID_PREFIX = "income-line";
 
-function isRequiredNonNegativeMoney(value: string): boolean {
-  if (!isValidDecimalInput(value)) {
-    return false;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0;
-}
-
 const createIncomeLineSchema = z.object({
-  amount: z
-    .string()
-    .min(1, "Amount is required")
-    .refine(isRequiredNonNegativeMoney, {
-      message: "Amount must be a non-negative number",
-    }),
+  amount: requiredNonNegativeMoneyField("Amount"),
   description: z.string(),
   guestName: z.string(),
   incomeLineTypeId: z.string().min(1, "Income type is required"),

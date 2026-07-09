@@ -16,8 +16,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { expensesApi } from "@/lib/api-client";
-import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
+import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate, isDateOnOrBefore } from "@/lib/reservation-date-utils";
 import {
   ExpenseCategory,
@@ -30,22 +30,9 @@ const EXPENSE_CATEGORY_VALUES = Object.values(ExpenseCategory) as [
   ...TExpenseCategory[],
 ];
 
-function isRequiredPositiveMoney(value: string): boolean {
-  if (!isValidDecimalInput(value)) {
-    return false;
-  }
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0;
-}
-
 const createExpenseSchema = z
   .object({
-    amount: z
-      .string()
-      .min(1, "Amount is required")
-      .refine(isRequiredPositiveMoney, {
-        message: "Amount must be greater than 0",
-      }),
+    amount: requiredPositiveMoneyField("Amount"),
     category: z.enum(EXPENSE_CATEGORY_VALUES),
     description: z.string(),
     expenseDate: z
