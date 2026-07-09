@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -78,10 +79,9 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="create-property-legal-name">Legal Name</Label>
-                <span className="text-xs text-muted-foreground">Optional</span>
-              </div>
+              <FieldLabel htmlFor="create-property-legal-name" optional>
+                Legal Name
+              </FieldLabel>
               <Input
                 id="create-property-legal-name"
                 onChange={(e) => setLegalName(e.target.value)}

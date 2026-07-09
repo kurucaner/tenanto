@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Label } from "@/components/ui/label";
 import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
@@ -154,7 +155,9 @@ export const CreateSupportRequestDialog = memo(
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="create-support-attachments-dropzone">Attachments (optional)</Label>
+                <FieldLabel htmlFor="create-support-attachments-dropzone" optional>
+                  Attachments
+                </FieldLabel>
                 <SupportAttachmentPicker
                   attachments={attachments}
                   disabled={isBusy}

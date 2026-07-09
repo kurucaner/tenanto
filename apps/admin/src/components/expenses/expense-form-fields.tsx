@@ -6,6 +6,7 @@ import {
   getExpenseCategoryHint,
 } from "@/components/expenses/expense-form-options";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
@@ -90,9 +91,9 @@ export const ExpenseFormFields = memo(
             {amountError ? <p className="text-xs text-destructive">{amountError}</p> : null}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-date`}>
-              {expenseDateRequired ? "Date" : "Date (optional)"}
-            </Label>
+            <FieldLabel htmlFor={`${idPrefix}-date`} optional={!expenseDateRequired}>
+              Date
+            </FieldLabel>
             <Input
               id={`${idPrefix}-date`}
               max={maxDate}
@@ -108,7 +109,9 @@ export const ExpenseFormFields = memo(
 
         {meta.showsPersonName ? (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-person`}>Person name (optional)</Label>
+            <FieldLabel htmlFor={`${idPrefix}-person`} optional>
+              Person name
+            </FieldLabel>
             <Input
               id={`${idPrefix}-person`}
               onChange={(e) => onPersonNameChange(e.target.value)}
@@ -132,7 +135,9 @@ export const ExpenseFormFields = memo(
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-description`}>Description (optional)</Label>
+            <FieldLabel htmlFor={`${idPrefix}-description`} optional>
+              Description
+            </FieldLabel>
             <Input
               id={`${idPrefix}-description`}
               onChange={(e) => onDescriptionChange(e.target.value)}

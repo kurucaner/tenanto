@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -198,7 +199,9 @@ export const StartLeaseDialog = memo(
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="start-lease-email">Email (optional)</Label>
+                <FieldLabel htmlFor="start-lease-email" optional>
+                  Email
+                </FieldLabel>
                 <Input id="start-lease-email" type="email" {...form.register("tenantEmail")} />
               </div>
 

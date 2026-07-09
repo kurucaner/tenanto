@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { type Control, Controller, type FieldErrors, type UseFormRegister } from "react-hook-form";
 
+import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -23,7 +24,9 @@ export const TenantContactFields = memo(
         {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${idPrefix}-email`}>Email (optional)</Label>
+        <FieldLabel htmlFor={`${idPrefix}-email`} optional>
+          Email
+        </FieldLabel>
         <Input id={`${idPrefix}-email`} type="email" {...register("tenantEmail")} />
       </div>
       <Controller

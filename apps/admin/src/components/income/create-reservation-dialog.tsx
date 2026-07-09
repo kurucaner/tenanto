@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
@@ -208,7 +209,9 @@ export const CreateReservationDialog = memo(
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reservation-number">Reservation number (optional)</Label>
+                <FieldLabel htmlFor="reservation-number" optional>
+                  Reservation number
+                </FieldLabel>
                 <Input id="reservation-number" {...form.register("reservationNumber")} />
               </div>
 

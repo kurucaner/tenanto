@@ -13,6 +13,7 @@ import {
 
 import { Input } from "./input";
 import { Label } from "./label";
+import { OptionalTag } from "./optional-tag";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 
 const PHONE_COUNTRIES = getPhoneCountryOptions();
@@ -94,7 +95,7 @@ export const PhoneInput = memo(
       <div className={cn("flex flex-col gap-1.5", className)}>
         <div className="flex items-center justify-between">
           <Label htmlFor={id}>{label}</Label>
-          {optional ? <span className="text-xs text-muted-foreground">Optional</span> : null}
+          {optional ? <OptionalTag /> : null}
         </div>
         <div className="flex gap-2">
           <Select disabled={disabled} onValueChange={handleCountryChange} value={country}>

@@ -6,6 +6,7 @@ import {
   type IncomeLineTypeOption,
 } from "@/components/income/income-line-form-options";
 import { LinkToStayField, LockedLeaseSummary, LockedStaySummary } from "@/components/income/link-to-stay-field";
+import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
@@ -139,7 +140,9 @@ export const IncomeLineGuestField = memo(
 
     return (
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${fieldIdPrefix}-guest`}>Guest name (optional)</Label>
+        <FieldLabel htmlFor={`${fieldIdPrefix}-guest`} optional>
+          Guest name
+        </FieldLabel>
         <Input id={`${fieldIdPrefix}-guest`} onChange={handleChange} value={value} />
       </div>
     );
@@ -163,7 +166,9 @@ export const IncomeLineDescriptionField = memo(
 
     return (
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${fieldIdPrefix}-description`}>Description (optional)</Label>
+        <FieldLabel htmlFor={`${fieldIdPrefix}-description`} optional>
+          Description
+        </FieldLabel>
         <Input id={`${fieldIdPrefix}-description`} onChange={handleChange} value={value} />
       </div>
     );
