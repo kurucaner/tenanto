@@ -5,14 +5,14 @@ import {
   incomeLineSelectClassName,
   type IncomeLineTypeOption,
 } from "@/components/income/income-line-form-options";
-import { LinkToStayField, LockedStaySummary } from "@/components/income/link-to-stay-field";
+import { LinkToStayField, LockedLeaseSummary, LockedStaySummary } from "@/components/income/link-to-stay-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
 import { unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { type IPropertyReservation, type IPropertyUnit } from "@/packages/shared";
+import { type IPropertyLongStay, type IPropertyReservation, type IPropertyUnit } from "@/packages/shared";
 
 const EMPTY_UNITS: IPropertyUnit[] = [];
 
@@ -174,6 +174,7 @@ IncomeLineDescriptionField.displayName = "IncomeLineDescriptionField";
 interface IncomeLineUnitSectionProps extends FieldIdPrefixProps {
   includePropertyAmenityOption?: boolean;
   includeReservationId?: string;
+  lockedLease?: IPropertyLongStay | null;
   lockedStay?: IPropertyReservation | null;
   onReservationIdChange: (reservationId: string) => void;
   onUnitChange: (unitId: string) => void;
@@ -189,6 +190,7 @@ export const IncomeLineUnitSection = memo(
     fieldIdPrefix,
     includePropertyAmenityOption,
     includeReservationId,
+    lockedLease,
     lockedStay,
     onReservationIdChange,
     onUnitChange,
@@ -223,7 +225,7 @@ export const IncomeLineUnitSection = memo(
           <Label htmlFor={`${fieldIdPrefix}-unit`}>Unit</Label>
           <select
             className={incomeLineSelectClassName}
-            disabled={Boolean(lockedStay)}
+            disabled={Boolean(lockedStay || lockedLease)}
             id={`${fieldIdPrefix}-unit`}
             onChange={handleUnitChange}
             value={unitId}
@@ -236,7 +238,9 @@ export const IncomeLineUnitSection = memo(
           </select>
         </div>
 
-        {lockedStay ? (
+        {lockedLease ? (
+          <LockedLeaseSummary lease={lockedLease} />
+        ) : lockedStay ? (
           <LockedStaySummary stay={lockedStay} />
         ) : (
           <LinkToStayField

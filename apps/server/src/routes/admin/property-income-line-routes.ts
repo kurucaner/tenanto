@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertyIncomeLineTypesDb } from "@/db/property-income-line-types";
 import { propertyIncomeLinesDb } from "@/db/property-income-lines";
+import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
@@ -84,6 +85,17 @@ function parseCreateIncomeLineBody(
     reservationId = parsed;
   }
 
+  let longStayId: string | undefined;
+  if (r["longStayId"] !== undefined && r["longStayId"] !== null && r["longStayId"] !== "") {
+    const parsed = parseUuidParam(r["longStayId"]);
+    if (parsed === null) return { error: "longStayId must be a valid UUID", ok: false };
+    longStayId = parsed;
+  }
+
+  if (reservationId && longStayId) {
+    return { error: "Cannot link an income line to both a reservation and a long stay", ok: false };
+  }
+
   let description: string | undefined;
   if (r["description"] !== undefined && r["description"] !== null) {
     if (typeof r["description"] !== "string") {
@@ -106,6 +118,7 @@ function parseCreateIncomeLineBody(
       description,
       guestName,
       incomeLineTypeId,
+      longStayId,
       reservationId,
       transactionDate,
       unitId,
@@ -117,6 +130,7 @@ function parseCreateIncomeLineBody(
 const UPDATE_FIELDS = [
   "unitId",
   "reservationId",
+  "longStayId",
   "incomeLineTypeId",
   "amount",
   "transactionDate",
@@ -179,6 +193,17 @@ function parseUpdateIncomeLineBody(
       body.reservationId = reservationId;
     }
   }
+  if ("longStayId" in r) {
+    if (r["longStayId"] === null) {
+      body.longStayId = null;
+    } else {
+      const longStayId = parseUuidParam(r["longStayId"]);
+      if (longStayId === null) {
+        return { error: "longStayId must be a valid UUID or null", ok: false };
+      }
+      body.longStayId = longStayId;
+    }
+  }
   if ("description" in r) {
     if (r["description"] === null) {
       body.description = null;
@@ -237,6 +262,11 @@ function parseIncomeLinesListQuery(
     if (reservationId === null) return { error: "reservationId must be a valid UUID", ok: false };
     if (reservationId) filters.reservationId = reservationId;
   }
+  if (query["longStayId"] !== undefined && query["longStayId"] !== "") {
+    const longStayId = parseOptionalUuid(query["longStayId"]);
+    if (longStayId === null) return { error: "longStayId must be a valid UUID", ok: false };
+    if (longStayId) filters.longStayId = longStayId;
+  }
 
   return { filters, ok: true };
 }
@@ -290,6 +320,28 @@ async function resolveReservationForProperty(
   return reservation;
 }
 
+async function resolveLongStayForProperty(
+  longStayId: string,
+  propertyId: string,
+  incomeUnitId: string | null,
+  reply: FastifyReply
+) {
+  const longStay = await propertyLongStaysDb.findById(longStayId);
+  if (!longStay || longStay.propertyId !== propertyId) {
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Long stay not found for this property" });
+    return null;
+  }
+  if (incomeUnitId !== null && longStay.unitId !== incomeUnitId) {
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Long stay must belong to the selected unit" });
+    return null;
+  }
+  return longStay;
+}
+
 async function resolveIncomeLineTypeForProperty(
   incomeLineTypeId: string,
   propertyId: string,
@@ -314,6 +366,7 @@ function mergeIncomeLineInput(existing: IPropertyIncomeLine, patch: IUpdatePrope
     description: patch.description === undefined ? existing.description : patch.description,
     guestName: patch.guestName === undefined ? existing.guestName : patch.guestName,
     incomeLineTypeId: patch.incomeLineTypeId ?? existing.incomeLineTypeId,
+    longStayId: patch.longStayId === undefined ? existing.longStayId : patch.longStayId,
     reservationId: patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
     transactionDate: patch.transactionDate ?? existing.transactionDate,
     unitId: patch.unitId === undefined ? existing.unitId : patch.unitId,
@@ -409,6 +462,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       }
 
       let reservationId: string | null = parsed.body.reservationId ?? null;
+      let longStayId: string | null = parsed.body.longStayId ?? null;
       let guestName: string | null = parsed.body.guestName?.trim() || null;
 
       if (reservationId) {
@@ -422,6 +476,12 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         if (!guestName) guestName = reservation.guestName;
       }
 
+      if (longStayId) {
+        const longStay = await resolveLongStayForProperty(longStayId, propertyId, unitId, reply);
+        if (!longStay) return;
+        if (!guestName) guestName = longStay.guestName;
+      }
+
       const computed = calculateMiscIncomeLine(parsed.body.amount);
       const incomeLine = await propertyIncomeLinesDb.create(
         propertyId,
@@ -430,6 +490,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           description: parsed.body.description?.trim() || null,
           guestName,
           incomeLineTypeId: incomeLineType.id,
+          longStayId,
           reservationId,
           transactionDate: parsed.body.transactionDate,
           unitId,
@@ -506,6 +567,23 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         );
         if (!reservation) return;
         if (!merged.guestName) merged.guestName = reservation.guestName;
+      }
+
+      if (merged.longStayId) {
+        const longStay = await resolveLongStayForProperty(
+          merged.longStayId,
+          propertyId,
+          merged.unitId,
+          reply
+        );
+        if (!longStay) return;
+        if (!merged.guestName) merged.guestName = longStay.guestName;
+      }
+
+      if (merged.reservationId && merged.longStayId) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "Cannot link an income line to both a reservation and a long stay" });
       }
 
       const computed = calculateMiscIncomeLine(merged.amount);

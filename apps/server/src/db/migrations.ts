@@ -1582,4 +1582,122 @@ export const migrations: IMigration[] = [
     },
     version: 37,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_reservation_or_long_stay_exclusive;
+      `);
+      await client.query(
+        `DROP INDEX IF EXISTS idx_property_income_lines_long_stay_id;`
+      );
+      await client.query(
+        `ALTER TABLE property_income_lines DROP COLUMN IF EXISTS long_stay_id;`
+      );
+      await client.query(`DROP INDEX IF EXISTS idx_property_long_stays_active_unit;`);
+      await client.query(`DROP INDEX IF EXISTS idx_property_long_stays_property_status;`);
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP COLUMN IF EXISTS tenant_phone,
+          DROP COLUMN IF EXISTS tenant_email,
+          DROP COLUMN IF EXISTS actual_end_date,
+          DROP COLUMN IF EXISTS lease_end_date,
+          DROP COLUMN IF EXISTS status;
+      `);
+      await client.query(`DROP TYPE IF EXISTS property_long_stay_status;`);
+      await client.query(`
+        DELETE FROM property_income_line_types
+        WHERE name = 'Rent';
+      `);
+    },
+    name: "long_stay_leases_mvp",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TYPE property_long_stay_status AS ENUM ('active', 'ended');
+      `);
+
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN status property_long_stay_status NOT NULL DEFAULT 'active',
+          ADD COLUMN lease_end_date DATE,
+          ADD COLUMN actual_end_date DATE,
+          ADD COLUMN tenant_email VARCHAR(255),
+          ADD COLUMN tenant_phone VARCHAR(50);
+      `);
+
+      await client.query(`
+        UPDATE property_long_stays
+        SET lease_end_date = (lease_start_date + (term_months || ' months')::interval)::date;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ALTER COLUMN lease_end_date SET NOT NULL;
+      `);
+
+      // End duplicate active leases per unit, keeping the latest by start date.
+      await client.query(`
+        UPDATE property_long_stays pls
+        SET
+          status = 'ended',
+          actual_end_date = pls.lease_end_date
+        FROM (
+          SELECT id
+          FROM (
+            SELECT
+              id,
+              ROW_NUMBER() OVER (
+                PARTITION BY unit_id
+                ORDER BY lease_start_date DESC, created_at DESC
+              ) AS rn
+            FROM property_long_stays
+          ) ranked
+          WHERE rn > 1
+        ) duplicates
+        WHERE pls.id = duplicates.id;
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_long_stays_active_unit
+          ON property_long_stays (unit_id)
+          WHERE status = 'active';
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_property_long_stays_property_status
+          ON property_long_stays (property_id, status);
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN long_stay_id UUID REFERENCES property_long_stays(id) ON DELETE SET NULL;
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_property_income_lines_long_stay_id
+          ON property_income_lines (long_stay_id);
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_reservation_or_long_stay_exclusive
+          CHECK (
+            reservation_id IS NULL OR long_stay_id IS NULL
+          );
+      `);
+
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order)
+        SELECT p.id, 'Rent', -1
+        FROM properties p
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM property_income_line_types t
+          WHERE t.property_id = p.id
+            AND LOWER(t.name) = 'rent'
+        );
+      `);
+    },
+    version: 38,
+  },
 ];

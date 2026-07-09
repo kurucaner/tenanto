@@ -25,6 +25,7 @@ export const propertyIncomeLinesDb = {
       description: string | null;
       guestName: string | null;
       incomeLineTypeId: ICreatePropertyIncomeLineBody["incomeLineTypeId"];
+      longStayId: string | null;
       reservationId: string | null;
       transactionDate: string;
       unitId: string | null;
@@ -36,6 +37,7 @@ export const propertyIncomeLinesDb = {
          property_id,
          unit_id,
          reservation_id,
+         long_stay_id,
          income_line_type_id,
          amount,
          transaction_date,
@@ -46,14 +48,15 @@ export const propertyIncomeLinesDb = {
          channel_commission,
          net_income
        ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8,
-         $9, $10::jsonb, $11, $12
+         $1, $2, $3, $4, $5, $6, $7, $8, $9,
+         $10, $11::jsonb, $12, $13
        )
        RETURNING *`,
       [
         propertyId,
         input.unitId,
         input.reservationId,
+        input.longStayId,
         input.incomeLineTypeId,
         input.amount,
         input.transactionDate,
@@ -111,6 +114,10 @@ export const propertyIncomeLinesDb = {
       conditions.push(`pil.reservation_id = $${p++}`);
       values.push(filters.reservationId);
     }
+    if (filters.longStayId) {
+      conditions.push(`pil.long_stay_id = $${p++}`);
+      values.push(filters.longStayId);
+    }
 
     const joinUnits = filters.rentalType
       ? "INNER JOIN property_units pu ON pu.id = pil.unit_id"
@@ -163,6 +170,10 @@ export const propertyIncomeLinesDb = {
     if (input.reservationId !== undefined) {
       setClauses.push(`reservation_id = $${param++}`);
       values.push(input.reservationId);
+    }
+    if (input.longStayId !== undefined) {
+      setClauses.push(`long_stay_id = $${param++}`);
+      values.push(input.longStayId);
     }
     if (input.incomeLineTypeId !== undefined) {
       setClauses.push(`income_line_type_id = $${param++}`);

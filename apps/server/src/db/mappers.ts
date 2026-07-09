@@ -192,12 +192,17 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
 });
 
 export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay => ({
+  actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,
   createdAt: (row.created_at as Date).toISOString(),
   guestName: row.guest_name as string,
   id: row.id as string,
+  leaseEndDate: formatDateColumn(row.lease_end_date),
   leaseStartDate: formatDateColumn(row.lease_start_date),
   monthlyRent: Number(row.monthly_rent),
   propertyId: row.property_id as string,
+  status: row.status as IPropertyLongStay["status"],
+  tenantEmail: (row.tenant_email as string | null) ?? null,
+  tenantPhone: (row.tenant_phone as string | null) ?? null,
   termMonths: row.term_months as number,
   unitId: row.unit_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),
@@ -216,6 +221,7 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
   incomeLineTypeName:
     typeof row.income_line_type_name === "string" ? row.income_line_type_name : undefined,
   isDeleted: (row.is_deleted as boolean) ?? false,
+  longStayId: (row.long_stay_id as string | null) ?? null,
   netIncome: Number(row.net_income),
   propertyId: row.property_id as string,
   reservationId: (row.reservation_id as string) ?? null,

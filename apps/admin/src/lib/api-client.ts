@@ -19,6 +19,7 @@ import {
   type ICreatePropertyLongStayBody,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
+  type IEndPropertyLongStayBody,
   type IHomeFinancialOverview,
   type IPortfolioReportSummary,
   type IProperty,
@@ -28,6 +29,9 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyLongStay,
+  type IPropertyLongStayDetailResponse,
+  type IPropertyLongStaysListQuery,
+  type IPropertyLongStaysListResponse,
   type IPropertyMember,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
@@ -583,6 +587,27 @@ export const longStaysApi = {
       `/properties/${encodeURIComponent(propertyId)}/long-stays`,
       { body: JSON.stringify(body), method: "POST" }
     ),
+
+  end: (propertyId: string, longStayId: string, body: IEndPropertyLongStayBody) =>
+    authenticatedRequest<{ longStay: IPropertyLongStay }>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/end`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  get: (propertyId: string, longStayId: string) =>
+    authenticatedRequest<IPropertyLongStayDetailResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}`
+    ),
+
+  list: (propertyId: string, query: IPropertyLongStaysListQuery = {}) => {
+    const params = new URLSearchParams();
+    if (query.status) params.set("status", query.status);
+    if (query.unitId) params.set("unitId", query.unitId);
+    const search = params.toString();
+    return authenticatedRequest<IPropertyLongStaysListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays${search ? `?${search}` : ""}`
+    );
+  },
 };
 
 export const settingsApi = {

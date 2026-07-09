@@ -14,9 +14,10 @@ export interface IPropertyIncomeLineTypeInput {
 export const DEFAULT_PROPERTY_INCOME_LINE_TYPES: Pick<
   IPropertyIncomeLineTypeInput,
   "name"
->[] = [{ name: "Extra cleaning" }, { name: "Beach equipment rental" }];
+>[] = [{ name: "Rent" }, { name: "Extra cleaning" }, { name: "Beach equipment rental" }];
 
 export const DEFAULT_EXTRA_CLEANING_TYPE_NAME = "Extra cleaning";
+export const DEFAULT_RENT_TYPE_NAME = "Rent";
 
 export function resolveDefaultIncomeLineTypeId(
   types: Pick<IPropertyIncomeLineType, "id" | "name">[]
@@ -25,4 +26,13 @@ export function resolveDefaultIncomeLineTypeId(
     (type) => type.name.toLowerCase() === DEFAULT_EXTRA_CLEANING_TYPE_NAME.toLowerCase()
   );
   return extraCleaning?.id ?? types[0]?.id ?? "";
+}
+
+export function resolveRentIncomeLineTypeId(
+  types: Pick<IPropertyIncomeLineType, "id" | "name">[]
+): string {
+  const rent = types.find(
+    (type) => type.name.toLowerCase() === DEFAULT_RENT_TYPE_NAME.toLowerCase()
+  );
+  return rent?.id ?? types[0]?.id ?? "";
 }

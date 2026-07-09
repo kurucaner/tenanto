@@ -59,7 +59,7 @@ export const propertyUnitsDb = {
       `SELECT
          (SELECT COUNT(*)::int FROM property_reservations WHERE unit_id = $1 AND is_deleted = false) AS reservation_count,
          (SELECT COUNT(*)::int FROM property_income_lines WHERE unit_id = $1 AND is_deleted = false) AS income_line_count,
-         (SELECT COUNT(*)::int FROM property_long_stays WHERE unit_id = $1) AS long_stay_count`,
+         (SELECT COUNT(*)::int FROM property_long_stays WHERE unit_id = $1 AND status = 'active') AS long_stay_count`,
       [unitId]
     );
     const row = result.rows[0];

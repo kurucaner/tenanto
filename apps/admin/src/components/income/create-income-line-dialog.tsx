@@ -28,6 +28,7 @@ import {
 import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import {
   clampToMaxLocalIsoDate,
@@ -36,14 +37,18 @@ import {
 } from "@/lib/reservation-date-utils";
 import {
   type IPropertyIncomeLineType,
+  type IPropertyLongStay,
   type IPropertyReservation,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
+  resolveRentIncomeLineTypeId,
 } from "@/packages/shared";
 
 export interface CreateIncomeLineDialogPrefill {
+  amount?: string;
   guestName?: string;
   incomeLineTypeId?: string;
+  longStayId?: string;
   reservationId?: string;
   transactionDate?: string;
   unitId?: string;
@@ -51,6 +56,7 @@ export interface CreateIncomeLineDialogPrefill {
 
 interface CreateIncomeLineDialogProps {
   incomeLineTypes: IPropertyIncomeLineType[];
+  lockedLease?: IPropertyLongStay | null;
   lockedStay?: IPropertyReservation | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -66,6 +72,7 @@ const createIncomeLineSchema = z.object({
   description: z.string(),
   guestName: z.string(),
   incomeLineTypeId: z.string().min(1, "Income type is required"),
+  longStayId: z.string(),
   reservationId: z.string(),
   transactionDate: z
     .string()
@@ -81,25 +88,30 @@ type TCreateIncomeLineFormValues = z.infer<typeof createIncomeLineSchema>;
 function getDefaultValues(
   incomeLineTypes: IPropertyIncomeLineType[],
   prefill?: CreateIncomeLineDialogPrefill | null,
-  lockedStay?: IPropertyReservation | null
+  lockedStay?: IPropertyReservation | null,
+  lockedLease?: IPropertyLongStay | null
 ): TCreateIncomeLineFormValues {
-  const defaultIncomeLineTypeId = resolveDefaultIncomeLineTypeId(incomeLineTypes);
+  const defaultIncomeLineTypeId = lockedLease
+    ? resolveRentIncomeLineTypeId(incomeLineTypes)
+    : resolveDefaultIncomeLineTypeId(incomeLineTypes);
   const maxTransactionDate = getTodayLocalIsoDate();
   const rawTransactionDate = prefill?.transactionDate ?? lockedStay?.checkOut ?? "";
 
   return {
-    amount: "",
+    amount: prefill?.amount ?? (lockedLease ? String(lockedLease.monthlyRent) : ""),
     description: "",
-    guestName: prefill?.guestName ?? lockedStay?.guestName ?? "",
+    guestName: prefill?.guestName ?? lockedLease?.guestName ?? lockedStay?.guestName ?? "",
     incomeLineTypeId: prefill?.incomeLineTypeId ?? defaultIncomeLineTypeId,
+    longStayId: prefill?.longStayId ?? lockedLease?.id ?? "",
     reservationId: prefill?.reservationId ?? lockedStay?.id ?? "",
     transactionDate: clampToMaxLocalIsoDate(rawTransactionDate, maxTransactionDate),
-    unitId: prefill?.unitId ?? lockedStay?.unitId ?? "",
+    unitId: prefill?.unitId ?? lockedLease?.unitId ?? lockedStay?.unitId ?? "",
   };
 }
 
 interface CreateIncomeLineDialogFormProps {
   incomeLineTypes: IPropertyIncomeLineType[];
+  lockedLease?: IPropertyLongStay | null;
   lockedStay?: IPropertyReservation | null;
   onClose: () => void;
   prefill?: CreateIncomeLineDialogPrefill | null;
@@ -110,6 +122,7 @@ interface CreateIncomeLineDialogFormProps {
 const CreateIncomeLineDialogForm = memo(
   ({
     incomeLineTypes,
+    lockedLease,
     lockedStay,
     onClose,
     prefill,
@@ -117,8 +130,10 @@ const CreateIncomeLineDialogForm = memo(
     units,
   }: CreateIncomeLineDialogFormProps) => {
     const queryClient = useQueryClient();
+    const isRentRecording = Boolean(lockedLease);
+
     const form = useForm<TCreateIncomeLineFormValues>({
-      defaultValues: getDefaultValues(incomeLineTypes, prefill, lockedStay),
+      defaultValues: getDefaultValues(incomeLineTypes, prefill, lockedStay, lockedLease),
       resolver: zodResolver(createIncomeLineSchema),
     });
 
@@ -129,6 +144,7 @@ const CreateIncomeLineDialogForm = memo(
 
     const incomeLineTypeId = form.watch("incomeLineTypeId");
     const reservationId = form.watch("reservationId");
+    const longStayId = form.watch("longStayId");
     const transactionDate = form.watch("transactionDate");
     const maxTransactionDate = getTodayLocalIsoDate();
 
@@ -139,16 +155,20 @@ const CreateIncomeLineDialogForm = memo(
           description: values.description.trim() || undefined,
           guestName: values.guestName.trim() || undefined,
           incomeLineTypeId: values.incomeLineTypeId,
+          longStayId: values.longStayId || undefined,
           reservationId: values.reservationId || undefined,
           transactionDate: values.transactionDate,
           unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,
         }),
       onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to create other income");
+        toast.error(e instanceof Error ? e.message : "Failed to create income entry");
       },
-      onSuccess: () => {
-        toast.success("Other income created");
+      onSuccess: (_data, values) => {
+        toast.success(isRentRecording ? "Rent recorded" : "Other income created");
         invalidatePropertyIncomeCaches(queryClient, propertyId);
+        if (values.longStayId) {
+          invalidatePropertyLongStayCaches(queryClient, propertyId);
+        }
         onClose();
       },
     });
@@ -158,16 +178,18 @@ const CreateIncomeLineDialogForm = memo(
     });
 
     const { errors, isSubmitting } = form.formState;
-    const showGuestField = !lockedStay && reservationId === "";
+    const showGuestField = !lockedStay && !lockedLease && reservationId === "" && longStayId === "";
 
     return (
       <form onSubmit={onSubmit}>
         <DialogHeader>
-          <DialogTitle>Add Other Income</DialogTitle>
+          <DialogTitle>{isRentRecording ? "Record Rent" : "Add Other Income"}</DialogTitle>
           <DialogDescription>
-            {lockedStay
-              ? `Add income linked to ${lockedStay.guestName}'s stay.`
-              : "Record cleaning, extra services, or other non-stay revenue."}
+            {lockedLease
+              ? `Record rent for ${lockedLease.guestName}'s lease.`
+              : lockedStay
+                ? `Add income linked to ${lockedStay.guestName}'s stay.`
+                : "Record cleaning, extra services, or other non-stay revenue."}
           </DialogDescription>
         </DialogHeader>
 
@@ -197,15 +219,17 @@ const CreateIncomeLineDialogForm = memo(
               <div className="flex flex-col gap-1.5">
                 <IncomeLineUnitSection
                   fieldIdPrefix={FIELD_ID_PREFIX}
-                  includePropertyAmenityOption={!lockedStay}
+                  includePropertyAmenityOption={!lockedStay && !lockedLease}
+                  lockedLease={lockedLease}
                   lockedStay={lockedStay}
                   onReservationIdChange={(nextReservationId) => {
                     form.setValue("reservationId", nextReservationId);
                   }}
                   onUnitChange={(nextUnitId) => {
                     field.onChange(nextUnitId);
-                    if (!lockedStay) {
+                    if (!lockedStay && !lockedLease) {
                       form.setValue("reservationId", "");
+                      form.setValue("longStayId", "");
                     }
                   }}
                   propertyId={propertyId}
@@ -290,7 +314,13 @@ const CreateIncomeLineDialogForm = memo(
             Cancel
           </Button>
           <Button disabled={mutation.isPending || isSubmitting} type="submit">
-            {mutation.isPending ? "Creating…" : "Add Other Income"}
+            {mutation.isPending
+              ? isRentRecording
+                ? "Recording…"
+                : "Creating…"
+              : isRentRecording
+                ? "Record Rent"
+                : "Add Other Income"}
           </Button>
         </DialogFooter>
       </form>
@@ -302,6 +332,7 @@ CreateIncomeLineDialogForm.displayName = "CreateIncomeLineDialogForm";
 export const CreateIncomeLineDialog = memo(
   ({
     incomeLineTypes,
+    lockedLease,
     lockedStay,
     onOpenChange,
     open,
@@ -326,7 +357,8 @@ export const CreateIncomeLineDialog = memo(
           {open ? (
             <CreateIncomeLineDialogForm
               incomeLineTypes={incomeLineTypes}
-              key={`${lockedStay?.id ?? "standalone"}-${prefill?.reservationId ?? "new"}`}
+              key={`${lockedLease?.id ?? lockedStay?.id ?? "standalone"}-${prefill?.longStayId ?? prefill?.reservationId ?? "new"}`}
+              lockedLease={lockedLease}
               lockedStay={lockedStay}
               onClose={handleClose}
               prefill={prefill}

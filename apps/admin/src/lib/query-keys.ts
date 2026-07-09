@@ -4,6 +4,7 @@ import type {
   IAdminSupportRequestsListQuery,
   IPropertyExpensesListQuery,
   IPropertyIncomeLinesListQuery,
+  IPropertyLongStaysListQuery,
   IPropertyReportsQuery,
   IPropertyReservationsListQuery,
   ISupportRequestsListQuery,
@@ -37,6 +38,10 @@ export const adminQueryKeys = {
     ["property", propertyId, "income-lines", filters] as const,
   propertyExpenses: (propertyId: string, filters: IPropertyExpensesListQuery = {}) =>
     ["property", propertyId, "expenses", filters] as const,
+  propertyLongStays: (propertyId: string, filters: IPropertyLongStaysListQuery = {}) =>
+    ["property", propertyId, "long-stays", filters] as const,
+  propertyLongStay: (propertyId: string, longStayId: string) =>
+    ["property", propertyId, "long-stays", longStayId] as const,
   propertyReportSummary: (propertyId: string, filters: IPropertyReportsQuery) =>
     ["property", propertyId, "reports", filters] as const,
   portfolioReportSummary: (filters: IPropertyReportsQuery) =>

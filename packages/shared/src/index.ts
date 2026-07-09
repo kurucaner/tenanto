@@ -133,15 +133,33 @@ export {
 } from "./property-reservation-types";
 
 // Property Long Stay Types
-export type { ICreatePropertyLongStayBody, IPropertyLongStay } from "./property-long-stay-types";
+export {
+  type ICreatePropertyLongStayBody,
+  type IEndPropertyLongStayBody,
+  type IPropertyLongStay,
+  type IPropertyLongStayDetailResponse,
+  type IPropertyLongStayRentMonth,
+  type IPropertyLongStaysListQuery,
+  type IPropertyLongStaysListResponse,
+  PropertyLongStayStatus,
+  type TPropertyLongStayStatus,
+} from "./property-long-stay-types";
+
+export {
+  calculateLeaseEndDate,
+  enumerateLeaseMonths,
+  transactionDateToMonth,
+} from "./lease-date-utils";
 
 // Property Income Line Type Config
 export {
   DEFAULT_EXTRA_CLEANING_TYPE_NAME,
   DEFAULT_PROPERTY_INCOME_LINE_TYPES,
+  DEFAULT_RENT_TYPE_NAME,
   type IPropertyIncomeLineType,
   type IPropertyIncomeLineTypeInput,
   resolveDefaultIncomeLineTypeId,
+  resolveRentIncomeLineTypeId,
 } from "./property-income-line-type-config";
 
 // Property Income Line Types

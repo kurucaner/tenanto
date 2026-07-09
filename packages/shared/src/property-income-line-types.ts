@@ -18,6 +18,7 @@ export interface IPropertyIncomeLine {
   incomeLineTypeName?: string;
   isDeleted: boolean;
   netIncome: number;
+  longStayId: string | null;
   propertyId: string;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
@@ -38,6 +39,7 @@ export interface ICreatePropertyIncomeLineBody {
   description?: string;
   guestName?: string;
   incomeLineTypeId: string;
+  longStayId?: string;
   reservationId?: string;
   transactionDate: string;
   unitId?: string | null;
@@ -48,6 +50,7 @@ export interface IUpdatePropertyIncomeLineBody {
   description?: string | null;
   guestName?: string | null;
   incomeLineTypeId?: string;
+  longStayId?: string | null;
   reservationId?: string | null;
   transactionDate?: string;
   unitId?: string | null;
@@ -56,6 +59,7 @@ export interface IUpdatePropertyIncomeLineBody {
 export interface IPropertyIncomeLinesListQuery {
   from?: string;
   incomeLineTypeId?: string;
+  longStayId?: string;
   rentalType?: import("./property-types").TUnitRentalType;
   reservationId?: string;
   to?: string;

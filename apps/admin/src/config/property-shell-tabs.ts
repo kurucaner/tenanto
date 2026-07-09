@@ -7,6 +7,7 @@ export interface IPropertyShellTab {
 export const PROPERTY_SHELL_TABS: IPropertyShellTab[] = [
   { end: true, label: "Overview", path: "" },
   { label: "Units", path: "units" },
+  { label: "Leases", path: "leases" },
   { label: "Income", path: "income" },
   { label: "Expenses", path: "expenses" },
   { label: "Reports", path: "reports" },

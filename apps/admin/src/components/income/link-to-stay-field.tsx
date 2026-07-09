@@ -10,7 +10,7 @@ import {
   RECENT_STAY_PICKER_DAYS,
   STAY_PICKER_DATE_WINDOW_DAYS,
 } from "@/lib/stay-link-picker-filters";
-import type { IPropertyReservation } from "@/packages/shared";
+import type { IPropertyLongStay, IPropertyReservation } from "@/packages/shared";
 
 interface LinkToStayFieldProps {
   disabled?: boolean;
@@ -91,6 +91,23 @@ export const LinkToStayField = memo(
   }
 );
 LinkToStayField.displayName = "LinkToStayField";
+
+interface LockedLeaseSummaryProps {
+  lease: IPropertyLongStay;
+}
+
+export const LockedLeaseSummary = memo(({ lease }: LockedLeaseSummaryProps) => (
+  <div className="flex flex-col gap-1.5">
+    <Label>Linked lease</Label>
+    <div className="bg-muted/50 rounded-md border px-3 py-2 text-sm">
+      <p className="font-medium">{lease.guestName}</p>
+      <p className="text-muted-foreground text-xs">
+        {lease.leaseStartDate} → {lease.actualEndDate ?? lease.leaseEndDate}
+      </p>
+    </div>
+  </div>
+));
+LockedLeaseSummary.displayName = "LockedLeaseSummary";
 
 interface LockedStaySummaryProps {
   stay: IPropertyReservation;

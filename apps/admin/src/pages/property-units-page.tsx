@@ -8,7 +8,8 @@ import {
   deletedRowClassName,
   RestoreEntityButton,
 } from "@/components/deleted-badge";
-import { CreateLongStayDialog } from "@/components/long-stays/create-long-stay-dialog";
+import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,10 +25,15 @@ import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
-import { unitsApi } from "@/lib/api-client";
+import { longStaysApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import type { IPropertyUnit, TUnitRentalType } from "@/packages/shared";
+import {
+  type IPropertyLongStay,
+  type IPropertyUnit,
+  PropertyLongStayStatus,
+  type TUnitRentalType,
+} from "@/packages/shared";
 import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
 
 const RentalTypeBadge = memo(({ type }: { type: TUnitRentalType }) => {
@@ -48,80 +54,98 @@ RentalTypeBadge.displayName = "RentalTypeBadge";
 
 const UnitRow = memo(
   ({
+    activeLease,
     canManage,
-    onAddLongStay,
+    onStartLease,
     onDelete,
     onEdit,
     onRestore,
     unit,
   }: {
+    activeLease?: IPropertyLongStay;
     canManage: boolean;
-    onAddLongStay: (unit: IPropertyUnit) => void;
+    onStartLease: (unit: IPropertyUnit) => void;
     onDelete: (unit: IPropertyUnit) => void;
     onEdit: (unit: IPropertyUnit) => void;
     onRestore: (unit: IPropertyUnit) => void;
     unit: IPropertyUnit;
-  }) => (
-    <TableRow className={unit.isDeleted ? deletedRowClassName : undefined}>
-      <TableCell className="font-medium">
-        <div className="flex items-center gap-2">
-          {unit.unitNumber}
-          {unit.isDeleted ? <DeletedBadge /> : null}
-        </div>
-      </TableCell>
-      <TableCell>{unit.layout}</TableCell>
-      <TableCell>
-        <RentalTypeBadge type={unit.rentalType} />
-      </TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {new Date(unit.createdAt).toLocaleDateString()}
-      </TableCell>
-      {canManage ? (
+  }) => {
+    const isLongTerm = unit.rentalType === UnitRentalType.LONG_TERM;
+    const isVacant = isLongTerm && !activeLease;
+
+    return (
+      <TableRow className={unit.isDeleted ? deletedRowClassName : undefined}>
+        <TableCell className="font-medium">
+          <div className="flex items-center gap-2">
+            {unit.unitNumber}
+            {unit.isDeleted ? <DeletedBadge /> : null}
+          </div>
+        </TableCell>
+        <TableCell>{unit.layout}</TableCell>
         <TableCell>
-          <div className="flex items-center gap-1">
-            {unit.isDeleted ? (
-              <RestoreEntityButton
-                ariaLabel="Restore unit"
-                onClick={() => onRestore(unit)}
-              />
+          <RentalTypeBadge type={unit.rentalType} />
+        </TableCell>
+        <TableCell>
+          {isLongTerm && !unit.isDeleted ? (
+            activeLease ? (
+              <Badge variant="secondary">{activeLease.guestName}</Badge>
             ) : (
-              <>
-                {unit.rentalType === UnitRentalType.LONG_TERM ? (
+              <Badge variant="outline">Vacant</Badge>
+            )
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground text-xs">
+          {new Date(unit.createdAt).toLocaleDateString()}
+        </TableCell>
+        {canManage ? (
+          <TableCell>
+            <div className="flex items-center gap-1">
+              {unit.isDeleted ? (
+                <RestoreEntityButton
+                  ariaLabel="Restore unit"
+                  onClick={() => onRestore(unit)}
+                />
+              ) : (
+                <>
+                  {isLongTerm && isVacant ? (
+                    <Button
+                      aria-label="Start lease"
+                      onClick={() => onStartLease(unit)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <CirclePlus className="size-3.5" />
+                    </Button>
+                  ) : null}
                   <Button
-                    aria-label="Add long stay"
-                    onClick={() => onAddLongStay(unit)}
+                    aria-label="Edit unit"
+                    onClick={() => onEdit(unit)}
                     size="icon-sm"
                     type="button"
                     variant="ghost"
                   >
-                    <CirclePlus className="size-3.5" />
+                    <Pencil className="size-3.5" />
                   </Button>
-                ) : null}
-                <Button
-                  aria-label="Edit unit"
-                  onClick={() => onEdit(unit)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  aria-label="Delete unit"
-                  onClick={() => onDelete(unit)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
-              </>
-            )}
-          </div>
-        </TableCell>
-      ) : null}
-    </TableRow>
-  )
+                  <Button
+                    aria-label="Delete unit"
+                    onClick={() => onDelete(unit)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </TableCell>
+        ) : null}
+      </TableRow>
+    );
+  }
 );
 UnitRow.displayName = "UnitRow";
 
@@ -131,12 +155,27 @@ export const PropertyUnitsPage = memo(() => {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
-  const [longStayUnit, setLongStayUnit] = useState<IPropertyUnit | null>(null);
+  const [startLeaseUnit, setStartLeaseUnit] = useState<IPropertyUnit | null>(null);
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
     queryKey: adminQueryKeys.propertyUnits(propertyId),
   });
+
+  const activeLeasesQuery = useQuery({
+    queryFn: () => longStaysApi.list(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
+    queryKey: adminQueryKeys.propertyLongStays(propertyId, { status: PropertyLongStayStatus.ACTIVE }),
+  });
+
+  const activeLeaseByUnitId = useMemo(() => {
+    const map = new Map<string, IPropertyLongStay>();
+    for (const lease of activeLeasesQuery.data?.longStays ?? []) {
+      map.set(lease.unitId, lease);
+    }
+    return map;
+  }, [activeLeasesQuery.data?.longStays]);
+
+  const occupiedUnitIds = useMemo(() => new Set(activeLeaseByUnitId.keys()), [activeLeaseByUnitId]);
 
   const deleteMutation = useMutation({
     mutationFn: (unit: IPropertyUnit) => unitsApi.delete(propertyId, unit.id),
@@ -207,6 +246,7 @@ export const PropertyUnitsPage = memo(() => {
                   <TableHead>Name</TableHead>
                   <TableHead>Layout</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Occupancy</TableHead>
                   <TableHead>Added</TableHead>
                   {canManage ? <TableHead>Actions</TableHead> : null}
                 </TableRow>
@@ -214,19 +254,20 @@ export const PropertyUnitsPage = memo(() => {
               <TableBody>
                 {units.length === 0 ? (
                   <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={canManage ? 5 : 4}>
+                    <TableCell className="text-muted-foreground" colSpan={canManage ? 6 : 5}>
                       No units yet.{canManage ? " Add a unit to get started." : ""}
                     </TableCell>
                   </TableRow>
                 ) : (
                   units.map((unit) => (
                     <UnitRow
+                      activeLease={activeLeaseByUnitId.get(unit.id)}
                       canManage={canManage}
                       key={unit.id}
-                      onAddLongStay={setLongStayUnit}
                       onDelete={handleDelete}
                       onEdit={setEditUnit}
                       onRestore={(item) => restoreMutation.mutate(item)}
+                      onStartLease={setStartLeaseUnit}
                       unit={unit}
                     />
                   ))
@@ -249,15 +290,17 @@ export const PropertyUnitsPage = memo(() => {
           unit={editUnit}
         />
       ) : null}
-      {longStayUnit ? (
-        <CreateLongStayDialog
-          key={longStayUnit.id}
+      {startLeaseUnit ? (
+        <StartLeaseDialog
+          key={startLeaseUnit.id}
+          occupiedUnitIds={occupiedUnitIds}
           onOpenChange={(open) => {
-            if (!open) setLongStayUnit(null);
+            if (!open) setStartLeaseUnit(null);
           }}
           open={true}
           propertyId={propertyId}
-          unit={longStayUnit}
+          unit={startLeaseUnit}
+          units={units}
         />
       ) : null}
     </>
