@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
+import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { calculateLeaseEndDate } from "@/lib/lease-date-utils";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
@@ -38,12 +39,15 @@ const startLeaseSchema = z.object({
   termMonths: z
     .string()
     .min(1, "Term is required")
+    .refine((value) => /^\d+$/.test(value), {
+      message: "Term must be a whole number",
+    })
     .refine(
       (value) => {
         const parsed = Number.parseInt(value, 10);
-        return Number.isInteger(parsed) && parsed >= 1 && parsed <= MAX_TERM_MONTHS;
+        return parsed >= 1 && parsed <= MAX_TERM_MONTHS;
       },
-      { message: `Term must be a whole number between 1 and ${MAX_TERM_MONTHS}` }
+      { message: `Term must be between 1 and ${MAX_TERM_MONTHS}` }
     ),
   unitId: z.string().min(1, "Unit is required"),
 });
@@ -205,12 +209,22 @@ export const StartLeaseDialog = memo(
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="start-lease-term-months">Term (Months)</Label>
-                  <Input
-                    id="start-lease-term-months"
-                    max={MAX_TERM_MONTHS}
-                    min={1}
-                    type="number"
-                    {...form.register("termMonths")}
+                  <Controller
+                    control={form.control}
+                    name="termMonths"
+                    render={({ field }) => (
+                      <Input
+                        id="start-lease-term-months"
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          if (isValidIntegerInput(e.target.value)) {
+                            field.onChange(e.target.value);
+                          }
+                        }}
+                        type="text"
+                        value={field.value}
+                      />
+                    )}
                   />
                   {errors.termMonths ? (
                     <p className="text-xs text-destructive">{errors.termMonths.message}</p>
