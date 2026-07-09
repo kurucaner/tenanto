@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,20 +12,36 @@ type TRefetchButtonProps = {
 
 export const RefetchButton = memo(
   ({ isRefetching, label = "Refresh", onRefetch }: Readonly<TRefetchButtonProps>) => {
+    const [isAnimating, setIsAnimating] = useState(false);
+    const isSpinning = isRefetching || isAnimating;
+
     const handleClick = useCallback(() => {
-      void Promise.resolve(onRefetch()).catch(() => {});
+      setIsAnimating(true);
+      void Promise.resolve(onRefetch())
+        .catch(() => {})
+        .finally(() => {
+          setIsAnimating(false);
+        });
     }, [onRefetch]);
 
     return (
       <Button
+        aria-busy={isSpinning}
         aria-label={label}
-        disabled={isRefetching}
+        disabled={isSpinning}
         onClick={handleClick}
         size="icon-xs"
         type="button"
         variant="outline"
       >
-        <RefreshCw aria-hidden className={cn(isRefetching ? "animate-spin" : undefined)} />
+        <RefreshCw
+          aria-hidden
+          className={cn(
+            isSpinning
+              ? "animate-spin motion-reduce:animate-none [animation-duration:1.15s]"
+              : undefined
+          )}
+        />
       </Button>
     );
   }
