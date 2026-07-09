@@ -9,9 +9,9 @@ import { UnitRentalType } from "./property-types";
 
 export const PROPERTY_AMENITY_UNIT_ID = "property-amenity";
 
-export interface IRentalTypeIncomeBreakdown {
+export interface IIncomeCompositionBreakdown {
   longTerm: number;
-  propertyAmenity: number;
+  other: number;
   shortTerm: number;
 }
 
@@ -31,28 +31,29 @@ function roundShare(value: number): number {
   return Math.round(value * 10_000) / 10_000;
 }
 
-export function buildRentalTypeIncomeBreakdown(
-  byUnit: IPropertyReportUnitSummary[]
-): IRentalTypeIncomeBreakdown {
+function sumOtherIncomeAmounts(breakdown: IPropertyReportSalesTypeBreakdown): number {
+  return breakdown.otherIncomeByType.reduce((sum, row) => sum + row.amount, 0);
+}
+
+export function buildIncomeCompositionBreakdown(
+  byUnit: IPropertyReportUnitSummary[],
+  salesTypeBreakdown: IPropertyReportSalesTypeBreakdown
+): IIncomeCompositionBreakdown {
   let longTerm = 0;
   let shortTerm = 0;
-  let propertyAmenity = 0;
 
   for (const unit of byUnit) {
-    if (unit.unitId === PROPERTY_AMENITY_UNIT_ID) {
-      propertyAmenity += unit.grossIncome;
-      continue;
-    }
+    if (unit.unitId === PROPERTY_AMENITY_UNIT_ID) continue;
     if (unit.rentalType === UnitRentalType.LONG_TERM) {
-      longTerm += unit.grossIncome;
+      longTerm += unit.stayGrossIncome;
       continue;
     }
     if (unit.rentalType === UnitRentalType.SHORT_TERM) {
-      shortTerm += unit.grossIncome;
+      shortTerm += unit.stayGrossIncome;
     }
   }
 
-  return { longTerm, propertyAmenity, shortTerm };
+  return { longTerm, other: sumOtherIncomeAmounts(salesTypeBreakdown), shortTerm };
 }
 
 export function buildReportChartSegments(
@@ -97,16 +98,15 @@ export function buildReportChartSegments(
   return keep.sort((a, b) => b.value - a.value);
 }
 
-export function rentalTypeToSegments(byUnit: IPropertyReportUnitSummary[]): IReportChartSegment[] {
-  const breakdown = buildRentalTypeIncomeBreakdown(byUnit);
+export function incomeCompositionToSegments(
+  byUnit: IPropertyReportUnitSummary[],
+  salesTypeBreakdown: IPropertyReportSalesTypeBreakdown
+): IReportChartSegment[] {
+  const breakdown = buildIncomeCompositionBreakdown(byUnit, salesTypeBreakdown);
   return buildReportChartSegments([
     { id: "long_term", label: "Long-term", value: breakdown.longTerm },
     { id: "short_term", label: "Short-term", value: breakdown.shortTerm },
-    {
-      id: PROPERTY_AMENITY_UNIT_ID,
-      label: "Property amenities",
-      value: breakdown.propertyAmenity,
-    },
+    { id: "other", label: "Other", value: breakdown.other },
   ]);
 }
 

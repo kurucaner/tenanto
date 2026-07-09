@@ -193,15 +193,15 @@ export {
 
 // Property report chart utilities
 export {
-  buildRentalTypeIncomeBreakdown,
+  buildIncomeCompositionBreakdown,
   buildReportChartSegments,
   channelSummaryToSegments,
   expenseCategoryToSegments,
   type IBuildReportChartSegmentsOptions,
-  type IRentalTypeIncomeBreakdown,
+  type IIncomeCompositionBreakdown,
+  incomeCompositionToSegments,
   type IReportChartSegment,
   PROPERTY_AMENITY_UNIT_ID,
-  rentalTypeToSegments,
   salesTypeToSegments,
   taxSummaryToSegments,
 } from "./property-report-chart-utils";

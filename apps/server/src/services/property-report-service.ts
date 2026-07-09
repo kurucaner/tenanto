@@ -239,6 +239,7 @@ function initUnitMap(units: IPropertyUnit[], from: string, to: string) {
         grossIncome: 0,
         netIncome: 0,
         rentalType: unit.rentalType,
+        stayGrossIncome: 0,
         unitId: unit.id,
         unitNumber: unit.unitNumber,
       },
@@ -345,6 +346,7 @@ export function buildPropertyReportSummary(
     if (unit) {
       unit.grossIncome = roundMoney(unit.grossIncome + stay.grossIncome);
       unit.netIncome = roundMoney(unit.netIncome + stay.netIncome);
+      unit.stayGrossIncome = roundMoney(unit.stayGrossIncome + stay.grossIncome);
       if (isOccupancyStay(stay.status)) {
         const booked = nightsOverlappingRange(stay.checkIn, stay.checkOut, query.from, query.to);
         unit.bookedNights += booked;
@@ -418,6 +420,7 @@ export function buildPropertyReportSummary(
     occupancyRate:
       unit.availableNights > 0 ? roundMoney(unit.bookedNights / unit.availableNights) : 0,
     rentalType: unit.rentalType,
+    stayGrossIncome: unit.stayGrossIncome,
     unitId: unit.unitId,
     unitNumber: unit.unitNumber,
   }));
@@ -431,6 +434,7 @@ export function buildPropertyReportSummary(
       netIncome: amenityNetIncome,
       occupancyRate: 0,
       rentalType: null,
+      stayGrossIncome: 0,
       unitId: PROPERTY_AMENITY_UNIT_ID,
       unitNumber: PROPERTY_AMENITY_UNIT_LABEL,
     });

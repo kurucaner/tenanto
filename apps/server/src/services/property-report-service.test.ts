@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  type IPropertyIncomeLine,
   type IPropertyReservation,
   type IPropertyUnit,
   ReservationChannel,
@@ -58,6 +59,30 @@ function makeStay(overrides: Partial<IPropertyReservation> = {}): IPropertyReser
   };
 }
 
+function makeIncomeLine(overrides: Partial<IPropertyIncomeLine> = {}): IPropertyIncomeLine {
+  return {
+    amount: 75,
+    channelCommission: 0,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    deletedAt: null,
+    description: null,
+    grossIncome: 75,
+    guestName: null,
+    id: "line-1",
+    incomeLineTypeId: "type-fee",
+    incomeLineTypeName: "Late fee",
+    isDeleted: false,
+    netIncome: 75,
+    propertyId: "prop-1",
+    reservationId: null,
+    taxBreakdown: [],
+    transactionDate: "2026-01-15",
+    unitId: "unit-1",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
 function makeReportData(overrides: Partial<IReportData> = {}): IReportData {
   return {
     expenses: [],
@@ -100,6 +125,24 @@ describe("buildPropertyReportSummary taxSummary", () => {
       { amount: 50, name: "Sales tax", taxRateId: "tax-sales" },
       { amount: 10, name: "Resort tax", taxRateId: "tax-resort" },
     ]);
+  });
+});
+
+describe("buildPropertyReportSummary byUnit stayGrossIncome", () => {
+  test("tracks stay gross separately from unit-attached other income", () => {
+    const summary = buildPropertyReportSummary(
+      makeReportData({
+        incomeLines: [makeIncomeLine({ amount: 75, grossIncome: 75, netIncome: 75 })],
+        reservations: [makeStay({ grossIncome: 500, netIncome: 400 })],
+      }),
+      QUERY
+    );
+
+    expect(summary.byUnit).toHaveLength(1);
+    expect(summary.byUnit[0]).toMatchObject({
+      grossIncome: 575,
+      stayGrossIncome: 500,
+    });
   });
 });
 
