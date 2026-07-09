@@ -8,13 +8,12 @@ export function invalidatePropertyReservationCaches(
   propertyId: string,
   filters?: IPropertyReservationsListQuery
 ) {
-  void queryClient.invalidateQueries({
+  queryClient.invalidateQueries({
     queryKey: adminQueryKeys.propertyReservations(propertyId, filters ?? {}),
   });
-  void queryClient.invalidateQueries({
+  queryClient.invalidateQueries({
     predicate: (query) =>
       Array.isArray(query.queryKey) &&
-      query.queryKey[0] === "admin" &&
       query.queryKey[1] === "property" &&
       query.queryKey[2] === propertyId &&
       query.queryKey[3] === "reservations",
