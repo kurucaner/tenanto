@@ -219,6 +219,7 @@ export {
   buildProfitTrendChartRows,
   buildReportChartSegments,
   calculateOperationalProfitMargin,
+  channelCommissionSummaryToSegments,
   channelSummaryToSegments,
   expenseCategoryToSegments,
   type IBuildReportChartSegmentsOptions,

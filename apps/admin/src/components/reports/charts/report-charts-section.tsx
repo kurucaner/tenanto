@@ -1,6 +1,7 @@
 import { memo } from "react";
 
 import { ReportChannelChart } from "@/components/reports/charts/report-channel-chart";
+import { ReportChannelCommissionChart } from "@/components/reports/charts/report-channel-commission-chart";
 import { ReportExpenseBreakdownChart } from "@/components/reports/charts/report-expense-breakdown-chart";
 import { ReportIncomeCompositionChart } from "@/components/reports/charts/report-income-composition-chart";
 import { ReportOtherIncomeTypesChart } from "@/components/reports/charts/report-other-income-types-chart";
@@ -21,6 +22,7 @@ export const ReportChartsSection = memo(({ summary }: ReportChartsSectionProps) 
       />
       <ReportChannelChart channelSummary={summary.channelSummary} />
       <ReportOtherIncomeTypesChart salesTypeBreakdown={summary.salesTypeBreakdown} />
+      <ReportChannelCommissionChart channelSummary={summary.channelSummary} />
       <ReportTaxChart taxSummary={summary.taxSummary} />
     </div>
     <div className="grid gap-4 lg:grid-cols-2">

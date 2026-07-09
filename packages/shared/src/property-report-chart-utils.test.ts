@@ -5,11 +5,13 @@ import {
   buildProfitTrendChartRows,
   buildReportChartSegments,
   calculateOperationalProfitMargin,
+  channelCommissionSummaryToSegments,
   incomeCompositionToSegments,
   type IPropertyReportUnitSummary,
   otherIncomeTypeToSegments,
   PROPERTY_AMENITY_UNIT_ID,
 } from "./property-report-chart-utils";
+import { ReservationChannel } from "./property-reservation-types";
 import { UnitRentalType } from "./property-types";
 
 function makeUnitRow(
@@ -221,5 +223,49 @@ describe("buildProfitTrendChartRows", () => {
       { month: "2026-01", operationalNet: 600, profitMargin: 0.6 },
       { month: "2026-02", operationalNet: -50, profitMargin: null },
     ]);
+  });
+});
+
+describe("channelCommissionSummaryToSegments", () => {
+  const formatChannelLabel = (channel: string) => channel;
+
+  test("builds segments from channel commission totals", () => {
+    const segments = channelCommissionSummaryToSegments(
+      [
+        {
+          channel: ReservationChannel.AIRBNB,
+          channelCommission: 120,
+          grossIncome: 1200,
+          stayCount: 3,
+        },
+        {
+          channel: ReservationChannel.BOOKING,
+          channelCommission: 80,
+          grossIncome: 800,
+          stayCount: 2,
+        },
+      ],
+      formatChannelLabel
+    );
+
+    expect(segments).toHaveLength(2);
+    expect(segments.reduce((sum, segment) => sum + segment.value, 0)).toBe(200);
+    expect(segments[0]?.label).toBe(ReservationChannel.AIRBNB);
+  });
+
+  test("returns empty segments when all channel commission is zero", () => {
+    const segments = channelCommissionSummaryToSegments(
+      [
+        {
+          channel: ReservationChannel.AIRBNB,
+          channelCommission: 0,
+          grossIncome: 500,
+          stayCount: 1,
+        },
+      ],
+      formatChannelLabel
+    );
+
+    expect(segments).toEqual([]);
   });
 });

@@ -148,6 +148,19 @@ export function channelSummaryToSegments(
   );
 }
 
+export function channelCommissionSummaryToSegments(
+  channelSummary: IPropertyReportChannelSummary[],
+  formatChannelLabel: (channel: IPropertyReportChannelSummary["channel"]) => string
+): IReportChartSegment[] {
+  return buildReportChartSegments(
+    channelSummary.map((row) => ({
+      id: row.channel,
+      label: formatChannelLabel(row.channel),
+      value: row.channelCommission,
+    }))
+  );
+}
+
 export function otherIncomeTypeToSegments(
   breakdown: IPropertyReportSalesTypeBreakdown
 ): IReportChartSegment[] {
