@@ -463,21 +463,222 @@ const StayMetricCell = memo(
 );
 StayMetricCell.displayName = "StayMetricCell";
 
-function useRegisterIncomePageActions(
-  canManage: boolean,
-  onAddOtherIncome: () => void,
-  onAddStay: () => void
-) {
-  const pageActions = useMemo(
-    () =>
-      canManage ? (
-        <PropertyIncomePageActions onAddOtherIncome={onAddOtherIncome} onAddStay={onAddStay} />
-      ) : null,
-    [canManage, onAddOtherIncome, onAddStay]
-  );
+type IncomeStayEntryRowProps = {
+  canManage: boolean;
+  onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
+  onDeleteStay: (stay: IPropertyReservation) => void;
+  onEditStay: (stay: IPropertyReservation) => void;
+  onRestoreStay: (stay: IPropertyReservation) => void;
+  onShowCalculationDetails: (
+    stay: IPropertyReservation,
+    metric: TStayCalculationMetric
+  ) => void;
+  stay: IPropertyReservation;
+  unitLabel: string;
+};
 
-  usePropertyShellActions(pageActions);
-}
+const IncomeStayEntryRow = memo(
+  ({
+    canManage,
+    onAddOtherIncomeFromStay,
+    onDeleteStay,
+    onEditStay,
+    onRestoreStay,
+    onShowCalculationDetails,
+    stay,
+    unitLabel,
+  }: IncomeStayEntryRowProps) => {
+    const taxesTotal = getStayTaxesTotal(stay);
+    const showTaxesDetails = taxesTotal > 0;
+    const showCommissionDetails = stay.channelCommission > 0;
+    const netPayout = getStayNetPayout(stay);
+
+    return (
+      <TableRow className={stay.isDeleted ? deletedRowClassName : undefined}>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
+            {stay.isDeleted ? <DeletedBadge /> : null}
+          </div>
+        </TableCell>
+        <TableCell className="font-medium">{unitLabel}</TableCell>
+        <TableCell>{stay.guestName}</TableCell>
+        <TableCell>{stay.checkIn}</TableCell>
+        <TableCell>{stay.checkOut}</TableCell>
+        <TableCell>{stay.nights}</TableCell>
+        <TableCell>
+          <ReservationChannelBadge channel={stay.channel} />
+        </TableCell>
+        <TableCell>
+          <ReservationStatusBadge status={stay.status} />
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex flex-col items-end">
+            <span>{formatMoney(stay.roomTotal)}</span>
+            {stay.nights > 1 ? (
+              <span className="text-muted-foreground text-xs">
+                {formatMoney(getStayAverageDailyRate(stay))}/night
+              </span>
+            ) : null}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}
+            onShowDetails={() => onShowCalculationDetails(stay, "taxes")}
+            showDetails={showTaxesDetails}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
+            onShowDetails={() => onShowCalculationDetails(stay, "commission")}
+            showDetails={showCommissionDetails}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={formatMoney(stay.grossIncome)}
+            onShowDetails={() => onShowCalculationDetails(stay, "gross")}
+            showDetails={true}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={formatMoney(netPayout)}
+            onShowDetails={() => onShowCalculationDetails(stay, "netPayout")}
+            showDetails={true}
+          />
+        </TableCell>
+        {canManage ? (
+          <TableCell>
+            <div className="flex items-center gap-1">
+              {stay.isDeleted ? (
+                <RestoreEntityButton
+                  ariaLabel="Restore stay"
+                  onClick={() => onRestoreStay(stay)}
+                />
+              ) : (
+                <>
+                  <Button
+                    aria-label="Add other income for this stay"
+                    onClick={() => onAddOtherIncomeFromStay(stay)}
+                    size="icon-sm"
+                    title="Add other income"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <CirclePlus className="size-3.5" />
+                  </Button>
+                  <Button
+                    aria-label="Edit stay"
+                    onClick={() => onEditStay(stay)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    aria-label="Delete stay"
+                    onClick={() => onDeleteStay(stay)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </TableCell>
+        ) : null}
+      </TableRow>
+    );
+  }
+);
+IncomeStayEntryRow.displayName = "IncomeStayEntryRow";
+
+type IncomeLineEntryRowProps = {
+  canManage: boolean;
+  line: IPropertyIncomeLine;
+  onDeleteLine: (line: IPropertyIncomeLine) => void;
+  onEditLine: (line: IPropertyIncomeLine) => void;
+  onRestoreLine: (line: IPropertyIncomeLine) => void;
+  unitLabel: string;
+};
+
+const IncomeLineEntryRow = memo(
+  ({
+    canManage,
+    line,
+    onDeleteLine,
+    onEditLine,
+    onRestoreLine,
+    unitLabel,
+  }: IncomeLineEntryRowProps) => (
+    <TableRow className={line.isDeleted ? deletedRowClassName : undefined}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <IncomeEntryTypeBadge
+            entryKind={IncomeEntryKind.LINE}
+            incomeLineTypeId={line.incomeLineTypeId}
+            label={line.incomeLineTypeName ?? line.incomeLineTypeId}
+          />
+          {line.isDeleted ? <DeletedBadge /> : null}
+        </div>
+      </TableCell>
+      <TableCell className="font-medium">{unitLabel}</TableCell>
+      <TableCell>{line.guestName ?? "—"}</TableCell>
+      <TableCell>{line.transactionDate}</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
+      <TableCell className="text-right">—</TableCell>
+      <TableCell className="text-right">—</TableCell>
+      <TableCell className="text-right">—</TableCell>
+      <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
+      <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
+      {canManage ? (
+        <TableCell>
+          <div className="flex items-center gap-1">
+            {line.isDeleted ? (
+              <RestoreEntityButton
+                ariaLabel="Restore other income"
+                onClick={() => onRestoreLine(line)}
+              />
+            ) : (
+              <>
+                <Button
+                  aria-label="Edit other income"
+                  onClick={() => onEditLine(line)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  aria-label="Delete other income"
+                  onClick={() => onDeleteLine(line)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-3.5 text-destructive" />
+                </Button>
+              </>
+            )}
+          </div>
+        </TableCell>
+      ) : null}
+    </TableRow>
+  )
+);
+IncomeLineEntryRow.displayName = "IncomeLineEntryRow";
 
 const IncomeEntryRow = memo(
   ({
@@ -509,181 +710,49 @@ const IncomeEntryRow = memo(
     unitLabel: string;
   }) => {
     if (entry.entryKind === IncomeEntryKind.STAY) {
-      const { stay } = entry;
-      const taxesTotal = getStayTaxesTotal(stay);
-      const showTaxesDetails = taxesTotal > 0;
-      const showCommissionDetails = stay.channelCommission > 0;
-      const netPayout = getStayNetPayout(stay);
-
       return (
-        <TableRow className={stay.isDeleted ? deletedRowClassName : undefined}>
-          <TableCell>
-            <div className="flex items-center gap-2">
-              <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
-              {stay.isDeleted ? <DeletedBadge /> : null}
-            </div>
-          </TableCell>
-          <TableCell className="font-medium">{unitLabel}</TableCell>
-          <TableCell>{stay.guestName}</TableCell>
-          <TableCell>{stay.checkIn}</TableCell>
-          <TableCell>{stay.checkOut}</TableCell>
-          <TableCell>{stay.nights}</TableCell>
-          <TableCell>
-            <ReservationChannelBadge channel={stay.channel} />
-          </TableCell>
-          <TableCell>
-            <ReservationStatusBadge status={stay.status} />
-          </TableCell>
-          <TableCell className="text-right">
-            <div className="flex flex-col items-end">
-              <span>{formatMoney(stay.roomTotal)}</span>
-              {stay.nights > 1 ? (
-                <span className="text-muted-foreground text-xs">
-                  {formatMoney(getStayAverageDailyRate(stay))}/night
-                </span>
-              ) : null}
-            </div>
-          </TableCell>
-          <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
-          <TableCell className="text-right">
-            <StayMetricCell
-              amountLabel={taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}
-              onShowDetails={() => onShowCalculationDetails(stay, "taxes")}
-              showDetails={showTaxesDetails}
-            />
-          </TableCell>
-          <TableCell className="text-right">
-            <StayMetricCell
-              amountLabel={stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
-              onShowDetails={() => onShowCalculationDetails(stay, "commission")}
-              showDetails={showCommissionDetails}
-            />
-          </TableCell>
-          <TableCell className="text-right">
-            <StayMetricCell
-              amountLabel={formatMoney(stay.grossIncome)}
-              onShowDetails={() => onShowCalculationDetails(stay, "gross")}
-              showDetails={true}
-            />
-          </TableCell>
-          <TableCell className="text-right">
-            <StayMetricCell
-              amountLabel={formatMoney(netPayout)}
-              onShowDetails={() => onShowCalculationDetails(stay, "netPayout")}
-              showDetails={true}
-            />
-          </TableCell>
-          {canManage ? (
-            <TableCell>
-              <div className="flex items-center gap-1">
-                {stay.isDeleted ? (
-                  <RestoreEntityButton
-                    ariaLabel="Restore stay"
-                    onClick={() => onRestoreStay(stay)}
-                  />
-                ) : (
-                  <>
-                    <Button
-                      aria-label="Add other income for this stay"
-                      onClick={() => onAddOtherIncomeFromStay(stay)}
-                      size="icon-sm"
-                      title="Add other income"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <CirclePlus className="size-3.5" />
-                    </Button>
-                    <Button
-                      aria-label="Edit stay"
-                      onClick={() => onEditStay(stay)}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      aria-label="Delete stay"
-                      onClick={() => onDeleteStay(stay)}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Trash2 className="size-3.5 text-destructive" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            </TableCell>
-          ) : null}
-        </TableRow>
+        <IncomeStayEntryRow
+          canManage={canManage}
+          onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
+          onDeleteStay={onDeleteStay}
+          onEditStay={onEditStay}
+          onRestoreStay={onRestoreStay}
+          onShowCalculationDetails={onShowCalculationDetails}
+          stay={entry.stay}
+          unitLabel={unitLabel}
+        />
       );
     }
 
-    const { line } = entry;
     return (
-      <TableRow className={line.isDeleted ? deletedRowClassName : undefined}>
-        <TableCell>
-          <div className="flex items-center gap-2">
-            <IncomeEntryTypeBadge
-              entryKind={IncomeEntryKind.LINE}
-              incomeLineTypeId={line.incomeLineTypeId}
-              label={line.incomeLineTypeName ?? line.incomeLineTypeId}
-            />
-            {line.isDeleted ? <DeletedBadge /> : null}
-          </div>
-        </TableCell>
-        <TableCell className="font-medium">{unitLabel}</TableCell>
-        <TableCell>{line.guestName ?? "—"}</TableCell>
-        <TableCell>{line.transactionDate}</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
-        <TableCell className="text-right">—</TableCell>
-        <TableCell className="text-right">—</TableCell>
-        <TableCell className="text-right">—</TableCell>
-        <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
-        <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
-        {canManage ? (
-          <TableCell>
-            <div className="flex items-center gap-1">
-              {line.isDeleted ? (
-                <RestoreEntityButton
-                  ariaLabel="Restore other income"
-                  onClick={() => onRestoreLine(line)}
-                />
-              ) : (
-                <>
-                  <Button
-                    aria-label="Edit other income"
-                    onClick={() => onEditLine(line)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Button
-                    aria-label="Delete other income"
-                    onClick={() => onDeleteLine(line)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
-                </>
-              )}
-            </div>
-          </TableCell>
-        ) : null}
-      </TableRow>
+      <IncomeLineEntryRow
+        canManage={canManage}
+        line={entry.line}
+        onDeleteLine={onDeleteLine}
+        onEditLine={onEditLine}
+        onRestoreLine={onRestoreLine}
+        unitLabel={unitLabel}
+      />
     );
   }
 );
 IncomeEntryRow.displayName = "IncomeEntryRow";
+
+function useRegisterIncomePageActions(
+  canManage: boolean,
+  onAddOtherIncome: () => void,
+  onAddStay: () => void
+) {
+  const pageActions = useMemo(
+    () =>
+      canManage ? (
+        <PropertyIncomePageActions onAddOtherIncome={onAddOtherIncome} onAddStay={onAddStay} />
+      ) : null,
+    [canManage, onAddOtherIncome, onAddStay]
+  );
+
+  usePropertyShellActions(pageActions);
+}
 
 const PropertyIncomePage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
