@@ -31,11 +31,11 @@ function formatMonthLabel(month: string): string {
   });
 }
 
-interface HomeIncomeExpensesChartProps {
+interface ReportIncomeExpensesChartProps {
   byMonth: IPropertyReportMonthSummary[];
 }
 
-export const HomeIncomeExpensesChart = memo(({ byMonth }: HomeIncomeExpensesChartProps) => {
+export const ReportIncomeExpensesChart = memo(({ byMonth }: ReportIncomeExpensesChartProps) => {
   const chartData = useMemo(
     () =>
       byMonth.map((row) => ({
@@ -45,6 +45,19 @@ export const HomeIncomeExpensesChart = memo(({ byMonth }: HomeIncomeExpensesChar
       })),
     [byMonth]
   );
+
+  if (chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold">Income vs expenses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">No monthly data in this period.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -82,4 +95,4 @@ export const HomeIncomeExpensesChart = memo(({ byMonth }: HomeIncomeExpensesChar
     </Card>
   );
 });
-HomeIncomeExpensesChart.displayName = "HomeIncomeExpensesChart";
+ReportIncomeExpensesChart.displayName = "ReportIncomeExpensesChart";

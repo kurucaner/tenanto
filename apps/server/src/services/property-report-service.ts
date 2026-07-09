@@ -15,9 +15,11 @@ import {
   type IPropertyReportSalesTypeBreakdown,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
+  type IPropertyReportTaxSummaryItem,
   type IPropertyReportUnitSummary,
   type IPropertyReservation,
   type IPropertyUnit,
+  PROPERTY_AMENITY_UNIT_ID,
   PROPERTY_AMENITY_UNIT_LABEL,
   ReportRentalTypeFilter,
   ReservationChannel,
@@ -28,6 +30,8 @@ import {
   type TUnitRentalType,
 } from "@/packages/shared";
 import { roundMoney } from "@/services/property-income-calculator";
+
+import { WinstonLogger } from "./winston";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -151,6 +155,16 @@ export async function loadReportData(
       )
     : [];
 
+  WinstonLogger.info("[TAX_DEBUG_v1] loadReportData", {
+    reservationCount: scopedReservations.length,
+    sample: scopedReservations.slice(0, 3).map((stay) => ({
+      checkIn: stay.checkIn,
+      id: stay.id,
+      taxBreakdown: stay.taxBreakdown,
+    })),
+    staysWithTaxes: scopedReservations.filter((stay) => stay.taxBreakdown.length > 0).length,
+  });
+
   return {
     expenses: scopedExpenses,
     incomeLines: scopedLines,
@@ -263,6 +277,35 @@ function addExpenseToMonth(
   entry.expenses = roundMoney(entry.expenses + amount);
 }
 
+function addTaxToMap(
+  taxMap: Map<string, IPropertyReportTaxSummaryItem>,
+  taxRateId: string,
+  name: string,
+  amount: number
+): void {
+  const existing = taxMap.get(taxRateId);
+  if (existing) {
+    existing.amount = roundMoney(existing.amount + amount);
+    return;
+  }
+  taxMap.set(taxRateId, { amount, name, taxRateId });
+}
+
+function taxMapToSummary(
+  taxMap: Map<string, IPropertyReportTaxSummaryItem>
+): IPropertyReportTaxSummaryItem[] {
+  return [...taxMap.values()].sort((a, b) => b.amount - a.amount);
+}
+
+function mergeTaxSummary(
+  target: Map<string, IPropertyReportTaxSummaryItem>,
+  source: IPropertyReportTaxSummaryItem[]
+): void {
+  for (const row of source) {
+    addTaxToMap(target, row.taxRateId, row.name, row.amount);
+  }
+}
+
 export function buildPropertyReportSummary(
   data: IReportData,
   query: IPropertyReportsQuery
@@ -274,6 +317,7 @@ export function buildPropertyReportSummary(
   const unitMap = initUnitMap(units, query.from, query.to);
   const monthMap = initMonthMap(months);
   const expenseCategoryMap = new Map<TExpenseCategory, number>();
+  const taxMap = new Map<string, IPropertyReportTaxSummaryItem>();
 
   let grossIncome = 0;
   let netIncome = 0;
@@ -310,6 +354,18 @@ export function buildPropertyReportSummary(
     }
 
     addToMonth(monthMap, monthFromDate(stay.checkIn), stay.grossIncome, stay.netIncome);
+
+    for (const taxItem of stay.taxBreakdown) {
+      addTaxToMap(taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
+    }
+
+    if (stay.taxBreakdown.length > 0) {
+      WinstonLogger.info("[TAX_DEBUG_v1] stay tax ingested", {
+        stayId: stay.id,
+        taxBreakdown: stay.taxBreakdown,
+        taxMapSize: taxMap.size,
+      });
+    }
   }
 
   for (const line of incomeLines) {
@@ -375,7 +431,7 @@ export function buildPropertyReportSummary(
       netIncome: amenityNetIncome,
       occupancyRate: 0,
       rentalType: null,
-      unitId: "property-amenity",
+      unitId: PROPERTY_AMENITY_UNIT_ID,
       unitNumber: PROPERTY_AMENITY_UNIT_LABEL,
     });
   }
@@ -389,10 +445,16 @@ export function buildPropertyReportSummary(
   const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
+  const taxSummary = taxMapToSummary(taxMap);
+
+  WinstonLogger.info("[TAX_DEBUG_v1] taxMap result", {
+    taxMapSize: taxMap.size,
+    taxSummary,
+  });
 
   const totalExpenses = propertyExpensesTotal;
 
-  return {
+  const result: IPropertyReportSummary = {
     byMonth,
     byUnit,
     channelSummary,
@@ -401,6 +463,7 @@ export function buildPropertyReportSummary(
     period: { from: query.from, to: query.to },
     propertyExpensesTotal,
     salesTypeBreakdown,
+    taxSummary,
     totals: {
       grossIncome,
       netIncome,
@@ -408,6 +471,13 @@ export function buildPropertyReportSummary(
       totalExpenses,
     },
   };
+
+  WinstonLogger.info("[TAX_DEBUG_v1] buildPropertyReportSummary return", {
+    hasTaxSummaryKey: "taxSummary" in result,
+    keys: Object.keys(result),
+  });
+
+  return result;
 }
 
 function csvEscape(value: string | number): string {
@@ -441,6 +511,7 @@ function emptyPropertyReportSummary(query: IPropertyReportsQuery): IPropertyRepo
     period: { from: query.from, to: query.to },
     propertyExpensesTotal: 0,
     salesTypeBreakdown: initSalesBreakdown(),
+    taxSummary: [],
     totals: {
       grossIncome: 0,
       netIncome: 0,
@@ -460,6 +531,7 @@ export function rollupSummaries(
   const channelMap = new Map<TReservationChannel, IPropertyReportChannelSummary>();
   const monthMap = new Map<string, IPropertyReportMonthSummary>();
   const expenseCategoryMap = new Map<TExpenseCategory, number>();
+  const taxMap = new Map<string, IPropertyReportTaxSummaryItem>();
   const byUnit: IPropertyReportUnitSummary[] = [];
 
   let propertyExpensesTotal = 0;
@@ -513,6 +585,8 @@ export function rollupSummaries(
         roundMoney((expenseCategoryMap.get(row.category) ?? 0) + row.amount)
       );
     }
+
+    mergeTaxSummary(taxMap, summary.taxSummary);
   }
 
   const months = listMonthsInRange(query.from, query.to);
@@ -532,6 +606,7 @@ export function rollupSummaries(
   const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
+  const taxSummary = taxMapToSummary(taxMap);
 
   return {
     byMonth,
@@ -542,6 +617,7 @@ export function rollupSummaries(
     period: { from: query.from, to: query.to },
     propertyExpensesTotal,
     salesTypeBreakdown,
+    taxSummary,
     totals: {
       grossIncome,
       netIncome,
@@ -599,7 +675,7 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += "\n";
   next += csvRow(["Sales Type Breakdown"]);
   next += csvRow(["Room", summary.salesTypeBreakdown.room]);
-  next += csvRow(["Cleaning (stays)", summary.salesTypeBreakdown.cleaningFromStays]);
+  next += csvRow(["Cleaning Fee", summary.salesTypeBreakdown.cleaningFromStays]);
   for (const row of summary.salesTypeBreakdown.otherIncomeByType) {
     next += csvRow([row.name, row.amount]);
   }
@@ -607,6 +683,11 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += csvRow(["Channel Summary", "Gross Income", "Commission", "Stays"]);
   for (const row of summary.channelSummary) {
     next += csvRow([row.channel, row.grossIncome, row.channelCommission, row.stayCount]);
+  }
+  next += "\n";
+  next += csvRow(["Tax Summary", "Amount"]);
+  for (const row of summary.taxSummary) {
+    next += csvRow([row.name, row.amount]);
   }
   next += "\n";
   next += csvRow([

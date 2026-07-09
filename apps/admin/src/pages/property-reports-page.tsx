@@ -6,6 +6,8 @@ import { toast } from "sonner";
 
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
 import { formatChannelLabel } from "@/components/income/reservation-form-options";
+import { ReportChartsSection } from "@/components/reports/charts/report-charts-section";
+import { ReportChartsSkeleton } from "@/components/reports/charts/report-charts-skeleton";
 import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
 import {
   ReportSectionTable,
@@ -112,6 +114,7 @@ const PropertyReportTables = memo(({ summary }: { summary: IPropertyReportSummar
   return (
     <div className="space-y-6">
       <ReportSummaryCards totals={summary.totals} />
+      <ReportChartsSection summary={summary} />
 
       <ReportSectionTable
         columns={SALES_TYPE_COLUMNS}
@@ -229,9 +232,13 @@ const PropertyReportBody = memo(
 
     if (isPending) {
       return (
-        <div className="space-y-3">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-40 w-full" />
+        <div className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <Skeleton key={index} className="h-20 w-full" />
+            ))}
+          </div>
+          <ReportChartsSkeleton />
         </div>
       );
     }
@@ -282,7 +289,7 @@ export const PropertyReportsPage = memo(() => {
 
   const units = unitsQuery.data?.units ?? [];
   const summary = summaryQuery.data?.summary;
-
+  console.log("data from server", summaryQuery.data);
   const handleExport = useCallback(async () => {
     if (!reportQuery) return;
     setIsExporting(true);

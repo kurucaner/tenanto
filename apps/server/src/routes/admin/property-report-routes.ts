@@ -6,6 +6,7 @@ import {
   buildPropertyReportSummary,
   loadReportData,
 } from "@/services/property-report-service";
+import { WinstonLogger } from "@/services/winston";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { assertPropertyMemberAccess } from "./property-route-access";
@@ -17,7 +18,17 @@ interface IPropertyParams {
 
 async function buildSummary(propertyId: string, query: IPropertyReportsQuery) {
   const data = await loadReportData(propertyId, query);
-  return buildPropertyReportSummary(data, query);
+  const summary = buildPropertyReportSummary(data, query);
+
+  WinstonLogger.info("[TAX_DEBUG_v1] buildSummary", {
+    hasTaxSummaryKey: "taxSummary" in summary,
+    propertyId,
+    query,
+    summaryKeys: Object.keys(summary),
+    taxSummary: summary.taxSummary,
+  });
+
+  return summary;
 }
 
 export const propertyReportRoutes = async (server: FastifyInstance): Promise<void> => {

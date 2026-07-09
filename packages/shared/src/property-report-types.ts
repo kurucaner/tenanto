@@ -71,6 +71,12 @@ export interface IPropertyReportExpenseCategory {
   category: TExpenseCategory;
 }
 
+export interface IPropertyReportTaxSummaryItem {
+  amount: number;
+  name: string;
+  taxRateId: string;
+}
+
 export interface IPropertyReportSummary {
   byMonth: IPropertyReportMonthSummary[];
   byUnit: IPropertyReportUnitSummary[];
@@ -80,6 +86,7 @@ export interface IPropertyReportSummary {
   period: { from: string; to: string };
   propertyExpensesTotal: number;
   salesTypeBreakdown: IPropertyReportSalesTypeBreakdown;
+  taxSummary: IPropertyReportTaxSummaryItem[];
   totals: IPropertyReportTotals;
 }
 
