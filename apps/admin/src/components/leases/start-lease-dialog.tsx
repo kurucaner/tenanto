@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
+import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-schema";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
@@ -25,7 +27,7 @@ import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long
 import { calculateLeaseEndDate } from "@/lib/lease-date-utils";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyUnit, UnitRentalType } from "@/packages/shared";
+import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
 
 const DEFAULT_TERM_MONTHS = "12";
 const MAX_TERM_MONTHS = 60;
@@ -35,7 +37,7 @@ const startLeaseSchema = z.object({
   leaseStartDate: z.string().min(1, "Lease start date is required"),
   monthlyRent: requiredPositiveMoneyField("Monthly rent"),
   tenantEmail: z.string(),
-  tenantPhone: z.string(),
+  tenantPhone: tenantPhoneFieldSchema,
   termMonths: z
     .string()
     .min(1, "Term is required")
@@ -76,7 +78,14 @@ interface StartLeaseDialogProps {
 }
 
 export const StartLeaseDialog = memo(
-  ({ occupiedUnitIds, onOpenChange, open, propertyId, unit, units = [] }: StartLeaseDialogProps) => {
+  ({
+    occupiedUnitIds,
+    onOpenChange,
+    open,
+    propertyId,
+    unit,
+    units = [],
+  }: StartLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const lockedUnit = unit ?? null;
 
@@ -114,7 +123,7 @@ export const StartLeaseDialog = memo(
           leaseStartDate: values.leaseStartDate,
           monthlyRent: Number(values.monthlyRent),
           tenantEmail: values.tenantEmail.trim() || undefined,
-          tenantPhone: values.tenantPhone.trim() || undefined,
+          tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
           termMonths: Number.parseInt(values.termMonths, 10),
           unitId: values.unitId,
         }),
@@ -188,21 +197,35 @@ export const StartLeaseDialog = memo(
                 ) : null}
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="start-lease-email">Email (optional)</Label>
-                  <Input id="start-lease-email" type="email" {...form.register("tenantEmail")} />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="start-lease-phone">Phone (optional)</Label>
-                  <Input id="start-lease-phone" type="tel" {...form.register("tenantPhone")} />
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="start-lease-email">Email (optional)</Label>
+                <Input id="start-lease-email" type="email" {...form.register("tenantEmail")} />
               </div>
+
+              <Controller
+                control={form.control}
+                name="tenantPhone"
+                render={({ field }) => (
+                  <PhoneInput
+                    id="start-lease-phone"
+                    onChange={field.onChange}
+                    optional
+                    value={field.value}
+                  />
+                )}
+              />
+              {errors.tenantPhone ? (
+                <p className="text-xs text-destructive">{errors.tenantPhone.message}</p>
+              ) : null}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="start-lease-start-date">Lease Start Date</Label>
-                  <Input id="start-lease-start-date" type="date" {...form.register("leaseStartDate")} />
+                  <Input
+                    id="start-lease-start-date"
+                    type="date"
+                    {...form.register("leaseStartDate")}
+                  />
                   {errors.leaseStartDate ? (
                     <p className="text-xs text-destructive">{errors.leaseStartDate.message}</p>
                   ) : null}

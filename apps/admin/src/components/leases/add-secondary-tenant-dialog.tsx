@@ -90,6 +90,7 @@ export const AddSecondaryTenantDialog = memo(
           <form onSubmit={onSubmit}>
             <div className="flex flex-col gap-4 px-6 py-5">
               <TenantContactFields
+                control={form.control}
                 errors={errors}
                 idPrefix="secondary-tenant"
                 register={form.register}

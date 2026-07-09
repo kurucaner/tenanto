@@ -13,8 +13,6 @@ import {
   type IAdminCreatePropertyBody,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
-  isValidE164,
-  normalizeToE164,
   PropertyRole,
   type TPropertyRole,
   UserType,
@@ -24,6 +22,7 @@ import { notifyUser } from "@/services/user-notifications";
 import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
 
 import { parseAdminLimit, parseUuidParam } from "./admin-query-utils";
+import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
 import { assertPropertyStructureAccess } from "./property-route-access";
 import { buildInsertAdminAuditParams } from "./record-admin-audit";
 
@@ -72,52 +71,6 @@ function parseNullableLegalName(
     return { error: "legalName must be at most 255 characters", ok: false };
   }
   return { legalName: trimmed, ok: true };
-}
-
-function parseOptionalPhoneNumber(
-  raw: unknown
-): { error: string; ok: false } | { ok: true; phoneNumber: string | undefined } {
-  if (raw == null || raw === "") {
-    return { ok: true, phoneNumber: undefined };
-  }
-  if (typeof raw !== "string") {
-    return { error: "phoneNumber must be a string", ok: false };
-  }
-  const trimmed = raw.trim();
-  if (trimmed === "") {
-    return { ok: true, phoneNumber: undefined };
-  }
-  if (!isValidE164(trimmed)) {
-    return { error: "phoneNumber must be a valid phone number", ok: false };
-  }
-  const normalized = normalizeToE164(trimmed);
-  if (!normalized) {
-    return { error: "phoneNumber must be a valid phone number", ok: false };
-  }
-  return { ok: true, phoneNumber: normalized };
-}
-
-function parseNullablePhoneNumber(
-  raw: unknown
-): { error: string; ok: false } | { ok: true; phoneNumber: string | null } {
-  if (raw == null || raw === "") {
-    return { ok: true, phoneNumber: null };
-  }
-  if (typeof raw !== "string") {
-    return { error: "phoneNumber must be a string or null", ok: false };
-  }
-  const trimmed = raw.trim();
-  if (trimmed === "") {
-    return { ok: true, phoneNumber: null };
-  }
-  if (!isValidE164(trimmed)) {
-    return { error: "phoneNumber must be a valid phone number", ok: false };
-  }
-  const normalized = normalizeToE164(trimmed);
-  if (!normalized) {
-    return { error: "phoneNumber must be a valid phone number", ok: false };
-  }
-  return { ok: true, phoneNumber: normalized };
 }
 
 function parseCreatePropertyBody(

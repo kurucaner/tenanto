@@ -1,20 +1,28 @@
 import { z } from "zod";
 
-import type { IPropertyLongStaySecondaryTenant } from "@/packages/shared";
+import { type IPropertyLongStaySecondaryTenant,isValidE164, normalizeToE164 } from "@/packages/shared";
+
+export const tenantPhoneFieldSchema = z.string().refine((value) => isValidE164(value.trim()), {
+  message: "Enter a valid phone number",
+});
 
 export const tenantContactFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   tenantEmail: z.string(),
-  tenantPhone: z.string(),
+  tenantPhone: tenantPhoneFieldSchema,
 });
 
 export type TTenantContactFormValues = z.infer<typeof tenantContactFormSchema>;
+
+function normalizeTenantPhone(value: string): string | null {
+  return normalizeToE164(value.trim()) ?? null;
+}
 
 export function toSecondaryTenant(values: TTenantContactFormValues): IPropertyLongStaySecondaryTenant {
   return {
     email: values.tenantEmail.trim() || null,
     name: values.name.trim(),
-    phone: values.tenantPhone.trim() || null,
+    phone: normalizeTenantPhone(values.tenantPhone),
   };
 }
 
@@ -22,7 +30,7 @@ export function toPrimaryTenantPatch(values: TTenantContactFormValues) {
   return {
     guestName: values.name.trim(),
     tenantEmail: values.tenantEmail.trim() || null,
-    tenantPhone: values.tenantPhone.trim() || null,
+    tenantPhone: normalizeTenantPhone(values.tenantPhone),
   };
 }
 

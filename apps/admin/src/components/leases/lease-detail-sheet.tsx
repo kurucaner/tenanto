@@ -15,6 +15,7 @@ import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  formatPhoneDisplay,
   type IPropertyLongStay,
   type IPropertyLongStaySecondaryTenant,
   PropertyLongStayStatus,
@@ -43,11 +44,16 @@ function formatMonthLabel(month: string): string {
 }
 
 function TenantContactLine({ label, value }: { label: string; value: string | null }) {
-  return (
-    <p className="text-muted-foreground text-xs">
-      {value ?? <span className="italic">Not set ({label})</span>}
-    </p>
-  );
+  if (!value) {
+    return (
+      <p className="text-muted-foreground text-xs">
+        <span className="italic">Not set ({label})</span>
+      </p>
+    );
+  }
+
+  const displayValue = label === "phone" ? formatPhoneDisplay(value) : value;
+  return <p className="text-muted-foreground text-xs">{displayValue}</p>;
 }
 
 export const LeaseDetailSheet = memo(

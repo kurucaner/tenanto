@@ -20,6 +20,7 @@ import {
 } from "@/packages/shared";
 
 import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
+import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
 import { assertPropertyLedgerWriteAccess, assertPropertyMemberAccess } from "./property-route-access";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -94,9 +95,9 @@ function parseCreateLongStayBody(
     return { error: "tenantEmail must be a string", ok: false };
   }
 
-  const tenantPhone = parseOptionalString(r["tenantPhone"]);
-  if (r["tenantPhone"] !== undefined && r["tenantPhone"] !== null && tenantPhone === null) {
-    return { error: "tenantPhone must be a string", ok: false };
+  const tenantPhoneResult = parseOptionalPhoneNumber(r["tenantPhone"], "tenantPhone");
+  if (!tenantPhoneResult.ok) {
+    return tenantPhoneResult;
   }
 
   return {
@@ -105,7 +106,7 @@ function parseCreateLongStayBody(
       leaseStartDate,
       monthlyRent,
       tenantEmail: tenantEmail ?? undefined,
-      tenantPhone: tenantPhone ?? undefined,
+      tenantPhone: tenantPhoneResult.phoneNumber,
       termMonths,
       unitId,
     },
@@ -127,21 +128,36 @@ function parseEndLongStayBody(
   return { body: { actualEndDate }, ok: true };
 }
 
-function parseSecondaryTenant(raw: unknown): IPropertyLongStaySecondaryTenant | null {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+function parseSecondaryTenant(
+  raw: unknown
+):
+  | { ok: true; tenant: IPropertyLongStaySecondaryTenant }
+  | { error: string; ok: false } {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { error: "Each secondary tenant must have a non-empty name", ok: false };
+  }
   const r = raw as Record<string, unknown>;
-  if (typeof r["name"] !== "string" || r["name"].trim() === "") return null;
+  if (typeof r["name"] !== "string" || r["name"].trim() === "") {
+    return { error: "Each secondary tenant must have a non-empty name", ok: false };
+  }
 
   const email = parseOptionalString(r["email"]);
-  if (r["email"] !== undefined && r["email"] !== null && email === null) return null;
+  if (r["email"] !== undefined && r["email"] !== null && email === null) {
+    return { error: "Each secondary tenant email must be a string", ok: false };
+  }
 
-  const phone = parseOptionalString(r["phone"]);
-  if (r["phone"] !== undefined && r["phone"] !== null && phone === null) return null;
+  const phoneResult = parseNullablePhoneNumber(r["phone"], "phone");
+  if (!phoneResult.ok) {
+    return phoneResult;
+  }
 
   return {
-    email,
-    name: r["name"].trim(),
-    phone,
+    ok: true,
+    tenant: {
+      email,
+      name: r["name"].trim(),
+      phone: phoneResult.phoneNumber,
+    },
   };
 }
 
@@ -188,11 +204,11 @@ function parseUpdateLongStayBody(
 
   if ("tenantPhone" in r) {
     hasField = true;
-    const parsedPhone = parseNullableContactField(r["tenantPhone"], "tenantPhone");
+    const parsedPhone = parseNullablePhoneNumber(r["tenantPhone"], "tenantPhone");
     if (!parsedPhone.ok) {
       return parsedPhone;
     }
-    body.tenantPhone = parsedPhone.value;
+    body.tenantPhone = parsedPhone.phoneNumber;
   }
 
   if ("secondaryTenants" in r) {
@@ -209,11 +225,11 @@ function parseUpdateLongStayBody(
 
     const secondaryTenants: IPropertyLongStaySecondaryTenant[] = [];
     for (const item of r["secondaryTenants"]) {
-      const tenant = parseSecondaryTenant(item);
-      if (!tenant) {
-        return { error: "Each secondary tenant must have a non-empty name", ok: false };
+      const tenantResult = parseSecondaryTenant(item);
+      if (!tenantResult.ok) {
+        return tenantResult;
       }
-      secondaryTenants.push(tenant);
+      secondaryTenants.push(tenantResult.tenant);
     }
     body.secondaryTenants = secondaryTenants;
   }
