@@ -25,10 +25,14 @@ import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import { calculateLeaseEndDate } from "@/lib/lease-date-utils";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
+import {
+  calculateLeaseEndDate,
+  type IPropertyUnit,
+  normalizeToE164,
+  UnitRentalType,
+} from "@/packages/shared";
 
 const DEFAULT_TERM_MONTHS = "12";
 const MAX_TERM_MONTHS = 60;

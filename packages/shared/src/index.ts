@@ -148,6 +148,7 @@ export {
   validateExtendLease,
 } from "./lease-rent-utils";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
+export { LEASES_LIST_LIMIT, LEASES_LIST_MAX_LIMIT } from "./property-long-stay-list-constants";
 export {
   type ICreatePropertyLongStayBody,
   type IEndPropertyLongStayBody,
@@ -163,10 +164,6 @@ export {
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
-export {
-  LEASES_LIST_LIMIT,
-  LEASES_LIST_MAX_LIMIT,
-} from "./property-long-stay-list-constants";
 
 // Property Income Line Type Config
 export {
