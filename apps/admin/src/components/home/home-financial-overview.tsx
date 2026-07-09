@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 
 import { HomeFinancialSkeleton } from "@/components/home/home-financial-skeleton";
 import { ReportExpenseBreakdownChart } from "@/components/reports/charts/report-expense-breakdown-chart";
-import { ReportIncomeExpensesChart } from "@/components/reports/charts/report-income-expenses-chart";
+import { ReportProfitTrendChart } from "@/components/reports/charts/report-profit-trend-chart";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +89,7 @@ export const HomeFinancialOverview = memo(() => {
         <div className="space-y-6">
           <ReportSummaryCards totals={overview.totals} />
           <div className="grid gap-4 lg:grid-cols-2">
-            <ReportIncomeExpensesChart byMonth={overview.byMonth} />
+            <ReportProfitTrendChart byMonth={overview.byMonth} />
             <ReportExpenseBreakdownChart
               expenseByCategory={overview.expenseByCategory}
               title="Top expenses"

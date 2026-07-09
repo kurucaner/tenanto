@@ -3,8 +3,8 @@ import { memo } from "react";
 import { ReportChannelChart } from "@/components/reports/charts/report-channel-chart";
 import { ReportExpenseBreakdownChart } from "@/components/reports/charts/report-expense-breakdown-chart";
 import { ReportIncomeCompositionChart } from "@/components/reports/charts/report-income-composition-chart";
-import { ReportIncomeExpensesChart } from "@/components/reports/charts/report-income-expenses-chart";
 import { ReportOtherIncomeTypesChart } from "@/components/reports/charts/report-other-income-types-chart";
+import { ReportProfitTrendChart } from "@/components/reports/charts/report-profit-trend-chart";
 import { ReportTaxChart } from "@/components/reports/charts/report-tax-chart";
 import type { IPropertyReportSummary } from "@/packages/shared";
 
@@ -24,7 +24,7 @@ export const ReportChartsSection = memo(({ summary }: ReportChartsSectionProps) 
       <ReportTaxChart taxSummary={summary.taxSummary} />
     </div>
     <div className="grid gap-4 lg:grid-cols-2">
-      <ReportIncomeExpensesChart byMonth={summary.byMonth} />
+      <ReportProfitTrendChart byMonth={summary.byMonth} />
       <ReportExpenseBreakdownChart expenseByCategory={summary.expenseByCategory} />
     </div>
   </section>

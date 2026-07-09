@@ -1,6 +1,7 @@
 import type {
   IPropertyReportChannelSummary,
   IPropertyReportExpenseCategory,
+  IPropertyReportMonthSummary,
   IPropertyReportSalesTypeBreakdown,
   IPropertyReportTaxSummaryItem,
   IPropertyReportUnitSummary,
@@ -25,6 +26,12 @@ export interface IReportChartSegment {
 export interface IBuildReportChartSegmentsOptions {
   groupBelowShare?: number;
   otherLabel?: string;
+}
+
+export interface IProfitTrendChartRow {
+  month: string;
+  operationalNet: number;
+  profitMargin: number | null;
 }
 
 function roundShare(value: number): number {
@@ -96,6 +103,24 @@ export function buildReportChartSegments(
   }
 
   return keep.sort((a, b) => b.value - a.value);
+}
+
+export function calculateOperationalProfitMargin(
+  grossIncome: number,
+  operationalNet: number
+): number | null {
+  if (grossIncome <= 0) return null;
+  return roundShare(operationalNet / grossIncome);
+}
+
+export function buildProfitTrendChartRows(
+  byMonth: IPropertyReportMonthSummary[]
+): IProfitTrendChartRow[] {
+  return byMonth.map((row) => ({
+    month: row.month,
+    operationalNet: row.operationalNet,
+    profitMargin: calculateOperationalProfitMargin(row.grossIncome, row.operationalNet),
+  }));
 }
 
 export function incomeCompositionToSegments(

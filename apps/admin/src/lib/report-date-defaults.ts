@@ -12,6 +12,13 @@ export function formatReportPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+export function formatReportMonthLabel(month: string): string {
+  const [year, monthNum] = month.split("-");
+  return new Date(Date.UTC(Number(year), Number(monthNum) - 1, 1)).toLocaleDateString("en-US", {
+    month: "short",
+  });
+}
+
 export function buildPropertyReportsPath(
   propertyId: string,
   from: string,

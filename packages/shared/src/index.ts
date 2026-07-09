@@ -194,12 +194,15 @@ export {
 // Property report chart utilities
 export {
   buildIncomeCompositionBreakdown,
+  buildProfitTrendChartRows,
   buildReportChartSegments,
+  calculateOperationalProfitMargin,
   channelSummaryToSegments,
   expenseCategoryToSegments,
   type IBuildReportChartSegmentsOptions,
   type IIncomeCompositionBreakdown,
   incomeCompositionToSegments,
+  type IProfitTrendChartRow,
   type IReportChartSegment,
   otherIncomeTypeToSegments,
   PROPERTY_AMENITY_UNIT_ID,

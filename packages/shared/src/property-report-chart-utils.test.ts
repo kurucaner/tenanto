@@ -2,7 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildIncomeCompositionBreakdown,
+  buildProfitTrendChartRows,
   buildReportChartSegments,
+  calculateOperationalProfitMargin,
   incomeCompositionToSegments,
   type IPropertyReportUnitSummary,
   otherIncomeTypeToSegments,
@@ -183,5 +185,41 @@ describe("otherIncomeTypeToSegments", () => {
     });
 
     expect(segments).toEqual([]);
+  });
+});
+
+describe("calculateOperationalProfitMargin", () => {
+  test("returns margin as a share of gross income", () => {
+    expect(calculateOperationalProfitMargin(1000, 250)).toBe(0.25);
+  });
+
+  test("returns null when gross income is zero", () => {
+    expect(calculateOperationalProfitMargin(0, 100)).toBeNull();
+  });
+});
+
+describe("buildProfitTrendChartRows", () => {
+  test("preserves month order and computes profit margin per row", () => {
+    const rows = buildProfitTrendChartRows([
+      {
+        expenses: 200,
+        grossIncome: 1000,
+        month: "2026-01",
+        netIncome: 800,
+        operationalNet: 600,
+      },
+      {
+        expenses: 0,
+        grossIncome: 0,
+        month: "2026-02",
+        netIncome: 0,
+        operationalNet: -50,
+      },
+    ]);
+
+    expect(rows).toEqual([
+      { month: "2026-01", operationalNet: 600, profitMargin: 0.6 },
+      { month: "2026-02", operationalNet: -50, profitMargin: null },
+    ]);
   });
 });
