@@ -30,7 +30,7 @@ const DEFAULT_TERM_MONTHS = "12";
 const MAX_TERM_MONTHS = 60;
 
 const startLeaseSchema = z.object({
-  guestName: z.string().trim().min(1, "Tenant name is required"),
+  guestName: z.string().trim().min(1, "Primary tenant name is required"),
   leaseStartDate: z.string().min(1, "Lease start date is required"),
   monthlyRent: requiredPositiveMoneyField("Monthly rent"),
   tenantEmail: z.string(),
@@ -177,7 +177,7 @@ export const StartLeaseDialog = memo(
               ) : null}
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="start-lease-tenant-name">Tenant Name</Label>
+                <Label htmlFor="start-lease-tenant-name">Primary Tenant</Label>
                 <Input autoFocus id="start-lease-tenant-name" {...form.register("guestName")} />
                 {errors.guestName ? (
                   <p className="text-xs text-destructive">{errors.guestName.message}</p>

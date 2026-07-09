@@ -48,6 +48,7 @@ import {
   type ISupportRequestsListResponse,
   type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
+  type IUpdatePropertyLongStayBody,
   type IUpdatePropertyReservationBody,
   type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
@@ -608,6 +609,12 @@ export const longStaysApi = {
       `/properties/${encodeURIComponent(propertyId)}/long-stays${search ? `?${search}` : ""}`
     );
   },
+
+  update: (propertyId: string, longStayId: string, body: IUpdatePropertyLongStayBody) =>
+    authenticatedRequest<{ longStay: IPropertyLongStay }>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
 };
 
 export const settingsApi = {

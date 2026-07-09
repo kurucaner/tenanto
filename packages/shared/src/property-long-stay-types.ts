@@ -5,6 +5,12 @@ export const PropertyLongStayStatus = {
   ENDED: "ended",
 } as const;
 
+export interface IPropertyLongStaySecondaryTenant {
+  email: string | null;
+  name: string;
+  phone: string | null;
+}
+
 export interface IPropertyLongStay {
   actualEndDate: string | null;
   createdAt: string;
@@ -14,6 +20,7 @@ export interface IPropertyLongStay {
   leaseStartDate: string;
   monthlyRent: number;
   propertyId: string;
+  secondaryTenants: IPropertyLongStaySecondaryTenant[];
   status: TPropertyLongStayStatus;
   tenantEmail: string | null;
   tenantPhone: string | null;
@@ -48,6 +55,10 @@ export interface IPropertyLongStayDetailResponse {
 
 export interface IEndPropertyLongStayBody {
   actualEndDate: string;
+}
+
+export interface IUpdatePropertyLongStayBody {
+  secondaryTenants: IPropertyLongStaySecondaryTenant[];
 }
 
 export interface IPropertyLongStayRentMonth {

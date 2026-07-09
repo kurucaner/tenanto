@@ -2,6 +2,7 @@ import type {
   ICreatePropertyLongStayBody,
   IPropertyLongStay,
   IPropertyLongStayRentMonth,
+  IPropertyLongStaySecondaryTenant,
   IPropertyLongStaysListQuery,
 } from "@/packages/shared";
 import {
@@ -49,8 +50,8 @@ export const propertyLongStaysDb = {
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, monthly_rent,
-          lease_end_date, tenant_email, tenant_phone, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status)
+          lease_end_date, tenant_email, tenant_phone, status, secondary_tenants)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status, '[]'::jsonb)
        RETURNING *`,
       [
         propertyId,
@@ -170,5 +171,27 @@ export const propertyLongStaysDb = {
       values
     );
     return result.rows.map((row) => mapPropertyLongStayRow(row as Record<string, unknown>));
+  },
+
+  async updateSecondaryTenants(
+    id: string,
+    secondaryTenants: IPropertyLongStaySecondaryTenant[]
+  ): Promise<IPropertyLongStay> {
+    const result = await pool.query(
+      `UPDATE property_long_stays
+       SET secondary_tenants = $2::jsonb
+       WHERE id = $1
+         AND status = $3::property_long_stay_status
+       RETURNING *`,
+      [id, JSON.stringify(secondaryTenants), PropertyLongStayStatus.ACTIVE]
+    );
+    if (result.rows.length === 0) {
+      const existing = await propertyLongStaysDb.findById(id);
+      if (!existing) {
+        throw new LongStayNotFoundError();
+      }
+      throw new LongStayNotActiveError();
+    }
+    return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
 };

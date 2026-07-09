@@ -6,6 +6,7 @@ import {
   type IPropertyIncomeLineType,
   type IPropertyInvite,
   type IPropertyLongStay,
+  type IPropertyLongStaySecondaryTenant,
   type IPropertyMember,
   type IPropertyReservation,
   type IPropertySettings,
@@ -191,6 +192,22 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 
+export const parseSecondaryTenants = (raw: unknown): IPropertyLongStaySecondaryTenant[] => {
+  if (!Array.isArray(raw)) return [];
+  const tenants: IPropertyLongStaySecondaryTenant[] = [];
+  for (const item of raw) {
+    if (item == null || typeof item !== "object" || Array.isArray(item)) continue;
+    const record = item as Record<string, unknown>;
+    if (typeof record.name !== "string" || record.name.trim() === "") continue;
+    tenants.push({
+      email: typeof record.email === "string" ? record.email : null,
+      name: record.name.trim(),
+      phone: typeof record.phone === "string" ? record.phone : null,
+    });
+  }
+  return tenants;
+};
+
 export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay => ({
   actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,
   createdAt: (row.created_at as Date).toISOString(),
@@ -200,6 +217,7 @@ export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyL
   leaseStartDate: formatDateColumn(row.lease_start_date),
   monthlyRent: Number(row.monthly_rent),
   propertyId: row.property_id as string,
+  secondaryTenants: parseSecondaryTenants(row.secondary_tenants),
   status: row.status as IPropertyLongStay["status"],
   tenantEmail: (row.tenant_email as string | null) ?? null,
   tenantPhone: (row.tenant_phone as string | null) ?? null,

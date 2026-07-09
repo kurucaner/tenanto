@@ -36,6 +36,7 @@ import {
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   formatPropertyUnitSelectLabel,
+  getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyLongStaysListQuery,
   PropertyLongStayStatus,
@@ -91,11 +92,20 @@ const LeaseRow = memo(
     unitLabel: string;
   }) => {
     const endDate = lease.actualEndDate ?? lease.leaseEndDate;
+    const tenantNames = getLeaseOccupancyNames(lease);
 
     return (
       <TableRow>
         <TableCell className="font-medium">{unitLabel}</TableCell>
-        <TableCell>{lease.guestName}</TableCell>
+        <TableCell>
+          <div className="flex flex-wrap gap-1">
+            {tenantNames.map((name, index) => (
+              <Badge key={`${name}-${index}`} variant="secondary">
+                {name}
+              </Badge>
+            ))}
+          </div>
+        </TableCell>
         <TableCell>{lease.leaseStartDate}</TableCell>
         <TableCell>{endDate}</TableCell>
         <TableCell className="text-right">{formatMoney(lease.monthlyRent)}</TableCell>
@@ -333,6 +343,7 @@ export const PropertyLeasesPage = memo(() => {
       />
 
       <LeaseDetailSheet
+        canManage={canManage}
         lease={detailLease}
         onOpenChange={(open) => {
           if (!open) setDetailLease(null);

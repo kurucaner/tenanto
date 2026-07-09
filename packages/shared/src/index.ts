@@ -139,11 +139,15 @@ export {
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStayRentMonth,
+  type IPropertyLongStaySecondaryTenant,
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
+  type IUpdatePropertyLongStayBody,
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
+
+export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 
 export {
   calculateLeaseEndDate,

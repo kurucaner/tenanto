@@ -11,7 +11,9 @@ import {
   HttpStatus,
   type ICreatePropertyLongStayBody,
   type IEndPropertyLongStayBody,
+  type IPropertyLongStaySecondaryTenant,
   type IPropertyLongStaysListQuery,
+  type IUpdatePropertyLongStayBody,
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
   UnitRentalType,
@@ -22,6 +24,7 @@ import { assertPropertyLedgerWriteAccess, assertPropertyMemberAccess } from "./p
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_TERM_MONTHS = 60;
+const MAX_SECONDARY_TENANTS = 10;
 
 function parseDateString(raw: unknown): string | null {
   if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
@@ -122,6 +125,56 @@ function parseEndLongStayBody(
     return { error: "actualEndDate must be a YYYY-MM-DD date", ok: false };
   }
   return { body: { actualEndDate }, ok: true };
+}
+
+function parseSecondaryTenant(raw: unknown): IPropertyLongStaySecondaryTenant | null {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r["name"] !== "string" || r["name"].trim() === "") return null;
+
+  const email = parseOptionalString(r["email"]);
+  if (r["email"] !== undefined && r["email"] !== null && email === null) return null;
+
+  const phone = parseOptionalString(r["phone"]);
+  if (r["phone"] !== undefined && r["phone"] !== null && phone === null) return null;
+
+  return {
+    email,
+    name: r["name"].trim(),
+    phone,
+  };
+}
+
+function parseUpdateLongStayBody(
+  raw: unknown
+): { body: IUpdatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { error: "Body must be a JSON object", ok: false };
+  }
+  const r = raw as Record<string, unknown>;
+  if (!("secondaryTenants" in r)) {
+    return { error: "secondaryTenants is required", ok: false };
+  }
+  if (!Array.isArray(r["secondaryTenants"])) {
+    return { error: "secondaryTenants must be an array", ok: false };
+  }
+  if (r["secondaryTenants"].length > MAX_SECONDARY_TENANTS) {
+    return {
+      error: `secondaryTenants cannot exceed ${MAX_SECONDARY_TENANTS} items`,
+      ok: false,
+    };
+  }
+
+  const secondaryTenants: IPropertyLongStaySecondaryTenant[] = [];
+  for (const item of r["secondaryTenants"]) {
+    const tenant = parseSecondaryTenant(item);
+    if (!tenant) {
+      return { error: "Each secondary tenant must have a non-empty name", ok: false };
+    }
+    secondaryTenants.push(tenant);
+  }
+
+  return { body: { secondaryTenants }, ok: true };
 }
 
 function parseLongStaysListQuery(
@@ -282,6 +335,64 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       } catch (error) {
         if (error instanceof ActiveLongStayConflictError) {
           return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.patch<{ Params: IPropertyLongStayParams }>(
+    "/properties/:propertyId/long-stays/:longStayId",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: IPropertyLongStayParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const longStayId = parseUuidParam(request.params.longStayId);
+      if (longStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid longStayId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const canWriteLedger = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage long stays"
+      );
+      if (!canWriteLedger) return;
+
+      const existing = await propertyLongStaysDb.findById(longStayId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Long stay not found" });
+      }
+
+      const parsed = parseUpdateLongStayBody(request.body);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      try {
+        const longStay = await propertyLongStaysDb.updateSecondaryTenants(
+          longStayId,
+          parsed.body.secondaryTenants
+        );
+        return reply.send({ longStay });
+      } catch (error) {
+        if (error instanceof LongStayNotActiveError) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
+        if (error instanceof LongStayNotFoundError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
         }
         throw error;
       }

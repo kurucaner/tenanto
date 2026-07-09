@@ -1700,4 +1700,62 @@ export const migrations: IMigration[] = [
     },
     version: 38,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_long_stays_active_unit
+          ON property_long_stays (unit_id)
+          WHERE status = 'active';
+      `);
+    },
+    name: "allow_multiple_active_leases_per_unit",
+    up: async (client: TDBClient) => {
+      await client.query(`DROP INDEX IF EXISTS idx_property_long_stays_active_unit;`);
+    },
+    version: 39,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays DROP COLUMN IF EXISTS secondary_tenants;
+      `);
+      await client.query(`DROP INDEX IF EXISTS idx_property_long_stays_active_unit;`);
+    },
+    name: "primary_lease_secondary_tenants",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        UPDATE property_long_stays pls
+        SET
+          status = 'ended',
+          actual_end_date = pls.lease_end_date
+        FROM (
+          SELECT id
+          FROM (
+            SELECT
+              id,
+              ROW_NUMBER() OVER (
+                PARTITION BY unit_id
+                ORDER BY lease_start_date DESC, created_at DESC
+              ) AS rn
+            FROM property_long_stays
+            WHERE status = 'active'
+          ) ranked
+          WHERE rn > 1
+        ) duplicates
+        WHERE pls.id = duplicates.id;
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_long_stays_active_unit
+          ON property_long_stays (unit_id)
+          WHERE status = 'active';
+      `);
+
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS secondary_tenants JSONB NOT NULL DEFAULT '[]';
+      `);
+    },
+    version: 40,
+  },
 ];

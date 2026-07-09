@@ -29,6 +29,7 @@ import { longStaysApi, unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
+  getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyUnit,
   PropertyLongStayStatus,
@@ -72,6 +73,7 @@ const UnitRow = memo(
   }) => {
     const isLongTerm = unit.rentalType === UnitRentalType.LONG_TERM;
     const isVacant = isLongTerm && !activeLease;
+    const occupancyNames = activeLease ? getLeaseOccupancyNames(activeLease) : [];
 
     return (
       <TableRow className={unit.isDeleted ? deletedRowClassName : undefined}>
@@ -87,10 +89,16 @@ const UnitRow = memo(
         </TableCell>
         <TableCell>
           {isLongTerm && !unit.isDeleted ? (
-            activeLease ? (
-              <Badge variant="secondary">{activeLease.guestName}</Badge>
-            ) : (
+            isVacant ? (
               <Badge variant="outline">Vacant</Badge>
+            ) : (
+              <div className="flex flex-wrap gap-1">
+                {occupancyNames.map((name, index) => (
+                  <Badge key={`${name}-${index}`} variant="secondary">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
             )
           ) : (
             <span className="text-muted-foreground text-xs">—</span>
