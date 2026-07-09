@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileSpreadsheet, Trash2, Upload } from "lucide-react";
+import { FileSpreadsheet, Sparkles, Trash2, Upload } from "lucide-react";
 import { type DragEvent, memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -143,7 +143,7 @@ export const ImportExpenseCsvDialog = memo(
     const parseMutation = useMutation({
       mutationFn: () => parseExpenseCsvFiles(propertyId, selectedFiles),
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : "Failed to parse CSV files");
+        toast.error(error instanceof Error ? error.message : "Smart read failed");
       },
       onSuccess: (response) => {
         setFileResults(response.files);
@@ -201,8 +201,8 @@ export const ImportExpenseCsvDialog = memo(
           <DialogHeader>
             <DialogTitle>Import Expenses from CSV</DialogTitle>
             <DialogDescription>
-              Upload up to {EXPENSE_CSV_IMPORT_MAX_FILES} CSV files. Review parsed rows before
-              saving.
+              Upload up to {EXPENSE_CSV_IMPORT_MAX_FILES} CSV files. AI reads transactions and
+              suggests categories — review before saving.
             </DialogDescription>
           </DialogHeader>
 
@@ -363,11 +363,13 @@ export const ImportExpenseCsvDialog = memo(
             </Button>
             {step === "upload" ? (
               <Button
+                className="gap-1.5"
                 disabled={selectedFiles.length === 0 || parseMutation.isPending}
                 onClick={() => parseMutation.mutate()}
                 type="button"
               >
-                {parseMutation.isPending ? "Parsing…" : "Parse files"}
+                <Sparkles className="size-3.5" />
+                {parseMutation.isPending ? "Smart reading…" : "Smart read"}
               </Button>
             ) : (
               <>

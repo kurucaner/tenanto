@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -197,7 +197,7 @@ export const PropertyExpensesPage = memo(() => {
               type="button"
               variant="outline"
             >
-              <Upload className="size-3.5" />
+              <Sparkles className="size-3.5" />
               Import CSV
             </Button>
           ) : null}
