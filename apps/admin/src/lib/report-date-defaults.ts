@@ -36,5 +36,6 @@ export function buildPropertyReportsPath(
   if (options.unitId) params.set("unitId", options.unitId);
   if (options.channel) params.set("channel", options.channel);
   const search = params.toString();
-  return `/properties/${propertyId}/reports${search ? `?${search}` : ""}`;
+  const querySuffix = search ? `?${search}` : "";
+  return `/properties/${propertyId}/reports${querySuffix}`;
 }
