@@ -33,6 +33,40 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "2026.8.0",
+    version: "2026.8.0",
+    publishedAt: "2026-07-09",
+    summary:
+      "Import expenses from bank CSVs with Smart read, new income and commission charts on Reports, and clearer delete confirmations.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "You can import expenses from bank or card CSV files — upload your files, review suggested amounts and categories, edit anything you need, then save them in one step.",
+      },
+      {
+        category: "new",
+        description:
+          "Property Reports include a monthly chart comparing gross income and expenses so you can spot trends at a glance.",
+      },
+      {
+        category: "new",
+        description:
+          "Property Reports include a chart showing how much booking commission you paid by channel for the selected period.",
+      },
+      {
+        category: "improved",
+        description:
+          "Deleting a unit, stay, income line, expense, or team member now asks you to confirm before it is removed.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Income and reservation lists now refresh correctly after you add or change records.",
+      },
+    ],
+  },
+  {
     id: "2026.7.0",
     version: "2026.7.0",
     publishedAt: "2026-07-09",
