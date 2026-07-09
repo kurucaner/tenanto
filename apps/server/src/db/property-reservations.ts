@@ -9,6 +9,107 @@ import type {
 import { mapPropertyReservationRow } from "./mappers";
 import { pool } from "./pool";
 
+interface IReservationListQueryParts {
+  conditions: string[];
+  joinUnits: string;
+  paramIndex: number;
+  values: unknown[];
+}
+
+function pushReservationCondition(
+  parts: IReservationListQueryParts,
+  condition: string,
+  value: unknown
+): void {
+  parts.conditions.push(condition.replace("$?", `$${parts.paramIndex}`));
+  parts.values.push(value);
+  parts.paramIndex += 1;
+}
+
+function applyReservationDateFilters(
+  filters: IPropertyReservationsListQuery,
+  parts: IReservationListQueryParts
+): void {
+  const dateFilters: Array<[string | undefined, string]> = [
+    [filters.from, "pr.check_in >= $?"],
+    [filters.to, "pr.check_in <= $?"],
+    [filters.checkOutFrom, "pr.check_out >= $?"],
+    [filters.checkInTo, "pr.check_in <= $?"],
+  ];
+  for (const [value, condition] of dateFilters) {
+    if (value) pushReservationCondition(parts, condition, value);
+  }
+}
+
+function applyIncludeReservationIdFilter(
+  filters: IPropertyReservationsListQuery,
+  parts: IReservationListQueryParts
+): void {
+  if (!filters.includeReservationId) return;
+
+  const pickerConditions = parts.conditions.slice(1);
+  parts.conditions.length = 0;
+  parts.conditions.push("pr.property_id = $1");
+  if (pickerConditions.length > 0) {
+    pushReservationCondition(
+      parts,
+      `(${pickerConditions.join(" AND ")} OR pr.id = $?)`,
+      filters.includeReservationId
+    );
+    return;
+  }
+  pushReservationCondition(parts, "pr.id = $?", filters.includeReservationId);
+}
+
+function buildReservationListQuery(
+  propertyId: string,
+  filters: IPropertyReservationsListQuery,
+  includeDeleted: boolean
+): { joinUnits: string; limitClause: string; sqlConditions: string; values: unknown[] } {
+  const parts: IReservationListQueryParts = {
+    conditions: ["pr.property_id = $1"],
+    joinUnits: "",
+    paramIndex: 2,
+    values: [propertyId],
+  };
+
+  applyReservationDateFilters(filters, parts);
+
+  if (filters.unitId) {
+    pushReservationCondition(parts, "pr.unit_id = $?", filters.unitId);
+  }
+
+  applyIncludeReservationIdFilter(filters, parts);
+
+  if (filters.channel) {
+    pushReservationCondition(parts, "pr.channel = $?::property_reservation_channel", filters.channel);
+  }
+  if (filters.status) {
+    pushReservationCondition(parts, "pr.status = $?::property_reservation_status", filters.status);
+  }
+  if (filters.rentalType) {
+    parts.joinUnits = "INNER JOIN property_units pu ON pu.id = pr.unit_id";
+    pushReservationCondition(
+      parts,
+      "pu.rental_type = $?::property_unit_rental_type",
+      filters.rentalType
+    );
+  }
+  if (!includeDeleted) {
+    parts.conditions.push("pr.is_deleted = false");
+  }
+
+  const limitClause =
+    filters.limit != null && filters.limit > 0 ? ` LIMIT ${Math.floor(filters.limit)}` : "";
+
+  return {
+    joinUnits: parts.joinUnits,
+    limitClause,
+    sqlConditions: parts.conditions.join(" AND "),
+    values: parts.values,
+  };
+}
+
 export const propertyReservationsDb = {
   async create(
     propertyId: string,
@@ -73,72 +174,17 @@ export const propertyReservationsDb = {
     filters: IPropertyReservationsListQuery = {},
     includeDeleted = false
   ): Promise<IPropertyReservation[]> {
-    const conditions = ["pr.property_id = $1"];
-    const values: unknown[] = [propertyId];
-    let p = 2;
-
-    if (filters.from) {
-      conditions.push(`pr.check_in >= $${p++}`);
-      values.push(filters.from);
-    }
-    if (filters.to) {
-      conditions.push(`pr.check_in <= $${p++}`);
-      values.push(filters.to);
-    }
-    if (filters.checkOutFrom) {
-      conditions.push(`pr.check_out >= $${p++}`);
-      values.push(filters.checkOutFrom);
-    }
-    if (filters.checkInTo) {
-      conditions.push(`pr.check_in <= $${p++}`);
-      values.push(filters.checkInTo);
-    }
-    if (filters.unitId) {
-      conditions.push(`pr.unit_id = $${p++}`);
-      values.push(filters.unitId);
-    }
-
-    if (filters.includeReservationId) {
-      const pickerConditions = conditions.slice(1);
-      conditions.length = 0;
-      conditions.push("pr.property_id = $1");
-      if (pickerConditions.length > 0) {
-        conditions.push(`(${pickerConditions.join(" AND ")} OR pr.id = $${p++})`);
-        values.push(filters.includeReservationId);
-      } else {
-        conditions.push(`pr.id = $${p++}`);
-        values.push(filters.includeReservationId);
-      }
-    }
-    if (filters.channel) {
-      conditions.push(`pr.channel = $${p++}::property_reservation_channel`);
-      values.push(filters.channel);
-    }
-    if (filters.status) {
-      conditions.push(`pr.status = $${p++}::property_reservation_status`);
-      values.push(filters.status);
-    }
-
-    const joinUnits = filters.rentalType
-      ? "INNER JOIN property_units pu ON pu.id = pr.unit_id"
-      : "";
-    if (filters.rentalType) {
-      conditions.push(`pu.rental_type = $${p++}::property_unit_rental_type`);
-      values.push(filters.rentalType);
-    }
-
-    if (!includeDeleted) {
-      conditions.push("pr.is_deleted = false");
-    }
-
-    const limitClause =
-      filters.limit != null && filters.limit > 0 ? ` LIMIT ${Math.floor(filters.limit)}` : "";
+    const { joinUnits, limitClause, sqlConditions, values } = buildReservationListQuery(
+      propertyId,
+      filters,
+      includeDeleted
+    );
 
     const result = await pool.query(
       `SELECT pr.*
        FROM property_reservations pr
        ${joinUnits}
-       WHERE ${conditions.join(" AND ")}
+       WHERE ${sqlConditions}
        ORDER BY pr.check_in DESC, pr.created_at DESC${limitClause}`,
       values
     );

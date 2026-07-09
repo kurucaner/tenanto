@@ -63,6 +63,104 @@ export interface IFindOrCreateResult {
   user: IUser;
 }
 
+type TOAuthProvider = "apple" | "google";
+
+interface IOAuthFindOrCreateParams {
+  createUser: () => Promise<IUser>;
+  email: string | null;
+  emailExistsMessage: string;
+  findByEmail: (email: string) => Promise<IUser | null>;
+  findByProviderId: (providerId: string) => Promise<IUserRow | null>;
+  identityConflictMessage: string;
+  linkProviderId: (userId: string, providerId: string) => Promise<IUser>;
+  provider: TOAuthProvider;
+  providerId: string;
+  requireEmailForSignup?: boolean;
+}
+
+async function recoverDeletedOAuthAccount(
+  existing: IUserRow,
+  provider: TOAuthProvider
+): Promise<IFindOrCreateResult> {
+  if (!existing.deletedAt || !isWithinRecoveryWindow(existing.deletedAt)) {
+    throw createAccountPermanentlyDeletedError();
+  }
+
+  await userDb.restore(existing.id);
+  await accountEventsDb.logEvent({
+    eventType: AccountEvent.ACCOUNT_RECOVERED,
+    metadata: { provider },
+    userId: existing.id,
+  });
+  const user = toUser({ ...existing, deletedAt: null, isDeleted: false });
+  return { accountRecovered: true, user };
+}
+
+async function linkOAuthAccountByEmail(
+  params: IOAuthFindOrCreateParams,
+  byEmail: IUser
+): Promise<IFindOrCreateResult> {
+  const { identityConflictMessage, linkProviderId, provider, providerId } = params;
+  const storedProviderId = provider === "apple" ? byEmail.appleId : byEmail.googleId;
+
+  if (storedProviderId != null && storedProviderId !== providerId) {
+    throw createIdentityConflictError(identityConflictMessage);
+  }
+  if (storedProviderId === providerId) {
+    const user = await userDb.findById(byEmail.id);
+    if (!user) {
+      throw new Error(`User record missing after ${provider} identity match`);
+    }
+    return { accountRecovered: false, user };
+  }
+
+  const user = await linkProviderId(byEmail.id, providerId);
+  await accountEventsDb.logEvent({
+    eventType: AccountEvent.ACCOUNT_PROVIDER_LINKED,
+    metadata: { provider },
+    userId: user.id,
+  });
+  return { accountLinked: true, accountRecovered: false, user };
+}
+
+async function createOAuthAccount(params: IOAuthFindOrCreateParams): Promise<IFindOrCreateResult> {
+  const { createUser, emailExistsMessage, requireEmailForSignup } = params;
+  if (requireEmailForSignup && !params.email) {
+    throw new Error("Email required for first-time Apple sign-in");
+  }
+
+  try {
+    const user = await createUser();
+    return { accountRecovered: false, isNewSignup: true, user };
+  } catch (err) {
+    if (isPostgresUniqueViolation(err)) {
+      throw createIdentityConflictError(emailExistsMessage);
+    }
+    throw err;
+  }
+}
+
+async function findOrCreateByOAuthProvider(
+  params: IOAuthFindOrCreateParams
+): Promise<IFindOrCreateResult> {
+  const existing = await params.findByProviderId(params.providerId);
+  if (existing) {
+    if (!existing.isDeleted) {
+      return { accountRecovered: false, user: toUser(existing) };
+    }
+    return recoverDeletedOAuthAccount(existing, params.provider);
+  }
+
+  if (params.email) {
+    const byEmail = await params.findByEmail(params.email);
+    if (byEmail) {
+      return linkOAuthAccountByEmail(params, byEmail);
+    }
+  }
+
+  return createOAuthAccount(params);
+}
+
 const mapRowWithDeletion = (row: Record<string, unknown>): IUserRow => ({
   ...mapUserRow(row),
   deletedAt: row.deleted_at ? (row.deleted_at as Date).toISOString() : null,
@@ -219,65 +317,20 @@ export const userDb = {
     email,
     name,
   }: AppleFindOrCreateParams): Promise<IFindOrCreateResult> {
-    const existing = await userDb.findByAppleId(appleId);
-    if (!existing) {
-      if (!email) {
-        throw new Error("Email required for first-time Apple sign-in");
-      }
-
-      const byEmail = await userDb.findByEmail(email);
-      if (byEmail) {
-        if (byEmail.appleId != null && byEmail.appleId !== appleId) {
-          throw createIdentityConflictError(
-            "This email is already linked to a different Apple account. Sign in with the method you used when you created your account."
-          );
-        }
-        if (byEmail.appleId === appleId) {
-          const user = await userDb.findById(byEmail.id);
-          if (!user) {
-            throw new Error("User record missing after Apple identity match");
-          }
-          return { accountRecovered: false, user };
-        }
-
-        const user = await userDb.linkAppleId(byEmail.id, appleId);
-        await accountEventsDb.logEvent({
-          eventType: AccountEvent.ACCOUNT_PROVIDER_LINKED,
-          metadata: { provider: "apple" },
-          userId: user.id,
-        });
-        return { accountLinked: true, accountRecovered: false, user };
-      }
-
-      try {
-        const user = await userDb.createWithApple({ appleId, email, name });
-        return { accountRecovered: false, isNewSignup: true, user };
-      } catch (err) {
-        if (isPostgresUniqueViolation(err)) {
-          throw createIdentityConflictError(
-            "An account with this email already exists. Sign in with the method you used originally."
-          );
-        }
-        throw err;
-      }
-    }
-
-    if (!existing.isDeleted) {
-      return { accountRecovered: false, user: toUser(existing) };
-    }
-
-    if (!existing.deletedAt || !isWithinRecoveryWindow(existing.deletedAt)) {
-      throw createAccountPermanentlyDeletedError();
-    }
-
-    await userDb.restore(existing.id);
-    await accountEventsDb.logEvent({
-      eventType: AccountEvent.ACCOUNT_RECOVERED,
-      metadata: { provider: "apple" },
-      userId: existing.id,
+    return findOrCreateByOAuthProvider({
+      createUser: () => userDb.createWithApple({ appleId, email: email ?? "", name }),
+      email,
+      emailExistsMessage:
+        "An account with this email already exists. Sign in with the method you used originally.",
+      findByEmail: userDb.findByEmail,
+      findByProviderId: userDb.findByAppleId,
+      identityConflictMessage:
+        "This email is already linked to a different Apple account. Sign in with the method you used when you created your account.",
+      linkProviderId: userDb.linkAppleId,
+      provider: "apple",
+      providerId: appleId,
+      requireEmailForSignup: true,
     });
-    const user = toUser({ ...existing, deletedAt: null, isDeleted: false });
-    return { accountRecovered: true, user };
   },
 
   async findOrCreateByGoogle({
@@ -285,61 +338,19 @@ export const userDb = {
     googleId,
     name,
   }: CreateUserParams): Promise<IFindOrCreateResult> {
-    const existing = await userDb.findByGoogleId(googleId);
-    if (!existing) {
-      const byEmail = await userDb.findByEmail(email);
-      if (byEmail) {
-        if (byEmail.googleId != null && byEmail.googleId !== googleId) {
-          throw createIdentityConflictError(
-            "This email is already linked to a different Google account. Sign in with the method you used when you created your account."
-          );
-        }
-        if (byEmail.googleId === googleId) {
-          const user = await userDb.findById(byEmail.id);
-          if (!user) {
-            throw new Error("User record missing after Google identity match");
-          }
-          return { accountRecovered: false, user };
-        }
-
-        const user = await userDb.linkGoogleId(byEmail.id, googleId);
-        await accountEventsDb.logEvent({
-          eventType: AccountEvent.ACCOUNT_PROVIDER_LINKED,
-          metadata: { provider: "google" },
-          userId: user.id,
-        });
-        return { accountLinked: true, accountRecovered: false, user };
-      }
-
-      try {
-        const user = await userDb.create({ email, googleId, name });
-        return { accountRecovered: false, isNewSignup: true, user };
-      } catch (err) {
-        if (isPostgresUniqueViolation(err)) {
-          throw createIdentityConflictError(
-            "An account with this email already exists. Sign in with the method you used originally."
-          );
-        }
-        throw err;
-      }
-    }
-
-    if (!existing.isDeleted) {
-      return { accountRecovered: false, user: toUser(existing) };
-    }
-
-    if (!existing.deletedAt || !isWithinRecoveryWindow(existing.deletedAt)) {
-      throw createAccountPermanentlyDeletedError();
-    }
-
-    await userDb.restore(existing.id);
-    await accountEventsDb.logEvent({
-      eventType: AccountEvent.ACCOUNT_RECOVERED,
-      metadata: { provider: "google" },
-      userId: existing.id,
+    return findOrCreateByOAuthProvider({
+      createUser: () => userDb.create({ email, googleId, name }),
+      email,
+      emailExistsMessage:
+        "An account with this email already exists. Sign in with the method you used originally.",
+      findByEmail: userDb.findByEmail,
+      findByProviderId: userDb.findByGoogleId,
+      identityConflictMessage:
+        "This email is already linked to a different Google account. Sign in with the method you used when you created your account.",
+      linkProviderId: userDb.linkGoogleId,
+      provider: "google",
+      providerId: googleId,
     });
-    const user = toUser({ ...existing, deletedAt: null, isDeleted: false });
-    return { accountRecovered: true, user };
   },
 
   async getAdminPlatformUserStats(): Promise<{ usersTotal: number }> {

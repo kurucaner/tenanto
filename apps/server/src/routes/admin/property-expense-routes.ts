@@ -22,6 +22,7 @@ import {
 import { decodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
 
 import { parseUuidParam } from "./admin-query-utils";
+import { parseJsonObject, parseMoney as parseBodyMoney } from "./parse-body-utils";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
@@ -42,11 +43,6 @@ function parseOptionalDateString(raw: unknown): string | null | undefined {
   return parseDateString(raw);
 }
 
-function parseMoney(raw: unknown): number | null {
-  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
-  return raw;
-}
-
 function parseOptionalString(raw: unknown): string | null | undefined {
   if (raw === undefined) return undefined;
   if (raw === null) return null;
@@ -61,14 +57,74 @@ function parseBoolean(raw: unknown): boolean | null {
 
 const UPDATE_FIELDS = ["category", "amount", "expenseDate", "description", "taxFree"] as const;
 
+function parseUpdateExpenseCategory(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyExpenseBody
+): string | null {
+  if (r["category"] === undefined) return null;
+  const category = parseExpenseCategory(r["category"]);
+  if (category === null) {
+    return `category must be one of: ${[...EXPENSE_CATEGORIES].join(", ")}`;
+  }
+  body.category = category;
+  return null;
+}
+
+function parseUpdateExpenseAmount(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyExpenseBody
+): string | null {
+  if (r["amount"] === undefined) return null;
+  const amount = parseBodyMoney(r["amount"]);
+  if (amount === null) return "amount must be a non-negative number";
+  body.amount = amount;
+  return null;
+}
+
+function parseUpdateExpenseDate(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyExpenseBody
+): string | null {
+  if (r["expenseDate"] === undefined) return null;
+  const expenseDate = parseOptionalDateString(r["expenseDate"]);
+  if (expenseDate === null && r["expenseDate"] !== null && r["expenseDate"] !== "") {
+    return "expenseDate must be a YYYY-MM-DD date";
+  }
+  body.expenseDate = expenseDate ?? null;
+  return null;
+}
+
+function parseUpdateExpenseDescription(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyExpenseBody
+): string | null {
+  if (r["description"] === undefined) return null;
+  const description = parseOptionalString(r["description"]);
+  if (description === null && r["description"] !== null && typeof r["description"] !== "string") {
+    return "description must be a string";
+  }
+  body.description = description ?? null;
+  return null;
+}
+
+function parseUpdateExpenseTaxFree(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyExpenseBody
+): string | null {
+  if (r["taxFree"] === undefined) return null;
+  const taxFree = parseBoolean(r["taxFree"]);
+  if (taxFree === null) return "taxFree must be a boolean";
+  body.taxFree = taxFree;
+  return null;
+}
+
 function parseUpdateExpenseBody(
   raw: unknown
 ): { body: IUpdatePropertyExpenseBody; ok: true } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+  const r = parseJsonObject(raw);
+  if (!r) {
     return { error: "Body must be a JSON object", ok: false };
   }
-  const r = raw as Record<string, unknown>;
-  const body: IUpdatePropertyExpenseBody = {};
 
   for (const key of Object.keys(r)) {
     if (!UPDATE_FIELDS.includes(key as (typeof UPDATE_FIELDS)[number])) {
@@ -76,43 +132,15 @@ function parseUpdateExpenseBody(
     }
   }
 
-  if (r["category"] !== undefined) {
-    const category = parseExpenseCategory(r["category"]);
-    if (category === null) {
-      return {
-        error: `category must be one of: ${[...EXPENSE_CATEGORIES].join(", ")}`,
-        ok: false,
-      };
-    }
-    body.category = category;
-  }
-
-  if (r["amount"] !== undefined) {
-    const amount = parseMoney(r["amount"]);
-    if (amount === null) return { error: "amount must be a non-negative number", ok: false };
-    body.amount = amount;
-  }
-
-  if (r["expenseDate"] !== undefined) {
-    const expenseDate = parseOptionalDateString(r["expenseDate"]);
-    if (expenseDate === null && r["expenseDate"] !== null && r["expenseDate"] !== "") {
-      return { error: "expenseDate must be a YYYY-MM-DD date", ok: false };
-    }
-    body.expenseDate = expenseDate ?? null;
-  }
-
-  if (r["description"] !== undefined) {
-    const description = parseOptionalString(r["description"]);
-    if (description === null && r["description"] !== null && typeof r["description"] !== "string") {
-      return { error: "description must be a string", ok: false };
-    }
-    body.description = description ?? null;
-  }
-
-  if (r["taxFree"] !== undefined) {
-    const taxFree = parseBoolean(r["taxFree"]);
-    if (taxFree === null) return { error: "taxFree must be a boolean", ok: false };
-    body.taxFree = taxFree;
+  const body: IUpdatePropertyExpenseBody = {};
+  const fieldError =
+    parseUpdateExpenseCategory(r, body) ??
+    parseUpdateExpenseAmount(r, body) ??
+    parseUpdateExpenseDate(r, body) ??
+    parseUpdateExpenseDescription(r, body) ??
+    parseUpdateExpenseTaxFree(r, body);
+  if (fieldError) {
+    return { error: fieldError, ok: false };
   }
 
   if (Object.keys(body).length === 0) {

@@ -82,42 +82,58 @@ function closeConnection(conn: SseConnection): void {
   }
 }
 
+function parseSupportRequestPayload(
+  payload: Record<string, unknown>
+): NotifyPayload | null {
+  const supportRequestId = payload.supportRequestId;
+  const ticketUserId = payload.ticketUserId;
+  if (typeof supportRequestId !== "string" || typeof ticketUserId !== "string") {
+    return null;
+  }
+  return { kind: "support_request", supportRequestId, ticketUserId };
+}
+
+function parseSupportAttachmentPayload(
+  payload: Record<string, unknown>
+): NotifyPayload | null {
+  const userId = payload.userId;
+  const storageKey = payload.storageKey;
+  const status = payload.status;
+  if (typeof userId !== "string" || typeof storageKey !== "string") {
+    return null;
+  }
+  if (status !== "pending" && status !== "confirmed" && status !== "linked") {
+    return null;
+  }
+
+  const supportRequestId = payload.supportRequestId;
+  return {
+    kind: "support_attachment",
+    status,
+    storageKey,
+    userId,
+    ...(typeof supportRequestId === "string" ? { supportRequestId } : {}),
+  };
+}
+
+function parseUserNotifyPayload(payload: Record<string, unknown>): NotifyPayload | null {
+  const userId = payload.userId;
+  if (typeof userId !== "string" || userId === "") {
+    return null;
+  }
+  return { userId };
+}
+
 function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
   try {
     const payload = JSON.parse(raw ?? "{}") as Record<string, unknown>;
     if (payload.kind === "support_request") {
-      const supportRequestId = payload.supportRequestId;
-      const ticketUserId = payload.ticketUserId;
-      if (typeof supportRequestId === "string" && typeof ticketUserId === "string") {
-        return { kind: "support_request", supportRequestId, ticketUserId };
-      }
-      return null;
+      return parseSupportRequestPayload(payload);
     }
     if (payload.kind === "support_attachment") {
-      const userId = payload.userId;
-      const storageKey = payload.storageKey;
-      const status = payload.status;
-      if (
-        typeof userId === "string" &&
-        typeof storageKey === "string" &&
-        (status === "pending" || status === "confirmed" || status === "linked")
-      ) {
-        const supportRequestId = payload.supportRequestId;
-        return {
-          kind: "support_attachment",
-          status,
-          storageKey,
-          userId,
-          ...(typeof supportRequestId === "string" ? { supportRequestId } : {}),
-        };
-      }
-      return null;
+      return parseSupportAttachmentPayload(payload);
     }
-    const userId = payload.userId;
-    if (typeof userId === "string" && userId !== "") {
-      return { userId };
-    }
-    return null;
+    return parseUserNotifyPayload(payload);
   } catch {
     return null;
   }

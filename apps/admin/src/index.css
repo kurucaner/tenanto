@@ -4,7 +4,7 @@
 @import "@fontsource-variable/cormorant";
 @import "@fontsource-variable/geist";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .dark *)); /* NOSONAR */
 
 :root {
   --background: oklch(0.99 0.004 85);

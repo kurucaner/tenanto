@@ -35,3 +35,39 @@ export function parseUuidParam(raw: unknown): string | null {
   if (t === "") return null;
   return UUID_RE.test(t) ? t : null;
 }
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function parseDateString(raw: unknown): string | null {
+  if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
+  const date = Date.parse(`${raw.trim()}T00:00:00Z`);
+  if (!Number.isFinite(date)) return null;
+  return raw.trim();
+}
+
+export type TQueryParseResult<T> = { ok: true; value?: T } | { error: string; ok: false };
+
+export function parseOptionalQueryDate(
+  query: Record<string, unknown>,
+  field: string,
+  errorMessage: string
+): TQueryParseResult<string> {
+  const raw = query[field];
+  if (raw === undefined || raw === "") return { ok: true };
+  const parsed = parseDateString(raw);
+  if (!parsed) return { error: errorMessage, ok: false };
+  return { ok: true, value: parsed };
+}
+
+export function parseOptionalQueryUuid(
+  query: Record<string, unknown>,
+  field: string,
+  errorMessage: string
+): TQueryParseResult<string> {
+  const raw = query[field];
+  if (raw === undefined || raw === "") return { ok: true };
+  const parsed = parseOptionalUuid(raw);
+  if (parsed === null) return { error: errorMessage, ok: false };
+  if (parsed) return { ok: true, value: parsed };
+  return { ok: true };
+}

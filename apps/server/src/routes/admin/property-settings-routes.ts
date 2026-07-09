@@ -30,6 +30,92 @@ function isValidRate(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+function parseNamedSortableItem(
+  item: unknown,
+  index: number,
+  listLabel: string,
+  maxNameLength: number,
+  seenNames: Set<string>
+):
+  | { error: string; ok: false }
+  | { item: { id?: string; name: string; sortOrder: number }; ok: true } {
+  if (item == null || typeof item !== "object" || Array.isArray(item)) {
+    return { error: `${listLabel}[${index}] must be an object`, ok: false };
+  }
+
+  const record = item as Record<string, unknown>;
+  const idRaw = record["id"];
+  const nameRaw = record["name"];
+  const sortOrderRaw = record["sortOrder"];
+
+  if (idRaw != null && typeof idRaw !== "string") {
+    return { error: `${listLabel}[${index}].id must be a string`, ok: false };
+  }
+  if (typeof nameRaw !== "string") {
+    return { error: `${listLabel}[${index}].name must be a string`, ok: false };
+  }
+
+  const name = nameRaw.trim();
+  if (name.length === 0) {
+    return { error: `${listLabel}[${index}].name is required`, ok: false };
+  }
+  if (name.length > maxNameLength) {
+    return {
+      error: `${listLabel}[${index}].name must be at most ${maxNameLength} characters`,
+      ok: false,
+    };
+  }
+
+  const normalizedName = name.toLowerCase();
+  if (seenNames.has(normalizedName)) {
+    return {
+      error: listLabel === "taxRates" ? "Tax names must be unique" : "Income type names must be unique",
+      ok: false,
+    };
+  }
+  seenNames.add(normalizedName);
+
+  if (typeof sortOrderRaw !== "number" || !Number.isInteger(sortOrderRaw) || sortOrderRaw < 0) {
+    return {
+      error: `${listLabel}[${index}].sortOrder must be a non-negative integer`,
+      ok: false,
+    };
+  }
+
+  return {
+    item: {
+      ...(typeof idRaw === "string" ? { id: idRaw } : {}),
+      name,
+      sortOrder: sortOrderRaw,
+    },
+    ok: true,
+  };
+}
+
+function parseTaxRateItem(
+  item: unknown,
+  index: number,
+  seenNames: Set<string>
+): { error: string; ok: false } | { ok: true; taxRate: IPropertyTaxRateInput } {
+  const parsed = parseNamedSortableItem(item, index, "taxRates", MAX_TAX_NAME_LENGTH, seenNames);
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const rateRaw = (item as Record<string, unknown>)["rate"];
+  if (!isValidRate(rateRaw)) {
+    return { error: `taxRates[${index}].rate must be a number between 0 and 1`, ok: false };
+  }
+
+  return {
+    ok: true,
+    taxRate: {
+      ...parsed.item,
+      rate: rateRaw,
+    },
+  };
+}
+
 function parseTaxRates(
   raw: unknown
 ): { ok: true; taxRates: IPropertyTaxRateInput[] } | { error: string; ok: false } {
@@ -44,55 +130,11 @@ function parseTaxRates(
   const seenNames = new Set<string>();
 
   for (let index = 0; index < raw.length; index += 1) {
-    const item = raw[index];
-    if (item == null || typeof item !== "object" || Array.isArray(item)) {
-      return { error: `taxRates[${index}] must be an object`, ok: false };
+    const parsed = parseTaxRateItem(raw[index], index, seenNames);
+    if (!parsed.ok) {
+      return parsed;
     }
-
-    const record = item as Record<string, unknown>;
-    const idRaw = record["id"];
-    const nameRaw = record["name"];
-    const rateRaw = record["rate"];
-    const sortOrderRaw = record["sortOrder"];
-
-    if (idRaw != null && typeof idRaw !== "string") {
-      return { error: `taxRates[${index}].id must be a string`, ok: false };
-    }
-    if (typeof nameRaw !== "string") {
-      return { error: `taxRates[${index}].name must be a string`, ok: false };
-    }
-
-    const name = nameRaw.trim();
-    if (name.length === 0) {
-      return { error: `taxRates[${index}].name is required`, ok: false };
-    }
-    if (name.length > MAX_TAX_NAME_LENGTH) {
-      return {
-        error: `taxRates[${index}].name must be at most ${MAX_TAX_NAME_LENGTH} characters`,
-        ok: false,
-      };
-    }
-
-    const normalizedName = name.toLowerCase();
-    if (seenNames.has(normalizedName)) {
-      return { error: "Tax names must be unique", ok: false };
-    }
-    seenNames.add(normalizedName);
-
-    if (!isValidRate(rateRaw)) {
-      return { error: `taxRates[${index}].rate must be a number between 0 and 1`, ok: false };
-    }
-
-    if (typeof sortOrderRaw !== "number" || !Number.isInteger(sortOrderRaw) || sortOrderRaw < 0) {
-      return { error: `taxRates[${index}].sortOrder must be a non-negative integer`, ok: false };
-    }
-
-    taxRates.push({
-      ...(typeof idRaw === "string" ? { id: idRaw } : {}),
-      name,
-      rate: rateRaw,
-      sortOrder: sortOrderRaw,
-    });
+    taxRates.push(parsed.taxRate);
   }
 
   return { ok: true, taxRates };
@@ -119,70 +161,17 @@ function parseIncomeLineTypes(raw: unknown):
   const seenNames = new Set<string>();
 
   for (let index = 0; index < raw.length; index += 1) {
-    const item = raw[index];
-    if (item == null || typeof item !== "object" || Array.isArray(item)) {
-      return {
-        error: `incomeLineTypes[${index}] must be an object`,
-        incomeLineTypes: [],
-        ok: false,
-      };
+    const parsed = parseNamedSortableItem(
+      raw[index],
+      index,
+      "incomeLineTypes",
+      MAX_INCOME_TYPE_NAME_LENGTH,
+      seenNames
+    );
+    if (!parsed.ok) {
+      return { ...parsed, incomeLineTypes: [] };
     }
-
-    const record = item as Record<string, unknown>;
-    const idRaw = record["id"];
-    const nameRaw = record["name"];
-    const sortOrderRaw = record["sortOrder"];
-
-    if (idRaw != null && typeof idRaw !== "string") {
-      return {
-        error: `incomeLineTypes[${index}].id must be a string`,
-        incomeLineTypes: [],
-        ok: false,
-      };
-    }
-    if (typeof nameRaw !== "string") {
-      return {
-        error: `incomeLineTypes[${index}].name must be a string`,
-        incomeLineTypes: [],
-        ok: false,
-      };
-    }
-
-    const name = nameRaw.trim();
-    if (name.length === 0) {
-      return {
-        error: `incomeLineTypes[${index}].name is required`,
-        incomeLineTypes: [],
-        ok: false,
-      };
-    }
-    if (name.length > MAX_INCOME_TYPE_NAME_LENGTH) {
-      return {
-        error: `incomeLineTypes[${index}].name must be at most ${MAX_INCOME_TYPE_NAME_LENGTH} characters`,
-        incomeLineTypes: [],
-        ok: false,
-      };
-    }
-
-    const normalizedName = name.toLowerCase();
-    if (seenNames.has(normalizedName)) {
-      return { error: "Income type names must be unique", incomeLineTypes: [], ok: false };
-    }
-    seenNames.add(normalizedName);
-
-    if (typeof sortOrderRaw !== "number" || !Number.isInteger(sortOrderRaw) || sortOrderRaw < 0) {
-      return {
-        error: `incomeLineTypes[${index}].sortOrder must be a non-negative integer`,
-        incomeLineTypes: [],
-        ok: false,
-      };
-    }
-
-    incomeLineTypes.push({
-      ...(typeof idRaw === "string" ? { id: idRaw } : {}),
-      name,
-      sortOrder: sortOrderRaw,
-    });
+    incomeLineTypes.push(parsed.item);
   }
 
   return { incomeLineTypes, ok: true };

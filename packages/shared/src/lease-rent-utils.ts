@@ -72,6 +72,47 @@ export function getExtensionRentEffectiveMonthOptions(
   return enumerateLeaseMonths(`${firstExtensionMonth}-01`, newLeaseEndDate);
 }
 
+function validateLeaseRentChange(
+  body: IExtendPropertyLongStayBody,
+  lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate">,
+  newTotalTerm: number
+): string | null {
+  const hasNewRent = body.newMonthlyRent !== undefined;
+  const hasEffectiveMonth = body.rentEffectiveFromMonth !== undefined;
+
+  if (hasNewRent !== hasEffectiveMonth) {
+    return "New monthly rent and effective month must both be provided when changing rent";
+  }
+  if (!hasNewRent || body.newMonthlyRent === undefined || body.rentEffectiveFromMonth === undefined) {
+    return null;
+  }
+
+  if (
+    typeof body.newMonthlyRent !== "number" ||
+    !Number.isFinite(body.newMonthlyRent) ||
+    body.newMonthlyRent <= 0
+  ) {
+    return "New monthly rent must be a positive number";
+  }
+
+  if (!MONTH_RE.test(body.rentEffectiveFromMonth)) {
+    return "Rent effective month must be YYYY-MM format";
+  }
+
+  const firstExtensionMonth = getFirstExtensionMonth(lease.leaseEndDate);
+  const newLeaseEndDate = calculateLeaseEndDate(lease.leaseStartDate, newTotalTerm);
+  const lastExtensionMonth = transactionDateToMonth(newLeaseEndDate);
+
+  if (body.rentEffectiveFromMonth < firstExtensionMonth) {
+    return "Rent effective month cannot be before the extension period";
+  }
+  if (body.rentEffectiveFromMonth > lastExtensionMonth) {
+    return "Rent effective month cannot be after the new lease end";
+  }
+
+  return null;
+}
+
 export function validateExtendLease(
   body: IExtendPropertyLongStayBody,
   lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate" | "status" | "termMonths">,
@@ -95,37 +136,5 @@ export function validateExtendLease(
     return `Total lease term cannot exceed ${MAX_TOTAL_LEASE_TERM_MONTHS} months`;
   }
 
-  const hasNewRent = body.newMonthlyRent !== undefined;
-  const hasEffectiveMonth = body.rentEffectiveFromMonth !== undefined;
-
-  if (hasNewRent !== hasEffectiveMonth) {
-    return "New monthly rent and effective month must both be provided when changing rent";
-  }
-
-  if (hasNewRent && body.newMonthlyRent !== undefined && body.rentEffectiveFromMonth !== undefined) {
-    if (
-      typeof body.newMonthlyRent !== "number" ||
-      !Number.isFinite(body.newMonthlyRent) ||
-      body.newMonthlyRent <= 0
-    ) {
-      return "New monthly rent must be a positive number";
-    }
-
-    if (!MONTH_RE.test(body.rentEffectiveFromMonth)) {
-      return "Rent effective month must be YYYY-MM format";
-    }
-
-    const firstExtensionMonth = getFirstExtensionMonth(lease.leaseEndDate);
-    const newLeaseEndDate = calculateLeaseEndDate(lease.leaseStartDate, newTotalTerm);
-    const lastExtensionMonth = transactionDateToMonth(newLeaseEndDate);
-
-    if (body.rentEffectiveFromMonth < firstExtensionMonth) {
-      return "Rent effective month cannot be before the extension period";
-    }
-    if (body.rentEffectiveFromMonth > lastExtensionMonth) {
-      return "Rent effective month cannot be after the new lease end";
-    }
-  }
-
-  return null;
+  return validateLeaseRentChange(body, lease, newTotalTerm);
 }

@@ -295,102 +295,128 @@ function mergeTaxSummary(
   }
 }
 
-export function buildPropertyReportSummary(
-  data: IReportData,
-  query: IPropertyReportsQuery
-): IPropertyReportSummary {
-  const { expenses, incomeLines, reservations, units } = data;
-  const months = listMonthsInRange(query.from, query.to);
-  const salesTypeBreakdown = initSalesBreakdown();
-  const channelMap = initChannelMap();
-  const unitMap = initUnitMap(units, query.from, query.to);
-  const monthMap = initMonthMap(months);
-  const expenseCategoryMap = new Map<TExpenseCategory, number>();
-  const taxMap = new Map<string, IPropertyReportTaxSummaryItem>();
+interface IPropertyReportAccumulator {
+  amenityGrossIncome: number;
+  amenityNetIncome: number;
+  channelMap: Map<TReservationChannel, IPropertyReportChannelSummary>;
+  expenseCategoryMap: Map<TExpenseCategory, number>;
+  grossIncome: number;
+  monthMap: Map<string, IPropertyReportMonthSummary>;
+  netIncome: number;
+  propertyExpensesTotal: number;
+  salesTypeBreakdown: IPropertyReportSalesTypeBreakdown;
+  taxMap: Map<string, IPropertyReportTaxSummaryItem>;
+  unitMap: ReturnType<typeof initUnitMap>;
+}
 
-  let grossIncome = 0;
-  let netIncome = 0;
-  let propertyExpensesTotal = 0;
-  let amenityGrossIncome = 0;
-  let amenityNetIncome = 0;
+function applyReservationToReport(
+  stay: IPropertyReservation,
+  query: IPropertyReportsQuery,
+  accumulator: IPropertyReportAccumulator
+): void {
+  accumulator.grossIncome = roundMoney(accumulator.grossIncome + stay.grossIncome);
+  accumulator.netIncome = roundMoney(accumulator.netIncome + stay.netIncome);
 
-  for (const stay of reservations) {
-    grossIncome = roundMoney(grossIncome + stay.grossIncome);
-    netIncome = roundMoney(netIncome + stay.netIncome);
+  accumulator.salesTypeBreakdown.room = roundMoney(
+    accumulator.salesTypeBreakdown.room + stay.roomTotal
+  );
+  accumulator.salesTypeBreakdown.cleaningFromStays = roundMoney(
+    accumulator.salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
+  );
 
-    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + stay.roomTotal);
-    salesTypeBreakdown.cleaningFromStays = roundMoney(
-      salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
-    );
+  const channel = accumulator.channelMap.get(stay.channel);
+  if (channel) {
+    channel.grossIncome = roundMoney(channel.grossIncome + stay.grossIncome);
+    channel.channelCommission = roundMoney(channel.channelCommission + stay.channelCommission);
+    channel.stayCount += 1;
+  }
 
-    const channel = channelMap.get(stay.channel);
-    if (channel) {
-      channel.grossIncome = roundMoney(channel.grossIncome + stay.grossIncome);
-      channel.channelCommission = roundMoney(channel.channelCommission + stay.channelCommission);
-      channel.stayCount += 1;
-    }
-
-    const unit = unitMap.get(stay.unitId);
-    if (unit) {
-      unit.grossIncome = roundMoney(unit.grossIncome + stay.grossIncome);
-      unit.netIncome = roundMoney(unit.netIncome + stay.netIncome);
-      unit.stayGrossIncome = roundMoney(unit.stayGrossIncome + stay.grossIncome);
-      if (isOccupancyStay(stay.status)) {
-        const booked = nightsOverlappingRange(stay.checkIn, stay.checkOut, query.from, query.to);
-        unit.bookedNights += booked;
-        unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomTotal);
-        unit.adrNights += stay.nights;
-      }
-    }
-
-    addToMonth(monthMap, monthFromDate(stay.checkIn), stay.grossIncome, stay.netIncome);
-
-    for (const taxItem of stay.taxBreakdown) {
-      addTaxToMap(taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
+  const unit = accumulator.unitMap.get(stay.unitId);
+  if (unit) {
+    unit.grossIncome = roundMoney(unit.grossIncome + stay.grossIncome);
+    unit.netIncome = roundMoney(unit.netIncome + stay.netIncome);
+    unit.stayGrossIncome = roundMoney(unit.stayGrossIncome + stay.grossIncome);
+    if (isOccupancyStay(stay.status)) {
+      const booked = nightsOverlappingRange(stay.checkIn, stay.checkOut, query.from, query.to);
+      unit.bookedNights += booked;
+      unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomTotal);
+      unit.adrNights += stay.nights;
     }
   }
 
-  for (const line of incomeLines) {
-    grossIncome = roundMoney(grossIncome + line.grossIncome);
-    netIncome = roundMoney(netIncome + line.netIncome);
+  addToMonth(
+    accumulator.monthMap,
+    monthFromDate(stay.checkIn),
+    stay.grossIncome,
+    stay.netIncome
+  );
 
-    addOtherIncomeToBreakdown(salesTypeBreakdown, line);
+  for (const taxItem of stay.taxBreakdown) {
+    addTaxToMap(accumulator.taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
+  }
+}
 
-    if (line.unitId === null) {
-      // Property-amenity income: not tied to a rentable unit — its own bucket.
-      amenityGrossIncome = roundMoney(amenityGrossIncome + line.grossIncome);
-      amenityNetIncome = roundMoney(amenityNetIncome + line.netIncome);
-    } else {
-      const unit = unitMap.get(line.unitId);
-      if (unit) {
-        unit.grossIncome = roundMoney(unit.grossIncome + line.grossIncome);
-        unit.netIncome = roundMoney(unit.netIncome + line.netIncome);
-      }
-    }
+function applyIncomeLineToReport(
+  line: IPropertyIncomeLine,
+  accumulator: IPropertyReportAccumulator
+): void {
+  accumulator.grossIncome = roundMoney(accumulator.grossIncome + line.grossIncome);
+  accumulator.netIncome = roundMoney(accumulator.netIncome + line.netIncome);
 
-    addToMonth(monthMap, monthFromDate(line.transactionDate), line.grossIncome, line.netIncome);
+  addOtherIncomeToBreakdown(accumulator.salesTypeBreakdown, line);
+
+  if (line.unitId === null) {
+    accumulator.amenityGrossIncome = roundMoney(accumulator.amenityGrossIncome + line.grossIncome);
+    accumulator.amenityNetIncome = roundMoney(accumulator.amenityNetIncome + line.netIncome);
+    return;
   }
 
-  salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
-
-  for (const expense of expenses) {
-    const meta = getExpenseCategoryMeta(expense.category);
-    propertyExpensesTotal = roundMoney(propertyExpensesTotal + expense.amount);
-    expenseCategoryMap.set(
-      expense.category,
-      roundMoney((expenseCategoryMap.get(expense.category) ?? 0) + expense.amount)
-    );
-
-    if (meta.isAnnualAmount) {
-      const monthlyAmount = roundMoney(expense.amount / 12);
-      for (const month of months) {
-        addExpenseToMonth(monthMap, month, monthlyAmount);
-      }
-    } else if (expense.expenseDate) {
-      addExpenseToMonth(monthMap, monthFromDate(expense.expenseDate), expense.amount);
-    }
+  const unit = accumulator.unitMap.get(line.unitId);
+  if (unit) {
+    unit.grossIncome = roundMoney(unit.grossIncome + line.grossIncome);
+    unit.netIncome = roundMoney(unit.netIncome + line.netIncome);
   }
 
+  addToMonth(
+    accumulator.monthMap,
+    monthFromDate(line.transactionDate),
+    line.grossIncome,
+    line.netIncome
+  );
+}
+
+function applyExpenseToReport(
+  expense: IPropertyExpense,
+  months: string[],
+  accumulator: IPropertyReportAccumulator
+): void {
+  const meta = getExpenseCategoryMeta(expense.category);
+  accumulator.propertyExpensesTotal = roundMoney(
+    accumulator.propertyExpensesTotal + expense.amount
+  );
+  accumulator.expenseCategoryMap.set(
+    expense.category,
+    roundMoney((accumulator.expenseCategoryMap.get(expense.category) ?? 0) + expense.amount)
+  );
+
+  if (meta.isAnnualAmount) {
+    const monthlyAmount = roundMoney(expense.amount / 12);
+    for (const month of months) {
+      addExpenseToMonth(accumulator.monthMap, month, monthlyAmount);
+    }
+    return;
+  }
+
+  if (expense.expenseDate) {
+    addExpenseToMonth(accumulator.monthMap, monthFromDate(expense.expenseDate), expense.amount);
+  }
+}
+
+function buildUnitSummaries(
+  unitMap: ReturnType<typeof initUnitMap>,
+  amenityGrossIncome: number,
+  amenityNetIncome: number
+): IPropertyReportUnitSummary[] {
   const byUnit: IPropertyReportUnitSummary[] = [...unitMap.values()].map((unit) => ({
     adr: unit.adrNights > 0 ? roundMoney(unit.adrRoomTotal / unit.adrNights) : 0,
     availableNights: unit.availableNights,
@@ -420,38 +446,149 @@ export function buildPropertyReportSummary(
     });
   }
 
-  const byMonth: IPropertyReportMonthSummary[] = [...monthMap.values()].map((month) => ({
-    ...month,
-    operationalNet: roundMoney(month.netIncome - month.expenses),
-  }));
+  return byUnit;
+}
 
-  const channelSummary = [...channelMap.values()].filter((entry) => entry.stayCount > 0);
-  const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
+interface IRollupAccumulator {
+  byUnit: IPropertyReportUnitSummary[];
+  channelMap: Map<TReservationChannel, IPropertyReportChannelSummary>;
+  expenseCategoryMap: Map<TExpenseCategory, number>;
+  grossIncome: number;
+  monthMap: Map<string, IPropertyReportMonthSummary>;
+  netIncome: number;
+  propertyExpensesTotal: number;
+  salesTypeBreakdown: IPropertyReportSalesTypeBreakdown;
+  taxMap: Map<string, IPropertyReportTaxSummaryItem>;
+  totalExpenses: number;
+}
+
+function mergeSummaryIntoRollup(summary: IPropertyReportSummary, rollup: IRollupAccumulator): void {
+  rollup.grossIncome = roundMoney(rollup.grossIncome + summary.totals.grossIncome);
+  rollup.netIncome = roundMoney(rollup.netIncome + summary.totals.netIncome);
+  rollup.totalExpenses = roundMoney(rollup.totalExpenses + summary.totals.totalExpenses);
+  rollup.propertyExpensesTotal = roundMoney(
+    rollup.propertyExpensesTotal + summary.propertyExpensesTotal
+  );
+
+  rollup.salesTypeBreakdown.room = roundMoney(
+    rollup.salesTypeBreakdown.room + summary.salesTypeBreakdown.room
+  );
+  rollup.salesTypeBreakdown.cleaningFromStays = roundMoney(
+    rollup.salesTypeBreakdown.cleaningFromStays + summary.salesTypeBreakdown.cleaningFromStays
+  );
+  mergeOtherIncomeByType(
+    rollup.salesTypeBreakdown.otherIncomeByType,
+    summary.salesTypeBreakdown.otherIncomeByType
+  );
+
+  for (const row of summary.channelSummary) {
+    const existing = rollup.channelMap.get(row.channel);
+    if (existing) {
+      existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
+      existing.channelCommission = roundMoney(existing.channelCommission + row.channelCommission);
+      existing.stayCount += row.stayCount;
+    } else {
+      rollup.channelMap.set(row.channel, { ...row });
+    }
+  }
+
+  rollup.byUnit.push(...summary.byUnit);
+
+  for (const row of summary.byMonth) {
+    const existing = rollup.monthMap.get(row.month);
+    if (existing) {
+      existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
+      existing.netIncome = roundMoney(existing.netIncome + row.netIncome);
+      existing.expenses = roundMoney(existing.expenses + row.expenses);
+      existing.operationalNet = roundMoney(existing.operationalNet + row.operationalNet);
+    } else {
+      rollup.monthMap.set(row.month, { ...row });
+    }
+  }
+
+  for (const row of summary.expenseByCategory) {
+    rollup.expenseCategoryMap.set(
+      row.category,
+      roundMoney((rollup.expenseCategoryMap.get(row.category) ?? 0) + row.amount)
+    );
+  }
+
+  mergeTaxSummary(rollup.taxMap, summary.taxSummary);
+}
+
+export function buildPropertyReportSummary(
+  data: IReportData,
+  query: IPropertyReportsQuery
+): IPropertyReportSummary {
+  const { expenses, incomeLines, reservations, units } = data;
+  const months = listMonthsInRange(query.from, query.to);
+  const accumulator: IPropertyReportAccumulator = {
+    amenityGrossIncome: 0,
+    amenityNetIncome: 0,
+    channelMap: initChannelMap(),
+    expenseCategoryMap: new Map<TExpenseCategory, number>(),
+    grossIncome: 0,
+    monthMap: initMonthMap(months),
+    netIncome: 0,
+    propertyExpensesTotal: 0,
+    salesTypeBreakdown: initSalesBreakdown(),
+    taxMap: new Map<string, IPropertyReportTaxSummaryItem>(),
+    unitMap: initUnitMap(units, query.from, query.to),
+  };
+
+  for (const stay of reservations) {
+    applyReservationToReport(stay, query, accumulator);
+  }
+
+  for (const line of incomeLines) {
+    applyIncomeLineToReport(line, accumulator);
+  }
+
+  accumulator.salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const expense of expenses) {
+    applyExpenseToReport(expense, months, accumulator);
+  }
+
+  const byUnit = buildUnitSummaries(
+    accumulator.unitMap,
+    accumulator.amenityGrossIncome,
+    accumulator.amenityNetIncome
+  );
+
+  const byMonth: IPropertyReportMonthSummary[] = [...accumulator.monthMap.values()].map(
+    (month) => ({
+      ...month,
+      operationalNet: roundMoney(month.netIncome - month.expenses),
+    })
+  );
+
+  const channelSummary = [...accumulator.channelMap.values()].filter((entry) => entry.stayCount > 0);
+  const expenseByCategory: IPropertyReportExpenseCategory[] = [
+    ...accumulator.expenseCategoryMap.entries(),
+  ]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
-  const taxSummary = taxMapToSummary(taxMap);
+  const taxSummary = taxMapToSummary(accumulator.taxMap);
+  const totalExpenses = accumulator.propertyExpensesTotal;
 
-  const totalExpenses = propertyExpensesTotal;
-
-  const result: IPropertyReportSummary = {
+  return {
     byMonth,
     byUnit,
     channelSummary,
     expenseByCategory,
     filters: query,
     period: { from: query.from, to: query.to },
-    propertyExpensesTotal,
-    salesTypeBreakdown,
+    propertyExpensesTotal: accumulator.propertyExpensesTotal,
+    salesTypeBreakdown: accumulator.salesTypeBreakdown,
     taxSummary,
     totals: {
-      grossIncome,
-      netIncome,
-      operationalNet: roundMoney(netIncome - totalExpenses),
+      grossIncome: accumulator.grossIncome,
+      netIncome: accumulator.netIncome,
+      operationalNet: roundMoney(accumulator.netIncome - totalExpenses),
       totalExpenses,
     },
   };
-
-  return result;
 }
 
 function csvEscape(value: string | number): string {
@@ -501,72 +638,27 @@ export function rollupSummaries(
 ): IPropertyReportSummary {
   if (summaries.length === 0) return emptyPropertyReportSummary(query);
 
-  const salesTypeBreakdown = initSalesBreakdown();
-  const channelMap = new Map<TReservationChannel, IPropertyReportChannelSummary>();
-  const monthMap = new Map<string, IPropertyReportMonthSummary>();
-  const expenseCategoryMap = new Map<TExpenseCategory, number>();
-  const taxMap = new Map<string, IPropertyReportTaxSummaryItem>();
-  const byUnit: IPropertyReportUnitSummary[] = [];
-
-  let propertyExpensesTotal = 0;
-  let grossIncome = 0;
-  let netIncome = 0;
-  let totalExpenses = 0;
+  const rollup: IRollupAccumulator = {
+    byUnit: [],
+    channelMap: new Map<TReservationChannel, IPropertyReportChannelSummary>(),
+    expenseCategoryMap: new Map<TExpenseCategory, number>(),
+    grossIncome: 0,
+    monthMap: new Map<string, IPropertyReportMonthSummary>(),
+    netIncome: 0,
+    propertyExpensesTotal: 0,
+    salesTypeBreakdown: initSalesBreakdown(),
+    taxMap: new Map<string, IPropertyReportTaxSummaryItem>(),
+    totalExpenses: 0,
+  };
 
   for (const summary of summaries) {
-    grossIncome = roundMoney(grossIncome + summary.totals.grossIncome);
-    netIncome = roundMoney(netIncome + summary.totals.netIncome);
-    totalExpenses = roundMoney(totalExpenses + summary.totals.totalExpenses);
-    propertyExpensesTotal = roundMoney(propertyExpensesTotal + summary.propertyExpensesTotal);
-
-    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + summary.salesTypeBreakdown.room);
-    salesTypeBreakdown.cleaningFromStays = roundMoney(
-      salesTypeBreakdown.cleaningFromStays + summary.salesTypeBreakdown.cleaningFromStays
-    );
-    mergeOtherIncomeByType(
-      salesTypeBreakdown.otherIncomeByType,
-      summary.salesTypeBreakdown.otherIncomeByType
-    );
-
-    for (const row of summary.channelSummary) {
-      const existing = channelMap.get(row.channel);
-      if (existing) {
-        existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
-        existing.channelCommission = roundMoney(existing.channelCommission + row.channelCommission);
-        existing.stayCount += row.stayCount;
-      } else {
-        channelMap.set(row.channel, { ...row });
-      }
-    }
-
-    byUnit.push(...summary.byUnit);
-
-    for (const row of summary.byMonth) {
-      const existing = monthMap.get(row.month);
-      if (existing) {
-        existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
-        existing.netIncome = roundMoney(existing.netIncome + row.netIncome);
-        existing.expenses = roundMoney(existing.expenses + row.expenses);
-        existing.operationalNet = roundMoney(existing.operationalNet + row.operationalNet);
-      } else {
-        monthMap.set(row.month, { ...row });
-      }
-    }
-
-    for (const row of summary.expenseByCategory) {
-      expenseCategoryMap.set(
-        row.category,
-        roundMoney((expenseCategoryMap.get(row.category) ?? 0) + row.amount)
-      );
-    }
-
-    mergeTaxSummary(taxMap, summary.taxSummary);
+    mergeSummaryIntoRollup(summary, rollup);
   }
 
   const months = listMonthsInRange(query.from, query.to);
   const byMonth = months.map(
     (month) =>
-      monthMap.get(month) ?? {
+      rollup.monthMap.get(month) ?? {
         expenses: 0,
         grossIncome: 0,
         month,
@@ -575,28 +667,28 @@ export function rollupSummaries(
       }
   );
 
-  const channelSummary = [...channelMap.values()].sort((a, b) => b.grossIncome - a.grossIncome);
-  salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
-  const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
+  const channelSummary = [...rollup.channelMap.values()].sort((a, b) => b.grossIncome - a.grossIncome);
+  rollup.salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
+  const expenseByCategory: IPropertyReportExpenseCategory[] = [...rollup.expenseCategoryMap.entries()]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
-  const taxSummary = taxMapToSummary(taxMap);
+  const taxSummary = taxMapToSummary(rollup.taxMap);
 
   return {
     byMonth,
-    byUnit,
+    byUnit: rollup.byUnit,
     channelSummary,
     expenseByCategory,
     filters: query,
     period: { from: query.from, to: query.to },
-    propertyExpensesTotal,
-    salesTypeBreakdown,
+    propertyExpensesTotal: rollup.propertyExpensesTotal,
+    salesTypeBreakdown: rollup.salesTypeBreakdown,
     taxSummary,
     totals: {
-      grossIncome,
-      netIncome,
-      operationalNet: roundMoney(netIncome - totalExpenses),
-      totalExpenses,
+      grossIncome: rollup.grossIncome,
+      netIncome: rollup.netIncome,
+      operationalNet: roundMoney(rollup.netIncome - rollup.totalExpenses),
+      totalExpenses: rollup.totalExpenses,
     },
   };
 }

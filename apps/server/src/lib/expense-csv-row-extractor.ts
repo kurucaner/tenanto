@@ -207,6 +207,32 @@ function parseFlexibleDateToIso(raw: string | undefined): string | undefined {
   return undefined;
 }
 
+function finalizeCsvRecord(
+  records: string[][],
+  currentRecord: string[],
+  currentField: string
+): { currentField: string; currentRecord: string[] } {
+  const record = [...currentRecord, currentField];
+  if (record.some((field) => field.trim() !== "")) {
+    records.push(record);
+  }
+  return { currentField: "", currentRecord: [] };
+}
+
+function handleQuotedCsvChar(
+  char: string,
+  nextChar: string | undefined,
+  currentField: string
+): { currentField: string; indexOffset: number } | "close-quote" {
+  if (char === '"' && nextChar === '"') {
+    return { currentField: `${currentField}"`, indexOffset: 1 };
+  }
+  if (char === '"') {
+    return "close-quote";
+  }
+  return { currentField: `${currentField}${char}`, indexOffset: 0 };
+}
+
 export function parseCsvRecords(csvText: string): string[][] {
   const records: string[][] = [];
   let currentRecord: string[] = [];
@@ -214,20 +240,17 @@ export function parseCsvRecords(csvText: string): string[][] {
   let inQuotes = false;
 
   for (let index = 0; index < csvText.length; index += 1) {
-    const char = csvText[index];
+    const char = csvText[index] ?? "";
     const nextChar = csvText[index + 1];
 
     if (inQuotes) {
-      if (char === '"' && nextChar === '"') {
-        currentField += '"';
-        index += 1;
-        continue;
-      }
-      if (char === '"') {
+      const quoted = handleQuotedCsvChar(char, nextChar, currentField);
+      if (quoted === "close-quote") {
         inQuotes = false;
         continue;
       }
-      currentField += char;
+      currentField = quoted.currentField;
+      index += quoted.indexOffset;
       continue;
     }
 
@@ -235,23 +258,15 @@ export function parseCsvRecords(csvText: string): string[][] {
       inQuotes = true;
       continue;
     }
-
     if (char === ",") {
       currentRecord.push(currentField);
       currentField = "";
       continue;
     }
-
     if (char === "\n") {
-      currentRecord.push(currentField);
-      currentField = "";
-      if (currentRecord.some((field) => field.trim() !== "")) {
-        records.push(currentRecord);
-      }
-      currentRecord = [];
+      ({ currentField, currentRecord } = finalizeCsvRecord(records, currentRecord, currentField));
       continue;
     }
-
     if (char === "\r") {
       continue;
     }
@@ -259,10 +274,6 @@ export function parseCsvRecords(csvText: string): string[][] {
     currentField += char;
   }
 
-  currentRecord.push(currentField);
-  if (currentRecord.some((field) => field.trim() !== "")) {
-    records.push(currentRecord);
-  }
-
+  finalizeCsvRecord(records, currentRecord, currentField);
   return records;
 }

@@ -19,7 +19,13 @@ import {
 } from "@/packages/shared";
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
-import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
+import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import {
+  parseJsonObject,
+  parseMoney,
+  parseNullableTrimmedStringField,
+} from "./parse-body-utils";
+import { applyOptionalQueryDateFilter, applyOptionalQueryUuidFilter } from "./parse-list-query-filters";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
@@ -29,15 +35,6 @@ import { rejectIfDeleted } from "./reject-if-deleted";
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
 const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function parseDateString(raw: unknown): string | null {
-  if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
-  const date = Date.parse(`${raw.trim()}T00:00:00Z`);
-  if (!Number.isFinite(date)) return null;
-  return raw.trim();
-}
 
 function getTodayUtcIsoDate(): string {
   const date = new Date();
@@ -52,11 +49,6 @@ function parseReservationStatus(raw: unknown): TReservationStatus | null {
 function parseReservationChannel(raw: unknown): TReservationChannel | null {
   if (typeof raw !== "string") return null;
   return RESERVATION_CHANNELS.has(raw as TReservationChannel) ? (raw as TReservationChannel) : null;
-}
-
-function parseMoney(raw: unknown): number | null {
-  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
-  return raw;
 }
 
 function parseCreateReservationBody(
@@ -139,13 +131,141 @@ const UPDATE_FIELDS = [
   "cleaningFee",
 ] as const;
 
+type TUpdateReservationField = (typeof UPDATE_FIELDS)[number];
+
+type TUpdateReservationFieldParser = (
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+) => string | null;
+
+function parseUpdateGuestName(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  if (typeof r["guestName"] !== "string" || r["guestName"].trim() === "") {
+    return "guestName must be a non-empty string";
+  }
+  body.guestName = r["guestName"].trim();
+  return null;
+}
+
+function parseUpdateUnitId(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const unitId = parseUuidParam(r["unitId"]);
+  if (unitId === null) return "unitId must be a valid UUID";
+  body.unitId = unitId;
+  return null;
+}
+
+function parseUpdateCheckIn(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const checkIn = parseDateString(r["checkIn"]);
+  if (!checkIn) return "checkIn must be a YYYY-MM-DD date";
+  body.checkIn = checkIn;
+  return null;
+}
+
+function parseUpdateCheckOut(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const checkOut = parseDateString(r["checkOut"]);
+  if (!checkOut) return "checkOut must be a YYYY-MM-DD date";
+  body.checkOut = checkOut;
+  return null;
+}
+
+function parseUpdateStatus(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const status = parseReservationStatus(r["status"]);
+  if (status === null) {
+    return `status must be one of: ${[...RESERVATION_STATUSES].join(", ")}`;
+  }
+  body.status = status;
+  return null;
+}
+
+function parseUpdateChannel(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const channel = parseReservationChannel(r["channel"]);
+  if (channel === null) {
+    return `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`;
+  }
+  body.channel = channel;
+  return null;
+}
+
+function parseUpdateRoomTotal(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const roomTotal = parseMoney(r["roomTotal"]);
+  if (roomTotal === null) return "roomTotal must be a non-negative number";
+  body.roomTotal = roomTotal;
+  return null;
+}
+
+function parseUpdateCleaningFee(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const cleaningFee = parseMoney(r["cleaningFee"]);
+  if (cleaningFee === null) return "cleaningFee must be a non-negative number";
+  body.cleaningFee = cleaningFee;
+  return null;
+}
+
+function parseUpdateReservationNumber(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody
+): string | null {
+  const reservationNumber = parseNullableTrimmedStringField(
+    r["reservationNumber"],
+    "reservationNumber"
+  );
+  if (!reservationNumber.ok) return reservationNumber.error;
+  body.reservationNumber = reservationNumber.value;
+  return null;
+}
+
+const UPDATE_RESERVATION_FIELD_PARSERS: Record<TUpdateReservationField, TUpdateReservationFieldParser> =
+  {
+    channel: parseUpdateChannel,
+    checkIn: parseUpdateCheckIn,
+    checkOut: parseUpdateCheckOut,
+    cleaningFee: parseUpdateCleaningFee,
+    guestName: parseUpdateGuestName,
+    reservationNumber: parseUpdateReservationNumber,
+    roomTotal: parseUpdateRoomTotal,
+    status: parseUpdateStatus,
+    unitId: parseUpdateUnitId,
+  };
+
+function applyUpdateReservationField(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyReservationBody,
+  field: TUpdateReservationField
+): string | null {
+  if (!(field in r)) return null;
+  return UPDATE_RESERVATION_FIELD_PARSERS[field](r, body);
+}
+
 function parseUpdateReservationBody(
   raw: unknown
 ): { body: IUpdatePropertyReservationBody; ok: true } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+  const r = parseJsonObject(raw);
+  if (!r) {
     return { error: "Body must be a JSON object", ok: false };
   }
-  const r = raw as Record<string, unknown>;
+
   const unknownKeys = Object.keys(r).filter(
     (key) => !UPDATE_FIELDS.includes(key as (typeof UPDATE_FIELDS)[number])
   );
@@ -154,67 +274,10 @@ function parseUpdateReservationBody(
   }
 
   const body: IUpdatePropertyReservationBody = {};
-
-  if ("guestName" in r) {
-    if (typeof r["guestName"] !== "string" || r["guestName"].trim() === "") {
-      return { error: "guestName must be a non-empty string", ok: false };
-    }
-    body.guestName = r["guestName"].trim();
-  }
-  if ("unitId" in r) {
-    const unitId = parseUuidParam(r["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-    body.unitId = unitId;
-  }
-  if ("checkIn" in r) {
-    const checkIn = parseDateString(r["checkIn"]);
-    if (!checkIn) return { error: "checkIn must be a YYYY-MM-DD date", ok: false };
-    body.checkIn = checkIn;
-  }
-  if ("checkOut" in r) {
-    const checkOut = parseDateString(r["checkOut"]);
-    if (!checkOut) return { error: "checkOut must be a YYYY-MM-DD date", ok: false };
-    body.checkOut = checkOut;
-  }
-  if ("status" in r) {
-    const status = parseReservationStatus(r["status"]);
-    if (status === null) {
-      return {
-        error: `status must be one of: ${[...RESERVATION_STATUSES].join(", ")}`,
-        ok: false,
-      };
-    }
-    body.status = status;
-  }
-  if ("channel" in r) {
-    const channel = parseReservationChannel(r["channel"]);
-    if (channel === null) {
-      return {
-        error: `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`,
-        ok: false,
-      };
-    }
-    body.channel = channel;
-  }
-  if ("roomTotal" in r) {
-    const roomTotal = parseMoney(r["roomTotal"]);
-    if (roomTotal === null) return { error: "roomTotal must be a non-negative number", ok: false };
-    body.roomTotal = roomTotal;
-  }
-  if ("cleaningFee" in r) {
-    const cleaningFee = parseMoney(r["cleaningFee"]);
-    if (cleaningFee === null) {
-      return { error: "cleaningFee must be a non-negative number", ok: false };
-    }
-    body.cleaningFee = cleaningFee;
-  }
-  if ("reservationNumber" in r) {
-    if (r["reservationNumber"] === null) {
-      body.reservationNumber = null;
-    } else if (typeof r["reservationNumber"] === "string") {
-      body.reservationNumber = r["reservationNumber"].trim();
-    } else {
-      return { error: "reservationNumber must be a string or null", ok: false };
+  for (const field of UPDATE_FIELDS) {
+    const fieldError = applyUpdateReservationField(r, body, field);
+    if (fieldError) {
+      return { error: fieldError, ok: false };
     }
   }
 
@@ -225,26 +288,75 @@ function parseUpdateReservationBody(
   return { body, ok: true };
 }
 
+function parseReservationRentalTypeFilter(
+  query: Record<string, unknown>,
+  filters: IPropertyReservationsListQuery
+): { error: string; ok: false } | { ok: true } {
+  if (query["rentalType"] === undefined || query["rentalType"] === "") {
+    return { ok: true };
+  }
+  if (typeof query["rentalType"] !== "string") {
+    return { error: "rentalType must be a string", ok: false };
+  }
+  if (!UNIT_RENTAL_TYPES.has(query["rentalType"] as TUnitRentalType)) {
+    return {
+      error: `rentalType must be one of: ${[...UNIT_RENTAL_TYPES].join(", ")}`,
+      ok: false,
+    };
+  }
+  filters.rentalType = query["rentalType"] as TUnitRentalType;
+  return { ok: true };
+}
+
+function parseReservationLimitFilter(
+  query: Record<string, unknown>,
+  filters: IPropertyReservationsListQuery
+): { error: string; ok: false } | { ok: true } {
+  if (query["limit"] === undefined || query["limit"] === "") {
+    return { ok: true };
+  }
+  const rawLimit = Number(query["limit"]);
+  if (!Number.isInteger(rawLimit) || rawLimit < 1 || rawLimit > 100) {
+    return { error: "limit must be an integer between 1 and 100", ok: false };
+  }
+  filters.limit = rawLimit;
+  return { ok: true };
+}
+
 function parseReservationsListQuery(
   query: Record<string, unknown>
 ): { filters: IPropertyReservationsListQuery; ok: true } | { error: string; ok: false } {
   const filters: IPropertyReservationsListQuery = {};
 
-  if (query["from"] !== undefined && query["from"] !== "") {
-    const from = parseDateString(query["from"]);
-    if (!from) return { error: "from must be a YYYY-MM-DD date", ok: false };
-    filters.from = from;
+  const filterSteps = [
+    () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
+    () => applyOptionalQueryDateFilter(query, "to", filters, "to must be a YYYY-MM-DD date"),
+    () =>
+      applyOptionalQueryDateFilter(
+        query,
+        "checkOutFrom",
+        filters,
+        "checkOutFrom must be a YYYY-MM-DD date"
+      ),
+    () =>
+      applyOptionalQueryDateFilter(query, "checkInTo", filters, "checkInTo must be a YYYY-MM-DD date"),
+    () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
+    () =>
+      applyOptionalQueryUuidFilter(
+        query,
+        "includeReservationId",
+        filters,
+        "includeReservationId must be a valid UUID"
+      ),
+    () => parseReservationRentalTypeFilter(query, filters),
+    () => parseReservationLimitFilter(query, filters),
+  ];
+
+  for (const applyFilter of filterSteps) {
+    const result = applyFilter();
+    if (!result.ok) return result;
   }
-  if (query["to"] !== undefined && query["to"] !== "") {
-    const to = parseDateString(query["to"]);
-    if (!to) return { error: "to must be a YYYY-MM-DD date", ok: false };
-    filters.to = to;
-  }
-  if (query["unitId"] !== undefined && query["unitId"] !== "") {
-    const unitId = parseOptionalUuid(query["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-    if (unitId) filters.unitId = unitId;
-  }
+
   if (query["channel"] !== undefined && query["channel"] !== "") {
     const channel = parseReservationChannel(query["channel"]);
     if (channel === null) {
@@ -255,6 +367,7 @@ function parseReservationsListQuery(
     }
     filters.channel = channel;
   }
+
   if (query["status"] !== undefined && query["status"] !== "") {
     const status = parseReservationStatus(query["status"]);
     if (status === null) {
@@ -264,44 +377,6 @@ function parseReservationsListQuery(
       };
     }
     filters.status = status;
-  }
-  if (query["rentalType"] !== undefined && query["rentalType"] !== "") {
-    if (typeof query["rentalType"] !== "string") {
-      return { error: "rentalType must be a string", ok: false };
-    }
-    if (!UNIT_RENTAL_TYPES.has(query["rentalType"] as TUnitRentalType)) {
-      return {
-        error: `rentalType must be one of: ${[...UNIT_RENTAL_TYPES].join(", ")}`,
-        ok: false,
-      };
-    }
-    filters.rentalType = query["rentalType"] as TUnitRentalType;
-  }
-  if (query["checkOutFrom"] !== undefined && query["checkOutFrom"] !== "") {
-    const checkOutFrom = parseDateString(query["checkOutFrom"]);
-    if (!checkOutFrom) {
-      return { error: "checkOutFrom must be a YYYY-MM-DD date", ok: false };
-    }
-    filters.checkOutFrom = checkOutFrom;
-  }
-  if (query["checkInTo"] !== undefined && query["checkInTo"] !== "") {
-    const checkInTo = parseDateString(query["checkInTo"]);
-    if (!checkInTo) return { error: "checkInTo must be a YYYY-MM-DD date", ok: false };
-    filters.checkInTo = checkInTo;
-  }
-  if (query["includeReservationId"] !== undefined && query["includeReservationId"] !== "") {
-    const includeReservationId = parseOptionalUuid(query["includeReservationId"]);
-    if (includeReservationId === null) {
-      return { error: "includeReservationId must be a valid UUID", ok: false };
-    }
-    if (includeReservationId) filters.includeReservationId = includeReservationId;
-  }
-  if (query["limit"] !== undefined && query["limit"] !== "") {
-    const rawLimit = Number(query["limit"]);
-    if (!Number.isInteger(rawLimit) || rawLimit < 1 || rawLimit > 100) {
-      return { error: "limit must be an integer between 1 and 100", ok: false };
-    }
-    filters.limit = rawLimit;
   }
 
   return { filters, ok: true };

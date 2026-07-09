@@ -59,7 +59,7 @@ export const EndLeaseDialog = memo(
             );
             if (error) {
               ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+                code: "custom",
                 message: error,
                 path: ["actualEndDate"],
               });

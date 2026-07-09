@@ -15,21 +15,21 @@ import {
 } from "@/packages/shared";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
-import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
+import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import {
+  parseJsonObject,
+  parseMoney,
+  parseNullableTrimmedStringField,
+  parseNullableUuidField,
+  parseOptionalTrimmedStringField,
+  parseOptionalUuidField,
+} from "./parse-body-utils";
+import { applyOptionalQueryDateFilter, applyOptionalQueryUuidFilter } from "./parse-list-query-filters";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
 } from "./property-route-access";
 import { rejectIfDeleted } from "./reject-if-deleted";
-
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-function parseDateString(raw: unknown): string | null {
-  if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
-  const date = Date.parse(`${raw.trim()}T00:00:00Z`);
-  if (!Number.isFinite(date)) return null;
-  return raw.trim();
-}
 
 function getTodayUtcIsoDate(): string {
   const date = new Date();
@@ -41,30 +41,22 @@ function parseIncomeLineTypeId(raw: unknown): string | null {
   return parseUuidParam(raw);
 }
 
-function parseMoney(raw: unknown): number | null {
-  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
-  return raw;
-}
-
 function parseCreateIncomeLineBody(
   raw: unknown
 ): { body: ICreatePropertyIncomeLineBody; ok: true } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+  const r = parseJsonObject(raw);
+  if (!r) {
     return { error: "Body must be a JSON object", ok: false };
   }
-  const r = raw as Record<string, unknown>;
 
   const incomeLineTypeId = parseIncomeLineTypeId(r["incomeLineTypeId"]);
   if (incomeLineTypeId === null) {
     return { error: "incomeLineTypeId must be a valid UUID", ok: false };
   }
 
-  // A missing/empty/null unitId means "Property Amenity" — income not tied to a unit.
-  let unitId: string | null = null;
-  if (r["unitId"] !== undefined && r["unitId"] !== null && r["unitId"] !== "") {
-    unitId = parseUuidParam(r["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-  }
+  const unitIdResult = parseOptionalUuidField(r["unitId"], "unitId");
+  if (!unitIdResult.ok) return unitIdResult;
+  const unitId = unitIdResult.value ?? null;
 
   const transactionDate = parseDateString(r["transactionDate"]);
   if (!transactionDate) {
@@ -74,52 +66,28 @@ function parseCreateIncomeLineBody(
   const amount = parseMoney(r["amount"]);
   if (amount === null) return { error: "amount must be a non-negative number", ok: false };
 
-  let reservationId: string | undefined;
-  if (
-    r["reservationId"] !== undefined &&
-    r["reservationId"] !== null &&
-    r["reservationId"] !== ""
-  ) {
-    const parsed = parseUuidParam(r["reservationId"]);
-    if (parsed === null) return { error: "reservationId must be a valid UUID", ok: false };
-    reservationId = parsed;
-  }
+  const reservationResult = parseOptionalUuidField(r["reservationId"], "reservationId");
+  if (!reservationResult.ok) return reservationResult;
+  const longStayResult = parseOptionalUuidField(r["longStayId"], "longStayId");
+  if (!longStayResult.ok) return longStayResult;
 
-  let longStayId: string | undefined;
-  if (r["longStayId"] !== undefined && r["longStayId"] !== null && r["longStayId"] !== "") {
-    const parsed = parseUuidParam(r["longStayId"]);
-    if (parsed === null) return { error: "longStayId must be a valid UUID", ok: false };
-    longStayId = parsed;
-  }
-
-  if (reservationId && longStayId) {
+  if (reservationResult.value && longStayResult.value) {
     return { error: "Cannot link an income line to both a reservation and a long stay", ok: false };
   }
 
-  let description: string | undefined;
-  if (r["description"] !== undefined && r["description"] !== null) {
-    if (typeof r["description"] !== "string") {
-      return { error: "description must be a string", ok: false };
-    }
-    description = r["description"].trim();
-  }
-
-  let guestName: string | undefined;
-  if (r["guestName"] !== undefined && r["guestName"] !== null) {
-    if (typeof r["guestName"] !== "string") {
-      return { error: "guestName must be a string", ok: false };
-    }
-    guestName = r["guestName"].trim();
-  }
+  const descriptionResult = parseOptionalTrimmedStringField(r["description"], "description");
+  if (!descriptionResult.ok) return descriptionResult;
+  const guestNameResult = parseOptionalTrimmedStringField(r["guestName"], "guestName");
+  if (!guestNameResult.ok) return guestNameResult;
 
   return {
     body: {
       amount,
-      description,
-      guestName,
+      description: descriptionResult.value,
+      guestName: guestNameResult.value,
       incomeLineTypeId,
-      longStayId,
-      reservationId,
+      longStayId: longStayResult.value,
+      reservationId: reservationResult.value,
       transactionDate,
       unitId,
     },
@@ -138,13 +106,75 @@ const UPDATE_FIELDS = [
   "guestName",
 ] as const;
 
+function applyUpdateIncomeLineField(
+  r: Record<string, unknown>,
+  body: IUpdatePropertyIncomeLineBody,
+  field: (typeof UPDATE_FIELDS)[number]
+): string | null {
+  if (!(field in r)) return null;
+
+  switch (field) {
+    case "incomeLineTypeId": {
+      const incomeLineTypeId = parseIncomeLineTypeId(r["incomeLineTypeId"]);
+      if (incomeLineTypeId === null) return "incomeLineTypeId must be a valid UUID";
+      body.incomeLineTypeId = incomeLineTypeId;
+      return null;
+    }
+    case "unitId": {
+      const unitId = parseNullableUuidField(r["unitId"], "unitId");
+      if (!unitId.ok) return unitId.error;
+      body.unitId = unitId.value;
+      return null;
+    }
+    case "transactionDate": {
+      const transactionDate = parseDateString(r["transactionDate"]);
+      if (!transactionDate) return "transactionDate must be a YYYY-MM-DD date";
+      body.transactionDate = transactionDate;
+      return null;
+    }
+    case "amount": {
+      const amount = parseMoney(r["amount"]);
+      if (amount === null) return "amount must be a non-negative number";
+      body.amount = amount;
+      return null;
+    }
+    case "reservationId": {
+      const reservationId = parseNullableUuidField(r["reservationId"], "reservationId");
+      if (!reservationId.ok) return reservationId.error;
+      body.reservationId = reservationId.value;
+      return null;
+    }
+    case "longStayId": {
+      const longStayId = parseNullableUuidField(r["longStayId"], "longStayId");
+      if (!longStayId.ok) return longStayId.error;
+      body.longStayId = longStayId.value;
+      return null;
+    }
+    case "description": {
+      const description = parseNullableTrimmedStringField(r["description"], "description");
+      if (!description.ok) return description.error;
+      body.description = description.value;
+      return null;
+    }
+    case "guestName": {
+      const guestName = parseNullableTrimmedStringField(r["guestName"], "guestName");
+      if (!guestName.ok) return guestName.error;
+      body.guestName = guestName.value;
+      return null;
+    }
+    default:
+      return null;
+  }
+}
+
 function parseUpdateIncomeLineBody(
   raw: unknown
 ): { body: IUpdatePropertyIncomeLineBody; ok: true } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+  const r = parseJsonObject(raw);
+  if (!r) {
     return { error: "Body must be a JSON object", ok: false };
   }
-  const r = raw as Record<string, unknown>;
+
   const unknownKeys = Object.keys(r).filter(
     (key) => !UPDATE_FIELDS.includes(key as (typeof UPDATE_FIELDS)[number])
   );
@@ -153,73 +183,10 @@ function parseUpdateIncomeLineBody(
   }
 
   const body: IUpdatePropertyIncomeLineBody = {};
-
-  if ("incomeLineTypeId" in r) {
-    const incomeLineTypeId = parseIncomeLineTypeId(r["incomeLineTypeId"]);
-    if (incomeLineTypeId === null) {
-      return { error: "incomeLineTypeId must be a valid UUID", ok: false };
-    }
-    body.incomeLineTypeId = incomeLineTypeId;
-  }
-  if ("unitId" in r) {
-    if (r["unitId"] === null || r["unitId"] === "") {
-      body.unitId = null;
-    } else {
-      const unitId = parseUuidParam(r["unitId"]);
-      if (unitId === null) return { error: "unitId must be a valid UUID or null", ok: false };
-      body.unitId = unitId;
-    }
-  }
-  if ("transactionDate" in r) {
-    const transactionDate = parseDateString(r["transactionDate"]);
-    if (!transactionDate) {
-      return { error: "transactionDate must be a YYYY-MM-DD date", ok: false };
-    }
-    body.transactionDate = transactionDate;
-  }
-  if ("amount" in r) {
-    const amount = parseMoney(r["amount"]);
-    if (amount === null) return { error: "amount must be a non-negative number", ok: false };
-    body.amount = amount;
-  }
-  if ("reservationId" in r) {
-    if (r["reservationId"] === null) {
-      body.reservationId = null;
-    } else {
-      const reservationId = parseUuidParam(r["reservationId"]);
-      if (reservationId === null) {
-        return { error: "reservationId must be a valid UUID or null", ok: false };
-      }
-      body.reservationId = reservationId;
-    }
-  }
-  if ("longStayId" in r) {
-    if (r["longStayId"] === null) {
-      body.longStayId = null;
-    } else {
-      const longStayId = parseUuidParam(r["longStayId"]);
-      if (longStayId === null) {
-        return { error: "longStayId must be a valid UUID or null", ok: false };
-      }
-      body.longStayId = longStayId;
-    }
-  }
-  if ("description" in r) {
-    if (r["description"] === null) {
-      body.description = null;
-    } else if (typeof r["description"] === "string") {
-      body.description = r["description"].trim();
-    } else {
-      return { error: "description must be a string or null", ok: false };
-    }
-  }
-  if ("guestName" in r) {
-    if (r["guestName"] === null) {
-      body.guestName = null;
-    } else if (typeof r["guestName"] === "string") {
-      body.guestName = r["guestName"].trim();
-    } else {
-      return { error: "guestName must be a string or null", ok: false };
+  for (const field of UPDATE_FIELDS) {
+    const fieldError = applyUpdateIncomeLineField(r, body, field);
+    if (fieldError) {
+      return { error: fieldError, ok: false };
     }
   }
 
@@ -235,37 +202,32 @@ function parseIncomeLinesListQuery(
 ): { filters: IPropertyIncomeLinesListQuery; ok: true } | { error: string; ok: false } {
   const filters: IPropertyIncomeLinesListQuery = {};
 
-  if (query["from"] !== undefined && query["from"] !== "") {
-    const from = parseDateString(query["from"]);
-    if (!from) return { error: "from must be a YYYY-MM-DD date", ok: false };
-    filters.from = from;
+  const filterSteps = [
+    () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
+    () => applyOptionalQueryDateFilter(query, "to", filters, "to must be a YYYY-MM-DD date"),
+    () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
+    () =>
+      applyOptionalQueryUuidFilter(
+        query,
+        "reservationId",
+        filters,
+        "reservationId must be a valid UUID"
+      ),
+    () =>
+      applyOptionalQueryUuidFilter(query, "longStayId", filters, "longStayId must be a valid UUID"),
+  ];
+
+  for (const applyFilter of filterSteps) {
+    const result = applyFilter();
+    if (!result.ok) return result;
   }
-  if (query["to"] !== undefined && query["to"] !== "") {
-    const to = parseDateString(query["to"]);
-    if (!to) return { error: "to must be a YYYY-MM-DD date", ok: false };
-    filters.to = to;
-  }
-  if (query["unitId"] !== undefined && query["unitId"] !== "") {
-    const unitId = parseOptionalUuid(query["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-    if (unitId) filters.unitId = unitId;
-  }
+
   if (query["incomeLineTypeId"] !== undefined && query["incomeLineTypeId"] !== "") {
     const incomeLineTypeId = parseIncomeLineTypeId(query["incomeLineTypeId"]);
     if (incomeLineTypeId === null) {
       return { error: "incomeLineTypeId must be a valid UUID", ok: false };
     }
     filters.incomeLineTypeId = incomeLineTypeId;
-  }
-  if (query["reservationId"] !== undefined && query["reservationId"] !== "") {
-    const reservationId = parseOptionalUuid(query["reservationId"]);
-    if (reservationId === null) return { error: "reservationId must be a valid UUID", ok: false };
-    if (reservationId) filters.reservationId = reservationId;
-  }
-  if (query["longStayId"] !== undefined && query["longStayId"] !== "") {
-    const longStayId = parseOptionalUuid(query["longStayId"]);
-    if (longStayId === null) return { error: "longStayId must be a valid UUID", ok: false };
-    if (longStayId) filters.longStayId = longStayId;
   }
 
   return { filters, ok: true };
@@ -373,6 +335,36 @@ function mergeIncomeLineInput(existing: IPropertyIncomeLine, patch: IUpdatePrope
   };
 }
 
+async function resolveIncomeLineGuestName(
+  reservationId: string | null,
+  longStayId: string | null,
+  propertyId: string,
+  unitId: string | null,
+  guestName: string | null,
+  reply: FastifyReply
+): Promise<string | null | undefined> {
+  let resolvedGuestName = guestName;
+
+  if (reservationId) {
+    const reservation = await resolveReservationForProperty(
+      reservationId,
+      propertyId,
+      unitId,
+      reply
+    );
+    if (!reservation) return undefined;
+    if (!resolvedGuestName) resolvedGuestName = reservation.guestName;
+  }
+
+  if (longStayId) {
+    const longStay = await resolveLongStayForProperty(longStayId, propertyId, unitId, reply);
+    if (!longStay) return undefined;
+    if (!resolvedGuestName) resolvedGuestName = longStay.guestName;
+  }
+
+  return resolvedGuestName;
+}
+
 export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
@@ -463,24 +455,15 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       let reservationId: string | null = parsed.body.reservationId ?? null;
       let longStayId: string | null = parsed.body.longStayId ?? null;
-      let guestName: string | null = parsed.body.guestName?.trim() || null;
-
-      if (reservationId) {
-        const reservation = await resolveReservationForProperty(
-          reservationId,
-          propertyId,
-          unitId,
-          reply
-        );
-        if (!reservation) return;
-        if (!guestName) guestName = reservation.guestName;
-      }
-
-      if (longStayId) {
-        const longStay = await resolveLongStayForProperty(longStayId, propertyId, unitId, reply);
-        if (!longStay) return;
-        if (!guestName) guestName = longStay.guestName;
-      }
+      const guestName = await resolveIncomeLineGuestName(
+        reservationId,
+        longStayId,
+        propertyId,
+        unitId,
+        parsed.body.guestName?.trim() || null,
+        reply
+      );
+      if (guestName === undefined) return;
 
       const computed = calculateMiscIncomeLine(parsed.body.amount);
       const incomeLine = await propertyIncomeLinesDb.create(
@@ -558,33 +541,22 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         if (!unit) return;
       }
 
-      if (merged.reservationId) {
-        const reservation = await resolveReservationForProperty(
-          merged.reservationId,
-          propertyId,
-          merged.unitId,
-          reply
-        );
-        if (!reservation) return;
-        if (!merged.guestName) merged.guestName = reservation.guestName;
-      }
-
-      if (merged.longStayId) {
-        const longStay = await resolveLongStayForProperty(
-          merged.longStayId,
-          propertyId,
-          merged.unitId,
-          reply
-        );
-        if (!longStay) return;
-        if (!merged.guestName) merged.guestName = longStay.guestName;
-      }
-
       if (merged.reservationId && merged.longStayId) {
         return reply
           .status(HttpStatus.BAD_REQUEST)
           .send({ error: "Cannot link an income line to both a reservation and a long stay" });
       }
+
+      const resolvedGuestName = await resolveIncomeLineGuestName(
+        merged.reservationId,
+        merged.longStayId,
+        propertyId,
+        merged.unitId,
+        merged.guestName,
+        reply
+      );
+      if (resolvedGuestName === undefined) return;
+      merged.guestName = resolvedGuestName;
 
       const computed = calculateMiscIncomeLine(merged.amount);
       const incomeLine = await propertyIncomeLinesDb.update(lineId, parsed.body, computed);

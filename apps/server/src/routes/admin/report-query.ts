@@ -6,18 +6,10 @@ import {
   type TReservationChannel,
 } from "@/packages/shared";
 
-import { parseOptionalUuid } from "./admin-query-utils";
+import { parseDateString, parseOptionalQueryUuid } from "./admin-query-utils";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const REPORT_RENTAL_TYPES = new Set<TReportRentalTypeFilter>(Object.values(ReportRentalTypeFilter));
 const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
-
-function parseDateString(raw: unknown): string | null {
-  if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
-  const date = Date.parse(`${raw.trim()}T00:00:00Z`);
-  if (!Number.isFinite(date)) return null;
-  return raw.trim();
-}
 
 function parseReservationChannel(raw: unknown): TReservationChannel | null {
   if (typeof raw !== "string") return null;
@@ -31,6 +23,36 @@ function parseReportRentalType(raw: unknown): TReportRentalTypeFilter | null {
     : null;
 }
 
+function parseOptionalReportChannel(
+  query: Record<string, unknown>
+): { error: string; ok: false } | { ok: true; value?: TReservationChannel } {
+  const raw = query["channel"];
+  if (raw === undefined || raw === "") return { ok: true };
+  const channel = parseReservationChannel(raw);
+  if (channel === null) {
+    return {
+      error: `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`,
+      ok: false,
+    };
+  }
+  return { ok: true, value: channel };
+}
+
+function parseOptionalReportRentalType(
+  query: Record<string, unknown>
+): { error: string; ok: false } | { ok: true; value?: TReportRentalTypeFilter } {
+  const raw = query["rentalType"];
+  if (raw === undefined || raw === "") return { ok: true };
+  const rentalType = parseReportRentalType(raw);
+  if (rentalType === null) {
+    return {
+      error: `rentalType must be one of: ${[...REPORT_RENTAL_TYPES].join(", ")}`,
+      ok: false,
+    };
+  }
+  return { ok: true, value: rentalType };
+}
+
 export function parseReportsQuery(
   query: Record<string, unknown>
 ): { ok: true; query: IPropertyReportsQuery } | { error: string; ok: false } {
@@ -42,33 +64,17 @@ export function parseReportsQuery(
 
   const filters: IPropertyReportsQuery = { from, to };
 
-  if (query["unitId"] !== undefined && query["unitId"] !== "") {
-    const unitId = parseOptionalUuid(query["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-    if (unitId) filters.unitId = unitId;
-  }
+  const unitIdResult = parseOptionalQueryUuid(query, "unitId", "unitId must be a valid UUID");
+  if (!unitIdResult.ok) return unitIdResult;
+  if (unitIdResult.value) filters.unitId = unitIdResult.value;
 
-  if (query["channel"] !== undefined && query["channel"] !== "") {
-    const channel = parseReservationChannel(query["channel"]);
-    if (channel === null) {
-      return {
-        error: `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`,
-        ok: false,
-      };
-    }
-    filters.channel = channel;
-  }
+  const channelResult = parseOptionalReportChannel(query);
+  if (!channelResult.ok) return channelResult;
+  if (channelResult.value) filters.channel = channelResult.value;
 
-  if (query["rentalType"] !== undefined && query["rentalType"] !== "") {
-    const rentalType = parseReportRentalType(query["rentalType"]);
-    if (rentalType === null) {
-      return {
-        error: `rentalType must be one of: ${[...REPORT_RENTAL_TYPES].join(", ")}`,
-        ok: false,
-      };
-    }
-    filters.rentalType = rentalType;
-  }
+  const rentalTypeResult = parseOptionalReportRentalType(query);
+  if (!rentalTypeResult.ok) return rentalTypeResult;
+  if (rentalTypeResult.value) filters.rentalType = rentalTypeResult.value;
 
   return { ok: true, query: filters };
 }
