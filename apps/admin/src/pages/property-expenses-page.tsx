@@ -34,7 +34,6 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
-import { isExpenseCsvImportEnabled } from "@/lib/is-expense-csv-import-enabled";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -189,18 +188,16 @@ export const PropertyExpensesPage = memo(() => {
     () =>
       canManage ? (
         <div className="flex items-center gap-2">
-          {isExpenseCsvImportEnabled() ? (
-            <Button
-              className="gap-1.5"
-              onClick={handleOpenImportCsv}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <Sparkles className="size-3.5" />
-              Import CSV
-            </Button>
-          ) : null}
+          <Button
+            className="gap-1.5"
+            onClick={handleOpenImportCsv}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Sparkles className="size-3.5" />
+            Import CSV
+          </Button>
           <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
             <Plus className="size-3.5" />
             Add Expense

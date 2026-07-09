@@ -19,7 +19,6 @@ declare global {
       DB_USER: string;
       /** Discord webhook URL for support requests. Create via Server Settings > Integrations > Webhooks */
       DISCORD_SUPPORT_WEBHOOK_URL: string;
-      EXPENSE_CSV_IMPORT_ENABLED?: string;
       /** Google Credentials */
       GOOGLE_ANDROID_CLIENT_ID: string;
       GOOGLE_IOS_CLIENT_ID: string;
@@ -31,7 +30,7 @@ declare global {
       MINIO_REGION: string;
       MINIO_SECRET_KEY: string;
       NODE_ENV: string;
-      /** OpenAI API key for dev-only expense CSV import */
+      /** OpenAI API key for expense CSV import */
       OPENAI_API_KEY?: string;
       PORT: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */

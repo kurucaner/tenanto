@@ -4,7 +4,7 @@ import OpenAI from "openai";
 
 import { propertyExpenseCategoriesDb } from "@/db/property-expense-categories";
 import { propertyExpensesDb } from "@/db/property-expenses";
-import { getOpenAiApiKey, isExpenseCsvImportEnabled } from "@/lib/expense-csv-import-gate";
+import { getOpenAiApiKey } from "@/lib/expense-csv-import-gate";
 import { extractExpenseRowsFromCsv } from "@/lib/expense-csv-row-extractor";
 import {
   parseCreateExpenseBody,
@@ -37,14 +37,6 @@ import {
 
 interface IPropertyParams {
   propertyId: string;
-}
-
-function rejectIfImportDisabled(reply: FastifyReply): boolean {
-  if (!isExpenseCsvImportEnabled()) {
-    void reply.status(HttpStatus.NOT_FOUND).send({ error: "Not found" });
-    return true;
-  }
-  return false;
 }
 
 function isBinaryContent(buffer: Buffer): boolean {
@@ -309,8 +301,6 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
       preHandler: authPre,
     },
     async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
-      if (rejectIfImportDisabled(reply)) return;
-
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -395,8 +385,6 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
       request: FastifyRequest<{ Body: IExpenseImportCommitBody; Params: IPropertyParams }>,
       reply: FastifyReply
     ) => {
-      if (rejectIfImportDisabled(reply)) return;
-
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
