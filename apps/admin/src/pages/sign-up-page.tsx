@@ -10,32 +10,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
-import { loginSchema, type TLoginFormValues } from "@/lib/auth-form-schemas";
-import { useAuthStore } from "@/stores/auth-store";
+import { signUpSchema, type TSignUpFormValues } from "@/lib/auth-form-schemas";
 
-const LoginPageInner = memo(() => {
-  const setSession = useAuthStore((s) => s.setSession);
+export const SignUpPage = memo(() => {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
-  const form = useForm<TLoginFormValues>({
-    defaultValues: { email: "", password: "" },
-    resolver: zodResolver(loginSchema),
+  const form = useForm<TSignUpFormValues>({
+    defaultValues: { email: "", name: "", password: "" },
+    resolver: zodResolver(signUpSchema),
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitting(true);
     try {
-      const res = await authApi.loginEmail(values.email.trim(), values.password);
-      setSession({
-        accessToken: res.accessToken,
-        refreshToken: res.refreshToken,
-        user: res.user,
+      await authApi.register({
+        email: values.email,
+        name: values.name,
+        password: values.password,
       });
-      toast.success("Signed in");
-      navigate("/home", { replace: true });
+      toast.success("Check your email for a verification code");
+      navigate("/signup/verify", {
+        replace: true,
+        state: {
+          email: values.email.trim(),
+          name: values.name.trim(),
+          password: values.password,
+        },
+      });
     } catch (error) {
-      toast.error(getAuthApiErrorMessage(error, "Sign-in failed"));
+      toast.error(getAuthApiErrorMessage(error, "Sign-up failed"));
     } finally {
       setSubmitting(false);
     }
@@ -43,17 +47,24 @@ const LoginPageInner = memo(() => {
 
   return (
     <AuthPageShell
-      cardDescription="Use your email and password."
-      cardTitle="Sign in"
+      cardDescription="Create your workspace account with email and password."
+      cardTitle="Create account"
       onSubmit={onSubmit}
-      subtitle="Sign in to your workspace."
+      subtitle="Create your workspace account."
     >
       <AuthCardBody>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="admin-email">Email</Label>
+          <Label htmlFor="signup-name">Name</Label>
+          <Input autoComplete="name" id="signup-name" {...form.register("name")} />
+          {form.formState.errors.name ? (
+            <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="signup-email">Email</Label>
           <Input
             autoComplete="email"
-            id="admin-email"
+            id="signup-email"
             inputMode="email"
             type="email"
             {...form.register("email")}
@@ -63,15 +74,10 @@ const LoginPageInner = memo(() => {
           ) : null}
         </div>
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="admin-password">Password</Label>
-            <Link className="text-primary text-xs font-medium hover:underline" to="/forgot-password">
-              Forgot password?
-            </Link>
-          </div>
+          <Label htmlFor="signup-password">Password</Label>
           <Input
-            autoComplete="current-password"
-            id="admin-password"
+            autoComplete="new-password"
+            id="signup-password"
             type="password"
             {...form.register("password")}
           />
@@ -82,18 +88,16 @@ const LoginPageInner = memo(() => {
       </AuthCardBody>
       <AuthCardFooter>
         <Button className="w-full" disabled={submitting} type="submit">
-          {submitting ? "Signing in…" : "Sign in"}
+          {submitting ? "Sending code…" : "Continue"}
         </Button>
         <p className="text-muted-foreground text-center text-sm">
-          Need an account?{" "}
-          <Link className="text-primary font-medium hover:underline" to="/signup">
-            Create an account
+          Already have an account?{" "}
+          <Link className="text-primary font-medium hover:underline" to="/login">
+            Sign in
           </Link>
         </p>
       </AuthCardFooter>
     </AuthPageShell>
   );
 });
-LoginPageInner.displayName = "LoginPageInner";
-
-export const LoginPage = LoginPageInner;
+SignUpPage.displayName = "SignUpPage";

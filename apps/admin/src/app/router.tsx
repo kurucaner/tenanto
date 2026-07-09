@@ -9,6 +9,7 @@ import { UserType } from "@/packages/shared";
 import { ActivityPage } from "@/pages/activity-page";
 import { ConfigPage } from "@/pages/config-page";
 import { ErrorPage } from "@/pages/error-page";
+import { ForgotPasswordPage } from "@/pages/forgot-password-page";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
@@ -22,6 +23,9 @@ import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { ReportsPage } from "@/pages/reports-page";
+import { ResetPasswordPage } from "@/pages/reset-password-page";
+import { SignUpPage } from "@/pages/sign-up-page";
+import { SignUpVerifyPage } from "@/pages/sign-up-verify-page";
 import { SupportRequestDetailPage } from "@/pages/support-request-detail-page";
 import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
@@ -33,6 +37,10 @@ export const router = createBrowserRouter([
   {
     children: [
       { element: <LoginPage />, path: "login" },
+      { element: <SignUpPage />, path: "signup" },
+      { element: <SignUpVerifyPage />, path: "signup/verify" },
+      { element: <ForgotPasswordPage />, path: "forgot-password" },
+      { element: <ResetPasswordPage />, path: "reset-password" },
       {
         children: [
           {

@@ -498,6 +498,12 @@ function buildPropertiesListSearchParams(query: IAdminPropertiesListQuery): stri
 }
 
 export const authApi = {
+  forgotPassword: (email: string) =>
+    request<{ message: string }>("/auth/forgot-password", {
+      body: JSON.stringify({ email: email.trim() }),
+      method: "POST",
+    }),
+
   loginEmail: (email: string, password: string) =>
     request<IAuthEmailResponse>("/auth/email", {
       body: JSON.stringify({ email, password }),
@@ -507,6 +513,37 @@ export const authApi = {
   logout: (refreshToken: string) =>
     request<{ success: boolean }>("/auth/logout", {
       body: JSON.stringify({ refreshToken }),
+      method: "POST",
+    }),
+
+  register: (body: { email: string; name: string; password: string }) =>
+    request<{ message: string }>("/auth/register", {
+      body: JSON.stringify({
+        email: body.email.trim(),
+        name: body.name.trim(),
+        password: body.password,
+      }),
+      method: "POST",
+    }),
+
+  registerVerify: (body: { email: string; name: string; otp: string; password: string }) =>
+    request<IAuthEmailResponse>("/auth/register/verify", {
+      body: JSON.stringify({
+        email: body.email.trim(),
+        name: body.name.trim(),
+        otp: body.otp.trim(),
+        password: body.password,
+      }),
+      method: "POST",
+    }),
+
+  resetPassword: (body: { email: string; newPassword: string; otp: string }) =>
+    request<IAuthEmailResponse>("/auth/reset-password", {
+      body: JSON.stringify({
+        email: body.email.trim(),
+        newPassword: body.newPassword,
+        otp: body.otp.trim(),
+      }),
       method: "POST",
     }),
 };
