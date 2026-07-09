@@ -510,6 +510,12 @@ export const authApi = {
       method: "POST",
     }),
 
+  loginGoogle: (idToken: string) =>
+    request<IAuthEmailResponse>("/auth/google", {
+      body: JSON.stringify({ idToken }),
+      method: "POST",
+    }),
+
   logout: (refreshToken: string) =>
     request<{ success: boolean }>("/auth/logout", {
       body: JSON.stringify({ refreshToken }),

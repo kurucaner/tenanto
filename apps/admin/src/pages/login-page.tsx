@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
+import { AuthProviderDivider } from "@/components/auth/auth-provider-divider";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +51,8 @@ const LoginPageInner = memo(() => {
       subtitle="Sign in to your workspace."
     >
       <AuthCardBody>
+        <GoogleSignInButton />
+        <AuthProviderDivider />
         <div className="flex flex-col gap-2">
           <Label htmlFor="admin-email">Email</Label>
           <Input
