@@ -210,7 +210,18 @@ export const PropertyUnitsPage = memo(() => {
     deleteMutation.mutate(unit);
   };
 
-  const units = unitsQuery.data?.units ?? [];
+  const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
+
+  const sortedUnits = useMemo(() => {
+    const rentalTypeOrder = (type: TUnitRentalType) =>
+      type === UnitRentalType.SHORT_TERM ? 0 : 1;
+
+    return [...units].sort((a, b) => {
+      const typeDiff = rentalTypeOrder(a.rentalType) - rentalTypeOrder(b.rentalType);
+      if (typeDiff !== 0) return typeDiff;
+      return a.unitNumber.localeCompare(b.unitNumber, undefined, { numeric: true });
+    });
+  }, [units]);
 
   const handleOpenCreateUnit = useCallback(() => {
     setCreateOpen(true);
@@ -252,14 +263,14 @@ export const PropertyUnitsPage = memo(() => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {units.length === 0 ? (
+                {sortedUnits.length === 0 ? (
                   <TableRow>
                     <TableCell className="text-muted-foreground" colSpan={canManage ? 6 : 5}>
                       No units yet.{canManage ? " Add a unit to get started." : ""}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  units.map((unit) => (
+                  sortedUnits.map((unit) => (
                     <UnitRow
                       activeLease={activeLeaseByUnitId.get(unit.id)}
                       canManage={canManage}
