@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 
 interface PercentFieldProps {
   disabled: boolean;
@@ -19,7 +20,9 @@ export const PercentField = memo(({ disabled, id, label, onChange, value }: Perc
         disabled={disabled}
         id={id}
         inputMode="decimal"
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          if (isValidDecimalInput(e.target.value)) onChange(e.target.value);
+        }}
         type="text"
         value={value}
       />

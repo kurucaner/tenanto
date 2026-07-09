@@ -39,6 +39,13 @@ export const runMigrations = async (pool: Pool): Promise<void> => {
 
 type TDBClient = Pool | PoolClient;
 
+const SOFT_DELETE_TABLES = [
+  "property_reservations",
+  "property_income_lines",
+  "property_expenses",
+  "property_units",
+] as const;
+
 interface IMigration {
   down: (client: TDBClient) => Promise<void>;
   name: string;
@@ -1488,5 +1495,91 @@ export const migrations: IMigration[] = [
       `);
     },
     version: 34,
+  },
+  {
+    down: async (client: TDBClient) => {
+      for (const table of SOFT_DELETE_TABLES) {
+        await client.query(`
+          ALTER TABLE ${table}
+            DROP COLUMN IF EXISTS is_deleted,
+            DROP COLUMN IF EXISTS deleted_at;
+        `);
+      }
+    },
+    name: "add_soft_delete_columns",
+    up: async (client: TDBClient) => {
+      for (const table of SOFT_DELETE_TABLES) {
+        await client.query(`
+          ALTER TABLE ${table}
+            ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+        `);
+      }
+    },
+    version: 35,
+  },
+  {
+    down: async (_client: TDBClient) => {
+      // Irreversible: room_total cannot be losslessly converted back to per-night room_rate.
+    },
+    name: "room_rate_to_room_total",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          IF EXISTS (SELECT 1 FROM property_reservations WHERE nights < 1) THEN
+            RAISE EXCEPTION 'room_total migration: nights must be >= 1';
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN IF NOT EXISTS room_total NUMERIC(12,2);
+      `);
+
+      await client.query(`
+        UPDATE property_reservations
+        SET room_total = ROUND(room_rate * nights, 2)
+        WHERE room_total IS NULL;
+      `);
+
+      await client.query(`
+        DO $$ BEGIN
+          IF EXISTS (SELECT 1 FROM property_reservations WHERE room_total IS NULL) THEN
+            RAISE EXCEPTION 'room_total migration: backfill incomplete';
+          END IF;
+        END $$;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ALTER COLUMN room_total SET NOT NULL,
+          ALTER COLUMN room_total SET DEFAULT 0;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations DROP COLUMN room_rate;
+      `);
+    },
+    version: 36,
+  },
+  {
+    down: async (_client: TDBClient) => {
+      // Irreversible: cannot restore prior Expedia commission amounts.
+    },
+    name: "backfill_expedia_commission_base",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        UPDATE property_reservations
+        SET
+          channel_commission = ROUND(room_total * channel_commission_rate, 2),
+          net_income = ROUND(
+            net_income + channel_commission - ROUND(room_total * channel_commission_rate, 2),
+            2
+          )
+        WHERE channel = 'expedia'::property_reservation_channel;
+      `);
+    },
+    version: 37,
   },
 ];

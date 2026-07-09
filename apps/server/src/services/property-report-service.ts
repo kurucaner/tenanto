@@ -15,9 +15,11 @@ import {
   type IPropertyReportSalesTypeBreakdown,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
+  type IPropertyReportTaxSummaryItem,
   type IPropertyReportUnitSummary,
   type IPropertyReservation,
   type IPropertyUnit,
+  PROPERTY_AMENITY_UNIT_ID,
   PROPERTY_AMENITY_UNIT_LABEL,
   ReportRentalTypeFilter,
   ReservationChannel,
@@ -225,6 +227,7 @@ function initUnitMap(units: IPropertyUnit[], from: string, to: string) {
         grossIncome: 0,
         netIncome: 0,
         rentalType: unit.rentalType,
+        stayGrossIncome: 0,
         unitId: unit.id,
         unitNumber: unit.unitNumber,
       },
@@ -263,6 +266,35 @@ function addExpenseToMonth(
   entry.expenses = roundMoney(entry.expenses + amount);
 }
 
+function addTaxToMap(
+  taxMap: Map<string, IPropertyReportTaxSummaryItem>,
+  taxRateId: string,
+  name: string,
+  amount: number
+): void {
+  const existing = taxMap.get(taxRateId);
+  if (existing) {
+    existing.amount = roundMoney(existing.amount + amount);
+    return;
+  }
+  taxMap.set(taxRateId, { amount, name, taxRateId });
+}
+
+function taxMapToSummary(
+  taxMap: Map<string, IPropertyReportTaxSummaryItem>
+): IPropertyReportTaxSummaryItem[] {
+  return [...taxMap.values()].sort((a, b) => b.amount - a.amount);
+}
+
+function mergeTaxSummary(
+  target: Map<string, IPropertyReportTaxSummaryItem>,
+  source: IPropertyReportTaxSummaryItem[]
+): void {
+  for (const row of source) {
+    addTaxToMap(target, row.taxRateId, row.name, row.amount);
+  }
+}
+
 export function buildPropertyReportSummary(
   data: IReportData,
   query: IPropertyReportsQuery
@@ -274,6 +306,7 @@ export function buildPropertyReportSummary(
   const unitMap = initUnitMap(units, query.from, query.to);
   const monthMap = initMonthMap(months);
   const expenseCategoryMap = new Map<TExpenseCategory, number>();
+  const taxMap = new Map<string, IPropertyReportTaxSummaryItem>();
 
   let grossIncome = 0;
   let netIncome = 0;
@@ -285,7 +318,7 @@ export function buildPropertyReportSummary(
     grossIncome = roundMoney(grossIncome + stay.grossIncome);
     netIncome = roundMoney(netIncome + stay.netIncome);
 
-    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + stay.roomRate * stay.nights);
+    salesTypeBreakdown.room = roundMoney(salesTypeBreakdown.room + stay.roomTotal);
     salesTypeBreakdown.cleaningFromStays = roundMoney(
       salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
     );
@@ -301,15 +334,20 @@ export function buildPropertyReportSummary(
     if (unit) {
       unit.grossIncome = roundMoney(unit.grossIncome + stay.grossIncome);
       unit.netIncome = roundMoney(unit.netIncome + stay.netIncome);
+      unit.stayGrossIncome = roundMoney(unit.stayGrossIncome + stay.grossIncome);
       if (isOccupancyStay(stay.status)) {
         const booked = nightsOverlappingRange(stay.checkIn, stay.checkOut, query.from, query.to);
         unit.bookedNights += booked;
-        unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomRate * stay.nights);
+        unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomTotal);
         unit.adrNights += stay.nights;
       }
     }
 
     addToMonth(monthMap, monthFromDate(stay.checkIn), stay.grossIncome, stay.netIncome);
+
+    for (const taxItem of stay.taxBreakdown) {
+      addTaxToMap(taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
+    }
   }
 
   for (const line of incomeLines) {
@@ -362,6 +400,7 @@ export function buildPropertyReportSummary(
     occupancyRate:
       unit.availableNights > 0 ? roundMoney(unit.bookedNights / unit.availableNights) : 0,
     rentalType: unit.rentalType,
+    stayGrossIncome: unit.stayGrossIncome,
     unitId: unit.unitId,
     unitNumber: unit.unitNumber,
   }));
@@ -375,7 +414,8 @@ export function buildPropertyReportSummary(
       netIncome: amenityNetIncome,
       occupancyRate: 0,
       rentalType: null,
-      unitId: "property-amenity",
+      stayGrossIncome: 0,
+      unitId: PROPERTY_AMENITY_UNIT_ID,
       unitNumber: PROPERTY_AMENITY_UNIT_LABEL,
     });
   }
@@ -389,10 +429,11 @@ export function buildPropertyReportSummary(
   const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
+  const taxSummary = taxMapToSummary(taxMap);
 
   const totalExpenses = propertyExpensesTotal;
 
-  return {
+  const result: IPropertyReportSummary = {
     byMonth,
     byUnit,
     channelSummary,
@@ -401,6 +442,7 @@ export function buildPropertyReportSummary(
     period: { from: query.from, to: query.to },
     propertyExpensesTotal,
     salesTypeBreakdown,
+    taxSummary,
     totals: {
       grossIncome,
       netIncome,
@@ -408,6 +450,8 @@ export function buildPropertyReportSummary(
       totalExpenses,
     },
   };
+
+  return result;
 }
 
 function csvEscape(value: string | number): string {
@@ -441,6 +485,7 @@ function emptyPropertyReportSummary(query: IPropertyReportsQuery): IPropertyRepo
     period: { from: query.from, to: query.to },
     propertyExpensesTotal: 0,
     salesTypeBreakdown: initSalesBreakdown(),
+    taxSummary: [],
     totals: {
       grossIncome: 0,
       netIncome: 0,
@@ -460,6 +505,7 @@ export function rollupSummaries(
   const channelMap = new Map<TReservationChannel, IPropertyReportChannelSummary>();
   const monthMap = new Map<string, IPropertyReportMonthSummary>();
   const expenseCategoryMap = new Map<TExpenseCategory, number>();
+  const taxMap = new Map<string, IPropertyReportTaxSummaryItem>();
   const byUnit: IPropertyReportUnitSummary[] = [];
 
   let propertyExpensesTotal = 0;
@@ -513,6 +559,8 @@ export function rollupSummaries(
         roundMoney((expenseCategoryMap.get(row.category) ?? 0) + row.amount)
       );
     }
+
+    mergeTaxSummary(taxMap, summary.taxSummary);
   }
 
   const months = listMonthsInRange(query.from, query.to);
@@ -532,6 +580,7 @@ export function rollupSummaries(
   const expenseByCategory: IPropertyReportExpenseCategory[] = [...expenseCategoryMap.entries()]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
+  const taxSummary = taxMapToSummary(taxMap);
 
   return {
     byMonth,
@@ -542,6 +591,7 @@ export function rollupSummaries(
     period: { from: query.from, to: query.to },
     propertyExpensesTotal,
     salesTypeBreakdown,
+    taxSummary,
     totals: {
       grossIncome,
       netIncome,
@@ -599,7 +649,7 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += "\n";
   next += csvRow(["Sales Type Breakdown"]);
   next += csvRow(["Room", summary.salesTypeBreakdown.room]);
-  next += csvRow(["Cleaning (stays)", summary.salesTypeBreakdown.cleaningFromStays]);
+  next += csvRow(["Cleaning Fee", summary.salesTypeBreakdown.cleaningFromStays]);
   for (const row of summary.salesTypeBreakdown.otherIncomeByType) {
     next += csvRow([row.name, row.amount]);
   }
@@ -607,6 +657,11 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += csvRow(["Channel Summary", "Gross Income", "Commission", "Stays"]);
   for (const row of summary.channelSummary) {
     next += csvRow([row.channel, row.grossIncome, row.channelCommission, row.stayCount]);
+  }
+  next += "\n";
+  next += csvRow(["Tax Summary", "Amount"]);
+  for (const row of summary.taxSummary) {
+    next += csvRow([row.name, row.amount]);
   }
   next += "\n";
   next += csvRow([

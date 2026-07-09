@@ -10,17 +10,27 @@ import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { portfolioReportsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { type IPropertyReportsQuery, type TReportRentalTypeFilter } from "@/packages/shared";
 
 export const ReportsPage = memo(() => {
   const defaults = useMemo(() => getDefaultReportDateRange(), []);
-  const [from, setFrom] = useState(defaults.from);
-  const [to, setTo] = useState(defaults.to);
-  const [rentalType, setRentalType] = useState("");
+  const reportFilterSchema = useMemo(
+    () =>
+      defineUrlFilterSchema<{ from: string; rentalType: string; to: string }>({
+        from: { defaultValue: defaults.from },
+        rentalType: { defaultValue: "" },
+        to: { defaultValue: defaults.to },
+      }),
+    [defaults.from, defaults.to]
+  );
+  const { filters, setFilter } = useUrlFilterState(reportFilterSchema);
+  const { from, rentalType, to } = filters;
   const [isExporting, setIsExporting] = useState(false);
 
   const reportQuery = useMemo<IPropertyReportsQuery | null>(() => {
@@ -76,9 +86,9 @@ export const ReportsPage = memo(() => {
         <CardContent className="space-y-4 p-4">
           <ReportFiltersBar
             from={from}
-            onFromChange={setFrom}
-            onRentalTypeChange={setRentalType}
-            onToChange={setTo}
+            onFromChange={(value) => setFilter("from", value)}
+            onRentalTypeChange={(value) => setFilter("rentalType", value)}
+            onToChange={(value) => setFilter("to", value)}
             rentalType={rentalType}
             to={to}
           />

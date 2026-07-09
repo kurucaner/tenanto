@@ -1,6 +1,6 @@
 import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { History } from "lucide-react";
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { AdminAuditEventDetails } from "@/components/admin-audit-shared";
 import { AdminPageIntro } from "@/components/admin-page-intro";
@@ -10,17 +10,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { adminApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import type { IAdminAuditEventsListQuery, IAdminAuditEventsListResponse } from "@/packages/shared";
 
 type TAppliedAuditFilters = Omit<IAdminAuditEventsListQuery, "cursor" | "limit">;
 
+const ACTIVITY_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
+  actorUserId: string;
+  resourceId: string;
+  resourceType: string;
+}>({
+  actorUserId: { defaultValue: "" },
+  resourceId: { defaultValue: "" },
+  resourceType: { defaultValue: "" },
+});
+
+function toAppliedAuditFilters(filters: {
+  actorUserId: string;
+  resourceId: string;
+  resourceType: string;
+}): TAppliedAuditFilters {
+  return {
+    actor_user_id: filters.actorUserId.trim() || undefined,
+    resource_id: filters.resourceId.trim() || undefined,
+    resource_type: filters.resourceType.trim() || undefined,
+  };
+}
+
 const ActivityPageInner = memo(() => {
-  const [resourceTypeInput, setResourceTypeInput] = useState("");
-  const [resourceIdInput, setResourceIdInput] = useState("");
-  const [actorUserIdInput, setActorUserIdInput] = useState("");
-  const [applied, setApplied] = useState<TAppliedAuditFilters>({});
+  const { filters: appliedFilters, setFilters } = useUrlFilterState(ACTIVITY_URL_FILTER_SCHEMA);
+  const applied = useMemo(() => toAppliedAuditFilters(appliedFilters), [appliedFilters]);
+  const [resourceTypeInput, setResourceTypeInput] = useState(appliedFilters.resourceType);
+  const [resourceIdInput, setResourceIdInput] = useState(appliedFilters.resourceId);
+  const [actorUserIdInput, setActorUserIdInput] = useState(appliedFilters.actorUserId);
+
+  useEffect(() => {
+    setResourceTypeInput(appliedFilters.resourceType);
+    setResourceIdInput(appliedFilters.resourceId);
+    setActorUserIdInput(appliedFilters.actorUserId);
+  }, [appliedFilters.actorUserId, appliedFilters.resourceId, appliedFilters.resourceType]);
 
   const query = useInfiniteQuery<
     IAdminAuditEventsListResponse,
@@ -48,10 +79,11 @@ const ActivityPageInner = memo(() => {
   );
 
   const applyFilters = () => {
-    const resource_type = resourceTypeInput.trim() || undefined;
-    const resource_id = resourceIdInput.trim() || undefined;
-    const actor_user_id = actorUserIdInput.trim() || undefined;
-    setApplied({ actor_user_id, resource_id, resource_type });
+    setFilters({
+      actorUserId: actorUserIdInput.trim(),
+      resourceId: resourceIdInput.trim(),
+      resourceType: resourceTypeInput.trim(),
+    });
   };
 
   return (

@@ -84,7 +84,9 @@ export type TUnitRentalType = (typeof UnitRentalType)[keyof typeof UnitRentalTyp
 
 export interface IPropertyUnit {
   createdAt: string;
+  deletedAt: string | null;
   id: string;
+  isDeleted: boolean;
   layout: string;
   propertyId: string;
   rentalType: TUnitRentalType;

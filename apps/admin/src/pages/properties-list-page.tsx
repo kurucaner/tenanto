@@ -1,6 +1,5 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { Building2, Plus, Search } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
@@ -17,16 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { type IAdminPropertiesListQuery, propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
-import {
-  formatPhoneDisplay,
-  type IAdminPropertiesListResponse,
-  type IProperty,
-} from "@/packages/shared";
+import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
+import { PROPERTIES_SEARCH_DEBOUNCE_MS } from "@/lib/properties-list-constants";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
+import { formatPhoneDisplay, type IProperty } from "@/packages/shared";
 
-const LIMIT = 25;
-const SEARCH_DEBOUNCE_MS = 300;
+const PROPERTIES_URL_FILTER_SCHEMA = defineUrlFilterSchema<{ q: string }>({
+  q: { defaultValue: "" },
+});
 
 const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
   const navigate = useNavigate();
@@ -46,48 +45,52 @@ const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
 PropertyTableRow.displayName = "PropertyTableRow";
 
 const PropertiesListPageInner = memo(() => {
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { filters, setFilter } = useUrlFilterState(PROPERTIES_URL_FILTER_SCHEMA);
+  const { q } = filters;
+  const [searchInput, setSearchInput] = useState(q);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  }, [searchInput]);
+    setSearchInput(q);
+  }, [q]);
 
-  const listFilters = useMemo<Omit<IAdminPropertiesListQuery, "cursor">>(
-    () => ({
-      limit: LIMIT,
-      q: debouncedSearch || undefined,
-    }),
-    [debouncedSearch]
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== q) {
+        setFilter("q", trimmed);
+      }
+    }, PROPERTIES_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [q, searchInput, setFilter]);
+
+  const {
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    properties,
+  } = usePropertiesInfiniteList({ q });
+
+  const loadMoreButtonLabel = useMemo(
+    () => getInfiniteListLoadMoreLabel({ hasNextPage: hasNextPage ?? false, isFetchingNextPage }),
+    [hasNextPage, isFetchingNextPage]
   );
 
-  const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
-    useInfiniteQuery({
-      getNextPageParam: (lastPage: IAdminPropertiesListResponse) =>
-        lastPage.nextCursor ?? undefined,
-      initialPageParam: undefined as string | undefined,
-      queryFn: ({ pageParam }) => propertiesApi.list({ ...listFilters, cursor: pageParam }),
-      queryKey: adminQueryKeys.propertiesList(listFilters),
-    });
+  const handleNewPropertyClick = useCallback(() => {
+    setCreateOpen(true);
+  }, []);
 
-  const properties = data?.pages.flatMap((p: IAdminPropertiesListResponse) => p.items) ?? [];
-
-  const loadMoreButtonLabel = useMemo(() => {
-    if (isFetchingNextPage) {
-      return "Loading…";
-    } else if (hasNextPage) {
-      return "Load more";
-    } else {
-      return "End of list";
-    }
-  }, [isFetchingNextPage, hasNextPage]);
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
+  }, []);
 
   return (
     <AdminPageLayout gap={6}>
       <div className="flex items-center justify-end gap-4">
-        <Button className="shrink-0 gap-2" onClick={() => setCreateOpen(true)} type="button">
+        <Button className="shrink-0 gap-2" onClick={handleNewPropertyClick} type="button">
           <Plus className="size-4" />
           New Property
         </Button>
@@ -97,7 +100,7 @@ const PropertiesListPageInner = memo(() => {
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           className="pl-9"
-          onChange={(e) => setSearchInput(e.target.value)}
+          onChange={handleSearchInputChange}
           placeholder="Search by name or address…"
           value={searchInput}
         />

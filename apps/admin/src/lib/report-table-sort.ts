@@ -30,7 +30,7 @@ export function buildSalesTypeBreakdownRows(
     {
       amount: breakdown.cleaningFromStays,
       id: "cleaningFromStays",
-      label: "Cleaning (stays)",
+      label: "Cleaning fee",
     },
   ];
 

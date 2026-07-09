@@ -3,9 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { memo } from "react";
 import { Link } from "react-router-dom";
 
-import { HomeExpenseBreakdownChart } from "@/components/home/home-expense-breakdown-chart";
 import { HomeFinancialSkeleton } from "@/components/home/home-financial-skeleton";
-import { HomeIncomeExpensesChart } from "@/components/home/home-income-expenses-chart";
+import { ReportExpenseBreakdownChart } from "@/components/reports/charts/report-expense-breakdown-chart";
+import { ReportProfitTrendChart } from "@/components/reports/charts/report-profit-trend-chart";
 import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,8 +89,11 @@ export const HomeFinancialOverview = memo(() => {
         <div className="space-y-6">
           <ReportSummaryCards totals={overview.totals} />
           <div className="grid gap-4 lg:grid-cols-2">
-            <HomeIncomeExpensesChart byMonth={overview.byMonth} />
-            <HomeExpenseBreakdownChart expenseByCategory={overview.expenseByCategory} />
+            <ReportProfitTrendChart byMonth={overview.byMonth} />
+            <ReportExpenseBreakdownChart
+              expenseByCategory={overview.expenseByCategory}
+              title="Top expenses"
+            />
           </div>
         </div>
       ) : null}

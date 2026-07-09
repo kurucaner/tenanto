@@ -569,6 +569,12 @@ export const unitsApi = {
       `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
+
+  restore: (propertyId: string, unitId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
 };
 
 export const longStaysApi = {
@@ -631,6 +637,12 @@ export const reservationsApi = {
       `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
+
+  restore: (propertyId: string, reservationId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
 };
 
 function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {}): string {
@@ -667,6 +679,12 @@ export const incomeLinesApi = {
       `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
+
+  restore: (propertyId: string, lineId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
 };
 
 function buildExpensesSearchParams(query: IPropertyExpensesListQuery = {}): string {
@@ -700,6 +718,12 @@ export const expensesApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+
+  restore: (propertyId: string, expenseId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 };
 

@@ -98,6 +98,10 @@ async function resolveLongTermUnitForProperty(
       .send({ error: "Long stays can only be created for long-term units" });
     return null;
   }
+  if (unit.isDeleted) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit has been deleted" });
+    return null;
+  }
   return unit;
 }
 

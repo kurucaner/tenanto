@@ -1,5 +1,6 @@
 import { memo } from "react";
 
+import { FilterField } from "@/components/filters/filter-field";
 import {
   CHANNEL_OPTIONS,
   reservationSelectClassName,
@@ -8,16 +9,11 @@ import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-opt
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
+import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { cn } from "@/lib/utils";
 import type { IPropertyUnit } from "@/packages/shared";
 
 const reportSelectClassName = cn(reservationSelectClassName, "bg-background");
-
-function getReportFiltersGridClass(filterCount: number): string {
-  if (filterCount >= 5) return "md:grid-cols-2 lg:grid-cols-5";
-  if (filterCount >= 4) return "md:grid-cols-2 lg:grid-cols-4";
-  return "md:grid-cols-2 lg:grid-cols-3";
-}
 
 export interface ReportFiltersBarProps {
   channel?: string;
@@ -52,12 +48,11 @@ export const ReportFiltersBar = memo(
     units = [],
   }: ReportFiltersBarProps) => {
     const filterCount = 2 + (showUnitFilter ? 1 : 0) + (showChannelFilter ? 1 : 0) + 1;
-    const gridClass = getReportFiltersGridClass(filterCount);
 
     return (
       <div className="space-y-4">
-        <div className={cn("grid gap-3", gridClass)}>
-          <div className="space-y-1.5">
+        <div className={getLedgerFiltersGridClass(filterCount)}>
+          <FilterField>
             <Label htmlFor="report-from">From</Label>
             <Input
               id="report-from"
@@ -65,8 +60,8 @@ export const ReportFiltersBar = memo(
               type="date"
               value={from}
             />
-          </div>
-          <div className="space-y-1.5">
+          </FilterField>
+          <FilterField>
             <Label htmlFor="report-to">To</Label>
             <Input
               id="report-to"
@@ -74,9 +69,9 @@ export const ReportFiltersBar = memo(
               type="date"
               value={to}
             />
-          </div>
+          </FilterField>
           {showUnitFilter ? (
-            <div className="space-y-1.5">
+            <FilterField>
               <Label htmlFor="report-unit">Unit</Label>
               <select
                 className={reportSelectClassName}
@@ -86,10 +81,10 @@ export const ReportFiltersBar = memo(
               >
                 <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
               </select>
-            </div>
+            </FilterField>
           ) : null}
           {showChannelFilter ? (
-            <div className="space-y-1.5">
+            <FilterField>
               <Label htmlFor="report-channel">Channel</Label>
               <select
                 className={reportSelectClassName}
@@ -104,9 +99,9 @@ export const ReportFiltersBar = memo(
                   </option>
                 ))}
               </select>
-            </div>
+            </FilterField>
           ) : null}
-          <div className="space-y-1.5">
+          <FilterField>
             <Label htmlFor="report-rental-type">Rental type</Label>
             <select
               className={reportSelectClassName}
@@ -120,7 +115,7 @@ export const ReportFiltersBar = memo(
                 </option>
               ))}
             </select>
-          </div>
+          </FilterField>
         </div>
 
         {rentalType ? (

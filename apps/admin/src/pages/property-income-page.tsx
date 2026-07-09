@@ -3,6 +3,8 @@ import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
+import { FilterField } from "@/components/filters/filter-field";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -22,7 +24,7 @@ import {
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
-import { StayTaxesDetailsDialog } from "@/components/income/stay-taxes-details-dialog";
+import { StayCalculationDetailsDialog } from "@/components/income/stay-calculation-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,7 +35,8 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
-import { useTableSort } from "@/hooks/use-table-sort";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import {
@@ -43,8 +46,11 @@ import {
   type TIncomeEntrySortColumnId,
 } from "@/lib/income-entry-sort";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  getStayAverageDailyRate,
   getStayNetPayout,
   getStayTaxesTotal,
   IncomeEntryKind,
@@ -56,6 +62,7 @@ import {
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
   type TPropertyIncomeEntry,
+  type TStayCalculationMetric,
 } from "@/packages/shared";
 
 function buildMergedEntries(
@@ -99,7 +106,7 @@ const INCOME_TABLE_COLUMNS: {
   { id: "nights", label: "Nights" },
   { id: "channel", label: "Channel" },
   { id: "status", label: "Status" },
-  { id: "roomRate", label: "Room rate / night", align: "right" },
+  { id: "roomTotal", label: "Room total", align: "right" },
   { id: "cleaning", label: "Cleaning", align: "right" },
   {
     align: "right",
@@ -110,7 +117,7 @@ const INCOME_TABLE_COLUMNS: {
   {
     align: "right",
     id: "commission",
-    info: "Booking channel's commission.",
+    info: "Channel commission. Expedia applies the rate to room total only (cleaning fee excluded).",
     label: "Commission",
   },
   {
@@ -126,6 +133,22 @@ const INCOME_TABLE_COLUMNS: {
     label: "Net Payout",
   },
 ];
+
+const INCOME_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
+  channel: string;
+  from: string;
+  incomeType: string;
+  status: string;
+  to: string;
+  unitId: string;
+}>({
+  channel: { defaultValue: "" },
+  from: { defaultValue: "" },
+  incomeType: { defaultValue: "" },
+  status: { defaultValue: "" },
+  to: { defaultValue: "" },
+  unitId: { defaultValue: "" },
+});
 
 function buildDateFilters(from: string, to: string, unitId: string) {
   const next: { from?: string; to?: string; unitId?: string } = {};
@@ -168,7 +191,11 @@ function handleDeleteLine(
   mutate: (line: IPropertyIncomeLine) => void
 ): void {
   const typeLabel = line.incomeLineTypeName ?? line.incomeLineTypeId;
-  if (!globalThis.confirm(`Delete ${typeLabel} entry? This cannot be undone.`)) {
+  if (
+    !globalThis.confirm(
+      `Delete ${typeLabel} entry? It will be hidden from reports. Platform admins can restore it.`
+    )
+  ) {
     return;
   }
   mutate(line);
@@ -178,7 +205,11 @@ function handleDeleteStay(
   stay: IPropertyReservation,
   mutate: (stay: IPropertyReservation) => void
 ): void {
-  if (!globalThis.confirm(`Delete stay for ${stay.guestName}? This cannot be undone.`)) {
+  if (
+    !globalThis.confirm(
+      `Delete stay for ${stay.guestName}? It will be hidden from reports. Platform admins can restore it.`
+    )
+  ) {
     return;
   }
   mutate(stay);
@@ -234,7 +265,9 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay,
     onEditLine,
     onEditStay,
-    onShowTaxesDetails,
+    onRestoreLine,
+    onRestoreStay,
+    onShowCalculationDetails,
     onSortColumn,
     unitLabelById,
   }: {
@@ -248,7 +281,9 @@ const PropertyIncomeEntriesTable = memo(
     onDeleteStay: (stay: IPropertyReservation) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
-    onShowTaxesDetails: (stay: IPropertyReservation) => void;
+    onRestoreLine: (line: IPropertyIncomeLine) => void;
+    onRestoreStay: (stay: IPropertyReservation) => void;
+    onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
     onSortColumn: (columnId: string) => void;
     unitLabelById: Map<string, string>;
   }) => {
@@ -308,7 +343,9 @@ const PropertyIncomeEntriesTable = memo(
                   onDeleteStay={onDeleteStay}
                   onEditLine={onEditLine}
                   onEditStay={onEditStay}
-                  onShowTaxesDetails={onShowTaxesDetails}
+                  onRestoreLine={onRestoreLine}
+                  onRestoreStay={onRestoreStay}
+                  onShowCalculationDetails={onShowCalculationDetails}
                   unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
                 />
               ))
@@ -414,6 +451,297 @@ const PropertyIncomePageActions = memo(
 );
 PropertyIncomePageActions.displayName = "PropertyIncomePageActions";
 
+const StayCalculationDetailsLink = memo(({ onClick }: { onClick: () => void }) => (
+  <Button className="h-auto px-0 py-0 text-xs" onClick={onClick} type="button" variant="link">
+    Details
+  </Button>
+));
+StayCalculationDetailsLink.displayName = "StayCalculationDetailsLink";
+
+const StayMetricCell = memo(
+  ({
+    amountLabel,
+    onShowDetails,
+    showDetails,
+  }: {
+    amountLabel: string;
+    onShowDetails: () => void;
+    showDetails: boolean;
+  }) => (
+    <div className="flex flex-col items-end gap-1">
+      <span>{amountLabel}</span>
+      {showDetails ? <StayCalculationDetailsLink onClick={onShowDetails} /> : null}
+    </div>
+  )
+);
+StayMetricCell.displayName = "StayMetricCell";
+
+type IncomeStayEntryRowProps = {
+  canManage: boolean;
+  onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
+  onDeleteStay: (stay: IPropertyReservation) => void;
+  onEditStay: (stay: IPropertyReservation) => void;
+  onRestoreStay: (stay: IPropertyReservation) => void;
+  onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+  stay: IPropertyReservation;
+  unitLabel: string;
+};
+
+const IncomeStayEntryRow = memo(
+  ({
+    canManage,
+    onAddOtherIncomeFromStay,
+    onDeleteStay,
+    onEditStay,
+    onRestoreStay,
+    onShowCalculationDetails,
+    stay,
+    unitLabel,
+  }: IncomeStayEntryRowProps) => {
+    const taxesTotal = getStayTaxesTotal(stay);
+    const showTaxesDetails = taxesTotal > 0;
+    const showCommissionDetails = stay.channelCommission > 0;
+    const netPayout = getStayNetPayout(stay);
+
+    return (
+      <TableRow className={stay.isDeleted ? deletedRowClassName : undefined}>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
+            {stay.isDeleted ? <DeletedBadge /> : null}
+          </div>
+        </TableCell>
+        <TableCell className="font-medium">{unitLabel}</TableCell>
+        <TableCell>{stay.guestName}</TableCell>
+        <TableCell>{stay.checkIn}</TableCell>
+        <TableCell>{stay.checkOut}</TableCell>
+        <TableCell>{stay.nights}</TableCell>
+        <TableCell>
+          <ReservationChannelBadge channel={stay.channel} />
+        </TableCell>
+        <TableCell>
+          <ReservationStatusBadge status={stay.status} />
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex flex-col items-end">
+            <span>{formatMoney(stay.roomTotal)}</span>
+            {stay.nights > 1 ? (
+              <span className="text-muted-foreground text-xs">
+                {formatMoney(getStayAverageDailyRate(stay))}/night
+              </span>
+            ) : null}
+          </div>
+        </TableCell>
+        <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}
+            onShowDetails={() => onShowCalculationDetails(stay, "taxes")}
+            showDetails={showTaxesDetails}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
+            onShowDetails={() => onShowCalculationDetails(stay, "commission")}
+            showDetails={showCommissionDetails}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={formatMoney(stay.grossIncome)}
+            onShowDetails={() => onShowCalculationDetails(stay, "gross")}
+            showDetails={true}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <StayMetricCell
+            amountLabel={formatMoney(netPayout)}
+            onShowDetails={() => onShowCalculationDetails(stay, "netPayout")}
+            showDetails={true}
+          />
+        </TableCell>
+        {canManage ? (
+          <TableCell>
+            <div className="flex items-center gap-1">
+              {stay.isDeleted ? (
+                <RestoreEntityButton ariaLabel="Restore stay" onClick={() => onRestoreStay(stay)} />
+              ) : (
+                <>
+                  <Button
+                    aria-label="Add other income for this stay"
+                    onClick={() => onAddOtherIncomeFromStay(stay)}
+                    size="icon-sm"
+                    title="Add other income"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <CirclePlus className="size-3.5" />
+                  </Button>
+                  <Button
+                    aria-label="Edit stay"
+                    onClick={() => onEditStay(stay)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    aria-label="Delete stay"
+                    onClick={() => onDeleteStay(stay)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-3.5 text-destructive" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </TableCell>
+        ) : null}
+      </TableRow>
+    );
+  }
+);
+IncomeStayEntryRow.displayName = "IncomeStayEntryRow";
+
+type IncomeLineEntryRowProps = {
+  canManage: boolean;
+  line: IPropertyIncomeLine;
+  onDeleteLine: (line: IPropertyIncomeLine) => void;
+  onEditLine: (line: IPropertyIncomeLine) => void;
+  onRestoreLine: (line: IPropertyIncomeLine) => void;
+  unitLabel: string;
+};
+
+const IncomeLineEntryRow = memo(
+  ({
+    canManage,
+    line,
+    onDeleteLine,
+    onEditLine,
+    onRestoreLine,
+    unitLabel,
+  }: IncomeLineEntryRowProps) => (
+    <TableRow className={line.isDeleted ? deletedRowClassName : undefined}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <IncomeEntryTypeBadge
+            entryKind={IncomeEntryKind.LINE}
+            incomeLineTypeId={line.incomeLineTypeId}
+            label={line.incomeLineTypeName ?? line.incomeLineTypeId}
+          />
+          {line.isDeleted ? <DeletedBadge /> : null}
+        </div>
+      </TableCell>
+      <TableCell className="font-medium">{unitLabel}</TableCell>
+      <TableCell>{line.guestName ?? "—"}</TableCell>
+      <TableCell>{line.transactionDate}</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell>—</TableCell>
+      <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
+      <TableCell className="text-right">—</TableCell>
+      <TableCell className="text-right">—</TableCell>
+      <TableCell className="text-right">—</TableCell>
+      <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
+      <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
+      {canManage ? (
+        <TableCell>
+          <div className="flex items-center gap-1">
+            {line.isDeleted ? (
+              <RestoreEntityButton
+                ariaLabel="Restore other income"
+                onClick={() => onRestoreLine(line)}
+              />
+            ) : (
+              <>
+                <Button
+                  aria-label="Edit other income"
+                  onClick={() => onEditLine(line)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  aria-label="Delete other income"
+                  onClick={() => onDeleteLine(line)}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Trash2 className="size-3.5 text-destructive" />
+                </Button>
+              </>
+            )}
+          </div>
+        </TableCell>
+      ) : null}
+    </TableRow>
+  )
+);
+IncomeLineEntryRow.displayName = "IncomeLineEntryRow";
+
+const IncomeEntryRow = memo(
+  ({
+    canManage,
+    entry,
+    onAddOtherIncomeFromStay,
+    onDeleteLine,
+    onDeleteStay,
+    onEditLine,
+    onEditStay,
+    onRestoreLine,
+    onRestoreStay,
+    onShowCalculationDetails,
+    unitLabel,
+  }: {
+    canManage: boolean;
+    entry: TPropertyIncomeEntry;
+    onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
+    onDeleteLine: (line: IPropertyIncomeLine) => void;
+    onDeleteStay: (stay: IPropertyReservation) => void;
+    onEditLine: (line: IPropertyIncomeLine) => void;
+    onEditStay: (stay: IPropertyReservation) => void;
+    onRestoreLine: (line: IPropertyIncomeLine) => void;
+    onRestoreStay: (stay: IPropertyReservation) => void;
+    onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+    unitLabel: string;
+  }) => {
+    if (entry.entryKind === IncomeEntryKind.STAY) {
+      return (
+        <IncomeStayEntryRow
+          canManage={canManage}
+          onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
+          onDeleteStay={onDeleteStay}
+          onEditStay={onEditStay}
+          onRestoreStay={onRestoreStay}
+          onShowCalculationDetails={onShowCalculationDetails}
+          stay={entry.stay}
+          unitLabel={unitLabel}
+        />
+      );
+    }
+
+    return (
+      <IncomeLineEntryRow
+        canManage={canManage}
+        line={entry.line}
+        onDeleteLine={onDeleteLine}
+        onEditLine={onEditLine}
+        onRestoreLine={onRestoreLine}
+        unitLabel={unitLabel}
+      />
+    );
+  }
+);
+IncomeEntryRow.displayName = "IncomeEntryRow";
+
 function useRegisterIncomePageActions(
   canManage: boolean,
   onAddOtherIncome: () => void,
@@ -430,162 +758,6 @@ function useRegisterIncomePageActions(
   usePropertyShellActions(pageActions);
 }
 
-const IncomeEntryRow = memo(
-  ({
-    canManage,
-    entry,
-    onAddOtherIncomeFromStay,
-    onDeleteLine,
-    onDeleteStay,
-    onEditLine,
-    onEditStay,
-    onShowTaxesDetails,
-    unitLabel,
-  }: {
-    canManage: boolean;
-    entry: TPropertyIncomeEntry;
-    onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
-    onDeleteLine: (line: IPropertyIncomeLine) => void;
-    onDeleteStay: (stay: IPropertyReservation) => void;
-    onEditLine: (line: IPropertyIncomeLine) => void;
-    onEditStay: (stay: IPropertyReservation) => void;
-    onShowTaxesDetails: (stay: IPropertyReservation) => void;
-    unitLabel: string;
-  }) => {
-    if (entry.entryKind === IncomeEntryKind.STAY) {
-      const { stay } = entry;
-      const taxesTotal = getStayTaxesTotal(stay);
-      const showTaxesDetails = taxesTotal > 0;
-
-      return (
-        <TableRow>
-          <TableCell>
-            <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
-          </TableCell>
-          <TableCell className="font-medium">{unitLabel}</TableCell>
-          <TableCell>{stay.guestName}</TableCell>
-          <TableCell>{stay.checkIn}</TableCell>
-          <TableCell>{stay.checkOut}</TableCell>
-          <TableCell>{stay.nights}</TableCell>
-          <TableCell>
-            <ReservationChannelBadge channel={stay.channel} />
-          </TableCell>
-          <TableCell>
-            <ReservationStatusBadge status={stay.status} />
-          </TableCell>
-          <TableCell className="text-right">{formatMoney(stay.roomRate)}</TableCell>
-          <TableCell className="text-right">{formatMoney(stay.cleaningFee)}</TableCell>
-          <TableCell className="text-right">
-            <div className="flex flex-col items-end gap-1">
-              <span>{taxesTotal > 0 ? formatMoney(taxesTotal) : "—"}</span>
-              {showTaxesDetails ? (
-                <Button
-                  className="h-auto px-0 py-0 text-xs"
-                  onClick={() => onShowTaxesDetails(stay)}
-                  type="button"
-                  variant="link"
-                >
-                  Details
-                </Button>
-              ) : null}
-            </div>
-          </TableCell>
-          <TableCell className="text-right">
-            {stay.channelCommission > 0 ? formatMoney(stay.channelCommission) : "—"}
-          </TableCell>
-          <TableCell className="text-right">{formatMoney(stay.grossIncome)}</TableCell>
-          <TableCell className="text-right">{formatMoney(getStayNetPayout(stay))}</TableCell>
-          {canManage ? (
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Button
-                  aria-label="Add other income for this stay"
-                  onClick={() => onAddOtherIncomeFromStay(stay)}
-                  size="icon-sm"
-                  title="Add other income"
-                  type="button"
-                  variant="ghost"
-                >
-                  <CirclePlus className="size-3.5" />
-                </Button>
-                <Button
-                  aria-label="Edit stay"
-                  onClick={() => onEditStay(stay)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  aria-label="Delete stay"
-                  onClick={() => onDeleteStay(stay)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
-              </div>
-            </TableCell>
-          ) : null}
-        </TableRow>
-      );
-    }
-
-    const { line } = entry;
-    return (
-      <TableRow>
-        <TableCell>
-          <IncomeEntryTypeBadge
-            entryKind={IncomeEntryKind.LINE}
-            incomeLineTypeId={line.incomeLineTypeId}
-            label={line.incomeLineTypeName ?? line.incomeLineTypeId}
-          />
-        </TableCell>
-        <TableCell className="font-medium">{unitLabel}</TableCell>
-        <TableCell>{line.guestName ?? "—"}</TableCell>
-        <TableCell>{line.transactionDate}</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell>—</TableCell>
-        <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
-        <TableCell className="text-right">—</TableCell>
-        <TableCell className="text-right">—</TableCell>
-        <TableCell className="text-right">—</TableCell>
-        <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
-        <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
-        {canManage ? (
-          <TableCell>
-            <div className="flex items-center gap-1">
-              <Button
-                aria-label="Edit other income"
-                onClick={() => onEditLine(line)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                aria-label="Delete other income"
-                onClick={() => onDeleteLine(line)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 className="size-3.5 text-destructive" />
-              </Button>
-            </div>
-          </TableCell>
-        ) : null}
-      </TableRow>
-    );
-  }
-);
-IncomeEntryRow.displayName = "IncomeEntryRow";
-
 const PropertyIncomePage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
@@ -600,17 +772,16 @@ const PropertyIncomePage = memo(() => {
   );
   const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
   const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
-  const [taxesDetailsStay, setTaxesDetailsStay] = useState<IPropertyReservation | null>(null);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [unitId, setUnitId] = useState("");
-  const [channel, setChannel] = useState("");
-  const [status, setStatus] = useState("");
-  const [incomeType, setIncomeType] = useState("");
-  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useTableSort(
-    "date",
-    "desc"
-  );
+  const [calculationDetails, setCalculationDetails] = useState<{
+    metric: TStayCalculationMetric;
+    stay: IPropertyReservation;
+  } | null>(null);
+  const { filters, setFilter } = useUrlFilterState(INCOME_URL_FILTER_SCHEMA);
+  const { channel, from, incomeType, status, to, unitId } = filters;
+  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
+    defaultColumnId: "date",
+    defaultDirection: "desc",
+  });
 
   const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
 
@@ -646,7 +817,8 @@ const PropertyIncomePage = memo(() => {
     queryKey: adminQueryKeys.propertySettings(propertyId),
   });
 
-  const units = unitsQuery.data?.units ?? [];
+  const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
+  const activeUnits = useMemo(() => units.filter((unit) => !unit.isDeleted), [units]);
   const incomeLineTypes = useMemo(
     () => settingsQuery.data?.settings.incomeLineTypes ?? [],
     [settingsQuery.data?.settings.incomeLineTypes]
@@ -681,6 +853,29 @@ const PropertyIncomePage = memo(() => {
     },
     onSuccess: () => {
       toast.success("Other income deleted");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
+
+  const restoreStayMutation = useMutation({
+    mutationFn: (reservation: IPropertyReservation) =>
+      reservationsApi.restore(propertyId, reservation.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to restore stay");
+    },
+    onSuccess: () => {
+      toast.success("Stay restored");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
+
+  const restoreLineMutation = useMutation({
+    mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.restore(propertyId, line.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to restore other income");
+    },
+    onSuccess: () => {
+      toast.success("Other income restored");
       invalidatePropertyIncomeCaches(queryClient, propertyId);
     },
   });
@@ -721,42 +916,42 @@ const PropertyIncomePage = memo(() => {
     <>
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
-            <div className="space-y-1.5">
+          <div className={getLedgerFiltersGridClass(6)}>
+            <FilterField>
               <Label htmlFor="filter-from">From</Label>
               <Input
                 id="filter-from"
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={(e) => setFilter("from", e.target.value)}
                 type="date"
                 value={from}
               />
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-to">To</Label>
               <Input
                 id="filter-to"
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => setFilter("to", e.target.value)}
                 type="date"
                 value={to}
               />
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-unit">Unit</Label>
               <select
                 className={reservationSelectClassName}
                 id="filter-unit"
-                onChange={(e) => setUnitId(e.target.value)}
+                onChange={(e) => setFilter("unitId", e.target.value)}
                 value={unitId}
               >
                 <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
               </select>
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-income-type">Income type</Label>
               <select
                 className={incomeLineSelectClassName}
                 id="filter-income-type"
-                onChange={(e) => setIncomeType(e.target.value)}
+                onChange={(e) => setFilter("incomeType", e.target.value)}
                 value={incomeType}
               >
                 {incomeTypeFilterOptions.map((opt) => (
@@ -765,14 +960,14 @@ const PropertyIncomePage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-channel">Channel</Label>
               <select
                 className={reservationSelectClassName}
                 disabled={!showStays}
                 id="filter-channel"
-                onChange={(e) => setChannel(e.target.value)}
+                onChange={(e) => setFilter("channel", e.target.value)}
                 value={channel}
               >
                 <option value="">All channels</option>
@@ -782,14 +977,14 @@ const PropertyIncomePage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-status">Status</Label>
               <select
                 className={reservationSelectClassName}
                 disabled={!showStays}
                 id="filter-status"
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(e) => setFilter("status", e.target.value)}
                 value={status}
               >
                 <option value="">All statuses</option>
@@ -799,7 +994,7 @@ const PropertyIncomePage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
+            </FilterField>
           </div>
 
           <PropertyIncomeEntriesTable
@@ -819,21 +1014,24 @@ const PropertyIncomePage = memo(() => {
             onDeleteStay={(stay) => handleDeleteStay(stay, deleteStayMutation.mutate)}
             onEditLine={setEditIncomeLine}
             onEditStay={setEditReservation}
-            onShowTaxesDetails={setTaxesDetailsStay}
+            onRestoreLine={(line) => restoreLineMutation.mutate(line)}
+            onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
+            onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
             onSortColumn={toggleSort}
             unitLabelById={unitLabelById}
           />
         </CardContent>
       </Card>
 
-      <StayTaxesDetailsDialog
+      <StayCalculationDetailsDialog
+        metric={calculationDetails?.metric ?? null}
         onOpenChange={(open) => {
           if (!open) {
-            setTaxesDetailsStay(null);
+            setCalculationDetails(null);
           }
         }}
-        open={taxesDetailsStay !== null}
-        stay={taxesDetailsStay}
+        open={calculationDetails !== null}
+        stay={calculationDetails?.stay ?? null}
       />
 
       <PropertyIncomePageDialogs
@@ -858,7 +1056,7 @@ const PropertyIncomePage = memo(() => {
           handleEditDialogOpenChange(open, () => setEditReservation(null))
         }
         propertyId={propertyId}
-        units={units}
+        units={activeUnits}
       />
     </>
   );

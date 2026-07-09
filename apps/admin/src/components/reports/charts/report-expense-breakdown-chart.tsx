@@ -19,12 +19,13 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface HomeExpenseBreakdownChartProps {
+interface ReportExpenseBreakdownChartProps {
   expenseByCategory: IPropertyReportExpenseCategory[];
+  title?: string;
 }
 
-export const HomeExpenseBreakdownChart = memo(
-  ({ expenseByCategory }: HomeExpenseBreakdownChartProps) => {
+export const ReportExpenseBreakdownChart = memo(
+  ({ expenseByCategory, title = "Expenses by category" }: ReportExpenseBreakdownChartProps) => {
     const chartData = useMemo(
       () =>
         expenseByCategory.map((row) => ({
@@ -38,7 +39,7 @@ export const HomeExpenseBreakdownChart = memo(
       return (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Top expenses</CardTitle>
+            <CardTitle className="text-base font-semibold">{title}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground text-sm">No expenses recorded in this period.</p>
@@ -50,7 +51,7 @@ export const HomeExpenseBreakdownChart = memo(
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Top expenses</CardTitle>
+          <CardTitle className="text-base font-semibold">{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <ChartContainer className="aspect-video h-[280px] w-full" config={chartConfig}>
@@ -93,4 +94,4 @@ export const HomeExpenseBreakdownChart = memo(
     );
   }
 );
-HomeExpenseBreakdownChart.displayName = "HomeExpenseBreakdownChart";
+ReportExpenseBreakdownChart.displayName = "ReportExpenseBreakdownChart";

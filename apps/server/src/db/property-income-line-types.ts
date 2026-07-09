@@ -15,7 +15,7 @@ export const propertyIncomeLineTypesDb = {
     const result = await db.query(
       `SELECT COUNT(*)::int AS count
        FROM property_income_lines
-       WHERE income_line_type_id = $1`,
+       WHERE income_line_type_id = $1 AND is_deleted = false`,
       [typeId]
     );
     return Number(result.rows[0]?.count ?? 0);

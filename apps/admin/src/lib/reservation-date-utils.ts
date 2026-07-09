@@ -38,3 +38,13 @@ export function shouldClearCheckOutOnCheckInChange(
   if (nextCheckIn === "" || currentCheckOut === "") return false;
   return currentCheckOut <= nextCheckIn;
 }
+
+const MS_PER_DAY = 86_400_000;
+
+export function calculateStayNights(checkIn: string, checkOut: string): number {
+  if (!isValidStayDateRange(checkIn, checkOut)) return 0;
+  const start = Date.parse(`${checkIn}T00:00:00Z`);
+  const end = Date.parse(`${checkOut}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.round((end - start) / MS_PER_DAY);
+}

@@ -26,7 +26,7 @@ export type TIncomeEntrySortColumnId =
   | "nights"
   | "channel"
   | "status"
-  | "roomRate"
+  | "roomTotal"
   | "cleaning"
   | "taxes"
   | "commission"
@@ -83,8 +83,8 @@ function getIncomeEntrySortValue(
         return formatChannelLabel(stay.channel);
       case "status":
         return formatStatusLabel(stay.status);
-      case "roomRate":
-        return stay.roomRate;
+      case "roomTotal":
+        return stay.roomTotal;
       case "cleaning":
         return stay.cleaningFee;
       case "taxes":
@@ -118,7 +118,7 @@ function getIncomeEntrySortValue(
       return "";
     case "status":
       return "";
-    case "roomRate":
+    case "roomTotal":
       return line.amount;
     case "cleaning":
       return 0;

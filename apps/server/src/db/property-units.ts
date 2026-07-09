@@ -30,21 +30,20 @@ export const propertyUnitsDb = {
     return mapPropertyUnitRow(result.rows[0] as Record<string, unknown>);
   },
 
-  async delete(id: string): Promise<boolean> {
-    const result = await pool.query(`DELETE FROM property_units WHERE id = $1`, [id]);
-    return (result.rowCount ?? 0) > 0;
-  },
-
   async findById(id: string): Promise<IPropertyUnit | null> {
     const result = await pool.query(`SELECT * FROM property_units WHERE id = $1`, [id]);
     if (result.rows.length === 0) return null;
     return mapPropertyUnitRow(result.rows[0] as Record<string, unknown>);
   },
 
-  async findByProperty(propertyId: string): Promise<IPropertyUnit[]> {
+  async findByProperty(propertyId: string, includeDeleted = false): Promise<IPropertyUnit[]> {
+    const conditions = ["property_id = $1"];
+    if (!includeDeleted) {
+      conditions.push("is_deleted = false");
+    }
     const result = await pool.query(
       `SELECT * FROM property_units
-       WHERE property_id = $1
+       WHERE ${conditions.join(" AND ")}
        ORDER BY unit_number ASC`,
       [propertyId]
     );
@@ -58,8 +57,8 @@ export const propertyUnitsDb = {
       reservation_count: number;
     }>(
       `SELECT
-         (SELECT COUNT(*)::int FROM property_reservations WHERE unit_id = $1) AS reservation_count,
-         (SELECT COUNT(*)::int FROM property_income_lines WHERE unit_id = $1) AS income_line_count,
+         (SELECT COUNT(*)::int FROM property_reservations WHERE unit_id = $1 AND is_deleted = false) AS reservation_count,
+         (SELECT COUNT(*)::int FROM property_income_lines WHERE unit_id = $1 AND is_deleted = false) AS income_line_count,
          (SELECT COUNT(*)::int FROM property_long_stays WHERE unit_id = $1) AS long_stay_count`,
       [unitId]
     );
@@ -69,6 +68,22 @@ export const propertyUnitsDb = {
       longStayCount: row?.long_stay_count ?? 0,
       reservationCount: row?.reservation_count ?? 0,
     };
+  },
+
+  async restore(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_units SET is_deleted = false, deleted_at = NULL WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async softDelete(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_units SET is_deleted = true, deleted_at = NOW() WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
   },
 
   async update(id: string, input: IUpdatePropertyUnitBody): Promise<IPropertyUnit | null> {

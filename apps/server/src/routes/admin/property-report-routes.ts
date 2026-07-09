@@ -17,7 +17,9 @@ interface IPropertyParams {
 
 async function buildSummary(propertyId: string, query: IPropertyReportsQuery) {
   const data = await loadReportData(propertyId, query);
-  return buildPropertyReportSummary(data, query);
+  const summary = buildPropertyReportSummary(data, query);
+
+  return summary;
 }
 
 export const propertyReportRoutes = async (server: FastifyInstance): Promise<void> => {

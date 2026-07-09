@@ -1,0 +1,102 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
+import {
+  type IRecentProperty,
+  parseRecentProperties,
+  readRecentProperties,
+  RECENT_PROPERTIES_MAX,
+  RECENT_PROPERTIES_STORAGE_KEY,
+  recordRecentProperty,
+  writeRecentProperties,
+} from "./recent-properties-storage";
+
+const storage = new Map<string, string>();
+
+function property(id: string, name: string): Pick<IRecentProperty, "address" | "id" | "name"> {
+  return { address: `${name} address`, id, name };
+}
+
+beforeEach(() => {
+  storage.clear();
+  const localStorageMock = {
+    clear: () => {
+      storage.clear();
+    },
+    getItem: (key: string) => storage.get(key) ?? null,
+    key: () => null,
+    length: 0,
+    removeItem: (key: string) => {
+      storage.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+      storage.set(key, value);
+    },
+  };
+  globalThis.localStorage = localStorageMock;
+  globalThis.window = { localStorage: localStorageMock } as Window & typeof globalThis.window;
+});
+
+afterEach(() => {
+  storage.clear();
+});
+
+describe("parseRecentProperties", () => {
+  test("returns empty array for invalid json", () => {
+    expect(parseRecentProperties("{")).toEqual([]);
+  });
+
+  test("returns empty array for non-array json", () => {
+    expect(parseRecentProperties('{"id":"1"}')).toEqual([]);
+  });
+});
+
+describe("recordRecentProperty", () => {
+  test("prepends a new visit", () => {
+    recordRecentProperty(property("a", "Alpha"));
+    recordRecentProperty(property("b", "Beta"));
+
+    expect(readRecentProperties().map((entry) => entry.id)).toEqual(["b", "a"]);
+  });
+
+  test("moves an existing id to the front", () => {
+    recordRecentProperty(property("a", "Alpha"));
+    recordRecentProperty(property("b", "Beta"));
+    recordRecentProperty(property("a", "Alpha Updated"));
+
+    const recent = readRecentProperties();
+    expect(recent.map((entry) => entry.id)).toEqual(["a", "b"]);
+    expect(recent[0]?.name).toBe("Alpha Updated");
+  });
+
+  test("caps at five entries", () => {
+    for (let index = 1; index <= RECENT_PROPERTIES_MAX + 1; index += 1) {
+      recordRecentProperty(property(String(index), `Property ${index}`));
+    }
+
+    const recent = readRecentProperties();
+    expect(recent).toHaveLength(RECENT_PROPERTIES_MAX);
+    expect(recent.map((entry) => entry.id)).toEqual(["6", "5", "4", "3", "2"]);
+  });
+});
+
+describe("readRecentProperties", () => {
+  test("reads persisted entries", () => {
+    writeRecentProperties([
+      {
+        address: "123 Main",
+        id: "1",
+        name: "One",
+        visitedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    expect(readRecentProperties()).toHaveLength(1);
+    expect(storage.get(RECENT_PROPERTIES_STORAGE_KEY)).toContain('"One"');
+  });
+
+  test("returns a stable snapshot reference when storage is unchanged", () => {
+    recordRecentProperty(property("a", "Alpha"));
+
+    expect(readRecentProperties()).toBe(readRecentProperties());
+  });
+});

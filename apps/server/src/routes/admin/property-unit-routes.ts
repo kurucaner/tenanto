@@ -7,6 +7,7 @@ import {
   type IUpdatePropertyUnitBody,
   type TUnitRentalType,
   UnitRentalType,
+  UserType,
 } from "@/packages/shared";
 
 import { parseUuidParam } from "./admin-query-utils";
@@ -20,6 +21,7 @@ import {
   getUnitDeleteBlockerCode,
   UNIT_DELETE_FOREIGN_KEY_FALLBACK,
 } from "./property-unit-errors";
+import { rejectIfDeleted } from "./reject-if-deleted";
 import { replyFromDatabaseError } from "./reply-from-database-error";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
@@ -128,7 +130,8 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const units = await propertyUnitsDb.findByProperty(propertyId);
+      const includeDeleted = request.user.userType === UserType.ADMIN;
+      const units = await propertyUnitsDb.findByProperty(propertyId, includeDeleted);
       return reply.send({ units });
     }
   );
@@ -217,6 +220,8 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Unit not found" });
       }
 
+      if (rejectIfDeleted(existing, reply, "unit")) return;
+
       const parsed = parseUpdateUnitBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
@@ -275,6 +280,8 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Unit not found" });
       }
 
+      if (rejectIfDeleted(existing, reply, "unit")) return;
+
       const blockers = await propertyUnitsDb.getUnitDeleteBlockers(unitId);
       if (blockers.reservationCount > 0 || blockers.incomeLineCount > 0 || blockers.longStayCount > 0) {
         const code = getUnitDeleteBlockerCode(blockers);
@@ -286,7 +293,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       }
 
       try {
-        await propertyUnitsDb.delete(unitId);
+        await propertyUnitsDb.softDelete(unitId);
         return reply.status(HttpStatus.NO_CONTENT).send();
       } catch (error) {
         if (
@@ -298,6 +305,29 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
         }
         throw error;
       }
+    }
+  );
+
+  server.post<{ Params: IPropertyUnitParams }>(
+    "/properties/:propertyId/units/:unitId/restore",
+    { preHandler: [server.authenticate, server.requireAdmin] },
+    async (request: FastifyRequest<{ Params: IPropertyUnitParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const unitId = parseUuidParam(request.params.unitId);
+      if (unitId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid unitId" });
+      }
+
+      const existing = await propertyUnitsDb.findById(unitId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Unit not found" });
+      }
+
+      await propertyUnitsDb.restore(unitId);
+      return reply.status(HttpStatus.NO_CONTENT).send();
     }
   );
 };

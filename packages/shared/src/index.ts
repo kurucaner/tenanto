@@ -184,27 +184,55 @@ export {
   type IPropertyReportSalesTypeBreakdown,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
+  type IPropertyReportTaxSummaryItem,
   type IPropertyReportTotals,
   type IPropertyReportUnitSummary,
   ReportRentalTypeFilter,
   type TReportRentalTypeFilter,
 } from "./property-report-types";
 
+// Property report chart utilities
+export {
+  buildIncomeCompositionBreakdown,
+  buildProfitTrendChartRows,
+  buildReportChartSegments,
+  calculateOperationalProfitMargin,
+  channelSummaryToSegments,
+  expenseCategoryToSegments,
+  type IBuildReportChartSegmentsOptions,
+  type IIncomeCompositionBreakdown,
+  incomeCompositionToSegments,
+  type IProfitTrendChartRow,
+  type IReportChartSegment,
+  otherIncomeTypeToSegments,
+  PROPERTY_AMENITY_UNIT_ID,
+  taxSummaryToSegments,
+} from "./property-report-chart-utils";
+
 // Property income utilities
 export {
+  buildStayCommissionBreakdown,
+  buildStayGrossBreakdown,
+  buildStayNetPayoutBreakdown,
+  buildStayTaxesBreakdown,
   getChannelCommissionRate,
   getResortTaxAmount,
+  getStayAverageDailyRate,
+  getStayCommissionBase,
   getStayNetPayout,
+  getStayTaxableBase,
   getStayTaxesTotal,
+  isOperandInMetric,
+  type IStayCalculationBreakdown,
+  type IStayCalculationLine,
   sumTaxBreakdown,
+  type TBreakdownOperand,
   type TChannelCommissionSettings,
+  type TStayCalculationMetric,
 } from "./property-income-utils";
 
 // Property unit utilities
-export {
-  formatPropertyUnitSelectLabel,
-  formatUnitRentalTypeLabel,
-} from "./property-unit-utils";
+export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./property-unit-utils";
 
 // Helpers
 export { sleep, toIso } from "./helpers";

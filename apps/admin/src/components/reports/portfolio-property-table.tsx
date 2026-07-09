@@ -6,7 +6,7 @@ import {
   type ReportTableColumnDef,
 } from "@/components/reports/report-section-table";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { useTableSort } from "@/hooks/use-table-sort";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { formatMoney } from "@/lib/format-money";
 import { buildPropertyReportsPath, formatReportPercent } from "@/lib/report-date-defaults";
 import { sortPortfolioPropertyRows } from "@/lib/report-table-sort";
@@ -46,10 +46,11 @@ function aggregateAdr(row: IPortfolioPropertyReportRow): number {
 
 export const PortfolioPropertyTable = memo(
   ({ from, properties, rentalType, to }: PortfolioPropertyTableProps) => {
-    const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useTableSort(
-      "netIncome",
-      "desc"
-    );
+    const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
+      defaultColumnId: "netIncome",
+      defaultDirection: "desc",
+      prefix: "portfolio",
+    });
 
     const sortedProperties = useMemo(
       () => sortPortfolioPropertyRows(properties, sortState),
@@ -70,7 +71,7 @@ export const PortfolioPropertyTable = memo(
             <TableCell>
               <Link
                 className="font-medium text-foreground hover:underline"
-                to={buildPropertyReportsPath(row.propertyId, from, to, rentalType)}
+                to={buildPropertyReportsPath(row.propertyId, { from, rentalType, to })}
               >
                 {row.propertyName}
               </Link>

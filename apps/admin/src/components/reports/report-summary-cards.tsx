@@ -10,7 +10,7 @@ interface ReportSummaryCardsProps {
 
 const SUMMARY_ITEMS: { key: keyof IPropertyReportTotals; label: string }[] = [
   { key: "grossIncome", label: "Gross income" },
-  { key: "netIncome", label: "Net income" },
+  { key: "netIncome", label: "Net Payout" },
   { key: "totalExpenses", label: "Total expenses" },
   { key: "operationalNet", label: "Operational net" },
 ];

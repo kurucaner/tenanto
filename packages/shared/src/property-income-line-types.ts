@@ -9,12 +9,14 @@ export interface IPropertyIncomeLine {
   amount: number;
   channelCommission: number;
   createdAt: string;
+  deletedAt: string | null;
   description: string | null;
   grossIncome: number;
   guestName: string | null;
   id: string;
   incomeLineTypeId: string;
   incomeLineTypeName?: string;
+  isDeleted: boolean;
   netIncome: number;
   propertyId: string;
   reservationId: string | null;

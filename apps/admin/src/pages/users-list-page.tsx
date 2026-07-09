@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Copy } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
 import {
   adminApi,
   type IAdminUsersListQuery,
@@ -26,10 +27,16 @@ import {
 } from "@/lib/api-client";
 import { copyUserIdToClipboard } from "@/lib/copy-user-id";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import type { IUser } from "@/packages/shared";
 import { UserType } from "@/packages/shared";
 
 const LIMIT = 25;
+
+const USERS_URL_FILTER_SCHEMA = defineUrlFilterSchema<{ q: string; userType: string }>({
+  q: { defaultValue: "" },
+  userType: { defaultValue: "" },
+});
 
 const UserTableRow = memo(({ user }: { user: IUser }) => (
   <TableRow>
@@ -67,19 +74,23 @@ const UserTableRow = memo(({ user }: { user: IUser }) => (
 UserTableRow.displayName = "UserTableRow";
 
 const UsersListPageInner = memo(() => {
-  const [qInput, setQInput] = useState("");
-  const [appliedQ, setAppliedQ] = useState("");
-  const [userType, setUserType] = useState<"" | UserType>("");
-  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const { filters, setFilter } = useUrlFilterState(USERS_URL_FILTER_SCHEMA);
+  const { q, userType } = filters;
+  const [includeDeleted, setIncludeDeleted] = useUrlFilterBoolean("includeDeleted", false);
+  const [qInput, setQInput] = useState(q);
+
+  useEffect(() => {
+    setQInput(q);
+  }, [q]);
 
   const listFilters = useMemo<Omit<IAdminUsersListQuery, "cursor">>(
     () => ({
       include_deleted: includeDeleted || undefined,
       limit: LIMIT,
-      q: appliedQ || undefined,
-      user_type: userType || undefined,
+      q: q || undefined,
+      user_type: (userType as UserType | "") || undefined,
     }),
-    [appliedQ, includeDeleted, userType]
+    [includeDeleted, q, userType]
   );
 
   const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =
@@ -138,7 +149,7 @@ const UsersListPageInner = memo(() => {
                 value={qInput}
               />
             </div>
-            <Button onClick={() => setAppliedQ(qInput.trim())} type="button" variant="secondary">
+            <Button onClick={() => setFilter("q", qInput.trim())} type="button" variant="secondary">
               Apply search
             </Button>
             <div className="flex flex-col gap-2">
@@ -146,7 +157,7 @@ const UsersListPageInner = memo(() => {
               <select
                 className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
                 id="filter-user-type"
-                onChange={(e) => setUserType((e.target.value as UserType | "") || "")}
+                onChange={(e) => setFilter("userType", e.target.value)}
                 value={userType}
               >
                 <option value="">Any</option>

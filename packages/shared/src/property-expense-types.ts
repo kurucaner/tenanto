@@ -29,9 +29,11 @@ export interface IPropertyExpense {
   amount: number;
   category: TExpenseCategory;
   createdAt: string;
+  deletedAt: string | null;
   description: string | null;
   expenseDate: string | null;
   id: string;
+  isDeleted: boolean;
   personName: string | null;
   propertyId: string;
   taxFree: boolean;

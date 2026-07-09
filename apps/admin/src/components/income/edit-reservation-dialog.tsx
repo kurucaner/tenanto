@@ -7,6 +7,7 @@ import {
   reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
+import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,6 +32,7 @@ import {
 import {
   type IPropertyReservation,
   type IPropertyUnit,
+  ReservationChannel,
   type TReservationChannel,
   type TReservationStatus,
 } from "@/packages/shared";
@@ -53,7 +55,7 @@ export const EditReservationDialog = memo(
     const [checkOut, setCheckOut] = useState(reservation.checkOut);
     const [status, setStatus] = useState<TReservationStatus>(reservation.status);
     const [channel, setChannel] = useState<TReservationChannel>(reservation.channel);
-    const [roomRate, setRoomRate] = useState(String(reservation.roomRate));
+    const [roomTotal, setRoomTotal] = useState(String(reservation.roomTotal));
     const [cleaningFee, setCleaningFee] = useState(String(reservation.cleaningFee));
 
     const mutation = useMutation({
@@ -65,7 +67,7 @@ export const EditReservationDialog = memo(
           cleaningFee: Number(cleaningFee) || 0,
           guestName: guestName.trim(),
           reservationNumber: reservationNumber.trim() || null,
-          roomRate: Number(roomRate) || 0,
+          roomTotal: Number(roomTotal) || 0,
           status,
           unitId,
         }),
@@ -194,19 +196,20 @@ export const EditReservationDialog = memo(
               </div>
             </div>
 
+            {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
+              <p className="text-muted-foreground text-xs">
+                Expedia commission is calculated on room total only.
+              </p>
+            ) : null}
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-room-rate">Room rate (per night)</Label>
-                <Input
-                  id="edit-room-rate"
-                  inputMode="decimal"
-                  onChange={(e) => {
-                    if (isValidDecimalInput(e.target.value)) setRoomRate(e.target.value);
-                  }}
-                  type="text"
-                  value={roomRate}
-                />
-              </div>
+              <ReservationRoomTotalField
+                checkIn={checkIn}
+                checkOut={checkOut}
+                id="edit-room-total"
+                onChange={setRoomTotal}
+                value={roomTotal}
+              />
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-cleaning-fee">Cleaning fee</Label>
                 <Input
