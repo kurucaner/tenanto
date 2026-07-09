@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { memo, useCallback, useMemo } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, type FieldErrors, useForm, type UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -82,14 +82,207 @@ interface StartLeaseDialogProps {
   units?: IPropertyUnit[];
 }
 
-export const StartLeaseDialog = memo(
+interface StartLeaseUnitSelectFieldProps {
+  availableUnits: IPropertyUnit[];
+  errorMessage: string | undefined;
+  isActiveLeasesPending: boolean;
+  register: UseFormReturn<TStartLeaseFormValues>["register"];
+}
+
+const StartLeaseUnitSelectField = memo(
   ({
-    onOpenChange,
-    open,
-    propertyId,
-    unit,
-    units = [],
-  }: StartLeaseDialogProps) => {
+    availableUnits,
+    errorMessage,
+    isActiveLeasesPending,
+    register,
+  }: StartLeaseUnitSelectFieldProps) => (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="start-lease-unit">Unit</Label>
+      <select
+        className={incomeLineSelectClassName}
+        disabled={isActiveLeasesPending}
+        id="start-lease-unit"
+        {...register("unitId")}
+      >
+        <option value="">{isActiveLeasesPending ? "Loading units…" : "Select unit…"}</option>
+        <PropertyUnitSelectOptions units={availableUnits} />
+      </select>
+      {errorMessage ? <p className="text-xs text-destructive">{errorMessage}</p> : null}
+      {isActiveLeasesPending ? (
+        <p className="text-muted-foreground text-xs">Loading available units…</p>
+      ) : null}
+      {!isActiveLeasesPending && availableUnits.length === 0 ? (
+        <p className="text-muted-foreground text-xs">No vacant long-term units available.</p>
+      ) : null}
+    </div>
+  )
+);
+StartLeaseUnitSelectField.displayName = "StartLeaseUnitSelectField";
+
+interface StartLeaseDateTermFieldsProps {
+  control: UseFormReturn<TStartLeaseFormValues>["control"];
+  errors: FieldErrors<TStartLeaseFormValues>;
+  register: UseFormReturn<TStartLeaseFormValues>["register"];
+}
+
+const StartLeaseDateTermFields = memo(
+  ({ control, errors, register }: StartLeaseDateTermFieldsProps) => (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="start-lease-start-date">Lease Start Date</Label>
+        <Input id="start-lease-start-date" type="date" {...register("leaseStartDate")} />
+        {errors.leaseStartDate ? (
+          <p className="text-xs text-destructive">{errors.leaseStartDate.message}</p>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="start-lease-term-months">Term (Months)</Label>
+        <Controller
+          control={control}
+          name="termMonths"
+          render={({ field }) => (
+            <Input
+              id="start-lease-term-months"
+              inputMode="numeric"
+              onChange={(e) => {
+                if (isValidIntegerInput(e.target.value)) {
+                  field.onChange(e.target.value);
+                }
+              }}
+              type="text"
+              value={field.value}
+            />
+          )}
+        />
+        {errors.termMonths ? (
+          <p className="text-xs text-destructive">{errors.termMonths.message}</p>
+        ) : null}
+      </div>
+    </div>
+  )
+);
+StartLeaseDateTermFields.displayName = "StartLeaseDateTermFields";
+
+interface StartLeaseDialogFormProps {
+  availableUnits: IPropertyUnit[];
+  errors: FieldErrors<TStartLeaseFormValues>;
+  form: UseFormReturn<TStartLeaseFormValues>;
+  isActiveLeasesPending: boolean;
+  isSubmitting: boolean;
+  leaseEndDate: string | null;
+  lockedUnit: IPropertyUnit | null;
+  mutationPending: boolean;
+  onCancel: () => void;
+  onSubmit: ReturnType<UseFormReturn<TStartLeaseFormValues>["handleSubmit"]>;
+}
+
+const StartLeaseDialogForm = memo(
+  ({
+    availableUnits,
+    errors,
+    form,
+    isActiveLeasesPending,
+    isSubmitting,
+    leaseEndDate,
+    lockedUnit,
+    mutationPending,
+    onCancel,
+    onSubmit,
+  }: StartLeaseDialogFormProps) => (
+    <form onSubmit={onSubmit}>
+      <div className="flex flex-col gap-5 px-6 py-5">
+        {!lockedUnit ? (
+          <StartLeaseUnitSelectField
+            availableUnits={availableUnits}
+            errorMessage={errors.unitId?.message}
+            isActiveLeasesPending={isActiveLeasesPending}
+            register={form.register}
+          />
+        ) : null}
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="start-lease-tenant-name">Primary Tenant</Label>
+          <Input autoFocus id="start-lease-tenant-name" {...form.register("guestName")} />
+          {errors.guestName ? (
+            <p className="text-xs text-destructive">{errors.guestName.message}</p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor="start-lease-email" optional>
+            Email
+          </FieldLabel>
+          <Input id="start-lease-email" type="email" {...form.register("tenantEmail")} />
+        </div>
+
+        <Controller
+          control={form.control}
+          name="tenantPhone"
+          render={({ field }) => (
+            <PhoneInput
+              id="start-lease-phone"
+              onChange={field.onChange}
+              optional
+              value={field.value}
+            />
+          )}
+        />
+        {errors.tenantPhone ? (
+          <p className="text-xs text-destructive">{errors.tenantPhone.message}</p>
+        ) : null}
+
+        <StartLeaseDateTermFields
+          control={form.control}
+          errors={errors}
+          register={form.register}
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="start-lease-monthly-rent">Monthly Rent</Label>
+          <Controller
+            control={form.control}
+            name="monthlyRent"
+            render={({ field }) => (
+              <Input
+                id="start-lease-monthly-rent"
+                inputMode="decimal"
+                onChange={(e) => {
+                  if (isValidDecimalInput(e.target.value)) {
+                    field.onChange(e.target.value);
+                  }
+                }}
+                type="text"
+                value={field.value}
+              />
+            )}
+          />
+          {errors.monthlyRent ? (
+            <p className="text-xs text-destructive">{errors.monthlyRent.message}</p>
+          ) : null}
+        </div>
+
+        {leaseEndDate ? (
+          <p className="text-muted-foreground text-xs">
+            Lease ends: {new Date(`${leaseEndDate}T00:00:00`).toLocaleDateString()}
+          </p>
+        ) : null}
+      </div>
+
+      <DialogFooter>
+        <Button disabled={mutationPending} onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+        <Button disabled={mutationPending || isSubmitting} type="submit">
+          {mutationPending ? "Starting…" : "Start Lease"}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+);
+StartLeaseDialogForm.displayName = "StartLeaseDialogForm";
+
+export const StartLeaseDialog = memo(
+  ({ onOpenChange, open, propertyId, unit, units = [] }: StartLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const lockedUnit = unit ?? null;
 
@@ -181,149 +374,18 @@ export const StartLeaseDialog = memo(
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={onSubmit}>
-            <div className="flex flex-col gap-5 px-6 py-5">
-              {!lockedUnit ? (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="start-lease-unit">Unit</Label>
-                  <select
-                    className={incomeLineSelectClassName}
-                    disabled={isActiveLeasesPending}
-                    id="start-lease-unit"
-                    {...form.register("unitId")}
-                  >
-                    <option value="">
-                      {isActiveLeasesPending ? "Loading units…" : "Select unit…"}
-                    </option>
-                    <PropertyUnitSelectOptions units={availableUnits} />
-                  </select>
-                  {errors.unitId ? (
-                    <p className="text-xs text-destructive">{errors.unitId.message}</p>
-                  ) : null}
-                  {isActiveLeasesPending ? (
-                    <p className="text-muted-foreground text-xs">Loading available units…</p>
-                  ) : null}
-                  {!isActiveLeasesPending && availableUnits.length === 0 ? (
-                    <p className="text-muted-foreground text-xs">
-                      No vacant long-term units available.
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="start-lease-tenant-name">Primary Tenant</Label>
-                <Input autoFocus id="start-lease-tenant-name" {...form.register("guestName")} />
-                {errors.guestName ? (
-                  <p className="text-xs text-destructive">{errors.guestName.message}</p>
-                ) : null}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel htmlFor="start-lease-email" optional>
-                  Email
-                </FieldLabel>
-                <Input id="start-lease-email" type="email" {...form.register("tenantEmail")} />
-              </div>
-
-              <Controller
-                control={form.control}
-                name="tenantPhone"
-                render={({ field }) => (
-                  <PhoneInput
-                    id="start-lease-phone"
-                    onChange={field.onChange}
-                    optional
-                    value={field.value}
-                  />
-                )}
-              />
-              {errors.tenantPhone ? (
-                <p className="text-xs text-destructive">{errors.tenantPhone.message}</p>
-              ) : null}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="start-lease-start-date">Lease Start Date</Label>
-                  <Input
-                    id="start-lease-start-date"
-                    type="date"
-                    {...form.register("leaseStartDate")}
-                  />
-                  {errors.leaseStartDate ? (
-                    <p className="text-xs text-destructive">{errors.leaseStartDate.message}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="start-lease-term-months">Term (Months)</Label>
-                  <Controller
-                    control={form.control}
-                    name="termMonths"
-                    render={({ field }) => (
-                      <Input
-                        id="start-lease-term-months"
-                        inputMode="numeric"
-                        onChange={(e) => {
-                          if (isValidIntegerInput(e.target.value)) {
-                            field.onChange(e.target.value);
-                          }
-                        }}
-                        type="text"
-                        value={field.value}
-                      />
-                    )}
-                  />
-                  {errors.termMonths ? (
-                    <p className="text-xs text-destructive">{errors.termMonths.message}</p>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="start-lease-monthly-rent">Monthly Rent</Label>
-                <Controller
-                  control={form.control}
-                  name="monthlyRent"
-                  render={({ field }) => (
-                    <Input
-                      id="start-lease-monthly-rent"
-                      inputMode="decimal"
-                      onChange={(e) => {
-                        if (isValidDecimalInput(e.target.value)) {
-                          field.onChange(e.target.value);
-                        }
-                      }}
-                      type="text"
-                      value={field.value}
-                    />
-                  )}
-                />
-                {errors.monthlyRent ? (
-                  <p className="text-xs text-destructive">{errors.monthlyRent.message}</p>
-                ) : null}
-              </div>
-
-              {leaseEndDate ? (
-                <p className="text-muted-foreground text-xs">
-                  Lease ends: {new Date(`${leaseEndDate}T00:00:00`).toLocaleDateString()}
-                </p>
-              ) : null}
-            </div>
-
-            <DialogFooter>
-              <Button
-                disabled={mutation.isPending}
-                onClick={() => handleOpenChange(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button disabled={mutation.isPending || isSubmitting} type="submit">
-                {mutation.isPending ? "Starting…" : "Start Lease"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <StartLeaseDialogForm
+            availableUnits={availableUnits}
+            errors={errors}
+            form={form}
+            isActiveLeasesPending={isActiveLeasesPending}
+            isSubmitting={isSubmitting}
+            leaseEndDate={leaseEndDate}
+            lockedUnit={lockedUnit}
+            mutationPending={mutation.isPending}
+            onCancel={() => handleOpenChange(false)}
+            onSubmit={onSubmit}
+          />
         </DialogContent>
       </Dialog>
     );
