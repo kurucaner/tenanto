@@ -35,3 +35,28 @@ export function enumerateLeaseMonths(leaseStartDate: string, leaseEndDate: strin
 export function transactionDateToMonth(transactionDate: string): string {
   return transactionDate.slice(0, 7);
 }
+
+export function getEndLeaseMoveOutDateBounds(
+  leaseEndDate: string,
+  today: string
+): { defaultDate: string; maxDate: string; minDate: string } {
+  const minDate = today;
+  const maxDate = leaseEndDate >= today ? leaseEndDate : today;
+  const defaultDate = minDate;
+  return { defaultDate, maxDate, minDate };
+}
+
+export function validateEndLeaseMoveOutDate(
+  actualEndDate: string,
+  leaseEndDate: string,
+  today: string
+): string | null {
+  const { maxDate, minDate } = getEndLeaseMoveOutDateBounds(leaseEndDate, today);
+  if (actualEndDate < minDate) {
+    return "Move-out date cannot be in the past";
+  }
+  if (actualEndDate > maxDate) {
+    return "Move-out date cannot be after lease end date";
+  }
+  return null;
+}

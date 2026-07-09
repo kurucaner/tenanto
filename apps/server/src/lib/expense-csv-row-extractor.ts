@@ -13,11 +13,16 @@ const CHASE_HEADERS = [
 
 const DATE_HEADER_PATTERNS = [/date/i, /posted/i, /posting/i];
 const AMOUNT_HEADER_PATTERNS = [/amount/i, /debit/i, /charge/i, /total/i];
-const DESCRIPTION_HEADER_PATTERNS = [/description/i, /memo/i, /details/i, /narrative/i, /merchant/i];
+const DESCRIPTION_HEADER_PATTERNS = [
+  /description/i,
+  /memo/i,
+  /details/i,
+  /narrative/i,
+  /merchant/i,
+];
 
 export type TExpenseCsvExtractResult =
-  | { error: string }
-  | { ok: true; rows: IExpenseCsvExtractedRow[] };
+  { error: string } | { ok: true; rows: IExpenseCsvExtractedRow[] };
 
 export function extractExpenseRowsFromCsv(
   csvText: string,
@@ -62,9 +67,7 @@ function extractChaseRows(
 
     const description = getCell(cells, columnIndex["description"])?.trim() ?? "";
     const bankCategory = getCell(cells, columnIndex["category"])?.trim();
-    const composedDescription = bankCategory
-      ? `${description} (${bankCategory})`
-      : description;
+    const composedDescription = bankCategory ? `${description} (${bankCategory})` : description;
 
     rows.push({
       amount: Math.abs(rawAmount),
@@ -123,7 +126,10 @@ function extractGenericRows(
   return { ok: true, rows };
 }
 
-function detectChargeSignConvention(dataRows: string[][], amountIndex: number): "negative" | "positive" {
+function detectChargeSignConvention(
+  dataRows: string[][],
+  amountIndex: number
+): "negative" | "positive" {
   let negativeCount = 0;
   let positiveCount = 0;
 
@@ -212,12 +218,12 @@ export function parseCsvRecords(csvText: string): string[][] {
     const nextChar = csvText[index + 1];
 
     if (inQuotes) {
-      if (char === "\"" && nextChar === "\"") {
-        currentField += "\"";
+      if (char === '"' && nextChar === '"') {
+        currentField += '"';
         index += 1;
         continue;
       }
-      if (char === "\"") {
+      if (char === '"') {
         inQuotes = false;
         continue;
       }
@@ -225,7 +231,7 @@ export function parseCsvRecords(csvText: string): string[][] {
       continue;
     }
 
-    if (char === "\"") {
+    if (char === '"') {
       inQuotes = true;
       continue;
     }

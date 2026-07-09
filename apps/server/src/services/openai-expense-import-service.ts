@@ -16,7 +16,9 @@ export interface IExpenseCategoryAssignment {
   rowIndex: number;
 }
 
-export function buildExpenseCategoryAssignmentSchema(allowedCategories: readonly TExpenseCategory[]) {
+export function buildExpenseCategoryAssignmentSchema(
+  allowedCategories: readonly TExpenseCategory[]
+) {
   return {
     additionalProperties: false,
     properties: {
@@ -48,9 +50,7 @@ export const expenseCategoryAssignmentResponseSchema = z.object({
 });
 
 function buildCategorizationPrompt(allowedCategories: readonly TExpenseCategory[]): string {
-  const categoryList = allowedCategories
-    .map((category) => `- ${category}`)
-    .join("\n");
+  const categoryList = allowedCategories.map((category) => `- ${category}`).join("\n");
 
   return `You categorize business credit card expense transactions for property accounting.
 

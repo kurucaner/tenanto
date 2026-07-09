@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -18,23 +18,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
-  clampToMaxLocalIsoDate,
-  getTodayLocalIsoDate,
-  isDateOnOrBefore,
-} from "@/lib/reservation-date-utils";
-import { type IPropertyLongStay } from "@/packages/shared";
+  getEndLeaseMoveOutDateBounds,
+  type IPropertyLongStay,
+  validateEndLeaseMoveOutDate,
+} from "@/packages/shared";
 
-const endLeaseSchema = z.object({
-  actualEndDate: z
-    .string()
-    .min(1, "Move-out date is required")
-    .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
-      message: "Move-out date cannot be in the future",
-    }),
-});
-
-type TEndLeaseFormValues = z.infer<typeof endLeaseSchema>;
+type TEndLeaseFormValues = {
+  actualEndDate: string;
+};
 
 interface EndLeaseDialogProps {
   lease: IPropertyLongStay;
@@ -46,19 +39,40 @@ interface EndLeaseDialogProps {
 export const EndLeaseDialog = memo(
   ({ lease, onOpenChange, open, propertyId }: EndLeaseDialogProps) => {
     const queryClient = useQueryClient();
-    const maxDate = getTodayLocalIsoDate();
-    console.log("maxDate", maxDate);
+    const today = getTodayLocalIsoDate();
+    const { defaultDate, maxDate, minDate } = getEndLeaseMoveOutDateBounds(
+      lease.leaseEndDate,
+      today
+    );
+
+    const endLeaseSchema = useMemo(
+      () =>
+        z
+          .object({
+            actualEndDate: z.string().min(1, "Move-out date is required"),
+          })
+          .superRefine((values, ctx) => {
+            const error = validateEndLeaseMoveOutDate(
+              values.actualEndDate,
+              lease.leaseEndDate,
+              today
+            );
+            if (error) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: error,
+                path: ["actualEndDate"],
+              });
+            }
+          }),
+      [lease.leaseEndDate, today]
+    );
 
     const form = useForm<TEndLeaseFormValues>({
       defaultValues: {
-        actualEndDate: clampToMaxLocalIsoDate(maxDate, maxDate),
+        actualEndDate: defaultDate,
       },
-      resolver: zodResolver(
-        endLeaseSchema.refine((values) => values.actualEndDate >= lease.leaseStartDate, {
-          message: "Move-out date cannot be before lease start date",
-          path: ["actualEndDate"],
-        })
-      ),
+      resolver: zodResolver(endLeaseSchema),
     });
 
     const mutation = useMutation({
@@ -77,11 +91,11 @@ export const EndLeaseDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset({ actualEndDate: clampToMaxLocalIsoDate(maxDate, maxDate) });
+          form.reset({ actualEndDate: defaultDate });
         }
         onOpenChange(nextOpen);
       },
-      [form, maxDate, onOpenChange]
+      [defaultDate, form, onOpenChange]
     );
 
     const onSubmit = form.handleSubmit((values) => {
@@ -107,7 +121,7 @@ export const EndLeaseDialog = memo(
                 <Input
                   id="end-lease-date"
                   max={maxDate}
-                  min={lease.leaseStartDate}
+                  min={minDate}
                   type="date"
                   {...form.register("actualEndDate")}
                 />

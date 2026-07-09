@@ -134,7 +134,9 @@ export {
 export {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  getEndLeaseMoveOutDateBounds,
   transactionDateToMonth,
+  validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {

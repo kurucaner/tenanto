@@ -19,6 +19,7 @@ import {
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
   UnitRentalType,
+  validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 
@@ -251,9 +252,7 @@ function parseLongStaysListLimit(raw: unknown): number {
   return Math.min(LEASES_LIST_MAX_LIMIT, Math.floor(n));
 }
 
-function parseLongStaysListQuery(
-  query: Record<string, unknown>
-):
+function parseLongStaysListQuery(query: Record<string, unknown>):
   | {
       cursor?: string;
       filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">;
@@ -534,15 +533,13 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       }
 
       const today = getTodayUtcIsoDate();
-      if (parsed.body.actualEndDate > today) {
-        return reply
-          .status(HttpStatus.BAD_REQUEST)
-          .send({ error: "Move-out date cannot be in the future" });
-      }
-      if (parsed.body.actualEndDate < existing.leaseStartDate) {
-        return reply
-          .status(HttpStatus.BAD_REQUEST)
-          .send({ error: "Move-out date cannot be before lease start date" });
+      const moveOutDateError = validateEndLeaseMoveOutDate(
+        parsed.body.actualEndDate,
+        existing.leaseEndDate,
+        today
+      );
+      if (moveOutDateError) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: moveOutDateError });
       }
 
       try {

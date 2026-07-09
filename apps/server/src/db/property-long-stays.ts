@@ -11,10 +11,7 @@ import {
   PropertyLongStayStatus,
   transactionDateToMonth,
 } from "@/packages/shared";
-import {
-  decodeLeaseKeysetCursor,
-  encodeLeaseKeysetCursor,
-} from "@/pagination/keyset-cursor";
+import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapPropertyLongStayRow } from "./mappers";

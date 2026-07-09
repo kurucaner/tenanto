@@ -70,11 +70,7 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
   test("returns a page and nextCursor when more rows exist", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyLongStaysDb.listPaginatedByProperty(
-      "prop-1",
-      {},
-      { limit: 2 }
-    );
+    const firstPage = await propertyLongStaysDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
 
     expect(firstPage.longStays).toHaveLength(2);
     expect(firstPage.longStays[0]?.leaseStartDate).toBe("2026-07-09");
@@ -89,11 +85,7 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
   test("passes cursor predicate on subsequent pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyLongStaysDb.listPaginatedByProperty(
-      "prop-1",
-      {},
-      { limit: 2 }
-    );
+    const firstPage = await propertyLongStaysDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();

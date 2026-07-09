@@ -5,7 +5,12 @@ import {
   type IExpenseImportParseResponse,
 } from "@/packages/shared";
 
-const CSV_MIME_TYPES = new Set(["application/csv", "application/vnd.ms-excel", "text/csv", "text/plain"]);
+const CSV_MIME_TYPES = new Set([
+  "application/csv",
+  "application/vnd.ms-excel",
+  "text/csv",
+  "text/plain",
+]);
 
 export type TExpenseCsvFileRejection = "duplicate" | "invalid_type" | "max_count" | "oversized";
 
@@ -27,9 +32,7 @@ function isCsvFile(file: File): boolean {
 }
 
 function isDuplicateFile(files: ISelectedExpenseCsvFile[], file: File): boolean {
-  return files.some(
-    (entry) => entry.file.name === file.name && entry.file.size === file.size
-  );
+  return files.some((entry) => entry.file.name === file.name && entry.file.size === file.size);
 }
 
 export function processExpenseCsvIncomingFiles(
@@ -77,7 +80,8 @@ export function formatExpenseCsvRejections(
   if (rejections.invalid_type) messages.push("Only .csv files are supported");
   if (rejections.oversized) messages.push("Each file must be 1 MB or smaller");
   if (rejections.duplicate) messages.push("Duplicate files were skipped");
-  if (rejections.max_count) messages.push(`At most ${EXPENSE_CSV_IMPORT_MAX_FILES} files are allowed`);
+  if (rejections.max_count)
+    messages.push(`At most ${EXPENSE_CSV_IMPORT_MAX_FILES} files are allowed`);
   return messages.length > 0 ? messages.join(". ") : null;
 }
 

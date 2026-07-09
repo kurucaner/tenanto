@@ -11,10 +11,7 @@ export type TDeleteConfirmationOptions<TTarget> = {
 
 type TDeleteFn<TTarget> = (target: TTarget, onDeleted: () => void) => void;
 
-export function useDeleteConfirmation<TTarget>(
-  isPending: boolean,
-  deleteFn: TDeleteFn<TTarget>
-) {
+export function useDeleteConfirmation<TTarget>(isPending: boolean, deleteFn: TDeleteFn<TTarget>) {
   const [request, setRequest] = useState<TDeleteConfirmationOptions<TTarget> | null>(null);
 
   const closeDeleteConfirmation = useCallback(() => {

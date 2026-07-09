@@ -9,10 +9,7 @@ import {
   LEASES_LIST_LIMIT,
 } from "@/packages/shared";
 
-export type TPropertyLongStaysListFilters = Pick<
-  IPropertyLongStaysListQuery,
-  "status" | "unitId"
->;
+export type TPropertyLongStaysListFilters = Pick<IPropertyLongStaysListQuery, "status" | "unitId">;
 
 export function usePropertyLongStaysInfiniteList(
   propertyId: string,
