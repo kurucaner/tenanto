@@ -10,6 +10,7 @@ import {
   getImportPreviewRowValidationError,
   STICKY_ACTIONS_CELL_CLASS_NAME,
   STICKY_AMOUNT_CELL_CLASS_NAME,
+  TABLE_AMOUNT_INPUT_CLASS_NAME,
 } from "@/components/expenses/import-expense-csv-preview-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,10 +109,13 @@ function renderTaxFreeInput(
   );
 }
 
-function renderAmountInput({ idPrefix, onChange, row }: PreviewFieldContext) {
+function renderAmountInput(
+  { idPrefix, onChange, row }: PreviewFieldContext,
+  variant: "card" | "table" = "card"
+) {
   return (
     <Input
-      className={AMOUNT_INPUT_CLASS_NAME}
+      className={variant === "table" ? TABLE_AMOUNT_INPUT_CLASS_NAME : AMOUNT_INPUT_CLASS_NAME}
       id={`${idPrefix}-amount`}
       inputMode="decimal"
       onChange={(e) => {
@@ -261,7 +265,7 @@ export const ImportExpenseCsvPreviewTableRow = memo(
         <TableCell className="whitespace-normal">{renderDescriptionInput(context)}</TableCell>
         <TableCell>{renderTaxFreeInput(context, "text-xs")}</TableCell>
         <TableCell className={STICKY_AMOUNT_CELL_CLASS_NAME}>
-          {renderAmountInput(context)}
+          <div className="min-w-0">{renderAmountInput(context, "table")}</div>
         </TableCell>
         <TableCell className={STICKY_ACTIONS_CELL_CLASS_NAME}>
           <ImportExpenseCsvPreviewRowActions onRemove={onRemove} row={row} />
