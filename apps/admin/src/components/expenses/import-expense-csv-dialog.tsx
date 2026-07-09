@@ -66,15 +66,18 @@ function createPreviewRowKey(row: IExpenseImportParsedRow, index: number): strin
 
 const FileResultSummary = memo(({ result }: { result: IExpenseImportFileResult }) => {
   const toneClassName = getFileResultToneClassName(result.status);
-
-  const title =
-    result.status === "parsed"
-      ? `${result.fileName} — ${result.rows?.length ?? 0} expense row(s)`
-      : result.fileName;
+  const rowCount = result.status === "parsed" ? (result.rows?.length ?? 0) : null;
 
   return (
-    <div className={cn("rounded-lg border px-3 py-2 text-sm", toneClassName)}>
-      <p className="font-medium">{title}</p>
+    <div className={cn("min-w-0 rounded-lg border px-3 py-2 text-sm", toneClassName)}>
+      <div className="flex min-w-0 items-baseline gap-x-1">
+        <p className="min-w-0 truncate font-medium" title={result.fileName}>
+          {result.fileName}
+        </p>
+        {rowCount !== null ? (
+          <p className="shrink-0 font-medium whitespace-nowrap">— {rowCount} expense row(s)</p>
+        ) : null}
+      </div>
       {result.message ? <p className="mt-1 text-xs opacity-90">{result.message}</p> : null}
     </div>
   );
@@ -251,12 +254,14 @@ export const ImportExpenseCsvDialog = memo(
                   <ul className="flex flex-col gap-2">
                     {selectedFiles.map((entry) => (
                       <li
-                        className="flex items-center justify-between rounded-lg border px-3 py-2"
+                        className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2"
                         key={entry.id}
                       >
-                        <div className="flex items-center gap-2 text-sm">
-                          <FileSpreadsheet className="text-muted-foreground size-4" />
-                          <span>{entry.file.name}</span>
+                        <div className="flex min-w-0 items-center gap-2 text-sm">
+                          <FileSpreadsheet className="text-muted-foreground size-4 shrink-0" />
+                          <span className="truncate" title={entry.file.name}>
+                            {entry.file.name}
+                          </span>
                         </div>
                         <Button
                           aria-label={`Remove ${entry.file.name}`}
