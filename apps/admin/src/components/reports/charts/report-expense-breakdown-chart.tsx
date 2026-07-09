@@ -10,6 +10,10 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { formatMoney } from "@/lib/format-money";
+import {
+  getExpenseBreakdownChartHeight,
+  getExpenseBreakdownScrollMaxHeight,
+} from "@/lib/report-chart-layout";
 import type { IPropertyReportExpenseCategory } from "@/packages/shared";
 
 const chartConfig = {
@@ -28,12 +32,18 @@ export const ReportExpenseBreakdownChart = memo(
   ({ expenseByCategory, title = "Expenses by category" }: ReportExpenseBreakdownChartProps) => {
     const chartData = useMemo(
       () =>
-        expenseByCategory.map((row) => ({
-          amount: row.amount,
-          category: formatExpenseCategoryLabel(row.category),
-        })),
+        [...expenseByCategory]
+          .sort((a, b) => b.amount - a.amount)
+          .map((row) => ({
+            amount: row.amount,
+            category: row.category,
+            label: formatExpenseCategoryLabel(row.category),
+          })),
       [expenseByCategory]
     );
+
+    const chartHeight = getExpenseBreakdownChartHeight(chartData.length);
+    const scrollMaxHeight = getExpenseBreakdownScrollMaxHeight();
 
     if (chartData.length === 0) {
       return (
@@ -54,41 +64,50 @@ export const ReportExpenseBreakdownChart = memo(
           <CardTitle className="text-base font-semibold">{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <ChartContainer className="aspect-video h-[280px] w-full" config={chartConfig}>
-            <BarChart
-              accessibilityLayer
-              data={chartData}
-              layout="vertical"
-              margin={{ bottom: 8, left: 8, right: 16, top: 8 }}
+          <div className="overflow-y-auto" style={{ maxHeight: scrollMaxHeight }}>
+            <ChartContainer
+              className="w-full"
+              config={chartConfig}
+              initialDimension={{ height: chartHeight, width: 320 }}
+              style={{ height: chartHeight }}
             >
-              <CartesianGrid horizontal={false} />
-              <XAxis
-                axisLine={false}
-                tickFormatter={(value: number) =>
-                  value >= 1000 ? `$${Math.round(value / 1000)}k` : `$${value}`
-                }
-                tickLine={false}
-                type="number"
-              />
-              <YAxis
-                axisLine={false}
-                dataKey="category"
-                tickLine={false}
-                type="category"
-                width={120}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value) => formatMoney(Number(value))}
-                    hideLabel
-                    indicator="dot"
-                  />
-                }
-              />
-              <Bar dataKey="amount" fill="var(--color-amount)" radius={4} />
-            </BarChart>
-          </ChartContainer>
+              <BarChart
+                accessibilityLayer
+                data={chartData}
+                layout="vertical"
+                margin={{ bottom: 8, left: 8, right: 16, top: 8 }}
+              >
+                <CartesianGrid horizontal={false} />
+                <XAxis
+                  axisLine={false}
+                  tickFormatter={(value: number) =>
+                    value >= 1000 ? `$${Math.round(value / 1000)}k` : `$${value}`
+                  }
+                  tickLine={false}
+                  type="number"
+                />
+                <YAxis
+                  axisLine={false}
+                  dataKey="label"
+                  interval={0}
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  type="category"
+                  width={148}
+                />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      formatter={(value) => formatMoney(Number(value))}
+                      indicator="dot"
+                      labelKey="label"
+                    />
+                  }
+                />
+                <Bar dataKey="amount" fill="var(--color-amount)" radius={4} />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </CardContent>
       </Card>
     );

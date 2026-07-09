@@ -47,11 +47,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
-          "Deleted units, income entries, and expenses can now be restored instead of being gone for good.",
-      },
-      {
-        category: "new",
-        description:
           "On Income, open Details on a stay to see how commission, gross income, and net payout were calculated.",
       },
       {
@@ -125,7 +120,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "improved",
-        description: "The Income table's Net column is now called Net Income, so its meaning is clearer.",
+        description:
+          "The Income table's Net column is now called Net Income, so its meaning is clearer.",
       },
       {
         category: "improved",
