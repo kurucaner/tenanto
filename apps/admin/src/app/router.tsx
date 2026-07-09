@@ -16,6 +16,7 @@ import { PropertiesListPage } from "@/pages/properties-list-page";
 import { PropertyDetailPage } from "@/pages/property-detail-page";
 import { PropertyExpensesPage } from "@/pages/property-expenses-page";
 import { PropertyIncomePage } from "@/pages/property-income-page";
+import { PropertyLeaseDetailPage } from "@/pages/property-lease-detail-page";
 import { PropertyLeasesPage } from "@/pages/property-leases-page";
 import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
                   { element: <PropertyDetailPage />, index: true },
                   { element: <PropertyUnitsPage />, path: "units" },
                   { element: <PropertyLeasesPage />, path: "leases" },
+                  { element: <PropertyLeaseDetailPage />, path: "leases/:leaseId" },
                   { element: <PropertyIncomePage />, path: "income" },
                   { element: <PropertyExpensesPage />, path: "expenses" },
                   { element: <PropertyReportsPage />, path: "reports" },

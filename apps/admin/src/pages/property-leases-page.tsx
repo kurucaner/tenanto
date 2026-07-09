@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { FilterField } from "@/components/filters/filter-field";
 import {
@@ -9,7 +10,6 @@ import {
 } from "@/components/income/create-income-line-dialog";
 import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
-import { LeaseDetailSheet } from "@/components/leases/lease-detail-sheet";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,16 +87,16 @@ const LeaseRow = memo(
   ({
     canManage,
     lease,
+    leaseDetailPath,
     onEndLease,
     onRecordRent,
-    onView,
     unitLabel,
   }: {
     canManage: boolean;
     lease: IPropertyLongStay;
+    leaseDetailPath: string;
     onEndLease: (lease: IPropertyLongStay) => void;
     onRecordRent: (lease: IPropertyLongStay) => void;
-    onView: (lease: IPropertyLongStay) => void;
     unitLabel: string;
   }) => {
     const endDate = lease.actualEndDate ?? lease.leaseEndDate;
@@ -104,15 +104,21 @@ const LeaseRow = memo(
 
     return (
       <TableRow>
-        <TableCell className="font-medium">{unitLabel}</TableCell>
+        <TableCell className="font-medium">
+          <Link className="hover:underline" to={leaseDetailPath}>
+            {unitLabel}
+          </Link>
+        </TableCell>
         <TableCell>
-          <div className="flex flex-wrap gap-1">
-            {tenantNames.map((name, index) => (
-              <Badge key={`${name}-${index}`} variant="secondary">
-                {name}
-              </Badge>
-            ))}
-          </div>
+          <Link className="block" to={leaseDetailPath}>
+            <div className="flex flex-wrap gap-1">
+              {tenantNames.map((name, index) => (
+                <Badge key={`${name}-${index}`} variant="secondary">
+                  {name}
+                </Badge>
+              ))}
+            </div>
+          </Link>
         </TableCell>
         <TableCell>{lease.leaseStartDate}</TableCell>
         <TableCell>{endDate}</TableCell>
@@ -126,18 +132,23 @@ const LeaseRow = memo(
           <div className="flex items-center gap-1">
             <Button
               aria-label="View lease"
-              onClick={() => onView(lease)}
+              asChild
               size="icon-sm"
               type="button"
               variant="ghost"
             >
-              <Eye className="size-3.5" />
+              <Link to={leaseDetailPath}>
+                <Eye className="size-3.5" />
+              </Link>
             </Button>
             {canManage && lease.status === PropertyLongStayStatus.ACTIVE ? (
               <>
                 <Button
                   aria-label="Record rent"
-                  onClick={() => onRecordRent(lease)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRecordRent(lease);
+                  }}
                   size="icon-sm"
                   type="button"
                   variant="ghost"
@@ -146,7 +157,10 @@ const LeaseRow = memo(
                 </Button>
                 <Button
                   aria-label="End lease"
-                  onClick={() => onEndLease(lease)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onEndLease(lease);
+                  }}
                   size="icon-sm"
                   type="button"
                   variant="ghost"
@@ -171,7 +185,6 @@ export const PropertyLeasesPage = memo(() => {
   const { filters, setFilters } = useUrlFilterState(LEASE_URL_FILTER_SCHEMA);
   const { status, unitId } = filters;
   const [createOpen, setCreateOpen] = useState(false);
-  const [detailLease, setDetailLease] = useState<IPropertyLongStay | null>(null);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentLease, setRecordRentLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentPrefill, setRecordRentPrefill] = useState<CreateIncomeLineDialogPrefill | null>(
@@ -339,9 +352,9 @@ export const PropertyLeasesPage = memo(() => {
                         canManage={canManage}
                         key={lease.id}
                         lease={lease}
+                        leaseDetailPath={`/properties/${propertyId}/leases/${lease.id}`}
                         onEndLease={setEndLease}
                         onRecordRent={handleRecordRent}
-                        onView={setDetailLease}
                         unitLabel={unitLabelById.get(lease.unitId) ?? lease.unitId}
                       />
                     ))
@@ -375,18 +388,6 @@ export const PropertyLeasesPage = memo(() => {
         open={createOpen}
         propertyId={propertyId}
         units={units}
-      />
-
-      <LeaseDetailSheet
-        canManage={canManage}
-        lease={detailLease}
-        onOpenChange={(open) => {
-          if (!open) setDetailLease(null);
-        }}
-        onRecordRent={handleRecordRent}
-        open={detailLease != null}
-        propertyId={propertyId}
-        unitLabelById={unitLabelById}
       />
 
       {endLease ? (
