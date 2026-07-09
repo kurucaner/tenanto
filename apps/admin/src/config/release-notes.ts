@@ -33,6 +33,70 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "2026.7.0",
+    version: "2026.7.0",
+    publishedAt: "2026-07-09",
+    summary:
+      "Manage long-term leases and rent, add secondary tenants, edit tenant contact details, and clearer forms across Units, Income, and Expenses.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "You can manage long-term leases from a new Leases tab — start and end a lease from a unit, see the rent schedule, and record monthly rent as income.",
+      },
+      {
+        category: "new",
+        description:
+          "Add secondary tenants (partners or roommates) to an active lease from the lease details panel.",
+      },
+      {
+        category: "improved",
+        description:
+          "Edit a primary or secondary tenant’s name, email, and phone on an active lease after move-in, even if you skipped contact details when starting the lease.",
+      },
+      {
+        category: "improved",
+        description:
+          "Tenant phone fields use the same country-aware phone input as when you create a property.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Units page lists short-term units before long-term ones, and you can sort by Type from the column header.",
+      },
+      {
+        category: "improved",
+        description:
+          "Creating a unit, reservation, income line, or lease now shows clearer validation messages next to the fields that need attention.",
+      },
+      {
+        category: "improved",
+        description:
+          "Support requests can be refreshed from the table without reloading the page.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Expense forms show validation errors inline, and the date is required when you add a new expense.",
+      },
+      {
+        category: "fixed",
+        description:
+          "The expense breakdown chart now includes every category and scrolls when the list is long.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Tables show a subtle loading indicator while data is refreshing.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Date filters on Income and related pages lay out more cleanly on phones and tablets.",
+      },
+    ],
+  },
+  {
     id: "2026.6.0",
     version: "2026.6.0",
     publishedAt: "2026-07-08",

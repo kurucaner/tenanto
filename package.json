@@ -1,6 +1,6 @@
 {
   "name": "propertyos",
-  "version": "2026.6.0",
+  "version": "2026.7.0",
   "main": "index.js",
   "engines": {
     "node": ">=24.14.0"
