@@ -54,7 +54,7 @@ export const EditPropertyDialog = memo(
       },
       onSuccess: (data) => {
         toast.success("Property updated");
-        queryClient.invalidateQueries({ queryKey: ["admin", "properties"] });
+        queryClient.invalidateQueries({ queryKey: ["properties"] });
         queryClient.invalidateQueries({
           queryKey: adminQueryKeys.propertyDetail(property.id),
         });

@@ -38,7 +38,7 @@ const ConfigForm = memo(({ config }: Readonly<{ config: IAppConfig }>) => {
     onSuccess: (res) => {
       toast.success("Configuration saved");
       queryClient.setQueryData(adminQueryKeys.appConfig(), { config: res.config });
-      queryClient.invalidateQueries({ queryKey: ["admin", "activity"] });
+      queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
   });
 

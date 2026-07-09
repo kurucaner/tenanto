@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
-export const SupportPage = memo(() => {
+export const SupportRequestsPage = memo(() => {
   const userType = useAuthStore((s) => s.user?.userType);
   const isAdmin = userType === UserType.ADMIN;
   const config = isAdmin ? ADMIN_SUPPORT_LIST_CONFIG : USER_SUPPORT_LIST_CONFIG;
@@ -37,4 +37,4 @@ export const SupportPage = memo(() => {
     </AdminPageLayout>
   );
 });
-SupportPage.displayName = "SupportPage";
+SupportRequestsPage.displayName = "SupportRequestsPage";

@@ -36,8 +36,8 @@ const UserDetailForm = memo(
         toast.success("Account reset");
         queryClient.setQueryData(adminQueryKeys.user(userId), data);
         queryClient.invalidateQueries({ queryKey: adminQueryKeys.userAudit(userId) });
-        queryClient.invalidateQueries({ queryKey: ["admin", "activity"] });
-        queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+        queryClient.invalidateQueries({ queryKey: ["activity"] });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
       },
     });
 

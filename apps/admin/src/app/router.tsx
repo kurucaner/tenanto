@@ -20,8 +20,8 @@ import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { ReportsPage } from "@/pages/reports-page";
-import { SupportPage } from "@/pages/support-page";
 import { SupportRequestDetailPage } from "@/pages/support-request-detail-page";
+import { SupportRequestsPage } from "@/pages/support-requests-page";
 import { UserDetailPage } from "@/pages/user-detail-page";
 import { UsersListPage } from "@/pages/users-list-page";
 
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
               { element: <HomePage />, path: "home" },
               { element: <PropertiesListPage />, path: "properties" },
               { element: <ReportsPage />, path: "reports" },
-              { element: <SupportPage />, path: "support-requests" },
+              { element: <SupportRequestsPage />, path: "support-requests" },
               { element: <SupportRequestDetailPage />, path: "support-requests/:supportRequestId" },
               {
                 children: [

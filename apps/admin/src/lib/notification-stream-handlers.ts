@@ -46,7 +46,7 @@ export function handlePropertyMembershipNotification(
     return;
   }
 
-  queryClient.invalidateQueries({ queryKey: ["admin", "properties"] });
+  queryClient.invalidateQueries({ queryKey: ["properties"] });
 
   if (notification.resourceId != null) {
     queryClient.invalidateQueries({
@@ -64,7 +64,7 @@ export function handleSupportRequestUpdated(
   if (document.visibilityState !== "visible") return;
 
   if (userType === UserType.ADMIN) {
-    queryClient.invalidateQueries({ queryKey: ["admin", "support-requests"] });
+    queryClient.invalidateQueries({ queryKey: ["support-requests"] });
   } else {
     queryClient.invalidateQueries({ queryKey: ["support", "list"] });
   }

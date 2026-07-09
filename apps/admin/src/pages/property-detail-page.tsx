@@ -156,7 +156,7 @@ export const PropertyDetailPage = memo(() => {
     },
     onSuccess: () => {
       toast.success("Property deleted");
-      queryClient.invalidateQueries({ queryKey: ["admin", "properties"] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
       navigate("/properties");
     },
   });

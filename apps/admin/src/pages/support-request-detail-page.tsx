@@ -135,7 +135,7 @@ const SupportRequestDetailPageInner = memo(() => {
         adminQueryKeys.supportRequest(data.item.id),
         (old) => (old == null ? old : { ...old, item: { ...old.item, status: data.item.status } })
       );
-      queryClient.invalidateQueries({ queryKey: ["admin", "support-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["support-requests"] });
       queryClient.invalidateQueries({ queryKey: ["support", "list"] });
     },
   });
@@ -149,7 +149,7 @@ const SupportRequestDetailPageInner = memo(() => {
   );
 
   const invalidateLists = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["admin", "support-requests"] });
+    queryClient.invalidateQueries({ queryKey: ["support-requests"] });
     queryClient.invalidateQueries({ queryKey: ["support", "list"] });
   }, [queryClient]);
 

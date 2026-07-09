@@ -41,7 +41,7 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
     },
     onSuccess: () => {
       toast.success("Property created");
-      queryClient.invalidateQueries({ queryKey: ["admin", "properties"] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
       onOpenChange(false);
       setName("");
       setLegalName("");
