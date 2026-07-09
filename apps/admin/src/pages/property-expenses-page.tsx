@@ -11,6 +11,7 @@ import {
   expenseSelectClassName,
   formatExpenseCategoryLabel,
 } from "@/components/expenses/expense-form-options";
+import { FilterField } from "@/components/filters/filter-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
+import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -177,8 +179,8 @@ export const PropertyExpensesPage = memo(() => {
     <>
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="space-y-1.5">
+          <div className={getLedgerFiltersGridClass(3)}>
+            <FilterField>
               <Label htmlFor="expense-filter-from">From</Label>
               <Input
                 id="expense-filter-from"
@@ -186,8 +188,8 @@ export const PropertyExpensesPage = memo(() => {
                 type="date"
                 value={from}
               />
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="expense-filter-to">To</Label>
               <Input
                 id="expense-filter-to"
@@ -195,8 +197,8 @@ export const PropertyExpensesPage = memo(() => {
                 type="date"
                 value={to}
               />
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="expense-filter-category">Category</Label>
               <select
                 className={expenseSelectClassName}
@@ -210,7 +212,7 @@ export const PropertyExpensesPage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
+            </FilterField>
           </div>
 
           {expensesQuery.isPending ? (

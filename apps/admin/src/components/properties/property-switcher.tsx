@@ -25,10 +25,9 @@ interface PropertySwitcherOptionProps {
 const PropertySwitcherOption = memo(
   ({ isSelected, onSelect, property }: PropertySwitcherOptionProps) => (
     <button
-      aria-selected={isSelected}
+      aria-pressed={isSelected}
       className="hover:bg-muted flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       onClick={() => onSelect(property.id)}
-      role="option"
       type="button"
     >
       <Check
@@ -141,7 +140,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
       <PopoverTrigger asChild>
         <Button
           aria-expanded={open}
-          aria-haspopup="listbox"
+          aria-haspopup="dialog"
           className="h-auto max-w-[min(100%,16rem)] gap-1.5 px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent sm:max-w-xs"
           type="button"
           variant="ghost"
@@ -161,7 +160,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
             value={searchInput}
           />
         </div>
-        <div aria-label="Properties" className="max-h-64 overflow-y-auto p-1" role="listbox">
+        <div aria-label="Properties" className="max-h-64 overflow-y-auto p-1">
           {isPending ? (
             <div className="space-y-1 p-1">
               <Skeleton className="h-10 w-full" />
@@ -215,9 +214,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
               ))}
             </>
           ) : null}
-          {!isPending &&
-          !isError &&
-          (isSearching ? properties.length > 0 : properties.length > 0) ? (
+          {!isPending && !isError && properties.length > 0 ? (
             <div className="border-border border-t p-1">
               <Button
                 className="w-full"

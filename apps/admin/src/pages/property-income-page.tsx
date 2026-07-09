@@ -4,6 +4,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
+import { FilterField } from "@/components/filters/filter-field";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -45,6 +46,7 @@ import {
   type TIncomeEntrySortColumnId,
 } from "@/lib/income-entry-sort";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -914,8 +916,8 @@ const PropertyIncomePage = memo(() => {
     <>
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6">
-            <div className="space-y-1.5">
+          <div className={getLedgerFiltersGridClass(6)}>
+            <FilterField>
               <Label htmlFor="filter-from">From</Label>
               <Input
                 id="filter-from"
@@ -923,8 +925,8 @@ const PropertyIncomePage = memo(() => {
                 type="date"
                 value={from}
               />
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-to">To</Label>
               <Input
                 id="filter-to"
@@ -932,8 +934,8 @@ const PropertyIncomePage = memo(() => {
                 type="date"
                 value={to}
               />
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-unit">Unit</Label>
               <select
                 className={reservationSelectClassName}
@@ -943,8 +945,8 @@ const PropertyIncomePage = memo(() => {
               >
                 <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
               </select>
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-income-type">Income type</Label>
               <select
                 className={incomeLineSelectClassName}
@@ -958,8 +960,8 @@ const PropertyIncomePage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-channel">Channel</Label>
               <select
                 className={reservationSelectClassName}
@@ -975,8 +977,8 @@ const PropertyIncomePage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1.5">
+            </FilterField>
+            <FilterField>
               <Label htmlFor="filter-status">Status</Label>
               <select
                 className={reservationSelectClassName}
@@ -992,7 +994,7 @@ const PropertyIncomePage = memo(() => {
                   </option>
                 ))}
               </select>
-            </div>
+            </FilterField>
           </div>
 
           <PropertyIncomeEntriesTable
