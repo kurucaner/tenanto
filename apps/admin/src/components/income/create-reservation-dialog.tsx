@@ -1,6 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import {
   CHANNEL_OPTIONS,
@@ -30,13 +33,78 @@ import {
   isValidStayDateRange,
   shouldClearCheckOutOnCheckInChange,
 } from "@/lib/reservation-date-utils";
-import {
-  ReservationChannel,
-  ReservationStatus,
-  type TReservationChannel,
-  type TReservationStatus,
-  UnitRentalType,
-} from "@/packages/shared";
+import { ReservationChannel, ReservationStatus, UnitRentalType } from "@/packages/shared";
+
+function isOptionalNonNegativeMoney(value: string): boolean {
+  if (value === "") {
+    return true;
+  }
+  if (!isValidDecimalInput(value)) {
+    return false;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0;
+}
+
+const createReservationSchema = z
+  .object({
+    channel: z.enum([
+      ReservationChannel.AIRBNB,
+      ReservationChannel.BOOKING,
+      ReservationChannel.DIRECT,
+      ReservationChannel.EXPEDIA,
+    ]),
+    checkIn: z.string().min(1, "Check-in is required"),
+    checkOut: z.string().min(1, "Check-out is required"),
+    cleaningFee: z.string().refine(isOptionalNonNegativeMoney, {
+      message: "Cleaning fee must be a non-negative number",
+    }),
+    guestName: z.string().trim().min(1, "Guest name is required"),
+    reservationNumber: z.string(),
+    roomTotal: z.string().refine(isOptionalNonNegativeMoney, {
+      message: "Room total must be a non-negative number",
+    }),
+    status: z.enum([
+      ReservationStatus.ACTIVE,
+      ReservationStatus.CANCELED,
+      ReservationStatus.NO_SHOW,
+      ReservationStatus.STAYED,
+    ]),
+    unitId: z.string().min(1, "Unit is required"),
+  })
+  .superRefine((values, ctx) => {
+    if (values.checkIn !== "" && values.checkIn < getTodayLocalIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Check-in cannot be in the past",
+        path: ["checkIn"],
+      });
+    }
+
+    if (!isValidStayDateRange(values.checkIn, values.checkOut)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Check-out must be after check-in",
+        path: ["checkOut"],
+      });
+    }
+  });
+
+type TCreateReservationFormValues = z.infer<typeof createReservationSchema>;
+
+function getDefaultValues(): TCreateReservationFormValues {
+  return {
+    channel: ReservationChannel.AIRBNB,
+    checkIn: "",
+    checkOut: "",
+    cleaningFee: "",
+    guestName: "",
+    reservationNumber: "",
+    roomTotal: "",
+    status: ReservationStatus.ACTIVE,
+    unitId: "",
+  };
+}
 
 interface CreateReservationDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -47,15 +115,10 @@ interface CreateReservationDialogProps {
 export const CreateReservationDialog = memo(
   ({ onOpenChange, open, propertyId }: CreateReservationDialogProps) => {
     const queryClient = useQueryClient();
-    const [unitId, setUnitId] = useState("");
-    const [guestName, setGuestName] = useState("");
-    const [reservationNumber, setReservationNumber] = useState("");
-    const [checkIn, setCheckIn] = useState("");
-    const [checkOut, setCheckOut] = useState("");
-    const [status, setStatus] = useState<TReservationStatus>(ReservationStatus.ACTIVE);
-    const [channel, setChannel] = useState<TReservationChannel>(ReservationChannel.AIRBNB);
-    const [roomTotal, setRoomTotal] = useState("");
-    const [cleaningFee, setCleaningFee] = useState("");
+    const form = useForm<TCreateReservationFormValues>({
+      defaultValues: getDefaultValues(),
+      resolver: zodResolver(createReservationSchema),
+    });
 
     const unitsQuery = useQuery({
       enabled: open,
@@ -63,48 +126,10 @@ export const CreateReservationDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
-    const mutation = useMutation({
-      mutationFn: () =>
-        reservationsApi.create(propertyId, {
-          channel,
-          checkIn,
-          checkOut,
-          cleaningFee: Number(cleaningFee) || 0,
-          guestName: guestName.trim(),
-          reservationNumber: reservationNumber.trim() || undefined,
-          roomTotal: Number(roomTotal) || 0,
-          status,
-          unitId,
-        }),
-      onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to create income entry");
-      },
-      onSuccess: () => {
-        toast.success("Income entry created");
-        invalidatePropertyIncomeCaches(queryClient, propertyId);
-        handleClose();
-      },
-    });
-
-    const handleClose = () => {
-      onOpenChange(false);
-      setUnitId("");
-      setGuestName("");
-      setReservationNumber("");
-      setCheckIn("");
-      setCheckOut("");
-      setStatus(ReservationStatus.ACTIVE);
-      setChannel(ReservationChannel.AIRBNB);
-      setRoomTotal("");
-      setCleaningFee("");
-    };
-
-    const handleCheckInChange = useCallback((nextCheckIn: string) => {
-      setCheckIn(nextCheckIn);
-      setCheckOut((currentCheckOut) =>
-        shouldClearCheckOutOnCheckInChange(nextCheckIn, currentCheckOut) ? "" : currentCheckOut
-      );
-    }, []);
+    const checkIn = form.watch("checkIn");
+    const checkOut = form.watch("checkOut");
+    const channel = form.watch("channel");
+    const cleaningFee = form.watch("cleaningFee");
 
     const shortTermUnits = useMemo(
       () =>
@@ -113,162 +138,237 @@ export const CreateReservationDialog = memo(
         ),
       [unitsQuery.data?.units]
     );
+
     const minCheckInDate = getTodayLocalIsoDate();
     const minCheckOutDate = getMinCheckOutDate(checkIn);
-    const canSubmit =
-      unitId !== "" &&
-      guestName.trim() !== "" &&
-      checkIn !== "" &&
-      checkIn >= minCheckInDate &&
-      checkOut !== "" &&
-      isValidStayDateRange(checkIn, checkOut) &&
-      !mutation.isPending;
+
+    const mutation = useMutation({
+      mutationFn: (values: TCreateReservationFormValues) =>
+        reservationsApi.create(propertyId, {
+          channel: values.channel,
+          checkIn: values.checkIn,
+          checkOut: values.checkOut,
+          cleaningFee: Number(values.cleaningFee) || 0,
+          guestName: values.guestName.trim(),
+          reservationNumber: values.reservationNumber.trim() || undefined,
+          roomTotal: Number(values.roomTotal) || 0,
+          status: values.status,
+          unitId: values.unitId,
+        }),
+      onError: (e) => {
+        toast.error(e instanceof Error ? e.message : "Failed to create income entry");
+      },
+      onSuccess: () => {
+        toast.success("Income entry created");
+        invalidatePropertyIncomeCaches(queryClient, propertyId);
+        handleOpenChange(false);
+      },
+    });
+
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        if (!nextOpen) {
+          form.reset(getDefaultValues());
+        }
+        onOpenChange(nextOpen);
+      },
+      [form, onOpenChange]
+    );
+
+    const onSubmit = form.handleSubmit((values) => {
+      mutation.mutate(values);
+    });
+
+    const { errors, isSubmitting } = form.formState;
 
     return (
-      <Dialog onOpenChange={handleClose} open={open}>
+      <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>Add Short Stay</DialogTitle>
-            <DialogDescription>
-              Record guest stay income for a short-term unit.
-            </DialogDescription>
+            <DialogDescription>Record guest stay income for a short-term unit.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="reservation-unit">Unit</Label>
-              <select
-                className={reservationSelectClassName}
-                id="reservation-unit"
-                onChange={(e) => setUnitId(e.target.value)}
-                value={unitId}
-              >
-                <PropertyUnitSelectOptions emptyOptionLabel="Select unit…" units={shortTermUnits} />
-              </select>
-              {!unitsQuery.isLoading && shortTermUnits.length === 0 ? (
+          <form onSubmit={onSubmit}>
+            <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="reservation-unit">Unit</Label>
+                <select
+                  className={reservationSelectClassName}
+                  id="reservation-unit"
+                  {...form.register("unitId")}
+                >
+                  <PropertyUnitSelectOptions
+                    emptyOptionLabel="Select unit…"
+                    units={shortTermUnits}
+                  />
+                </select>
+                {errors.unitId ? (
+                  <p className="text-xs text-destructive">{errors.unitId.message}</p>
+                ) : null}
+                {!unitsQuery.isLoading && shortTermUnits.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    No short-term units configured. Add a short-term unit to record stay income.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="guest-name">Guest name</Label>
+                <Input autoFocus id="guest-name" {...form.register("guestName")} />
+                {errors.guestName ? (
+                  <p className="text-xs text-destructive">{errors.guestName.message}</p>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="reservation-number">Reservation number (optional)</Label>
+                <Input id="reservation-number" {...form.register("reservationNumber")} />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="check-in">Check-in</Label>
+                  <Controller
+                    control={form.control}
+                    name="checkIn"
+                    render={({ field }) => (
+                      <Input
+                        id="check-in"
+                        min={minCheckInDate}
+                        onChange={(e) => {
+                          const nextCheckIn = e.target.value;
+                          field.onChange(nextCheckIn);
+                          const currentCheckOut = form.getValues("checkOut");
+                          if (shouldClearCheckOutOnCheckInChange(nextCheckIn, currentCheckOut)) {
+                            form.setValue("checkOut", "");
+                          }
+                        }}
+                        type="date"
+                        value={field.value}
+                      />
+                    )}
+                  />
+                  {errors.checkIn ? (
+                    <p className="text-xs text-destructive">{errors.checkIn.message}</p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="check-out">Check-out</Label>
+                  <Input
+                    id="check-out"
+                    min={minCheckOutDate}
+                    type="date"
+                    {...form.register("checkOut")}
+                  />
+                  {errors.checkOut ? (
+                    <p className="text-xs text-destructive">{errors.checkOut.message}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="reservation-status">Status</Label>
+                  <select
+                    className={reservationSelectClassName}
+                    id="reservation-status"
+                    {...form.register("status")}
+                  >
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.status ? (
+                    <p className="text-xs text-destructive">{errors.status.message}</p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="reservation-channel">Channel</Label>
+                  <select
+                    className={reservationSelectClassName}
+                    id="reservation-channel"
+                    {...form.register("channel")}
+                  >
+                    {CHANNEL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.channel ? (
+                    <p className="text-xs text-destructive">{errors.channel.message}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
                 <p className="text-muted-foreground text-xs">
-                  No short-term units configured. Add a short-term unit to record stay income.
+                  Expedia commission is calculated on room total only.
                 </p>
               ) : null}
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="guest-name">Guest name</Label>
-              <Input
-                autoFocus
-                id="guest-name"
-                onChange={(e) => setGuestName(e.target.value)}
-                value={guestName}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="reservation-number">Reservation number (optional)</Label>
-              <Input
-                id="reservation-number"
-                onChange={(e) => setReservationNumber(e.target.value)}
-                value={reservationNumber}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="check-in">Check-in</Label>
-                <Input
-                  id="check-in"
-                  min={minCheckInDate}
-                  onChange={(e) => handleCheckInChange(e.target.value)}
-                  type="date"
-                  value={checkIn}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  control={form.control}
+                  name="roomTotal"
+                  render={({ field }) => (
+                    <div className="flex flex-col gap-1.5">
+                      <ReservationRoomTotalField
+                        checkIn={checkIn}
+                        checkOut={checkOut}
+                        id="room-total"
+                        onChange={field.onChange}
+                        value={field.value}
+                      />
+                      {errors.roomTotal ? (
+                        <p className="text-xs text-destructive">{errors.roomTotal.message}</p>
+                      ) : null}
+                    </div>
+                  )}
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="check-out">Check-out</Label>
-                <Input
-                  id="check-out"
-                  min={minCheckOutDate}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  type="date"
-                  value={checkOut}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reservation-status">Status</Label>
-                <select
-                  className={reservationSelectClassName}
-                  id="reservation-status"
-                  onChange={(e) => setStatus(e.target.value as TReservationStatus)}
-                  value={status}
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reservation-channel">Channel</Label>
-                <select
-                  className={reservationSelectClassName}
-                  id="reservation-channel"
-                  onChange={(e) => setChannel(e.target.value as TReservationChannel)}
-                  value={channel}
-                >
-                  {CHANNEL_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="cleaning-fee">Cleaning fee</Label>
+                  <Controller
+                    control={form.control}
+                    name="cleaningFee"
+                    render={({ field }) => (
+                      <Input
+                        id="cleaning-fee"
+                        inputMode="decimal"
+                        onChange={(e) => {
+                          if (isValidDecimalInput(e.target.value)) {
+                            field.onChange(e.target.value);
+                          }
+                        }}
+                        type="text"
+                        value={field.value}
+                      />
+                    )}
+                  />
+                  {errors.cleaningFee ? (
+                    <p className="text-xs text-destructive">{errors.cleaningFee.message}</p>
+                  ) : null}
+                </div>
               </div>
             </div>
 
-            {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
-              <p className="text-muted-foreground text-xs">
-                Expedia commission is calculated on room total only.
-              </p>
-            ) : null}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ReservationRoomTotalField
-                checkIn={checkIn}
-                checkOut={checkOut}
-                id="room-total"
-                onChange={setRoomTotal}
-                value={roomTotal}
-              />
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="cleaning-fee">Cleaning fee</Label>
-                <Input
-                  id="cleaning-fee"
-                  inputMode="decimal"
-                  onChange={(e) => {
-                    if (isValidDecimalInput(e.target.value)) setCleaningFee(e.target.value);
-                  }}
-                  type="text"
-                  value={cleaningFee}
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              disabled={mutation.isPending}
-              onClick={handleClose}
-              type="button"
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">
-              {mutation.isPending ? "Creating…" : "Add Income"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button
+                disabled={mutation.isPending}
+                onClick={() => handleOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button disabled={mutation.isPending || isSubmitting} type="submit">
+                {mutation.isPending ? "Creating…" : "Add Income"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     );
