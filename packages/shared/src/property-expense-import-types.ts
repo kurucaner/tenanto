@@ -2,9 +2,8 @@ import { ExpenseCategory, type IPropertyExpense, type TExpenseCategory } from ".
 
 export const EXPENSE_CSV_IMPORT_MAX_FILES = 5;
 export const EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE = 1_048_576;
-export const EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE = 200;
-export const EXPENSE_CSV_IMPORT_MAX_ROWS_TOTAL = 500;
-export const EXPENSE_CSV_IMPORT_MAX_TEXT_BYTES = 51_200;
+export const EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE = 2000;
+export const EXPENSE_CSV_IMPORT_MAX_ROWS_TOTAL = 2000;
 
 export type TExpenseImportFileStatus = "error" | "irrelevant" | "parsed";
 

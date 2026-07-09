@@ -15,7 +15,6 @@ import {
   EXPENSE_CSV_IMPORT_MAX_FILES,
   EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_ROWS_TOTAL,
-  EXPENSE_CSV_IMPORT_MAX_TEXT_BYTES,
   HttpStatus,
   type IExpenseImportCommitBody,
   type IExpenseImportFileResult,
@@ -42,16 +41,6 @@ interface IPropertyParams {
 function isBinaryContent(buffer: Buffer): boolean {
   const sample = buffer.subarray(0, Math.min(buffer.length, 1024));
   return sample.includes(0);
-}
-
-function truncateCsvText(text: string): string {
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(text);
-  if (bytes.length <= EXPENSE_CSV_IMPORT_MAX_TEXT_BYTES) {
-    return text;
-  }
-  const truncated = bytes.slice(0, EXPENSE_CSV_IMPORT_MAX_TEXT_BYTES);
-  return new TextDecoder().decode(truncated);
 }
 
 function buildParsedRow(
@@ -151,7 +140,7 @@ async function parseUploadedCsvFile(
   buffer: Buffer,
   allowedCategories: readonly TExpenseCategory[]
 ): Promise<IExpenseImportFileResult> {
-  const csvText = truncateCsvText(buffer.toString("utf8").trim());
+  const csvText = buffer.toString("utf8").trim();
   if (csvText === "") {
     return {
       fileName,
