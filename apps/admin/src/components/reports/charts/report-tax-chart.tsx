@@ -12,7 +12,6 @@ export const ReportTaxChart = memo(({ taxSummary }: ReportTaxChartProps) => {
 
   return (
     <ReportDonutChart
-      description="Taxes collected on stays in this period."
       emptyMessage="No taxes recorded on stays in this period."
       segments={segments}
       title="Taxes collected by type"
