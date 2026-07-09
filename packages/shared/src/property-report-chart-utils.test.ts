@@ -4,6 +4,7 @@ import {
   buildIncomeCompositionBreakdown,
   buildProfitTrendChartRows,
   buildReportChartSegments,
+  buildRevenueExpenseTrendChartRows,
   calculateOperationalProfitMargin,
   channelCommissionSummaryToSegments,
   incomeCompositionToSegments,
@@ -197,6 +198,32 @@ describe("calculateOperationalProfitMargin", () => {
 
   test("returns null when gross income is zero", () => {
     expect(calculateOperationalProfitMargin(0, 100)).toBeNull();
+  });
+});
+
+describe("buildRevenueExpenseTrendChartRows", () => {
+  test("preserves month order and maps gross income and expenses", () => {
+    const rows = buildRevenueExpenseTrendChartRows([
+      {
+        expenses: 200,
+        grossIncome: 1000,
+        month: "2026-01",
+        netIncome: 800,
+        operationalNet: 600,
+      },
+      {
+        expenses: 150,
+        grossIncome: 900,
+        month: "2026-02",
+        netIncome: 750,
+        operationalNet: 600,
+      },
+    ]);
+
+    expect(rows).toEqual([
+      { expenses: 200, grossIncome: 1000, month: "2026-01" },
+      { expenses: 150, grossIncome: 900, month: "2026-02" },
+    ]);
   });
 });
 

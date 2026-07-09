@@ -134,6 +134,12 @@ export {
 
 // Property Long Stay Types
 export {
+  calculateLeaseEndDate,
+  enumerateLeaseMonths,
+  transactionDateToMonth,
+} from "./lease-date-utils";
+export { getLeaseOccupancyNames } from "./lease-tenant-utils";
+export {
   type ICreatePropertyLongStayBody,
   type IEndPropertyLongStayBody,
   type IPropertyLongStay,
@@ -146,14 +152,6 @@ export {
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
-
-export { getLeaseOccupancyNames } from "./lease-tenant-utils";
-
-export {
-  calculateLeaseEndDate,
-  enumerateLeaseMonths,
-  transactionDateToMonth,
-} from "./lease-date-utils";
 
 // Property Income Line Type Config
 export {
@@ -218,6 +216,7 @@ export {
   buildIncomeCompositionBreakdown,
   buildProfitTrendChartRows,
   buildReportChartSegments,
+  buildRevenueExpenseTrendChartRows,
   calculateOperationalProfitMargin,
   channelCommissionSummaryToSegments,
   channelSummaryToSegments,
@@ -227,6 +226,7 @@ export {
   incomeCompositionToSegments,
   type IProfitTrendChartRow,
   type IReportChartSegment,
+  type IRevenueExpenseTrendChartRow,
   otherIncomeTypeToSegments,
   PROPERTY_AMENITY_UNIT_ID,
   taxSummaryToSegments,

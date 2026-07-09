@@ -21,7 +21,7 @@ export const ReportChartsSkeleton = memo(() => (
       ))}
     </div>
     <div className="grid gap-4 lg:grid-cols-2">
-      {Array.from({ length: 2 }, (_, index) => (
+      {Array.from({ length: 3 }, (_, index) => (
         <Card key={index}>
           <CardContent className="space-y-4 p-4">
             <Skeleton className="h-4 w-44" />

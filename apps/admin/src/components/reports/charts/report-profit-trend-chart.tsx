@@ -10,6 +10,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { formatChartMoneyAxis } from "@/lib/format-chart-money-axis";
 import { formatMoney } from "@/lib/format-money";
 import { formatReportMonthLabel, formatReportPercent } from "@/lib/report-date-defaults";
 import { buildProfitTrendChartRows, type IPropertyReportMonthSummary } from "@/packages/shared";
@@ -30,13 +31,6 @@ interface ProfitTrendChartDatum {
   monthLabel: string;
   operationalNet: number;
   profitMargin: number | null;
-}
-
-function formatChartMoneyAxis(value: number): string {
-  if (value >= 1000 || value <= -1000) {
-    return `$${Math.round(value / 1000)}k`;
-  }
-  return `$${value}`;
 }
 
 function buildProfitTrendInsight(data: ProfitTrendChartDatum[]): string | null {

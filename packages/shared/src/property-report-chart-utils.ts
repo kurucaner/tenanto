@@ -34,6 +34,12 @@ export interface IProfitTrendChartRow {
   profitMargin: number | null;
 }
 
+export interface IRevenueExpenseTrendChartRow {
+  expenses: number;
+  grossIncome: number;
+  month: string;
+}
+
 function roundShare(value: number): number {
   return Math.round(value * 10_000) / 10_000;
 }
@@ -120,6 +126,16 @@ export function buildProfitTrendChartRows(
     month: row.month,
     operationalNet: row.operationalNet,
     profitMargin: calculateOperationalProfitMargin(row.grossIncome, row.operationalNet),
+  }));
+}
+
+export function buildRevenueExpenseTrendChartRows(
+  byMonth: IPropertyReportMonthSummary[]
+): IRevenueExpenseTrendChartRow[] {
+  return byMonth.map((row) => ({
+    expenses: row.expenses,
+    grossIncome: row.grossIncome,
+    month: row.month,
   }));
 }
 

@@ -17,8 +17,8 @@ export interface IPropertyIncomeLine {
   incomeLineTypeId: string;
   incomeLineTypeName?: string;
   isDeleted: boolean;
-  netIncome: number;
   longStayId: string | null;
+  netIncome: number;
   propertyId: string;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];

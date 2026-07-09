@@ -78,7 +78,6 @@ export const ReportsPage = memo(() => {
             {isExporting ? "Downloading…" : "Download CSV"}
           </Button>
         ),
-        description: "Portfolio totals across all properties you can access.",
         eyebrow: "Accounting",
       }}
     >

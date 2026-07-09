@@ -1,10 +1,10 @@
 import {
   AsYouType,
+  type CountryCode,
   getCountries,
   getCountryCallingCode,
   isValidPhoneNumber,
   parsePhoneNumberFromString,
-  type CountryCode,
 } from "libphonenumber-js";
 
 export type { CountryCode };
