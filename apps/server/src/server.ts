@@ -2,8 +2,14 @@ import "dotenv/config";
 
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
+
+import {
+  EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
+  EXPENSE_CSV_IMPORT_MAX_FILES,
+} from "@/packages/shared";
 
 import { jwtAuthPlugin } from "./auth/jwt";
 import { initializeDatabase } from "./db/pool";
@@ -12,6 +18,7 @@ import { isProduction } from "./lib/environment";
 import { adminRoutes } from "./routes/admin/admin-routes";
 import { homeRoutes } from "./routes/admin/home-routes";
 import { portfolioReportRoutes } from "./routes/admin/portfolio-report-routes";
+import { propertyExpenseImportRoutes } from "./routes/admin/property-expense-import-routes";
 import { propertyExpenseRoutes } from "./routes/admin/property-expense-routes";
 import { propertyIncomeLineRoutes } from "./routes/admin/property-income-line-routes";
 import { propertyLongStayRoutes } from "./routes/admin/property-long-stay-routes";
@@ -54,6 +61,12 @@ server.register(cors, {
   },
 });
 server.register(helmet);
+server.register(multipart, {
+  limits: {
+    files: EXPENSE_CSV_IMPORT_MAX_FILES,
+    fileSize: EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
+  },
+});
 server.register(rateLimit, {
   allowList: (request) => {
     const path = request.url.split("?")[0];
@@ -73,6 +86,7 @@ server.register(propertyReservationRoutes);
 server.register(propertyIncomeLineRoutes);
 server.register(propertyLongStayRoutes);
 server.register(propertyExpenseRoutes);
+server.register(propertyExpenseImportRoutes);
 server.register(propertyReportRoutes);
 server.register(portfolioReportRoutes);
 server.register(homeRoutes);

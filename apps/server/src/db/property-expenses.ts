@@ -44,6 +44,61 @@ export const propertyExpensesDb = {
     return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async createMany(
+    propertyId: string,
+    inputs: Array<{
+      amount: number;
+      category: ICreatePropertyExpenseBody["category"];
+      description: string | null;
+      expenseDate: string | null;
+      personName: string | null;
+      taxFree: boolean;
+    }>
+  ): Promise<IPropertyExpense[]> {
+    if (inputs.length === 0) {
+      return [];
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const expenses: IPropertyExpense[] = [];
+
+      for (const input of inputs) {
+        const result = await client.query(
+          `INSERT INTO property_expenses (
+             property_id,
+             category,
+             amount,
+             expense_date,
+             person_name,
+             description,
+             tax_free
+           ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [
+            propertyId,
+            input.category,
+            input.amount,
+            input.expenseDate,
+            input.personName,
+            input.description,
+            input.taxFree,
+          ]
+        );
+        expenses.push(mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>));
+      }
+
+      await client.query("COMMIT");
+      return expenses;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
   async findById(id: string): Promise<IPropertyExpense | null> {
     const result = await pool.query(`SELECT * FROM property_expenses WHERE id = $1`, [id]);
     if (result.rows.length === 0) return null;

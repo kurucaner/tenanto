@@ -1,7 +1,6 @@
 import type { IAdminPropertiesListQuery, IAdminUsersListQuery } from "@/lib/api-client";
 import type {
   IAdminAuditEventsListQuery,
-  IAdminSupportRequestsListQuery,
   IPropertyExpensesListQuery,
   IPropertyIncomeLinesListQuery,
   IPropertyLongStaysListQuery,
@@ -19,7 +18,7 @@ export const adminQueryKeys = {
   userAudit: (userId: string) => ["user", userId, "audit"] as const,
   usersList: (filters: Omit<IAdminUsersListQuery, "cursor">) => ["users", filters] as const,
   notificationBroadcastHistory: () => ["notification-broadcasts", "history"] as const,
-  supportRequestsList: (filters: Omit<IAdminSupportRequestsListQuery, "cursor" | "limit">) =>
+  supportRequestsList: (filters: Omit<ISupportRequestsListQuery, "cursor" | "limit">) =>
     ["support-requests", filters] as const,
   supportRequest: (id: string) => ["support", "request", id] as const,
   userSupportList: (filters: Omit<ISupportRequestsListQuery, "cursor" | "limit">) =>

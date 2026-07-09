@@ -9,8 +9,6 @@ import {
   type IAdminPropertiesListResponse,
   type IAdminSupportRequestPatchBody,
   type IAdminSupportRequestPatchResponse,
-  type IAdminSupportRequestsListQuery,
-  type IAdminSupportRequestsListResponse,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
@@ -20,6 +18,9 @@ import {
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type IEndPropertyLongStayBody,
+  type IExpenseImportCommitBody,
+  type IExpenseImportCommitResponse,
+  type IExpenseImportParseResponse,
   type IHomeFinancialOverview,
   type IPortfolioReportSummary,
   type IProperty,
@@ -218,6 +219,63 @@ const authenticatedRequest = async <T>(
   }
 
   return authenticatedRequest<T>(path, options, true);
+};
+
+const authenticatedMultipartRequest = async <T>(
+  path: string,
+  formData: FormData,
+  isRetry = false
+): Promise<T> => {
+  const token = useAuthStore.getState().accessToken;
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    body: formData,
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    method: "POST",
+  });
+
+  if (response.ok) {
+    return parseJsonResponse<T>(response);
+  }
+
+  if (response.status === 403) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? "Forbidden");
+  }
+
+  if (response.status !== 401) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
+  }
+
+  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
+  const code = body.code;
+
+  const handleSessionInvalid = (): never => {
+    clearAppSession();
+    onSessionExpired?.();
+    throw new Error("Session expired");
+  };
+
+  if (code !== JwtError.TOKEN_EXPIRED) {
+    handleSessionInvalid();
+  }
+
+  if (isRetry) {
+    handleSessionInvalid();
+  }
+
+  const newToken = await getDeduplicatedRefresh();
+  if (!newToken) {
+    throw new Error("Session expired");
+  }
+
+  return authenticatedMultipartRequest<T>(path, formData, true);
 };
 
 const authenticatedDownload = async (
@@ -486,8 +544,8 @@ export const adminApi = {
       `/admin/audit-events${buildAuditEventsSearchParams(query)}`
     ),
 
-  listSupportRequests: (query: IAdminSupportRequestsListQuery = {}) =>
-    authenticatedRequest<IAdminSupportRequestsListResponse>(
+  listSupportRequests: (query: ISupportRequestsListQuery = {}) =>
+    authenticatedRequest<ISupportRequestsListResponse>(
       `/support${buildSupportRequestsListSearchParams(query)}`
     ),
 
@@ -756,6 +814,18 @@ export const expensesApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}/restore`,
       { method: "POST", omitDefaultContentType: true }
+    ),
+
+  importParse: (propertyId: string, formData: FormData) =>
+    authenticatedMultipartRequest<IExpenseImportParseResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/import/parse`,
+      formData
+    ),
+
+  importCommit: (propertyId: string, body: IExpenseImportCommitBody) =>
+    authenticatedRequest<IExpenseImportCommitResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/import/commit`,
+      { body: JSON.stringify(body), method: "POST" }
     ),
 };
 

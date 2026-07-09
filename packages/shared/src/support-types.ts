@@ -125,12 +125,3 @@ export interface ISupportRequestsListResponse {
   items: ISupportRequestListItem[];
   nextCursor: string | null;
 }
-
-/** @deprecated Use ISupportRequestsListQuery */
-export type IAdminSupportRequestsListQuery = ISupportRequestsListQuery;
-
-/** @deprecated Use ISupportRequestsListResponse with IAdminSupportRequestListItem items */
-export interface IAdminSupportRequestsListResponse {
-  items: IAdminSupportRequestListItem[];
-  nextCursor: string | null;
-}

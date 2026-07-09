@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ import {
   expenseSelectClassName,
   formatExpenseCategoryLabel,
 } from "@/components/expenses/expense-form-options";
+import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
 import { FilterField } from "@/components/filters/filter-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
+import { isExpenseCsvImportEnabled } from "@/lib/is-expense-csv-import-enabled";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -118,6 +120,7 @@ export const PropertyExpensesPage = memo(() => {
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
   const { category, from, to } = urlFilters;
@@ -168,6 +171,10 @@ export const PropertyExpensesPage = memo(() => {
     setCreateOpen(true);
   }, []);
 
+  const handleOpenImportCsv = useCallback(() => {
+    setImportCsvOpen(true);
+  }, []);
+
   const handleDeleteExpense = useCallback(
     (expense: IPropertyExpense) => {
       requestDelete({
@@ -182,12 +189,26 @@ export const PropertyExpensesPage = memo(() => {
   const pageActions = useMemo(
     () =>
       canManage ? (
-        <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
-          <Plus className="size-3.5" />
-          Add Expense
-        </Button>
+        <div className="flex items-center gap-2">
+          {isExpenseCsvImportEnabled() ? (
+            <Button
+              className="gap-1.5"
+              onClick={handleOpenImportCsv}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              <Upload className="size-3.5" />
+              Import CSV
+            </Button>
+          ) : null}
+          <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
+            <Plus className="size-3.5" />
+            Add Expense
+          </Button>
+        </div>
       ) : null,
-    [canManage, handleOpenCreate]
+    [canManage, handleOpenCreate, handleOpenImportCsv]
   );
 
   usePropertyShellActions(pageActions);
@@ -282,6 +303,11 @@ export const PropertyExpensesPage = memo(() => {
       {deleteConfirmationDialog}
 
       <CreateExpenseDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
+      <ImportExpenseCsvDialog
+        onOpenChange={setImportCsvOpen}
+        open={importCsvOpen}
+        propertyId={propertyId}
+      />
       {editExpense ? (
         <EditExpenseDialog
           expense={editExpense}

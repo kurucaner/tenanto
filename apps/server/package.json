@@ -25,6 +25,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",
     "@fastify/jwt": "^10.0.0",
+    "@fastify/multipart": "^10.1.0",
     "@fastify/rate-limit": "^10.3.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
@@ -38,9 +39,11 @@
     "google-auth-library": "^10.5.0",
     "libphonenumber-js": "^1.13.8",
     "node-cron": "^4.2.1",
+    "openai": "^6.45.0",
     "pg": "^8.18.0",
     "semver": "^7.7.4",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
