@@ -13,9 +13,13 @@ import { getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared
 
 interface ExpenseFormFieldsProps {
   amount: string;
+  amountError?: string;
   category: TExpenseCategory;
   description: string;
+  descriptionError?: string;
   expenseDate: string;
+  expenseDateError?: string;
+  expenseDateRequired?: boolean;
   idPrefix: string;
   maxDate?: string;
   onAmountChange: (value: string) => void;
@@ -31,9 +35,13 @@ interface ExpenseFormFieldsProps {
 export const ExpenseFormFields = memo(
   ({
     amount,
+    amountError,
     category,
     description,
+    descriptionError,
     expenseDate,
+    expenseDateError,
+    expenseDateRequired = false,
     idPrefix,
     maxDate,
     onAmountChange,
@@ -79,9 +87,12 @@ export const ExpenseFormFields = memo(
               type="text"
               value={amount}
             />
+            {amountError ? <p className="text-xs text-destructive">{amountError}</p> : null}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-date`}>Date (optional)</Label>
+            <Label htmlFor={`${idPrefix}-date`}>
+              {expenseDateRequired ? "Date" : "Date (optional)"}
+            </Label>
             <Input
               id={`${idPrefix}-date`}
               max={maxDate}
@@ -89,6 +100,9 @@ export const ExpenseFormFields = memo(
               type="date"
               value={expenseDate}
             />
+            {expenseDateError ? (
+              <p className="text-xs text-destructive">{expenseDateError}</p>
+            ) : null}
           </div>
         </div>
 
@@ -112,6 +126,9 @@ export const ExpenseFormFields = memo(
               required
               value={description}
             />
+            {descriptionError ? (
+              <p className="text-xs text-destructive">{descriptionError}</p>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -121,6 +138,9 @@ export const ExpenseFormFields = memo(
               onChange={(e) => onDescriptionChange(e.target.value)}
               value={description}
             />
+            {descriptionError ? (
+              <p className="text-xs text-destructive">{descriptionError}</p>
+            ) : null}
           </div>
         )}
 
