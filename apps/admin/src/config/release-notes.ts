@@ -33,6 +33,60 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    id: "2026.6.0",
+    version: "2026.6.0",
+    publishedAt: "2026-07-08",
+    summary:
+      "Switch properties from the header, clearer report charts, soft delete with restore, and filters that stay put when you refresh.",
+    changes: [
+      {
+        category: "new",
+        description:
+          "You can switch properties from the header — search by name or pick from your recently visited properties without going back to the list.",
+      },
+      {
+        category: "new",
+        description:
+          "Deleted units, income entries, and expenses can now be restored instead of being gone for good.",
+      },
+      {
+        category: "new",
+        description:
+          "On Income, open Details on a stay to see how commission, gross income, and net payout were calculated.",
+      },
+      {
+        category: "new",
+        description:
+          "Reports and your Home overview now show a profit trend chart — operational net income over time with profit margin — instead of a simple income vs expenses bar chart.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property reports include an income composition chart (long-term, short-term, and other income) and a chart for your other income types.",
+      },
+      {
+        category: "improved",
+        description:
+          "Filters and table sort on Income, Expenses, Reports, and list pages stay in the address bar, so refreshing or sharing a link keeps your view.",
+      },
+      {
+        category: "improved",
+        description:
+          "Stays now store the room total for the booking; Expedia commission is based on the room total and does not include the cleaning fee.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Income table separates taxes and fees more clearly, and the report summary card label now reads Net Payout.",
+      },
+      {
+        category: "fixed",
+        description:
+          "The commission Details breakdown no longer treats the cleaning fee as part of the commission calculation when it shouldn't be.",
+      },
+    ],
+  },
+  {
     id: "2026.5.0",
     version: "2026.5.0",
     publishedAt: "2026-07-08",
