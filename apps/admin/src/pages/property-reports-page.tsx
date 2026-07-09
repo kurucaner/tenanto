@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
@@ -20,7 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
-import { useTableSort } from "@/hooks/use-table-sort";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { reportsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
@@ -34,6 +34,7 @@ import {
   sortSalesTypeRows,
   sortUnitSummaryRows,
 } from "@/lib/report-table-sort";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
@@ -76,11 +77,31 @@ const EXPENSE_COLUMNS: ReportTableColumnDef[] = [
 ];
 
 const PropertyReportTables = memo(({ summary }: { summary: IPropertyReportSummary }) => {
-  const salesTypeSort = useTableSort("amount", "desc");
-  const channelSort = useTableSort("gross", "desc");
-  const unitSort = useTableSort("unit", "asc");
-  const monthSort = useTableSort("month", "asc");
-  const expenseSort = useTableSort("amount", "desc");
+  const salesTypeSort = useUrlTableSort({
+    defaultColumnId: "amount",
+    defaultDirection: "desc",
+    prefix: "sales",
+  });
+  const channelSort = useUrlTableSort({
+    defaultColumnId: "gross",
+    defaultDirection: "desc",
+    prefix: "channel",
+  });
+  const unitSort = useUrlTableSort({
+    defaultColumnId: "unit",
+    defaultDirection: "asc",
+    prefix: "unit",
+  });
+  const monthSort = useUrlTableSort({
+    defaultColumnId: "month",
+    defaultDirection: "asc",
+    prefix: "month",
+  });
+  const expenseSort = useUrlTableSort({
+    defaultColumnId: "amount",
+    defaultDirection: "desc",
+    prefix: "expense",
+  });
 
   const salesTypeRows = useMemo(
     () =>
@@ -258,13 +279,26 @@ PropertyReportBody.displayName = "PropertyReportBody";
 
 export const PropertyReportsPage = memo(() => {
   const { propertyId } = usePropertyShell();
-  const [searchParams] = useSearchParams();
   const defaultRange = useMemo(() => getDefaultReportDateRange(), []);
-  const [from, setFrom] = useState(() => searchParams.get("from") ?? defaultRange.from);
-  const [to, setTo] = useState(() => searchParams.get("to") ?? defaultRange.to);
-  const [unitId, setUnitId] = useState("");
-  const [channel, setChannel] = useState("");
-  const [rentalType, setRentalType] = useState(() => searchParams.get("rentalType") ?? "");
+  const reportFilterSchema = useMemo(
+    () =>
+      defineUrlFilterSchema<{
+        channel: string;
+        from: string;
+        rentalType: string;
+        to: string;
+        unitId: string;
+      }>({
+        channel: { defaultValue: "" },
+        from: { defaultValue: defaultRange.from },
+        rentalType: { defaultValue: "" },
+        to: { defaultValue: defaultRange.to },
+        unitId: { defaultValue: "" },
+      }),
+    [defaultRange.from, defaultRange.to]
+  );
+  const { filters, setFilter } = useUrlFilterState(reportFilterSchema);
+  const { channel, from, rentalType, to, unitId } = filters;
   const [isExporting, setIsExporting] = useState(false);
 
   const reportQuery = useMemo<IPropertyReportsQuery | null>(() => {
@@ -331,11 +365,11 @@ export const PropertyReportsPage = memo(() => {
         <ReportFiltersBar
           channel={channel}
           from={from}
-          onChannelChange={setChannel}
-          onFromChange={setFrom}
-          onRentalTypeChange={setRentalType}
-          onToChange={setTo}
-          onUnitChange={setUnitId}
+          onChannelChange={(value) => setFilter("channel", value)}
+          onFromChange={(value) => setFilter("from", value)}
+          onRentalTypeChange={(value) => setFilter("rentalType", value)}
+          onToChange={(value) => setFilter("to", value)}
+          onUnitChange={(value) => setFilter("unitId", value)}
           rentalType={rentalType}
           showChannelFilter
           showUnitFilter

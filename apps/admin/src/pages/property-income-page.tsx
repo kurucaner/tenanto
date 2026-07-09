@@ -3,11 +3,7 @@ import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  DeletedBadge,
-  deletedRowClassName,
-  RestoreEntityButton,
-} from "@/components/deleted-badge";
+import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -38,7 +34,8 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
-import { useTableSort } from "@/hooks/use-table-sort";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import {
@@ -49,6 +46,7 @@ import {
 } from "@/lib/income-entry-sort";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   getStayAverageDailyRate,
   getStayNetPayout,
@@ -133,6 +131,22 @@ const INCOME_TABLE_COLUMNS: {
     label: "Net Payout",
   },
 ];
+
+const INCOME_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
+  channel: string;
+  from: string;
+  incomeType: string;
+  status: string;
+  to: string;
+  unitId: string;
+}>({
+  channel: { defaultValue: "" },
+  from: { defaultValue: "" },
+  incomeType: { defaultValue: "" },
+  status: { defaultValue: "" },
+  to: { defaultValue: "" },
+  unitId: { defaultValue: "" },
+});
 
 function buildDateFilters(from: string, to: string, unitId: string) {
   const next: { from?: string; to?: string; unitId?: string } = {};
@@ -267,10 +281,7 @@ const PropertyIncomeEntriesTable = memo(
     onEditStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
-    onShowCalculationDetails: (
-      stay: IPropertyReservation,
-      metric: TStayCalculationMetric
-    ) => void;
+    onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
     onSortColumn: (columnId: string) => void;
     unitLabelById: Map<string, string>;
   }) => {
@@ -469,10 +480,7 @@ type IncomeStayEntryRowProps = {
   onDeleteStay: (stay: IPropertyReservation) => void;
   onEditStay: (stay: IPropertyReservation) => void;
   onRestoreStay: (stay: IPropertyReservation) => void;
-  onShowCalculationDetails: (
-    stay: IPropertyReservation,
-    metric: TStayCalculationMetric
-  ) => void;
+  onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
   stay: IPropertyReservation;
   unitLabel: string;
 };
@@ -555,10 +563,7 @@ const IncomeStayEntryRow = memo(
           <TableCell>
             <div className="flex items-center gap-1">
               {stay.isDeleted ? (
-                <RestoreEntityButton
-                  ariaLabel="Restore stay"
-                  onClick={() => onRestoreStay(stay)}
-                />
+                <RestoreEntityButton ariaLabel="Restore stay" onClick={() => onRestoreStay(stay)} />
               ) : (
                 <>
                   <Button
@@ -703,10 +708,7 @@ const IncomeEntryRow = memo(
     onEditStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
-    onShowCalculationDetails: (
-      stay: IPropertyReservation,
-      metric: TStayCalculationMetric
-    ) => void;
+    onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
     unitLabel: string;
   }) => {
     if (entry.entryKind === IncomeEntryKind.STAY) {
@@ -772,16 +774,12 @@ const PropertyIncomePage = memo(() => {
     metric: TStayCalculationMetric;
     stay: IPropertyReservation;
   } | null>(null);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [unitId, setUnitId] = useState("");
-  const [channel, setChannel] = useState("");
-  const [status, setStatus] = useState("");
-  const [incomeType, setIncomeType] = useState("");
-  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useTableSort(
-    "date",
-    "desc"
-  );
+  const { filters, setFilter } = useUrlFilterState(INCOME_URL_FILTER_SCHEMA);
+  const { channel, from, incomeType, status, to, unitId } = filters;
+  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
+    defaultColumnId: "date",
+    defaultDirection: "desc",
+  });
 
   const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
 
@@ -921,7 +919,7 @@ const PropertyIncomePage = memo(() => {
               <Label htmlFor="filter-from">From</Label>
               <Input
                 id="filter-from"
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={(e) => setFilter("from", e.target.value)}
                 type="date"
                 value={from}
               />
@@ -930,7 +928,7 @@ const PropertyIncomePage = memo(() => {
               <Label htmlFor="filter-to">To</Label>
               <Input
                 id="filter-to"
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => setFilter("to", e.target.value)}
                 type="date"
                 value={to}
               />
@@ -940,7 +938,7 @@ const PropertyIncomePage = memo(() => {
               <select
                 className={reservationSelectClassName}
                 id="filter-unit"
-                onChange={(e) => setUnitId(e.target.value)}
+                onChange={(e) => setFilter("unitId", e.target.value)}
                 value={unitId}
               >
                 <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
@@ -951,7 +949,7 @@ const PropertyIncomePage = memo(() => {
               <select
                 className={incomeLineSelectClassName}
                 id="filter-income-type"
-                onChange={(e) => setIncomeType(e.target.value)}
+                onChange={(e) => setFilter("incomeType", e.target.value)}
                 value={incomeType}
               >
                 {incomeTypeFilterOptions.map((opt) => (
@@ -967,7 +965,7 @@ const PropertyIncomePage = memo(() => {
                 className={reservationSelectClassName}
                 disabled={!showStays}
                 id="filter-channel"
-                onChange={(e) => setChannel(e.target.value)}
+                onChange={(e) => setFilter("channel", e.target.value)}
                 value={channel}
               >
                 <option value="">All channels</option>
@@ -984,7 +982,7 @@ const PropertyIncomePage = memo(() => {
                 className={reservationSelectClassName}
                 disabled={!showStays}
                 id="filter-status"
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(e) => setFilter("status", e.target.value)}
                 value={status}
               >
                 <option value="">All statuses</option>

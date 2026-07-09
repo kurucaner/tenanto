@@ -17,8 +17,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { type IAdminPropertiesListQuery, propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   formatPhoneDisplay,
   type IAdminPropertiesListResponse,
@@ -27,6 +29,10 @@ import {
 
 const LIMIT = 25;
 const SEARCH_DEBOUNCE_MS = 300;
+
+const PROPERTIES_URL_FILTER_SCHEMA = defineUrlFilterSchema<{ q: string }>({
+  q: { defaultValue: "" },
+});
 
 const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
   const navigate = useNavigate();
@@ -46,21 +52,31 @@ const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
 PropertyTableRow.displayName = "PropertyTableRow";
 
 const PropertiesListPageInner = memo(() => {
-  const [searchInput, setSearchInput] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { filters, setFilter } = useUrlFilterState(PROPERTIES_URL_FILTER_SCHEMA);
+  const { q } = filters;
+  const [searchInput, setSearchInput] = useState(q);
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    setSearchInput(q);
+  }, [q]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const trimmed = searchInput.trim();
+      if (trimmed !== q) {
+        setFilter("q", trimmed);
+      }
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(id);
-  }, [searchInput]);
+  }, [q, searchInput, setFilter]);
 
   const listFilters = useMemo<Omit<IAdminPropertiesListQuery, "cursor">>(
     () => ({
       limit: LIMIT,
-      q: debouncedSearch || undefined,
+      q: q || undefined,
     }),
-    [debouncedSearch]
+    [q]
   );
 
   const { data, error, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending } =

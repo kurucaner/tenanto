@@ -3,11 +3,7 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  DeletedBadge,
-  deletedRowClassName,
-  RestoreEntityButton,
-} from "@/components/deleted-badge";
+import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import {
@@ -31,10 +27,12 @@ import {
 } from "@/components/ui/table";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
@@ -65,18 +63,13 @@ const ExpenseRow = memo(
       <TableCell>{expense.expenseDate ?? "—"}</TableCell>
       <TableCell>{expense.personName ?? "—"}</TableCell>
       <TableCell className="max-w-[240px] truncate">{expense.description ?? "—"}</TableCell>
-      <TableCell>
-        {expense.taxFree ? <Badge variant="secondary">Tax-free</Badge> : "—"}
-      </TableCell>
+      <TableCell>{expense.taxFree ? <Badge variant="secondary">Tax-free</Badge> : "—"}</TableCell>
       <TableCell className="text-right font-medium">{formatMoney(expense.amount)}</TableCell>
       {canManage ? (
         <TableCell>
           <div className="flex items-center gap-1">
             {expense.isDeleted ? (
-              <RestoreEntityButton
-                ariaLabel="Restore expense"
-                onClick={() => onRestore(expense)}
-              />
+              <RestoreEntityButton ariaLabel="Restore expense" onClick={() => onRestore(expense)} />
             ) : (
               <>
                 <Button
@@ -107,15 +100,24 @@ const ExpenseRow = memo(
 );
 ExpenseRow.displayName = "ExpenseRow";
 
+const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
+  category: string;
+  from: string;
+  to: string;
+}>({
+  category: { defaultValue: "" },
+  from: { defaultValue: "" },
+  to: { defaultValue: "" },
+});
+
 export const PropertyExpensesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [category, setCategory] = useState("");
+  const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
+  const { category, from, to } = urlFilters;
 
   const filters = useMemo<IPropertyExpensesListQuery>(() => {
     const next: IPropertyExpensesListQuery = {};
@@ -180,7 +182,7 @@ export const PropertyExpensesPage = memo(() => {
               <Label htmlFor="expense-filter-from">From</Label>
               <Input
                 id="expense-filter-from"
-                onChange={(e) => setFrom(e.target.value)}
+                onChange={(e) => setFilter("from", e.target.value)}
                 type="date"
                 value={from}
               />
@@ -189,7 +191,7 @@ export const PropertyExpensesPage = memo(() => {
               <Label htmlFor="expense-filter-to">To</Label>
               <Input
                 id="expense-filter-to"
-                onChange={(e) => setTo(e.target.value)}
+                onChange={(e) => setFilter("to", e.target.value)}
                 type="date"
                 value={to}
               />
@@ -199,7 +201,7 @@ export const PropertyExpensesPage = memo(() => {
               <select
                 className={expenseSelectClassName}
                 id="expense-filter-category"
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => setFilter("category", e.target.value)}
                 value={category}
               >
                 {EXPENSE_CATEGORY_FILTER_OPTIONS.map((opt) => (
