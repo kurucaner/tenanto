@@ -37,6 +37,7 @@ export const adminQueryKeys = {
     ["property", propertyId, "income-lines", filters] as const,
   propertyExpenses: (propertyId: string, filters: IPropertyExpensesListQuery = {}) =>
     ["property", propertyId, "expenses", filters] as const,
+  propertyActiveLeases: (propertyId: string) => ["property", propertyId, "active-leases"] as const,
   propertyLongStays: (propertyId: string, filters: IPropertyLongStaysListQuery = {}) =>
     ["property", propertyId, "long-stays", filters] as const,
   propertyLongStay: (propertyId: string, longStayId: string) =>

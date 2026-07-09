@@ -181,8 +181,6 @@ export const PropertyUnitsPage = memo(() => {
     return map;
   }, [activeLeases]);
 
-  const occupiedUnitIds = useMemo(() => new Set(activeLeaseByUnitId.keys()), [activeLeaseByUnitId]);
-
   const deleteMutation = useMutation({
     mutationFn: (unit: IPropertyUnit) => unitsApi.delete(propertyId, unit.id),
     onError: (e) => {
@@ -313,7 +311,6 @@ export const PropertyUnitsPage = memo(() => {
       {startLeaseUnit ? (
         <StartLeaseDialog
           key={startLeaseUnit.id}
-          occupiedUnitIds={occupiedUnitIds}
           onOpenChange={(open) => {
             if (!open) setStartLeaseUnit(null);
           }}

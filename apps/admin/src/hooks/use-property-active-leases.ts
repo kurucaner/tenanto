@@ -5,16 +5,22 @@ import { longStaysApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { LEASES_LIST_MAX_LIMIT, PropertyLongStayStatus } from "@/packages/shared";
 
-export function usePropertyActiveLeases(propertyId: string) {
+interface UsePropertyActiveLeasesOptions {
+  enabled?: boolean;
+}
+
+export function usePropertyActiveLeases(
+  propertyId: string,
+  { enabled = true }: UsePropertyActiveLeasesOptions = {}
+) {
   const query = useQuery({
+    enabled,
     queryFn: () =>
       longStaysApi.list(propertyId, {
         limit: LEASES_LIST_MAX_LIMIT,
         status: PropertyLongStayStatus.ACTIVE,
       }),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, {
-      status: PropertyLongStayStatus.ACTIVE,
-    }),
+    queryKey: adminQueryKeys.propertyActiveLeases(propertyId),
   });
 
   const activeLeases = useMemo(() => query.data?.longStays ?? [], [query.data?.longStays]);

@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
-import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import {
   type TPropertyLongStaysListFilters,
   usePropertyLongStaysInfiniteList,
@@ -211,8 +210,6 @@ export const PropertyLeasesPage = memo(() => {
     isFetchingNextPage,
   });
 
-  const { activeLeases } = usePropertyActiveLeases(propertyId);
-
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
     queryKey: adminQueryKeys.propertyUnits(propertyId),
@@ -240,14 +237,6 @@ export const PropertyLeasesPage = memo(() => {
     }
     return map;
   }, [units]);
-
-  const occupiedUnitIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const lease of activeLeases) {
-      ids.add(lease.unitId);
-    }
-    return ids;
-  }, [activeLeases]);
 
   const handleOpenCreate = useCallback(() => {
     setCreateOpen(true);
@@ -383,7 +372,6 @@ export const PropertyLeasesPage = memo(() => {
       </Card>
 
       <StartLeaseDialog
-        occupiedUnitIds={occupiedUnitIds}
         onOpenChange={setCreateOpen}
         open={createOpen}
         propertyId={propertyId}

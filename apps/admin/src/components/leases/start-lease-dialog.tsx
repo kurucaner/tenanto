@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
+import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
@@ -74,7 +75,6 @@ function getDefaultValues(unitId?: string): TStartLeaseFormValues {
 }
 
 interface StartLeaseDialogProps {
-  occupiedUnitIds?: Set<string>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
@@ -84,7 +84,6 @@ interface StartLeaseDialogProps {
 
 export const StartLeaseDialog = memo(
   ({
-    occupiedUnitIds,
     onOpenChange,
     open,
     propertyId,
@@ -93,6 +92,18 @@ export const StartLeaseDialog = memo(
   }: StartLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const lockedUnit = unit ?? null;
+
+    const { activeLeases, isPending: isActiveLeasesPending } = usePropertyActiveLeases(propertyId, {
+      enabled: open && !lockedUnit,
+    });
+
+    const occupiedUnitIds = useMemo(() => {
+      const ids = new Set<string>();
+      for (const lease of activeLeases) {
+        ids.add(lease.unitId);
+      }
+      return ids;
+    }, [activeLeases]);
 
     const form = useForm<TStartLeaseFormValues>({
       defaultValues: getDefaultValues(lockedUnit?.id),
@@ -177,16 +188,22 @@ export const StartLeaseDialog = memo(
                   <Label htmlFor="start-lease-unit">Unit</Label>
                   <select
                     className={incomeLineSelectClassName}
+                    disabled={isActiveLeasesPending}
                     id="start-lease-unit"
                     {...form.register("unitId")}
                   >
-                    <option value="">Select unit…</option>
+                    <option value="">
+                      {isActiveLeasesPending ? "Loading units…" : "Select unit…"}
+                    </option>
                     <PropertyUnitSelectOptions units={availableUnits} />
                   </select>
                   {errors.unitId ? (
                     <p className="text-xs text-destructive">{errors.unitId.message}</p>
                   ) : null}
-                  {availableUnits.length === 0 ? (
+                  {isActiveLeasesPending ? (
+                    <p className="text-muted-foreground text-xs">Loading available units…</p>
+                  ) : null}
+                  {!isActiveLeasesPending && availableUnits.length === 0 ? (
                     <p className="text-muted-foreground text-xs">
                       No vacant long-term units available.
                     </p>
