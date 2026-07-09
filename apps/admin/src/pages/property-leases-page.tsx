@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 
@@ -45,6 +45,7 @@ import {
   formatPropertyUnitSelectLabel,
   getLeaseOccupancyNames,
   type IPropertyLongStay,
+  type IPropertyLongStayDetailResponse,
   PropertyLongStayStatus,
   resolveRentIncomeLineTypeId,
   type TPropertyLongStayStatus,
@@ -67,12 +68,13 @@ const LEASE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
 function buildRentPrefill(
   lease: IPropertyLongStay,
   incomeLineTypeId: string,
-  month?: string
+  month?: string,
+  expectedAmount?: number
 ): CreateIncomeLineDialogPrefill {
   const maxDate = getTodayLocalIsoDate();
   const monthDate = month ? `${month}-01` : maxDate;
   return {
-    amount: String(lease.monthlyRent),
+    amount: String(expectedAmount ?? lease.monthlyRent),
     guestName: lease.guestName,
     incomeLineTypeId,
     longStayId: lease.id,
@@ -164,6 +166,7 @@ LeaseRow.displayName = "LeaseRow";
 export const PropertyLeasesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
+  const queryClient = useQueryClient();
 
   const { filters, setFilters } = useUrlFilterState(LEASE_URL_FILTER_SCHEMA);
   const { status, unitId } = filters;
@@ -252,10 +255,19 @@ export const PropertyLeasesPage = memo(() => {
 
   const handleRecordRent = useCallback(
     (lease: IPropertyLongStay, month?: string) => {
+      let expectedAmount: number | undefined;
+      if (month) {
+        const detail = queryClient.getQueryData<IPropertyLongStayDetailResponse>(
+          adminQueryKeys.propertyLongStay(propertyId, lease.id)
+        );
+        expectedAmount = detail?.rentSchedule.find((item) => item.month === month)?.expectedRent;
+      }
       setRecordRentLease(lease);
-      setRecordRentPrefill(buildRentPrefill(lease, rentIncomeLineTypeId, month));
+      setRecordRentPrefill(
+        buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount)
+      );
     },
-    [rentIncomeLineTypeId]
+    [propertyId, queryClient, rentIncomeLineTypeId]
   );
 
   const leases = longStays;

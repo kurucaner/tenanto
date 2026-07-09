@@ -21,6 +21,7 @@ import {
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
   type IExpenseImportParseResponse,
+  type IExtendPropertyLongStayBody,
   type IHomeFinancialOverview,
   type IPortfolioReportSummary,
   type IProperty,
@@ -651,6 +652,12 @@ export const longStaysApi = {
   end: (propertyId: string, longStayId: string, body: IEndPropertyLongStayBody) =>
     authenticatedRequest<{ longStay: IPropertyLongStay }>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/end`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  extend: (propertyId: string, longStayId: string, body: IExtendPropertyLongStayBody) =>
+    authenticatedRequest<{ longStay: IPropertyLongStay }>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/extend`,
       { body: JSON.stringify(body), method: "POST" }
     ),
 

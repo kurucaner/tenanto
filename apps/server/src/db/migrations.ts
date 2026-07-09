@@ -1766,4 +1766,27 @@ export const migrations: IMigration[] = [
     },
     version: 41,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_long_stay_rent_periods;`);
+    },
+    name: "long_stay_rent_periods",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_long_stay_rent_periods (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          long_stay_id UUID NOT NULL REFERENCES property_long_stays(id) ON DELETE CASCADE,
+          effective_from_month CHAR(7) NOT NULL,
+          monthly_rent NUMERIC(12,2) NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          UNIQUE (long_stay_id, effective_from_month)
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_long_stay_rent_periods_long_stay
+          ON property_long_stay_rent_periods (long_stay_id, effective_from_month DESC);
+      `);
+    },
+    version: 42,
+  },
 ];

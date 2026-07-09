@@ -6,6 +6,7 @@ import {
   type IPropertyIncomeLineType,
   type IPropertyInvite,
   type IPropertyLongStay,
+  type IPropertyLongStayRentPeriod,
   type IPropertyLongStaySecondaryTenant,
   type IPropertyMember,
   type IPropertyReservation,
@@ -207,6 +208,13 @@ export const parseSecondaryTenants = (raw: unknown): IPropertyLongStaySecondaryT
   }
   return tenants;
 };
+
+export const mapPropertyLongStayRentPeriodRow = (
+  row: Record<string, unknown>
+): IPropertyLongStayRentPeriod => ({
+  effectiveFromMonth: String(row.effective_from_month),
+  monthlyRent: Number(row.monthly_rent),
+});
 
 export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay => ({
   actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,

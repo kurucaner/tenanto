@@ -1,20 +1,25 @@
 import type {
   ICreatePropertyLongStayBody,
+  IExtendPropertyLongStayBody,
   IPropertyLongStay,
   IPropertyLongStayRentMonth,
+  IPropertyLongStayRentPeriod,
   IPropertyLongStaysListQuery,
   IUpdatePropertyLongStayBody,
 } from "@/packages/shared";
 import {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  getCurrentLeaseRent,
+  getLeaseRentForMonth,
   PropertyLongStayStatus,
   transactionDateToMonth,
+  validateExtendLease,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
-import { mapPropertyLongStayRow } from "./mappers";
+import { mapPropertyLongStayRentPeriodRow, mapPropertyLongStayRow } from "./mappers";
 import { pool } from "./pool";
 
 function buildPropertyLongStayListConditions(
@@ -66,6 +71,18 @@ export class LongStayNotActiveError extends Error {
     super("Long stay is not active");
     this.name = "LongStayNotActiveError";
   }
+}
+
+export class InvalidExtendLeaseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidExtendLeaseError";
+  }
+}
+
+function getTodayUtcIsoDate(): string {
+  const date = new Date();
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 export const propertyLongStaysDb = {
@@ -121,6 +138,99 @@ export const propertyLongStaysDb = {
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async extendLease(id: string, body: IExtendPropertyLongStayBody): Promise<IPropertyLongStay> {
+    const existing = await propertyLongStaysDb.findById(id);
+    if (!existing) {
+      throw new LongStayNotFoundError();
+    }
+    if (existing.status !== PropertyLongStayStatus.ACTIVE) {
+      throw new LongStayNotActiveError();
+    }
+
+    const validationError = validateExtendLease(body, existing, getTodayUtcIsoDate());
+    if (validationError) {
+      throw new InvalidExtendLeaseError(validationError);
+    }
+
+    const newTermMonths = existing.termMonths + body.additionalTermMonths;
+    const newLeaseEndDate = calculateLeaseEndDate(existing.leaseStartDate, newTermMonths);
+    const hasRentChange =
+      body.newMonthlyRent !== undefined && body.rentEffectiveFromMonth !== undefined;
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      if (hasRentChange) {
+        const existingPeriods = await client.query(
+          `SELECT id FROM property_long_stay_rent_periods WHERE long_stay_id = $1 LIMIT 1`,
+          [id]
+        );
+
+        if (existingPeriods.rows.length === 0) {
+          await client.query(
+            `INSERT INTO property_long_stay_rent_periods
+               (long_stay_id, effective_from_month, monthly_rent)
+             VALUES ($1, $2, $3)`,
+            [id, transactionDateToMonth(existing.leaseStartDate), existing.monthlyRent]
+          );
+        }
+
+        await client.query(
+          `INSERT INTO property_long_stay_rent_periods
+             (long_stay_id, effective_from_month, monthly_rent)
+           VALUES ($1, $2, $3)`,
+          [id, body.rentEffectiveFromMonth, body.newMonthlyRent]
+        );
+      }
+
+      const rentPeriodsResult = await client.query(
+        `SELECT effective_from_month, monthly_rent
+         FROM property_long_stay_rent_periods
+         WHERE long_stay_id = $1
+         ORDER BY effective_from_month ASC`,
+        [id]
+      );
+      const rentPeriods = rentPeriodsResult.rows.map((row) =>
+        mapPropertyLongStayRentPeriodRow(row as Record<string, unknown>)
+      );
+      const currentMonthlyRent = getCurrentLeaseRent(
+        existing.monthlyRent,
+        rentPeriods,
+        getTodayUtcIsoDate()
+      );
+
+      const result = await client.query(
+        `UPDATE property_long_stays
+         SET term_months = $2,
+             lease_end_date = $3,
+             monthly_rent = $4
+         WHERE id = $1
+           AND status = $5::property_long_stay_status
+         RETURNING *`,
+        [
+          id,
+          newTermMonths,
+          newLeaseEndDate,
+          currentMonthlyRent,
+          PropertyLongStayStatus.ACTIVE,
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new LongStayNotActiveError();
+      }
+
+      await client.query("COMMIT");
+      return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
   async findActiveByUnitId(unitId: string): Promise<IPropertyLongStay | null> {
     const result = await pool.query(
       `SELECT * FROM property_long_stays
@@ -145,6 +255,7 @@ export const propertyLongStaysDb = {
       throw new LongStayNotFoundError();
     }
 
+    const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
     const effectiveEndDate = longStay.actualEndDate ?? longStay.leaseEndDate;
     const months = enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
 
@@ -172,6 +283,7 @@ export const propertyLongStaysDb = {
     return months.map((month) => {
       const incomeLineId = paidByMonth.get(month);
       return {
+        expectedRent: getLeaseRentForMonth(longStay.monthlyRent, rentPeriods, month),
         incomeLineId,
         isPaid: incomeLineId !== undefined,
         month,
@@ -234,6 +346,19 @@ export const propertyLongStaysDb = {
       longStays: pageRows.map((row) => mapPropertyLongStayRow(row)),
       nextCursor,
     };
+  },
+
+  async listRentPeriods(longStayId: string): Promise<IPropertyLongStayRentPeriod[]> {
+    const result = await pool.query(
+      `SELECT effective_from_month, monthly_rent
+       FROM property_long_stay_rent_periods
+       WHERE long_stay_id = $1
+       ORDER BY effective_from_month ASC`,
+      [longStayId]
+    );
+    return result.rows.map((row) =>
+      mapPropertyLongStayRentPeriodRow(row as Record<string, unknown>)
+    );
   },
 
   async updateLease(id: string, patch: IUpdatePropertyLongStayBody): Promise<IPropertyLongStay> {

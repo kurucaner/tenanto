@@ -53,7 +53,19 @@ export interface IPropertyLongStaysListResponse {
 
 export interface IPropertyLongStayDetailResponse {
   longStay: IPropertyLongStay;
+  rentPeriods: IPropertyLongStayRentPeriod[];
   rentSchedule: IPropertyLongStayRentMonth[];
+}
+
+export interface IPropertyLongStayRentPeriod {
+  effectiveFromMonth: string;
+  monthlyRent: number;
+}
+
+export interface IExtendPropertyLongStayBody {
+  additionalTermMonths: number;
+  newMonthlyRent?: number;
+  rentEffectiveFromMonth?: string;
 }
 
 export interface IEndPropertyLongStayBody {
@@ -68,6 +80,7 @@ export interface IUpdatePropertyLongStayBody {
 }
 
 export interface IPropertyLongStayRentMonth {
+  expectedRent: number;
   incomeLineId?: string;
   isPaid: boolean;
   month: string;

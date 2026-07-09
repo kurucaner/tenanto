@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
   ActiveLongStayConflictError,
+  InvalidExtendLeaseError,
   LongStayNotActiveError,
   LongStayNotFoundError,
   propertyLongStaysDb,
@@ -11,11 +12,13 @@ import {
   HttpStatus,
   type ICreatePropertyLongStayBody,
   type IEndPropertyLongStayBody,
+  type IExtendPropertyLongStayBody,
   type IPropertyLongStaySecondaryTenant,
   type IPropertyLongStaysListQuery,
   type IUpdatePropertyLongStayBody,
   LEASES_LIST_LIMIT,
   LEASES_LIST_MAX_LIMIT,
+  MAX_ADDITIONAL_TERM_MONTHS,
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
   UnitRentalType,
@@ -31,6 +34,7 @@ import {
 } from "./property-route-access";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_RE = /^\d{4}-\d{2}$/;
 const MAX_TERM_MONTHS = 60;
 const MAX_SECONDARY_TENANTS = 10;
 
@@ -133,6 +137,56 @@ function parseEndLongStayBody(
     return { error: "actualEndDate must be a YYYY-MM-DD date", ok: false };
   }
   return { body: { actualEndDate }, ok: true };
+}
+
+function parsePositiveMoney(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) return null;
+  return raw;
+}
+
+function parseExtendLongStayBody(
+  raw: unknown
+): { body: IExtendPropertyLongStayBody; ok: true } | { error: string; ok: false } {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { error: "Body must be a JSON object", ok: false };
+  }
+  const r = raw as Record<string, unknown>;
+
+  const additionalTermMonths = parseTermMonths(r["additionalTermMonths"]);
+  if (additionalTermMonths === null) {
+    return {
+      error: `additionalTermMonths must be a whole number between 1 and ${MAX_ADDITIONAL_TERM_MONTHS}`,
+      ok: false,
+    };
+  }
+
+  const body: IExtendPropertyLongStayBody = { additionalTermMonths };
+
+  const hasNewRent = "newMonthlyRent" in r;
+  const hasEffectiveMonth = "rentEffectiveFromMonth" in r;
+
+  if (hasNewRent !== hasEffectiveMonth) {
+    return {
+      error: "newMonthlyRent and rentEffectiveFromMonth must both be provided when changing rent",
+      ok: false,
+    };
+  }
+
+  if (hasNewRent) {
+    const newMonthlyRent = parsePositiveMoney(r["newMonthlyRent"]);
+    if (newMonthlyRent === null) {
+      return { error: "newMonthlyRent must be a positive number", ok: false };
+    }
+
+    if (typeof r["rentEffectiveFromMonth"] !== "string" || !MONTH_RE.test(r["rentEffectiveFromMonth"])) {
+      return { error: "rentEffectiveFromMonth must be YYYY-MM format", ok: false };
+    }
+
+    body.newMonthlyRent = newMonthlyRent;
+    body.rentEffectiveFromMonth = r["rentEffectiveFromMonth"];
+  }
+
+  return { body, ok: true };
 }
 
 function parseSecondaryTenant(
@@ -387,7 +441,8 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       }
 
       const rentSchedule = await propertyLongStaysDb.getRentSchedule(longStayId);
-      return reply.send({ longStay, rentSchedule });
+      const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
+      return reply.send({ longStay, rentPeriods, rentSchedule });
     }
   );
 
@@ -546,6 +601,64 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         const longStay = await propertyLongStaysDb.endLease(longStayId, parsed.body.actualEndDate);
         return reply.send({ longStay });
       } catch (error) {
+        if (error instanceof LongStayNotActiveError) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
+        if (error instanceof LongStayNotFoundError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post<{ Params: IPropertyLongStayParams }>(
+    "/properties/:propertyId/long-stays/:longStayId/extend",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: IPropertyLongStayParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const longStayId = parseUuidParam(request.params.longStayId);
+      if (longStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid longStayId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const canWriteLedger = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage long stays"
+      );
+      if (!canWriteLedger) return;
+
+      const existing = await propertyLongStaysDb.findById(longStayId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Long stay not found" });
+      }
+
+      const parsed = parseExtendLongStayBody(request.body);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      try {
+        const longStay = await propertyLongStaysDb.extendLease(longStayId, parsed.body);
+        return reply.send({ longStay });
+      } catch (error) {
+        if (error instanceof InvalidExtendLeaseError) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
         if (error instanceof LongStayNotActiveError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }

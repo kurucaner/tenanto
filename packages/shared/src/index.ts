@@ -138,13 +138,24 @@ export {
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
+export {
+  getCurrentLeaseRent,
+  getExtensionRentEffectiveMonthOptions,
+  getFirstExtensionMonth,
+  getLeaseRentForMonth,
+  MAX_ADDITIONAL_TERM_MONTHS,
+  MAX_TOTAL_LEASE_TERM_MONTHS,
+  validateExtendLease,
+} from "./lease-rent-utils";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
   type ICreatePropertyLongStayBody,
   type IEndPropertyLongStayBody,
+  type IExtendPropertyLongStayBody,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStayRentMonth,
+  type IPropertyLongStayRentPeriod,
   type IPropertyLongStaySecondaryTenant,
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,

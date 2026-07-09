@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleDollarSign, Pencil, Plus, X } from "lucide-react";
-import { memo, useState } from "react";
+import { CalendarPlus, Check, CircleDollarSign, Pencil, Plus, X } from "lucide-react";
+import { memo, type ReactNode,useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AddSecondaryTenantDialog } from "@/components/leases/add-secondary-tenant-dialog";
 import { EditPrimaryTenantDialog } from "@/components/leases/edit-primary-tenant-dialog";
 import { EditSecondaryTenantDialog } from "@/components/leases/edit-secondary-tenant-dialog";
+import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +21,10 @@ import { longStaysApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   formatPhoneDisplay,
+  getCurrentLeaseRent,
   type IPropertyLongStay,
   type IPropertyLongStaySecondaryTenant,
   PropertyLongStayStatus,
@@ -47,6 +50,15 @@ function formatMonthLabel(month: string): string {
     month: "long",
     year: "numeric",
   });
+}
+
+function LeaseDetailSection({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <section>
+      <h3 className="mb-3 text-sm font-medium">{title}</h3>
+      <div className="rounded-md border p-3">{children}</div>
+    </section>
+  );
 }
 
 function TenantContactLine({ label, value }: { label: string; value: string | null }) {
@@ -75,6 +87,7 @@ export const LeaseDetailSheet = memo(
     const queryClient = useQueryClient();
     const [addSecondaryOpen, setAddSecondaryOpen] = useState(false);
     const [editPrimaryOpen, setEditPrimaryOpen] = useState(false);
+    const [extendOpen, setExtendOpen] = useState(false);
     const [editingSecondary, setEditingSecondary] = useState<{
       index: number;
       tenant: IPropertyLongStaySecondaryTenant;
@@ -111,7 +124,16 @@ export const LeaseDetailSheet = memo(
     const detail = detailQuery.data;
     const displayLease = detail?.longStay ?? lease;
     const rentSchedule = detail?.rentSchedule ?? [];
+    const rentPeriods = useMemo(() => detail?.rentPeriods ?? [], [detail?.rentPeriods]);
     const canEditTenants = canManage && displayLease?.status === PropertyLongStayStatus.ACTIVE;
+    const canExtend = canManage && displayLease?.status === PropertyLongStayStatus.ACTIVE;
+
+    const currentRent = useMemo(() => {
+      if (!displayLease) {
+        return 0;
+      }
+      return getCurrentLeaseRent(displayLease.monthlyRent, rentPeriods, getTodayLocalIsoDate());
+    }, [displayLease, rentPeriods]);
 
     return (
       <>
@@ -127,24 +149,47 @@ export const LeaseDetailSheet = memo(
                 </SheetHeader>
 
                 <div className="mt-6 flex flex-col gap-6 px-4 pb-6">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        displayLease.status === PropertyLongStayStatus.ACTIVE
-                          ? "default"
-                          : "secondary"
-                      }
-                    >
-                      {displayLease.status === PropertyLongStayStatus.ACTIVE ? "Active" : "Ended"}
-                    </Badge>
-                    <span className="text-muted-foreground text-sm">
-                      {formatMoney(displayLease.monthlyRent)}/mo
-                    </span>
-                  </div>
+                  <LeaseDetailSection title="Overview">
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            displayLease.status === PropertyLongStayStatus.ACTIVE
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {displayLease.status === PropertyLongStayStatus.ACTIVE
+                            ? "Active"
+                            : "Ended"}
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          {formatMoney(currentRent)}/mo
+                        </span>
+                      </div>
+                      <dl className="grid gap-3">
+                        <div>
+                          <dt className="text-muted-foreground">Lease period</dt>
+                          <dd className="font-medium">
+                            {new Date(
+                              `${displayLease.leaseStartDate}T00:00:00`
+                            ).toLocaleDateString()}{" "}
+                            →{" "}
+                            {new Date(
+                              `${displayLease.actualEndDate ?? displayLease.leaseEndDate}T00:00:00`
+                            ).toLocaleDateString()}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground">Term</dt>
+                          <dd className="font-medium">{displayLease.termMonths} months</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </LeaseDetailSection>
 
-                  <div>
-                    <h3 className="mb-3 text-sm font-medium">Tenants</h3>
-                    <div className="space-y-3 rounded-md border p-3">
+                  <LeaseDetailSection title="Tenants">
+                    <div className="space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-muted-foreground text-xs">Primary tenant</p>
@@ -220,79 +265,108 @@ export const LeaseDetailSheet = memo(
                         </Button>
                       ) : null}
                     </div>
-                  </div>
+                  </LeaseDetailSection>
 
-                  <dl className="grid gap-3 text-sm">
-                    <div>
-                      <dt className="text-muted-foreground">Lease period</dt>
-                      <dd className="font-medium">
-                        {new Date(`${displayLease.leaseStartDate}T00:00:00`).toLocaleDateString()} →{" "}
-                        {new Date(
-                          `${displayLease.actualEndDate ?? displayLease.leaseEndDate}T00:00:00`
-                        ).toLocaleDateString()}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-muted-foreground">Term</dt>
-                      <dd className="font-medium">{displayLease.termMonths} months</dd>
-                    </div>
-                  </dl>
+                  <LeaseDetailSection title="Payments">
+                    <div className="space-y-4">
+                      {displayLease.status === PropertyLongStayStatus.ACTIVE ? (
+                        <Button
+                          className="gap-1.5"
+                          onClick={() => onRecordRent(displayLease)}
+                          type="button"
+                        >
+                          <CircleDollarSign className="size-3.5" />
+                          Record Rent
+                        </Button>
+                      ) : null}
 
-                  {displayLease.status === PropertyLongStayStatus.ACTIVE ? (
-                    <Button
-                      className="gap-1.5"
-                      onClick={() => onRecordRent(displayLease)}
-                      type="button"
-                    >
-                      <CircleDollarSign className="size-3.5" />
-                      Record Rent
-                    </Button>
-                  ) : null}
-
-                  <div>
-                    <h3 className="mb-3 text-sm font-medium">Rent Schedule</h3>
-                    {detailQuery.isPending ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                      </div>
-                    ) : rentSchedule.length === 0 ? (
-                      <p className="text-muted-foreground text-sm">No rent months in this lease.</p>
-                    ) : (
-                      <ul className="divide-y rounded-md border">
-                        {rentSchedule.map((item) => (
-                          <li
-                            className="flex items-center justify-between gap-3 px-3 py-2.5"
-                            key={item.month}
-                          >
-                            <div className="flex items-center gap-2">
+                      {detailQuery.isPending ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ) : rentSchedule.length === 0 ? (
+                        <p className="text-muted-foreground text-sm">No rent months in this lease.</p>
+                      ) : (
+                        <ul className="divide-y rounded-md border">
+                          {rentSchedule.map((item) => (
+                            <li
+                              className="flex items-center justify-between gap-3 px-3 py-2.5"
+                              key={item.month}
+                            >
+                              <div className="flex min-w-0 items-center gap-2">
+                                {item.isPaid ? (
+                                  <Check className="size-4 shrink-0 text-green-600" />
+                                ) : (
+                                  <span className="inline-block size-4 shrink-0 rounded-full border" />
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-sm">{formatMonthLabel(item.month)}</p>
+                                  <p className="text-muted-foreground text-xs">
+                                    {formatMoney(item.expectedRent)}
+                                  </p>
+                                </div>
+                              </div>
                               {item.isPaid ? (
-                                <Check className="size-4 text-green-600" />
+                                <Badge variant="secondary">Paid</Badge>
+                              ) : displayLease.status === PropertyLongStayStatus.ACTIVE ? (
+                                <Button
+                                  onClick={() => onRecordRent(displayLease, item.month)}
+                                  size="sm"
+                                  type="button"
+                                  variant="outline"
+                                >
+                                  Record
+                                </Button>
                               ) : (
-                                <span className="inline-block size-4 rounded-full border" />
+                                <Badge variant="outline">Missing</Badge>
                               )}
-                              <span className="text-sm">{formatMonthLabel(item.month)}</span>
-                            </div>
-                            {item.isPaid ? (
-                              <Badge variant="secondary">Paid</Badge>
-                            ) : displayLease.status === PropertyLongStayStatus.ACTIVE ? (
-                              <Button
-                                onClick={() => onRecordRent(displayLease, item.month)}
-                                size="sm"
-                                type="button"
-                                variant="outline"
-                              >
-                                Record
-                              </Button>
-                            ) : (
-                              <Badge variant="outline">Missing</Badge>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </LeaseDetailSection>
+
+                  {canExtend ? (
+                    <LeaseDetailSection title="Lease extension">
+                      <div className="space-y-4">
+                        <p className="text-muted-foreground text-sm">
+                          Extend the lease term by adding months. You can optionally set a new
+                          monthly rent effective from a month in the extension period.
+                        </p>
+                        <Button
+                          className="gap-1.5"
+                          onClick={() => setExtendOpen(true)}
+                          type="button"
+                          variant="outline"
+                        >
+                          <CalendarPlus className="size-3.5" />
+                          Extend lease
+                        </Button>
+
+                        {rentPeriods.length > 0 ? (
+                          <div className="space-y-2 border-t pt-3">
+                            <p className="text-muted-foreground text-xs">Rent history</p>
+                            <ul className="space-y-1 text-sm">
+                              {rentPeriods.map((period) => (
+                                <li
+                                  className="flex items-center justify-between gap-2"
+                                  key={period.effectiveFromMonth}
+                                >
+                                  <span>{formatMonthLabel(period.effectiveFromMonth)}</span>
+                                  <span className="font-medium">
+                                    {formatMoney(period.monthlyRent)}/mo
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
+                    </LeaseDetailSection>
+                  ) : null}
                 </div>
               </>
             ) : null}
@@ -332,6 +406,16 @@ export const LeaseDetailSheet = memo(
             propertyId={propertyId}
             tenant={editingSecondary.tenant}
             tenantIndex={editingSecondary.index}
+          />
+        ) : null}
+
+        {displayLease && extendOpen ? (
+          <ExtendLeaseDialog
+            key={`${displayLease.id}-extend`}
+            lease={displayLease}
+            onOpenChange={setExtendOpen}
+            open={true}
+            propertyId={propertyId}
           />
         ) : null}
       </>
