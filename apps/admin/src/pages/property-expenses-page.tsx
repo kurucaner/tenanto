@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -28,6 +28,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import {
+  type TPropertyExpensesListFilters,
+  usePropertyExpensesInfiniteList,
+} from "@/hooks/use-property-expenses-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
@@ -35,13 +40,8 @@ import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
-import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import {
-  type IPropertyExpense,
-  type IPropertyExpensesListQuery,
-  type TExpenseCategory,
-} from "@/packages/shared";
+import { type IPropertyExpense, type TExpenseCategory } from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -123,17 +123,21 @@ export const PropertyExpensesPage = memo(() => {
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
   const { category, from, to } = urlFilters;
 
-  const filters = useMemo<IPropertyExpensesListQuery>(() => {
-    const next: IPropertyExpensesListQuery = {};
+  const filters = useMemo<TPropertyExpensesListFilters>(() => {
+    const next: TPropertyExpensesListFilters = {};
     if (from) next.from = from;
     if (to) next.to = to;
     if (category) next.category = category as TExpenseCategory;
     return next;
   }, [category, from, to]);
 
-  const expensesQuery = useQuery({
-    queryFn: () => expensesApi.list(propertyId, filters),
-    queryKey: adminQueryKeys.propertyExpenses(propertyId, filters),
+  const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
+    usePropertyExpensesInfiniteList(propertyId, filters);
+
+  const scrollSentinelRef = useInfiniteScrollTrigger({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   });
 
   const deleteMutation = useMutation({
@@ -162,8 +166,6 @@ export const PropertyExpensesPage = memo(() => {
       invalidatePropertyExpenseCaches(queryClient, propertyId);
     },
   });
-
-  const expenses = expensesQuery.data?.expenses ?? [];
 
   const handleOpenCreate = useCallback(() => {
     setCreateOpen(true);
@@ -249,7 +251,7 @@ export const PropertyExpensesPage = memo(() => {
             </FilterField>
           </div>
 
-          {expensesQuery.isPending ? (
+          {isPending ? (
             <div className="space-y-3">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />
@@ -288,8 +290,16 @@ export const PropertyExpensesPage = memo(() => {
                       />
                     ))
                   )}
+                  {isFetchingNextPage ? (
+                    <TableRow>
+                      <TableCell colSpan={canManage ? 6 : 5}>
+                        <Skeleton className="h-8 w-full" />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
                 </TableBody>
               </Table>
+              <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
             </div>
           )}
         </CardContent>

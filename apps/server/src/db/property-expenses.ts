@@ -4,9 +4,55 @@ import type {
   IPropertyExpensesListQuery,
   IUpdatePropertyExpenseBody,
 } from "@/packages/shared";
+import { decodeExpenseKeysetCursor, encodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
+import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapPropertyExpenseRow } from "./mappers";
 import { pool } from "./pool";
+
+const EXPENSE_DATE_COALESCE = "COALESCE(expense_date, DATE '0001-01-01')";
+
+function buildPropertyExpenseListConditions(
+  propertyId: string,
+  filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to">,
+  includeDeleted: boolean
+): { conditions: string[]; values: unknown[] } {
+  const conditions = ["property_id = $1"];
+  const values: unknown[] = [propertyId];
+  let p = 2;
+
+  if (!includeDeleted) {
+    conditions.push("is_deleted = false");
+  }
+
+  if (filters.from) {
+    conditions.push(`expense_date >= $${p++}`);
+    values.push(filters.from);
+  }
+  if (filters.to) {
+    conditions.push(`expense_date <= $${p++}`);
+    values.push(filters.to);
+  }
+  if (filters.category) {
+    conditions.push(`category = $${p++}::property_expense_category`);
+    values.push(filters.category);
+  }
+
+  return { conditions, values };
+}
+
+function formatExpenseDateForCursor(expenseDate: unknown): string | null {
+  if (expenseDate == null) {
+    return null;
+  }
+  if (expenseDate instanceof Date) {
+    return expenseDate.toISOString().slice(0, 10);
+  }
+  if (typeof expenseDate === "string") {
+    return expenseDate.slice(0, 10);
+  }
+  return null;
+}
 
 export const propertyExpensesDb = {
   async create(
@@ -104,26 +150,11 @@ export const propertyExpensesDb = {
     filters: IPropertyExpensesListQuery = {},
     includeDeleted = false
   ): Promise<IPropertyExpense[]> {
-    const conditions = ["property_id = $1"];
-    const values: unknown[] = [propertyId];
-    let p = 2;
-
-    if (!includeDeleted) {
-      conditions.push("is_deleted = false");
-    }
-
-    if (filters.from) {
-      conditions.push(`expense_date >= $${p++}`);
-      values.push(filters.from);
-    }
-    if (filters.to) {
-      conditions.push(`expense_date <= $${p++}`);
-      values.push(filters.to);
-    }
-    if (filters.category) {
-      conditions.push(`category = $${p++}::property_expense_category`);
-      values.push(filters.category);
-    }
+    const { conditions, values } = buildPropertyExpenseListConditions(
+      propertyId,
+      filters,
+      includeDeleted
+    );
 
     const result = await pool.query(
       `SELECT * FROM property_expenses
@@ -133,6 +164,54 @@ export const propertyExpensesDb = {
     );
 
     return result.rows.map((row) => mapPropertyExpenseRow(row as Record<string, unknown>));
+  },
+
+  async listPaginatedByProperty(
+    propertyId: string,
+    filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to">,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{ expenses: IPropertyExpense[]; nextCursor: string | null }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const { conditions, values } = buildPropertyExpenseListConditions(
+      propertyId,
+      filters,
+      includeDeleted
+    );
+    let p = values.length + 1;
+
+    if (options.cursor != null && options.cursor !== "") {
+      const decoded = decodeExpenseKeysetCursor(options.cursor);
+      const cursorCoalescedDate = decoded.expenseDate ?? "0001-01-01";
+      conditions.push(
+        `(${EXPENSE_DATE_COALESCE}, created_at, id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
+      );
+      values.push(cursorCoalescedDate, decoded.createdAt, decoded.id);
+    }
+
+    const limitParam = p;
+    values.push(options.limit + 1);
+
+    const result = await pool.query(
+      `SELECT * FROM property_expenses
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY ${EXPENSE_DATE_COALESCE} DESC, created_at DESC, id DESC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
+      encodeExpenseKeysetCursor(
+        formatExpenseDateForCursor(last.expense_date),
+        last.created_at as Date | string,
+        last.id as string
+      )
+    );
+
+    return {
+      expenses: pageRows.map((row) => mapPropertyExpenseRow(row)),
+      nextCursor,
+    };
   },
 
   async restore(id: string): Promise<boolean> {

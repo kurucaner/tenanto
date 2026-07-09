@@ -24,3 +24,48 @@ export function encodeKeysetCursor(createdAt: Date | string, id: string): string
   const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
   return Buffer.from(JSON.stringify({ createdAt: iso, id }), "utf8").toString("base64url");
 }
+
+/**
+ * Expense list keyset cursor (v1): expenseDate (YYYY-MM-DD or null) + createdAt + id.
+ * Matches ORDER BY expense_date DESC NULLS LAST, created_at DESC, id DESC.
+ */
+export type ExpenseKeysetCursorV1 = {
+  createdAt: string;
+  expenseDate: string | null;
+  id: string;
+};
+
+export function decodeExpenseKeysetCursor(raw: string): ExpenseKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      createdAt?: unknown;
+      expenseDate?: unknown;
+      id?: unknown;
+    };
+    if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") {
+      throw new TypeError("invalid shape");
+    }
+    if (parsed.expenseDate !== null && typeof parsed.expenseDate !== "string") {
+      throw new TypeError("invalid expenseDate");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      expenseDate: parsed.expenseDate ?? null,
+      id: parsed.id,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeExpenseKeysetCursor(
+  expenseDate: string | null,
+  createdAt: Date | string,
+  id: string
+): string {
+  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
+  return Buffer.from(JSON.stringify({ createdAt: iso, expenseDate, id }), "utf8").toString(
+    "base64url"
+  );
+}

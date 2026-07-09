@@ -17,6 +17,7 @@ import {
   UserType,
   validateExpenseCategoryFields,
 } from "@/packages/shared";
+import { decodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
 
 import { parseUuidParam } from "./admin-query-utils";
 import {
@@ -26,6 +27,14 @@ import {
 import { rejectIfDeleted } from "./reject-if-deleted";
 
 const EXPENSE_CATEGORIES = new Set<TExpenseCategory>(Object.values(ExpenseCategory));
+const EXPENSES_LIST_DEFAULT_LIMIT = 50;
+const EXPENSES_LIST_MAX_LIMIT = 100;
+
+function parseExpensesListLimit(raw: unknown): number {
+  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+  if (!Number.isFinite(n) || n < 1) return EXPENSES_LIST_DEFAULT_LIMIT;
+  return Math.min(EXPENSES_LIST_MAX_LIMIT, Math.floor(n));
+}
 
 function parseOptionalDateString(raw: unknown): string | null | undefined {
   if (raw === undefined) return undefined;
@@ -50,13 +59,7 @@ function parseBoolean(raw: unknown): boolean | null {
   return raw;
 }
 
-const UPDATE_FIELDS = [
-  "category",
-  "amount",
-  "expenseDate",
-  "description",
-  "taxFree",
-] as const;
+const UPDATE_FIELDS = ["category", "amount", "expenseDate", "description", "taxFree"] as const;
 
 function parseUpdateExpenseBody(
   raw: unknown
@@ -119,10 +122,15 @@ function parseUpdateExpenseBody(
   return { body, ok: true };
 }
 
-function parseExpensesListQuery(
-  query: Record<string, unknown>
-): { filters: IPropertyExpensesListQuery; ok: true } | { error: string; ok: false } {
-  const filters: IPropertyExpensesListQuery = {};
+function parseExpensesListQuery(query: Record<string, unknown>):
+  | {
+      cursor?: string;
+      filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to">;
+      limit: number;
+      ok: true;
+    }
+  | { error: string; ok: false } {
+  const filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to"> = {};
 
   if (query["from"] !== undefined && query["from"] !== "") {
     const from = parseDateString(query["from"]);
@@ -145,7 +153,11 @@ function parseExpensesListQuery(
     filters.category = category;
   }
 
-  return { filters, ok: true };
+  const limit = parseExpensesListLimit(query["limit"]);
+  const cursor =
+    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
+
+  return { cursor, filters, limit, ok: true };
 }
 
 interface IPropertyParams {
@@ -195,13 +207,21 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
+      if (parsed.cursor != null) {
+        try {
+          decodeExpenseKeysetCursor(parsed.cursor);
+        } catch {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+        }
+      }
+
       const includeDeleted = request.user.userType === UserType.ADMIN;
-      const expenses = await propertyExpensesDb.findByProperty(
+      const { expenses, nextCursor } = await propertyExpensesDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
-        includeDeleted
+        { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
-      return reply.send({ expenses });
+      return reply.send({ expenses, nextCursor });
     }
   );
 

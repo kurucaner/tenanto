@@ -57,8 +57,15 @@ export interface IUpdatePropertyExpenseBody {
 
 export interface IPropertyExpensesListQuery {
   category?: TExpenseCategory;
+  cursor?: string;
   from?: string;
+  limit?: number;
   to?: string;
+}
+
+export interface IPropertyExpensesListResponse {
+  expenses: IPropertyExpense[];
+  nextCursor: string | null;
 }
 
 export interface IExpenseCategoryMeta {

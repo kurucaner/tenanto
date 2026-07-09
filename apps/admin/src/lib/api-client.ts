@@ -27,6 +27,7 @@ import {
   type IPropertyDetail,
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
+  type IPropertyExpensesListResponse,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyLongStay,
@@ -782,13 +783,15 @@ function buildExpensesSearchParams(query: IPropertyExpensesListQuery = {}): stri
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
   if (query.category) params.set("category", query.category);
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
   return search ? `?${search}` : "";
 }
 
 export const expensesApi = {
   list: (propertyId: string, query?: IPropertyExpensesListQuery) =>
-    authenticatedRequest<{ expenses: IPropertyExpense[] }>(
+    authenticatedRequest<IPropertyExpensesListResponse>(
       `/properties/${encodeURIComponent(propertyId)}/expenses${buildExpensesSearchParams(query)}`
     ),
 

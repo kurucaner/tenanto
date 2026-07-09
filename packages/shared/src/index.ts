@@ -199,6 +199,7 @@ export {
   type IExpenseCategoryMeta,
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
+  type IPropertyExpensesListResponse,
   type IUpdatePropertyExpenseBody,
   type TExpenseCategory,
   validateExpenseCategoryFields,
