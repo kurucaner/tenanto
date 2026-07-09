@@ -10,39 +10,37 @@ import type {
 } from "@/packages/shared";
 
 export const adminQueryKeys = {
-  appConfig: () => ["admin", "app-config"] as const,
-  platformStats: () => ["admin", "platform-stats"] as const,
+  appConfig: () => ["app-config"] as const,
+  platformStats: () => ["platform-stats"] as const,
   auditLog: (filters: Omit<IAdminAuditEventsListQuery, "cursor" | "limit">) =>
-    ["admin", "activity", filters] as const,
-  user: (userId: string) => ["admin", "user", userId] as const,
-  userAudit: (userId: string) => ["admin", "user", userId, "audit"] as const,
-  usersList: (filters: Omit<IAdminUsersListQuery, "cursor">) =>
-    ["admin", "users", filters] as const,
-  notificationBroadcastHistory: () => ["admin", "notification-broadcasts", "history"] as const,
+    ["activity", filters] as const,
+  user: (userId: string) => ["user", userId] as const,
+  userAudit: (userId: string) => ["user", userId, "audit"] as const,
+  usersList: (filters: Omit<IAdminUsersListQuery, "cursor">) => ["users", filters] as const,
+  notificationBroadcastHistory: () => ["notification-broadcasts", "history"] as const,
   supportRequestsList: (filters: Omit<IAdminSupportRequestsListQuery, "cursor" | "limit">) =>
-    ["admin", "support-requests", filters] as const,
+    ["support-requests", filters] as const,
   supportRequest: (id: string) => ["support", "request", id] as const,
   userSupportList: (filters: Omit<ISupportRequestsListQuery, "cursor" | "limit">) =>
     ["support", "list", filters] as const,
   propertiesList: (filters: Omit<IAdminPropertiesListQuery, "cursor">) =>
-    ["admin", "properties", filters] as const,
-  propertyDetail: (propertyId: string) => ["admin", "property", propertyId] as const,
-  propertyUnits: (propertyId: string) => ["admin", "property", propertyId, "units"] as const,
-  propertyUnitsPicker: (propertyId: string) =>
-    ["admin", "property", propertyId, "units-picker"] as const,
+    ["properties", filters] as const,
+  propertyDetail: (propertyId: string) => ["property", propertyId] as const,
+  propertyUnits: (propertyId: string) => ["property", propertyId, "units"] as const,
+  propertyUnitsPicker: (propertyId: string) => ["property", propertyId, "units-picker"] as const,
   propertyReservationPicker: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
-    ["admin", "property", propertyId, "reservation-picker", filters] as const,
-  propertySettings: (propertyId: string) => ["admin", "property", propertyId, "settings"] as const,
+    ["property", propertyId, "reservation-picker", filters] as const,
+  propertySettings: (propertyId: string) => ["property", propertyId, "settings"] as const,
   propertyReservations: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
-    ["admin", "property", propertyId, "reservations", filters] as const,
+    ["property", propertyId, "reservations", filters] as const,
   propertyIncomeLines: (propertyId: string, filters: IPropertyIncomeLinesListQuery = {}) =>
-    ["admin", "property", propertyId, "income-lines", filters] as const,
+    ["property", propertyId, "income-lines", filters] as const,
   propertyExpenses: (propertyId: string, filters: IPropertyExpensesListQuery = {}) =>
-    ["admin", "property", propertyId, "expenses", filters] as const,
+    ["property", propertyId, "expenses", filters] as const,
   propertyReportSummary: (propertyId: string, filters: IPropertyReportsQuery) =>
-    ["admin", "property", propertyId, "reports", filters] as const,
+    ["property", propertyId, "reports", filters] as const,
   portfolioReportSummary: (filters: IPropertyReportsQuery) =>
-    ["admin", "portfolio", "reports", filters] as const,
+    ["portfolio", "reports", filters] as const,
   homeFinancialOverview: () => ["home", "financial-overview"] as const,
   notificationsUnreadCount: () => ["notifications", "unread-count"] as const,
   notificationsList: () => ["notifications", "list"] as const,
