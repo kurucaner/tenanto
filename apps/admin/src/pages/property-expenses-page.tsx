@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, type RefObject, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
@@ -114,6 +114,245 @@ const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
   to: { defaultValue: "" },
 });
 
+function buildExpenseFilters(
+  category: string,
+  from: string,
+  to: string
+): TPropertyExpensesListFilters {
+  const next: TPropertyExpensesListFilters = {};
+  if (from) next.from = from;
+  if (to) next.to = to;
+  if (category) next.category = category as TExpenseCategory;
+  return next;
+}
+
+function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): void {
+  if (!open) {
+    clearSelection();
+  }
+}
+
+const PropertyExpensesFilters = memo(
+  ({
+    category,
+    from,
+    onCategoryChange,
+    onFromChange,
+    onToChange,
+    to,
+  }: {
+    category: string;
+    from: string;
+    onCategoryChange: (value: string) => void;
+    onFromChange: (value: string) => void;
+    onToChange: (value: string) => void;
+    to: string;
+  }) => (
+    <div className={getLedgerFiltersGridClass(3)}>
+      <FilterField>
+        <Label htmlFor="expense-filter-from">From</Label>
+        <Input
+          id="expense-filter-from"
+          onChange={(e) => onFromChange(e.target.value)}
+          type="date"
+          value={from}
+        />
+      </FilterField>
+      <FilterField>
+        <Label htmlFor="expense-filter-to">To</Label>
+        <Input
+          id="expense-filter-to"
+          onChange={(e) => onToChange(e.target.value)}
+          type="date"
+          value={to}
+        />
+      </FilterField>
+      <FilterField>
+        <Label htmlFor="expense-filter-category">Category</Label>
+        <select
+          className={expenseSelectClassName}
+          id="expense-filter-category"
+          onChange={(e) => onCategoryChange(e.target.value)}
+          value={category}
+        >
+          {EXPENSE_CATEGORY_FILTER_OPTIONS.map((opt) => (
+            <option key={opt.value || "all"} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </FilterField>
+    </div>
+  )
+);
+PropertyExpensesFilters.displayName = "PropertyExpensesFilters";
+
+const PropertyExpensesTable = memo(
+  ({
+    canManage,
+    expenses,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    onDelete,
+    onEdit,
+    onRestore,
+    scrollSentinelRef,
+  }: {
+    canManage: boolean;
+    expenses: IPropertyExpense[];
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    isPending: boolean;
+    onDelete: (expense: IPropertyExpense) => void;
+    onEdit: (expense: IPropertyExpense) => void;
+    onRestore: (expense: IPropertyExpense) => void;
+    scrollSentinelRef: RefObject<HTMLDivElement | null>;
+  }) => {
+    if (isPending) {
+      return (
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+      );
+    }
+
+    const columnCount = canManage ? 6 : 5;
+
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Category</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Tax</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              {canManage ? <TableHead>Actions</TableHead> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {expenses.length === 0 ? (
+              <TableRow>
+                <TableCell className="text-muted-foreground" colSpan={columnCount}>
+                  No expenses yet.
+                  {canManage ? " Add an expense to get started." : ""}
+                </TableCell>
+              </TableRow>
+            ) : (
+              expenses.map((expense) => (
+                <ExpenseRow
+                  canManage={canManage}
+                  expense={expense}
+                  key={expense.id}
+                  onDelete={onDelete}
+                  onEdit={onEdit}
+                  onRestore={onRestore}
+                />
+              ))
+            )}
+            {isFetchingNextPage ? (
+              <TableRow>
+                <TableCell colSpan={columnCount}>
+                  <Skeleton className="h-8 w-full" />
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+        <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
+        {expenses.length > 0 && !hasNextPage && !isFetchingNextPage ? (
+          <p className="text-muted-foreground pt-3 text-center text-sm">
+            {getInfiniteListLoadMoreLabel({
+              hasNextPage: false,
+              isFetchingNextPage: false,
+            })}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+);
+PropertyExpensesTable.displayName = "PropertyExpensesTable";
+
+const PropertyExpensesPageActions = memo(
+  ({ onImportCsv, onOpenCreate }: { onImportCsv: () => void; onOpenCreate: () => void }) => (
+    <div className="flex items-center gap-2">
+      <Button className="gap-1.5" onClick={onImportCsv} size="sm" type="button" variant="outline">
+        <Sparkles className="size-3.5" />
+        Import CSV
+      </Button>
+      <Button className="gap-1.5" onClick={onOpenCreate} size="sm" type="button">
+        <Plus className="size-3.5" />
+        Add Expense
+      </Button>
+    </div>
+  )
+);
+PropertyExpensesPageActions.displayName = "PropertyExpensesPageActions";
+
+const PropertyExpensesPageDialogs = memo(
+  ({
+    createOpen,
+    editExpense,
+    importCsvOpen,
+    onCreateOpenChange,
+    onEditOpenChange,
+    onImportCsvOpenChange,
+    propertyId,
+  }: {
+    createOpen: boolean;
+    editExpense: IPropertyExpense | null;
+    importCsvOpen: boolean;
+    onCreateOpenChange: (open: boolean) => void;
+    onEditOpenChange: (open: boolean) => void;
+    onImportCsvOpenChange: (open: boolean) => void;
+    propertyId: string;
+  }) => (
+    <>
+      <CreateExpenseDialog
+        onOpenChange={onCreateOpenChange}
+        open={createOpen}
+        propertyId={propertyId}
+      />
+      <ImportExpenseCsvDialog
+        onOpenChange={onImportCsvOpenChange}
+        open={importCsvOpen}
+        propertyId={propertyId}
+      />
+      {editExpense ? (
+        <EditExpenseDialog
+          expense={editExpense}
+          key={editExpense.id}
+          onOpenChange={onEditOpenChange}
+          open={true}
+          propertyId={propertyId}
+        />
+      ) : null}
+    </>
+  )
+);
+PropertyExpensesPageDialogs.displayName = "PropertyExpensesPageDialogs";
+
+function useRegisterExpensePageActions(
+  canManage: boolean,
+  onImportCsv: () => void,
+  onOpenCreate: () => void
+) {
+  const pageActions = useMemo(
+    () =>
+      canManage ? (
+        <PropertyExpensesPageActions onImportCsv={onImportCsv} onOpenCreate={onOpenCreate} />
+      ) : null,
+    [canManage, onImportCsv, onOpenCreate]
+  );
+
+  usePropertyShellActions(pageActions);
+}
+
 export const PropertyExpensesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
@@ -124,13 +363,7 @@ export const PropertyExpensesPage = memo(() => {
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
   const { category, from, to } = urlFilters;
 
-  const filters = useMemo<TPropertyExpensesListFilters>(() => {
-    const next: TPropertyExpensesListFilters = {};
-    if (from) next.from = from;
-    if (to) next.to = to;
-    if (category) next.category = category as TExpenseCategory;
-    return next;
-  }, [category, from, to]);
+  const filters = useMemo(() => buildExpenseFilters(category, from, to), [category, from, to]);
 
   const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
     usePropertyExpensesInfiniteList(propertyId, filters);
@@ -187,152 +420,53 @@ export const PropertyExpensesPage = memo(() => {
     [requestDelete]
   );
 
-  const pageActions = useMemo(
-    () =>
-      canManage ? (
-        <div className="flex items-center gap-2">
-          <Button
-            className="gap-1.5"
-            onClick={handleOpenImportCsv}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <Sparkles className="size-3.5" />
-            Import CSV
-          </Button>
-          <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
-            <Plus className="size-3.5" />
-            Add Expense
-          </Button>
-        </div>
-      ) : null,
-    [canManage, handleOpenCreate, handleOpenImportCsv]
+  const handleRestoreExpense = useCallback(
+    (expense: IPropertyExpense) => {
+      restoreMutation.mutate(expense);
+    },
+    [restoreMutation]
   );
 
-  usePropertyShellActions(pageActions);
+  useRegisterExpensePageActions(canManage, handleOpenImportCsv, handleOpenCreate);
 
   return (
     <>
       <Card>
         <CardContent className="space-y-4 p-4">
-          <div className={getLedgerFiltersGridClass(3)}>
-            <FilterField>
-              <Label htmlFor="expense-filter-from">From</Label>
-              <Input
-                id="expense-filter-from"
-                onChange={(e) => setFilter("from", e.target.value)}
-                type="date"
-                value={from}
-              />
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="expense-filter-to">To</Label>
-              <Input
-                id="expense-filter-to"
-                onChange={(e) => setFilter("to", e.target.value)}
-                type="date"
-                value={to}
-              />
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="expense-filter-category">Category</Label>
-              <select
-                className={expenseSelectClassName}
-                id="expense-filter-category"
-                onChange={(e) => setFilter("category", e.target.value)}
-                value={category}
-              >
-                {EXPENSE_CATEGORY_FILTER_OPTIONS.map((opt) => (
-                  <option key={opt.value || "all"} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
-          </div>
+          <PropertyExpensesFilters
+            category={category}
+            from={from}
+            onCategoryChange={(value) => setFilter("category", value)}
+            onFromChange={(value) => setFilter("from", value)}
+            onToChange={(value) => setFilter("to", value)}
+            to={to}
+          />
 
-          {isPending ? (
-            <div className="space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Tax</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    {canManage ? <TableHead>Actions</TableHead> : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expenses.length === 0 ? (
-                    <TableRow>
-                      <TableCell className="text-muted-foreground" colSpan={canManage ? 6 : 5}>
-                        No expenses yet.
-                        {canManage ? " Add an expense to get started." : ""}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    expenses.map((expense) => (
-                      <ExpenseRow
-                        canManage={canManage}
-                        expense={expense}
-                        key={expense.id}
-                        onDelete={handleDeleteExpense}
-                        onEdit={setEditExpense}
-                        onRestore={(item) => restoreMutation.mutate(item)}
-                      />
-                    ))
-                  )}
-                  {isFetchingNextPage ? (
-                    <TableRow>
-                      <TableCell colSpan={canManage ? 6 : 5}>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-              <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
-              {expenses.length > 0 && !hasNextPage && !isFetchingNextPage ? (
-                <p className="text-muted-foreground pt-3 text-center text-sm">
-                  {getInfiniteListLoadMoreLabel({
-                    hasNextPage: false,
-                    isFetchingNextPage: false,
-                  })}
-                </p>
-              ) : null}
-            </div>
-          )}
+          <PropertyExpensesTable
+            canManage={canManage}
+            expenses={expenses}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            isPending={isPending}
+            onDelete={handleDeleteExpense}
+            onEdit={setEditExpense}
+            onRestore={handleRestoreExpense}
+            scrollSentinelRef={scrollSentinelRef}
+          />
         </CardContent>
       </Card>
 
       {deleteConfirmationDialog}
 
-      <CreateExpenseDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
-      <ImportExpenseCsvDialog
-        onOpenChange={setImportCsvOpen}
-        open={importCsvOpen}
+      <PropertyExpensesPageDialogs
+        createOpen={createOpen}
+        editExpense={editExpense}
+        importCsvOpen={importCsvOpen}
+        onCreateOpenChange={setCreateOpen}
+        onEditOpenChange={(open) => handleEditDialogOpenChange(open, () => setEditExpense(null))}
+        onImportCsvOpenChange={setImportCsvOpen}
         propertyId={propertyId}
       />
-      {editExpense ? (
-        <EditExpenseDialog
-          expense={editExpense}
-          key={editExpense.id}
-          onOpenChange={(open) => {
-            if (!open) setEditExpense(null);
-          }}
-          open={true}
-          propertyId={propertyId}
-        />
-      ) : null}
     </>
   );
 });

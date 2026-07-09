@@ -73,22 +73,8 @@ const DashboardSidebarInner = memo(() => {
     navigate("/login", { replace: true });
   }, [refreshToken, navigate]);
 
-  // const brandCollapsedTooltip = !isMobile && state === "collapsed";
-
   return (
     <Sidebar collapsible="icon" variant="inset">
-      {/* <SidebarHeader className="min-w-0 overflow-hidden border-b border-sidebar-border/60 px-3 py-[14px] group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
-        {brandCollapsedTooltip ? (
-          <Tooltip>
-            <TooltipTrigger asChild><BrandLink /></TooltipTrigger>
-            <TooltipContent align="center" side="right">
-              {APP_NAME} · Home
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <BrandLink />
-        )}
-      </SidebarHeader> */}
       <SidebarContent className="gap-0 px-2 pt-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-[0.65rem] uppercase tracking-widest text-muted-foreground/90">

@@ -192,6 +192,7 @@ export {
   type IExpenseImportParseResponse,
   type TExpenseImportFileStatus,
 } from "./property-expense-import-types";
+export { EXPENSES_LIST_LIMIT, EXPENSES_LIST_MAX_LIMIT } from "./property-expense-list-constants";
 export {
   ExpenseCategory,
   getExpenseCategoryMeta,
@@ -204,10 +205,6 @@ export {
   type TExpenseCategory,
   validateExpenseCategoryFields,
 } from "./property-expense-types";
-export {
-  EXPENSES_LIST_LIMIT,
-  EXPENSES_LIST_MAX_LIMIT,
-} from "./property-expense-list-constants";
 
 // Home Financial Overview Types
 export type { IHomeFinancialOverview } from "./home-financial-overview-types";
