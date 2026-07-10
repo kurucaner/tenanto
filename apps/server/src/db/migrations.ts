@@ -1815,4 +1815,108 @@ export const migrations: IMigration[] = [
     },
     version: 43,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_invites
+          DROP CONSTRAINT property_invites_invited_by_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE property_invites
+          ADD CONSTRAINT property_invites_invited_by_fkey
+          FOREIGN KEY (invited_by) REFERENCES users(id);
+      `);
+
+      await client.query(`
+        ALTER TABLE property_members
+          DROP CONSTRAINT property_members_added_by_fkey;
+      `);
+      await client.query(`
+        UPDATE property_members SET added_by = user_id WHERE added_by IS NULL;
+      `);
+      await client.query(`
+        ALTER TABLE property_members ALTER COLUMN added_by SET NOT NULL;
+      `);
+      await client.query(`
+        ALTER TABLE property_members
+          ADD CONSTRAINT property_members_added_by_fkey
+          FOREIGN KEY (added_by) REFERENCES users(id);
+      `);
+
+      await client.query(`
+        ALTER TABLE properties
+          DROP CONSTRAINT properties_created_by_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE properties
+          ADD CONSTRAINT properties_created_by_fkey
+          FOREIGN KEY (created_by) REFERENCES users(id);
+      `);
+
+      await client.query(`
+        ALTER TABLE admin_audit_events
+          DROP CONSTRAINT admin_audit_events_actor_user_id_fkey;
+      `);
+      await client.query(`
+        DELETE FROM admin_audit_events WHERE actor_user_id IS NULL;
+      `);
+      await client.query(`
+        ALTER TABLE admin_audit_events ALTER COLUMN actor_user_id SET NOT NULL;
+      `);
+      await client.query(`
+        ALTER TABLE admin_audit_events
+          ADD CONSTRAINT admin_audit_events_actor_user_id_fkey
+          FOREIGN KEY (actor_user_id) REFERENCES users(id);
+      `);
+    },
+    name: "users_foreign_keys_delete_behavior",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE admin_audit_events
+          DROP CONSTRAINT admin_audit_events_actor_user_id_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE admin_audit_events ALTER COLUMN actor_user_id DROP NOT NULL;
+      `);
+      await client.query(`
+        ALTER TABLE admin_audit_events
+          ADD CONSTRAINT admin_audit_events_actor_user_id_fkey
+          FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL;
+      `);
+
+      await client.query(`
+        ALTER TABLE properties
+          DROP CONSTRAINT properties_created_by_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE properties
+          ADD CONSTRAINT properties_created_by_fkey
+          FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_members
+          DROP CONSTRAINT property_members_added_by_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE property_members ALTER COLUMN added_by DROP NOT NULL;
+      `);
+      await client.query(`
+        ALTER TABLE property_members
+          ADD CONSTRAINT property_members_added_by_fkey
+          FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_invites
+          DROP CONSTRAINT property_invites_invited_by_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE property_invites
+          ADD CONSTRAINT property_invites_invited_by_fkey
+          FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE;
+      `);
+    },
+    version: 44,
+  },
 ];

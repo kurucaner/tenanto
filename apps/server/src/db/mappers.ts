@@ -73,7 +73,7 @@ export const mapPropertyRow = (row: Record<string, unknown>): IProperty => ({
 });
 
 export const mapPropertyMemberRow = (row: Record<string, unknown>): IPropertyMember => ({
-  addedBy: row.added_by as string,
+  addedBy: row.added_by == null ? null : (row.added_by as string),
   createdAt: (row.created_at as Date).toISOString(),
   id: row.id as string,
   propertyId: row.property_id as string,
