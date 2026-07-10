@@ -3,7 +3,6 @@ import { memo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export interface PropertyIncomeLineTypeFormRow {
   clientId: string;
@@ -34,13 +33,7 @@ export const PropertyIncomeLineTypesEditor = memo(
     };
 
     const addRow = () => {
-      onChange([
-        ...incomeLineTypes,
-        {
-          clientId: createClientId(),
-          name: "",
-        },
-      ]);
+      onChange([...incomeLineTypes, { clientId: createClientId(), name: "" }]);
     };
 
     return (
@@ -48,37 +41,37 @@ export const PropertyIncomeLineTypesEditor = memo(
         {incomeLineTypes.length === 0 ? (
           <p className="text-muted-foreground text-sm">No other income types configured.</p>
         ) : (
-          <ul className="space-y-3">
-            {incomeLineTypes.map((row, index) => (
-              <li
-                className="grid gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-                key={row.clientId}
-              >
-                <div className="space-y-2">
-                  <Label htmlFor={`income-type-name-${row.clientId}`}>Type name</Label>
+          <div className="rounded-lg border">
+            <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b px-3 py-2">
+              <span className="text-muted-foreground text-xs font-medium">Name</span>
+              <span className="w-8" />
+            </div>
+            <ul className="divide-y">
+              {incomeLineTypes.map((row, index) => (
+                <li
+                  className="grid grid-cols-[1fr_auto] items-center gap-3 px-3 py-2"
+                  key={row.clientId}
+                >
                   <Input
                     disabled={disabled}
-                    id={`income-type-name-${row.clientId}`}
-                    onChange={(event) => updateRow(row.clientId, { name: event.target.value })}
+                    onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
                     placeholder={`Type ${index + 1}`}
                     value={row.name}
                   />
-                </div>
-                <div className="flex items-end">
                   <Button
                     aria-label={`Remove ${row.name || "income type"}`}
                     disabled={disabled}
                     onClick={() => removeRow(row.clientId)}
-                    size="icon"
+                    size="icon-sm"
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                   >
-                    <Trash2 className="size-4" />
+                    <Trash2 className="size-3.5 text-destructive" />
                   </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <Button
