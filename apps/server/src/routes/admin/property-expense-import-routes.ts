@@ -6,7 +6,10 @@ import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-t
 import { propertyExpensesDb } from "@/db/property-expenses";
 import { getOpenAiApiKey } from "@/lib/expense-csv-import-gate";
 import { extractExpenseRowsFromCsv } from "@/lib/expense-csv-row-extractor";
-import { parseCategoryId, validateExpenseDateNotInFuture } from "@/lib/validate-create-expense-body";
+import {
+  parseCategoryId,
+  validateExpenseDateNotInFuture,
+} from "@/lib/validate-create-expense-body";
 import {
   EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
@@ -40,7 +43,6 @@ function isBinaryContent(buffer: Buffer): boolean {
   return sample.includes(0);
 }
 
-
 function buildParsedRow(
   sourceFileName: string,
   rowIndex: number,
@@ -65,9 +67,7 @@ function buildParsedRow(
     };
   }
 
-  const futureDateError = row.expenseDate
-    ? validateExpenseDateNotInFuture(row.expenseDate)
-    : null;
+  const futureDateError = row.expenseDate ? validateExpenseDateNotInFuture(row.expenseDate) : null;
   if (futureDateError) {
     return {
       amount: row.amount,

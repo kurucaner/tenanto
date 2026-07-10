@@ -1,8 +1,7 @@
 import type { ICreatePropertyExpenseBody } from "@/packages/shared";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function parseDateString(raw: unknown): string | null {
   if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;

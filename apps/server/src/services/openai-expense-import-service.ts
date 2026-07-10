@@ -1,9 +1,6 @@
 import { z } from "zod";
 
-import {
-  type IExpenseCsvExtractedRow,
-  type IPropertyExpenseCategoryType,
-} from "@/packages/shared";
+import { type IExpenseCsvExtractedRow, type IPropertyExpenseCategoryType } from "@/packages/shared";
 import { WinstonLogger } from "@/services/winston";
 
 const CATEGORIZATION_BATCH_SIZE = 40;
@@ -14,9 +11,7 @@ export interface IExpenseCategoryAssignment {
   rowIndex: number;
 }
 
-export function buildExpenseCategoryAssignmentSchema(
-  categoryNames: readonly string[]
-) {
+export function buildExpenseCategoryAssignmentSchema(categoryNames: readonly string[]) {
   return {
     additionalProperties: false,
     properties: {
@@ -49,7 +44,10 @@ export const expenseCategoryAssignmentResponseSchema = z.object({
 
 function buildCategorizationPrompt(categoryTypes: readonly IPropertyExpenseCategoryType[]): string {
   const categoryList = categoryTypes.map((t) => `- ${t.name}`).join("\n");
-  const otherCategory = categoryTypes.find((t) => t.name.toLowerCase() === "other")?.name ?? categoryTypes[0]?.name ?? "Other";
+  const otherCategory =
+    categoryTypes.find((t) => t.name.toLowerCase() === "other")?.name ??
+    categoryTypes[0]?.name ??
+    "Other";
 
   return `You categorize business credit card expense transactions for property accounting.
 
@@ -303,9 +301,7 @@ export function mergeExtractedRowsWithCategories(
 
   const resolveId = (name: string): string => {
     const normalized = name.toLowerCase();
-    return (
-      categoryTypes.find((t) => t.name.toLowerCase() === normalized)?.id ?? otherCategoryId
-    );
+    return categoryTypes.find((t) => t.name.toLowerCase() === normalized)?.id ?? otherCategoryId;
   };
 
   return extractedRows.map((row) => {

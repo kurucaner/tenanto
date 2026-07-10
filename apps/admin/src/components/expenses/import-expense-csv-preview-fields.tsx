@@ -1,9 +1,7 @@
 import { AlertCircle, Trash2 } from "lucide-react";
 import { memo } from "react";
 
-import {
-  expenseSelectClassName,
-} from "@/components/expenses/expense-form-options";
+import { expenseSelectClassName } from "@/components/expenses/expense-form-options";
 import {
   AMOUNT_INPUT_CLASS_NAME,
   getImportPreviewRowValidationError,

@@ -58,7 +58,7 @@ export const EditPropertyDialog = memo(
         queryClient.invalidateQueries({ queryKey: ["properties"] });
         queryClient.setQueryData<{ property: IPropertyDetail }>(
           adminQueryKeys.propertyDetail(property.id),
-          (old) => (old ? { property: { ...old.property, ...data.property } } : old),
+          (old) => (old ? { property: { ...old.property, ...data.property } } : old)
         );
         onOpenChange(false);
       },

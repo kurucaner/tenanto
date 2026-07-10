@@ -109,9 +109,7 @@ export const ExpenseFormFields = memo(
             onChange={(e) => onDescriptionChange(e.target.value)}
             value={description}
           />
-          {descriptionError ? (
-            <p className="text-xs text-destructive">{descriptionError}</p>
-          ) : null}
+          {descriptionError ? <p className="text-xs text-destructive">{descriptionError}</p> : null}
         </div>
 
         <div className="flex items-center gap-2">

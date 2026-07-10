@@ -334,7 +334,9 @@ export const usePropertySettingsForm = ({
           <PropertyExpenseCategoryTypesEditor
             disabled={!canEdit || isPending}
             expenseCategoryTypes={form.expenseCategoryTypes}
-            onChange={(expenseCategoryTypes) => setForm((prev) => ({ ...prev, expenseCategoryTypes }))}
+            onChange={(expenseCategoryTypes) =>
+              setForm((prev) => ({ ...prev, expenseCategoryTypes }))
+            }
           />
         </div>
 

@@ -189,7 +189,9 @@ function parseIncomeLineTypes(raw: unknown):
   return { incomeLineTypes, ok: true };
 }
 
-function parseExpenseCategoryTypes(raw: unknown):
+function parseExpenseCategoryTypes(
+  raw: unknown
+):
   | { error: string; expenseCategoryTypes: IPropertyExpenseCategoryTypeInput[]; ok: false }
   | { expenseCategoryTypes: IPropertyExpenseCategoryTypeInput[]; ok: true } {
   if (!Array.isArray(raw)) {

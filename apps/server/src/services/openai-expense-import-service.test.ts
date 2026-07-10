@@ -6,8 +6,20 @@ import {
 } from "./openai-expense-import-service";
 
 const CATEGORY_TYPES = [
-  { id: "uuid-sub", isAnnualAmount: false, name: "Subscription", propertyId: "prop-1", sortOrder: 0 },
-  { id: "uuid-internet", isAnnualAmount: false, name: "Internet", propertyId: "prop-1", sortOrder: 1 },
+  {
+    id: "uuid-sub",
+    isAnnualAmount: false,
+    name: "Subscription",
+    propertyId: "prop-1",
+    sortOrder: 0,
+  },
+  {
+    id: "uuid-internet",
+    isAnnualAmount: false,
+    name: "Internet",
+    propertyId: "prop-1",
+    sortOrder: 1,
+  },
   { id: "uuid-other", isAnnualAmount: false, name: "Other", propertyId: "prop-1", sortOrder: 99 },
 ];
 

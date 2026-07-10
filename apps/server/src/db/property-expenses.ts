@@ -88,7 +88,14 @@ export const propertyExpensesDb = {
        FROM property_expenses pe
        JOIN property_expense_category_types pect ON pe.category_id = pect.id
        JOIN inserted i ON pe.id = i.id`,
-      [propertyId, input.categoryId, input.amount, input.expenseDate, input.description, input.taxFree]
+      [
+        propertyId,
+        input.categoryId,
+        input.amount,
+        input.expenseDate,
+        input.description,
+        input.taxFree,
+      ]
     );
     return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
   },
@@ -128,10 +135,7 @@ export const propertyExpensesDb = {
           ]
         );
         const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
-        const selectResult = await client.query(
-          `${EXPENSE_SELECT} WHERE pe.id = $1`,
-          [id]
-        );
+        const selectResult = await client.query(`${EXPENSE_SELECT} WHERE pe.id = $1`, [id]);
         expenses.push(mapPropertyExpenseRow(selectResult.rows[0] as Record<string, unknown>));
       }
 
