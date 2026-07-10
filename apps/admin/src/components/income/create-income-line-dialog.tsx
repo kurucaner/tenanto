@@ -105,7 +105,7 @@ function getDefaultValues(
     longStayId: prefill?.longStayId ?? lockedLease?.id ?? "",
     reservationId: prefill?.reservationId ?? lockedStay?.id ?? "",
     transactionDate: clampToMaxLocalIsoDate(rawTransactionDate, maxTransactionDate),
-    unitId: prefill?.unitId ?? lockedLease?.unitId ?? lockedStay?.unitId ?? "",
+    unitId: prefill?.unitId ?? lockedLease?.unitId ?? lockedStay?.unitId ?? PROPERTY_AMENITY_UNIT_VALUE,
   };
 }
 
