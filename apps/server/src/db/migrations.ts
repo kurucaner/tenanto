@@ -1919,4 +1919,133 @@ export const migrations: IMigration[] = [
     },
     version: 44,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`ALTER TABLE property_expenses DROP COLUMN IF EXISTS category_id;`);
+      await client.query(`DROP TABLE IF EXISTS property_expense_category_types CASCADE;`);
+    },
+    name: "property_expense_category_types",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_expense_category_types (
+          id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id   UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          name          TEXT NOT NULL,
+          sort_order    INT NOT NULL DEFAULT 0,
+          is_annual_amount BOOLEAN NOT NULL DEFAULT false,
+          is_commission    BOOLEAN NOT NULL DEFAULT false,
+          created_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_expense_category_types_updated_at
+          BEFORE UPDATE ON property_expense_category_types
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_property_expense_category_types_property
+          ON property_expense_category_types(property_id);
+      `);
+
+      await client.query(`
+        INSERT INTO property_expense_category_types
+          (property_id, name, sort_order, is_annual_amount, is_commission)
+        SELECT
+          p.id,
+          d.name,
+          d.sort_order,
+          d.is_annual_amount,
+          d.is_commission
+        FROM properties p
+        CROSS JOIN (VALUES
+          (0,  'Airbnb commission',   false, true),
+          (1,  'Booking commission',  false, true),
+          (2,  'Cleaning',            false, false),
+          (3,  'Credit payment',      false, false),
+          (4,  'Electricity',         false, false),
+          (5,  'Expedia commission',  false, true),
+          (6,  'Fire alarm',          false, false),
+          (7,  'Gas',                 false, false),
+          (8,  'Insurance',           true,  false),
+          (9,  'Internet',            false, false),
+          (10, 'Legal fee / permit',  false, false),
+          (11, 'Maintenance',         false, false),
+          (12, 'Material',            false, false),
+          (13, 'Merchant commission', false, true),
+          (14, 'Other',               false, false),
+          (15, 'Phone',               false, false),
+          (16, 'Property tax',        true,  false),
+          (17, 'Salary',              false, false),
+          (18, 'Sewerage',            false, false),
+          (19, 'Subscription',        false, false),
+          (20, 'Waste management',    false, false),
+          (21, 'Water',               false, false)
+        ) AS d(sort_order, name, is_annual_amount, is_commission);
+      `);
+
+      await client.query(`
+        ALTER TABLE property_expenses
+          ADD COLUMN category_id UUID REFERENCES property_expense_category_types(id) ON DELETE RESTRICT;
+      `);
+
+      await client.query(`
+        UPDATE property_expenses pe
+        SET category_id = pect.id
+        FROM property_expense_category_types pect
+        WHERE pect.property_id = pe.property_id
+          AND pect.name = CASE pe.category::text
+            WHEN 'airbnb_commission'   THEN 'Airbnb commission'
+            WHEN 'booking_commission'  THEN 'Booking commission'
+            WHEN 'cleaning'            THEN 'Cleaning'
+            WHEN 'credit_payment'      THEN 'Credit payment'
+            WHEN 'electricity'         THEN 'Electricity'
+            WHEN 'expedia_commission'  THEN 'Expedia commission'
+            WHEN 'fire_alarm'          THEN 'Fire alarm'
+            WHEN 'gas'                 THEN 'Gas'
+            WHEN 'insurance'           THEN 'Insurance'
+            WHEN 'internet'            THEN 'Internet'
+            WHEN 'legal_fee_permit'    THEN 'Legal fee / permit'
+            WHEN 'maintenance'         THEN 'Maintenance'
+            WHEN 'material'            THEN 'Material'
+            WHEN 'merchant_commission' THEN 'Merchant commission'
+            WHEN 'other'               THEN 'Other'
+            WHEN 'phone'               THEN 'Phone'
+            WHEN 'property_tax'        THEN 'Property tax'
+            WHEN 'salary'              THEN 'Salary'
+            WHEN 'sewerage'            THEN 'Sewerage'
+            WHEN 'subscription'        THEN 'Subscription'
+            WHEN 'waste_management'    THEN 'Waste management'
+            WHEN 'water'               THEN 'Water'
+            ELSE NULL
+          END;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_expenses ALTER COLUMN category_id SET NOT NULL;
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_property_expenses_category_id
+          ON property_expenses(property_id, category_id);
+      `);
+    },
+    version: 45,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(
+        `ALTER TABLE property_expense_category_types ADD COLUMN IF NOT EXISTS is_commission BOOLEAN NOT NULL DEFAULT false;`
+      );
+    },
+    name: "drop_expense_category_is_commission",
+    up: async (client: TDBClient) => {
+      await client.query(
+        `ALTER TABLE property_expense_category_types DROP COLUMN IF EXISTS is_commission;`
+      );
+    },
+    version: 46,
+  },
 ];

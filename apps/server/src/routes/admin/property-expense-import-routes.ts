@@ -2,14 +2,11 @@ import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import OpenAI from "openai";
 
-import { propertyExpenseCategoriesDb } from "@/db/property-expense-categories";
+import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-types";
 import { propertyExpensesDb } from "@/db/property-expenses";
 import { getOpenAiApiKey } from "@/lib/expense-csv-import-gate";
 import { extractExpenseRowsFromCsv } from "@/lib/expense-csv-row-extractor";
-import {
-  parseCreateExpenseBody,
-  validateExpenseDateNotInFuture,
-} from "@/lib/validate-create-expense-body";
+import { parseCategoryId, validateExpenseDateNotInFuture } from "@/lib/validate-create-expense-body";
 import {
   EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
@@ -20,7 +17,7 @@ import {
   type IExpenseImportFileResult,
   type IExpenseImportParsedRow,
   type IExpenseImportParseResponse,
-  type TExpenseCategory,
+  type IPropertyExpenseCategoryType,
 } from "@/packages/shared";
 import {
   categorizeExtractedExpenseRows,
@@ -43,53 +40,55 @@ function isBinaryContent(buffer: Buffer): boolean {
   return sample.includes(0);
 }
 
+
 function buildParsedRow(
   sourceFileName: string,
   rowIndex: number,
   row: {
     amount: number;
-    category: IExpenseImportParsedRow["category"];
+    categoryId: string;
     description?: string;
     expenseDate?: string;
     taxFree?: boolean;
   }
 ): IExpenseImportParsedRow {
-  const bodyCandidate = {
-    amount: row.amount,
-    category: row.category,
-    description: row.description,
-    expenseDate: row.expenseDate,
-    taxFree: row.taxFree,
-  };
-
-  const parsed = parseCreateExpenseBody(bodyCandidate);
-  if (!parsed.ok) {
+  if (!Number.isFinite(row.amount) || row.amount < 0) {
     return {
-      ...bodyCandidate,
+      amount: row.amount,
+      categoryId: row.categoryId,
+      description: row.description,
+      expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      validationError: parsed.error,
+      taxFree: row.taxFree,
+      validationError: "amount must be a non-negative number",
     };
   }
 
-  const futureDateError = validateExpenseDateNotInFuture(parsed.body.expenseDate);
+  const futureDateError = row.expenseDate
+    ? validateExpenseDateNotInFuture(row.expenseDate)
+    : null;
   if (futureDateError) {
     return {
-      ...bodyCandidate,
+      amount: row.amount,
+      categoryId: row.categoryId,
+      description: row.description,
+      expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
+      taxFree: row.taxFree,
       validationError: futureDateError,
     };
   }
 
   return {
-    amount: parsed.body.amount,
-    category: parsed.body.category,
-    description: parsed.body.description,
-    expenseDate: parsed.body.expenseDate,
+    amount: row.amount,
+    categoryId: row.categoryId,
+    description: row.description,
+    expenseDate: row.expenseDate,
     rowIndex,
     sourceFileName,
-    taxFree: parsed.body.taxFree,
+    taxFree: row.taxFree,
   };
 }
 
@@ -138,7 +137,7 @@ async function parseUploadedCsvFile(
   client: OpenAI,
   fileName: string,
   buffer: Buffer,
-  allowedCategories: readonly TExpenseCategory[]
+  categoryTypes: IPropertyExpenseCategoryType[]
 ): Promise<IExpenseImportFileResult> {
   const csvText = buffer.toString("utf8").trim();
   if (csvText === "") {
@@ -184,7 +183,7 @@ async function parseUploadedCsvFile(
     const categorization = await categorizeExtractedExpenseRows(
       client,
       extracted.rows,
-      allowedCategories,
+      categoryTypes,
       fileName
     );
     if ("error" in categorization) {
@@ -207,7 +206,11 @@ async function parseUploadedCsvFile(
       });
     }
 
-    const mergedRows = mergeExtractedRowsWithCategories(extracted.rows, categorization.assignments);
+    const mergedRows = mergeExtractedRowsWithCategories(
+      extracted.rows,
+      categorization.assignments,
+      categoryTypes
+    );
     const rows = mergedRows.map((row) => buildParsedRow(fileName, row.rowIndex, row));
 
     return {
@@ -245,30 +248,27 @@ function validateCommitRows(
 
   const validatedRows: IExpenseImportParsedRow[] = [];
   for (const [index, row] of rows.entries()) {
-    const parsed = parseCreateExpenseBody({
-      amount: row.amount,
-      category: row.category,
-      description: row.description,
-      expenseDate: row.expenseDate,
-      taxFree: row.taxFree,
-    });
-    if (!parsed.ok) {
-      return { error: `Row ${index + 1}: ${parsed.error}` };
+    const categoryId = parseCategoryId(row.categoryId);
+    if (!categoryId) {
+      return { error: `Row ${index + 1}: categoryId must be a valid UUID` };
+    }
+    if (!Number.isFinite(row.amount) || row.amount < 0) {
+      return { error: `Row ${index + 1}: amount must be a non-negative number` };
     }
 
-    const futureDateError = validateExpenseDateNotInFuture(parsed.body.expenseDate);
+    const futureDateError = validateExpenseDateNotInFuture(row.expenseDate);
     if (futureDateError) {
       return { error: `Row ${index + 1}: ${futureDateError}` };
     }
 
     validatedRows.push({
-      amount: parsed.body.amount,
-      category: parsed.body.category,
-      description: parsed.body.description,
-      expenseDate: parsed.body.expenseDate,
+      amount: row.amount,
+      categoryId,
+      description: row.description,
+      expenseDate: row.expenseDate,
       rowIndex: row.rowIndex,
       sourceFileName: row.sourceFileName,
-      taxFree: parsed.body.taxFree,
+      taxFree: row.taxFree,
     });
   }
 
@@ -324,11 +324,12 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: fileRead.error });
       }
 
+      const categoryTypes = await propertyExpenseCategoryTypesDb.findByProperty(propertyId);
+
       const client = new OpenAI({ apiKey });
-      const allowedCategories = await propertyExpenseCategoriesDb.listValues();
       const settled = await Promise.allSettled(
         fileRead.files.map((file) =>
-          parseUploadedCsvFile(client, file.fileName, file.buffer, allowedCategories)
+          parseUploadedCsvFile(client, file.fileName, file.buffer, categoryTypes)
         )
       );
 
@@ -402,11 +403,22 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: validated.error });
       }
 
+      const categoryTypes = await propertyExpenseCategoryTypesDb.findByProperty(propertyId);
+      const categoryTypeIds = new Set(categoryTypes.map((t) => t.id));
+
+      for (const [index, row] of validated.rows.entries()) {
+        if (!categoryTypeIds.has(row.categoryId)) {
+          return reply
+            .status(HttpStatus.BAD_REQUEST)
+            .send({ error: `Row ${index + 1}: category not found for this property` });
+        }
+      }
+
       const expenses = await propertyExpensesDb.createMany(
         propertyId,
         validated.rows.map((row) => ({
           amount: row.amount,
-          category: row.category,
+          categoryId: row.categoryId,
           description: row.description?.trim() || null,
           expenseDate: row.expenseDate ?? null,
           taxFree: row.taxFree ?? false,

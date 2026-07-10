@@ -11,7 +11,7 @@ import {
 
 export type TPropertyExpensesListFilters = Pick<
   IPropertyExpensesListQuery,
-  "category" | "from" | "to"
+  "categoryId" | "from" | "to"
 >;
 
 export function usePropertyExpensesInfiniteList(

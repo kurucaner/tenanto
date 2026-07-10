@@ -15,13 +15,10 @@ import {
 import { expensesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
-import {
-  getExpenseCategoryMeta,
-  type IPropertyExpense,
-  type TExpenseCategory,
-} from "@/packages/shared";
+import { type IPropertyExpense, type IPropertyExpenseCategoryType } from "@/packages/shared";
 
 interface EditExpenseDialogProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
   expense: IPropertyExpense;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -29,9 +26,9 @@ interface EditExpenseDialogProps {
 }
 
 export const EditExpenseDialog = memo(
-  ({ expense, onOpenChange, open, propertyId }: EditExpenseDialogProps) => {
+  ({ categoryTypes, expense, onOpenChange, open, propertyId }: EditExpenseDialogProps) => {
     const queryClient = useQueryClient();
-    const [category, setCategory] = useState<TExpenseCategory>(expense.category);
+    const [categoryId, setCategoryId] = useState<string>(expense.categoryId);
     const [amount, setAmount] = useState(String(expense.amount));
     const [expenseDate, setExpenseDate] = useState(expense.expenseDate ?? "");
     const [description, setDescription] = useState(expense.description ?? "");
@@ -41,7 +38,7 @@ export const EditExpenseDialog = memo(
       mutationFn: () =>
         expensesApi.update(propertyId, expense.id, {
           amount: Number(amount) || 0,
-          category,
+          categoryId,
           description: description.trim() || null,
           expenseDate: expenseDate || null,
           taxFree,
@@ -56,11 +53,7 @@ export const EditExpenseDialog = memo(
       },
     });
 
-    const meta = getExpenseCategoryMeta(category);
-    const canSubmit =
-      amount !== "" &&
-      !mutation.isPending &&
-      (!meta.requiresDescription || description.trim() !== "");
+    const canSubmit = amount !== "" && !mutation.isPending;
 
     return (
       <Dialog onOpenChange={() => onOpenChange(false)} open={open}>
@@ -73,12 +66,13 @@ export const EditExpenseDialog = memo(
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
             <ExpenseFormFields
               amount={amount}
-              category={category}
+              categoryId={categoryId}
+              categoryTypes={categoryTypes}
               description={description}
               expenseDate={expenseDate}
               idPrefix="edit-expense"
               onAmountChange={setAmount}
-              onCategoryChange={setCategory}
+              onCategoryChange={setCategoryId}
               onDescriptionChange={setDescription}
               onExpenseDateChange={setExpenseDate}
               onTaxFreeChange={setTaxFree}

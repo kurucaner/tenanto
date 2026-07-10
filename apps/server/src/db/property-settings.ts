@@ -6,11 +6,15 @@ import {
 
 import { mapPropertySettingsRow } from "./mappers";
 import { pool } from "./pool";
+import { propertyExpenseCategoryTypesDb } from "./property-expense-category-types";
 import { propertyIncomeLineTypesDb } from "./property-income-line-types";
 import { propertyTaxRatesDb } from "./property-tax-rates";
 
 const BODY_TO_COLUMN: Record<
-  Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">,
+  Exclude<
+    keyof IUpdatePropertySettingsBody,
+    "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
+  >,
   string
 > = {
   airbnbCommissionRate: "airbnb_commission_rate",
@@ -21,11 +25,12 @@ const BODY_TO_COLUMN: Record<
 
 async function mergeSettingsWithRelated(row: Record<string, unknown>): Promise<IPropertySettings> {
   const base = mapPropertySettingsRow(row);
-  const [taxRates, incomeLineTypes] = await Promise.all([
+  const [taxRates, incomeLineTypes, expenseCategoryTypes] = await Promise.all([
     propertyTaxRatesDb.findByProperty(base.propertyId),
     propertyIncomeLineTypesDb.findByProperty(base.propertyId),
+    propertyExpenseCategoryTypesDb.findByProperty(base.propertyId),
   ]);
-  return { ...base, incomeLineTypes, taxRates };
+  return { ...base, expenseCategoryTypes, incomeLineTypes, taxRates };
 }
 
 export const propertySettingsDb = {
@@ -59,6 +64,7 @@ export const propertySettingsDb = {
     await Promise.all([
       propertyTaxRatesDb.seedDefaults(propertyId),
       propertyIncomeLineTypesDb.seedDefaults(propertyId),
+      propertyExpenseCategoryTypesDb.seedDefaults(propertyId),
     ]);
 
     const settings = await propertySettingsDb.findByProperty(propertyId);
@@ -77,7 +83,10 @@ export const propertySettingsDb = {
     let p = 1;
 
     for (const key of Object.keys(BODY_TO_COLUMN) as Array<
-      Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">
+      Exclude<
+        keyof IUpdatePropertySettingsBody,
+        "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
+      >
     >) {
       const value = input[key];
       if (value === undefined) continue;
@@ -115,12 +124,23 @@ export const propertySettingsDb = {
         await propertyIncomeLineTypesDb.replaceAll(propertyId, input.incomeLineTypes, client);
       }
 
+      if (input.expenseCategoryTypes != null) {
+        await propertyExpenseCategoryTypesDb.replaceAll(
+          propertyId,
+          input.expenseCategoryTypes,
+          client
+        );
+      }
+
       const setClauses: string[] = [];
       const values: unknown[] = [];
       let p = 1;
 
       for (const key of Object.keys(BODY_TO_COLUMN) as Array<
-        Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">
+        Exclude<
+          keyof IUpdatePropertySettingsBody,
+          "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
+        >
       >) {
         const value = input[key];
         if (value === undefined) continue;

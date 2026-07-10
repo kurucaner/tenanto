@@ -2,7 +2,6 @@ import { AlertCircle, Trash2 } from "lucide-react";
 import { memo } from "react";
 
 import {
-  EXPENSE_CATEGORY_OPTIONS,
   expenseSelectClassName,
 } from "@/components/expenses/expense-form-options";
 import {
@@ -20,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { cn } from "@/lib/utils";
-import { getExpenseCategoryMeta, type IExpenseImportParsedRow } from "@/packages/shared";
+import { type IExpenseImportParsedRow, type IPropertyExpenseCategoryType } from "@/packages/shared";
 
 const CATEGORY_SELECT_CLASS_NAME = cn(expenseSelectClassName, "min-w-[11rem]");
 
@@ -37,24 +36,23 @@ function parseAmountInputValue(value: string): number {
 }
 
 interface PreviewFieldContext {
+  categoryTypes: IPropertyExpenseCategoryType[];
   idPrefix: string;
   onChange: (next: IExpenseImportParsedRow) => void;
   row: IExpenseImportParsedRow;
 }
 
-function renderCategorySelect({ idPrefix, onChange, row }: PreviewFieldContext) {
+function renderCategorySelect({ categoryTypes, idPrefix, onChange, row }: PreviewFieldContext) {
   return (
     <select
       className={CATEGORY_SELECT_CLASS_NAME}
       id={`${idPrefix}-category`}
-      onChange={(e) =>
-        onChange({ ...row, category: e.target.value as IExpenseImportParsedRow["category"] })
-      }
-      value={row.category}
+      onChange={(e) => onChange({ ...row, categoryId: e.target.value })}
+      value={row.categoryId}
     >
-      {EXPENSE_CATEGORY_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
+      {categoryTypes.map((cat) => (
+        <option key={cat.id} value={cat.id}>
+          {cat.name}
         </option>
       ))}
     </select>
@@ -125,8 +123,8 @@ interface ImportExpenseCsvPreviewFieldsProps extends PreviewFieldContext {
 }
 
 export const ImportExpenseCsvPreviewFields = memo(
-  ({ idPrefix, onChange, row, variant }: ImportExpenseCsvPreviewFieldsProps) => {
-    const context: PreviewFieldContext = { idPrefix, onChange, row };
+  ({ categoryTypes, idPrefix, onChange, row, variant }: ImportExpenseCsvPreviewFieldsProps) => {
+    const context: PreviewFieldContext = { categoryTypes, idPrefix, onChange, row };
 
     if (variant !== "card") {
       return null;
@@ -173,7 +171,6 @@ interface ImportExpenseCsvPreviewRowActionsProps {
 const ImportExpenseCsvPreviewRowActions = memo(
   ({ onRemove, row }: ImportExpenseCsvPreviewRowActionsProps) => {
     const validationError = getImportPreviewRowValidationError(row);
-    const meta = getExpenseCategoryMeta(row.category);
 
     return (
       <div className="flex items-center gap-2">
@@ -181,9 +178,6 @@ const ImportExpenseCsvPreviewRowActions = memo(
           <Badge title={validationError} variant="destructive">
             <AlertCircle className="size-3" />
           </Badge>
-        ) : null}
-        {meta.requiresDescription && !row.description?.trim() ? (
-          <Badge variant="secondary">Needs description</Badge>
         ) : null}
         <Button
           aria-label="Remove row"
@@ -201,6 +195,7 @@ const ImportExpenseCsvPreviewRowActions = memo(
 ImportExpenseCsvPreviewRowActions.displayName = "ImportExpenseCsvPreviewRowActions";
 
 interface ImportExpenseCsvPreviewCardProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
   idPrefix: string;
   onChange: (next: IExpenseImportParsedRow) => void;
   onRemove: () => void;
@@ -208,12 +203,13 @@ interface ImportExpenseCsvPreviewCardProps {
 }
 
 export const ImportExpenseCsvPreviewCard = memo(
-  ({ idPrefix, onChange, onRemove, row }: ImportExpenseCsvPreviewCardProps) => (
+  ({ categoryTypes, idPrefix, onChange, onRemove, row }: ImportExpenseCsvPreviewCardProps) => (
     <article className="space-y-3 rounded-lg border p-4">
       <p className="truncate text-sm font-medium" title={row.sourceFileName}>
         {row.sourceFileName}
       </p>
       <ImportExpenseCsvPreviewFields
+        categoryTypes={categoryTypes}
         idPrefix={idPrefix}
         onChange={onChange}
         row={row}
@@ -228,6 +224,7 @@ export const ImportExpenseCsvPreviewCard = memo(
 ImportExpenseCsvPreviewCard.displayName = "ImportExpenseCsvPreviewCard";
 
 interface ImportExpenseCsvPreviewTableRowProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
   idPrefix: string;
   onChange: (next: IExpenseImportParsedRow) => void;
   onRemove: () => void;
@@ -235,8 +232,8 @@ interface ImportExpenseCsvPreviewTableRowProps {
 }
 
 export const ImportExpenseCsvPreviewTableRow = memo(
-  ({ idPrefix, onChange, onRemove, row }: ImportExpenseCsvPreviewTableRowProps) => {
-    const context: PreviewFieldContext = { idPrefix, onChange, row };
+  ({ categoryTypes, idPrefix, onChange, onRemove, row }: ImportExpenseCsvPreviewTableRowProps) => {
+    const context: PreviewFieldContext = { categoryTypes, idPrefix, onChange, row };
 
     return (
       <TableRow>

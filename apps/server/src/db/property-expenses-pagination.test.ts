@@ -1,18 +1,21 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { ExpenseCategory } from "@/packages/shared";
+const CATEGORY_ID_1 = "cat00000-0000-4000-8000-000000000001";
+const CATEGORY_ID_2 = "cat00000-0000-4000-8000-000000000002";
 
 const mockQuery = mock(() =>
   Promise.resolve({
     rows: [
       {
         amount: "100.00",
-        category: ExpenseCategory.CLEANING,
+        category_id: CATEGORY_ID_1,
+        category_name: "Cleaning",
         created_at: new Date("2026-07-09T10:00:00.000Z"),
         deleted_at: null,
         description: "Older same date",
         expense_date: "2026-07-09",
         id: "11111111-1111-4111-8111-111111111111",
+        is_annual_amount: false,
         is_deleted: false,
         property_id: "prop-1",
         tax_free: false,
@@ -20,12 +23,14 @@ const mockQuery = mock(() =>
       },
       {
         amount: "50.00",
-        category: ExpenseCategory.OTHER,
+        category_id: CATEGORY_ID_2,
+        category_name: "Other",
         created_at: new Date("2026-07-08T10:00:00.000Z"),
         deleted_at: null,
         description: "Earlier date",
         expense_date: "2026-07-08",
         id: "22222222-2222-4222-8222-222222222222",
+        is_annual_amount: false,
         is_deleted: false,
         property_id: "prop-1",
         tax_free: false,
@@ -33,12 +38,14 @@ const mockQuery = mock(() =>
       },
       {
         amount: "25.00",
-        category: ExpenseCategory.OTHER,
+        category_id: CATEGORY_ID_2,
+        category_name: "Other",
         created_at: new Date("2026-07-07T10:00:00.000Z"),
         deleted_at: null,
         description: "No date",
         expense_date: null,
         id: "33333333-3333-4333-8333-333333333333",
+        is_annual_amount: false,
         is_deleted: false,
         property_id: "prop-1",
         tax_free: false,
@@ -66,7 +73,7 @@ describe("propertyExpensesDb.listPaginatedByProperty", () => {
     expect(firstPage.nextCursor).toBeString();
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
-    expect(sql).toContain("COALESCE(expense_date");
+    expect(sql).toContain("COALESCE(pe.expense_date");
     expect(sql).toContain("LIMIT $");
   });
 
@@ -84,6 +91,6 @@ describe("propertyExpensesDb.listPaginatedByProperty", () => {
     );
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
-    expect(sql).toContain("created_at, id) <");
+    expect(sql).toContain("pe.created_at, pe.id) <");
   });
 });

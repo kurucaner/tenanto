@@ -1,4 +1,3 @@
-import type { TExpenseCategory } from "./property-expense-types";
 import type { TReservationChannel } from "./property-reservation-types";
 import type { TUnitRentalType } from "./property-types";
 
@@ -70,7 +69,8 @@ export interface IPropertyReportMonthSummary {
 
 export interface IPropertyReportExpenseCategory {
   amount: number;
-  category: TExpenseCategory;
+  categoryId: string;
+  name: string;
 }
 
 export interface IPropertyReportTaxSummaryItem {

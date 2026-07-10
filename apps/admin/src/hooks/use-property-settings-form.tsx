@@ -4,6 +4,10 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  type PropertyExpenseCategoryTypeFormRow,
+  PropertyExpenseCategoryTypesEditor,
+} from "@/components/settings/property-expense-category-types-editor";
+import {
   type PropertyIncomeLineTypeFormRow,
   PropertyIncomeLineTypesEditor,
 } from "@/components/settings/property-income-line-types-editor";
@@ -21,6 +25,8 @@ import {
   DEFAULT_PROPERTY_SETTINGS,
   DEFAULT_PROPERTY_TAX_RATES,
   formatRateAsPercent,
+  type IPropertyExpenseCategoryType,
+  type IPropertyExpenseCategoryTypeInput,
   type IPropertyIncomeLineType,
   type IPropertyIncomeLineTypeInput,
   type IPropertySettings,
@@ -33,6 +39,7 @@ type TSettingsFormState = {
   airbnbCommissionRate: string;
   bookingCommissionRate: string;
   directCommissionRate: string;
+  expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[];
   expediaCommissionRate: string;
   incomeLineTypes: PropertyIncomeLineTypeFormRow[];
   taxRates: PropertyTaxRateFormRow[];
@@ -40,6 +47,7 @@ type TSettingsFormState = {
 
 const MAX_TAX_NAME_LENGTH = 80;
 const MAX_INCOME_TYPE_NAME_LENGTH = 80;
+const MAX_EXPENSE_CATEGORY_NAME_LENGTH = 80;
 
 const taxRateToFormRow = (tax: IPropertyTaxRate): PropertyTaxRateFormRow => ({
   clientId: tax.id,
@@ -54,10 +62,20 @@ const incomeLineTypeToFormRow = (type: IPropertyIncomeLineType): PropertyIncomeL
   name: type.name,
 });
 
+const expenseCategoryTypeToFormRow = (
+  type: IPropertyExpenseCategoryType
+): PropertyExpenseCategoryTypeFormRow => ({
+  clientId: type.id,
+  id: type.id,
+  isAnnualAmount: type.isAnnualAmount,
+  name: type.name,
+});
+
 const settingsToFormState = (settings: IPropertySettings): TSettingsFormState => ({
   airbnbCommissionRate: formatRateAsPercent(settings.airbnbCommissionRate),
   bookingCommissionRate: formatRateAsPercent(settings.bookingCommissionRate),
   directCommissionRate: formatRateAsPercent(settings.directCommissionRate),
+  expenseCategoryTypes: settings.expenseCategoryTypes.map(expenseCategoryTypeToFormRow),
   expediaCommissionRate: formatRateAsPercent(settings.expediaCommissionRate),
   incomeLineTypes: settings.incomeLineTypes.map(incomeLineTypeToFormRow),
   taxRates: settings.taxRates.map(taxRateToFormRow),
@@ -80,10 +98,21 @@ const formIncomeLineTypesToBody = (
     sortOrder: index,
   }));
 
+const formExpenseCategoryTypesToBody = (
+  expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[]
+): IPropertyExpenseCategoryTypeInput[] =>
+  expenseCategoryTypes.map((row, index) => ({
+    ...(row.id == null ? {} : { id: row.id }),
+    isAnnualAmount: row.isAnnualAmount,
+    name: row.name.trim(),
+    sortOrder: index,
+  }));
+
 const formStateToBody = (form: TSettingsFormState) => ({
   airbnbCommissionRate: percentToRate(Number(form.airbnbCommissionRate)),
   bookingCommissionRate: percentToRate(Number(form.bookingCommissionRate)),
   directCommissionRate: percentToRate(Number(form.directCommissionRate)),
+  expenseCategoryTypes: formExpenseCategoryTypesToBody(form.expenseCategoryTypes),
   expediaCommissionRate: percentToRate(Number(form.expediaCommissionRate)),
   incomeLineTypes: formIncomeLineTypesToBody(form.incomeLineTypes),
   taxRates: formTaxRatesToBody(form.taxRates),
@@ -219,6 +248,27 @@ export const usePropertySettingsForm = ({
       seenIncomeTypeNames.add(normalized);
     }
 
+    const seenExpenseCategoryNames = new Set<string>();
+    for (const row of form.expenseCategoryTypes) {
+      const name = row.name.trim();
+      if (name.length === 0) {
+        toast.error("Each expense category must have a name");
+        return false;
+      }
+      if (name.length > MAX_EXPENSE_CATEGORY_NAME_LENGTH) {
+        toast.error(
+          `Expense category names must be at most ${MAX_EXPENSE_CATEGORY_NAME_LENGTH} characters`
+        );
+        return false;
+      }
+      const normalized = name.toLowerCase();
+      if (seenExpenseCategoryNames.has(normalized)) {
+        toast.error("Expense category names must be unique");
+        return false;
+      }
+      seenExpenseCategoryNames.add(normalized);
+    }
+
     return true;
   }, [form]);
 
@@ -273,6 +323,21 @@ export const usePropertySettingsForm = ({
       </CardHeader>
       <Separator />
       <CardContent className="space-y-8 pt-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium">Expense categories</h3>
+            <p className="text-muted-foreground text-xs">
+              Categories available when adding expenses. Annual categories are spread across months
+              in reports. Commission categories are tracked for commission analysis.
+            </p>
+          </div>
+          <PropertyExpenseCategoryTypesEditor
+            disabled={!canEdit || isPending}
+            expenseCategoryTypes={form.expenseCategoryTypes}
+            onChange={(expenseCategoryTypes) => setForm((prev) => ({ ...prev, expenseCategoryTypes }))}
+          />
+        </div>
+
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-medium">Other income types</h3>

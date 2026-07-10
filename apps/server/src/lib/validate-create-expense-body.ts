@@ -1,13 +1,8 @@
-import {
-  ExpenseCategory,
-  type ICreatePropertyExpenseBody,
-  type TExpenseCategory,
-  validateExpenseCategoryFields,
-} from "@/packages/shared";
-
-const EXPENSE_CATEGORIES = new Set<TExpenseCategory>(Object.values(ExpenseCategory));
+import type { ICreatePropertyExpenseBody } from "@/packages/shared";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function parseDateString(raw: unknown): string | null {
   if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
@@ -27,9 +22,9 @@ function parseOptionalDateString(raw: unknown): string | null | undefined {
   return parseDateString(raw);
 }
 
-export function parseExpenseCategory(raw: unknown): TExpenseCategory | null {
+export function parseCategoryId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  return EXPENSE_CATEGORIES.has(raw as TExpenseCategory) ? (raw as TExpenseCategory) : null;
+  return UUID_RE.test(raw.trim()) ? raw.trim() : null;
 }
 
 function parseMoney(raw: unknown): number | null {
@@ -57,12 +52,9 @@ export function parseCreateExpenseBody(
   }
   const r = raw as Record<string, unknown>;
 
-  const category = parseExpenseCategory(r["category"]);
-  if (category === null) {
-    return {
-      error: `category must be one of: ${[...EXPENSE_CATEGORIES].join(", ")}`,
-      ok: false,
-    };
+  const categoryId = parseCategoryId(r["categoryId"]);
+  if (categoryId === null) {
+    return { error: "categoryId must be a valid UUID", ok: false };
   }
 
   const amount = parseMoney(r["amount"]);
@@ -95,15 +87,10 @@ export function parseCreateExpenseBody(
     taxFree = parsedTaxFree;
   }
 
-  const categoryError = validateExpenseCategoryFields(category, {
-    description: description ?? undefined,
-  });
-  if (categoryError) return { error: categoryError, ok: false };
-
   return {
     body: {
       amount,
-      category,
+      categoryId,
       description: description ?? undefined,
       expenseDate: expenseDate ?? undefined,
       taxFree,
@@ -120,8 +107,4 @@ export function validateExpenseDateNotInFuture(expenseDate: string | undefined):
     return "Expense date cannot be in the future";
   }
   return null;
-}
-
-export function normalizeExpenseImportCategory(raw: unknown): TExpenseCategory {
-  return parseExpenseCategory(raw) ?? ExpenseCategory.OTHER;
 }

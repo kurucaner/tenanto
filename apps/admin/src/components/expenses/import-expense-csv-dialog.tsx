@@ -37,6 +37,7 @@ import {
   EXPENSE_CSV_IMPORT_MAX_FILES,
   type IExpenseImportFileResult,
   type IExpenseImportParsedRow,
+  type IPropertyExpenseCategoryType,
   type TExpenseImportFileStatus,
 } from "@/packages/shared";
 
@@ -55,6 +56,7 @@ function getFileResultToneClassName(status: TExpenseImportFileStatus): string {
 }
 
 interface ImportExpenseCsvDialogProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
@@ -85,7 +87,7 @@ const FileResultSummary = memo(({ result }: { result: IExpenseImportFileResult }
 FileResultSummary.displayName = "FileResultSummary";
 
 export const ImportExpenseCsvDialog = memo(
-  ({ onOpenChange, open, propertyId }: ImportExpenseCsvDialogProps) => {
+  ({ categoryTypes, onOpenChange, open, propertyId }: ImportExpenseCsvDialogProps) => {
     const queryClient = useQueryClient();
     const [step, setStep] = useState<TImportStep>("upload");
     const [selectedFiles, setSelectedFiles] = useState<ISelectedExpenseCsvFile[]>([]);
@@ -296,6 +298,7 @@ export const ImportExpenseCsvDialog = memo(
                     <div className="flex flex-col gap-3 lg:hidden">
                       {previewRows.map((row, index) => (
                         <ImportExpenseCsvPreviewCard
+                          categoryTypes={categoryTypes}
                           idPrefix={`import-preview-${index}`}
                           key={createPreviewRowKey(row, index)}
                           onChange={(nextRow) => updatePreviewRow(index, nextRow)}
@@ -337,6 +340,7 @@ export const ImportExpenseCsvDialog = memo(
                           <TableBody>
                             {previewRows.map((row, index) => (
                               <ImportExpenseCsvPreviewTableRow
+                                categoryTypes={categoryTypes}
                                 idPrefix={`import-preview-${index}`}
                                 key={createPreviewRowKey(row, index)}
                                 onChange={(nextRow) => updatePreviewRow(index, nextRow)}

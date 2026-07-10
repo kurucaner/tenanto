@@ -1,23 +1,21 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-types";
 import { propertyExpensesDb } from "@/db/property-expenses";
 import {
+  parseCategoryId,
   parseCreateExpenseBody,
   parseDateString,
-  parseExpenseCategory,
   validateExpenseDateNotInFuture,
 } from "@/lib/validate-create-expense-body";
 import {
-  ExpenseCategory,
   EXPENSES_LIST_LIMIT,
   EXPENSES_LIST_MAX_LIMIT,
   HttpStatus,
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
   type IUpdatePropertyExpenseBody,
-  type TExpenseCategory,
   UserType,
-  validateExpenseCategoryFields,
 } from "@/packages/shared";
 import { decodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
 
@@ -28,8 +26,6 @@ import {
   assertPropertyMemberAccess,
 } from "./property-route-access";
 import { rejectIfDeleted } from "./reject-if-deleted";
-
-const EXPENSE_CATEGORIES = new Set<TExpenseCategory>(Object.values(ExpenseCategory));
 
 function parseExpensesListLimit(raw: unknown): number {
   const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
@@ -55,18 +51,18 @@ function parseBoolean(raw: unknown): boolean | null {
   return raw;
 }
 
-const UPDATE_FIELDS = ["category", "amount", "expenseDate", "description", "taxFree"] as const;
+const UPDATE_FIELDS = ["categoryId", "amount", "expenseDate", "description", "taxFree"] as const;
 
-function parseUpdateExpenseCategory(
+function parseUpdateExpenseCategoryId(
   r: Record<string, unknown>,
   body: IUpdatePropertyExpenseBody
 ): string | null {
-  if (r["category"] === undefined) return null;
-  const category = parseExpenseCategory(r["category"]);
-  if (category === null) {
-    return `category must be one of: ${[...EXPENSE_CATEGORIES].join(", ")}`;
+  if (r["categoryId"] === undefined) return null;
+  const categoryId = parseCategoryId(r["categoryId"]);
+  if (categoryId === null) {
+    return "categoryId must be a valid UUID";
   }
-  body.category = category;
+  body.categoryId = categoryId;
   return null;
 }
 
@@ -134,7 +130,7 @@ function parseUpdateExpenseBody(
 
   const body: IUpdatePropertyExpenseBody = {};
   const fieldError =
-    parseUpdateExpenseCategory(r, body) ??
+    parseUpdateExpenseCategoryId(r, body) ??
     parseUpdateExpenseAmount(r, body) ??
     parseUpdateExpenseDate(r, body) ??
     parseUpdateExpenseDescription(r, body) ??
@@ -153,12 +149,12 @@ function parseUpdateExpenseBody(
 function parseExpensesListQuery(query: Record<string, unknown>):
   | {
       cursor?: string;
-      filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to">;
+      filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">;
       limit: number;
       ok: true;
     }
   | { error: string; ok: false } {
-  const filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to"> = {};
+  const filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to"> = {};
 
   if (query["from"] !== undefined && query["from"] !== "") {
     const from = parseDateString(query["from"]);
@@ -170,15 +166,12 @@ function parseExpensesListQuery(query: Record<string, unknown>):
     if (!to) return { error: "to must be a YYYY-MM-DD date", ok: false };
     filters.to = to;
   }
-  if (query["category"] !== undefined && query["category"] !== "") {
-    const category = parseExpenseCategory(query["category"]);
-    if (category === null) {
-      return {
-        error: `category must be one of: ${[...EXPENSE_CATEGORIES].join(", ")}`,
-        ok: false,
-      };
+  if (query["categoryId"] !== undefined && query["categoryId"] !== "") {
+    const categoryId = parseCategoryId(query["categoryId"]);
+    if (categoryId === null) {
+      return { error: "categoryId must be a valid UUID", ok: false };
     }
-    filters.category = category;
+    filters.categoryId = categoryId;
   }
 
   const limit = parseExpensesListLimit(query["limit"]);
@@ -200,7 +193,7 @@ interface IPropertyExpenseParams {
 function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExpenseBody) {
   return {
     amount: patch.amount ?? existing.amount,
-    category: patch.category ?? existing.category,
+    categoryId: patch.categoryId ?? existing.categoryId,
     description: patch.description === undefined ? existing.description : patch.description,
     expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
     taxFree: patch.taxFree ?? existing.taxFree,
@@ -284,6 +277,16 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
+      const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
+        parsed.body.categoryId,
+        propertyId
+      );
+      if (!categoryType) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "Category not found for this property" });
+      }
+
       if (parsed.body.expenseDate !== undefined) {
         const futureDateError = validateExpenseDateNotInFuture(parsed.body.expenseDate);
         if (futureDateError) {
@@ -293,7 +296,7 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
 
       const expense = await propertyExpensesDb.create(propertyId, {
         amount: parsed.body.amount,
-        category: parsed.body.category,
+        categoryId: parsed.body.categoryId,
         description: parsed.body.description?.trim() || null,
         expenseDate: parsed.body.expenseDate ?? null,
         taxFree: parsed.body.taxFree ?? false,
@@ -346,11 +349,14 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
       }
 
       const merged = mergeExpenseInput(existing, parsed.body);
-      const categoryError = validateExpenseCategoryFields(merged.category, {
-        description: merged.description,
-      });
-      if (categoryError) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: categoryError });
+      const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
+        merged.categoryId,
+        propertyId
+      );
+      if (!categoryType) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "Category not found for this property" });
       }
 
       const expense = await propertyExpensesDb.update(expenseId, parsed.body);

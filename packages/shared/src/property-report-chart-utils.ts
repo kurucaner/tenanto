@@ -202,13 +202,12 @@ export function taxSummaryToSegments(
 }
 
 export function expenseCategoryToSegments(
-  expenseByCategory: IPropertyReportExpenseCategory[],
-  formatCategoryLabel: (category: IPropertyReportExpenseCategory["category"]) => string
+  expenseByCategory: IPropertyReportExpenseCategory[]
 ): IReportChartSegment[] {
   return buildReportChartSegments(
     expenseByCategory.map((row) => ({
-      id: row.category,
-      label: formatCategoryLabel(row.category),
+      id: row.categoryId,
+      label: row.name,
       value: row.amount,
     }))
   );

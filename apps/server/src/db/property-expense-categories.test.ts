@@ -1,18 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { ExpenseCategory } from "@/packages/shared";
+import { DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES } from "@/packages/shared";
 
-import { buildPropertyExpenseCategoryOptions } from "./property-expense-categories";
+describe("DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES", () => {
+  test("includes core default categories", () => {
+    const names = DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES.map((t) => t.name.toLowerCase());
+    expect(names).toContain("other");
+  });
 
-describe("buildPropertyExpenseCategoryOptions", () => {
-  test("maps DB enum values to labels and includes every shared category", () => {
-    const values = Object.values(ExpenseCategory);
-    const options = buildPropertyExpenseCategoryOptions(values);
-
-    expect(options).toHaveLength(values.length);
-    expect(options.find((option) => option.value === ExpenseCategory.OTHER)?.label).toBe("Other");
-    expect(options.find((option) => option.value === ExpenseCategory.SUBSCRIPTION)?.label).toBe(
-      "Subscription"
-    );
+  test("marks annual amount categories correctly", () => {
+    const annuals = DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES.filter((t) => t.isAnnualAmount);
+    expect(annuals.length).toBeGreaterThan(0);
   });
 });

@@ -1,4 +1,3 @@
-import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
 import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import {
   compareDates,
@@ -117,7 +116,7 @@ export function sortExpenseCategoryRows(
   if (sortState.columnId === "amount") {
     return sortByNumberField(rows, sortState, (row) => row.amount);
   }
-  return sortByStringField(rows, sortState, (row) => formatExpenseCategoryLabel(row.category));
+  return sortByStringField(rows, sortState, (row) => row.name);
 }
 
 function aggregateOccupancy(row: IPortfolioPropertyReportRow): number {

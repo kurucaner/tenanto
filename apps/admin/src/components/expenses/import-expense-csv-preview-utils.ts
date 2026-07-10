@@ -1,4 +1,4 @@
-import { type IExpenseImportParsedRow, validateExpenseCategoryFields } from "@/packages/shared";
+import type { IExpenseImportParsedRow } from "@/packages/shared";
 
 export const AMOUNT_INPUT_CLASS_NAME = "min-w-[7.5rem] tabular-nums text-right";
 export const TABLE_AMOUNT_INPUT_CLASS_NAME = "w-full max-w-full min-w-0 tabular-nums text-right";
@@ -12,11 +12,8 @@ export function getImportPreviewRowValidationError(row: IExpenseImportParsedRow)
     return row.validationError;
   }
 
-  const categoryError = validateExpenseCategoryFields(row.category, {
-    description: row.description,
-  });
-  if (categoryError) {
-    return categoryError;
+  if (!row.categoryId) {
+    return "Category is required";
   }
 
   if (!Number.isFinite(row.amount) || row.amount < 0) {

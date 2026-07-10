@@ -3,7 +3,6 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
-  getExpenseCategoryMeta,
   type IPortfolioPropertyReportRow,
   type IPortfolioReportSummary,
   type IPropertyExpense,
@@ -24,7 +23,6 @@ import {
   ReportRentalTypeFilter,
   ReservationChannel,
   ReservationStatus,
-  type TExpenseCategory,
   type TReportRentalTypeFilter,
   type TReservationChannel,
   type TUnitRentalType,
@@ -299,7 +297,7 @@ interface IPropertyReportAccumulator {
   amenityGrossIncome: number;
   amenityNetIncome: number;
   channelMap: Map<TReservationChannel, IPropertyReportChannelSummary>;
-  expenseCategoryMap: Map<TExpenseCategory, number>;
+  expenseCategoryMap: Map<string, { amount: number; name: string }>;
   grossIncome: number;
   monthMap: Map<string, IPropertyReportMonthSummary>;
   netIncome: number;
@@ -385,16 +383,17 @@ function applyExpenseToReport(
   months: string[],
   accumulator: IPropertyReportAccumulator
 ): void {
-  const meta = getExpenseCategoryMeta(expense.category);
   accumulator.propertyExpensesTotal = roundMoney(
     accumulator.propertyExpensesTotal + expense.amount
   );
-  accumulator.expenseCategoryMap.set(
-    expense.category,
-    roundMoney((accumulator.expenseCategoryMap.get(expense.category) ?? 0) + expense.amount)
-  );
 
-  if (meta.isAnnualAmount) {
+  const existing = accumulator.expenseCategoryMap.get(expense.categoryId);
+  accumulator.expenseCategoryMap.set(expense.categoryId, {
+    amount: roundMoney((existing?.amount ?? 0) + expense.amount),
+    name: expense.categoryName,
+  });
+
+  if (expense.categoryIsAnnualAmount) {
     const monthlyAmount = roundMoney(expense.amount / 12);
     for (const month of months) {
       addExpenseToMonth(accumulator.monthMap, month, monthlyAmount);
@@ -447,7 +446,7 @@ function buildUnitSummaries(
 interface IRollupAccumulator {
   byUnit: IPropertyReportUnitSummary[];
   channelMap: Map<TReservationChannel, IPropertyReportChannelSummary>;
-  expenseCategoryMap: Map<TExpenseCategory, number>;
+  expenseCategoryMap: Map<string, { amount: number; name: string }>;
   grossIncome: number;
   monthMap: Map<string, IPropertyReportMonthSummary>;
   netIncome: number;
@@ -502,10 +501,11 @@ function mergeSummaryIntoRollup(summary: IPropertyReportSummary, rollup: IRollup
   }
 
   for (const row of summary.expenseByCategory) {
-    rollup.expenseCategoryMap.set(
-      row.category,
-      roundMoney((rollup.expenseCategoryMap.get(row.category) ?? 0) + row.amount)
-    );
+    const existing = rollup.expenseCategoryMap.get(row.categoryId);
+    rollup.expenseCategoryMap.set(row.categoryId, {
+      amount: roundMoney((existing?.amount ?? 0) + row.amount),
+      name: row.name,
+    });
   }
 
   mergeTaxSummary(rollup.taxMap, summary.taxSummary);
@@ -521,7 +521,7 @@ export function buildPropertyReportSummary(
     amenityGrossIncome: 0,
     amenityNetIncome: 0,
     channelMap: initChannelMap(),
-    expenseCategoryMap: new Map<TExpenseCategory, number>(),
+    expenseCategoryMap: new Map<string, { amount: number; name: string }>(),
     grossIncome: 0,
     monthMap: initMonthMap(months),
     netIncome: 0,
@@ -564,7 +564,7 @@ export function buildPropertyReportSummary(
   const expenseByCategory: IPropertyReportExpenseCategory[] = [
     ...accumulator.expenseCategoryMap.entries(),
   ]
-    .map(([category, amount]) => ({ amount, category }))
+    .map(([categoryId, { amount, name }]) => ({ amount, categoryId, name }))
     .sort((a, b) => b.amount - a.amount);
   const taxSummary = taxMapToSummary(accumulator.taxMap);
   const totalExpenses = accumulator.propertyExpensesTotal;
@@ -638,7 +638,7 @@ export function rollupSummaries(
   const rollup: IRollupAccumulator = {
     byUnit: [],
     channelMap: new Map<TReservationChannel, IPropertyReportChannelSummary>(),
-    expenseCategoryMap: new Map<TExpenseCategory, number>(),
+    expenseCategoryMap: new Map<string, { amount: number; name: string }>(),
     grossIncome: 0,
     monthMap: new Map<string, IPropertyReportMonthSummary>(),
     netIncome: 0,
@@ -671,7 +671,7 @@ export function rollupSummaries(
   const expenseByCategory: IPropertyReportExpenseCategory[] = [
     ...rollup.expenseCategoryMap.entries(),
   ]
-    .map(([category, amount]) => ({ amount, category }))
+    .map(([categoryId, { amount, name }]) => ({ amount, categoryId, name }))
     .sort((a, b) => b.amount - a.amount);
   const taxSummary = taxMapToSummary(rollup.taxMap);
 
@@ -785,7 +785,7 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += "\n";
   next += csvRow(["Expenses by Category", "Amount"]);
   for (const row of summary.expenseByCategory) {
-    next += csvRow([row.category, row.amount]);
+    next += csvRow([row.name, row.amount]);
   }
   return next;
 }

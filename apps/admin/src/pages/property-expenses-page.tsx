@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { memo, type RefObject, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -6,11 +6,7 @@ import { toast } from "sonner";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
-import {
-  EXPENSE_CATEGORY_FILTER_OPTIONS,
-  expenseSelectClassName,
-  formatExpenseCategoryLabel,
-} from "@/components/expenses/expense-form-options";
+import { expenseSelectClassName } from "@/components/expenses/expense-form-options";
 import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
 import { FilterField } from "@/components/filters/filter-field";
 import { Badge } from "@/components/ui/badge";
@@ -36,13 +32,14 @@ import {
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
-import { expensesApi } from "@/lib/api-client";
+import { expensesApi, settingsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
+import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import { type IPropertyExpense, type TExpenseCategory } from "@/packages/shared";
+import { type IPropertyExpense, type IPropertyExpenseCategoryType } from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -61,7 +58,7 @@ const ExpenseRow = memo(
     <TableRow className={expense.isDeleted ? deletedRowClassName : undefined}>
       <TableCell>
         <div className="flex items-center gap-2">
-          {formatExpenseCategoryLabel(expense.category)}
+          {expense.categoryName}
           {expense.isDeleted ? <DeletedBadge /> : null}
         </div>
       </TableCell>
@@ -105,24 +102,24 @@ const ExpenseRow = memo(
 ExpenseRow.displayName = "ExpenseRow";
 
 const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
-  category: string;
+  categoryId: string;
   from: string;
   to: string;
 }>({
-  category: { defaultValue: "" },
+  categoryId: { defaultValue: "" },
   from: { defaultValue: "" },
   to: { defaultValue: "" },
 });
 
 function buildExpenseFilters(
-  category: string,
+  categoryId: string,
   from: string,
   to: string
 ): TPropertyExpensesListFilters {
   const next: TPropertyExpensesListFilters = {};
   if (from) next.from = from;
   if (to) next.to = to;
-  if (category) next.category = category as TExpenseCategory;
+  if (categoryId) next.categoryId = categoryId;
   return next;
 }
 
@@ -134,16 +131,18 @@ function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): 
 
 const PropertyExpensesFilters = memo(
   ({
-    category,
+    categoryId,
+    categoryTypes,
     from,
-    onCategoryChange,
+    onCategoryIdChange,
     onFromChange,
     onToChange,
     to,
   }: {
-    category: string;
+    categoryId: string;
+    categoryTypes: IPropertyExpenseCategoryType[];
     from: string;
-    onCategoryChange: (value: string) => void;
+    onCategoryIdChange: (value: string) => void;
     onFromChange: (value: string) => void;
     onToChange: (value: string) => void;
     to: string;
@@ -172,12 +171,13 @@ const PropertyExpensesFilters = memo(
         <select
           className={expenseSelectClassName}
           id="expense-filter-category"
-          onChange={(e) => onCategoryChange(e.target.value)}
-          value={category}
+          onChange={(e) => onCategoryIdChange(e.target.value)}
+          value={categoryId}
         >
-          {EXPENSE_CATEGORY_FILTER_OPTIONS.map((opt) => (
-            <option key={opt.value || "all"} value={opt.value}>
-              {opt.label}
+          <option value="">All categories</option>
+          {categoryTypes.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
             </option>
           ))}
         </select>
@@ -296,6 +296,7 @@ PropertyExpensesPageActions.displayName = "PropertyExpensesPageActions";
 
 const PropertyExpensesPageDialogs = memo(
   ({
+    categoryTypes,
     createOpen,
     editExpense,
     importCsvOpen,
@@ -304,6 +305,7 @@ const PropertyExpensesPageDialogs = memo(
     onImportCsvOpenChange,
     propertyId,
   }: {
+    categoryTypes: IPropertyExpenseCategoryType[];
     createOpen: boolean;
     editExpense: IPropertyExpense | null;
     importCsvOpen: boolean;
@@ -314,17 +316,20 @@ const PropertyExpensesPageDialogs = memo(
   }) => (
     <>
       <CreateExpenseDialog
+        categoryTypes={categoryTypes}
         onOpenChange={onCreateOpenChange}
         open={createOpen}
         propertyId={propertyId}
       />
       <ImportExpenseCsvDialog
+        categoryTypes={categoryTypes}
         onOpenChange={onImportCsvOpenChange}
         open={importCsvOpen}
         propertyId={propertyId}
       />
       {editExpense ? (
         <EditExpenseDialog
+          categoryTypes={categoryTypes}
           expense={editExpense}
           key={editExpense.id}
           onOpenChange={onEditOpenChange}
@@ -361,9 +366,19 @@ export const PropertyExpensesPage = memo(() => {
   const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
-  const { category, from, to } = urlFilters;
+  const { categoryId, from, to } = urlFilters;
 
-  const filters = useMemo(() => buildExpenseFilters(category, from, to), [category, from, to]);
+  const settingsQuery = useQuery({
+    queryFn: () => settingsApi.get(propertyId),
+    queryKey: adminQueryKeys.propertySettings(propertyId),
+  });
+
+  const categoryTypes = useMemo(
+    () => settingsQuery.data?.settings.expenseCategoryTypes ?? [],
+    [settingsQuery.data?.settings.expenseCategoryTypes]
+  );
+
+  const filters = useMemo(() => buildExpenseFilters(categoryId, from, to), [categoryId, from, to]);
 
   const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
     usePropertyExpensesInfiniteList(propertyId, filters);
@@ -412,7 +427,7 @@ export const PropertyExpensesPage = memo(() => {
   const handleDeleteExpense = useCallback(
     (expense: IPropertyExpense) => {
       requestDelete({
-        description: `Delete ${formatExpenseCategoryLabel(expense.category)} expense? It will be hidden from reports.`,
+        description: `Delete "${expense.categoryName}" expense? It will be hidden from reports.`,
         target: expense,
         title: "Delete expense",
       });
@@ -434,9 +449,10 @@ export const PropertyExpensesPage = memo(() => {
       <Card>
         <CardContent className="space-y-4 p-4">
           <PropertyExpensesFilters
-            category={category}
+            categoryId={categoryId}
+            categoryTypes={categoryTypes}
             from={from}
-            onCategoryChange={(value) => setFilter("category", value)}
+            onCategoryIdChange={(value) => setFilter("categoryId", value)}
             onFromChange={(value) => setFilter("from", value)}
             onToChange={(value) => setFilter("to", value)}
             to={to}
@@ -459,6 +475,7 @@ export const PropertyExpensesPage = memo(() => {
       {deleteConfirmationDialog}
 
       <PropertyExpensesPageDialogs
+        categoryTypes={categoryTypes}
         createOpen={createOpen}
         editExpense={editExpense}
         importCsvOpen={importCsvOpen}

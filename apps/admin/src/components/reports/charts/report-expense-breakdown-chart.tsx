@@ -1,7 +1,6 @@
 import { memo, useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import { formatExpenseCategoryLabel } from "@/components/expenses/expense-form-options";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   type ChartConfig,
@@ -36,8 +35,8 @@ export const ReportExpenseBreakdownChart = memo(
           .sort((a, b) => b.amount - a.amount)
           .map((row) => ({
             amount: row.amount,
-            category: row.category,
-            label: formatExpenseCategoryLabel(row.category),
+            categoryId: row.categoryId,
+            label: row.name,
           })),
       [expenseByCategory]
     );

@@ -1,24 +1,26 @@
 import { describe, expect, test } from "bun:test";
 
-import { ExpenseCategory } from "@/packages/shared";
-
 import {
   mergeExtractedRowsWithCategories,
   parseExpenseCategoryAssignments,
 } from "./openai-expense-import-service";
 
-const ALLOWED_CATEGORIES = Object.values(ExpenseCategory);
+const CATEGORY_TYPES = [
+  { id: "uuid-sub", isAnnualAmount: false, name: "Subscription", propertyId: "prop-1", sortOrder: 0 },
+  { id: "uuid-internet", isAnnualAmount: false, name: "Internet", propertyId: "prop-1", sortOrder: 1 },
+  { id: "uuid-other", isAnnualAmount: false, name: "Other", propertyId: "prop-1", sortOrder: 99 },
+];
 
 describe("parseExpenseCategoryAssignments", () => {
   test("maps assignments and normalizes unknown categories to other", () => {
     const result = parseExpenseCategoryAssignments(
       JSON.stringify({
         assignments: [
-          { category: "subscription", rowIndex: 1 },
-          { category: "not_a_real_category", rowIndex: 2 },
+          { categoryName: "Subscription", rowIndex: 1 },
+          { categoryName: "not_a_real_category", rowIndex: 2 },
         ],
       }),
-      ALLOWED_CATEGORIES,
+      CATEGORY_TYPES,
       [1, 2]
     );
 
@@ -28,17 +30,17 @@ describe("parseExpenseCategoryAssignments", () => {
     }
 
     expect(result.assignments).toEqual([
-      { category: ExpenseCategory.SUBSCRIPTION, rowIndex: 1 },
-      { category: ExpenseCategory.OTHER, rowIndex: 2 },
+      { categoryName: "Subscription", rowIndex: 1 },
+      { categoryName: "Other", rowIndex: 2 },
     ]);
   });
 
   test("fills missing row indexes with other", () => {
     const result = parseExpenseCategoryAssignments(
       JSON.stringify({
-        assignments: [{ category: "internet", rowIndex: 1 }],
+        assignments: [{ categoryName: "Internet", rowIndex: 1 }],
       }),
-      ALLOWED_CATEGORIES,
+      CATEGORY_TYPES,
       [1, 2, 3]
     );
 
@@ -48,20 +50,20 @@ describe("parseExpenseCategoryAssignments", () => {
     }
 
     expect(result.assignments).toEqual([
-      { category: ExpenseCategory.INTERNET, rowIndex: 1 },
-      { category: ExpenseCategory.OTHER, rowIndex: 2 },
-      { category: ExpenseCategory.OTHER, rowIndex: 3 },
+      { categoryName: "Internet", rowIndex: 1 },
+      { categoryName: "Other", rowIndex: 2 },
+      { categoryName: "Other", rowIndex: 3 },
     ]);
   });
 
   test("rejects invalid JSON payloads", () => {
-    const result = parseExpenseCategoryAssignments("{ not-json", ALLOWED_CATEGORIES, [1]);
+    const result = parseExpenseCategoryAssignments("{ not-json", CATEGORY_TYPES, [1]);
     expect(result).toEqual({ error: "OpenAI returned invalid JSON" });
   });
 });
 
 describe("mergeExtractedRowsWithCategories", () => {
-  test("merges extracted rows with category assignments", () => {
+  test("merges extracted rows with category assignments by resolving names to IDs", () => {
     const merged = mergeExtractedRowsWithCategories(
       [
         {
@@ -72,13 +74,14 @@ describe("mergeExtractedRowsWithCategories", () => {
           sourceFileName: "chase.csv",
         },
       ],
-      [{ category: ExpenseCategory.SUBSCRIPTION, rowIndex: 3 }]
+      [{ categoryName: "Subscription", rowIndex: 3 }],
+      CATEGORY_TYPES
     );
 
     expect(merged).toEqual([
       {
         amount: 17.74,
-        category: ExpenseCategory.SUBSCRIPTION,
+        categoryId: "uuid-sub",
         description: "Amazon web services (Bills & Utilities)",
         expenseDate: "2026-07-02",
         rowIndex: 3,

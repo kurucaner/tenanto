@@ -2,6 +2,7 @@ import {
   type IAppConfig,
   type IProperty,
   type IPropertyExpense,
+  type IPropertyExpenseCategoryType,
   type IPropertyIncomeLine,
   type IPropertyIncomeLineType,
   type IPropertyInvite,
@@ -18,7 +19,6 @@ import {
   type IUser,
   type SupportCategory,
   type SupportRequestStatus,
-  type TExpenseCategory,
   toIso,
   type TPropertyInviteStatus,
   type TPropertyRole,
@@ -128,9 +128,19 @@ export const mapPropertyIncomeLineTypeRow = (
   sortOrder: Number(row.sort_order),
 });
 
+export const mapPropertyExpenseCategoryTypeRow = (
+  row: Record<string, unknown>
+): IPropertyExpenseCategoryType => ({
+  id: row.id as string,
+  isAnnualAmount: row.is_annual_amount as boolean,
+  name: row.name as string,
+  propertyId: row.property_id as string,
+  sortOrder: Number(row.sort_order),
+});
+
 export const mapPropertySettingsRow = (
   row: Record<string, unknown>
-): Omit<IPropertySettings, "incomeLineTypes" | "taxRates"> => ({
+): Omit<IPropertySettings, "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"> => ({
   airbnbCommissionRate: Number(row.airbnb_commission_rate),
   bookingCommissionRate: Number(row.booking_commission_rate),
   createdAt: (row.created_at as Date).toISOString(),
@@ -259,7 +269,9 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
 
 export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyExpense => ({
   amount: Number(row.amount),
-  category: row.category as TExpenseCategory,
+  categoryId: row.category_id as string,
+  categoryIsAnnualAmount: row.is_annual_amount as boolean,
+  categoryName: row.category_name as string,
   createdAt: (row.created_at as Date).toISOString(),
   deletedAt: toIso(row.deleted_at),
   description: (row.description as string) ?? null,

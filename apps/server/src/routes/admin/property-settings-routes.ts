@@ -1,9 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-types";
 import { propertyIncomeLineTypesDb } from "@/db/property-income-line-types";
 import { propertySettingsDb } from "@/db/property-settings";
 import {
   HttpStatus,
+  type IPropertyExpenseCategoryTypeInput,
   type IPropertyIncomeLineTypeInput,
   type IPropertyTaxRateInput,
   type IUpdatePropertySettingsBody,
@@ -13,7 +15,10 @@ import { parseUuidParam } from "./admin-query-utils";
 import { assertPropertyMemberAccess, assertPropertyStructureAccess } from "./property-route-access";
 
 const COMMISSION_FIELDS: Array<
-  Exclude<keyof IUpdatePropertySettingsBody, "incomeLineTypes" | "taxRates">
+  Exclude<
+    keyof IUpdatePropertySettingsBody,
+    "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
+  >
 > = [
   "airbnbCommissionRate",
   "bookingCommissionRate",
@@ -23,8 +28,10 @@ const COMMISSION_FIELDS: Array<
 
 const MAX_TAX_RATES = 20;
 const MAX_INCOME_LINE_TYPES = 20;
+const MAX_EXPENSE_CATEGORY_TYPES = 50;
 const MAX_TAX_NAME_LENGTH = 80;
 const MAX_INCOME_TYPE_NAME_LENGTH = 80;
+const MAX_EXPENSE_CATEGORY_NAME_LENGTH = 80;
 
 function isValidRate(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -68,9 +75,13 @@ function parseNamedSortableItem(
 
   const normalizedName = name.toLowerCase();
   if (seenNames.has(normalizedName)) {
+    const uniqueErrorMap: Record<string, string> = {
+      expenseCategoryTypes: "Expense category names must be unique",
+      incomeLineTypes: "Income type names must be unique",
+      taxRates: "Tax names must be unique",
+    };
     return {
-      error:
-        listLabel === "taxRates" ? "Tax names must be unique" : "Income type names must be unique",
+      error: uniqueErrorMap[listLabel] ?? "Names must be unique",
       ok: false,
     };
   }
@@ -178,6 +189,49 @@ function parseIncomeLineTypes(raw: unknown):
   return { incomeLineTypes, ok: true };
 }
 
+function parseExpenseCategoryTypes(raw: unknown):
+  | { error: string; expenseCategoryTypes: IPropertyExpenseCategoryTypeInput[]; ok: false }
+  | { expenseCategoryTypes: IPropertyExpenseCategoryTypeInput[]; ok: true } {
+  if (!Array.isArray(raw)) {
+    return {
+      error: "expenseCategoryTypes must be an array",
+      expenseCategoryTypes: [],
+      ok: false,
+    };
+  }
+  if (raw.length > MAX_EXPENSE_CATEGORY_TYPES) {
+    return {
+      error: `You can configure up to ${MAX_EXPENSE_CATEGORY_TYPES} expense categories`,
+      expenseCategoryTypes: [],
+      ok: false,
+    };
+  }
+
+  const expenseCategoryTypes: IPropertyExpenseCategoryTypeInput[] = [];
+  const seenNames = new Set<string>();
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const parsed = parseNamedSortableItem(
+      raw[index],
+      index,
+      "expenseCategoryTypes",
+      MAX_EXPENSE_CATEGORY_NAME_LENGTH,
+      seenNames
+    );
+    if (!parsed.ok) {
+      return { ...parsed, expenseCategoryTypes: [] };
+    }
+
+    const record = raw[index] as Record<string, unknown>;
+    const isAnnualAmount =
+      typeof record["isAnnualAmount"] === "boolean" ? record["isAnnualAmount"] : false;
+
+    expenseCategoryTypes.push({ ...parsed.item, isAnnualAmount });
+  }
+
+  return { expenseCategoryTypes, ok: true };
+}
+
 function parseUpdateSettingsBody(
   raw: unknown
 ): { body: IUpdatePropertySettingsBody; ok: true } | { error: string; ok: false } {
@@ -186,7 +240,12 @@ function parseUpdateSettingsBody(
   }
 
   const r = raw as Record<string, unknown>;
-  const allowedKeys = new Set<string>([...COMMISSION_FIELDS, "incomeLineTypes", "taxRates"]);
+  const allowedKeys = new Set<string>([
+    ...COMMISSION_FIELDS,
+    "expenseCategoryTypes",
+    "incomeLineTypes",
+    "taxRates",
+  ]);
   const unknownKeys = Object.keys(r).filter((key) => !allowedKeys.has(key));
   if (unknownKeys.length > 0) {
     return { error: `Unknown fields: ${unknownKeys.join(", ")}`, ok: false };
@@ -218,6 +277,14 @@ function parseUpdateSettingsBody(
     body.incomeLineTypes = parsedIncomeLineTypes.incomeLineTypes;
   }
 
+  if ("expenseCategoryTypes" in r) {
+    const parsedExpenseCategoryTypes = parseExpenseCategoryTypes(r["expenseCategoryTypes"]);
+    if (!parsedExpenseCategoryTypes.ok) {
+      return { error: parsedExpenseCategoryTypes.error, ok: false };
+    }
+    body.expenseCategoryTypes = parsedExpenseCategoryTypes.expenseCategoryTypes;
+  }
+
   if (Object.keys(body).length === 0) {
     return { error: "At least one settings field is required", ok: false };
   }
@@ -238,6 +305,27 @@ async function validateIncomeLineTypeRemoval(
     if (count > 0) {
       return {
         error: `Cannot remove "${type.name}" because ${count} income line(s) still use it`,
+        ok: false,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+async function validateExpenseCategoryTypeRemoval(
+  propertyId: string,
+  incoming: IPropertyExpenseCategoryTypeInput[]
+): Promise<{ error: string; ok: false } | { ok: true }> {
+  const existing = await propertyExpenseCategoryTypesDb.findByProperty(propertyId);
+  const incomingIds = new Set(incoming.flatMap((input) => (input.id != null ? [input.id] : [])));
+  const removed = existing.filter((type) => !incomingIds.has(type.id));
+
+  for (const type of removed) {
+    const count = await propertyExpenseCategoryTypesDb.countUsage(type.id);
+    if (count > 0) {
+      return {
+        error: `Cannot remove "${type.name}" because ${count} expense(s) still use it`,
         ok: false,
       };
     }
@@ -312,6 +400,16 @@ export const propertySettingsRoutes = async (server: FastifyInstance): Promise<v
         const removalCheck = await validateIncomeLineTypeRemoval(
           propertyId,
           parsed.body.incomeLineTypes
+        );
+        if (!removalCheck.ok) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: removalCheck.error });
+        }
+      }
+
+      if (parsed.body.expenseCategoryTypes != null) {
+        const removalCheck = await validateExpenseCategoryTypeRemoval(
+          propertyId,
+          parsed.body.expenseCategoryTypes
         );
         if (!removalCheck.ok) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: removalCheck.error });

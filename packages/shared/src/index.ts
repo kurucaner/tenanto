@@ -117,6 +117,17 @@ export {
   RESORT_TAX_NAME,
 } from "./property-settings-types";
 
+// Property Income Line Type Config
+export {
+  DEFAULT_EXTRA_CLEANING_TYPE_NAME,
+  DEFAULT_PROPERTY_INCOME_LINE_TYPES,
+  DEFAULT_RENT_TYPE_NAME,
+  type IPropertyIncomeLineType,
+  type IPropertyIncomeLineTypeInput,
+  resolveDefaultIncomeLineTypeId,
+  resolveRentIncomeLineTypeId,
+} from "./property-income-line-type-config";
+
 // Property Reservation Types
 export {
   type ICreatePropertyReservationBody,
@@ -165,17 +176,6 @@ export {
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
 
-// Property Income Line Type Config
-export {
-  DEFAULT_EXTRA_CLEANING_TYPE_NAME,
-  DEFAULT_PROPERTY_INCOME_LINE_TYPES,
-  DEFAULT_RENT_TYPE_NAME,
-  type IPropertyIncomeLineType,
-  type IPropertyIncomeLineTypeInput,
-  resolveDefaultIncomeLineTypeId,
-  resolveRentIncomeLineTypeId,
-} from "./property-income-line-type-config";
-
 // Property Income Line Types
 export {
   type ICreatePropertyIncomeLineBody,
@@ -189,14 +189,19 @@ export {
   type TPropertyIncomeEntry,
 } from "./property-income-line-types";
 
+// Property Expense Category Type Config
+export {
+  DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES,
+  type IPropertyExpenseCategoryType,
+  type IPropertyExpenseCategoryTypeInput,
+} from "./property-expense-category-type-config";
+
 // Property Expense Types
 export {
-  EXPENSE_CATEGORY_LABELS,
   EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
   EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_ROWS_TOTAL,
-  formatExpenseCategoryLabelsForPrompt,
   type IExpenseCsvExtractedRow,
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
@@ -207,16 +212,11 @@ export {
 } from "./property-expense-import-types";
 export { EXPENSES_LIST_LIMIT, EXPENSES_LIST_MAX_LIMIT } from "./property-expense-list-constants";
 export {
-  ExpenseCategory,
-  getExpenseCategoryMeta,
   type ICreatePropertyExpenseBody,
-  type IExpenseCategoryMeta,
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
   type IUpdatePropertyExpenseBody,
-  type TExpenseCategory,
-  validateExpenseCategoryFields,
 } from "./property-expense-types";
 
 // Home Financial Overview Types

@@ -1,21 +1,18 @@
 import { memo } from "react";
 
-import {
-  EXPENSE_CATEGORY_OPTIONS,
-  expenseSelectClassName,
-  getExpenseCategoryHint,
-} from "@/components/expenses/expense-form-options";
+import { expenseSelectClassName } from "@/components/expenses/expense-form-options";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
-import { getExpenseCategoryMeta, type TExpenseCategory } from "@/packages/shared";
+import { type IPropertyExpenseCategoryType } from "@/packages/shared";
 
 interface ExpenseFormFieldsProps {
   amount: string;
   amountError?: string;
-  category: TExpenseCategory;
+  categoryId: string;
+  categoryTypes: IPropertyExpenseCategoryType[];
   description: string;
   descriptionError?: string;
   expenseDate: string;
@@ -24,7 +21,7 @@ interface ExpenseFormFieldsProps {
   idPrefix: string;
   maxDate?: string;
   onAmountChange: (value: string) => void;
-  onCategoryChange: (value: TExpenseCategory) => void;
+  onCategoryChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onExpenseDateChange: (value: string) => void;
   onTaxFreeChange: (value: boolean) => void;
@@ -35,7 +32,8 @@ export const ExpenseFormFields = memo(
   ({
     amount,
     amountError,
-    category,
+    categoryId,
+    categoryTypes,
     description,
     descriptionError,
     expenseDate,
@@ -50,8 +48,7 @@ export const ExpenseFormFields = memo(
     onTaxFreeChange,
     taxFree,
   }: ExpenseFormFieldsProps) => {
-    const meta = getExpenseCategoryMeta(category);
-    const hint = getExpenseCategoryHint(category);
+    const selectedCategory = categoryTypes.find((t) => t.id === categoryId);
 
     return (
       <>
@@ -60,12 +57,12 @@ export const ExpenseFormFields = memo(
           <select
             className={expenseSelectClassName}
             id={`${idPrefix}-category`}
-            onChange={(e) => onCategoryChange(e.target.value as TExpenseCategory)}
-            value={category}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            value={categoryId}
           >
-            {EXPENSE_CATEGORY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
+            {categoryTypes.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
               </option>
             ))}
           </select>
@@ -103,34 +100,19 @@ export const ExpenseFormFields = memo(
           </div>
         </div>
 
-        {meta.requiresDescription ? (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-description`}>Description</Label>
-            <Input
-              id={`${idPrefix}-description`}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-              required
-              value={description}
-            />
-            {descriptionError ? (
-              <p className="text-xs text-destructive">{descriptionError}</p>
-            ) : null}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel htmlFor={`${idPrefix}-description`} optional>
-              Description
-            </FieldLabel>
-            <Input
-              id={`${idPrefix}-description`}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-              value={description}
-            />
-            {descriptionError ? (
-              <p className="text-xs text-destructive">{descriptionError}</p>
-            ) : null}
-          </div>
-        )}
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor={`${idPrefix}-description`} optional>
+            Description
+          </FieldLabel>
+          <Input
+            id={`${idPrefix}-description`}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            value={description}
+          />
+          {descriptionError ? (
+            <p className="text-xs text-destructive">{descriptionError}</p>
+          ) : null}
+        </div>
 
         <div className="flex items-center gap-2">
           <Checkbox
@@ -141,7 +123,11 @@ export const ExpenseFormFields = memo(
           <Label htmlFor={`${idPrefix}-tax-free`}>Tax-free expense</Label>
         </div>
 
-        {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+        {selectedCategory?.isAnnualAmount ? (
+          <p className="text-muted-foreground text-xs">
+            This amount will be spread evenly across all months in reports.
+          </p>
+        ) : null}
       </>
     );
   }

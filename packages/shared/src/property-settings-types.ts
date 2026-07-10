@@ -30,6 +30,10 @@ export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "r
 ];
 
 import type {
+  IPropertyExpenseCategoryType,
+  IPropertyExpenseCategoryTypeInput,
+} from "./property-expense-category-type-config";
+import type {
   IPropertyIncomeLineType,
   IPropertyIncomeLineTypeInput,
 } from "./property-income-line-type-config";
@@ -40,6 +44,7 @@ export interface IPropertySettings {
   createdAt: string;
   directCommissionRate: number;
   expediaCommissionRate: number;
+  expenseCategoryTypes: IPropertyExpenseCategoryType[];
   incomeLineTypes: IPropertyIncomeLineType[];
   propertyId: string;
   taxRates: IPropertyTaxRate[];
@@ -65,6 +70,7 @@ export interface IUpdatePropertySettingsBody {
   bookingCommissionRate?: number;
   directCommissionRate?: number;
   expediaCommissionRate?: number;
+  expenseCategoryTypes?: IPropertyExpenseCategoryTypeInput[];
   incomeLineTypes?: IPropertyIncomeLineTypeInput[];
   taxRates?: IPropertyTaxRateInput[];
 }

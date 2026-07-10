@@ -10,32 +10,41 @@ import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { mapPropertyExpenseRow } from "./mappers";
 import { pool } from "./pool";
 
-const EXPENSE_DATE_COALESCE = "COALESCE(expense_date, DATE '0001-01-01')";
+const EXPENSE_DATE_COALESCE = "COALESCE(pe.expense_date, DATE '0001-01-01')";
+
+const EXPENSE_SELECT = `
+  SELECT
+    pe.*,
+    pect.name        AS category_name,
+    pect.is_annual_amount
+  FROM property_expenses pe
+  JOIN property_expense_category_types pect ON pe.category_id = pect.id
+`;
 
 function buildPropertyExpenseListConditions(
   propertyId: string,
-  filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to">,
+  filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
   includeDeleted: boolean
 ): { conditions: string[]; values: unknown[] } {
-  const conditions = ["property_id = $1"];
+  const conditions = ["pe.property_id = $1"];
   const values: unknown[] = [propertyId];
   let p = 2;
 
   if (!includeDeleted) {
-    conditions.push("is_deleted = false");
+    conditions.push("pe.is_deleted = false");
   }
 
   if (filters.from) {
-    conditions.push(`expense_date >= $${p++}`);
+    conditions.push(`pe.expense_date >= $${p++}`);
     values.push(filters.from);
   }
   if (filters.to) {
-    conditions.push(`expense_date <= $${p++}`);
+    conditions.push(`pe.expense_date <= $${p++}`);
     values.push(filters.to);
   }
-  if (filters.category) {
-    conditions.push(`category = $${p++}::property_expense_category`);
-    values.push(filters.category);
+  if (filters.categoryId) {
+    conditions.push(`pe.category_id = $${p++}::uuid`);
+    values.push(filters.categoryId);
   }
 
   return { conditions, values };
@@ -59,30 +68,27 @@ export const propertyExpensesDb = {
     propertyId: string,
     input: {
       amount: number;
-      category: ICreatePropertyExpenseBody["category"];
+      categoryId: ICreatePropertyExpenseBody["categoryId"];
       description: string | null;
       expenseDate: string | null;
       taxFree: boolean;
     }
   ): Promise<IPropertyExpense> {
     const result = await pool.query(
-      `INSERT INTO property_expenses (
-         property_id,
-         category,
-         amount,
-         expense_date,
-         description,
-         tax_free
-       ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6)
-       RETURNING *`,
-      [
-        propertyId,
-        input.category,
-        input.amount,
-        input.expenseDate,
-        input.description,
-        input.taxFree,
-      ]
+      `WITH inserted AS (
+         INSERT INTO property_expenses
+           (property_id, category_id, amount, expense_date, description, tax_free)
+         VALUES ($1, $2::uuid, $3, $4, $5, $6)
+         RETURNING id
+       )
+       SELECT
+         pe.*,
+         pect.name        AS category_name,
+         pect.is_annual_amount
+       FROM property_expenses pe
+       JOIN property_expense_category_types pect ON pe.category_id = pect.id
+       JOIN inserted i ON pe.id = i.id`,
+      [propertyId, input.categoryId, input.amount, input.expenseDate, input.description, input.taxFree]
     );
     return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
   },
@@ -91,7 +97,7 @@ export const propertyExpensesDb = {
     propertyId: string,
     inputs: Array<{
       amount: number;
-      category: ICreatePropertyExpenseBody["category"];
+      categoryId: ICreatePropertyExpenseBody["categoryId"];
       description: string | null;
       expenseDate: string | null;
       taxFree: boolean;
@@ -107,26 +113,26 @@ export const propertyExpensesDb = {
       const expenses: IPropertyExpense[] = [];
 
       for (const input of inputs) {
-        const result = await client.query(
-          `INSERT INTO property_expenses (
-             property_id,
-             category,
-             amount,
-             expense_date,
-             description,
-             tax_free
-           ) VALUES ($1, $2::property_expense_category, $3, $4, $5, $6)
-           RETURNING *`,
+        const insertResult = await client.query(
+          `INSERT INTO property_expenses
+             (property_id, category_id, amount, expense_date, description, tax_free)
+           VALUES ($1, $2::uuid, $3, $4, $5, $6)
+           RETURNING id`,
           [
             propertyId,
-            input.category,
+            input.categoryId,
             input.amount,
             input.expenseDate,
             input.description,
             input.taxFree,
           ]
         );
-        expenses.push(mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>));
+        const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
+        const selectResult = await client.query(
+          `${EXPENSE_SELECT} WHERE pe.id = $1`,
+          [id]
+        );
+        expenses.push(mapPropertyExpenseRow(selectResult.rows[0] as Record<string, unknown>));
       }
 
       await client.query("COMMIT");
@@ -140,7 +146,7 @@ export const propertyExpensesDb = {
   },
 
   async findById(id: string): Promise<IPropertyExpense | null> {
-    const result = await pool.query(`SELECT * FROM property_expenses WHERE id = $1`, [id]);
+    const result = await pool.query(`${EXPENSE_SELECT} WHERE pe.id = $1`, [id]);
     if (result.rows.length === 0) return null;
     return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
   },
@@ -157,9 +163,9 @@ export const propertyExpensesDb = {
     );
 
     const result = await pool.query(
-      `SELECT * FROM property_expenses
+      `${EXPENSE_SELECT}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY expense_date DESC NULLS LAST, created_at DESC`,
+       ORDER BY pe.expense_date DESC NULLS LAST, pe.created_at DESC`,
       values
     );
 
@@ -168,7 +174,7 @@ export const propertyExpensesDb = {
 
   async listPaginatedByProperty(
     propertyId: string,
-    filters: Pick<IPropertyExpensesListQuery, "category" | "from" | "to">,
+    filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
     options: { cursor?: string; includeDeleted?: boolean; limit: number }
   ): Promise<{ expenses: IPropertyExpense[]; nextCursor: string | null }> {
     const includeDeleted = options.includeDeleted ?? false;
@@ -183,7 +189,7 @@ export const propertyExpensesDb = {
       const decoded = decodeExpenseKeysetCursor(options.cursor);
       const cursorCoalescedDate = decoded.expenseDate ?? "0001-01-01";
       conditions.push(
-        `(${EXPENSE_DATE_COALESCE}, created_at, id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
+        `(${EXPENSE_DATE_COALESCE}, pe.created_at, pe.id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
       );
       values.push(cursorCoalescedDate, decoded.createdAt, decoded.id);
     }
@@ -192,9 +198,9 @@ export const propertyExpensesDb = {
     values.push(options.limit + 1);
 
     const result = await pool.query(
-      `SELECT * FROM property_expenses
+      `${EXPENSE_SELECT}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY ${EXPENSE_DATE_COALESCE} DESC, created_at DESC, id DESC
+       ORDER BY ${EXPENSE_DATE_COALESCE} DESC, pe.created_at DESC, pe.id DESC
        LIMIT $${limitParam}`,
       values
     );
@@ -235,9 +241,9 @@ export const propertyExpensesDb = {
     const values: unknown[] = [];
     let param = 1;
 
-    if (input.category !== undefined) {
-      setClauses.push(`category = $${param++}::property_expense_category`);
-      values.push(input.category);
+    if (input.categoryId !== undefined) {
+      setClauses.push(`category_id = $${param++}::uuid`);
+      values.push(input.categoryId);
     }
     if (input.amount !== undefined) {
       setClauses.push(`amount = $${param++}`);
@@ -261,11 +267,11 @@ export const propertyExpensesDb = {
     }
 
     values.push(id);
-    const result = await pool.query(
-      `UPDATE property_expenses SET ${setClauses.join(", ")} WHERE id = $${param} RETURNING *`,
+    const updateResult = await pool.query(
+      `UPDATE property_expenses SET ${setClauses.join(", ")} WHERE id = $${param} RETURNING id`,
       values
     );
-    if (result.rows.length === 0) return null;
-    return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
+    if (updateResult.rows.length === 0) return null;
+    return propertyExpensesDb.findById(id);
   },
 };

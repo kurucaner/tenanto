@@ -19,49 +19,27 @@ import { expensesApi } from "@/lib/api-client";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate, isDateOnOrBefore } from "@/lib/reservation-date-utils";
-import {
-  ExpenseCategory,
-  type TExpenseCategory,
-  validateExpenseCategoryFields,
-} from "@/packages/shared";
+import { type IPropertyExpenseCategoryType } from "@/packages/shared";
 
-const EXPENSE_CATEGORY_VALUES = Object.values(ExpenseCategory) as [
-  TExpenseCategory,
-  ...TExpenseCategory[],
-];
-
-const createExpenseSchema = z
-  .object({
-    amount: requiredPositiveMoneyField("Amount"),
-    category: z.enum(EXPENSE_CATEGORY_VALUES),
-    description: z.string(),
-    expenseDate: z
-      .string()
-      .min(1, "Date is required")
-      .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
-        message: "Date cannot be in the future",
-      }),
-    taxFree: z.boolean(),
-  })
-  .superRefine((values, ctx) => {
-    const categoryError = validateExpenseCategoryFields(values.category, {
-      description: values.description,
-    });
-    if (categoryError) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Description is required for this category",
-        path: ["description"],
-      });
-    }
-  });
+const createExpenseSchema = z.object({
+  amount: requiredPositiveMoneyField("Amount"),
+  categoryId: z.string().min(1, "Category is required"),
+  description: z.string(),
+  expenseDate: z
+    .string()
+    .min(1, "Date is required")
+    .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
+      message: "Date cannot be in the future",
+    }),
+  taxFree: z.boolean(),
+});
 
 type TCreateExpenseFormValues = z.infer<typeof createExpenseSchema>;
 
-function getDefaultValues(): TCreateExpenseFormValues {
+function getDefaultValues(firstCategoryId: string): TCreateExpenseFormValues {
   return {
     amount: "",
-    category: ExpenseCategory.ELECTRICITY,
+    categoryId: firstCategoryId,
     description: "",
     expenseDate: getTodayLocalIsoDate(),
     taxFree: false,
@@ -69,16 +47,18 @@ function getDefaultValues(): TCreateExpenseFormValues {
 }
 
 interface CreateExpenseDialogProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
 }
 
 export const CreateExpenseDialog = memo(
-  ({ onOpenChange, open, propertyId }: CreateExpenseDialogProps) => {
+  ({ categoryTypes, onOpenChange, open, propertyId }: CreateExpenseDialogProps) => {
     const queryClient = useQueryClient();
+    const firstCategoryId = categoryTypes[0]?.id ?? "";
     const form = useForm<TCreateExpenseFormValues>({
-      defaultValues: getDefaultValues(),
+      defaultValues: getDefaultValues(firstCategoryId),
       resolver: zodResolver(createExpenseSchema),
     });
 
@@ -86,7 +66,7 @@ export const CreateExpenseDialog = memo(
       mutationFn: (values: TCreateExpenseFormValues) =>
         expensesApi.create(propertyId, {
           amount: Number(values.amount) || 0,
-          category: values.category,
+          categoryId: values.categoryId,
           description: values.description.trim() || undefined,
           expenseDate: values.expenseDate,
           taxFree: values.taxFree,
@@ -104,11 +84,11 @@ export const CreateExpenseDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(getDefaultValues());
+          form.reset(getDefaultValues(firstCategoryId));
         }
         onOpenChange(nextOpen);
       },
-      [form, onOpenChange]
+      [firstCategoryId, form, onOpenChange]
     );
 
     const onSubmit = form.handleSubmit((values) => {
@@ -117,7 +97,7 @@ export const CreateExpenseDialog = memo(
 
     const { errors, isSubmitting } = form.formState;
     const maxExpenseDate = getTodayLocalIsoDate();
-    const { amount, category, description, expenseDate, taxFree } = form.watch();
+    const { amount, categoryId, description, expenseDate, taxFree } = form.watch();
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -132,7 +112,8 @@ export const CreateExpenseDialog = memo(
               <ExpenseFormFields
                 amount={amount}
                 amountError={errors.amount?.message}
-                category={category}
+                categoryId={categoryId}
+                categoryTypes={categoryTypes}
                 description={description}
                 descriptionError={errors.description?.message}
                 expenseDate={expenseDate}
@@ -141,7 +122,7 @@ export const CreateExpenseDialog = memo(
                 idPrefix="create-expense"
                 maxDate={maxExpenseDate}
                 onAmountChange={(value) => form.setValue("amount", value)}
-                onCategoryChange={(value) => form.setValue("category", value)}
+                onCategoryChange={(value) => form.setValue("categoryId", value)}
                 onDescriptionChange={(value) => form.setValue("description", value)}
                 onExpenseDateChange={(value) => form.setValue("expenseDate", value)}
                 onTaxFreeChange={(value) => form.setValue("taxFree", value)}
