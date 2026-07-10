@@ -1,13 +1,6 @@
-const ITEMS = [
-  "Properties",
-  "Units",
-  "Leases",
-  "Reservations",
-  "Income",
-  "Expenses",
-  "Reports",
-  "Team Access",
-] as const;
+import { MARQUEE_ITEMS } from "@/lib/marketing-content";
+
+const ITEMS = MARQUEE_ITEMS;
 
 export function Marquee() {
   const row = [...ITEMS, ...ITEMS];

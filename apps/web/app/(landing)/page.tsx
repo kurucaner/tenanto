@@ -1,37 +1,34 @@
-import { ComplianceHomePage } from "@/components/landing/compliance-home-page";
+import { LandingPage } from "@/components/landing/landing-page";
 import { APP_NAME } from "@/packages/shared";
 
-const APP_DESCRIPTION =
-  "Property management and accounting web application for rental operators.";
-
 export const metadata = {
-  description: `${APP_NAME} is a ${APP_DESCRIPTION} Sign in with Google or email to manage properties, leases, reservations, income, expenses, and financial reports.`,
-  title: `${APP_NAME} — Property Management Application`,
+  description: `${APP_NAME} — property accounting for short-term and long-term rental operators. Track stays, leases, income, expenses, and portfolio reports.`,
+  title: `${APP_NAME} — Property accounting, reimagined`,
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  applicationCategory: "BusinessApplication",
+  description: metadata.description,
+  name: APP_NAME,
+  offers: {
+    "@type": "Offer",
+    description: "14-day free pilot",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  operatingSystem: "Web",
 };
 
 export default function Home() {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    applicationCategory: "BusinessApplication",
-    description: APP_DESCRIPTION,
-    name: APP_NAME,
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-    },
-    operatingSystem: "Web",
-    url: "https://propertyos.app",
-  };
-
   return (
     <>
       <script
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         type="application/ld+json"
       />
-      <ComplianceHomePage />
+      <LandingPage />
     </>
   );
 }

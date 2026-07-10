@@ -4,25 +4,26 @@ import { motion, useScroll, useTransform } from "motion/react";
 import { useRef } from "react";
 
 import { Reveal } from "@/components/landing/reveal";
+import { StatusBadge } from "@/components/landing/status-badge";
 import { APP_NAME } from "@/packages/shared";
 
 const QUOTES = [
   {
-    name: "Maya Chen",
-    quote: `We cut vacancy turnaround from nine days to two. ${APP_NAME} feels less like software and more like an extra ops team.`,
-    role: "COO, Brightline Residential — 4,200 units",
+    name: "Pilot operator",
+    quote: `We replaced three spreadsheets with ${APP_NAME}. Channel commissions and taxes finally match what Airbnb sends us.`,
+    role: "STR operator — 12 units, Florida",
   },
   {
-    name: "Derrick Alvarez",
+    name: "Pilot operator",
     quote:
-      "Our residents actually thank us for the app. I have managed buildings for 20 years and that has never happened.",
-    role: "Regional Director, Cornerstone Living",
+      "Month-end close went from a week of manual work to an afternoon. The portfolio CSV export alone pays for it.",
+    role: "Portfolio manager — mixed STR + LTR",
   },
   {
-    name: "Priya Natarajan",
+    name: "Pilot operator",
     quote:
-      "Month-end close went from a week of spreadsheets to a single afternoon. The ledger sync alone pays for it.",
-    role: "CFO, Harbor & Vine Properties",
+      "Our accountant gets clean reports with tax breakdowns per line. No more back-and-forth about ADR or occupancy.",
+    role: "Owner-operator — 6 properties",
   },
 ] as const;
 
@@ -47,18 +48,23 @@ export function Testimonials() {
       <div className="relative mx-auto max-w-6xl px-6">
         <Reveal className="mb-16 text-center">
           <p className="mb-4 text-ember text-xs font-medium tracking-[0.3em] uppercase">
-            Loved by operators
+            Early operators
           </p>
           <h2 className="font-display text-4xl font-bold tracking-tight md:text-6xl">
-            Word travels between buildings.
+            Built with operators in the pilot.
           </h2>
         </Reveal>
 
         <div className="grid gap-6 md:grid-cols-3">
           {QUOTES.map((quote, i) => (
-            <Reveal delay={i * 0.12} key={quote.name}>
+            <Reveal delay={i * 0.12} key={quote.quote}>
               <figure className="glass flex h-full flex-col justify-between rounded-2xl p-8 transition-transform duration-500 hover:-translate-y-2">
-                <blockquote className="text-mist/80">&ldquo;{quote.quote}&rdquo;</blockquote>
+                <div>
+                  <StatusBadge variant="shipped" />
+                  <blockquote className="mt-4 text-mist/80">
+                    &ldquo;{quote.quote}&rdquo;
+                  </blockquote>
+                </div>
                 <figcaption className="mt-8">
                   <p className="font-display font-semibold">{quote.name}</p>
                   <p className="mt-1 text-mist/45 text-sm">{quote.role}</p>

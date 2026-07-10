@@ -4,20 +4,20 @@ import { animate, useInView } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 import { Reveal } from "@/components/landing/reveal";
+import { CAPABILITY_STATS } from "@/lib/marketing-content";
 
 type Stat = {
-  value: number
-  suffix: string
-  decimals?: number
-  label: string
-}
+  decimals?: number;
+  label: string;
+  suffix: string;
+  value: number;
+};
 
-const STATS: Stat[] = [
-  { value: 128000, suffix: '+', label: 'Units under management' },
-  { value: 99.1, suffix: '%', decimals: 1, label: 'On-time rent collection' },
-  { value: 4.9, suffix: '★', decimals: 1, label: 'Resident app rating' },
-  { value: 31, suffix: 'hrs', label: 'Saved per manager, weekly' },
-]
+const STATS: Stat[] = CAPABILITY_STATS.map((stat) => ({
+  label: stat.label,
+  suffix: stat.suffix,
+  value: stat.value,
+}));
 
 function Counter({ value, suffix, decimals = 0 }: Stat) {
   const ref = useRef<HTMLSpanElement>(null)
