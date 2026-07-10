@@ -1,5 +1,4 @@
-import { AppPurposeSection } from "@/components/landing/app-purpose-section";
-import { LandingPage } from "@/components/landing/landing-page";
+import { ComplianceHomePage } from "@/components/landing/compliance-home-page";
 import { APP_NAME } from "@/packages/shared";
 
 const APP_DESCRIPTION =
@@ -32,7 +31,7 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         type="application/ld+json"
       />
-      <LandingPage purposeSection={<AppPurposeSection />} />
+      <ComplianceHomePage />
     </>
   );
 }

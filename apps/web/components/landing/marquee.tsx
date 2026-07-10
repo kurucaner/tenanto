@@ -1,14 +1,12 @@
 const ITEMS = [
-  "Leasing",
-  "Maintenance",
-  "Payments",
-  "Amenities",
-  "Access Control",
-  "Resident App",
-  "Accounting",
-  "Inspections",
-  "Vendor Network",
-  "Smart Utilities",
+  "Properties",
+  "Units",
+  "Leases",
+  "Reservations",
+  "Income",
+  "Expenses",
+  "Reports",
+  "Team Access",
 ] as const;
 
 export function Marquee() {

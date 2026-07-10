@@ -8,7 +8,7 @@ import { useState } from "react";
 import { APP_NAME } from "@/packages/shared";
 
 const LINKS = [
-  { href: "#about", label: "About" },
+  { href: "/", label: "About" },
   { href: "#platform", label: "Platform" },
   { href: "#features", label: "Features" },
   { href: "/privacy-policy", label: "Privacy" },
@@ -34,7 +34,7 @@ export function LandingNav() {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link className="flex items-center gap-2.5 font-display text-lg font-bold" href="/">
+        <Link className="flex items-center gap-2.5 font-display text-lg font-bold" href="/welcome">
           <Image
             alt={`${APP_NAME} logo`}
             className="h-9 w-9 rounded-xl"

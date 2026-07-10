@@ -3,36 +3,34 @@
 import { motion, useScroll, useTransform } from "motion/react";
 import { useLayoutEffect, useRef, useState } from "react";
 
-import { APP_NAME } from "@/packages/shared";
-
 const PANELS = [
   {
     accent: "from-ember/25",
-    body: "AI-screened applications, instant background checks and e-signature leases. Vacancies close before the paint dries.",
-    icon: "🗝️",
-    kicker: "01 — Leasing",
-    title: "From listing to lease in 48 hours.",
+    body: "Add properties and units, then invite owners, managers, and accountants with role-based access.",
+    icon: "🏠",
+    kicker: "01 — Portfolio",
+    title: "Organize every property in one workspace.",
   },
   {
     accent: "from-glow/25",
-    body: `Residents snap a photo; ${APP_NAME} triages, matches a vetted vendor and schedules the visit. You just watch it resolve.`,
-    icon: "🔧",
-    kicker: "02 — Maintenance",
-    title: "Tickets that fix themselves.",
+    body: "Track leases and reservations alongside the income and expenses tied to each unit.",
+    icon: "📋",
+    kicker: "02 — Operations",
+    title: "Record leases, reservations, and revenue.",
   },
   {
     accent: "from-mint/25",
-    body: "Autopay, flexible split-pay and instant reconciliation to your ledger. 99.1% on-time collection across our network.",
+    body: "Capture operating costs and extra income lines with the tax and commission context you need.",
     icon: "💳",
-    kicker: "03 — Payments",
-    title: "Rent that arrives on time.",
+    kicker: "03 — Accounting",
+    title: "Keep property finances in one ledger.",
   },
   {
     accent: "from-ember/25",
-    body: "Amenity booking, package alerts and neighborhood feeds in one resident app rated 4.9 on the App Store.",
-    icon: "🏙️",
-    kicker: "04 — Community",
-    title: "Buildings people love living in.",
+    body: "Review per-property and portfolio reports to understand performance across your rentals.",
+    icon: "📊",
+    kicker: "04 — Reporting",
+    title: "See portfolio performance clearly.",
   },
 ] as const;
 
