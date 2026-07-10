@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "motion/react";
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 import { APP_NAME } from "@/packages/shared";
@@ -250,8 +251,19 @@ export function Hero() {
           transition={{ duration: 0.8, delay: 0.7, ease: 'easeOut' }}
           className="mt-8 max-w-xl text-base text-mist/60 md:text-lg"
         >
-          {APP_NAME} unifies leasing, maintenance, payments and resident life into
-          one living dashboard — for portfolios of 10 doors or 10,000.
+          {APP_NAME} helps rental operators track properties, leases, reservations, income,
+          expenses, and portfolio financial reports in one admin platform.
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
+          className="mt-4 text-sm text-mist/45"
+        >
+          <Link className="text-ember/90 transition-colors hover:text-ember" href="/privacy-policy">
+            Privacy Policy
+          </Link>
         </motion.p>
 
         <motion.div

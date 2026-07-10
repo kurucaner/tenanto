@@ -1,5 +1,7 @@
 "use client";
 
+import { type ReactNode } from "react";
+
 import { CTA } from "@/components/landing/cta";
 import { DashboardShowcase } from "@/components/landing/dashboard-showcase";
 import { LandingFooter } from "@/components/landing/footer";
@@ -11,7 +13,11 @@ import { Stats } from "@/components/landing/stats";
 import { Testimonials } from "@/components/landing/testimonials";
 import { useLenis } from "@/hooks/use-lenis";
 
-export function LandingPage() {
+type LandingPageProps = Readonly<{
+  purposeSection?: ReactNode;
+}>;
+
+export function LandingPage({ purposeSection }: LandingPageProps) {
   useLenis();
 
   return (
@@ -19,6 +25,7 @@ export function LandingPage() {
       <LandingNav />
       <main>
         <Hero />
+        {purposeSection}
         <Marquee />
         <DashboardShowcase />
         <HorizontalStory />
