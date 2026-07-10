@@ -184,13 +184,7 @@ const CreateIncomeLineDialogForm = memo(
       <form onSubmit={onSubmit}>
         <DialogHeader>
           <DialogTitle>{isRentRecording ? "Record Rent" : "Add Other Income"}</DialogTitle>
-          <DialogDescription>
-            {lockedLease
-              ? `Record rent for ${lockedLease.guestName}'s lease.`
-              : lockedStay
-                ? `Add income linked to ${lockedStay.guestName}'s stay.`
-                : "Record cleaning, extra services, or other non-stay revenue."}
-          </DialogDescription>
+          <DialogDescription>{getDialogDescription(lockedLease, lockedStay)}</DialogDescription>
         </DialogHeader>
 
         <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
@@ -314,13 +308,7 @@ const CreateIncomeLineDialogForm = memo(
             Cancel
           </Button>
           <Button disabled={mutation.isPending || isSubmitting} type="submit">
-            {mutation.isPending
-              ? isRentRecording
-                ? "Recording…"
-                : "Creating…"
-              : isRentRecording
-                ? "Record Rent"
-                : "Add Other Income"}
+            {getSubmitLabel(mutation.isPending, isRentRecording)}
           </Button>
         </DialogFooter>
       </form>
@@ -328,6 +316,20 @@ const CreateIncomeLineDialogForm = memo(
   }
 );
 CreateIncomeLineDialogForm.displayName = "CreateIncomeLineDialogForm";
+
+function getSubmitLabel(isPending: boolean, isRentRecording: boolean): string {
+  if (isPending) return isRentRecording ? "Recording…" : "Creating…";
+  return isRentRecording ? "Record Rent" : "Add Other Income";
+}
+
+function getDialogDescription(
+  lockedLease: IPropertyLongStay | null | undefined,
+  lockedStay: IPropertyReservation | null | undefined
+): string {
+  if (lockedLease) return `Record rent for ${lockedLease.guestName}'s lease.`;
+  if (lockedStay) return `Add income linked to ${lockedStay.guestName}'s stay.`;
+  return "Record cleaning, extra services, or other non-stay revenue.";
+}
 
 export const CreateIncomeLineDialog = memo(
   ({

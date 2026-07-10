@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import type { IProperty } from "@/packages/shared";
+import type { IProperty, IPropertyDetail } from "@/packages/shared";
 
 interface EditPropertyDialogProps {
   onOpenChange: (open: boolean) => void;
