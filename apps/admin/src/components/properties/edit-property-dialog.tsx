@@ -56,12 +56,10 @@ export const EditPropertyDialog = memo(
       onSuccess: (data) => {
         toast.success("Property updated");
         queryClient.invalidateQueries({ queryKey: ["properties"] });
-        queryClient.invalidateQueries({
-          queryKey: adminQueryKeys.propertyDetail(property.id),
-        });
-        queryClient.setQueryData(adminQueryKeys.propertyDetail(property.id), {
-          property: { ...data.property, members: [] },
-        });
+        queryClient.setQueryData<{ property: IPropertyDetail }>(
+          adminQueryKeys.propertyDetail(property.id),
+          (old) => (old ? { property: { ...old.property, ...data.property } } : old),
+        );
         onOpenChange(false);
       },
     });
