@@ -10,37 +10,67 @@ const FEATURES = [
   "View per-property financial reports",
 ] as const;
 
+const GOOGLE_DATA_USES = [
+  "Authenticate your account when you choose Sign in with Google",
+  "Read your Google account email address to create and identify your user account",
+  "Read your Google account name to display on your profile",
+] as const;
+
 export function AppPurposeSection() {
   return (
-    <section className="relative border-y border-mist/8 bg-ink-2/50 py-16 md:py-20" id="about">
-      <div className="mx-auto max-w-3xl px-6">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-mist md:text-3xl">
-          What is {APP_NAME}?
+    <section
+      className="border-b border-mist/10 bg-ink px-6 pb-12 pt-28 md:pb-16 md:pt-32"
+      id="about"
+    >
+      <div className="mx-auto max-w-3xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-mist md:text-4xl">
+          {APP_NAME} — Property Management Application
+        </h1>
+        <p className="mt-6 text-base leading-relaxed text-mist/80 md:text-lg">
+          {APP_NAME} is a web application for rental property operators. This application helps
+          you manage property operations and property accounting in one admin platform.
+        </p>
+
+        <h2 className="mt-10 font-display text-xl font-semibold text-mist md:text-2xl">
+          Application purpose
         </h2>
-        <p className="mt-6 text-base leading-relaxed text-mist/70 md:text-lg">
-          {APP_NAME} is a property management and accounting platform for short-term and long-term
-          rental operators. It helps you run day-to-day property operations and understand portfolio
-          performance in one admin platform.
+        <p className="mt-4 text-base leading-relaxed text-mist/80 md:text-lg">
+          The purpose of {APP_NAME} is to help short-term and long-term rental operators track
+          portfolio performance and day-to-day property operations. With {APP_NAME}, you can:
         </p>
-        <p className="mt-4 text-base leading-relaxed text-mist/70 md:text-lg">
-          With {APP_NAME}, you can:
-        </p>
-        <ul className="mt-4 list-disc space-y-2 pl-6 text-base text-mist/70 md:text-lg">
+        <ul className="mt-4 list-disc space-y-2 pl-6 text-base text-mist/80 md:text-lg">
           {FEATURES.map((feature) => (
             <li key={feature}>{feature}</li>
           ))}
         </ul>
-        <p className="mt-6 text-base leading-relaxed text-mist/70 md:text-lg">
-          Sign in with Google or email to access your account. We use your Google account
-          information (name and email) only to authenticate you and manage your {APP_NAME}{" "}
-          account.
+
+        <h2 className="mt-10 font-display text-xl font-semibold text-mist md:text-2xl">
+          How {APP_NAME} uses Google user data
+        </h2>
+        <p className="mt-4 text-base leading-relaxed text-mist/80 md:text-lg">
+          {APP_NAME} offers Sign in with Google for authentication. When you sign in with Google,
+          we request access to basic profile information only. We use Google user data to:
         </p>
-        <p className="mt-6 text-sm text-mist/50">
-          <Link className="text-ember transition-colors hover:text-mist" href="/privacy-policy">
+        <ul className="mt-4 list-disc space-y-2 pl-6 text-base text-mist/80 md:text-lg">
+          {GOOGLE_DATA_USES.map((use) => (
+            <li key={use}>{use}</li>
+          ))}
+        </ul>
+        <p className="mt-4 text-base leading-relaxed text-mist/80 md:text-lg">
+          We do not use Google user data for advertising. We do not sell Google user data. We do
+          not access your Google contacts, calendar, Drive files, or other Google services. You
+          can also sign in with email and password instead of Google.
+        </p>
+
+        <p className="mt-8 text-base text-mist/70">
+          <Link className="font-medium text-ember underline-offset-4 hover:underline" href="/privacy-policy">
             Privacy Policy
           </Link>
           <span className="mx-2 text-mist/30">·</span>
-          <Link className="text-ember transition-colors hover:text-mist" href="/terms-of-service">
+          <Link
+            className="font-medium text-ember underline-offset-4 hover:underline"
+            href="/terms-of-service"
+          >
             Terms of Service
           </Link>
         </p>

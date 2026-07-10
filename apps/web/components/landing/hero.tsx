@@ -1,10 +1,7 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "motion/react";
-import Link from "next/link";
 import { useEffect, useRef } from "react";
-
-import { APP_NAME } from "@/packages/shared";
 
 type Win = {
   x: number
@@ -199,7 +196,7 @@ export function Hero() {
   }
 
   return (
-    <section ref={sectionRef} className="relative h-[110vh] overflow-hidden">
+    <section ref={sectionRef} className="relative h-[90vh] overflow-hidden">
       <motion.div style={{ scale: skyScale }} className="absolute inset-0 will-change-transform">
         <SkylineCanvas />
       </motion.div>
@@ -215,16 +212,11 @@ export function Hero() {
         style={{ y: textY, opacity: textOpacity }}
         className="relative z-10 flex h-screen flex-col items-center justify-center px-6 text-center will-change-transform"
       >
-        <motion.p
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
-          className="mb-6 rounded-full border border-mist/15 px-5 py-2 text-xs font-medium tracking-[0.25em] uppercase text-mist/70"
-        >
+        <p className="mb-6 rounded-full border border-mist/15 px-5 py-2 text-xs font-medium tracking-[0.25em] uppercase text-mist/70">
           Residence management, reimagined
-        </motion.p>
+        </p>
 
-        <h1 className="font-display text-[clamp(2.8rem,9vw,7.5rem)] leading-[0.95] font-700 tracking-tight">
+        <h2 className="font-display text-[clamp(2.8rem,9vw,7.5rem)] leading-[0.95] font-700 tracking-tight">
           {[HEADLINE_TOP, HEADLINE_BOTTOM].map((line, li) => (
             <span key={line} className="block overflow-hidden pb-[0.08em]">
               <motion.span
@@ -243,28 +235,7 @@ export function Hero() {
               </motion.span>
             </span>
           ))}
-        </h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.7, ease: 'easeOut' }}
-          className="mt-8 max-w-xl text-base text-mist/60 md:text-lg"
-        >
-          {APP_NAME} helps rental operators track properties, leases, reservations, income,
-          expenses, and portfolio financial reports in one admin platform.
-        </motion.p>
-
-        <motion.p
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8, ease: "easeOut" }}
-          className="mt-4 text-sm text-mist/45"
-        >
-          <Link className="text-ember/90 transition-colors hover:text-ember" href="/privacy-policy">
-            Privacy Policy
-          </Link>
-        </motion.p>
+        </h2>
 
         <motion.div
           initial={{ opacity: 0, y: 24 }}

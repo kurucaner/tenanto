@@ -23,9 +23,9 @@ export function LandingPage({ purposeSection }: LandingPageProps) {
   return (
     <>
       <LandingNav />
+      {purposeSection}
       <main>
         <Hero />
-        {purposeSection}
         <Marquee />
         <DashboardShowcase />
         <HorizontalStory />

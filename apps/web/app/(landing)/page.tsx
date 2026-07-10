@@ -2,11 +2,37 @@ import { AppPurposeSection } from "@/components/landing/app-purpose-section";
 import { LandingPage } from "@/components/landing/landing-page";
 import { APP_NAME } from "@/packages/shared";
 
+const APP_DESCRIPTION =
+  "Property management and accounting web application for rental operators.";
+
 export const metadata = {
-  description: `${APP_NAME} is a property management and accounting platform for rental operators. Track properties, leases, reservations, income, expenses, and financial reports.`,
-  title: `${APP_NAME} — Residence management, reimagined`,
+  description: `${APP_NAME} is a ${APP_DESCRIPTION} Sign in with Google or email to manage properties, leases, reservations, income, expenses, and financial reports.`,
+  title: `${APP_NAME} — Property Management Application`,
 };
 
 export default function Home() {
-  return <LandingPage purposeSection={<AppPurposeSection />} />;
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    applicationCategory: "BusinessApplication",
+    description: APP_DESCRIPTION,
+    name: APP_NAME,
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    operatingSystem: "Web",
+    url: "https://propertyos.app",
+  };
+
+  return (
+    <>
+      <script
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        type="application/ld+json"
+      />
+      <LandingPage purposeSection={<AppPurposeSection />} />
+    </>
+  );
 }
