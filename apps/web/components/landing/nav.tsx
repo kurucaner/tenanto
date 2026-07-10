@@ -1,15 +1,16 @@
 "use client";
 
 import { motion, useMotionValueEvent, useScroll } from "motion/react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { APP_NAME } from "@/packages/shared";
 
 const LINKS = [
+  { href: "#about", label: "About" },
   { href: "#platform", label: "Platform" },
   { href: "#features", label: "Features" },
-  { href: "#stories", label: "Stories" },
-  { href: "#cta", label: "Pricing" },
+  { href: "/privacy-policy", label: "Privacy" },
 ] as const;
 
 export function LandingNav() {
@@ -40,15 +41,25 @@ export function LandingNav() {
         </a>
 
         <div className="hidden items-center gap-8 md:flex">
-          {LINKS.map((link) => (
-            <a
-              key={link.label}
-              className="text-mist/60 text-sm transition-colors duration-300 hover:text-mist"
-              href={link.href}
-            >
-              {link.label}
-            </a>
-          ))}
+          {LINKS.map((link) =>
+            link.href.startsWith("/") ? (
+              <Link
+                key={link.label}
+                className="text-mist/60 text-sm transition-colors duration-300 hover:text-mist"
+                href={link.href}
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <a
+                key={link.label}
+                className="text-mist/60 text-sm transition-colors duration-300 hover:text-mist"
+                href={link.href}
+              >
+                {link.label}
+              </a>
+            ),
+          )}
         </div>
 
         <a
