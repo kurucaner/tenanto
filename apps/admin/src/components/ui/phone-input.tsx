@@ -73,22 +73,24 @@ export const PhoneInput = memo(
     const maxNationalDigits = getMaxNationalDigits(country);
     const invalid = touched && !isValidPhone(country, nationalDisplay);
 
-    const emitChange = (nextCountry: CountryCode, digits: string) => {
-      onChange(toE164(nextCountry, digits) ?? "");
-    };
-
     const handleCountryChange = (nextCountry: string) => {
       const parsedCountry = nextCountry as CountryCode;
-      setCountry(parsedCountry);
       const digits = nationalDisplay.replace(/\D/g, "");
-      setNationalDisplay(formatNationalAsYouType(parsedCountry, digits));
-      emitChange(parsedCountry, digits);
+      const formatted = formatNationalAsYouType(parsedCountry, digits);
+      const e164 = toE164(parsedCountry, digits) ?? "";
+      setCountry(parsedCountry);
+      setNationalDisplay(formatted);
+      setPrevValue(e164);
+      onChange(e164);
     };
 
     const handleNationalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const digits = e.target.value.replace(/\D/g, "").slice(0, maxNationalDigits);
-      setNationalDisplay(formatNationalAsYouType(country, digits));
-      emitChange(country, digits);
+      const formatted = formatNationalAsYouType(country, digits);
+      const e164 = toE164(country, digits) ?? "";
+      setNationalDisplay(formatted);
+      setPrevValue(e164);
+      onChange(e164);
     };
 
     return (
