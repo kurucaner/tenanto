@@ -17,7 +17,7 @@ function mapRow(row: Record<string, unknown>): IAdminAuditEvent {
   return {
     action: row.action as string,
     actorEmail: row.actor_email as string,
-    actorUserId: row.actor_user_id as string,
+    actorUserId: row.actor_user_id == null ? null : (row.actor_user_id as string),
     createdAt: (row.created_at as Date).toISOString(),
     id: row.id as string,
     ipAddress: inetColumnToString(row.ip_address),
