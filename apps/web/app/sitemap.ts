@@ -12,10 +12,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/unsubscribe`,
+      changeFrequency: "yearly",
       lastModified: now,
+      priority: 0.3,
+      url: `${baseUrl}/privacy-policy`,
+    },
+    {
+      changeFrequency: "yearly",
+      lastModified: now,
+      priority: 0.3,
+      url: `${baseUrl}/terms-of-service`,
+    },
+    {
       changeFrequency: "never",
+      lastModified: now,
       priority: 0.1,
+      url: `${baseUrl}/unsubscribe`,
     },
   ];
 }

@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-landing-display), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-landing-body), ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #06070c;
+  --color-ink-2: #0b0d16;
+  --color-mist: #eef1f8;
+  --color-ember: #ff6b3d;
+  --color-glow: #7c8cff;
+  --color-mint: #4ade80;
+
+  --animate-marquee: marquee 28s linear infinite;
+  --animate-aurora: aurora 14s ease-in-out infinite alternate;
+  --animate-pulse-soft: pulse-soft 3.2s ease-in-out infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes aurora {
+    0% {
+      transform: translate3d(-8%, -4%, 0) scale(1) rotate(0deg);
+    }
+    50% {
+      transform: translate3d(6%, 5%, 0) scale(1.15) rotate(8deg);
+    }
+    100% {
+      transform: translate3d(-4%, 8%, 0) scale(1.05) rotate(-6deg);
+    }
+  }
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+.landing-root {
+  @apply bg-ink font-body text-mist antialiased;
+  overscroll-behavior: none;
+}
+
+.landing-root ::selection {
+  background: var(--color-ember);
+  color: var(--color-ink);
+}
+
+.landing-root ::-webkit-scrollbar {
+  width: 10px;
+}
+.landing-root ::-webkit-scrollbar-track {
+  background: var(--color-ink);
+}
+.landing-root ::-webkit-scrollbar-thumb {
+  background: #262a3d;
+  border-radius: 8px;
+}
+
+.text-stroke {
+  -webkit-text-stroke: 1px rgba(238, 241, 248, 0.28);
+  color: transparent;
+}
+
+.glass {
+  background: rgba(11, 13, 22, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(238, 241, 248, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-root *,
+  .landing-root *::before,
+  .landing-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
