@@ -34,7 +34,7 @@ export function LandingNav() {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <a className="flex items-center gap-2.5 font-display text-lg font-bold" href="/">
+        <Link className="flex items-center gap-2.5 font-display text-lg font-bold" href="/">
           <Image
             alt={`${APP_NAME} logo`}
             className="h-9 w-9 rounded-xl"
@@ -43,7 +43,7 @@ export function LandingNav() {
             width={36}
           />
           {APP_NAME}
-        </a>
+        </Link>
 
         <div className="hidden items-center gap-8 md:flex">
           {LINKS.map((link) =>
