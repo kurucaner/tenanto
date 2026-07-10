@@ -1789,4 +1789,30 @@ export const migrations: IMigration[] = [
     },
     version: 42,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE support_messages
+          DROP CONSTRAINT support_messages_author_user_id_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE support_messages
+          ADD CONSTRAINT support_messages_author_user_id_fkey
+          FOREIGN KEY (author_user_id) REFERENCES users(id);
+      `);
+    },
+    name: "support_messages_author_user_cascade_delete",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE support_messages
+          DROP CONSTRAINT support_messages_author_user_id_fkey;
+      `);
+      await client.query(`
+        ALTER TABLE support_messages
+          ADD CONSTRAINT support_messages_author_user_id_fkey
+          FOREIGN KEY (author_user_id) REFERENCES users(id) ON DELETE CASCADE;
+      `);
+    },
+    version: 43,
+  },
 ];
