@@ -12,7 +12,7 @@ export type TAdminAuditAction = (typeof AdminAuditAction)[keyof typeof AdminAudi
 export interface IAdminAuditEvent {
   action: string;
   actorEmail: string;
-  actorUserId: string;
+  actorUserId: string | null;
   createdAt: string;
   id: string;
   ipAddress: string | null;

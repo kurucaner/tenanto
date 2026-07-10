@@ -26,7 +26,7 @@ export interface IPropertyMemberUser {
 }
 
 export interface IPropertyMember {
-  addedBy: string;
+  addedBy: string | null;
   createdAt: string;
   id: string;
   propertyId: string;
