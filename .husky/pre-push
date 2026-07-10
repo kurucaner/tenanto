@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+UPSTREAM="origin/${BRANCH}"
+
+if git rev-parse --verify "$UPSTREAM" &>/dev/null; then
+  CHANGED=$(git diff --name-only "$UPSTREAM"...HEAD)
+else
+  CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+fi
+
+if echo "$CHANGED" | grep -q "packages/shared/"; then
+  echo "▸ Shared package changed — linting all apps…"
+  for app in server admin web; do
+    bun run "lint:${app}" -- --fix || true
+    bun run "prettier:${app}" || true
+  done
+else
+  echo "▸ Running lint-staged on changed files…"
+  bunx lint-staged
+fi
+
+if ! git diff --quiet; then
+  echo "▸ Auto-fixed files detected — committing…"
+  git add -A
+  git commit -m "linting and prettier auto commit"
+fi

@@ -6,6 +6,7 @@
     "node": ">=24.14.0"
   },
   "scripts": {
+    "prepare": "husky",
     "dev:mobile": "cd apps/mobile && npm run dev",
     "dev:proxy": "npm run --filter proxy dev",
     "dev:server": "npm run --filter server dev",
@@ -47,11 +48,30 @@
     "@types/semver": "^7.7.1",
     "concurrently": "^9.2.1",
     "eslint-plugin-perfectionist": "^5.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "logaway": "^1.1.0",
     "prettier": "^3.8.1",
     "sonarqube-scanner": "^4.3.8",
     "tsc-alias": "^1.8.16",
     "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "apps/server/src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "apps/admin/src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "apps/web/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "packages/shared/**/*.ts": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@tanstack/react-query": "^5.94.5",
