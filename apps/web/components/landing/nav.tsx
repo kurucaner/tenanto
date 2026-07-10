@@ -9,6 +9,8 @@ import { useState } from "react";
 import { FEATURE_NAV_LINKS, PRIMARY_NAV_LINKS } from "@/lib/marketing-content";
 import { APP_NAME } from "@/packages/shared";
 
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL;
+
 export function LandingNav() {
   const pathname = usePathname();
   const { scrollY } = useScroll();
@@ -99,6 +101,12 @@ export function LandingNav() {
         </div>
 
         <div className="flex items-center gap-3">
+          <a
+            className="hidden text-mist/60 text-sm transition-colors duration-300 hover:text-mist sm:inline-block"
+            href={APP_URL}
+          >
+            Sign in
+          </a>
           <Link
             className="hidden rounded-full bg-mist px-5 py-2.5 font-display text-ink text-sm font-semibold transition-transform duration-300 hover:scale-105 sm:inline-block"
             href="/contact"
@@ -125,11 +133,7 @@ export function LandingNav() {
             <div>
               <p className="mb-3 text-mist/40 text-xs tracking-widest uppercase">Product</p>
               <div className="space-y-2">
-                <Link
-                  className="block text-mist/70 text-sm"
-                  href="/platform"
-                  onClick={closeMobile}
-                >
+                <Link className="block text-mist/70 text-sm" href="/platform" onClick={closeMobile}>
                   Platform
                 </Link>
                 {FEATURE_NAV_LINKS.map((link) => (
@@ -157,11 +161,7 @@ export function LandingNav() {
                     {link.label}
                   </Link>
                 ))}
-                <Link
-                  className="block text-mist/70 text-sm"
-                  href="/security"
-                  onClick={closeMobile}
-                >
+                <Link className="block text-mist/70 text-sm" href="/security" onClick={closeMobile}>
                   Security
                 </Link>
                 <Link
@@ -173,13 +173,18 @@ export function LandingNav() {
                 </Link>
               </div>
             </div>
-            <Link
-              className="inline-block rounded-full bg-mist px-5 py-2.5 font-display text-ink text-sm font-semibold"
-              href="/contact"
-              onClick={closeMobile}
-            >
-              Get started
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                className="inline-block rounded-full bg-mist px-5 py-2.5 font-display text-ink text-sm font-semibold"
+                href="/contact"
+                onClick={closeMobile}
+              >
+                Get started
+              </Link>
+              <a className="text-mist/60 text-sm transition-colors hover:text-mist" href={APP_URL}>
+                Sign in →
+              </a>
+            </div>
           </div>
         </div>
       ) : null}

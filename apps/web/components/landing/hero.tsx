@@ -6,6 +6,8 @@ import { useEffect, useRef } from "react";
 
 import { APP_NAME } from "@/packages/shared";
 
+const APP_URL = process.env.NEXT_PUBLIC_SITE_URL;
+
 const HEADLINE_TOP = "Every door.";
 const HEADLINE_BOTTOM = "One financial truth.";
 
@@ -192,7 +194,7 @@ export function Hero() {
           initial={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          Property accounting, reimagined
+          {APP_NAME} &mdash; Property accounting software for rental operators
         </motion.p>
 
         <h1 className="font-display text-[clamp(2.8rem,9vw,7.5rem)] leading-[0.95] font-700 tracking-tight">
@@ -241,13 +243,21 @@ export function Hero() {
               →
             </span>
           </Link>
-          <Link
+          <a
             className="rounded-full border border-mist/20 px-8 py-4 font-display text-mist/80 text-sm font-semibold transition-colors duration-300 hover:border-mist/50 hover:text-mist"
-            href="/platform"
+            href={APP_URL}
           >
-            Explore platform
-          </Link>
+            Sign in
+          </a>
         </motion.div>
+        <motion.p
+          animate={{ opacity: 1 }}
+          className="mt-5 text-mist/35 text-xs"
+          initial={{ opacity: 0 }}
+          transition={{ delay: 1.2, duration: 0.8 }}
+        >
+          Sign in with Google or email &mdash; no setup fees, 14-day free pilot
+        </motion.p>
       </motion.div>
 
       <motion.div

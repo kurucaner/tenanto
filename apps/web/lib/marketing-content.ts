@@ -95,8 +95,9 @@ export const FOOTER_COLUMNS = [
   },
   {
     links: [
-      { href: "/privacy-policy", label: "Privacy" },
-      { href: "/terms-of-service", label: "Terms" },
+      { href: "/privacy-policy", label: "Privacy Policy" },
+      { href: "/terms-of-service", label: "Terms of Service" },
+      { href: "/google-disclosure", label: "Google Data Usage" },
       { href: "/delete-account", label: "Delete account" },
     ],
     title: "Legal",
@@ -600,6 +601,7 @@ export const SITEMAP_ROUTES = [
   { changeFrequency: "monthly" as const, path: "/contact", priority: 0.7 },
   { changeFrequency: "yearly" as const, path: "/privacy-policy", priority: 0.3 },
   { changeFrequency: "yearly" as const, path: "/terms-of-service", priority: 0.3 },
+  { changeFrequency: "yearly" as const, path: "/google-disclosure", priority: 0.3 },
   { changeFrequency: "yearly" as const, path: "/delete-account", priority: 0.2 },
   { changeFrequency: "never" as const, path: "/unsubscribe", priority: 0.1 },
 ];

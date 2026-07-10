@@ -1,8 +1,6 @@
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      /** Base URL for the admin app (e.g. https://admin.propertyos.app) - used for magic links in emails */
-      PLATFORM_APP_URL: string;
       /** Base URL for the API (e.g. https://api.propertyos.app) - used for unsubscribe links and Lambda forwards */
       API_PUBLIC_URL: string;
       /** AWS credentials */
@@ -33,6 +31,8 @@ declare global {
       NODE_ENV: string;
       /** OpenAI API key for expense CSV import */
       OPENAI_API_KEY?: string;
+      /** Base URL for the admin app (e.g. https://admin.propertyos.app) - used for magic links in emails */
+      PLATFORM_APP_URL: string;
       PORT: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */
       WEB_APP_URL: string;
