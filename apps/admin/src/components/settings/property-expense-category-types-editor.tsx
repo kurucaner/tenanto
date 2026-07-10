@@ -2,8 +2,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { memo } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export interface PropertyExpenseCategoryTypeFormRow {
   clientId: string;
@@ -41,11 +41,7 @@ export const PropertyExpenseCategoryTypesEditor = memo(
     const addRow = () => {
       onChange([
         ...expenseCategoryTypes,
-        {
-          clientId: createClientId(),
-          isAnnualAmount: false,
-          name: "",
-        },
+        { clientId: createClientId(), isAnnualAmount: false, name: "" },
       ]);
     };
 
@@ -54,51 +50,49 @@ export const PropertyExpenseCategoryTypesEditor = memo(
         {expenseCategoryTypes.length === 0 ? (
           <p className="text-muted-foreground text-sm">No expense categories configured.</p>
         ) : (
-          <ul className="space-y-3">
-            {expenseCategoryTypes.map((row) => (
-              <li
-                className="grid gap-3 rounded-lg border border-border/60 p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-                key={row.clientId}
-              >
-                <div className="space-y-2">
-                  <Label htmlFor={`expense-cat-name-${row.clientId}`}>Category name</Label>
+          <div className="rounded-lg border">
+            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b px-3 py-2">
+              <span className="text-muted-foreground text-xs font-medium">Name</span>
+              <span className="text-muted-foreground w-[68px] text-center text-xs font-medium">
+                Annual
+              </span>
+              <span className="w-8" />
+            </div>
+            <ul className="divide-y">
+              {expenseCategoryTypes.map((row, index) => (
+                <li
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2"
+                  key={row.clientId}
+                >
                   <Input
                     disabled={disabled}
-                    id={`expense-cat-name-${row.clientId}`}
-                    onChange={(event) => updateRow(row.clientId, { name: event.target.value })}
-                    placeholder="Expense category name"
+                    onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
+                    placeholder={`Category ${index + 1}`}
                     value={row.name}
                   />
-                </div>
-                <div className="flex flex-col gap-2 justify-end pb-0.5">
-                  <Label className="flex items-center gap-1.5 text-xs font-normal cursor-pointer">
-                    <input
+                  <div className="flex w-[68px] justify-center">
+                    <Checkbox
                       checked={row.isAnnualAmount}
-                      className="rounded"
                       disabled={disabled}
-                      onChange={(e) =>
-                        updateRow(row.clientId, { isAnnualAmount: e.target.checked })
+                      onCheckedChange={(checked) =>
+                        updateRow(row.clientId, { isAnnualAmount: checked === true })
                       }
-                      type="checkbox"
                     />
-                    {"Annual"}
-                  </Label>
-                </div>
-                <div className="flex items-end pb-0.5">
+                  </div>
                   <Button
                     aria-label={`Remove ${row.name || "expense category"}`}
                     disabled={disabled}
                     onClick={() => removeRow(row.clientId)}
-                    size="icon"
+                    size="icon-sm"
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                   >
-                    <Trash2 className="size-4" />
+                    <Trash2 className="size-3.5 text-destructive" />
                   </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <Button
