@@ -55,50 +55,50 @@
 
 html.dark {
   color-scheme: dark;
-    --background: 0 0% 4%;
-    --foreground: 0 0% 94%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 94%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 94%;
-    --primary: 43 45% 52%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 94%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 94%;
-    --destructive: 0 62% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 43 45% 52%;
+  --background: 0 0% 4%;
+  --foreground: 0 0% 94%;
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 94%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 0 0% 94%;
+  --primary: 43 45% 52%;
+  --primary-foreground: 0 0% 9%;
+  --secondary: 0 0% 12%;
+  --secondary-foreground: 0 0% 94%;
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 0 0% 12%;
+  --accent-foreground: 0 0% 94%;
+  --destructive: 0 62% 45%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 15%;
+  --input: 0 0% 15%;
+  --ring: 43 45% 52%;
 
-    --gold: #c9a962;
-    --gold-muted: rgba(201, 169, 98, 0.4);
-    --gold-glow: rgba(201, 169, 98, 0.15);
-    --obsidian: #0a0a0a;
-    --surface: rgba(255, 255, 255, 0.02);
-    --surface-elevated: rgba(255, 255, 255, 0.04);
-    --noise-opacity: 0.03;
-    --navbar-bg: rgba(10, 10, 10, 0.8);
-    --navbar-border: rgba(255, 255, 255, 0.1);
-    --navbar-link: rgba(255, 255, 255, 0.78);
-    --navbar-link-hover: rgba(255, 255, 255, 0.95);
-    --border-subtle: rgba(255, 255, 255, 0.1);
-    --border-subtle-2: rgba(255, 255, 255, 0.05);
-    --btn-solid-bg: #0a0a0a;
-    --btn-solid-fg: #f0f0f0;
-    --btn-solid-hover: #1a1a1a;
-    --text-muted: rgba(240, 240, 240, 0.65);
-    --text-muted-2: rgba(240, 240, 240, 0.5);
-    --text-muted-3: rgba(240, 240, 240, 0.4);
+  --gold: #c9a962;
+  --gold-muted: rgba(201, 169, 98, 0.4);
+  --gold-glow: rgba(201, 169, 98, 0.15);
+  --obsidian: #0a0a0a;
+  --surface: rgba(255, 255, 255, 0.02);
+  --surface-elevated: rgba(255, 255, 255, 0.04);
+  --noise-opacity: 0.03;
+  --navbar-bg: rgba(10, 10, 10, 0.8);
+  --navbar-border: rgba(255, 255, 255, 0.1);
+  --navbar-link: rgba(255, 255, 255, 0.78);
+  --navbar-link-hover: rgba(255, 255, 255, 0.95);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-subtle-2: rgba(255, 255, 255, 0.05);
+  --btn-solid-bg: #0a0a0a;
+  --btn-solid-fg: #f0f0f0;
+  --btn-solid-hover: #1a1a1a;
+  --text-muted: rgba(240, 240, 240, 0.65);
+  --text-muted-2: rgba(240, 240, 240, 0.5);
+  --text-muted-3: rgba(240, 240, 240, 0.4);
 
-    /* Vault illustration: bright on near-black; distinct from marketing --gold */
-    --vault-accent: #f2ead1;
-    --vault-orbit: #c8b57e;
-    --vault-core: #dcc894;
+  /* Vault illustration: bright on near-black; distinct from marketing --gold */
+  --vault-accent: #f2ead1;
+  --vault-orbit: #c8b57e;
+  --vault-core: #dcc894;
 }
 
 @theme inline {
@@ -128,20 +128,11 @@ body {
 
 /* Gradient utilities for section backgrounds */
 .bg-hero-gradient {
-  background: radial-gradient(
-    ellipse 80% 50% at 50% 0%,
-    var(--gold-glow) 0%,
-    transparent 50%
-  );
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, var(--gold-glow) 0%, transparent 50%);
 }
 
 .bg-section-divider {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--gold) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%);
   opacity: 0.3;
 }
 
@@ -249,7 +240,8 @@ body {
 }
 
 .reveal-section-root--visible .reveal-section__reveal--phone {
-  animation: reveal-section-phone 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-stagger, 0s) forwards;
+  animation: reveal-section-phone 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-stagger, 0s)
+    forwards;
 }
 
 @keyframes reveal-section-title {
@@ -317,11 +309,13 @@ body {
 }
 
 .how-it-works-root--visible .how-it-works__reveal--dot {
-  animation: how-it-works-dot 0.5s cubic-bezier(0.22, 1, 0.36, 1) var(--how-it-works-dot-delay, 0s) forwards;
+  animation: how-it-works-dot 0.5s cubic-bezier(0.22, 1, 0.36, 1) var(--how-it-works-dot-delay, 0s)
+    forwards;
 }
 
 .how-it-works-root--visible .how-it-works__reveal--step {
-  animation: how-it-works-step 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--how-it-works-step-delay, 0s) forwards;
+  animation: how-it-works-step 0.6s cubic-bezier(0.22, 1, 0.36, 1)
+    var(--how-it-works-step-delay, 0s) forwards;
 }
 
 @keyframes how-it-works-line {

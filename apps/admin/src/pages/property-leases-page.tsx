@@ -129,13 +129,7 @@ const LeaseRow = memo(
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
-            <Button
-              aria-label="View lease"
-              asChild
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
+            <Button aria-label="View lease" asChild size="icon-sm" type="button" variant="ghost">
               <Link to={leaseDetailPath}>
                 <Eye className="size-3.5" />
               </Link>
@@ -265,9 +259,7 @@ export const PropertyLeasesPage = memo(() => {
         expectedAmount = detail?.rentSchedule.find((item) => item.month === month)?.expectedRent;
       }
       setRecordRentLease(lease);
-      setRecordRentPrefill(
-        buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount)
-      );
+      setRecordRentPrefill(buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount));
     },
     [propertyId, queryClient, rentIncomeLineTypeId]
   );

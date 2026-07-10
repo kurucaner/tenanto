@@ -54,7 +54,11 @@ export function MarketingFeaturePage({ content, mock, showChannels }: MarketingF
           {content.sections.map((section) => (
             <section key={section.title}>
               <div className="mx-auto max-w-6xl space-y-10 px-6">
-                <SectionHeader body={section.body} eyebrow={section.eyebrow} title={section.title} />
+                <SectionHeader
+                  body={section.body}
+                  eyebrow={section.eyebrow}
+                  title={section.title}
+                />
                 {section.features ? <FeatureGrid features={section.features} /> : null}
               </div>
             </section>

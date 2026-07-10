@@ -18,9 +18,7 @@ function parseS3ObjectSize(sizeRaw: unknown): number | undefined {
   return Number.isFinite(size) ? (size as number) : undefined;
 }
 
-function parseS3NotificationRecord(
-  item: unknown
-): S3NotificationEvent["Records"][number] | null {
+function parseS3NotificationRecord(item: unknown): S3NotificationEvent["Records"][number] | null {
   if (item == null || typeof item !== "object" || Array.isArray(item)) return null;
 
   const itemRecord = item as Record<string, unknown>;

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 interface PaginationProps {
   totalPages: number;
@@ -21,7 +21,10 @@ export function Pagination({ totalPages, currentPage, basePath }: Readonly<Pagin
     <div className="space-y-2 pt-6 pb-8 md:space-y-5">
       <nav className="flex justify-between">
         {!prevPage && (
-          <button className="cursor-auto text-foreground/40 disabled:opacity-50" disabled={!prevPage}>
+          <button
+            className="cursor-auto text-foreground/40 disabled:opacity-50"
+            disabled={!prevPage}
+          >
             Previous
           </button>
         )}
@@ -38,7 +41,10 @@ export function Pagination({ totalPages, currentPage, basePath }: Readonly<Pagin
           {currentPage} of {totalPages}
         </span>
         {!nextPage && (
-          <button className="cursor-auto text-foreground/40 disabled:opacity-50" disabled={!nextPage}>
+          <button
+            className="cursor-auto text-foreground/40 disabled:opacity-50"
+            disabled={!nextPage}
+          >
             Next
           </button>
         )}

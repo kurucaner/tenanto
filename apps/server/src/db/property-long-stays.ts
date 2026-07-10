@@ -208,13 +208,7 @@ export const propertyLongStaysDb = {
          WHERE id = $1
            AND status = $5::property_long_stay_status
          RETURNING *`,
-        [
-          id,
-          newTermMonths,
-          newLeaseEndDate,
-          currentMonthlyRent,
-          PropertyLongStayStatus.ACTIVE,
-        ]
+        [id, newTermMonths, newLeaseEndDate, currentMonthlyRent, PropertyLongStayStatus.ACTIVE]
       );
 
       if (result.rows.length === 0) {

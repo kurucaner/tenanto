@@ -231,11 +231,7 @@ const StartLeaseDialogForm = memo(
           <p className="text-xs text-destructive">{errors.tenantPhone.message}</p>
         ) : null}
 
-        <StartLeaseDateTermFields
-          control={form.control}
-          errors={errors}
-          register={form.register}
-        />
+        <StartLeaseDateTermFields control={form.control} errors={errors} register={form.register} />
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="start-lease-monthly-rent">Monthly Rent</Label>

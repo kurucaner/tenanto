@@ -179,7 +179,10 @@ function parseExtendLongStayBody(
       return { error: "newMonthlyRent must be a positive number", ok: false };
     }
 
-    if (typeof r["rentEffectiveFromMonth"] !== "string" || !MONTH_RE.test(r["rentEffectiveFromMonth"])) {
+    if (
+      typeof r["rentEffectiveFromMonth"] !== "string" ||
+      !MONTH_RE.test(r["rentEffectiveFromMonth"])
+    ) {
       return { error: "rentEffectiveFromMonth must be YYYY-MM format", ok: false };
     }
 

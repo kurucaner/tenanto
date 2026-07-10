@@ -24,7 +24,10 @@ import {
   parseOptionalTrimmedStringField,
   parseOptionalUuidField,
 } from "./parse-body-utils";
-import { applyOptionalQueryDateFilter, applyOptionalQueryUuidFilter } from "./parse-list-query-filters";
+import {
+  applyOptionalQueryDateFilter,
+  applyOptionalQueryUuidFilter,
+} from "./parse-list-query-filters";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,

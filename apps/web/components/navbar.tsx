@@ -53,7 +53,9 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={`text-sm font-medium uppercase tracking-widest transition-colors md:text-base ${
-                  isActive ? "text-[var(--gold)]" : "text-[var(--navbar-link)] hover:text-[var(--gold)]"
+                  isActive
+                    ? "text-[var(--gold)]"
+                    : "text-[var(--navbar-link)] hover:text-[var(--gold)]"
                 }`}
               >
                 {link.label}

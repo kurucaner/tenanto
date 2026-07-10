@@ -4,7 +4,7 @@ import { APP_NAME } from "@/packages/shared";
 
 export const metadata = pageMetadata(
   "Security",
-  `Security, authentication, and data handling — ${APP_NAME}.`,
+  `Security, authentication, and data handling — ${APP_NAME}.`
 );
 
 export default function SecurityPage() {

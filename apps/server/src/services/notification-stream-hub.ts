@@ -82,9 +82,7 @@ function closeConnection(conn: SseConnection): void {
   }
 }
 
-function parseSupportRequestPayload(
-  payload: Record<string, unknown>
-): NotifyPayload | null {
+function parseSupportRequestPayload(payload: Record<string, unknown>): NotifyPayload | null {
   const supportRequestId = payload.supportRequestId;
   const ticketUserId = payload.ticketUserId;
   if (typeof supportRequestId !== "string" || typeof ticketUserId !== "string") {
@@ -93,9 +91,7 @@ function parseSupportRequestPayload(
   return { kind: "support_request", supportRequestId, ticketUserId };
 }
 
-function parseSupportAttachmentPayload(
-  payload: Record<string, unknown>
-): NotifyPayload | null {
+function parseSupportAttachmentPayload(payload: Record<string, unknown>): NotifyPayload | null {
   const userId = payload.userId;
   const storageKey = payload.storageKey;
   const status = payload.status;

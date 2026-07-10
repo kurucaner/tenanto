@@ -2,8 +2,8 @@
  * User tracking utility for generating and managing unique user identifiers
  */
 
-const USER_ID_KEY = 'ounce_tracker_user_id';
-const USER_ID_PREFIX = 'user_';
+const USER_ID_KEY = "ounce_tracker_user_id";
+const USER_ID_PREFIX = "user_";
 
 /**
  * Generates a unique user ID with timestamp and random string
@@ -32,12 +32,12 @@ export const getOrCreateUserId = (): string => {
       userId = generateUserId();
       localStorage.setItem(USER_ID_KEY, userId);
     } else {
-      console.info('Retrieved existing user ID:', userId);
+      console.info("Retrieved existing user ID:", userId);
     }
 
     return userId;
   } catch (error) {
-    console.warn('Failed to access localStorage, generating temporary user ID:', error);
+    console.warn("Failed to access localStorage, generating temporary user ID:", error);
     return generateUserId();
   }
 };
@@ -54,7 +54,7 @@ export const getUserId = (): string | null => {
   try {
     return localStorage.getItem(USER_ID_KEY);
   } catch (error) {
-    console.warn('Failed to access localStorage:', error);
+    console.warn("Failed to access localStorage:", error);
     return null;
   }
 };
@@ -71,7 +71,7 @@ export const clearUserId = (): void => {
   try {
     localStorage.removeItem(USER_ID_KEY);
   } catch (error) {
-    console.warn('Failed to clear user ID from localStorage:', error);
+    console.warn("Failed to clear user ID from localStorage:", error);
   }
 };
 
@@ -87,14 +87,14 @@ export const hasUserId = (): boolean => {
   try {
     return localStorage.getItem(USER_ID_KEY) !== null;
   } catch (error) {
-    console.warn('Failed to check user ID in localStorage:', error);
+    console.warn("Failed to check user ID in localStorage:", error);
     return false;
   }
 };
 
 export const handleNavigateToDashboard = ({ path }: { path: string }) => {
   const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL;
-  window.open(`${dashboardUrl}${path}`, '_blank');
+  window.open(`${dashboardUrl}${path}`, "_blank");
 };
 
 /**
@@ -106,10 +106,10 @@ export const getShopifyStoreUrl = (): string => {
   if (!shopifyUrl) {
     if (globalThis.window !== undefined) {
       console.warn(
-        'NEXT_PUBLIC_SHOPIFY_STORE_URL is not set. Please add it to your .env.local file.'
+        "NEXT_PUBLIC_SHOPIFY_STORE_URL is not set. Please add it to your .env.local file."
       );
     }
-    return '';
+    return "";
   }
   return shopifyUrl;
 };
@@ -120,17 +120,17 @@ export const getShopifyStoreUrl = (): string => {
 export const handleNavigateToShop = () => {
   const shopUrl = getShopifyStoreUrl();
   if (shopUrl) {
-    window.open(shopUrl, '_blank');
+    window.open(shopUrl, "_blank");
   } else {
-    console.error('Shopify store URL is not configured');
+    console.error("Shopify store URL is not configured");
   }
 };
 
 export function parseLocalDate(date: string): string {
   const parsedDate = new Date(date);
-  return parsedDate.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  return parsedDate.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }

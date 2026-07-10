@@ -5,7 +5,7 @@ import { APP_NAME, SUPPORT_EMAIL } from "@/packages/shared";
 
 export const metadata = pageMetadata(
   "Terms of Service",
-  `Terms of Service for ${APP_NAME} property management platform.`,
+  `Terms of Service for ${APP_NAME} property management platform.`
 );
 
 export default function TermsOfServicePage() {
@@ -84,8 +84,7 @@ export default function TermsOfServicePage() {
 
         <h2>Contact</h2>
         <p>
-          Questions about these Terms:{" "}
-          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+          Questions about these Terms: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
         </p>
       </LegalProse>
     </MarketingLayout>

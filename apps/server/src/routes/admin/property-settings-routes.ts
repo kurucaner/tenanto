@@ -69,7 +69,8 @@ function parseNamedSortableItem(
   const normalizedName = name.toLowerCase();
   if (seenNames.has(normalizedName)) {
     return {
-      error: listLabel === "taxRates" ? "Tax names must be unique" : "Income type names must be unique",
+      error:
+        listLabel === "taxRates" ? "Tax names must be unique" : "Income type names must be unique",
       ok: false,
     };
   }

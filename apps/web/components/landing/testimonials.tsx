@@ -61,9 +61,7 @@ export function Testimonials() {
               <figure className="glass flex h-full flex-col justify-between rounded-2xl p-8 transition-transform duration-500 hover:-translate-y-2">
                 <div>
                   <StatusBadge variant="shipped" />
-                  <blockquote className="mt-4 text-mist/80">
-                    &ldquo;{quote.quote}&rdquo;
-                  </blockquote>
+                  <blockquote className="mt-4 text-mist/80">&ldquo;{quote.quote}&rdquo;</blockquote>
                 </div>
                 <figcaption className="mt-8">
                   <p className="font-display font-semibold">{quote.name}</p>

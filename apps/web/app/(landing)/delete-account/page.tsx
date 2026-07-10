@@ -5,7 +5,7 @@ import { APP_NAME, SUPPORT_EMAIL } from "@/packages/shared";
 
 export const metadata = pageMetadata(
   "Delete Account",
-  `How to request deletion of your ${APP_NAME} account and associated data.`,
+  `How to request deletion of your ${APP_NAME} account and associated data.`
 );
 
 export default function DeleteAccountPage() {

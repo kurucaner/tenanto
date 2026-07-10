@@ -4,10 +4,7 @@ import { motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState } from "react";
 
-import {
-  HOME_FEATURE_HREFS,
-  HOME_FEATURE_LINKS,
-} from "@/lib/marketing-content";
+import { HOME_FEATURE_HREFS, HOME_FEATURE_LINKS } from "@/lib/marketing-content";
 
 const ACCENT_MAP = {
   ember: "from-ember/25",

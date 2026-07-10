@@ -5,7 +5,7 @@ import { APP_NAME, SUPPORT_EMAIL } from "@/packages/shared";
 
 export const metadata = pageMetadata(
   "Privacy Policy",
-  `Privacy Policy for ${APP_NAME} property management platform.`,
+  `Privacy Policy for ${APP_NAME} property management platform.`
 );
 
 export default function PrivacyPolicyPage() {
@@ -13,10 +13,10 @@ export default function PrivacyPolicyPage() {
     <MarketingLayout>
       <LegalProse title="Privacy Policy">
         <p>
-          Last updated: March 1, 2026. {APP_NAME} (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;)
-          provides property management and accounting software for rental operators. This Privacy
-          Policy describes how we collect, use, and protect information when you use our website,
-          admin platform, and related services.
+          Last updated: March 1, 2026. {APP_NAME} (&quot;we,&quot; &quot;us,&quot; or
+          &quot;our&quot;) provides property management and accounting software for rental
+          operators. This Privacy Policy describes how we collect, use, and protect information when
+          you use our website, admin platform, and related services.
         </p>
 
         <h2>Information We Collect</h2>
@@ -52,8 +52,8 @@ export default function PrivacyPolicyPage() {
         <h2>Your Rights</h2>
         <p>
           Depending on your location, you may request access, correction, deletion, or export of
-          your personal data. Contact{" "}
-          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> to exercise these rights.
+          your personal data. Contact <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> to
+          exercise these rights.
         </p>
 
         <h2>Changes</h2>

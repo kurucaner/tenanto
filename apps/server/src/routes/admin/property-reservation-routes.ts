@@ -20,12 +20,11 @@ import {
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
 import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
-  parseJsonObject,
-  parseMoney,
-  parseNullableTrimmedStringField,
-} from "./parse-body-utils";
-import { applyOptionalQueryDateFilter, applyOptionalQueryUuidFilter } from "./parse-list-query-filters";
+  applyOptionalQueryDateFilter,
+  applyOptionalQueryUuidFilter,
+} from "./parse-list-query-filters";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
@@ -236,18 +235,20 @@ function parseUpdateReservationNumber(
   return null;
 }
 
-const UPDATE_RESERVATION_FIELD_PARSERS: Record<TUpdateReservationField, TUpdateReservationFieldParser> =
-  {
-    channel: parseUpdateChannel,
-    checkIn: parseUpdateCheckIn,
-    checkOut: parseUpdateCheckOut,
-    cleaningFee: parseUpdateCleaningFee,
-    guestName: parseUpdateGuestName,
-    reservationNumber: parseUpdateReservationNumber,
-    roomTotal: parseUpdateRoomTotal,
-    status: parseUpdateStatus,
-    unitId: parseUpdateUnitId,
-  };
+const UPDATE_RESERVATION_FIELD_PARSERS: Record<
+  TUpdateReservationField,
+  TUpdateReservationFieldParser
+> = {
+  channel: parseUpdateChannel,
+  checkIn: parseUpdateCheckIn,
+  checkOut: parseUpdateCheckOut,
+  cleaningFee: parseUpdateCleaningFee,
+  guestName: parseUpdateGuestName,
+  reservationNumber: parseUpdateReservationNumber,
+  roomTotal: parseUpdateRoomTotal,
+  status: parseUpdateStatus,
+  unitId: parseUpdateUnitId,
+};
 
 function applyUpdateReservationField(
   r: Record<string, unknown>,
@@ -339,7 +340,12 @@ function parseReservationsListQuery(
         "checkOutFrom must be a YYYY-MM-DD date"
       ),
     () =>
-      applyOptionalQueryDateFilter(query, "checkInTo", filters, "checkInTo must be a YYYY-MM-DD date"),
+      applyOptionalQueryDateFilter(
+        query,
+        "checkInTo",
+        filters,
+        "checkInTo must be a YYYY-MM-DD date"
+      ),
     () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
     () =>
       applyOptionalQueryUuidFilter(

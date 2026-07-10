@@ -42,9 +42,7 @@ export const LeaseOverviewSection = memo(({ currentRent, lease }: LeaseOverviewS
           </div>
           <div>
             <dt className="text-muted-foreground">Lease end</dt>
-            <dd className="font-medium">
-              {new Date(`${endDate}T00:00:00`).toLocaleDateString()}
-            </dd>
+            <dd className="font-medium">{new Date(`${endDate}T00:00:00`).toLocaleDateString()}</dd>
           </div>
         </dl>
       </CardContent>

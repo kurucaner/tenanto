@@ -344,12 +344,7 @@ function applyReservationToReport(
     }
   }
 
-  addToMonth(
-    accumulator.monthMap,
-    monthFromDate(stay.checkIn),
-    stay.grossIncome,
-    stay.netIncome
-  );
+  addToMonth(accumulator.monthMap, monthFromDate(stay.checkIn), stay.grossIncome, stay.netIncome);
 
   for (const taxItem of stay.taxBreakdown) {
     addTaxToMap(accumulator.taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
@@ -563,7 +558,9 @@ export function buildPropertyReportSummary(
     })
   );
 
-  const channelSummary = [...accumulator.channelMap.values()].filter((entry) => entry.stayCount > 0);
+  const channelSummary = [...accumulator.channelMap.values()].filter(
+    (entry) => entry.stayCount > 0
+  );
   const expenseByCategory: IPropertyReportExpenseCategory[] = [
     ...accumulator.expenseCategoryMap.entries(),
   ]
@@ -667,9 +664,13 @@ export function rollupSummaries(
       }
   );
 
-  const channelSummary = [...rollup.channelMap.values()].sort((a, b) => b.grossIncome - a.grossIncome);
+  const channelSummary = [...rollup.channelMap.values()].sort(
+    (a, b) => b.grossIncome - a.grossIncome
+  );
   rollup.salesTypeBreakdown.otherIncomeByType.sort((a, b) => a.name.localeCompare(b.name));
-  const expenseByCategory: IPropertyReportExpenseCategory[] = [...rollup.expenseCategoryMap.entries()]
+  const expenseByCategory: IPropertyReportExpenseCategory[] = [
+    ...rollup.expenseCategoryMap.entries(),
+  ]
     .map(([category, amount]) => ({ amount, category }))
     .sort((a, b) => b.amount - a.amount);
   const taxSummary = taxMapToSummary(rollup.taxMap);

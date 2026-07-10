@@ -22,7 +22,11 @@ function onThemeStorageEvent(e: StorageEvent) {
 /** For `useSyncExternalStore`: cross-tab `storage` + same-tab writes via `applyTheme(..., true)`. */
 export function subscribeStoredTheme(onStoreChange: () => void): () => void {
   storedThemeListeners.add(onStoreChange);
-  if (typeof globalThis !== "undefined" && "addEventListener" in globalThis && !storageListenerAttached) {
+  if (
+    typeof globalThis !== "undefined" &&
+    "addEventListener" in globalThis &&
+    !storageListenerAttached
+  ) {
     globalThis.addEventListener("storage", onThemeStorageEvent);
     storageListenerAttached = true;
   }

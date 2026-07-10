@@ -113,9 +113,7 @@ export const PropertyLeaseDetailPage = memo(() => {
       const expectedAmount = month
         ? rentSchedule.find((item) => item.month === month)?.expectedRent
         : undefined;
-      setRecordRentPrefill(
-        buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount)
-      );
+      setRecordRentPrefill(buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount));
     },
     [lease, rentIncomeLineTypeId, rentSchedule]
   );

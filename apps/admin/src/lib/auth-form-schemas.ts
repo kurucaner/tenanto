@@ -16,11 +16,12 @@ export const authNameSchema = z
 export const authPasswordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
-  .regex(/^(?=.*[A-Za-z])(?=.*\d).{8,}$/, "Password must contain at least one letter and one number");
+  .regex(
+    /^(?=.*[A-Za-z])(?=.*\d).{8,}$/,
+    "Password must contain at least one letter and one number"
+  );
 
-export const authOtpSchema = z
-  .string()
-  .regex(/^\d{6}$/, "Enter the 6-digit code");
+export const authOtpSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code");
 
 export const loginSchema = z.object({
   email: authEmailSchema,

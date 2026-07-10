@@ -5,7 +5,7 @@ import { APP_NAME, SUPPORT_EMAIL } from "@/packages/shared";
 
 export const metadata = pageMetadata(
   "Google Account Data Usage",
-  `How ${APP_NAME} uses Google Sign-In and what account data is accessed.`,
+  `How ${APP_NAME} uses Google Sign-In and what account data is accessed.`
 );
 
 export default function GoogleDisclosurePage() {
@@ -94,13 +94,17 @@ export default function GoogleDisclosurePage() {
         <p>
           You can revoke {APP_NAME}&apos;s access to your Google account at any time from your
           Google Account security settings at{" "}
-          <a href="https://myaccount.google.com/permissions" rel="noopener noreferrer" target="_blank">
+          <a
+            href="https://myaccount.google.com/permissions"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
             myaccount.google.com/permissions
           </a>
           . Revoking access does not delete your {APP_NAME} account or property data; it simply
           means you will need to use email/password to sign in going forward. To delete your{" "}
-          {APP_NAME} account entirely, visit our{" "}
-          <a href="/delete-account">account deletion page</a>.
+          {APP_NAME} account entirely, visit our <a href="/delete-account">account deletion page</a>
+          .
         </p>
 
         <h2>Contact</h2>

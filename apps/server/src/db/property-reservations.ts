@@ -82,7 +82,11 @@ function buildReservationListQuery(
   applyIncludeReservationIdFilter(filters, parts);
 
   if (filters.channel) {
-    pushReservationCondition(parts, "pr.channel = $?::property_reservation_channel", filters.channel);
+    pushReservationCondition(
+      parts,
+      "pr.channel = $?::property_reservation_channel",
+      filters.channel
+    );
   }
   if (filters.status) {
     pushReservationCondition(parts, "pr.status = $?::property_reservation_status", filters.status);

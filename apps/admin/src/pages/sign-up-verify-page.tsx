@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useOtpResendCooldown } from "@/hooks/use-otp-resend-cooldown";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
-import { type TVerifyOtpFormValues,verifyOtpSchema } from "@/lib/auth-form-schemas";
+import { type TVerifyOtpFormValues, verifyOtpSchema } from "@/lib/auth-form-schemas";
 import { type ISignUpVerifyLocationState } from "@/lib/auth-location-state";
 import { maskEmail } from "@/lib/mask-email";
 import { getOtpResendButtonLabel } from "@/lib/otp-resend-button-label";

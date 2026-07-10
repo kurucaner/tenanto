@@ -36,7 +36,7 @@ export const ThemeSwitcher = memo(function ThemeSwitcher() {
       if (mode === next) return;
       applyTheme(next);
     },
-    [mode],
+    [mode]
   );
 
   return (
