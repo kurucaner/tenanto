@@ -37,6 +37,85 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "You can create an account with email or sign in with Google, and reset your password if you forget it.",
+      },
+      {
+        category: "new",
+        description:
+          "You can extend an active lease and optionally update the monthly rent when the new term starts.",
+      },
+      {
+        category: "new",
+        description:
+          "Lease details are organized into Overview, Tenants, Payments, and Terms tabs on their own page.",
+      },
+      {
+        category: "new",
+        description:
+          "You can add, rename, and remove expense categories in Property Settings so they match how you track costs.",
+      },
+      {
+        category: "new",
+        description:
+          "You can close your own support tickets when your question is resolved.",
+      },
+      {
+        category: "improved",
+        description:
+          "Expenses and Leases lists load more records as you scroll instead of showing everything at once.",
+      },
+      {
+        category: "improved",
+        description:
+          "Expense CSV import now includes check transactions from bank exports, not just card charges.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Units table shows how many units you have of each type at the bottom of the list.",
+      },
+      {
+        category: "improved",
+        description:
+          "Click anywhere in the support attachment area to add a file — you no longer need to hit the small button.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property invite emails show your role and include a Register now link for new team members.",
+      },
+      {
+        category: "fixed",
+        description:
+          "You can record reservations with past check-in dates when adding historical stays.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Ending a lease now accepts valid move-out dates within the lease period.",
+      },
+      {
+        category: "fixed",
+        description:
+          "The phone number field no longer drops keystrokes when you first start typing.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Property team members no longer disappear from the list after you edit property details.",
+      },
+    ],
+    id: "2026.9.0",
+    publishedAt: "2026-07-11",
+    summary:
+      "Sign up and sign in with Google, extend leases, customize expense categories, and smoother expense and lease lists.",
+    version: "2026.9.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "You can import expenses from bank or card CSV files — upload your files, review suggested amounts and categories, edit anything you need, then save them in one step.",
       },
       {
