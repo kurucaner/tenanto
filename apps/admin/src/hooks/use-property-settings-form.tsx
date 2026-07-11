@@ -19,6 +19,7 @@ import {
   mergeSavedSectionIntoForm,
   sectionSaveSuccessMessage,
   settingsToFormState,
+  taxRatesDiffer,
   type TPropertySettingsFormState,
   type TPropertySettingsListSection,
   validatePropertySettingsForm,
@@ -64,7 +65,10 @@ export const usePropertySettingsForm = ({
     () => hasNewRows(form.channelCommissions),
     [form.channelCommissions]
   );
-  const hasNewTaxRows = useMemo(() => hasNewRows(form.taxRates), [form.taxRates]);
+  const hasTaxSectionChanges = useMemo(
+    () => taxRatesDiffer(form.taxRates, savedForm.taxRates),
+    [form.taxRates, savedForm.taxRates]
+  );
 
   const parsePercent = (value: string): number | null => {
     const parsed = Number(value);
@@ -260,7 +264,7 @@ export const usePropertySettingsForm = ({
             isSavingTaxRates={sectionSaveMutation.isPending}
             onChange={(taxRates) => setForm((prev) => ({ ...prev, taxRates }))}
             onSaveTaxRates={() => handleSectionSave("taxRates")}
-            showSaveTaxRates={hasNewTaxRows}
+            showSaveTaxRates={hasTaxSectionChanges}
             taxRates={form.taxRates}
           />
         </div>
