@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { settingsApi } from "@/lib/api-client";
 import {
   buildSectionPatchBody,
+  channelCommissionsDiffer,
   expenseCategoryTypesDiffer,
   formStateToBody,
   hasNewRows,
@@ -61,9 +62,10 @@ export const usePropertySettingsForm = ({
     () => hasNewRows(form.incomeLineTypes),
     [form.incomeLineTypes]
   );
-  const hasNewChannelRows = useMemo(
-    () => hasNewRows(form.channelCommissions),
-    [form.channelCommissions]
+  const hasChannelSectionChanges = useMemo(
+    () =>
+      channelCommissionsDiffer(form.channelCommissions, savedForm.channelCommissions),
+    [form.channelCommissions, savedForm.channelCommissions]
   );
   const hasTaxSectionChanges = useMemo(
     () => taxRatesDiffer(form.taxRates, savedForm.taxRates),
@@ -283,7 +285,7 @@ export const usePropertySettingsForm = ({
             isSavingChannelCommissions={sectionSaveMutation.isPending}
             onChange={(channelCommissions) => setForm((prev) => ({ ...prev, channelCommissions }))}
             onSaveChannelCommissions={() => handleSectionSave("channelCommissions")}
-            showSaveChannelCommissions={hasNewChannelRows}
+            showSaveChannelCommissions={hasChannelSectionChanges}
           />
         </div>
 

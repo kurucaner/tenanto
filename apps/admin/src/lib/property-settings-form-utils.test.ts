@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
 import { type PropertyExpenseCategoryTypeFormRow } from "@/components/settings/property-expense-category-types-editor";
+import { type PropertyChannelCommissionFormRow } from "@/components/settings/property-channel-commissions-editor";
 import { type PropertyTaxRateFormRow } from "@/components/settings/property-tax-rates-editor";
 
-import { expenseCategoryTypesDiffer, taxRatesDiffer } from "./property-settings-form-utils";
+import {
+  channelCommissionsDiffer,
+  expenseCategoryTypesDiffer,
+  taxRatesDiffer,
+} from "./property-settings-form-utils";
 
 const savedRows: PropertyExpenseCategoryTypeFormRow[] = [
   {
@@ -137,5 +142,105 @@ describe("taxRatesDiffer", () => {
     const current: PropertyTaxRateFormRow[] = [savedTaxRows[0]!];
 
     expect(taxRatesDiffer(current, savedTaxRows)).toBe(true);
+  });
+});
+
+const savedChannelRows: PropertyChannelCommissionFormRow[] = [
+  {
+    clientId: "channel-1",
+    excludeCleaningFromCommissionBase: false,
+    excludeResortTaxFromPayout: true,
+    id: "channel-1",
+    name: "Airbnb",
+    ratePercent: "15",
+  },
+  {
+    clientId: "channel-2",
+    excludeCleaningFromCommissionBase: true,
+    excludeResortTaxFromPayout: false,
+    id: "channel-2",
+    name: "VRBO",
+    ratePercent: "8",
+  },
+];
+
+describe("channelCommissionsDiffer", () => {
+  test("returns false when current matches saved", () => {
+    expect(channelCommissionsDiffer(savedChannelRows, savedChannelRows)).toBe(false);
+  });
+
+  test("returns true for a new row without id", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      ...savedChannelRows,
+      {
+        clientId: "new-row",
+        excludeCleaningFromCommissionBase: false,
+        excludeResortTaxFromPayout: false,
+        name: "Booking.com",
+        ratePercent: "12",
+      },
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(true);
+  });
+
+  test("returns true when name changes", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      { ...savedChannelRows[0]!, name: "Airbnb updated" },
+      savedChannelRows[1]!,
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(true);
+  });
+
+  test("returns false when only trailing whitespace on name differs", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      { ...savedChannelRows[0]!, name: "Airbnb  " },
+      savedChannelRows[1]!,
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(false);
+  });
+
+  test("returns true when ratePercent changes", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      { ...savedChannelRows[0]!, ratePercent: "16" },
+      savedChannelRows[1]!,
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(true);
+  });
+
+  test("returns false when rate is numerically equivalent", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      { ...savedChannelRows[0]!, ratePercent: "15.00" },
+      savedChannelRows[1]!,
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(false);
+  });
+
+  test("returns true when excludeCleaningFromCommissionBase toggles", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      { ...savedChannelRows[0]!, excludeCleaningFromCommissionBase: true },
+      savedChannelRows[1]!,
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(true);
+  });
+
+  test("returns true when excludeResortTaxFromPayout toggles", () => {
+    const current: PropertyChannelCommissionFormRow[] = [
+      { ...savedChannelRows[0]!, excludeResortTaxFromPayout: false },
+      savedChannelRows[1]!,
+    ];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(true);
+  });
+
+  test("returns true when a saved row is removed", () => {
+    const current: PropertyChannelCommissionFormRow[] = [savedChannelRows[0]!];
+
+    expect(channelCommissionsDiffer(current, savedChannelRows)).toBe(true);
   });
 });

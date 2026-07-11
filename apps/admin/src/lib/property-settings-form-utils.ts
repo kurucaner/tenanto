@@ -145,6 +145,13 @@ export const taxRatesDiffer = (
 ): boolean =>
   JSON.stringify(formTaxRatesToBody(current)) !== JSON.stringify(formTaxRatesToBody(saved));
 
+export const channelCommissionsDiffer = (
+  current: PropertyChannelCommissionFormRow[],
+  saved: PropertyChannelCommissionFormRow[]
+): boolean =>
+  JSON.stringify(formChannelCommissionsToBody(current)) !==
+  JSON.stringify(formChannelCommissionsToBody(saved));
+
 export const validateChannelCommissions = (
   channelCommissions: PropertyChannelCommissionFormRow[]
 ): TValidationResult => {
