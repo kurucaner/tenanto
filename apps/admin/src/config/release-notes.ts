@@ -56,8 +56,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "new",
-        description:
-          "You can close your own support tickets when your question is resolved.",
+        description: "You can close your own support tickets when your question is resolved.",
       },
       {
         category: "improved",
@@ -91,8 +90,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       },
       {
         category: "fixed",
-        description:
-          "Ending a lease now accepts valid move-out dates within the lease period.",
+        description: "Ending a lease now accepts valid move-out dates within the lease period.",
       },
       {
         category: "fixed",

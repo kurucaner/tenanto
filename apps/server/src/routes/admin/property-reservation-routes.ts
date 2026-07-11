@@ -431,7 +431,9 @@ async function buildComputedFields(
     propertyId
   );
   if (!channelCommission) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Channel not found for this property" });
+    void reply
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ error: "Channel not found for this property" });
     return null;
   }
 

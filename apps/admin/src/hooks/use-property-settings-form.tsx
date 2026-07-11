@@ -54,8 +54,7 @@ export const usePropertySettingsForm = ({
   );
 
   const hasExpenseSectionChanges = useMemo(
-    () =>
-      expenseCategoryTypesDiffer(form.expenseCategoryTypes, savedForm.expenseCategoryTypes),
+    () => expenseCategoryTypesDiffer(form.expenseCategoryTypes, savedForm.expenseCategoryTypes),
     [form.expenseCategoryTypes, savedForm.expenseCategoryTypes]
   );
   const hasNewIncomeTypeRows = useMemo(
@@ -63,8 +62,7 @@ export const usePropertySettingsForm = ({
     [form.incomeLineTypes]
   );
   const hasChannelSectionChanges = useMemo(
-    () =>
-      channelCommissionsDiffer(form.channelCommissions, savedForm.channelCommissions),
+    () => channelCommissionsDiffer(form.channelCommissions, savedForm.channelCommissions),
     [form.channelCommissions, savedForm.channelCommissions]
   );
   const hasTaxSectionChanges = useMemo(
@@ -275,8 +273,8 @@ export const usePropertySettingsForm = ({
           <div>
             <h3 className="text-sm font-medium">Channel commissions</h3>
             <p className="text-muted-foreground text-xs">
-              Booking channels available when adding stays. Use the rules to match each channel&apos;s
-              commission base and payout treatment.
+              Booking channels available when adding stays. Use the rules to match each
+              channel&apos;s commission base and payout treatment.
             </p>
           </div>
           <PropertyChannelCommissionsEditor

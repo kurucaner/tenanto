@@ -1,7 +1,4 @@
-import {
-  type IPropertySettings,
-  type IUpdatePropertySettingsBody,
-} from "@/packages/shared";
+import { type IPropertySettings, type IUpdatePropertySettingsBody } from "@/packages/shared";
 
 import { mapPropertySettingsRow } from "./mappers";
 import { pool } from "./pool";

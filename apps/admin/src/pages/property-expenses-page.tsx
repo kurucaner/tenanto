@@ -394,8 +394,7 @@ export const PropertyExpensesPage = memo(() => {
 
   const { deleteConfirmationDialog, handleDelete, isQuickDeleteActive } =
     useQuickDelete<IPropertyExpense>({
-      deleteFn: (expense, onDeleted) =>
-        deleteMutation.mutate(expense, { onSuccess: onDeleted }),
+      deleteFn: (expense, onDeleted) => deleteMutation.mutate(expense, { onSuccess: onDeleted }),
       getConfirmationOptions: (expense) => ({
         description: `Delete "${expense.categoryName}" expense? It will be hidden from reports.`,
         target: expense,

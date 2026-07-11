@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { type PropertyExpenseCategoryTypeFormRow } from "@/components/settings/property-expense-category-types-editor";
 import { type PropertyChannelCommissionFormRow } from "@/components/settings/property-channel-commissions-editor";
+import { type PropertyExpenseCategoryTypeFormRow } from "@/components/settings/property-expense-category-types-editor";
 import { type PropertyTaxRateFormRow } from "@/components/settings/property-tax-rates-editor";
 
 import {

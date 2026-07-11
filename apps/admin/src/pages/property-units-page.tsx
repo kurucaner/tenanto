@@ -300,18 +300,28 @@ export const PropertyUnitsPage = memo(() => {
               {units.length > 0 ? (
                 <TableFooter>
                   <TableRow>
-                    <TableCell className="text-muted-foreground text-xs" colSpan={canManage ? 6 : 5}>
+                    <TableCell
+                      className="text-muted-foreground text-xs"
+                      colSpan={canManage ? 6 : 5}
+                    >
                       <div className="flex items-center gap-4">
                         <span>
-                          Total: <span className="text-foreground font-medium">{unitTypeCounts.total}</span>
+                          Total:{" "}
+                          <span className="text-foreground font-medium">
+                            {unitTypeCounts.total}
+                          </span>
                         </span>
                         <span>
                           Short Term:{" "}
-                          <span className="text-foreground font-medium">{unitTypeCounts.shortTerm}</span>
+                          <span className="text-foreground font-medium">
+                            {unitTypeCounts.shortTerm}
+                          </span>
                         </span>
                         <span>
                           Long Term:{" "}
-                          <span className="text-foreground font-medium">{unitTypeCounts.longTerm}</span>
+                          <span className="text-foreground font-medium">
+                            {unitTypeCounts.longTerm}
+                          </span>
                         </span>
                       </div>
                     </TableCell>

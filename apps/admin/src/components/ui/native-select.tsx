@@ -1,4 +1,4 @@
-import { type ComponentProps,memo } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { SelectOptions } from "@/components/ui/select-options";
 import { type TSelectOption } from "@/lib/select-option-types";

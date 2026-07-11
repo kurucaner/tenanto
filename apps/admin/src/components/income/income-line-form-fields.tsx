@@ -49,9 +49,7 @@ export const IncomeLineTypeField = memo(
         label="Income type"
         onChange={handleChange}
         options={
-          options.length === 0
-            ? [{ label: "No income types configured", value: "" }]
-            : options
+          options.length === 0 ? [{ label: "No income types configured", value: "" }] : options
         }
         value={value}
       />

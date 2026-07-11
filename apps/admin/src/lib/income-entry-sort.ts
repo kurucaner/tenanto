@@ -1,6 +1,4 @@
-import {
-  formatStatusLabel,
-} from "@/components/income/reservation-form-options";
+import { formatStatusLabel } from "@/components/income/reservation-form-options";
 import {
   compareDates,
   compareNumbers,

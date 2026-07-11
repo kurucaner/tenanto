@@ -2,10 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  buildChannelOptions,
-  STATUS_OPTIONS,
-} from "@/components/income/reservation-form-options";
+import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
 import { Button } from "@/components/ui/button";
 import {

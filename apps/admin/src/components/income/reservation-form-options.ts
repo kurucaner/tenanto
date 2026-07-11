@@ -1,4 +1,8 @@
-import { type IPropertyChannelCommission, ReservationStatus, type TReservationStatus } from "@/packages/shared";
+import {
+  type IPropertyChannelCommission,
+  ReservationStatus,
+  type TReservationStatus,
+} from "@/packages/shared";
 
 export const STATUS_OPTIONS: { label: string; value: TReservationStatus }[] = [
   { label: "Active", value: ReservationStatus.ACTIVE },

@@ -245,7 +245,10 @@ function parseChannelCommissionItem(
 
   const rateRaw = (item as Record<string, unknown>)["rate"];
   if (!isValidRate(rateRaw)) {
-    return { error: `channelCommissions[${index}].rate must be a number between 0 and 1`, ok: false };
+    return {
+      error: `channelCommissions[${index}].rate must be a number between 0 and 1`,
+      ok: false,
+    };
   }
 
   const record = item as Record<string, unknown>;
@@ -269,7 +272,9 @@ function parseChannelCommissionItem(
   };
 }
 
-function parseChannelCommissions(raw: unknown):
+function parseChannelCommissions(
+  raw: unknown
+):
   | { channelCommissions: IPropertyChannelCommissionInput[]; ok: true }
   | { channelCommissions: IPropertyChannelCommissionInput[]; error: string; ok: false } {
   if (!Array.isArray(raw)) {

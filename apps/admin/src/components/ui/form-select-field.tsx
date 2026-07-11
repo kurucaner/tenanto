@@ -1,4 +1,4 @@
-import { type ComponentProps,memo } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { FieldLabel } from "@/components/ui/field-label";
 import { Label } from "@/components/ui/label";

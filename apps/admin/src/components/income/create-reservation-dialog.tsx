@@ -5,10 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import {
-  buildChannelOptions,
-  STATUS_OPTIONS,
-} from "@/components/income/reservation-form-options";
+import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -186,10 +183,7 @@ export const CreateReservationDialog = memo(
                 label="Unit"
                 {...form.register("unitId")}
               >
-                <PropertyUnitSelectOptions
-                  emptyOptionLabel="Select unit…"
-                  units={shortTermUnits}
-                />
+                <PropertyUnitSelectOptions emptyOptionLabel="Select unit…" units={shortTermUnits} />
               </FormSelectField>
               {!unitsQuery.isLoading && shortTermUnits.length === 0 ? (
                 <p className="text-muted-foreground text-xs">

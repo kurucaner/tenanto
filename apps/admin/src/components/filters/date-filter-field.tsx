@@ -1,4 +1,4 @@
-import { type ComponentProps,memo } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { FilterField } from "@/components/filters/filter-field";
 import { Input } from "@/components/ui/input";

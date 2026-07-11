@@ -1,10 +1,7 @@
 import { memo } from "react";
 
 import { FilterSelectField } from "@/components/filters/filter-select-field";
-import {
-  CATEGORY_OPTIONS,
-  STATUS_OPTIONS,
-} from "@/components/support/support-constants";
+import { CATEGORY_OPTIONS, STATUS_OPTIONS } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
 
 export const SupportFiltersBar = memo(

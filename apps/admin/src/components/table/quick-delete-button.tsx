@@ -17,9 +17,7 @@ export const QuickDeleteButton = memo(
     <Button
       aria-keyshortcuts="Meta+Click Control+Click"
       aria-label={ariaLabel}
-      className={cn(
-        quickDeleteActive && "bg-muted text-foreground dark:bg-muted/50"
-      )}
+      className={cn(quickDeleteActive && "bg-muted text-foreground dark:bg-muted/50")}
       disabled={disabled}
       onClick={onClick}
       size="icon-sm"

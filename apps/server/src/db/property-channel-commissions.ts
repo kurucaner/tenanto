@@ -51,7 +51,9 @@ export const propertyChannelCommissionsDb = {
        ORDER BY sort_order ASC, created_at ASC`,
       [propertyId]
     );
-    return result.rows.map((row) => mapPropertyChannelCommissionRow(row as Record<string, unknown>));
+    return result.rows.map((row) =>
+      mapPropertyChannelCommissionRow(row as Record<string, unknown>)
+    );
   },
 
   async replaceAll(

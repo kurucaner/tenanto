@@ -37,13 +37,7 @@ export const PropertySettingsListFooter = memo(
           {addLabel}
         </Button>
         {showSave && onSave != null && saveLabel != null ? (
-          <Button
-            className="gap-1.5"
-            disabled={disabled}
-            onClick={onSave}
-            size="sm"
-            type="button"
-          >
+          <Button className="gap-1.5" disabled={disabled} onClick={onSave} size="sm" type="button">
             {isSaving ? "Saving…" : saveLabel}
           </Button>
         ) : null}

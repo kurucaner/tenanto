@@ -14,14 +14,9 @@ import { CreateReservationDialog } from "@/components/income/create-reservation-
 import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialog";
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
-import {
-  buildIncomeTypeFilterOptions,
-} from "@/components/income/income-line-form-options";
+import { buildIncomeTypeFilterOptions } from "@/components/income/income-line-form-options";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
-import {
-  buildChannelOptions,
-  STATUS_OPTIONS,
-} from "@/components/income/reservation-form-options";
+import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayCalculationDetailsDialog } from "@/components/income/stay-calculation-details-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";

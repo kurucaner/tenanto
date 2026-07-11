@@ -25,10 +25,7 @@ export type TPropertySettingsFormState = {
 };
 
 export type TPropertySettingsListSection =
-  | "channelCommissions"
-  | "expenseCategoryTypes"
-  | "incomeLineTypes"
-  | "taxRates";
+  "channelCommissions" | "expenseCategoryTypes" | "incomeLineTypes" | "taxRates";
 
 const MAX_TAX_NAME_LENGTH = 80;
 const MAX_INCOME_TYPE_NAME_LENGTH = 80;
@@ -129,8 +126,7 @@ export const formStateToBody = (form: TPropertySettingsFormState): IUpdateProper
   taxRates: formTaxRatesToBody(form.taxRates),
 });
 
-export const hasNewRows = (rows: { id?: string }[]): boolean =>
-  rows.some((row) => row.id == null);
+export const hasNewRows = (rows: { id?: string }[]): boolean => rows.some((row) => row.id == null);
 
 export const expenseCategoryTypesDiffer = (
   current: PropertyExpenseCategoryTypeFormRow[],
@@ -251,7 +247,9 @@ export const validateExpenseCategoryTypes = (
   return { ok: true };
 };
 
-export const validatePropertySettingsForm = (form: TPropertySettingsFormState): TValidationResult => {
+export const validatePropertySettingsForm = (
+  form: TPropertySettingsFormState
+): TValidationResult => {
   const channelResult = validateChannelCommissions(form.channelCommissions);
   if (!channelResult.ok) return channelResult;
 
