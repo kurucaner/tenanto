@@ -16,6 +16,15 @@ export interface SupportReplyEmailOptions {
   supportRequestId: string;
 }
 
+export interface RentPaymentRecordedEmailOptions {
+  amount: string;
+  paymentDate: string;
+  propertyName: string;
+  rentMonthLabel: string;
+  tenantName: string;
+  unitLabel: string;
+}
+
 const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
 const PLATFORM_APP_URL = process.env.PLATFORM_APP_URL;
@@ -114,11 +123,36 @@ export async function sendSupportReplyEmail(
   const subject = "New reply on your support request";
   const text = `Support replied to your request:\n\n${opts.messagePreview}\n\nView reply: ${ticketUrl}`;
 
-  const html = renderTemplate("support-reply.html", {
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendRentPaymentRecordedEmail(
+  to: string,
+  opts: RentPaymentRecordedEmailOptions
+): Promise<void> {
+  const subject = `Rent payment received — ${opts.propertyName}`;
+  const text = [
+    `Hi ${opts.tenantName},`,
+    "",
+    `We received your rent payment for ${opts.rentMonthLabel} at ${opts.propertyName}.`,
+    "",
+    `Property: ${opts.propertyName}`,
+    `Unit: ${opts.unitLabel}`,
+    `Rent month: ${opts.rentMonthLabel}`,
+    `Amount: ${opts.amount}`,
+    `Payment date: ${opts.paymentDate}`,
+    "",
+    "This email confirms that your rent payment was recorded.",
+  ].join("\n");
+
+  const html = renderTemplate("rent-payment-recorded.html", {
+    amount: escapeHtml(opts.amount),
     appName: APP_NAME,
-    baseUrl: (PLATFORM_APP_URL ?? "").replace(/\/$/, ""),
-    messagePreview: escapeHtml(opts.messagePreview),
-    ticketUrl,
+    paymentDate: escapeHtml(opts.paymentDate),
+    propertyName: escapeHtml(opts.propertyName),
+    rentMonthLabel: escapeHtml(opts.rentMonthLabel),
+    tenantName: escapeHtml(opts.tenantName),
+    unitLabel: escapeHtml(opts.unitLabel),
   });
 
   await sendTransactionalEmail({ html, subject, text, to });

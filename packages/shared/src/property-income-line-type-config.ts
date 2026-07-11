@@ -36,3 +36,7 @@ export function resolveRentIncomeLineTypeId(
   );
   return rent?.id ?? types[0]?.id ?? "";
 }
+
+export function isRentIncomeLineType(type: Pick<IPropertyIncomeLineType, "name">): boolean {
+  return type.name.toLowerCase() === DEFAULT_RENT_TYPE_NAME.toLowerCase();
+}

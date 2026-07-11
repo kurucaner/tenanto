@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
+
+    <style>
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0c0c0c !important;
+          color: #ededed !important;
+        }
+
+        .email-container {
+          background: #141414 !important;
+        }
+
+        .text-muted {
+          color: #b0b0b0 !important;
+        }
+
+        .footer-text {
+          color: #999999 !important;
+        }
+
+        .footer-td {
+          border-top: 1px solid #999999 !important;
+        }
+
+        .detail-box {
+          background: #1a1a1a !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #fafafa;
+      font-family:
+        -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Helvetica, Arial,
+        sans-serif;
+      color: #1a1a1a;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden">
+      Rent payment received for {{rentMonthLabel}} at {{propertyName}}.
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background: #fafafa; padding: 32px 0"
+    >
+      <tr>
+        <td align="center">
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            class="email-container"
+            style="max-width: 600px; background: #ffffff; border-radius: 10px; padding: 36px 32px"
+          >
+            <tr>
+              <td align="center">
+                <div
+                  style="
+                    font-family: Georgia, &quot;Times New Roman&quot;, serif;
+                    font-size: 36px;
+                    color: #d4b034;
+                    margin-bottom: 4px;
+                  "
+                >
+                  {{appName}}
+                </div>
+
+                <div class="text-muted" style="font-size: 14px; margin-bottom: 36px">
+                  Property Management
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding-bottom: 28px">
+                <div
+                  style="width: 60px; height: 2px; background: #d4b034; margin-bottom: 24px"
+                ></div>
+
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px">
+                  Rent payment received
+                </div>
+
+                <div
+                  class="text-muted"
+                  style="font-size: 15px; line-height: 1.6; margin-bottom: 24px"
+                >
+                  Hi {{tenantName}}, we received your rent payment for
+                  <strong>{{rentMonthLabel}}</strong> at <strong>{{propertyName}}</strong>.
+                </div>
+
+                <div
+                  class="detail-box"
+                  style="
+                    background: #f7f7f7;
+                    border-radius: 8px;
+                    padding: 20px 24px;
+                    text-align: left;
+                    margin-bottom: 24px;
+                  "
+                >
+                  <div style="font-size: 14px; line-height: 1.8">
+                    <div><strong>Property:</strong> {{propertyName}}</div>
+                    <div><strong>Unit:</strong> {{unitLabel}}</div>
+                    <div><strong>Rent month:</strong> {{rentMonthLabel}}</div>
+                    <div><strong>Amount:</strong> {{amount}}</div>
+                    <div><strong>Payment date:</strong> {{paymentDate}}</div>
+                  </div>
+                </div>
+
+                <div class="text-muted" style="font-size: 14px; line-height: 1.6">
+                  This email confirms that your rent payment was recorded. If you have questions,
+                  contact your property manager.
+                </div>
+
+                <div style="width: 60px; height: 2px; background: #d4b034; margin-top: 24px"></div>
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="footer-td"
+                align="center"
+                style="padding-top: 24px; border-top: 1px solid #eee"
+              >
+                <div class="footer-text" style="font-size: 12px; color: #777">
+                  If you weren't expecting this, you can safely ignore this email. &nbsp;·&nbsp;
+                  Powered by {{appName}}
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

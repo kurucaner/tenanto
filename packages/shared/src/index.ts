@@ -126,6 +126,7 @@ export {
   DEFAULT_RENT_TYPE_NAME,
   type IPropertyIncomeLineType,
   type IPropertyIncomeLineTypeInput,
+  isRentIncomeLineType,
   resolveDefaultIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
 } from "./property-income-line-type-config";

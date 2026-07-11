@@ -10,9 +10,11 @@ import {
   type ICreatePropertyIncomeLineBody,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
+  isRentIncomeLineType,
   type IUpdatePropertyIncomeLineBody,
   UserType,
 } from "@/packages/shared";
+import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
 import { parseDateString, parseUuidParam } from "./admin-query-utils";
@@ -483,6 +485,17 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         },
         computed
       );
+
+      if (longStayId && isRentIncomeLineType(incomeLineType)) {
+        void notifyPrimaryTenantRentRecorded({
+          amount: parsed.body.amount,
+          longStayId,
+          propertyId,
+          transactionDate: parsed.body.transactionDate,
+        }).catch((err) => {
+          request.log.error({ err, longStayId, propertyId }, "Failed to send rent receipt email");
+        });
+      }
 
       return reply.status(HttpStatus.CREATED).send({ incomeLine });
     }
