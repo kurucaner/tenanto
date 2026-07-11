@@ -1,8 +1,7 @@
-import { Trash2 } from "lucide-react";
-import { memo } from "react";
+import { memo, type MouseEvent } from "react";
 
 import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
-import { Button } from "@/components/ui/button";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Input } from "@/components/ui/input";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 
@@ -15,8 +14,10 @@ export interface PropertyTaxRateFormRow {
 
 export interface PropertyTaxRatesEditorProps {
   disabled?: boolean;
+  isQuickDeleteActive: boolean;
   isSavingTaxRates?: boolean;
   onChange: (taxRates: PropertyTaxRateFormRow[]) => void;
+  onDeleteRow: (row: PropertyTaxRateFormRow, event?: MouseEvent<HTMLButtonElement>) => void;
   onSaveTaxRates?: () => void;
   showSaveTaxRates?: boolean;
   taxRates: PropertyTaxRateFormRow[];
@@ -29,18 +30,16 @@ function createClientId(): string {
 export const PropertyTaxRatesEditor = memo(
   ({
     disabled = false,
+    isQuickDeleteActive,
     isSavingTaxRates = false,
     onChange,
+    onDeleteRow,
     onSaveTaxRates,
     showSaveTaxRates = false,
     taxRates,
   }: PropertyTaxRatesEditorProps) => {
     const updateRow = (clientId: string, patch: Partial<PropertyTaxRateFormRow>) => {
       onChange(taxRates.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row)));
-    };
-
-    const removeRow = (clientId: string) => {
-      onChange(taxRates.filter((row) => row.clientId !== clientId));
     };
 
     const addRow = () => {
@@ -85,16 +84,12 @@ export const PropertyTaxRatesEditor = memo(
                       %
                     </span>
                   </div>
-                  <Button
-                    aria-label={`Remove ${row.name || "tax"}`}
+                  <QuickDeleteButton
+                    ariaLabel={`Remove ${row.name || "tax"}`}
                     disabled={disabled}
-                    onClick={() => removeRow(row.clientId)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
+                    onClick={(event) => onDeleteRow(row, event)}
+                    quickDeleteActive={isQuickDeleteActive}
+                  />
                 </li>
               ))}
             </ul>

@@ -1,8 +1,7 @@
-import { Trash2 } from "lucide-react";
-import { memo } from "react";
+import { memo, type MouseEvent } from "react";
 
 import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
-import { Button } from "@/components/ui/button";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
@@ -19,8 +18,13 @@ export interface PropertyChannelCommissionFormRow {
 export interface PropertyChannelCommissionsEditorProps {
   channelCommissions: PropertyChannelCommissionFormRow[];
   disabled?: boolean;
+  isQuickDeleteActive: boolean;
   isSavingChannelCommissions?: boolean;
   onChange: (channelCommissions: PropertyChannelCommissionFormRow[]) => void;
+  onDeleteRow: (
+    row: PropertyChannelCommissionFormRow,
+    event?: MouseEvent<HTMLButtonElement>
+  ) => void;
   onSaveChannelCommissions?: () => void;
   showSaveChannelCommissions?: boolean;
 }
@@ -33,8 +37,10 @@ export const PropertyChannelCommissionsEditor = memo(
   ({
     channelCommissions,
     disabled = false,
+    isQuickDeleteActive,
     isSavingChannelCommissions = false,
     onChange,
+    onDeleteRow,
     onSaveChannelCommissions,
     showSaveChannelCommissions = false,
   }: PropertyChannelCommissionsEditorProps) => {
@@ -42,10 +48,6 @@ export const PropertyChannelCommissionsEditor = memo(
       onChange(
         channelCommissions.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row))
       );
-    };
-
-    const removeRow = (clientId: string) => {
-      onChange(channelCommissions.filter((row) => row.clientId !== clientId));
     };
 
     const addRow = () => {
@@ -127,17 +129,14 @@ export const PropertyChannelCommissionsEditor = memo(
                       Exclude resort tax from payout
                     </label>
                   </div>
-                  <Button
-                    aria-label={`Remove ${row.name || "channel"}`}
-                    className="mt-0.5"
-                    disabled={disabled}
-                    onClick={() => removeRow(row.clientId)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
+                  <div className="mt-0.5">
+                    <QuickDeleteButton
+                      ariaLabel={`Remove ${row.name || "channel"}`}
+                      disabled={disabled}
+                      onClick={(event) => onDeleteRow(row, event)}
+                      quickDeleteActive={isQuickDeleteActive}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

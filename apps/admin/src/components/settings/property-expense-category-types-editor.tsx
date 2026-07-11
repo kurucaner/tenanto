@@ -1,8 +1,7 @@
-import { Trash2 } from "lucide-react";
-import { memo } from "react";
+import { memo, type MouseEvent } from "react";
 
 import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
-import { Button } from "@/components/ui/button";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
@@ -16,8 +15,13 @@ export interface PropertyExpenseCategoryTypeFormRow {
 export interface PropertyExpenseCategoryTypesEditorProps {
   disabled?: boolean;
   expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[];
+  isQuickDeleteActive: boolean;
   isSavingExpenses?: boolean;
   onChange: (expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[]) => void;
+  onDeleteRow: (
+    row: PropertyExpenseCategoryTypeFormRow,
+    event?: MouseEvent<HTMLButtonElement>
+  ) => void;
   onSaveExpenses?: () => void;
   showSaveExpenses?: boolean;
 }
@@ -30,8 +34,10 @@ export const PropertyExpenseCategoryTypesEditor = memo(
   ({
     disabled = false,
     expenseCategoryTypes,
+    isQuickDeleteActive,
     isSavingExpenses = false,
     onChange,
+    onDeleteRow,
     onSaveExpenses,
     showSaveExpenses = false,
   }: PropertyExpenseCategoryTypesEditorProps) => {
@@ -39,10 +45,6 @@ export const PropertyExpenseCategoryTypesEditor = memo(
       onChange(
         expenseCategoryTypes.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row))
       );
-    };
-
-    const removeRow = (clientId: string) => {
-      onChange(expenseCategoryTypes.filter((row) => row.clientId !== clientId));
     };
 
     const addRow = () => {
@@ -86,16 +88,12 @@ export const PropertyExpenseCategoryTypesEditor = memo(
                       }
                     />
                   </div>
-                  <Button
-                    aria-label={`Remove ${row.name || "expense category"}`}
+                  <QuickDeleteButton
+                    ariaLabel={`Remove ${row.name || "expense category"}`}
                     disabled={disabled}
-                    onClick={() => removeRow(row.clientId)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
+                    onClick={(event) => onDeleteRow(row, event)}
+                    quickDeleteActive={isQuickDeleteActive}
+                  />
                 </li>
               ))}
             </ul>

@@ -1,8 +1,7 @@
-import { Trash2 } from "lucide-react";
-import { memo } from "react";
+import { memo, type MouseEvent } from "react";
 
 import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
-import { Button } from "@/components/ui/button";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Input } from "@/components/ui/input";
 
 export interface PropertyIncomeLineTypeFormRow {
@@ -14,8 +13,10 @@ export interface PropertyIncomeLineTypeFormRow {
 export interface PropertyIncomeLineTypesEditorProps {
   disabled?: boolean;
   incomeLineTypes: PropertyIncomeLineTypeFormRow[];
+  isQuickDeleteActive: boolean;
   isSavingIncomeType?: boolean;
   onChange: (incomeLineTypes: PropertyIncomeLineTypeFormRow[]) => void;
+  onDeleteRow: (row: PropertyIncomeLineTypeFormRow, event?: MouseEvent<HTMLButtonElement>) => void;
   onSaveIncomeType?: () => void;
   showSaveIncomeType?: boolean;
 }
@@ -28,8 +29,10 @@ export const PropertyIncomeLineTypesEditor = memo(
   ({
     disabled = false,
     incomeLineTypes,
+    isQuickDeleteActive,
     isSavingIncomeType = false,
     onChange,
+    onDeleteRow,
     onSaveIncomeType,
     showSaveIncomeType = false,
   }: PropertyIncomeLineTypesEditorProps) => {
@@ -37,10 +40,6 @@ export const PropertyIncomeLineTypesEditor = memo(
       onChange(
         incomeLineTypes.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row))
       );
-    };
-
-    const removeRow = (clientId: string) => {
-      onChange(incomeLineTypes.filter((row) => row.clientId !== clientId));
     };
 
     const addRow = () => {
@@ -69,16 +68,12 @@ export const PropertyIncomeLineTypesEditor = memo(
                     placeholder="Income type name"
                     value={row.name}
                   />
-                  <Button
-                    aria-label={`Remove ${row.name || "income type"}`}
+                  <QuickDeleteButton
+                    ariaLabel={`Remove ${row.name || "income type"}`}
                     disabled={disabled}
-                    onClick={() => removeRow(row.clientId)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
+                    onClick={(event) => onDeleteRow(row, event)}
+                    quickDeleteActive={isQuickDeleteActive}
+                  />
                 </li>
               ))}
             </ul>
