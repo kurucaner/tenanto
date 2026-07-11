@@ -406,7 +406,6 @@ function buildSupportRequestsListSearchParams(query: ISupportRequestsListQuery):
   return s === "" ? "" : `?${s}`;
 }
 
-
 export const notificationsApi = {
   getUnreadCount: () =>
     authenticatedRequest<IUserNotificationsUnreadCountResponse>("/notifications/unread-count"),
