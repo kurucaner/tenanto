@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Sparkles } from "lucide-react";
-import { memo, type MouseEvent, type RefObject, useCallback, useMemo, useState } from "react";
+import {
+  memo,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
+import { DataTable } from "@/components/data-table/data-table";
+import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
@@ -13,17 +23,7 @@ import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
-import { useLayoutScrollElement } from "@/contexts/layout-scroll-context";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import {
   type TPropertyExpensesListFilters,
@@ -35,7 +35,6 @@ import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi, settingsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
-import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -107,6 +106,17 @@ const EXPENSE_ROW_ESTIMATED_HEIGHT = 44;
 
 function getExpenseKey(expense: IPropertyExpense): string {
   return expense.id;
+}
+
+function getExpenseColumns(canManage: boolean): DataTableColumn[] {
+  return [
+    { id: "category", label: "Category" },
+    { id: "date", label: "Date" },
+    { id: "description", label: "Description" },
+    { id: "tax", label: "Tax" },
+    { align: "right", id: "amount", label: "Amount" },
+    { hidden: !canManage, id: "actions", label: "Actions" },
+  ];
 }
 
 const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
@@ -185,6 +195,7 @@ const PropertyExpensesTable = memo(
   ({
     canManage,
     expenses,
+    filters,
     hasNextPage,
     isDeletePending,
     isFetchingNextPage,
@@ -197,6 +208,7 @@ const PropertyExpensesTable = memo(
   }: {
     canManage: boolean;
     expenses: IPropertyExpense[];
+    filters: ReactNode;
     hasNextPage: boolean;
     isDeletePending: boolean;
     isFetchingNextPage: boolean;
@@ -207,8 +219,6 @@ const PropertyExpensesTable = memo(
     onRestore: (expense: IPropertyExpense) => void;
     scrollSentinelRef: RefObject<HTMLDivElement | null>;
   }) => {
-    const scrollElement = useLayoutScrollElement();
-
     const renderExpenseRow = useCallback(
       (expense: IPropertyExpense) => (
         <ExpenseRow
@@ -225,70 +235,21 @@ const PropertyExpensesTable = memo(
       [canManage, isDeletePending, isQuickDeleteActive, onDelete, onEdit, onRestore]
     );
 
-    if (isPending) {
-      return (
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      );
-    }
-
-    const columnCount = canManage ? 6 : 5;
+    const columns = useMemo(() => getExpenseColumns(canManage), [canManage]);
 
     return (
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Tax</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              {canManage ? <TableHead>Actions</TableHead> : null}
-            </TableRow>
-          </TableHeader>
-          {expenses.length === 0 ? (
-            <TableBody>
-              <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={columnCount}>
-                  No expenses yet.
-                  {canManage ? " Add an expense to get started." : ""}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          ) : (
-            <VirtualizedTableBody
-              colSpan={columnCount}
-              estimateRowHeight={EXPENSE_ROW_ESTIMATED_HEIGHT}
-              getItemKey={getExpenseKey}
-              items={expenses}
-              renderRow={renderExpenseRow}
-              scrollElement={scrollElement}
-            />
-          )}
-          {isFetchingNextPage ? (
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={columnCount}>
-                  <Skeleton className="h-8 w-full" />
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          ) : null}
-        </Table>
-        <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
-        {expenses.length > 0 && !hasNextPage && !isFetchingNextPage ? (
-          <p className="text-muted-foreground pt-3 text-center text-sm">
-            {getInfiniteListLoadMoreLabel({
-              hasNextPage: false,
-              isFetchingNextPage: false,
-            })}
-          </p>
-        ) : null}
-      </div>
+      <DataTable
+        columns={columns}
+        emptyMessage={`No expenses yet.${canManage ? " Add an expense to get started." : ""}`}
+        filters={filters}
+        getItemKey={getExpenseKey}
+        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+        infiniteScrollSentinelRef={scrollSentinelRef}
+        isPending={isPending}
+        items={expenses}
+        renderRow={renderExpenseRow}
+        virtualization={{ estimateRowHeight: EXPENSE_ROW_ESTIMATED_HEIGHT }}
+      />
     );
   }
 );
@@ -458,20 +419,21 @@ export const PropertyExpensesPage = memo(() => {
   return (
     <>
       <Card>
-        <CardContent className="space-y-4 p-4">
-          <PropertyExpensesFilters
-            categoryId={categoryId}
-            categoryTypes={categoryTypes}
-            from={from}
-            onCategoryIdChange={(value) => setFilter("categoryId", value)}
-            onFromChange={(value) => setFilter("from", value)}
-            onToChange={(value) => setFilter("to", value)}
-            to={to}
-          />
-
+        <CardContent className="space-y-4 p-0">
           <PropertyExpensesTable
             canManage={canManage}
             expenses={expenses}
+            filters={
+              <PropertyExpensesFilters
+                categoryId={categoryId}
+                categoryTypes={categoryTypes}
+                from={from}
+                onCategoryIdChange={(value) => setFilter("categoryId", value)}
+                onFromChange={(value) => setFilter("from", value)}
+                onToChange={(value) => setFilter("to", value)}
+                to={to}
+              />
+            }
             hasNextPage={hasNextPage}
             isDeletePending={deleteMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
