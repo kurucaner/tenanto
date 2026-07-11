@@ -30,6 +30,7 @@ import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { type TAriaSort, type TSortDirection } from "@/lib/table-sort";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import { sortUnits } from "@/lib/unit-sort";
 import {
@@ -153,6 +154,170 @@ const UnitRow = memo(
 );
 UnitRow.displayName = "UnitRow";
 
+const UnitsTableSkeleton = memo(() => (
+  <div className="space-y-3 p-6">
+    <Skeleton className="h-8 w-full" />
+    <Skeleton className="h-8 w-full" />
+    <Skeleton className="h-8 w-full" />
+  </div>
+));
+UnitsTableSkeleton.displayName = "UnitsTableSkeleton";
+
+const PropertyUnitsTable = memo(
+  ({
+    activeLeaseByUnitId,
+    canManage,
+    getColumnAriaSort,
+    getColumnDirection,
+    isDeletePending,
+    isQuickDeleteActive,
+    onDelete,
+    onEdit,
+    onRestore,
+    onStartLease,
+    sortedUnits,
+    toggleSort,
+    units,
+    unitTypeCounts,
+  }: {
+    activeLeaseByUnitId: Map<string, IPropertyLongStay>;
+    canManage: boolean;
+    getColumnAriaSort: (columnId: string) => TAriaSort;
+    getColumnDirection: (columnId: string) => TSortDirection | null;
+    isDeletePending: boolean;
+    isQuickDeleteActive: boolean;
+    onDelete: (unit: IPropertyUnit, event?: MouseEvent<HTMLButtonElement>) => void;
+    onEdit: (unit: IPropertyUnit) => void;
+    onRestore: (unit: IPropertyUnit) => void;
+    onStartLease: (unit: IPropertyUnit) => void;
+    sortedUnits: IPropertyUnit[];
+    toggleSort: (columnId: string) => void;
+    units: IPropertyUnit[];
+    unitTypeCounts: { longTerm: number; shortTerm: number; total: number };
+  }) => {
+    const colSpan = canManage ? 6 : 5;
+
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Layout</TableHead>
+            <SortableTableHead
+              ariaSort={getColumnAriaSort("type")}
+              direction={getColumnDirection("type")}
+              label="Type"
+              onSort={() => toggleSort("type")}
+            />
+            <TableHead>Occupancy</TableHead>
+            <TableHead>Added</TableHead>
+            {canManage ? <TableHead>Actions</TableHead> : null}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sortedUnits.length === 0 ? (
+            <TableRow>
+              <TableCell className="text-muted-foreground" colSpan={colSpan}>
+                No units yet.{canManage ? " Add a unit to get started." : ""}
+              </TableCell>
+            </TableRow>
+          ) : (
+            sortedUnits.map((unit) => (
+              <UnitRow
+                activeLease={activeLeaseByUnitId.get(unit.id)}
+                canManage={canManage}
+                isDeletePending={isDeletePending}
+                isQuickDeleteActive={isQuickDeleteActive}
+                key={unit.id}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                onRestore={onRestore}
+                onStartLease={onStartLease}
+                unit={unit}
+              />
+            ))
+          )}
+        </TableBody>
+        {units.length > 0 ? (
+          <TableFooter>
+            <TableRow>
+              <TableCell className="text-muted-foreground text-xs" colSpan={colSpan}>
+                <div className="flex items-center gap-4">
+                  <span>
+                    Total:{" "}
+                    <span className="text-foreground font-medium">{unitTypeCounts.total}</span>
+                  </span>
+                  <span>
+                    Short Term:{" "}
+                    <span className="text-foreground font-medium">{unitTypeCounts.shortTerm}</span>
+                  </span>
+                  <span>
+                    Long Term:{" "}
+                    <span className="text-foreground font-medium">{unitTypeCounts.longTerm}</span>
+                  </span>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableFooter>
+        ) : null}
+      </Table>
+    );
+  }
+);
+PropertyUnitsTable.displayName = "PropertyUnitsTable";
+
+function handleUnitDialogOpenChange(open: boolean, clearSelection: () => void): void {
+  if (!open) {
+    clearSelection();
+  }
+}
+
+const PropertyUnitsPageDialogs = memo(
+  ({
+    createOpen,
+    editUnit,
+    onCreateOpenChange,
+    onEditOpenChange,
+    onStartLeaseOpenChange,
+    propertyId,
+    startLeaseUnit,
+    units,
+  }: {
+    createOpen: boolean;
+    editUnit: IPropertyUnit | null;
+    onCreateOpenChange: (open: boolean) => void;
+    onEditOpenChange: (open: boolean) => void;
+    onStartLeaseOpenChange: (open: boolean) => void;
+    propertyId: string;
+    startLeaseUnit: IPropertyUnit | null;
+    units: IPropertyUnit[];
+  }) => (
+    <>
+      <CreateUnitDialog onOpenChange={onCreateOpenChange} open={createOpen} propertyId={propertyId} />
+      {editUnit ? (
+        <EditUnitDialog
+          key={editUnit.id}
+          onOpenChange={onEditOpenChange}
+          open={true}
+          propertyId={propertyId}
+          unit={editUnit}
+        />
+      ) : null}
+      {startLeaseUnit ? (
+        <StartLeaseDialog
+          key={startLeaseUnit.id}
+          onOpenChange={onStartLeaseOpenChange}
+          open={true}
+          propertyId={propertyId}
+          unit={startLeaseUnit}
+          units={units}
+        />
+      ) : null}
+    </>
+  )
+);
+PropertyUnitsPageDialogs.displayName = "PropertyUnitsPageDialogs";
+
 export const PropertyUnitsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageUnits;
@@ -227,6 +392,13 @@ export const PropertyUnitsPage = memo(() => {
     setCreateOpen(true);
   }, []);
 
+  const handleRestoreUnit = useCallback(
+    (unit: IPropertyUnit) => {
+      restoreMutation.mutate(unit);
+    },
+    [restoreMutation]
+  );
+
   const pageActions = useMemo(
     () =>
       canManage ? (
@@ -245,114 +417,42 @@ export const PropertyUnitsPage = memo(() => {
       <Card>
         <CardContent className="p-0">
           {unitsQuery.isPending ? (
-            <div className="space-y-3 p-6">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
+            <UnitsTableSkeleton />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Layout</TableHead>
-                  <SortableTableHead
-                    ariaSort={getColumnAriaSort("type")}
-                    direction={getColumnDirection("type")}
-                    label="Type"
-                    onSort={() => toggleSort("type")}
-                  />
-                  <TableHead>Occupancy</TableHead>
-                  <TableHead>Added</TableHead>
-                  {canManage ? <TableHead>Actions</TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedUnits.length === 0 ? (
-                  <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={canManage ? 6 : 5}>
-                      No units yet.{canManage ? " Add a unit to get started." : ""}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sortedUnits.map((unit) => (
-                    <UnitRow
-                      activeLease={activeLeaseByUnitId.get(unit.id)}
-                      canManage={canManage}
-                      isDeletePending={deleteMutation.isPending}
-                      isQuickDeleteActive={isQuickDeleteActive}
-                      key={unit.id}
-                      onDelete={handleDelete}
-                      onEdit={setEditUnit}
-                      onRestore={(item) => restoreMutation.mutate(item)}
-                      onStartLease={setStartLeaseUnit}
-                      unit={unit}
-                    />
-                  ))
-                )}
-              </TableBody>
-              {units.length > 0 ? (
-                <TableFooter>
-                  <TableRow>
-                    <TableCell
-                      className="text-muted-foreground text-xs"
-                      colSpan={canManage ? 6 : 5}
-                    >
-                      <div className="flex items-center gap-4">
-                        <span>
-                          Total:{" "}
-                          <span className="text-foreground font-medium">
-                            {unitTypeCounts.total}
-                          </span>
-                        </span>
-                        <span>
-                          Short Term:{" "}
-                          <span className="text-foreground font-medium">
-                            {unitTypeCounts.shortTerm}
-                          </span>
-                        </span>
-                        <span>
-                          Long Term:{" "}
-                          <span className="text-foreground font-medium">
-                            {unitTypeCounts.longTerm}
-                          </span>
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              ) : null}
-            </Table>
+            <PropertyUnitsTable
+              activeLeaseByUnitId={activeLeaseByUnitId}
+              canManage={canManage}
+              getColumnAriaSort={getColumnAriaSort}
+              getColumnDirection={getColumnDirection}
+              isDeletePending={deleteMutation.isPending}
+              isQuickDeleteActive={isQuickDeleteActive}
+              onDelete={handleDelete}
+              onEdit={setEditUnit}
+              onRestore={handleRestoreUnit}
+              onStartLease={setStartLeaseUnit}
+              sortedUnits={sortedUnits}
+              toggleSort={toggleSort}
+              units={units}
+              unitTypeCounts={unitTypeCounts}
+            />
           )}
         </CardContent>
       </Card>
 
       {deleteConfirmationDialog}
 
-      <CreateUnitDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
-      {editUnit ? (
-        <EditUnitDialog
-          key={editUnit.id}
-          onOpenChange={(open) => {
-            if (!open) setEditUnit(null);
-          }}
-          open={true}
-          propertyId={propertyId}
-          unit={editUnit}
-        />
-      ) : null}
-      {startLeaseUnit ? (
-        <StartLeaseDialog
-          key={startLeaseUnit.id}
-          onOpenChange={(open) => {
-            if (!open) setStartLeaseUnit(null);
-          }}
-          open={true}
-          propertyId={propertyId}
-          unit={startLeaseUnit}
-          units={units}
-        />
-      ) : null}
+      <PropertyUnitsPageDialogs
+        createOpen={createOpen}
+        editUnit={editUnit}
+        onCreateOpenChange={setCreateOpen}
+        onEditOpenChange={(open) => handleUnitDialogOpenChange(open, () => setEditUnit(null))}
+        onStartLeaseOpenChange={(open) =>
+          handleUnitDialogOpenChange(open, () => setStartLeaseUnit(null))
+        }
+        propertyId={propertyId}
+        startLeaseUnit={startLeaseUnit}
+        units={units}
+      />
     </>
   );
 });
