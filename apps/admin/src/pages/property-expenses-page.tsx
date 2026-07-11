@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
-import { memo, type RefObject, useCallback, useMemo, useState } from "react";
+import { Pencil, Plus, Sparkles } from "lucide-react";
+import { memo, type MouseEvent, type RefObject, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
@@ -9,6 +9,7 @@ import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import {
   type TPropertyExpensesListFilters,
@@ -29,6 +29,7 @@ import {
 } from "@/hooks/use-property-expenses-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi, settingsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
@@ -43,13 +44,17 @@ const ExpenseRow = memo(
   ({
     canManage,
     expense,
+    isDeletePending,
+    isQuickDeleteActive,
     onDelete,
     onEdit,
     onRestore,
   }: {
     canManage: boolean;
     expense: IPropertyExpense;
-    onDelete: (expense: IPropertyExpense) => void;
+    isDeletePending: boolean;
+    isQuickDeleteActive: boolean;
+    onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (expense: IPropertyExpense) => void;
     onRestore: (expense: IPropertyExpense) => void;
   }) => (
@@ -80,15 +85,12 @@ const ExpenseRow = memo(
                 >
                   <Pencil className="size-3.5" />
                 </Button>
-                <Button
-                  aria-label="Delete expense"
-                  onClick={() => onDelete(expense)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
+                <QuickDeleteButton
+                  ariaLabel="Delete expense"
+                  disabled={isDeletePending}
+                  onClick={(event) => onDelete(expense, event)}
+                  quickDeleteActive={isQuickDeleteActive}
+                />
               </>
             )}
           </div>
@@ -176,8 +178,10 @@ const PropertyExpensesTable = memo(
     canManage,
     expenses,
     hasNextPage,
+    isDeletePending,
     isFetchingNextPage,
     isPending,
+    isQuickDeleteActive,
     onDelete,
     onEdit,
     onRestore,
@@ -186,9 +190,11 @@ const PropertyExpensesTable = memo(
     canManage: boolean;
     expenses: IPropertyExpense[];
     hasNextPage: boolean;
+    isDeletePending: boolean;
     isFetchingNextPage: boolean;
     isPending: boolean;
-    onDelete: (expense: IPropertyExpense) => void;
+    isQuickDeleteActive: boolean;
+    onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (expense: IPropertyExpense) => void;
     onRestore: (expense: IPropertyExpense) => void;
     scrollSentinelRef: RefObject<HTMLDivElement | null>;
@@ -231,6 +237,8 @@ const PropertyExpensesTable = memo(
                 <ExpenseRow
                   canManage={canManage}
                   expense={expense}
+                  isDeletePending={isDeletePending}
+                  isQuickDeleteActive={isQuickDeleteActive}
                   key={expense.id}
                   onDelete={onDelete}
                   onEdit={onEdit}
@@ -384,10 +392,17 @@ export const PropertyExpensesPage = memo(() => {
     },
   });
 
-  const { deleteConfirmationDialog, requestDelete } = useDeleteConfirmation<IPropertyExpense>(
-    deleteMutation.isPending,
-    (expense, onDeleted) => deleteMutation.mutate(expense, { onSuccess: onDeleted })
-  );
+  const { deleteConfirmationDialog, handleDelete, isQuickDeleteActive } =
+    useQuickDelete<IPropertyExpense>({
+      deleteFn: (expense, onDeleted) =>
+        deleteMutation.mutate(expense, { onSuccess: onDeleted }),
+      getConfirmationOptions: (expense) => ({
+        description: `Delete "${expense.categoryName}" expense? It will be hidden from reports.`,
+        target: expense,
+        title: "Delete expense",
+      }),
+      isPending: deleteMutation.isPending,
+    });
 
   const restoreMutation = useMutation({
     mutationFn: (expense: IPropertyExpense) => expensesApi.restore(propertyId, expense.id),
@@ -407,17 +422,6 @@ export const PropertyExpensesPage = memo(() => {
   const handleOpenImportCsv = useCallback(() => {
     setImportCsvOpen(true);
   }, []);
-
-  const handleDeleteExpense = useCallback(
-    (expense: IPropertyExpense) => {
-      requestDelete({
-        description: `Delete "${expense.categoryName}" expense? It will be hidden from reports.`,
-        target: expense,
-        title: "Delete expense",
-      });
-    },
-    [requestDelete]
-  );
 
   const handleRestoreExpense = useCallback(
     (expense: IPropertyExpense) => {
@@ -446,9 +450,11 @@ export const PropertyExpensesPage = memo(() => {
             canManage={canManage}
             expenses={expenses}
             hasNextPage={hasNextPage}
+            isDeletePending={deleteMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
             isPending={isPending}
-            onDelete={handleDeleteExpense}
+            isQuickDeleteActive={isQuickDeleteActive}
+            onDelete={handleDelete}
             onEdit={setEditExpense}
             onRestore={handleRestoreExpense}
             scrollSentinelRef={scrollSentinelRef}
