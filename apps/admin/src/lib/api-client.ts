@@ -161,6 +161,12 @@ export const refreshAccessTokenForStream = (): Promise<string | null> => getDedu
 
 export const getApiBaseUrlForClient = getApiBaseUrl;
 
+const handleSessionInvalid = (): never => {
+  clearAppSession();
+  onSessionExpired?.();
+  throw new Error("Session expired");
+};
+
 interface UnauthorizedBody {
   code?: string;
   error?: string;
@@ -200,12 +206,6 @@ const authenticatedRequest = async <T>(
 
   const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
   const code = body.code;
-
-  const handleSessionInvalid = (): never => {
-    clearAppSession();
-    onSessionExpired?.();
-    throw new Error("Session expired");
-  };
 
   if (code !== JwtError.TOKEN_EXPIRED) {
     handleSessionInvalid();
@@ -258,12 +258,6 @@ const authenticatedMultipartRequest = async <T>(
   const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
   const code = body.code;
 
-  const handleSessionInvalid = (): never => {
-    clearAppSession();
-    onSessionExpired?.();
-    throw new Error("Session expired");
-  };
-
   if (code !== JwtError.TOKEN_EXPIRED) {
     handleSessionInvalid();
   }
@@ -315,12 +309,6 @@ const authenticatedDownload = async (
 
   const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
   const code = body.code;
-
-  const handleSessionInvalid = (): never => {
-    clearAppSession();
-    onSessionExpired?.();
-    throw new Error("Session expired");
-  };
 
   if (code !== JwtError.TOKEN_EXPIRED) {
     handleSessionInvalid();
@@ -418,13 +406,6 @@ function buildSupportRequestsListSearchParams(query: ISupportRequestsListQuery):
   return s === "" ? "" : `?${s}`;
 }
 
-function buildNotificationsListSearchParams(query: IUserNotificationsListQuery): string {
-  const params = new URLSearchParams();
-  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
-  if (query.limit != null) params.set("limit", String(query.limit));
-  const s = params.toString();
-  return s === "" ? "" : `?${s}`;
-}
 
 export const notificationsApi = {
   getUnreadCount: () =>
@@ -432,7 +413,7 @@ export const notificationsApi = {
 
   list: (query: IUserNotificationsListQuery = {}) =>
     authenticatedRequest<IUserNotificationsListResponse>(
-      `/notifications${buildNotificationsListSearchParams(query)}`
+      `/notifications${buildCursorLimitSearchParams(query)}`
     ),
 
   markAllRead: () =>
@@ -716,8 +697,9 @@ export const longStaysApi = {
     if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
     if (query.limit != null) params.set("limit", String(query.limit));
     const search = params.toString();
+    const qs = search ? `?${search}` : "";
     return authenticatedRequest<IPropertyLongStaysListResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/long-stays${search ? `?${search}` : ""}`
+      `/properties/${encodeURIComponent(propertyId)}/long-stays${qs}`
     );
   },
 
@@ -834,7 +816,7 @@ function buildExpensesSearchParams(query: IPropertyExpensesListQuery = {}): stri
   const params = new URLSearchParams();
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
-  if (query.category) params.set("category", query.category);
+  if (query.categoryId) params.set("categoryId", query.categoryId);
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
