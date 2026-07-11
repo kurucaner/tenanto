@@ -15,7 +15,7 @@ interface QuickDeleteButtonProps {
 export const QuickDeleteButton = memo(
   ({ ariaLabel, disabled, onClick, quickDeleteActive }: QuickDeleteButtonProps) => (
     <Button
-      aria-keyshortcuts="Meta+Click Control+Click"
+      aria-keyshortcuts="Shift+Click"
       aria-label={ariaLabel}
       className={cn(quickDeleteActive && "bg-muted text-foreground dark:bg-muted/50")}
       disabled={disabled}

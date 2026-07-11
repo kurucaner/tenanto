@@ -1,16 +1,11 @@
 type TModifierKeyEvent = {
-  ctrlKey: boolean;
-  metaKey: boolean;
+  shiftKey: boolean;
 };
 
 export function isPrimaryModifierHeld(event: TModifierKeyEvent): boolean {
-  return event.metaKey || event.ctrlKey;
+  return event.shiftKey;
 }
 
 export function getPrimaryModifierKeyLabel(): string {
-  if (typeof navigator === "undefined") {
-    return "Ctrl";
-  }
-
-  return /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? "⌘" : "Ctrl";
+  return "Shift";
 }
