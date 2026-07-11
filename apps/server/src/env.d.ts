@@ -21,6 +21,7 @@ declare global {
       GOOGLE_ANDROID_CLIENT_ID: string;
       GOOGLE_IOS_CLIENT_ID: string;
       GOOGLE_WEB_CLIENT_ID: string;
+      HOST_ENV: string;
       JWT_SECRET: string;
       /** MinIO / S3-compatible object storage credentials */
       MINIO_ACCESS_KEY: string;

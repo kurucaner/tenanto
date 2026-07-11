@@ -40,7 +40,7 @@ const colors = {
 };
 winston.addColors(colors);
 
-const env = process.env.NODE_ENV ?? "development";
+const env = process.env.HOST_ENV ?? "development";
 const isDev = env === "development";
 
 const datadogTags = [
@@ -73,9 +73,9 @@ export const WinstonLogger = winston.createLogger({
   transports,
 });
 
-if (process.env.DATADOG_API_KEY) {
+if (process.env.DD_API_KEY) {
   const datadogOptions: DatadogWinston.DatadogTransportOptions = {
-    apiKey: process.env.DATADOG_API_KEY,
+    apiKey: process.env.DD_API_KEY,
     ddsource: "nodejs",
     ddtags: datadogTags,
     hostname: `propertyos-server-${env}`,
