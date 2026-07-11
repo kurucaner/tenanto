@@ -54,9 +54,7 @@ mock.module("@/ses/transactional-emails", () => ({
 
 const { notifyPrimaryTenantRentRecorded } = await import("./lease-notifications");
 
-function makeLease(
-  overrides: Partial<IPropertyLongStay> = {}
-): IPropertyLongStay {
+function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {
     actualEndDate: null,
     createdAt: "2026-01-01T00:00:00.000Z",

@@ -1,8 +1,4 @@
-import {
-  formatUnitRentalTypeLabel,
-  type TUnitRentalType,
-  UnitRentalType,
-} from "@/packages/shared";
+import { formatUnitRentalTypeLabel, type TUnitRentalType, UnitRentalType } from "@/packages/shared";
 
 export interface IUnitRentalTypeOption {
   hint: string;

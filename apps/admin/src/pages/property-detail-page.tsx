@@ -183,18 +183,21 @@ export const PropertyDetailPage = memo(() => {
     },
   });
 
-  const { deleteConfirmationDialog, handleDelete: handleRemoveMember, isQuickDeleteActive } =
-    useQuickDelete<IPropertyMember>({
-      deleteFn: (member, onDeleted) =>
-        removeMemberMutation.mutate(member.userId, { onSuccess: onDeleted }),
-      getConfirmationOptions: (member) => ({
-        confirmLabel: "Remove",
-        description: `Remove ${member.user.name} from this property?`,
-        target: member,
-        title: "Remove member",
-      }),
-      isPending: removeMemberMutation.isPending,
-    });
+  const {
+    deleteConfirmationDialog,
+    handleDelete: handleRemoveMember,
+    isQuickDeleteActive,
+  } = useQuickDelete<IPropertyMember>({
+    deleteFn: (member, onDeleted) =>
+      removeMemberMutation.mutate(member.userId, { onSuccess: onDeleted }),
+    getConfirmationOptions: (member) => ({
+      confirmLabel: "Remove",
+      description: `Remove ${member.user.name} from this property?`,
+      target: member,
+      title: "Remove member",
+    }),
+    isPending: removeMemberMutation.isPending,
+  });
 
   const handleDelete = useCallback(() => {
     if (!globalThis.confirm("Delete this property? This cannot be undone.")) return;

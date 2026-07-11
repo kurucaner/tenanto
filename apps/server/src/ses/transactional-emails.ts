@@ -123,6 +123,13 @@ export async function sendSupportReplyEmail(
   const subject = "New reply on your support request";
   const text = `Support replied to your request:\n\n${opts.messagePreview}\n\nView reply: ${ticketUrl}`;
 
+  const html = renderTemplate("support-reply.html", {
+    appName: APP_NAME,
+    baseUrl: (PLATFORM_APP_URL ?? "").replace(/\/$/, ""),
+    messagePreview: escapeHtml(opts.messagePreview),
+    ticketUrl,
+  });
+
   await sendTransactionalEmail({ html, subject, text, to });
 }
 
