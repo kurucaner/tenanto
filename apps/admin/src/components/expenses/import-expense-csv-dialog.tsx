@@ -201,6 +201,106 @@ const ImportExpenseCsvPreviewTableRowItem = memo(
 );
 ImportExpenseCsvPreviewTableRowItem.displayName = "ImportExpenseCsvPreviewTableRowItem";
 
+function notifyExpenseImportParseOutcome(
+  response: IExpenseImportParseResponse,
+  rows: IExpenseImportParsedRow[]
+): void {
+  const irrelevantCount = response.files.filter((file) => file.status === "irrelevant").length;
+  const errorCount = response.files.filter((file) => file.status === "error").length;
+
+  if (rows.length === 0) {
+    toast.info("No importable expense rows were found.");
+    return;
+  }
+
+  if (irrelevantCount > 0 || errorCount > 0) {
+    toast.message("Some files could not be imported", {
+      description: `${rows.length} row(s) ready for review.`,
+    });
+  }
+}
+
+interface ImportExpenseCsvDialogFooterProps {
+  commitPending: boolean;
+  hasBlockingValidationErrors: boolean;
+  isLoadingMock: boolean;
+  onBack: () => void;
+  onCancel: () => void;
+  onCommitImport: () => void;
+  onGenerateMockData: () => void;
+  onSmartRead: () => void;
+  parsePending: boolean;
+  selectedFileCount: number;
+  showMockDataButton: boolean;
+  step: TImportStep;
+  validRowCount: number;
+}
+
+const ImportExpenseCsvDialogFooter = memo(
+  ({
+    commitPending,
+    hasBlockingValidationErrors,
+    isLoadingMock,
+    onBack,
+    onCancel,
+    onCommitImport,
+    onGenerateMockData,
+    onSmartRead,
+    parsePending,
+    selectedFileCount,
+    showMockDataButton,
+    step,
+    validRowCount,
+  }: ImportExpenseCsvDialogFooterProps) => {
+    const actionsPending = parsePending || commitPending;
+
+    return (
+      <DialogFooter>
+        <Button disabled={actionsPending} onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+        {step === "upload" ? (
+          <>
+            {showMockDataButton ? (
+              <Button
+                disabled={isLoadingMock || parsePending}
+                onClick={onGenerateMockData}
+                type="button"
+                variant="secondary"
+              >
+                {isLoadingMock ? "Generating…" : "Generate mock data"}
+              </Button>
+            ) : null}
+            <Button
+              className="gap-1.5"
+              disabled={selectedFileCount === 0 || parsePending || isLoadingMock}
+              onClick={onSmartRead}
+              type="button"
+            >
+              <Sparkles className="size-3.5" />
+              {parsePending ? "Smart reading…" : "Smart read"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button disabled={actionsPending} onClick={onBack} type="button" variant="outline">
+              Back
+            </Button>
+            <Button
+              disabled={validRowCount === 0 || hasBlockingValidationErrors || commitPending}
+              onClick={onCommitImport}
+              type="button"
+            >
+              {commitPending ? "Importing…" : `Import ${validRowCount} expense(s)`}
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    );
+  }
+);
+ImportExpenseCsvDialogFooter.displayName = "ImportExpenseCsvDialogFooter";
+
 export const ImportExpenseCsvDialog = memo(
   ({ categoryTypes, onOpenChange, open, propertyId }: ImportExpenseCsvDialogProps) => {
     const queryClient = useQueryClient();
@@ -287,18 +387,7 @@ export const ImportExpenseCsvDialog = memo(
       const rows = response.files.flatMap((file) => file.rows ?? []);
       setPreviewRows(rows);
       setStep("preview");
-
-      const irrelevantCount = response.files.filter(
-        (file) => file.status === "irrelevant"
-      ).length;
-      const errorCount = response.files.filter((file) => file.status === "error").length;
-      if (rows.length === 0) {
-        toast.info("No importable expense rows were found.");
-      } else if (irrelevantCount > 0 || errorCount > 0) {
-        toast.message("Some files could not be imported", {
-          description: `${rows.length} row(s) ready for review.`,
-        });
-      }
+      notifyExpenseImportParseOutcome(response, rows);
     }, []);
 
     const parseMutation = useMutation({
@@ -365,6 +454,22 @@ export const ImportExpenseCsvDialog = memo(
     const handleCommitImport = useCallback(() => {
       commitMutation.mutate(importablePreviewRows);
     }, [commitMutation, importablePreviewRows]);
+
+    const handleCancel = useCallback(() => {
+      handleOpenChange(false);
+    }, [handleOpenChange]);
+
+    const handleBackToUpload = useCallback(() => {
+      setStep("upload");
+    }, []);
+
+    const handleSmartRead = useCallback(() => {
+      parseMutation.mutate();
+    }, [parseMutation]);
+
+    const handleGenerateMockDataClick = useCallback(() => {
+      void handleGenerateMockData();
+    }, [handleGenerateMockData]);
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -503,59 +608,21 @@ export const ImportExpenseCsvDialog = memo(
             </div>
           )}
 
-          <DialogFooter>
-            <Button
-              disabled={parseMutation.isPending || commitMutation.isPending}
-              onClick={() => handleOpenChange(false)}
-              type="button"
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            {step === "upload" ? (
-              <>
-                {showMockDataButton ? (
-                  <Button
-                    disabled={isLoadingMock || parseMutation.isPending}
-                    onClick={() => void handleGenerateMockData()}
-                    type="button"
-                    variant="secondary"
-                  >
-                    {isLoadingMock ? "Generating…" : "Generate mock data"}
-                  </Button>
-                ) : null}
-                <Button
-                  className="gap-1.5"
-                  disabled={selectedFiles.length === 0 || parseMutation.isPending || isLoadingMock}
-                  onClick={() => parseMutation.mutate()}
-                  type="button"
-                >
-                  <Sparkles className="size-3.5" />
-                  {parseMutation.isPending ? "Smart reading…" : "Smart read"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  disabled={parseMutation.isPending || commitMutation.isPending}
-                  onClick={() => setStep("upload")}
-                  type="button"
-                  variant="outline"
-                >
-                  Back
-                </Button>
-                <Button
-                  disabled={
-                    validRowCount === 0 || hasBlockingValidationErrors || commitMutation.isPending
-                  }
-                  onClick={handleCommitImport}
-                  type="button"
-                >
-                  {commitMutation.isPending ? "Importing…" : `Import ${validRowCount} expense(s)`}
-                </Button>
-              </>
-            )}
-          </DialogFooter>
+          <ImportExpenseCsvDialogFooter
+            commitPending={commitMutation.isPending}
+            hasBlockingValidationErrors={hasBlockingValidationErrors}
+            isLoadingMock={isLoadingMock}
+            onBack={handleBackToUpload}
+            onCancel={handleCancel}
+            onCommitImport={handleCommitImport}
+            onGenerateMockData={handleGenerateMockDataClick}
+            onSmartRead={handleSmartRead}
+            parsePending={parseMutation.isPending}
+            selectedFileCount={selectedFiles.length}
+            showMockDataButton={showMockDataButton}
+            step={step}
+            validRowCount={validRowCount}
+          />
         </DialogContent>
       </Dialog>
     );
