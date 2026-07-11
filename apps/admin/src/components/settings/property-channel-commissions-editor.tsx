@@ -67,7 +67,7 @@ export const PropertyChannelCommissionsEditor = memo(
           <p className="text-muted-foreground text-sm">No channels configured.</p>
         ) : (
           <div className="rounded-lg border">
-            <div className="grid grid-cols-[1fr_120px_1fr_auto] items-center gap-3 border-b px-3 py-2">
+            <div className="grid grid-cols-[1fr_140px_auto_auto] items-center gap-3 border-b px-3 py-2">
               <span className="text-muted-foreground text-xs font-medium">Name</span>
               <span className="text-muted-foreground text-xs font-medium">Rate</span>
               <span className="text-muted-foreground text-xs font-medium">Rules</span>
@@ -76,7 +76,7 @@ export const PropertyChannelCommissionsEditor = memo(
             <ul className="divide-y">
               {channelCommissions.map((row) => (
                 <li
-                  className="grid grid-cols-[1fr_120px_1fr_auto] items-start gap-3 px-3 py-2"
+                  className="grid grid-cols-[1fr_140px_auto_auto] items-start gap-3 px-3 py-2"
                   key={row.clientId}
                 >
                   <Input
