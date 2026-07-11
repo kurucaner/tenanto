@@ -1,6 +1,7 @@
 import { memo, type MouseEvent } from "react";
 
 import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
+import { PropertySettingsScrollableList } from "@/components/settings/property-settings-scrollable-list";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -59,45 +60,47 @@ export const PropertyExpenseCategoryTypesEditor = memo(
         {expenseCategoryTypes.length === 0 ? (
           <p className="text-muted-foreground text-sm">No expense categories configured.</p>
         ) : (
-          <div className="rounded-lg border">
-            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b px-3 py-2">
-              <span className="text-muted-foreground text-xs font-medium">Name</span>
-              <span className="text-muted-foreground w-[68px] text-center text-xs font-medium">
-                Annual
-              </span>
-              <span className="w-8" />
-            </div>
-            <ul className="divide-y">
-              {expenseCategoryTypes.map((row) => (
-                <li
-                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2"
-                  key={row.clientId}
-                >
-                  <Input
+          <PropertySettingsScrollableList
+            header={
+              <>
+                <span className="text-muted-foreground text-xs font-medium">Name</span>
+                <span className="text-muted-foreground w-[68px] text-center text-xs font-medium">
+                  Annual
+                </span>
+                <span className="w-8" />
+              </>
+            }
+            headerClassName="grid-cols-[1fr_auto_auto]"
+          >
+            {expenseCategoryTypes.map((row) => (
+              <li
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2"
+                key={row.clientId}
+              >
+                <Input
+                  disabled={disabled}
+                  onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
+                  placeholder="Category name"
+                  value={row.name}
+                />
+                <div className="flex w-[68px] justify-center">
+                  <Checkbox
+                    checked={row.isAnnualAmount}
                     disabled={disabled}
-                    onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
-                    placeholder="Category name"
-                    value={row.name}
+                    onCheckedChange={(checked) =>
+                      updateRow(row.clientId, { isAnnualAmount: checked === true })
+                    }
                   />
-                  <div className="flex w-[68px] justify-center">
-                    <Checkbox
-                      checked={row.isAnnualAmount}
-                      disabled={disabled}
-                      onCheckedChange={(checked) =>
-                        updateRow(row.clientId, { isAnnualAmount: checked === true })
-                      }
-                    />
-                  </div>
-                  <QuickDeleteButton
-                    ariaLabel={`Remove ${row.name || "expense category"}`}
-                    disabled={disabled}
-                    onClick={(event) => onDeleteRow(row, event)}
-                    quickDeleteActive={isQuickDeleteActive}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
+                </div>
+                <QuickDeleteButton
+                  ariaLabel={`Remove ${row.name || "expense category"}`}
+                  disabled={disabled}
+                  onClick={(event) => onDeleteRow(row, event)}
+                  quickDeleteActive={isQuickDeleteActive}
+                />
+              </li>
+            ))}
+          </PropertySettingsScrollableList>
         )}
 
         <PropertySettingsListFooter

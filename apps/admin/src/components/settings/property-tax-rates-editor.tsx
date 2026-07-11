@@ -1,6 +1,7 @@
 import { memo, type MouseEvent } from "react";
 
 import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
+import { PropertySettingsScrollableList } from "@/components/settings/property-settings-scrollable-list";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Input } from "@/components/ui/input";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
@@ -51,49 +52,51 @@ export const PropertyTaxRatesEditor = memo(
         {taxRates.length === 0 ? (
           <p className="text-muted-foreground text-sm">No taxes configured.</p>
         ) : (
-          <div className="rounded-lg border">
-            <div className="grid grid-cols-[1fr_140px_auto] items-center gap-3 border-b px-3 py-2">
-              <span className="text-muted-foreground text-xs font-medium">Name</span>
-              <span className="text-muted-foreground text-xs font-medium">Rate</span>
-              <span className="w-8" />
-            </div>
-            <ul className="divide-y">
-              {taxRates.map((row) => (
-                <li
-                  className="grid grid-cols-[1fr_140px_auto] items-center gap-3 px-3 py-2"
-                  key={row.clientId}
-                >
+          <PropertySettingsScrollableList
+            header={
+              <>
+                <span className="text-muted-foreground text-xs font-medium">Name</span>
+                <span className="text-muted-foreground text-xs font-medium">Rate</span>
+                <span className="w-8" />
+              </>
+            }
+            headerClassName="grid-cols-[1fr_140px_auto]"
+          >
+            {taxRates.map((row) => (
+              <li
+                className="grid grid-cols-[1fr_140px_auto] items-center gap-3 px-3 py-2"
+                key={row.clientId}
+              >
+                <Input
+                  disabled={disabled}
+                  onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
+                  placeholder="Tax name"
+                  value={row.name}
+                />
+                <div className="relative">
                   <Input
                     disabled={disabled}
-                    onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
-                    placeholder="Tax name"
-                    value={row.name}
+                    inputMode="decimal"
+                    onChange={(e) => {
+                      if (isValidDecimalInput(e.target.value))
+                        updateRow(row.clientId, { ratePercent: e.target.value });
+                    }}
+                    type="text"
+                    value={row.ratePercent}
                   />
-                  <div className="relative">
-                    <Input
-                      disabled={disabled}
-                      inputMode="decimal"
-                      onChange={(e) => {
-                        if (isValidDecimalInput(e.target.value))
-                          updateRow(row.clientId, { ratePercent: e.target.value });
-                      }}
-                      type="text"
-                      value={row.ratePercent}
-                    />
-                    <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">
-                      %
-                    </span>
-                  </div>
-                  <QuickDeleteButton
-                    ariaLabel={`Remove ${row.name || "tax"}`}
-                    disabled={disabled}
-                    onClick={(event) => onDeleteRow(row, event)}
-                    quickDeleteActive={isQuickDeleteActive}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                    %
+                  </span>
+                </div>
+                <QuickDeleteButton
+                  ariaLabel={`Remove ${row.name || "tax"}`}
+                  disabled={disabled}
+                  onClick={(event) => onDeleteRow(row, event)}
+                  quickDeleteActive={isQuickDeleteActive}
+                />
+              </li>
+            ))}
+          </PropertySettingsScrollableList>
         )}
 
         <PropertySettingsListFooter
