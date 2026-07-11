@@ -1,5 +1,5 @@
 import { Paperclip } from "lucide-react";
-import { memo, useRef } from "react";
+import { memo, type MouseEvent, useRef } from "react";
 
 import { SUPPORT_IMAGE_ACCEPT } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,8 @@ export const SupportAttachmentFileButton = memo(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const inputDisabled = disabled || !canAddMore;
 
-    const handleClick = () => {
+    const handleClick = (e: MouseEvent) => {
+      e.stopPropagation();
       if (inputDisabled) return;
       fileInputRef.current?.click();
     };

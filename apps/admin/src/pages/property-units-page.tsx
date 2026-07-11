@@ -57,10 +57,10 @@ const UnitRow = memo(
   ({
     activeLease,
     canManage,
-    onStartLease,
     onDelete,
     onEdit,
     onRestore,
+    onStartLease,
     unit,
   }: {
     activeLease?: IPropertyLongStay;

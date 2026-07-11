@@ -133,11 +133,11 @@ export const SupportChatComposer = memo(
       }
 
       const body: ISupportMessageCreateBody = {
-        message: trimmedDraft.length > 0 ? trimmedDraft : undefined,
         attachments:
           attachments.length > 0
             ? attachments.map((attachment) => toAttachmentInput(attachment))
             : undefined,
+        message: trimmedDraft.length > 0 ? trimmedDraft : undefined,
       };
       replyMutation.mutate(body);
     }, [

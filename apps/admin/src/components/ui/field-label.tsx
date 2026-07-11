@@ -7,7 +7,7 @@ interface FieldLabelProps extends ComponentProps<typeof Label> {
   optional?: boolean;
 }
 
-export const FieldLabel = memo(({ optional, children, ...props }: FieldLabelProps) => (
+export const FieldLabel = memo(({ children, optional, ...props }: FieldLabelProps) => (
   <div className="flex items-center justify-between">
     <Label {...props}>{children}</Label>
     {optional ? <OptionalTag /> : null}

@@ -74,7 +74,7 @@ export function getMobileBottomNavItems(userType: UserType): {
         item.href as (typeof MOBILE_BOTTOM_NAV_PRIMARY_HREFS)[number]
       )
   );
-  return { primary, overflow };
+  return { overflow, primary };
 }
 
 export function isAdminNavActive(

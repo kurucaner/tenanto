@@ -11,12 +11,12 @@ export interface IAuthSession {
 
 interface IAuthState {
   accessToken: string | null;
-  refreshToken: string | null;
-  user: IUser | null;
   clearSession: () => void;
+  refreshToken: string | null;
   setAccessToken: (accessToken: string) => void;
   setSession: (session: IAuthSession) => void;
   setUser: (user: IUser) => void;
+  user: IUser | null;
 }
 
 const AUTH_STORAGE_KEY = `${APP_SLUG}-admin-auth`;
@@ -32,11 +32,11 @@ const authStorage = createJSONStorage(() => ({
     localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
     return legacy;
   },
-  setItem: (name, value) => {
-    localStorage.setItem(name, value);
-  },
   removeItem: (name) => {
     localStorage.removeItem(name);
+  },
+  setItem: (name, value) => {
+    localStorage.setItem(name, value);
   },
 }));
 
@@ -44,11 +44,10 @@ export const useAuthStore = create<IAuthState>()(
   persist(
     (set) => ({
       accessToken: null,
-      refreshToken: null,
-      user: null,
       clearSession: () => {
         set({ accessToken: null, refreshToken: null, user: null });
       },
+      refreshToken: null,
       setAccessToken: (accessToken) => {
         set({ accessToken });
       },
@@ -58,6 +57,7 @@ export const useAuthStore = create<IAuthState>()(
       setUser: (user) => {
         set({ user });
       },
+      user: null,
     }),
     {
       name: AUTH_STORAGE_KEY,

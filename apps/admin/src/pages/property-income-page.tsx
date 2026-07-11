@@ -107,8 +107,8 @@ const INCOME_TABLE_COLUMNS: {
   { id: "nights", label: "Nights" },
   { id: "channel", label: "Channel" },
   { id: "status", label: "Status" },
-  { id: "roomTotal", label: "Room total", align: "right" },
-  { id: "cleaning", label: "Cleaning", align: "right" },
+  { align: "right", id: "roomTotal", label: "Room total" },
+  { align: "right", id: "cleaning", label: "Cleaning" },
   {
     align: "right",
     id: "taxes",

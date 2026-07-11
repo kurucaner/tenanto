@@ -75,8 +75,8 @@ const settingsToFormState = (settings: IPropertySettings): TSettingsFormState =>
   airbnbCommissionRate: formatRateAsPercent(settings.airbnbCommissionRate),
   bookingCommissionRate: formatRateAsPercent(settings.bookingCommissionRate),
   directCommissionRate: formatRateAsPercent(settings.directCommissionRate),
-  expenseCategoryTypes: settings.expenseCategoryTypes.map(expenseCategoryTypeToFormRow),
   expediaCommissionRate: formatRateAsPercent(settings.expediaCommissionRate),
+  expenseCategoryTypes: settings.expenseCategoryTypes.map(expenseCategoryTypeToFormRow),
   incomeLineTypes: settings.incomeLineTypes.map(incomeLineTypeToFormRow),
   taxRates: settings.taxRates.map(taxRateToFormRow),
 });
@@ -112,8 +112,8 @@ const formStateToBody = (form: TSettingsFormState) => ({
   airbnbCommissionRate: percentToRate(Number(form.airbnbCommissionRate)),
   bookingCommissionRate: percentToRate(Number(form.bookingCommissionRate)),
   directCommissionRate: percentToRate(Number(form.directCommissionRate)),
-  expenseCategoryTypes: formExpenseCategoryTypesToBody(form.expenseCategoryTypes),
   expediaCommissionRate: percentToRate(Number(form.expediaCommissionRate)),
+  expenseCategoryTypes: formExpenseCategoryTypesToBody(form.expenseCategoryTypes),
   incomeLineTypes: formIncomeLineTypesToBody(form.incomeLineTypes),
   taxRates: formTaxRatesToBody(form.taxRates),
 });

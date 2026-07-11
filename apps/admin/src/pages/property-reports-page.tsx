@@ -34,12 +34,12 @@ import {
 
 const UNIT_COLUMNS: ReportTableColumnDef[] = [
   { id: "unit", label: "Unit" },
-  { id: "gross", align: "right", label: "Gross" },
-  { id: "net", align: "right", label: "Net" },
-  { id: "bookedNights", align: "right", label: "Booked nights" },
-  { id: "availableNights", align: "right", label: "Available nights" },
-  { id: "occupancy", align: "right", label: "Occupancy" },
-  { id: "adr", align: "right", label: "ADR" },
+  { align: "right", id: "gross", label: "Gross" },
+  { align: "right", id: "net", label: "Net" },
+  { align: "right", id: "bookedNights", label: "Booked nights" },
+  { align: "right", id: "availableNights", label: "Available nights" },
+  { align: "right", id: "occupancy", label: "Occupancy" },
+  { align: "right", id: "adr", label: "ADR" },
 ];
 
 const PropertyReportTables = memo(({ summary }: { summary: IPropertyReportSummary }) => {

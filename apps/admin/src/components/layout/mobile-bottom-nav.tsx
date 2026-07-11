@@ -50,7 +50,7 @@ const MobileBottomNavInner = memo(() => {
   const user = useAuthStore((s) => s.user);
   const { openMobile, setOpenMobile } = useSidebar();
 
-  const { primary, overflow } = useMemo(
+  const { overflow, primary } = useMemo(
     () => getMobileBottomNavItems(user?.userType ?? UserType.USER),
     [user?.userType]
   );

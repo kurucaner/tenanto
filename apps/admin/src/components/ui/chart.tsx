@@ -6,9 +6,9 @@ import { useDebouncedElementSize } from "@/hooks/use-debounced-element-size";
 import { cn } from "@/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
+const THEMES = { dark: ".dark", light: "" } as const;
 
-const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
+const INITIAL_DIMENSION = { height: 200, width: 320 } as const;
 type TooltipNameType = number | string;
 
 export type ChartConfig = Record<
@@ -39,10 +39,10 @@ function useChart() {
 }
 
 function ChartContainer({
-  id,
-  className,
   children,
+  className,
   config,
+  id,
   initialDimension = INITIAL_DIMENSION,
   ...props
 }: React.ComponentProps<"div"> & {
@@ -57,7 +57,7 @@ function ChartContainer({
   const chartId = `chart-${id ?? uniqueId.replaceAll(":", "")}`;
   const contextValue = React.useMemo(() => ({ config }), [config]);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const { width, height } = useDebouncedElementSize(containerRef, {
+  const { height, width } = useDebouncedElementSize(containerRef, {
     debounceMs: 50,
     initialSize: initialDimension,
   });
@@ -83,7 +83,7 @@ function ChartContainer({
   );
 }
 
-const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
+const ChartStyle = ({ config, id }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([, config]) => config.theme ?? config.color);
 
   if (!colorConfig.length) {
@@ -116,18 +116,18 @@ const ChartTooltip = RechartsPrimitive.Tooltip;
 
 function ChartTooltipContent({
   active,
-  payload,
   className,
-  indicator = "dot",
-  hideLabel = false,
-  hideIndicator = false,
-  label,
-  labelFormatter,
-  labelClassName,
-  formatter,
   color,
-  nameKey,
+  formatter,
+  hideIndicator = false,
+  hideLabel = false,
+  indicator = "dot",
+  label,
+  labelClassName,
+  labelFormatter,
   labelKey,
+  nameKey,
+  payload,
 }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
   React.ComponentProps<"div"> & {
     hideLabel?: boolean;
@@ -209,10 +209,10 @@ function ChartTooltipContent({
                             "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
                             {
                               "h-2.5 w-2.5": indicator === "dot",
-                              "w-1": indicator === "line",
+                              "my-0.5": nestLabel && indicator === "dashed",
                               "w-0 border-[1.5px] border-dashed bg-transparent":
                                 indicator === "dashed",
-                              "my-0.5": nestLabel && indicator === "dashed",
+                              "w-1": indicator === "line",
                             }
                           )}
                           style={
@@ -259,9 +259,9 @@ const ChartLegend = RechartsPrimitive.Legend;
 function ChartLegendContent({
   className,
   hideIcon = false,
+  nameKey,
   payload,
   verticalAlign = "bottom",
-  nameKey,
 }: React.ComponentProps<"div"> & {
   hideIcon?: boolean;
   nameKey?: string;

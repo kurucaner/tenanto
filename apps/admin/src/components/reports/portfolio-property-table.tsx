@@ -21,11 +21,11 @@ interface PortfolioPropertyTableProps {
 
 const PORTFOLIO_COLUMNS: ReportTableColumnDef[] = [
   { id: "property", label: "Property" },
-  { id: "netIncome", align: "right", label: "Net income" },
-  { id: "expenses", align: "right", label: "Expenses" },
-  { id: "operationalNet", align: "right", label: "Operational net" },
-  { id: "occupancy", align: "right", label: "Occupancy" },
-  { id: "adr", align: "right", label: "ADR" },
+  { align: "right", id: "netIncome", label: "Net income" },
+  { align: "right", id: "expenses", label: "Expenses" },
+  { align: "right", id: "operationalNet", label: "Operational net" },
+  { align: "right", id: "occupancy", label: "Occupancy" },
+  { align: "right", id: "adr", label: "ADR" },
 ];
 
 function aggregateOccupancy(row: IPortfolioPropertyReportRow): number {

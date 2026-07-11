@@ -539,30 +539,10 @@ export const adminApi = {
 
   getAppConfig: () => authenticatedRequest<{ config: IAppConfig }>("/admin/app-config"),
 
-  patchAppConfig: (body: IAdminPatchAppConfigBody) =>
-    authenticatedRequest<{ config: IAppConfig }>("/admin/app-config", {
-      body: JSON.stringify(body),
-      method: "PATCH",
-    }),
+  getSupportRequest: (id: string) => supportApi.get(id),
 
   getUser: (userId: string) =>
     authenticatedRequest<IAdminUserDetailResponse>(`/admin/users/${encodeURIComponent(userId)}`),
-
-  listUsers: (query: IAdminUsersListQuery = {}) =>
-    authenticatedRequest<IAdminUsersListResponse>(
-      `/admin/users${buildUsersListSearchParams(query)}`
-    ),
-
-  resetUserAccount: (userId: string) =>
-    authenticatedRequest<IAdminUserDetailResponse>(
-      `/admin/users/${encodeURIComponent(userId)}/reset-account`,
-      { method: "POST", omitDefaultContentType: true }
-    ),
-
-  listUserAuditEvents: (userId: string, query: { cursor?: string; limit?: number } = {}) =>
-    authenticatedRequest<IAdminAuditEventsListResponse>(
-      `/admin/users/${encodeURIComponent(userId)}/audit-events${buildCursorLimitSearchParams(query)}`
-    ),
 
   listAuditEvents: (query: IAdminAuditEventsListQuery = {}) =>
     authenticatedRequest<IAdminAuditEventsListResponse>(
@@ -574,22 +554,43 @@ export const adminApi = {
       `/support${buildSupportRequestsListSearchParams(query)}`
     ),
 
-  getSupportRequest: (id: string) => supportApi.get(id),
+  listUserAuditEvents: (userId: string, query: { cursor?: string; limit?: number } = {}) =>
+    authenticatedRequest<IAdminAuditEventsListResponse>(
+      `/admin/users/${encodeURIComponent(userId)}/audit-events${buildCursorLimitSearchParams(query)}`
+    ),
 
-  postSupportMessage: (id: string, body: ISupportMessageCreateBody) =>
-    supportApi.postMessage(id, body),
+  listUsers: (query: IAdminUsersListQuery = {}) =>
+    authenticatedRequest<IAdminUsersListResponse>(
+      `/admin/users${buildUsersListSearchParams(query)}`
+    ),
+
+  patchAppConfig: (body: IAdminPatchAppConfigBody) =>
+    authenticatedRequest<{ config: IAppConfig }>("/admin/app-config", {
+      body: JSON.stringify(body),
+      method: "PATCH",
+    }),
 
   patchSupportRequest: (id: string, body: IAdminSupportRequestPatchBody) =>
     authenticatedRequest<IAdminSupportRequestPatchResponse>(`/support/${encodeURIComponent(id)}`, {
       body: JSON.stringify(body),
       method: "PATCH",
     }),
+
+  postSupportMessage: (id: string, body: ISupportMessageCreateBody) =>
+    supportApi.postMessage(id, body),
+
+  resetUserAccount: (userId: string) =>
+    authenticatedRequest<IAdminUserDetailResponse>(
+      `/admin/users/${encodeURIComponent(userId)}/reset-account`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
 };
 
 export const propertiesApi = {
-  list: (query: IAdminPropertiesListQuery = {}) =>
-    authenticatedRequest<IAdminPropertiesListResponse>(
-      `/properties${buildPropertiesListSearchParams(query)}`
+  addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
+    authenticatedRequest<TAddPropertyMemberResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/members`,
+      { body: JSON.stringify(body), method: "POST" }
     ),
 
   create: (body: IAdminCreatePropertyBody) =>
@@ -598,9 +599,26 @@ export const propertiesApi = {
       method: "POST",
     }),
 
+  delete: (propertyId: string) =>
+    authenticatedRequest<void>(`/properties/${encodeURIComponent(propertyId)}`, {
+      method: "DELETE",
+      omitDefaultContentType: true,
+    }),
+
   getDetail: (propertyId: string) =>
     authenticatedRequest<{ property: IPropertyDetail }>(
       `/properties/${encodeURIComponent(propertyId)}`
+    ),
+
+  list: (query: IAdminPropertiesListQuery = {}) =>
+    authenticatedRequest<IAdminPropertiesListResponse>(
+      `/properties${buildPropertiesListSearchParams(query)}`
+    ),
+
+  removeMember: (propertyId: string, userId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
     ),
 
   update: (propertyId: string, body: IAdminUpdatePropertyBody) =>
@@ -609,47 +627,18 @@ export const propertiesApi = {
       method: "PATCH",
     }),
 
-  delete: (propertyId: string) =>
-    authenticatedRequest<void>(`/properties/${encodeURIComponent(propertyId)}`, {
-      method: "DELETE",
-      omitDefaultContentType: true,
-    }),
-
-  addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
-    authenticatedRequest<TAddPropertyMemberResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/members`,
-      { body: JSON.stringify(body), method: "POST" }
-    ),
-
   updateMember: (propertyId: string, userId: string, body: IAdminUpdatePropertyMemberBody) =>
     authenticatedRequest<{ member: IPropertyMember }>(
       `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
-
-  removeMember: (propertyId: string, userId: string) =>
-    authenticatedRequest<void>(
-      `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
-      { method: "DELETE", omitDefaultContentType: true }
-    ),
 };
 
 export const unitsApi = {
-  list: (propertyId: string) =>
-    authenticatedRequest<{ units: IPropertyUnit[] }>(
-      `/properties/${encodeURIComponent(propertyId)}/units`
-    ),
-
   create: (propertyId: string, body: ICreatePropertyUnitBody) =>
     authenticatedRequest<{ unit: IPropertyUnit }>(
       `/properties/${encodeURIComponent(propertyId)}/units`,
       { body: JSON.stringify(body), method: "POST" }
-    ),
-
-  update: (propertyId: string, unitId: string, body: IUpdatePropertyUnitBody) =>
-    authenticatedRequest<{ unit: IPropertyUnit }>(
-      `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
-      { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   delete: (propertyId: string, unitId: string) =>
@@ -658,10 +647,21 @@ export const unitsApi = {
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
+  list: (propertyId: string) =>
+    authenticatedRequest<{ units: IPropertyUnit[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/units`
+    ),
+
   restore: (propertyId: string, unitId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}/restore`,
       { method: "POST", omitDefaultContentType: true }
+    ),
+
+  update: (propertyId: string, unitId: string, body: IUpdatePropertyUnitBody) =>
+    authenticatedRequest<{ unit: IPropertyUnit }>(
+      `/properties/${encodeURIComponent(propertyId)}/units/${encodeURIComponent(unitId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
 
@@ -739,21 +739,10 @@ function buildReservationsSearchParams(query: IPropertyReservationsListQuery = {
 }
 
 export const reservationsApi = {
-  list: (propertyId: string, query?: IPropertyReservationsListQuery) =>
-    authenticatedRequest<{ reservations: IPropertyReservation[] }>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations${buildReservationsSearchParams(query)}`
-    ),
-
   create: (propertyId: string, body: ICreatePropertyReservationBody) =>
     authenticatedRequest<{ reservation: IPropertyReservation }>(
       `/properties/${encodeURIComponent(propertyId)}/reservations`,
       { body: JSON.stringify(body), method: "POST" }
-    ),
-
-  update: (propertyId: string, reservationId: string, body: IUpdatePropertyReservationBody) =>
-    authenticatedRequest<{ reservation: IPropertyReservation }>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
-      { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   delete: (propertyId: string, reservationId: string) =>
@@ -762,10 +751,21 @@ export const reservationsApi = {
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
+  list: (propertyId: string, query?: IPropertyReservationsListQuery) =>
+    authenticatedRequest<{ reservations: IPropertyReservation[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations${buildReservationsSearchParams(query)}`
+    ),
+
   restore: (propertyId: string, reservationId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/restore`,
       { method: "POST", omitDefaultContentType: true }
+    ),
+
+  update: (propertyId: string, reservationId: string, body: IUpdatePropertyReservationBody) =>
+    authenticatedRequest<{ reservation: IPropertyReservation }>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
 
@@ -781,21 +781,10 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
 }
 
 export const incomeLinesApi = {
-  list: (propertyId: string, query?: IPropertyIncomeLinesListQuery) =>
-    authenticatedRequest<{ incomeLines: IPropertyIncomeLine[] }>(
-      `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
-    ),
-
   create: (propertyId: string, body: ICreatePropertyIncomeLineBody) =>
     authenticatedRequest<{ incomeLine: IPropertyIncomeLine }>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines`,
       { body: JSON.stringify(body), method: "POST" }
-    ),
-
-  update: (propertyId: string, lineId: string, body: IUpdatePropertyIncomeLineBody) =>
-    authenticatedRequest<{ incomeLine: IPropertyIncomeLine }>(
-      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}`,
-      { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   delete: (propertyId: string, lineId: string) =>
@@ -804,10 +793,21 @@ export const incomeLinesApi = {
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
+  list: (propertyId: string, query?: IPropertyIncomeLinesListQuery) =>
+    authenticatedRequest<{ incomeLines: IPropertyIncomeLine[] }>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
+    ),
+
   restore: (propertyId: string, lineId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}/restore`,
       { method: "POST", omitDefaultContentType: true }
+    ),
+
+  update: (propertyId: string, lineId: string, body: IUpdatePropertyIncomeLineBody) =>
+    authenticatedRequest<{ incomeLine: IPropertyIncomeLine }>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
 
@@ -823,21 +823,10 @@ function buildExpensesSearchParams(query: IPropertyExpensesListQuery = {}): stri
 }
 
 export const expensesApi = {
-  list: (propertyId: string, query?: IPropertyExpensesListQuery) =>
-    authenticatedRequest<IPropertyExpensesListResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/expenses${buildExpensesSearchParams(query)}`
-    ),
-
   create: (propertyId: string, body: ICreatePropertyExpenseBody) =>
     authenticatedRequest<{ expense: IPropertyExpense }>(
       `/properties/${encodeURIComponent(propertyId)}/expenses`,
       { body: JSON.stringify(body), method: "POST" }
-    ),
-
-  update: (propertyId: string, expenseId: string, body: IUpdatePropertyExpenseBody) =>
-    authenticatedRequest<{ expense: IPropertyExpense }>(
-      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
-      { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   delete: (propertyId: string, expenseId: string) =>
@@ -846,10 +835,10 @@ export const expensesApi = {
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
-  restore: (propertyId: string, expenseId: string) =>
-    authenticatedRequest<void>(
-      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}/restore`,
-      { method: "POST", omitDefaultContentType: true }
+  importCommit: (propertyId: string, body: IExpenseImportCommitBody) =>
+    authenticatedRequest<IExpenseImportCommitResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/import/commit`,
+      { body: JSON.stringify(body), method: "POST" }
     ),
 
   importParse: (propertyId: string, formData: FormData) =>
@@ -858,10 +847,21 @@ export const expensesApi = {
       formData
     ),
 
-  importCommit: (propertyId: string, body: IExpenseImportCommitBody) =>
-    authenticatedRequest<IExpenseImportCommitResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/expenses/import/commit`,
-      { body: JSON.stringify(body), method: "POST" }
+  list: (propertyId: string, query?: IPropertyExpensesListQuery) =>
+    authenticatedRequest<IPropertyExpensesListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses${buildExpensesSearchParams(query)}`
+    ),
+
+  restore: (propertyId: string, expenseId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  update: (propertyId: string, expenseId: string, body: IUpdatePropertyExpenseBody) =>
+    authenticatedRequest<{ expense: IPropertyExpense }>(
+      `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
 
@@ -877,25 +877,25 @@ function buildReportsSearchParams(query: IPropertyReportsQuery): string {
 }
 
 export const reportsApi = {
-  summary: (propertyId: string, query: IPropertyReportsQuery) =>
-    authenticatedRequest<{ summary: IPropertyReportSummary }>(
-      `/properties/${encodeURIComponent(propertyId)}/reports/summary${buildReportsSearchParams(query)}`
-    ),
-
   exportCsv: (propertyId: string, query: IPropertyReportsQuery) =>
     authenticatedDownload(
       `/properties/${encodeURIComponent(propertyId)}/reports/export${buildReportsSearchParams(query)}`
     ),
+
+  summary: (propertyId: string, query: IPropertyReportsQuery) =>
+    authenticatedRequest<{ summary: IPropertyReportSummary }>(
+      `/properties/${encodeURIComponent(propertyId)}/reports/summary${buildReportsSearchParams(query)}`
+    ),
 };
 
 export const portfolioReportsApi = {
+  exportCsv: (query: IPropertyReportsQuery) =>
+    authenticatedDownload(`/reports/export${buildReportsSearchParams(query)}`),
+
   summary: (query: IPropertyReportsQuery) =>
     authenticatedRequest<{ summary: IPortfolioReportSummary }>(
       `/reports/summary${buildReportsSearchParams(query)}`
     ),
-
-  exportCsv: (query: IPropertyReportsQuery) =>
-    authenticatedDownload(`/reports/export${buildReportsSearchParams(query)}`),
 };
 
 export const homeApi = {

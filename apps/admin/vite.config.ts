@@ -14,7 +14,16 @@ const rootPackage = JSON.parse(
 ) as { version: string };
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPackage.version),
+  },
   plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
+  preview: {
+    allowedHosts: [".propertyos.app"],
+    host: true,
+    port: Number(process.env.PORT) || 4173,
+    strictPort: true,
+  },
   resolve: {
     alias: [
       {
@@ -23,14 +32,5 @@ export default defineConfig({
       },
       { find: "@", replacement: path.resolve(__dirname, "src") },
     ],
-  },
-  preview: {
-    host: true,
-    port: Number(process.env.PORT) || 4173,
-    strictPort: true,
-    allowedHosts: [".propertyos.app"],
-  },
-  define: {
-    "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPackage.version),
   },
 });

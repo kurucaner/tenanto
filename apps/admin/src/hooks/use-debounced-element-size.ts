@@ -10,10 +10,10 @@ type UseDebouncedElementSizeOptions = {
   initialSize: ElementSize;
 };
 
-function roundSize({ width, height }: ElementSize): ElementSize {
+function roundSize({ height, width }: ElementSize): ElementSize {
   return {
-    width: Math.round(width),
     height: Math.round(height),
+    width: Math.round(width),
   };
 }
 
@@ -45,14 +45,14 @@ export function useDebouncedElementSize(
         return;
       }
 
-      const { width, height } = entry.contentRect;
+      const { height, width } = entry.contentRect;
       if (width <= 0 || height <= 0) {
         return;
       }
 
       if (!hasMeasured) {
         hasMeasured = true;
-        applySize({ width, height });
+        applySize({ height, width });
         return;
       }
 
@@ -61,7 +61,7 @@ export function useDebouncedElementSize(
       }
 
       debounceTimer = setTimeout(() => {
-        applySize({ width, height });
+        applySize({ height, width });
       }, debounceMs);
     });
 

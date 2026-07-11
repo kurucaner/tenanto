@@ -43,18 +43,19 @@ export const SupportAttachmentPicker = memo(
 
     return (
       <div className="flex flex-col gap-2">
-        <div
+        <label
           aria-label="Image attachment drop zone"
           className={cn(
             supportAttachmentDropzoneClass,
             isDragOver && "border-ring bg-muted/30",
-            disabled && "pointer-events-none opacity-50"
+            disabled && "pointer-events-none opacity-50",
+            canAddMore && !disabled ? "cursor-pointer" : "cursor-default"
           )}
+          htmlFor={`${idPrefix}-attachments-input`}
           id={dropzoneId}
           onDragLeave={dragHandlers.onDragLeave}
           onDragOver={dragHandlers.onDragOver}
           onDrop={dragHandlers.onDrop}
-          role="region"
         >
           <ImagePlus className="text-muted-foreground size-5" />
           <p className="text-muted-foreground text-center text-sm">
@@ -67,7 +68,7 @@ export const SupportAttachmentPicker = memo(
               variant="link"
             />
           </p>
-        </div>
+        </label>
         <p className="text-muted-foreground text-xs">
           PNG, JPG, GIF, or WebP · up to {SUPPORT_MAX_IMAGE_ATTACHMENTS} images · 5 MB each
         </p>

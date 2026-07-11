@@ -163,7 +163,7 @@ export const PropertyDetailPage = memo(() => {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { role: TPropertyRole; userId: string }) =>
+    mutationFn: ({ role, userId }: { role: TPropertyRole; userId: string }) =>
       propertiesApi.updateMember(propertyId, userId, { role }),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to update role");

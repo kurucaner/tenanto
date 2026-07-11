@@ -14,9 +14,9 @@ function getServerThemeChoice(): ThemeChoice {
 }
 
 const OPTIONS: readonly { value: ThemeChoice; label: string; Icon: typeof Sun }[] = [
-  { value: "light", label: "Light theme", Icon: Sun },
-  { value: "dark", label: "Dark theme", Icon: Moon },
-  { value: "system", label: "Match system theme", Icon: Monitor },
+  { Icon: Sun, label: "Light theme", value: "light" },
+  { Icon: Moon, label: "Dark theme", value: "dark" },
+  { Icon: Monitor, label: "Match system theme", value: "system" },
 ] as const;
 
 export const AdminThemeSwitcher = memo(function AdminThemeSwitcher({
@@ -40,7 +40,7 @@ export const AdminThemeSwitcher = memo(function AdminThemeSwitcher({
       )}
     >
       <legend className="sr-only">Color theme</legend>
-      {OPTIONS.map(({ value, label, Icon }) => {
+      {OPTIONS.map(({ Icon, label, value }) => {
         const selected = mode === value;
         return (
           <button

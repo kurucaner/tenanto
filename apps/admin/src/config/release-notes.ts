@@ -33,11 +33,6 @@ export const RELEASE_CHANGE_LABELS: Record<ReleaseChangeCategory, string> = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    id: "2026.8.0",
-    version: "2026.8.0",
-    publishedAt: "2026-07-09",
-    summary:
-      "Import expenses from bank CSVs with Smart read, new income and commission charts on Reports, and clearer delete confirmations.",
     changes: [
       {
         category: "new",
@@ -65,13 +60,13 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           "Income and reservation lists now refresh correctly after you add or change records.",
       },
     ],
-  },
-  {
-    id: "2026.7.0",
-    version: "2026.7.0",
+    id: "2026.8.0",
     publishedAt: "2026-07-09",
     summary:
-      "Manage long-term leases and rent, add secondary tenants, edit tenant contact details, and clearer forms across Units, Income, and Expenses.",
+      "Import expenses from bank CSVs with Smart read, new income and commission charts on Reports, and clearer delete confirmations.",
+    version: "2026.8.0",
+  },
+  {
     changes: [
       {
         category: "new",
@@ -127,13 +122,13 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           "Date filters on Income and related pages lay out more cleanly on phones and tablets.",
       },
     ],
+    id: "2026.7.0",
+    publishedAt: "2026-07-09",
+    summary:
+      "Manage long-term leases and rent, add secondary tenants, edit tenant contact details, and clearer forms across Units, Income, and Expenses.",
+    version: "2026.7.0",
   },
   {
-    id: "2026.6.0",
-    version: "2026.6.0",
-    publishedAt: "2026-07-08",
-    summary:
-      "Switch properties from the header, clearer report charts, soft delete with restore, and filters that stay put when you refresh.",
     changes: [
       {
         category: "new",
@@ -176,13 +171,13 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           "The commission Details breakdown no longer treats the cleaning fee as part of the commission calculation when it shouldn't be.",
       },
     ],
-  },
-  {
-    id: "2026.5.0",
-    version: "2026.5.0",
+    id: "2026.6.0",
     publishedAt: "2026-07-08",
     summary:
-      "Long-term stays, a clearer Income table with a new Net Payout column, tax-free expenses, and property-wide income.",
+      "Switch properties from the header, clearer report charts, soft delete with restore, and filters that stay put when you refresh.",
+    version: "2026.6.0",
+  },
+  {
     changes: [
       {
         category: "new",
@@ -243,12 +238,13 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         description: "Dates on other income and expenses can no longer be set in the future.",
       },
     ],
+    id: "2026.5.0",
+    publishedAt: "2026-07-08",
+    summary:
+      "Long-term stays, a clearer Income table with a new Net Payout column, tax-free expenses, and property-wide income.",
+    version: "2026.5.0",
   },
   {
-    id: "2026.4.0",
-    version: "2026.4.0",
-    publishedAt: "2026-07-07",
-    summary: "More control over taxes and income types, amenity units, and a clearer income table.",
     changes: [
       {
         category: "new",
@@ -334,12 +330,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         description: "Support reply buttons now show the expected click cursor.",
       },
     ],
+    id: "2026.4.0",
+    publishedAt: "2026-07-07",
+    summary: "More control over taxes and income types, amenity units, and a clearer income table.",
+    version: "2026.4.0",
   },
   {
-    id: "2026.3.0",
-    version: "2026.3.0",
-    publishedAt: "2026-07-06",
-    summary: "Portfolio finances on Home, a smoother support chat, and photo attachments.",
     changes: [
       {
         category: "new",
@@ -381,12 +377,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           "Signing out now fully clears your session so the next person who logs in won't see your data.",
       },
     ],
+    id: "2026.3.0",
+    publishedAt: "2026-07-06",
+    summary: "Portfolio finances on Home, a smoother support chat, and photo attachments.",
+    version: "2026.3.0",
   },
   {
-    id: "2026.2.0",
-    version: "2026.2.0",
-    publishedAt: "2026-07-06",
-    summary: "Support, notifications, and easier navigation on your phone.",
     changes: [
       {
         category: "new",
@@ -441,12 +437,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           "Fixed an issue where live updates sometimes didn't appear until you refreshed the page.",
       },
     ],
+    id: "2026.2.0",
+    publishedAt: "2026-07-06",
+    summary: "Support, notifications, and easier navigation on your phone.",
+    version: "2026.2.0",
   },
   {
-    id: "2026.1.0",
-    version: "2026.1.0",
-    publishedAt: "2026-07-05",
-    summary: "Portfolio reports and a clearer property workspace.",
     changes: [
       {
         category: "new",
@@ -466,12 +462,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         description: "Report totals stay consistent when you change the date range.",
       },
     ],
+    id: "2026.1.0",
+    publishedAt: "2026-07-05",
+    summary: "Portfolio reports and a clearer property workspace.",
+    version: "2026.1.0",
   },
   {
-    id: "2026.0.0",
-    version: "2026.0.0",
-    publishedAt: "2026-06-15",
-    summary: "Track income and expenses for each property.",
     changes: [
       {
         category: "new",
@@ -494,6 +490,10 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         description: "Property overview shows your role and who else has access.",
       },
     ],
+    id: "2026.0.0",
+    publishedAt: "2026-06-15",
+    summary: "Track income and expenses for each property.",
+    version: "2026.0.0",
   },
 ];
 
