@@ -5,7 +5,6 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
@@ -290,25 +290,20 @@ export const ExtendLeaseDialog = memo(
                     ) : null}
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="extend-lease-effective-month">Rent effective from</Label>
-                    <select
-                      className={incomeLineSelectClassName}
-                      id="extend-lease-effective-month"
-                      onChange={(event) =>
-                        form.setValue("rentEffectiveFromMonth", event.target.value, {
-                          shouldValidate: true,
-                        })
-                      }
-                      value={form.watch("rentEffectiveFromMonth")}
-                    >
-                      {effectiveMonthOptions.map((month) => (
-                        <option key={month} value={month}>
-                          {formatMonthLabel(month)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <FormSelectField
+                    id="extend-lease-effective-month"
+                    label="Rent effective from"
+                    onChange={(event) =>
+                      form.setValue("rentEffectiveFromMonth", event.target.value, {
+                        shouldValidate: true,
+                      })
+                    }
+                    options={effectiveMonthOptions.map((month) => ({
+                      label: formatMonthLabel(month),
+                      value: month,
+                    }))}
+                    value={form.watch("rentEffectiveFromMonth")}
+                  />
                 </>
               ) : null}
             </div>

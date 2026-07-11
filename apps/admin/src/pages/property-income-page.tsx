@@ -4,7 +4,8 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
-import { FilterField } from "@/components/filters/filter-field";
+import { DateFilterField } from "@/components/filters/date-filter-field";
+import { FilterSelectField } from "@/components/filters/filter-select-field";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -15,20 +16,16 @@ import { EditReservationDialog } from "@/components/income/edit-reservation-dial
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
 import {
   buildIncomeTypeFilterOptions,
-  incomeLineSelectClassName,
 } from "@/components/income/income-line-form-options";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
 import {
   CHANNEL_OPTIONS,
-  reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayCalculationDetailsDialog } from "@/components/income/stay-calculation-details-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
@@ -925,84 +922,51 @@ const PropertyIncomePage = memo(() => {
       <Card>
         <CardContent className="space-y-4 p-4">
           <div className={getLedgerFiltersGridClass(6)}>
-            <FilterField>
-              <Label htmlFor="filter-from">From</Label>
-              <Input
-                id="filter-from"
-                onChange={(e) => setFilter("from", e.target.value)}
-                type="date"
-                value={from}
-              />
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="filter-to">To</Label>
-              <Input
-                id="filter-to"
-                onChange={(e) => setFilter("to", e.target.value)}
-                type="date"
-                value={to}
-              />
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="filter-unit">Unit</Label>
-              <select
-                className={reservationSelectClassName}
-                id="filter-unit"
-                onChange={(e) => setFilter("unitId", e.target.value)}
-                value={unitId}
-              >
-                <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
-              </select>
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="filter-income-type">Income type</Label>
-              <select
-                className={incomeLineSelectClassName}
-                id="filter-income-type"
-                onChange={(e) => setFilter("incomeType", e.target.value)}
-                value={incomeType}
-              >
-                {incomeTypeFilterOptions.map((opt) => (
-                  <option key={opt.value || "all"} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="filter-channel">Channel</Label>
-              <select
-                className={reservationSelectClassName}
-                disabled={!showStays}
-                id="filter-channel"
-                onChange={(e) => setFilter("channel", e.target.value)}
-                value={channel}
-              >
-                <option value="">All channels</option>
-                {CHANNEL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="filter-status">Status</Label>
-              <select
-                className={reservationSelectClassName}
-                disabled={!showStays}
-                id="filter-status"
-                onChange={(e) => setFilter("status", e.target.value)}
-                value={status}
-              >
-                <option value="">All statuses</option>
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
+            <DateFilterField
+              id="filter-from"
+              label="From"
+              onChange={(e) => setFilter("from", e.target.value)}
+              value={from}
+            />
+            <DateFilterField
+              id="filter-to"
+              label="To"
+              onChange={(e) => setFilter("to", e.target.value)}
+              value={to}
+            />
+            <FilterSelectField
+              id="filter-unit"
+              label="Unit"
+              onChange={(e) => setFilter("unitId", e.target.value)}
+              value={unitId}
+            >
+              <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
+            </FilterSelectField>
+            <FilterSelectField
+              id="filter-income-type"
+              label="Income type"
+              onChange={(e) => setFilter("incomeType", e.target.value)}
+              options={incomeTypeFilterOptions}
+              value={incomeType}
+            />
+            <FilterSelectField
+              disabled={!showStays}
+              emptyOptionLabel="All channels"
+              id="filter-channel"
+              label="Channel"
+              onChange={(e) => setFilter("channel", e.target.value)}
+              options={CHANNEL_OPTIONS}
+              value={channel}
+            />
+            <FilterSelectField
+              disabled={!showStays}
+              emptyOptionLabel="All statuses"
+              id="filter-status"
+              label="Status"
+              onChange={(e) => setFilter("status", e.target.value)}
+              options={STATUS_OPTIONS}
+              value={status}
+            />
           </div>
 
           <PropertyIncomeEntriesTable

@@ -5,8 +5,6 @@ import {
   type TReservationStatus,
 } from "@/packages/shared";
 
-export { nativeSelectClassName as reservationSelectClassName } from "@/lib/native-select-class-name";
-
 export const STATUS_OPTIONS: { label: string; value: TReservationStatus }[] = [
   { label: "Active", value: ReservationStatus.ACTIVE },
   { label: "Stayed", value: ReservationStatus.STAYED },

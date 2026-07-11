@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import {
   CHANNEL_OPTIONS,
-  reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
@@ -18,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldLabel } from "@/components/ui/field-label";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
@@ -107,17 +107,14 @@ export const EditReservationDialog = memo(
           </DialogHeader>
 
           <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-reservation-unit">Unit</Label>
-              <select
-                className={reservationSelectClassName}
-                id="edit-reservation-unit"
-                onChange={(e) => setUnitId(e.target.value)}
-                value={unitId}
-              >
-                <PropertyUnitSelectOptions units={units} />
-              </select>
-            </div>
+            <FormSelectField
+              id="edit-reservation-unit"
+              label="Unit"
+              onChange={(e) => setUnitId(e.target.value)}
+              value={unitId}
+            >
+              <PropertyUnitSelectOptions units={units} />
+            </FormSelectField>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-guest-name">Guest name</Label>
@@ -167,36 +164,20 @@ export const EditReservationDialog = memo(
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-reservation-status">Status</Label>
-                <select
-                  className={reservationSelectClassName}
-                  id="edit-reservation-status"
-                  onChange={(e) => setStatus(e.target.value as TReservationStatus)}
-                  value={status}
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-reservation-channel">Channel</Label>
-                <select
-                  className={reservationSelectClassName}
-                  id="edit-reservation-channel"
-                  onChange={(e) => setChannel(e.target.value as TReservationChannel)}
-                  value={channel}
-                >
-                  {CHANNEL_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <FormSelectField
+                id="edit-reservation-status"
+                label="Status"
+                onChange={(e) => setStatus(e.target.value as TReservationStatus)}
+                options={STATUS_OPTIONS}
+                value={status}
+              />
+              <FormSelectField
+                id="edit-reservation-channel"
+                label="Channel"
+                onChange={(e) => setChannel(e.target.value as TReservationChannel)}
+                options={CHANNEL_OPTIONS}
+                value={channel}
+              />
             </div>
 
             {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (

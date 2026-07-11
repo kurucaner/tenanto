@@ -10,6 +10,7 @@ import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Table,
   TableBody,
@@ -71,17 +72,12 @@ const MemberTableRow = memo(
         <TableCell>
           {canEditMember ? (
             <div className="flex items-center gap-2">
-              <select
-                className="border-input bg-background h-7 rounded border px-2 text-xs"
+              <NativeSelect
+                className="h-7 w-auto px-2 text-xs"
                 onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
+                options={ROLE_OPTIONS}
                 value={member.role}
-              >
-                {ROLE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
+              />
               <Button
                 aria-label="Remove member"
                 onClick={() => onRemove(member)}

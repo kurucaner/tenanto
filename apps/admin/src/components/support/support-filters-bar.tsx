@@ -1,12 +1,11 @@
 import { memo } from "react";
 
+import { FilterSelectField } from "@/components/filters/filter-select-field";
 import {
   CATEGORY_OPTIONS,
   STATUS_OPTIONS,
-  supportSelectClass,
 } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 
 export const SupportFiltersBar = memo(
   ({
@@ -25,36 +24,22 @@ export const SupportFiltersBar = memo(
     statusInput: string;
   }>) => (
     <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-      <div className="flex min-w-[160px] flex-1 flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-status`}>Status</Label>
-        <select
-          className={supportSelectClass}
-          id={`${idPrefix}-status`}
-          onChange={(e) => onStatusChange(e.target.value)}
-          value={statusInput}
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.label} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex min-w-[160px] flex-1 flex-col gap-2">
-        <Label htmlFor={`${idPrefix}-category`}>Category</Label>
-        <select
-          className={supportSelectClass}
-          id={`${idPrefix}-category`}
-          onChange={(e) => onCategoryChange(e.target.value)}
-          value={categoryInput}
-        >
-          {CATEGORY_OPTIONS.map((option) => (
-            <option key={option.label} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FilterSelectField
+        fieldClassName="min-w-[160px] flex-1"
+        id={`${idPrefix}-status`}
+        label="Status"
+        onChange={(e) => onStatusChange(e.target.value)}
+        options={STATUS_OPTIONS}
+        value={statusInput}
+      />
+      <FilterSelectField
+        fieldClassName="min-w-[160px] flex-1"
+        id={`${idPrefix}-category`}
+        label="Category"
+        onChange={(e) => onCategoryChange(e.target.value)}
+        options={CATEGORY_OPTIONS}
+        value={categoryInput}
+      />
       <Button onClick={onApply} type="button" variant="secondary">
         Apply filters
       </Button>

@@ -5,7 +5,6 @@ import { Controller, type FieldErrors, useForm, type UseFormReturn } from "react
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldLabel } from "@/components/ui/field-label";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -96,25 +96,24 @@ const StartLeaseUnitSelectField = memo(
     isActiveLeasesPending,
     register,
   }: StartLeaseUnitSelectFieldProps) => (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor="start-lease-unit">Unit</Label>
-      <select
-        className={incomeLineSelectClassName}
+    <>
+      <FormSelectField
         disabled={isActiveLeasesPending}
+        error={errorMessage}
         id="start-lease-unit"
+        label="Unit"
         {...register("unitId")}
       >
         <option value="">{isActiveLeasesPending ? "Loading units…" : "Select unit…"}</option>
         <PropertyUnitSelectOptions units={availableUnits} />
-      </select>
-      {errorMessage ? <p className="text-xs text-destructive">{errorMessage}</p> : null}
+      </FormSelectField>
       {isActiveLeasesPending ? (
         <p className="text-muted-foreground text-xs">Loading available units…</p>
       ) : null}
       {!isActiveLeasesPending && availableUnits.length === 0 ? (
         <p className="text-muted-foreground text-xs">No vacant long-term units available.</p>
       ) : null}
-    </div>
+    </>
   )
 );
 StartLeaseUnitSelectField.displayName = "StartLeaseUnitSelectField";

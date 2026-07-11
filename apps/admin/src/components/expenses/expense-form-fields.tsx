@@ -1,8 +1,8 @@
 import { memo } from "react";
 
-import { expenseSelectClassName } from "@/components/expenses/expense-form-options";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldLabel } from "@/components/ui/field-label";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
@@ -52,21 +52,13 @@ export const ExpenseFormFields = memo(
 
     return (
       <>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${idPrefix}-category`}>Category</Label>
-          <select
-            className={expenseSelectClassName}
-            id={`${idPrefix}-category`}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            value={categoryId}
-          >
-            {categoryTypes.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FormSelectField
+          id={`${idPrefix}-category`}
+          label="Category"
+          onChange={(e) => onCategoryChange(e.target.value)}
+          options={categoryTypes.map((cat) => ({ label: cat.name, value: cat.id }))}
+          value={categoryId}
+        />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">

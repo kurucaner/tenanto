@@ -59,7 +59,7 @@ export const PropertyExpenseCategoryTypesEditor = memo(
               <span className="w-8" />
             </div>
             <ul className="divide-y">
-              {expenseCategoryTypes.map((row, index) => (
+              {expenseCategoryTypes.map((row) => (
                 <li
                   className="grid grid-cols-[1fr_auto_auto] items-center gap-3 px-3 py-2"
                   key={row.clientId}
@@ -67,7 +67,7 @@ export const PropertyExpenseCategoryTypesEditor = memo(
                   <Input
                     disabled={disabled}
                     onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
-                    placeholder={`Category ${index + 1}`}
+                    placeholder="Category name"
                     value={row.name}
                   />
                   <div className="flex w-[68px] justify-center">

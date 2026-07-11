@@ -6,14 +6,12 @@ import { toast } from "sonner";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
-import { expenseSelectClassName } from "@/components/expenses/expense-form-options";
 import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
-import { FilterField } from "@/components/filters/filter-field";
+import { DateFilterField } from "@/components/filters/date-filter-field";
+import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -148,40 +146,26 @@ const PropertyExpensesFilters = memo(
     to: string;
   }) => (
     <div className={getLedgerFiltersGridClass(3)}>
-      <FilterField>
-        <Label htmlFor="expense-filter-from">From</Label>
-        <Input
-          id="expense-filter-from"
-          onChange={(e) => onFromChange(e.target.value)}
-          type="date"
-          value={from}
-        />
-      </FilterField>
-      <FilterField>
-        <Label htmlFor="expense-filter-to">To</Label>
-        <Input
-          id="expense-filter-to"
-          onChange={(e) => onToChange(e.target.value)}
-          type="date"
-          value={to}
-        />
-      </FilterField>
-      <FilterField>
-        <Label htmlFor="expense-filter-category">Category</Label>
-        <select
-          className={expenseSelectClassName}
-          id="expense-filter-category"
-          onChange={(e) => onCategoryIdChange(e.target.value)}
-          value={categoryId}
-        >
-          <option value="">All categories</option>
-          {categoryTypes.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-      </FilterField>
+      <DateFilterField
+        id="expense-filter-from"
+        label="From"
+        onChange={(e) => onFromChange(e.target.value)}
+        value={from}
+      />
+      <DateFilterField
+        id="expense-filter-to"
+        label="To"
+        onChange={(e) => onToChange(e.target.value)}
+        value={to}
+      />
+      <FilterSelectField
+        emptyOptionLabel="All categories"
+        id="expense-filter-category"
+        label="Category"
+        onChange={(e) => onCategoryIdChange(e.target.value)}
+        options={categoryTypes.map((cat) => ({ label: cat.name, value: cat.id }))}
+        value={categoryId}
+      />
     </div>
   )
 );

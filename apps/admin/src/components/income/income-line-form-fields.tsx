@@ -1,16 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ChangeEvent, memo, useCallback, useMemo } from "react";
 
-import {
-  incomeLineSelectClassName,
-  type IncomeLineTypeOption,
-} from "@/components/income/income-line-form-options";
+import { type IncomeLineTypeOption } from "@/components/income/income-line-form-options";
 import {
   LinkToStayField,
   LockedLeaseSummary,
   LockedStaySummary,
 } from "@/components/income/link-to-stay-field";
 import { FieldLabel } from "@/components/ui/field-label";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
@@ -45,26 +43,18 @@ export const IncomeLineTypeField = memo(
     );
 
     return (
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`${fieldIdPrefix}-type`}>Income type</Label>
-        <select
-          className={incomeLineSelectClassName}
-          disabled={options.length === 0}
-          id={`${fieldIdPrefix}-type`}
-          onChange={handleChange}
-          value={value}
-        >
-          {options.length === 0 ? (
-            <option value="">No income types configured</option>
-          ) : (
-            options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))
-          )}
-        </select>
-      </div>
+      <FormSelectField
+        disabled={options.length === 0}
+        id={`${fieldIdPrefix}-type`}
+        label="Income type"
+        onChange={handleChange}
+        options={
+          options.length === 0
+            ? [{ label: "No income types configured", value: "" }]
+            : options
+        }
+        value={value}
+      />
     );
   }
 );
@@ -234,22 +224,19 @@ export const IncomeLineUnitSection = memo(
 
     return (
       <>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${fieldIdPrefix}-unit`}>Unit</Label>
-          <select
-            className={incomeLineSelectClassName}
-            disabled={Boolean(lockedStay || lockedLease)}
-            id={`${fieldIdPrefix}-unit`}
-            onChange={handleUnitChange}
-            value={unitId}
-          >
-            <IncomeUnitSelectOptions
-              emptyOptionLabel={unitsProp == null ? "Select unit…" : undefined}
-              includePropertyAmenityOption={includePropertyAmenityOption}
-              units={units}
-            />
-          </select>
-        </div>
+        <FormSelectField
+          disabled={Boolean(lockedStay || lockedLease)}
+          id={`${fieldIdPrefix}-unit`}
+          label="Unit"
+          onChange={handleUnitChange}
+          value={unitId}
+        >
+          <IncomeUnitSelectOptions
+            emptyOptionLabel={unitsProp == null ? "Select unit…" : undefined}
+            includePropertyAmenityOption={includePropertyAmenityOption}
+            units={units}
+          />
+        </FormSelectField>
 
         {lockedLease ? (
           <LockedLeaseSummary lease={lockedLease} />

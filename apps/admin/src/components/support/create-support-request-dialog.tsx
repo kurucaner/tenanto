@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { SupportAttachmentPicker } from "@/components/support/support-attachment-picker";
 import {
   CREATE_CATEGORY_OPTIONS,
-  supportSelectClass,
   supportTextareaClass,
 } from "@/components/support/support-constants";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldLabel } from "@/components/ui/field-label";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Label } from "@/components/ui/label";
 import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
@@ -126,22 +126,14 @@ export const CreateSupportRequestDialog = memo(
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-4 px-6 py-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="create-support-category">Category</Label>
-                <select
-                  className={supportSelectClass}
-                  disabled={isBusy}
-                  id="create-support-category"
-                  onChange={(e) => setCategory(e.target.value as SupportCategory)}
-                  value={category}
-                >
-                  {CREATE_CATEGORY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <FormSelectField
+                disabled={isBusy}
+                id="create-support-category"
+                label="Category"
+                onChange={(e) => setCategory(e.target.value as SupportCategory)}
+                options={CREATE_CATEGORY_OPTIONS}
+                value={category}
+              />
               <div className="flex flex-col gap-2">
                 <Label htmlFor="create-support-message">Message</Label>
                 <textarea

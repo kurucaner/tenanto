@@ -3,18 +3,16 @@ import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { FilterField } from "@/components/filters/filter-field";
+import { FilterSelectField } from "@/components/filters/filter-select-field";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
 } from "@/components/income/create-income-line-dialog";
-import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -271,33 +269,22 @@ export const PropertyLeasesPage = memo(() => {
       <Card>
         <CardContent className="p-0">
           <div className={`border-b p-4 ${getLedgerFiltersGridClass(2)}`}>
-            <FilterField>
-              <Label htmlFor="lease-filter-status">Status</Label>
-              <select
-                className={incomeLineSelectClassName}
-                id="lease-filter-status"
-                onChange={(e) => setFilters({ status: e.target.value })}
-                value={status}
-              >
-                {LEASE_STATUS_FILTER_OPTIONS.map((option) => (
-                  <option key={option.label} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
-            <FilterField>
-              <Label htmlFor="lease-filter-unit">Unit</Label>
-              <select
-                className={incomeLineSelectClassName}
-                id="lease-filter-unit"
-                onChange={(e) => setFilters({ unitId: e.target.value })}
-                value={unitId}
-              >
-                <option value="">All units</option>
-                <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
-              </select>
-            </FilterField>
+            <FilterSelectField
+              id="lease-filter-status"
+              label="Status"
+              onChange={(e) => setFilters({ status: e.target.value })}
+              options={LEASE_STATUS_FILTER_OPTIONS}
+              value={status}
+            />
+            <FilterSelectField
+              emptyOptionLabel="All units"
+              id="lease-filter-unit"
+              label="Unit"
+              onChange={(e) => setFilters({ unitId: e.target.value })}
+              value={unitId}
+            >
+              <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
+            </FilterSelectField>
           </div>
 
           {isPending ? (

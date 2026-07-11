@@ -1,7 +1,5 @@
 import { IncomeEntryKind, type IPropertyIncomeLineType } from "@/packages/shared";
 
-export { nativeSelectClassName as incomeLineSelectClassName } from "@/lib/native-select-class-name";
-
 export interface IncomeLineTypeOption {
   label: string;
   value: string;

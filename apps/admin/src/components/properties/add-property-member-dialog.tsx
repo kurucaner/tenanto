@@ -11,11 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { cn } from "@/lib/utils";
 import { PropertyRole, type TPropertyRole } from "@/packages/shared";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
@@ -103,25 +103,13 @@ export const AddPropertyMemberDialog = memo(
               {emailError ? <p className="text-xs text-destructive">{emailError}</p> : null}
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="add-member-role">Role</Label>
-              <select
-                className={cn(
-                  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",
-                  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                  "dark:bg-input/30"
-                )}
-                id="add-member-role"
-                onChange={(e) => setRole(e.target.value as TPropertyRole)}
-                value={role}
-              >
-                {ROLE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FormSelectField
+              id="add-member-role"
+              label="Role"
+              onChange={(e) => setRole(e.target.value as TPropertyRole)}
+              options={ROLE_OPTIONS}
+              value={role}
+            />
           </div>
 
           <DialogFooter>

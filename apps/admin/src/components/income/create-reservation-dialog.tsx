@@ -7,7 +7,6 @@ import { z } from "zod";
 
 import {
   CHANNEL_OPTIONS,
-  reservationSelectClassName,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
@@ -21,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldLabel } from "@/components/ui/field-label";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
@@ -178,27 +178,22 @@ export const CreateReservationDialog = memo(
 
           <form onSubmit={onSubmit}>
             <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reservation-unit">Unit</Label>
-                <select
-                  className={reservationSelectClassName}
-                  id="reservation-unit"
-                  {...form.register("unitId")}
-                >
-                  <PropertyUnitSelectOptions
-                    emptyOptionLabel="Select unit…"
-                    units={shortTermUnits}
-                  />
-                </select>
-                {errors.unitId ? (
-                  <p className="text-xs text-destructive">{errors.unitId.message}</p>
-                ) : null}
-                {!unitsQuery.isLoading && shortTermUnits.length === 0 ? (
-                  <p className="text-muted-foreground text-xs">
-                    No short-term units configured. Add a short-term unit to record stay income.
-                  </p>
-                ) : null}
-              </div>
+              <FormSelectField
+                error={errors.unitId?.message}
+                id="reservation-unit"
+                label="Unit"
+                {...form.register("unitId")}
+              >
+                <PropertyUnitSelectOptions
+                  emptyOptionLabel="Select unit…"
+                  units={shortTermUnits}
+                />
+              </FormSelectField>
+              {!unitsQuery.isLoading && shortTermUnits.length === 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  No short-term units configured. Add a short-term unit to record stay income.
+                </p>
+              ) : null}
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="guest-name">Guest name</Label>
@@ -257,40 +252,20 @@ export const CreateReservationDialog = memo(
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="reservation-status">Status</Label>
-                  <select
-                    className={reservationSelectClassName}
-                    id="reservation-status"
-                    {...form.register("status")}
-                  >
-                    {STATUS_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.status ? (
-                    <p className="text-xs text-destructive">{errors.status.message}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="reservation-channel">Channel</Label>
-                  <select
-                    className={reservationSelectClassName}
-                    id="reservation-channel"
-                    {...form.register("channel")}
-                  >
-                    {CHANNEL_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.channel ? (
-                    <p className="text-xs text-destructive">{errors.channel.message}</p>
-                  ) : null}
-                </div>
+                <FormSelectField
+                  error={errors.status?.message}
+                  id="reservation-status"
+                  label="Status"
+                  options={STATUS_OPTIONS}
+                  {...form.register("status")}
+                />
+                <FormSelectField
+                  error={errors.channel?.message}
+                  id="reservation-channel"
+                  label="Channel"
+                  options={CHANNEL_OPTIONS}
+                  {...form.register("channel")}
+                />
               </div>
 
               {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (

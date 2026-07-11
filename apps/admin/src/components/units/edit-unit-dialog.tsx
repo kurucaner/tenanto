@@ -11,12 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LayoutPicker } from "@/components/units/layout-picker";
 import { unitsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { cn } from "@/lib/utils";
 import type { IPropertyUnit, TUnitRentalType } from "@/packages/shared";
 import { UnitRentalType } from "@/packages/shared";
 
@@ -82,25 +82,13 @@ export const EditUnitDialog = memo(
               <LayoutPicker onChange={setLayout} value={layout} />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-unit-rental-type">Rental Type</Label>
-              <select
-                className={cn(
-                  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",
-                  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                  "dark:bg-input/30"
-                )}
-                id="edit-unit-rental-type"
-                onChange={(e) => setRentalType(e.target.value as TUnitRentalType)}
-                value={rentalType}
-              >
-                {RENTAL_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <FormSelectField
+              id="edit-unit-rental-type"
+              label="Rental Type"
+              onChange={(e) => setRentalType(e.target.value as TUnitRentalType)}
+              options={RENTAL_TYPE_OPTIONS}
+              value={rentalType}
+            />
           </div>
 
           <DialogFooter>

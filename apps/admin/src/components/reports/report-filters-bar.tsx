@@ -1,13 +1,11 @@
 import { memo } from "react";
 
-import { FilterField } from "@/components/filters/filter-field";
+import { DateFilterField } from "@/components/filters/date-filter-field";
+import { FilterSelectField } from "@/components/filters/filter-select-field";
 import {
   CHANNEL_OPTIONS,
-  reservationSelectClassName,
 } from "@/components/income/reservation-form-options";
 import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-options";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import type { IPropertyUnit } from "@/packages/shared";
@@ -49,70 +47,45 @@ export const ReportFiltersBar = memo(
     return (
       <div className="space-y-4">
         <div className={getLedgerFiltersGridClass(filterCount)}>
-          <FilterField>
-            <Label htmlFor="report-from">From</Label>
-            <Input
-              id="report-from"
-              onChange={(e) => onFromChange(e.target.value)}
-              type="date"
-              value={from}
-            />
-          </FilterField>
-          <FilterField>
-            <Label htmlFor="report-to">To</Label>
-            <Input
-              id="report-to"
-              onChange={(e) => onToChange(e.target.value)}
-              type="date"
-              value={to}
-            />
-          </FilterField>
+          <DateFilterField
+            id="report-from"
+            label="From"
+            onChange={(e) => onFromChange(e.target.value)}
+            value={from}
+          />
+          <DateFilterField
+            id="report-to"
+            label="To"
+            onChange={(e) => onToChange(e.target.value)}
+            value={to}
+          />
           {showUnitFilter ? (
-            <FilterField>
-              <Label htmlFor="report-unit">Unit</Label>
-              <select
-                className={reservationSelectClassName}
-                id="report-unit"
-                onChange={(e) => onUnitChange?.(e.target.value)}
-                value={unitId}
-              >
-                <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
-              </select>
-            </FilterField>
+            <FilterSelectField
+              id="report-unit"
+              label="Unit"
+              onChange={(e) => onUnitChange?.(e.target.value)}
+              value={unitId}
+            >
+              <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
+            </FilterSelectField>
           ) : null}
           {showChannelFilter ? (
-            <FilterField>
-              <Label htmlFor="report-channel">Channel</Label>
-              <select
-                className={reservationSelectClassName}
-                id="report-channel"
-                onChange={(e) => onChannelChange?.(e.target.value)}
-                value={channel}
-              >
-                <option value="">All channels</option>
-                {CHANNEL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </FilterField>
+            <FilterSelectField
+              emptyOptionLabel="All channels"
+              id="report-channel"
+              label="Channel"
+              onChange={(e) => onChannelChange?.(e.target.value)}
+              options={CHANNEL_OPTIONS}
+              value={channel}
+            />
           ) : null}
-          <FilterField>
-            <Label htmlFor="report-rental-type">Rental type</Label>
-            <select
-              className={reservationSelectClassName}
-              id="report-rental-type"
-              onChange={(e) => onRentalTypeChange(e.target.value)}
-              value={rentalType}
-            >
-              {RENTAL_TYPE_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value || "both"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </FilterField>
+          <FilterSelectField
+            id="report-rental-type"
+            label="Rental type"
+            onChange={(e) => onRentalTypeChange(e.target.value)}
+            options={RENTAL_TYPE_FILTER_OPTIONS}
+            value={rentalType}
+          />
         </div>
 
         {rentalType ? (

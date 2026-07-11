@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
+import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,19 +153,17 @@ const UsersListPageInner = memo(() => {
             <Button onClick={() => setFilter("q", qInput.trim())} type="button" variant="secondary">
               Apply search
             </Button>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="filter-user-type">User type</Label>
-              <select
-                className="border-input bg-background h-8 rounded-lg border px-2 text-sm"
-                id="filter-user-type"
-                onChange={(e) => setFilter("userType", e.target.value)}
-                value={userType}
-              >
-                <option value="">Any</option>
-                <option value={UserType.USER}>user</option>
-                <option value={UserType.ADMIN}>admin</option>
-              </select>
-            </div>
+            <FilterSelectField
+              emptyOptionLabel="Any"
+              id="filter-user-type"
+              label="User type"
+              onChange={(e) => setFilter("userType", e.target.value)}
+              options={[
+                { label: "user", value: UserType.USER },
+                { label: "admin", value: UserType.ADMIN },
+              ]}
+              value={userType}
+            />
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox
                 checked={includeDeleted}

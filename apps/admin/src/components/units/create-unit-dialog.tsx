@@ -14,12 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LayoutPicker } from "@/components/units/layout-picker";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
-import { cn } from "@/lib/utils";
 import { type TUnitRentalType, UnitRentalType } from "@/packages/shared";
 
 const RENTAL_TYPE_OPTIONS: { label: string; value: TUnitRentalType }[] = [
@@ -129,27 +129,13 @@ export const CreateUnitDialog = memo(
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="unit-rental-type">Rental Type</Label>
-                <select
-                  className={cn(
-                    "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",
-                    "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                    "dark:bg-input/30"
-                  )}
-                  id="unit-rental-type"
-                  {...form.register("rentalType")}
-                >
-                  {RENTAL_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.rentalType ? (
-                  <p className="text-xs text-destructive">{errors.rentalType.message}</p>
-                ) : null}
-              </div>
+              <FormSelectField
+                error={errors.rentalType?.message}
+                id="unit-rental-type"
+                label="Rental Type"
+                options={RENTAL_TYPE_OPTIONS}
+                {...form.register("rentalType")}
+              />
             </div>
 
             <DialogFooter>

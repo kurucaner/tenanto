@@ -1,7 +1,6 @@
 import { AlertCircle, Trash2 } from "lucide-react";
 import { memo } from "react";
 
-import { expenseSelectClassName } from "@/components/expenses/expense-form-options";
 import {
   AMOUNT_INPUT_CLASS_NAME,
   getImportPreviewRowValidationError,
@@ -14,12 +13,13 @@ import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { cn } from "@/lib/utils";
 import { type IExpenseImportParsedRow, type IPropertyExpenseCategoryType } from "@/packages/shared";
 
-const CATEGORY_SELECT_CLASS_NAME = cn(expenseSelectClassName, "min-w-[11rem]");
+const CATEGORY_SELECT_CLASS_NAME = "min-w-[11rem]";
 
 function formatAmountInputValue(amount: number): string {
   return Number.isFinite(amount) ? String(amount) : "";
@@ -42,18 +42,13 @@ interface PreviewFieldContext {
 
 function renderCategorySelect({ categoryTypes, idPrefix, onChange, row }: PreviewFieldContext) {
   return (
-    <select
+    <NativeSelect
       className={CATEGORY_SELECT_CLASS_NAME}
       id={`${idPrefix}-category`}
       onChange={(e) => onChange({ ...row, categoryId: e.target.value })}
+      options={categoryTypes.map((cat) => ({ label: cat.name, value: cat.id }))}
       value={row.categoryId}
-    >
-      {categoryTypes.map((cat) => (
-        <option key={cat.id} value={cat.id}>
-          {cat.name}
-        </option>
-      ))}
-    </select>
+    />
   );
 }
 

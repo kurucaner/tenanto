@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { memo, useMemo } from "react";
 
-import { incomeLineSelectClassName } from "@/components/income/income-line-form-options";
 import { FieldLabel } from "@/components/ui/field-label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { reservationsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
@@ -91,20 +91,17 @@ export const LinkToStayField = memo(
         <FieldLabel htmlFor={id} optional>
           Link to stay
         </FieldLabel>
-        <select
-          className={incomeLineSelectClassName}
+        <NativeSelect
           disabled={disabled || unitId === "" || reservationsQuery.isPending}
+          emptyOptionLabel="No linked stay"
           id={id}
           onChange={(e) => onReservationIdChange(e.target.value)}
+          options={reservations.map((reservation) => ({
+            label: formatStayOptionLabel(reservation),
+            value: reservation.id,
+          }))}
           value={reservationId}
-        >
-          <option value="">No linked stay</option>
-          {reservations.map((reservation) => (
-            <option key={reservation.id} value={reservation.id}>
-              {formatStayOptionLabel(reservation)}
-            </option>
-          ))}
-        </select>
+        />
         <p className="text-muted-foreground text-xs">{statusMessage}</p>
       </div>
     );
