@@ -23,7 +23,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { VirtualizedList } from "@/components/virtualized/virtualized-list";
+import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
+import { useIsDesktop } from "@/hooks/use-media-query";
 import { expensesApi } from "@/lib/api-client";
 import { isLocalEnvironment } from "@/lib/document-title";
 import {
@@ -45,6 +48,10 @@ import {
 } from "@/packages/shared";
 
 type TImportStep = "preview" | "upload";
+
+const PREVIEW_TABLE_COLUMN_COUNT = 7;
+const PREVIEW_CARD_ESTIMATED_HEIGHT = 320;
+const PREVIEW_TABLE_ROW_ESTIMATED_HEIGHT = 64;
 
 const FILE_RESULT_TONE_CLASS_NAMES: Record<TExpenseImportFileStatus, string> = {
   error: "border-destructive/30 bg-destructive/5 text-destructive",
@@ -310,6 +317,10 @@ export const ImportExpenseCsvDialog = memo(
     const [previewRows, setPreviewRows] = useState<IExpenseImportParsedRow[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const [isLoadingMock, setIsLoadingMock] = useState(false);
+    // Held in state (callback ref) so its attachment re-renders the
+    // virtualizers, which mount in the same commit as this element.
+    const [previewScrollElement, setPreviewScrollElement] = useState<HTMLDivElement | null>(null);
+    const isDesktop = useIsDesktop();
     const showMockDataButton = isLocalEnvironment();
 
     const resetState = useCallback(() => {
@@ -471,6 +482,85 @@ export const ImportExpenseCsvDialog = memo(
       void handleGenerateMockData();
     }, [handleGenerateMockData]);
 
+    const renderPreviewCard = useCallback(
+      (row: IExpenseImportParsedRow, index: number) => (
+        <div className="pb-3">
+          <ImportExpenseCsvPreviewCardItem
+            categoryTypes={categoryTypes}
+            index={index}
+            onRemoveRow={removePreviewRow}
+            onUpdateRow={updatePreviewRow}
+            row={row}
+          />
+        </div>
+      ),
+      [categoryTypes, removePreviewRow, updatePreviewRow]
+    );
+
+    const renderPreviewTableRow = useCallback(
+      (row: IExpenseImportParsedRow, index: number) => (
+        <ImportExpenseCsvPreviewTableRowItem
+          categoryTypes={categoryTypes}
+          index={index}
+          key={createPreviewRowKey(row, index)}
+          onRemoveRow={removePreviewRow}
+          onUpdateRow={updatePreviewRow}
+          row={row}
+        />
+      ),
+      [categoryTypes, removePreviewRow, updatePreviewRow]
+    );
+
+    const previewList = isDesktop ? (
+      <div>
+        <div className="rounded-lg border overflow-hidden">
+          <Table className={IMPORT_EXPENSE_CSV_PREVIEW_TABLE_CLASS_NAME}>
+            <colgroup>
+              <col style={{ minWidth: 120, width: 120 }} />
+              <col style={{ minWidth: 180, width: 180 }} />
+              <col style={{ minWidth: 140, width: 140 }} />
+              <col style={{ minWidth: 160, width: 160 }} />
+              <col style={{ minWidth: 90, width: 90 }} />
+              <col style={{ minWidth: 120, width: 120 }} />
+              <col style={{ minWidth: 88, width: 88 }} />
+            </colgroup>
+            <TableHeader>
+              <TableRow>
+                <TableHead>File</TableHead>
+                <TableHead className="whitespace-normal">Category</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="whitespace-normal">Description</TableHead>
+                <TableHead>Tax</TableHead>
+                <TableHead className={cn(STICKY_AMOUNT_CELL_CLASS_NAME, "text-right")}>
+                  Amount
+                </TableHead>
+                <TableHead className={STICKY_ACTIONS_CELL_CLASS_NAME}>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <VirtualizedTableBody
+              colSpan={PREVIEW_TABLE_COLUMN_COUNT}
+              estimateRowHeight={PREVIEW_TABLE_ROW_ESTIMATED_HEIGHT}
+              getItemKey={createPreviewRowKey}
+              items={previewRows}
+              renderRow={renderPreviewTableRow}
+              scrollElement={previewScrollElement}
+            />
+          </Table>
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          Scroll horizontally to see all columns.
+        </p>
+      </div>
+    ) : (
+      <VirtualizedList
+        estimateItemHeight={PREVIEW_CARD_ESTIMATED_HEIGHT}
+        getItemKey={createPreviewRowKey}
+        items={previewRows}
+        renderItem={renderPreviewCard}
+        scrollElement={previewScrollElement}
+      />
+    );
+
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col sm:max-w-[min(1100px,calc(100vw-2rem))]">
@@ -527,7 +617,7 @@ export const ImportExpenseCsvDialog = memo(
               </div>
             </div>
           ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5" ref={setPreviewScrollElement}>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   {fileResults.map((result) => (
@@ -536,68 +626,7 @@ export const ImportExpenseCsvDialog = memo(
                 </div>
 
                 {previewRows.length > 0 ? (
-                  <>
-                    <div className="flex flex-col gap-3 lg:hidden">
-                      {previewRows.map((row, index) => (
-                        <ImportExpenseCsvPreviewCardItem
-                          categoryTypes={categoryTypes}
-                          index={index}
-                          key={createPreviewRowKey(row, index)}
-                          onRemoveRow={removePreviewRow}
-                          onUpdateRow={updatePreviewRow}
-                          row={row}
-                        />
-                      ))}
-                    </div>
-
-                    <div className="hidden lg:block">
-                      <div className="rounded-lg border">
-                        <Table className={IMPORT_EXPENSE_CSV_PREVIEW_TABLE_CLASS_NAME}>
-                          <colgroup>
-                            <col style={{ minWidth: 120, width: 120 }} />
-                            <col style={{ minWidth: 180, width: 180 }} />
-                            <col style={{ minWidth: 140, width: 140 }} />
-                            <col style={{ minWidth: 160, width: 160 }} />
-                            <col style={{ minWidth: 90, width: 90 }} />
-                            <col style={{ minWidth: 120, width: 120 }} />
-                            <col style={{ minWidth: 88, width: 88 }} />
-                          </colgroup>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>File</TableHead>
-                              <TableHead className="whitespace-normal">Category</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead className="whitespace-normal">Description</TableHead>
-                              <TableHead>Tax</TableHead>
-                              <TableHead
-                                className={cn(STICKY_AMOUNT_CELL_CLASS_NAME, "text-right")}
-                              >
-                                Amount
-                              </TableHead>
-                              <TableHead className={STICKY_ACTIONS_CELL_CLASS_NAME}>
-                                Actions
-                              </TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {previewRows.map((row, index) => (
-                              <ImportExpenseCsvPreviewTableRowItem
-                                categoryTypes={categoryTypes}
-                                index={index}
-                                key={createPreviewRowKey(row, index)}
-                                onRemoveRow={removePreviewRow}
-                                onUpdateRow={updatePreviewRow}
-                                row={row}
-                              />
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                      <p className="text-muted-foreground mt-2 text-xs">
-                        Scroll horizontally to see all columns.
-                      </p>
-                    </div>
-                  </>
+                  previewList
                 ) : (
                   <p className="text-muted-foreground text-sm">
                     No expense rows are ready to import. Remove irrelevant files or upload different
@@ -629,4 +658,3 @@ export const ImportExpenseCsvDialog = memo(
   }
 );
 ImportExpenseCsvDialog.displayName = "ImportExpenseCsvDialog";
-
