@@ -1,12 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2, UserMinus } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { propertiesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
@@ -43,15 +44,19 @@ const MemberTableRow = memo(
   ({
     canManageMembers,
     creatorUserId,
+    isQuickDeleteActive,
+    isRemovePending,
     member,
     onChangeRole,
     onRemove,
   }: {
     canManageMembers: boolean;
     creatorUserId: string;
+    isQuickDeleteActive: boolean;
+    isRemovePending: boolean;
     member: IPropertyMember;
     onChangeRole: (userId: string, role: TPropertyRole) => void;
-    onRemove: (member: IPropertyMember) => void;
+    onRemove: (member: IPropertyMember, event?: MouseEvent<HTMLButtonElement>) => void;
   }) => {
     const canEditMember = canManageMembers && member.userId !== creatorUserId;
 
@@ -78,15 +83,12 @@ const MemberTableRow = memo(
                 options={ROLE_OPTIONS}
                 value={member.role}
               />
-              <Button
-                aria-label="Remove member"
-                onClick={() => onRemove(member)}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <UserMinus className="size-4" />
-              </Button>
+              <QuickDeleteButton
+                ariaLabel="Remove member"
+                disabled={isRemovePending}
+                onClick={(event) => onRemove(member, event)}
+                quickDeleteActive={isQuickDeleteActive}
+              />
             </div>
           ) : null}
         </TableCell>
@@ -181,27 +183,23 @@ export const PropertyDetailPage = memo(() => {
     },
   });
 
-  const { deleteConfirmationDialog, requestDelete } = useDeleteConfirmation<IPropertyMember>(
-    removeMemberMutation.isPending,
-    (member, onDeleted) => removeMemberMutation.mutate(member.userId, { onSuccess: onDeleted })
-  );
+  const { deleteConfirmationDialog, handleDelete: handleRemoveMember, isQuickDeleteActive } =
+    useQuickDelete<IPropertyMember>({
+      deleteFn: (member, onDeleted) =>
+        removeMemberMutation.mutate(member.userId, { onSuccess: onDeleted }),
+      getConfirmationOptions: (member) => ({
+        confirmLabel: "Remove",
+        description: `Remove ${member.user.name} from this property?`,
+        target: member,
+        title: "Remove member",
+      }),
+      isPending: removeMemberMutation.isPending,
+    });
 
   const handleDelete = useCallback(() => {
     if (!globalThis.confirm("Delete this property? This cannot be undone.")) return;
     deleteMutation.mutate();
   }, [deleteMutation]);
-
-  const handleRemoveMember = useCallback(
-    (member: IPropertyMember) => {
-      requestDelete({
-        confirmLabel: "Remove",
-        description: `Remove ${member.user.name} from this property?`,
-        target: member,
-        title: "Remove member",
-      });
-    },
-    [requestDelete]
-  );
 
   const headerActions = useMemo(
     () =>
@@ -317,6 +315,8 @@ export const PropertyDetailPage = memo(() => {
                 <MemberTableRow
                   canManageMembers={canManageMembers}
                   creatorUserId={property.createdBy}
+                  isQuickDeleteActive={isQuickDeleteActive}
+                  isRemovePending={removeMemberMutation.isPending}
                   key={member.id}
                   member={member}
                   onChangeRole={(userId, role) => updateRoleMutation.mutate({ role, userId })}
