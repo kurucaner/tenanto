@@ -35,11 +35,6 @@ const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(Reservati
 const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
 
-function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
-
 function parseReservationStatus(raw: unknown): TReservationStatus | null {
   if (typeof raw !== "string") return null;
   return RESERVATION_STATUSES.has(raw as TReservationStatus) ? (raw as TReservationStatus) : null;
@@ -548,12 +543,6 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       const parsed = parseCreateReservationBody(request.body);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-
-      if (parsed.body.checkIn < getTodayUtcIsoDate()) {
-        return reply
-          .status(HttpStatus.BAD_REQUEST)
-          .send({ error: "Check-in cannot be in the past" });
       }
 
       const computed = await buildComputedFields(propertyId, parsed.body, reply, {
