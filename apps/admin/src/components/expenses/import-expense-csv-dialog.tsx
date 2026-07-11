@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FileSpreadsheet, Sparkles, Trash2, Upload } from "lucide-react";
-import { type DragEvent, memo, useCallback, useMemo, useState } from "react";
+import { type ChangeEvent, type DragEvent, memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -25,18 +25,21 @@ import {
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { expensesApi } from "@/lib/api-client";
+import { isLocalEnvironment } from "@/lib/document-title";
 import {
   formatExpenseCsvRejections,
   type ISelectedExpenseCsvFile,
   parseExpenseCsvFiles,
   processExpenseCsvIncomingFiles,
 } from "@/lib/expense-csv-import";
+import { loadExpenseImportMockParseResponse } from "@/lib/expense-import-mock-data";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { cn } from "@/lib/utils";
 import {
   EXPENSE_CSV_IMPORT_MAX_FILES,
   type IExpenseImportFileResult,
   type IExpenseImportParsedRow,
+  type IExpenseImportParseResponse,
   type IPropertyExpenseCategoryType,
   type TExpenseImportFileStatus,
 } from "@/packages/shared";
@@ -86,6 +89,118 @@ const FileResultSummary = memo(({ result }: { result: IExpenseImportFileResult }
 });
 FileResultSummary.displayName = "FileResultSummary";
 
+interface SelectedExpenseCsvFileItemProps {
+  entry: ISelectedExpenseCsvFile;
+  onRemove: (fileId: string) => void;
+}
+
+const SelectedExpenseCsvFileItem = memo(({ entry, onRemove }: SelectedExpenseCsvFileItemProps) => {
+  const handleRemove = useCallback(() => {
+    onRemove(entry.id);
+  }, [entry.id, onRemove]);
+
+  return (
+    <li className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2">
+      <div className="flex min-w-0 items-center gap-2 text-sm">
+        <FileSpreadsheet className="text-muted-foreground size-4 shrink-0" />
+        <span className="truncate" title={entry.file.name}>
+          {entry.file.name}
+        </span>
+      </div>
+      <Button
+        aria-label={`Remove ${entry.file.name}`}
+        onClick={handleRemove}
+        size="icon-sm"
+        type="button"
+        variant="ghost"
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </li>
+  );
+});
+SelectedExpenseCsvFileItem.displayName = "SelectedExpenseCsvFileItem";
+
+interface ImportExpenseCsvPreviewCardItemProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
+  index: number;
+  onRemoveRow: (index: number) => void;
+  onUpdateRow: (index: number, nextRow: IExpenseImportParsedRow) => void;
+  row: IExpenseImportParsedRow;
+}
+
+const ImportExpenseCsvPreviewCardItem = memo(
+  ({
+    categoryTypes,
+    index,
+    onRemoveRow,
+    onUpdateRow,
+    row,
+  }: ImportExpenseCsvPreviewCardItemProps) => {
+    const handleChange = useCallback(
+      (nextRow: IExpenseImportParsedRow) => {
+        onUpdateRow(index, nextRow);
+      },
+      [index, onUpdateRow]
+    );
+
+    const handleRemove = useCallback(() => {
+      onRemoveRow(index);
+    }, [index, onRemoveRow]);
+
+    return (
+      <ImportExpenseCsvPreviewCard
+        categoryTypes={categoryTypes}
+        idPrefix={`import-preview-${index}`}
+        onChange={handleChange}
+        onRemove={handleRemove}
+        row={row}
+      />
+    );
+  }
+);
+ImportExpenseCsvPreviewCardItem.displayName = "ImportExpenseCsvPreviewCardItem";
+
+interface ImportExpenseCsvPreviewTableRowItemProps {
+  categoryTypes: IPropertyExpenseCategoryType[];
+  index: number;
+  onRemoveRow: (index: number) => void;
+  onUpdateRow: (index: number, nextRow: IExpenseImportParsedRow) => void;
+  row: IExpenseImportParsedRow;
+}
+
+const ImportExpenseCsvPreviewTableRowItem = memo(
+  ({
+    categoryTypes,
+    index,
+    onRemoveRow,
+    onUpdateRow,
+    row,
+  }: ImportExpenseCsvPreviewTableRowItemProps) => {
+    const handleChange = useCallback(
+      (nextRow: IExpenseImportParsedRow) => {
+        onUpdateRow(index, nextRow);
+      },
+      [index, onUpdateRow]
+    );
+
+    const handleRemove = useCallback(() => {
+      onRemoveRow(index);
+    }, [index, onRemoveRow]);
+
+    return (
+      <ImportExpenseCsvPreviewTableRow
+        categoryTypes={categoryTypes}
+        idPrefix={`import-preview-${index}`}
+        onChange={handleChange}
+        onRemove={handleRemove}
+        row={row}
+      />
+    );
+  }
+);
+ImportExpenseCsvPreviewTableRowItem.displayName = "ImportExpenseCsvPreviewTableRowItem";
+
 export const ImportExpenseCsvDialog = memo(
   ({ categoryTypes, onOpenChange, open, propertyId }: ImportExpenseCsvDialogProps) => {
     const queryClient = useQueryClient();
@@ -94,6 +209,8 @@ export const ImportExpenseCsvDialog = memo(
     const [fileResults, setFileResults] = useState<IExpenseImportFileResult[]>([]);
     const [previewRows, setPreviewRows] = useState<IExpenseImportParsedRow[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isLoadingMock, setIsLoadingMock] = useState(false);
+    const showMockDataButton = isLocalEnvironment();
 
     const resetState = useCallback(() => {
       setStep("upload");
@@ -101,6 +218,7 @@ export const ImportExpenseCsvDialog = memo(
       setFileResults([]);
       setPreviewRows([]);
       setIsDragOver(false);
+      setIsLoadingMock(false);
     }, []);
 
     const handleOpenChange = useCallback(
@@ -129,6 +247,20 @@ export const ImportExpenseCsvDialog = memo(
       });
     }, []);
 
+    const handleFileInputChange = useCallback(
+      (event: ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files.length > 0) {
+          addFiles(event.target.files);
+        }
+        event.target.value = "";
+      },
+      [addFiles]
+    );
+
+    const removeSelectedFile = useCallback((fileId: string) => {
+      setSelectedFiles((files) => files.filter((file) => file.id !== fileId));
+    }, []);
+
     const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
       event.preventDefault();
       setIsDragOver(true);
@@ -150,30 +282,50 @@ export const ImportExpenseCsvDialog = memo(
       [addFiles]
     );
 
+    const applyParseResponse = useCallback((response: IExpenseImportParseResponse) => {
+      setFileResults(response.files);
+      const rows = response.files.flatMap((file) => file.rows ?? []);
+      setPreviewRows(rows);
+      setStep("preview");
+
+      const irrelevantCount = response.files.filter(
+        (file) => file.status === "irrelevant"
+      ).length;
+      const errorCount = response.files.filter((file) => file.status === "error").length;
+      if (rows.length === 0) {
+        toast.info("No importable expense rows were found.");
+      } else if (irrelevantCount > 0 || errorCount > 0) {
+        toast.message("Some files could not be imported", {
+          description: `${rows.length} row(s) ready for review.`,
+        });
+      }
+    }, []);
+
     const parseMutation = useMutation({
       mutationFn: () => parseExpenseCsvFiles(propertyId, selectedFiles),
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Smart read failed");
       },
-      onSuccess: (response) => {
-        setFileResults(response.files);
-        const rows = response.files.flatMap((file) => file.rows ?? []);
-        setPreviewRows(rows);
-        setStep("preview");
-
-        const irrelevantCount = response.files.filter(
-          (file) => file.status === "irrelevant"
-        ).length;
-        const errorCount = response.files.filter((file) => file.status === "error").length;
-        if (rows.length === 0) {
-          toast.info("No importable expense rows were found.");
-        } else if (irrelevantCount > 0 || errorCount > 0) {
-          toast.message("Some files could not be imported", {
-            description: `${rows.length} row(s) ready for review.`,
-          });
-        }
-      },
+      onSuccess: applyParseResponse,
     });
+
+    const handleGenerateMockData = useCallback(async () => {
+      if (!showMockDataButton) {
+        return;
+      }
+
+      setIsLoadingMock(true);
+      try {
+        const response = await loadExpenseImportMockParseResponse(categoryTypes);
+        const rowCount = response.files.flatMap((file) => file.rows ?? []).length;
+        applyParseResponse(response);
+        toast.success(`Loaded ${rowCount} mock expense row(s)`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load mock data");
+      } finally {
+        setIsLoadingMock(false);
+      }
+    }, [applyParseResponse, categoryTypes, showMockDataButton]);
 
     const commitMutation = useMutation({
       mutationFn: (rows: IExpenseImportParsedRow[]) =>
@@ -193,6 +345,11 @@ export const ImportExpenseCsvDialog = memo(
       [previewRows]
     );
 
+    const importablePreviewRows = useMemo(
+      () => previewRows.filter((row) => getImportPreviewRowValidationError(row) === null),
+      [previewRows]
+    );
+
     const hasBlockingValidationErrors = previewRows.some(
       (row) => getImportPreviewRowValidationError(row) !== null
     );
@@ -204,6 +361,10 @@ export const ImportExpenseCsvDialog = memo(
     const removePreviewRow = useCallback((index: number) => {
       setPreviewRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index));
     }, []);
+
+    const handleCommitImport = useCallback(() => {
+      commitMutation.mutate(importablePreviewRows);
+    }, [commitMutation, importablePreviewRows]);
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -238,12 +399,7 @@ export const ImportExpenseCsvDialog = memo(
                       accept=".csv,text/csv"
                       className="sr-only"
                       multiple
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          addFiles(e.target.files);
-                        }
-                        e.target.value = "";
-                      }}
+                      onChange={handleFileInputChange}
                       type="file"
                     />
                   </Label>
@@ -255,30 +411,11 @@ export const ImportExpenseCsvDialog = memo(
                 {selectedFiles.length > 0 ? (
                   <ul className="flex flex-col gap-2">
                     {selectedFiles.map((entry) => (
-                      <li
-                        className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2"
+                      <SelectedExpenseCsvFileItem
+                        entry={entry}
                         key={entry.id}
-                      >
-                        <div className="flex min-w-0 items-center gap-2 text-sm">
-                          <FileSpreadsheet className="text-muted-foreground size-4 shrink-0" />
-                          <span className="truncate" title={entry.file.name}>
-                            {entry.file.name}
-                          </span>
-                        </div>
-                        <Button
-                          aria-label={`Remove ${entry.file.name}`}
-                          onClick={() =>
-                            setSelectedFiles((files) =>
-                              files.filter((file) => file.id !== entry.id)
-                            )
-                          }
-                          size="icon-sm"
-                          type="button"
-                          variant="ghost"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </li>
+                        onRemove={removeSelectedFile}
+                      />
                     ))}
                   </ul>
                 ) : null}
@@ -297,12 +434,12 @@ export const ImportExpenseCsvDialog = memo(
                   <>
                     <div className="flex flex-col gap-3 lg:hidden">
                       {previewRows.map((row, index) => (
-                        <ImportExpenseCsvPreviewCard
+                        <ImportExpenseCsvPreviewCardItem
                           categoryTypes={categoryTypes}
-                          idPrefix={`import-preview-${index}`}
+                          index={index}
                           key={createPreviewRowKey(row, index)}
-                          onChange={(nextRow) => updatePreviewRow(index, nextRow)}
-                          onRemove={() => removePreviewRow(index)}
+                          onRemoveRow={removePreviewRow}
+                          onUpdateRow={updatePreviewRow}
                           row={row}
                         />
                       ))}
@@ -339,12 +476,12 @@ export const ImportExpenseCsvDialog = memo(
                           </TableHeader>
                           <TableBody>
                             {previewRows.map((row, index) => (
-                              <ImportExpenseCsvPreviewTableRow
+                              <ImportExpenseCsvPreviewTableRowItem
                                 categoryTypes={categoryTypes}
-                                idPrefix={`import-preview-${index}`}
+                                index={index}
                                 key={createPreviewRowKey(row, index)}
-                                onChange={(nextRow) => updatePreviewRow(index, nextRow)}
-                                onRemove={() => removePreviewRow(index)}
+                                onRemoveRow={removePreviewRow}
+                                onUpdateRow={updatePreviewRow}
                                 row={row}
                               />
                             ))}
@@ -376,15 +513,27 @@ export const ImportExpenseCsvDialog = memo(
               Cancel
             </Button>
             {step === "upload" ? (
-              <Button
-                className="gap-1.5"
-                disabled={selectedFiles.length === 0 || parseMutation.isPending}
-                onClick={() => parseMutation.mutate()}
-                type="button"
-              >
-                <Sparkles className="size-3.5" />
-                {parseMutation.isPending ? "Smart reading…" : "Smart read"}
-              </Button>
+              <>
+                {showMockDataButton ? (
+                  <Button
+                    disabled={isLoadingMock || parseMutation.isPending}
+                    onClick={() => void handleGenerateMockData()}
+                    type="button"
+                    variant="secondary"
+                  >
+                    {isLoadingMock ? "Generating…" : "Generate mock data"}
+                  </Button>
+                ) : null}
+                <Button
+                  className="gap-1.5"
+                  disabled={selectedFiles.length === 0 || parseMutation.isPending || isLoadingMock}
+                  onClick={() => parseMutation.mutate()}
+                  type="button"
+                >
+                  <Sparkles className="size-3.5" />
+                  {parseMutation.isPending ? "Smart reading…" : "Smart read"}
+                </Button>
+              </>
             ) : (
               <>
                 <Button
@@ -399,11 +548,7 @@ export const ImportExpenseCsvDialog = memo(
                   disabled={
                     validRowCount === 0 || hasBlockingValidationErrors || commitMutation.isPending
                   }
-                  onClick={() =>
-                    commitMutation.mutate(
-                      previewRows.filter((row) => getImportPreviewRowValidationError(row) === null)
-                    )
-                  }
+                  onClick={handleCommitImport}
                   type="button"
                 >
                   {commitMutation.isPending ? "Importing…" : `Import ${validRowCount} expense(s)`}
@@ -417,3 +562,4 @@ export const ImportExpenseCsvDialog = memo(
   }
 );
 ImportExpenseCsvDialog.displayName = "ImportExpenseCsvDialog";
+
