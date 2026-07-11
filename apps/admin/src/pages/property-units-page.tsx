@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { CirclePlus, Pencil, Plus } from "lucide-react";
+import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,10 +22,10 @@ import {
 } from "@/components/ui/table";
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
-import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
@@ -58,6 +59,8 @@ const UnitRow = memo(
   ({
     activeLease,
     canManage,
+    isDeletePending,
+    isQuickDeleteActive,
     onDelete,
     onEdit,
     onRestore,
@@ -66,8 +69,10 @@ const UnitRow = memo(
   }: {
     activeLease?: IPropertyLongStay;
     canManage: boolean;
+    isDeletePending: boolean;
+    isQuickDeleteActive: boolean;
     onStartLease: (unit: IPropertyUnit) => void;
-    onDelete: (unit: IPropertyUnit) => void;
+    onDelete: (unit: IPropertyUnit, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (unit: IPropertyUnit) => void;
     onRestore: (unit: IPropertyUnit) => void;
     unit: IPropertyUnit;
@@ -137,15 +142,12 @@ const UnitRow = memo(
                   >
                     <Pencil className="size-3.5" />
                   </Button>
-                  <Button
-                    aria-label="Delete unit"
-                    onClick={() => onDelete(unit)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
+                  <QuickDeleteButton
+                    ariaLabel="Delete unit"
+                    disabled={isDeletePending}
+                    onClick={(event) => onDelete(unit, event)}
+                    quickDeleteActive={isQuickDeleteActive}
+                  />
                 </>
               )}
             </div>
@@ -195,10 +197,16 @@ export const PropertyUnitsPage = memo(() => {
     },
   });
 
-  const { deleteConfirmationDialog, requestDelete } = useDeleteConfirmation<IPropertyUnit>(
-    deleteMutation.isPending,
-    (unit, onDeleted) => deleteMutation.mutate(unit, { onSuccess: onDeleted })
-  );
+  const { deleteConfirmationDialog, handleDelete, isQuickDeleteActive } =
+    useQuickDelete<IPropertyUnit>({
+      deleteFn: (unit, onDeleted) => deleteMutation.mutate(unit, { onSuccess: onDeleted }),
+      getConfirmationOptions: (unit) => ({
+        description: `Delete unit ${unit.unitNumber}? It will be hidden from lists. Platform admins can restore it.`,
+        target: unit,
+        title: "Delete unit",
+      }),
+      isPending: deleteMutation.isPending,
+    });
 
   const restoreMutation = useMutation({
     mutationFn: (unit: IPropertyUnit) => unitsApi.restore(propertyId, unit.id),
@@ -210,17 +218,6 @@ export const PropertyUnitsPage = memo(() => {
       invalidatePropertyUnitCaches(queryClient, propertyId);
     },
   });
-
-  const handleDelete = useCallback(
-    (unit: IPropertyUnit) => {
-      requestDelete({
-        description: `Delete unit ${unit.unitNumber}? It will be hidden from lists. Platform admins can restore it.`,
-        target: unit,
-        title: "Delete unit",
-      });
-    },
-    [requestDelete]
-  );
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
 
@@ -288,6 +285,8 @@ export const PropertyUnitsPage = memo(() => {
                     <UnitRow
                       activeLease={activeLeaseByUnitId.get(unit.id)}
                       canManage={canManage}
+                      isDeletePending={deleteMutation.isPending}
+                      isQuickDeleteActive={isQuickDeleteActive}
                       key={unit.id}
                       onDelete={handleDelete}
                       onEdit={setEditUnit}

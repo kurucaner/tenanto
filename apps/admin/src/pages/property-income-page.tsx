@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CirclePlus, Pencil, Plus, Trash2 } from "lucide-react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { CirclePlus, Pencil, Plus } from "lucide-react";
+import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
@@ -24,15 +24,16 @@ import {
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayCalculationDetailsDialog } from "@/components/income/stay-calculation-details-dialog";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
@@ -228,7 +229,10 @@ const PropertyIncomeEntriesTable = memo(
     entries,
     getColumnAriaSort,
     getColumnDirection,
+    isDeleteLinePending,
+    isDeleteStayPending,
     isLoading,
+    isQuickDeleteActive,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
@@ -244,10 +248,13 @@ const PropertyIncomeEntriesTable = memo(
     entries: TPropertyIncomeEntry[];
     getColumnAriaSort: (columnId: string) => "ascending" | "descending" | "none";
     getColumnDirection: (columnId: string) => "asc" | "desc" | null;
+    isDeleteLinePending: boolean;
+    isDeleteStayPending: boolean;
     isLoading: boolean;
+    isQuickDeleteActive: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
-    onDeleteLine: (line: IPropertyIncomeLine) => void;
-    onDeleteStay: (stay: IPropertyReservation) => void;
+    onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
+    onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
@@ -306,6 +313,9 @@ const PropertyIncomeEntriesTable = memo(
                 <IncomeEntryRow
                   canManage={canManage}
                   entry={entry}
+                  isDeleteLinePending={isDeleteLinePending}
+                  isDeleteStayPending={isDeleteStayPending}
+                  isQuickDeleteActive={isQuickDeleteActive}
                   key={getIncomeEntryKey(entry)}
                   onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
                   onDeleteLine={onDeleteLine}
@@ -447,8 +457,10 @@ StayMetricCell.displayName = "StayMetricCell";
 
 type IncomeStayEntryRowProps = {
   canManage: boolean;
+  isDeletePending: boolean;
+  isQuickDeleteActive: boolean;
   onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
-  onDeleteStay: (stay: IPropertyReservation) => void;
+  onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
   onEditStay: (stay: IPropertyReservation) => void;
   onRestoreStay: (stay: IPropertyReservation) => void;
   onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
@@ -459,6 +471,8 @@ type IncomeStayEntryRowProps = {
 const IncomeStayEntryRow = memo(
   ({
     canManage,
+    isDeletePending,
+    isQuickDeleteActive,
     onAddOtherIncomeFromStay,
     onDeleteStay,
     onEditStay,
@@ -556,15 +570,12 @@ const IncomeStayEntryRow = memo(
                   >
                     <Pencil className="size-3.5" />
                   </Button>
-                  <Button
-                    aria-label="Delete stay"
-                    onClick={() => onDeleteStay(stay)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-3.5 text-destructive" />
-                  </Button>
+                  <QuickDeleteButton
+                    ariaLabel="Delete stay"
+                    disabled={isDeletePending}
+                    onClick={(event) => onDeleteStay(stay, event)}
+                    quickDeleteActive={isQuickDeleteActive}
+                  />
                 </>
               )}
             </div>
@@ -578,8 +589,10 @@ IncomeStayEntryRow.displayName = "IncomeStayEntryRow";
 
 type IncomeLineEntryRowProps = {
   canManage: boolean;
+  isDeletePending: boolean;
+  isQuickDeleteActive: boolean;
   line: IPropertyIncomeLine;
-  onDeleteLine: (line: IPropertyIncomeLine) => void;
+  onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
   onEditLine: (line: IPropertyIncomeLine) => void;
   onRestoreLine: (line: IPropertyIncomeLine) => void;
   unitLabel: string;
@@ -588,6 +601,8 @@ type IncomeLineEntryRowProps = {
 const IncomeLineEntryRow = memo(
   ({
     canManage,
+    isDeletePending,
+    isQuickDeleteActive,
     line,
     onDeleteLine,
     onEditLine,
@@ -637,15 +652,12 @@ const IncomeLineEntryRow = memo(
                 >
                   <Pencil className="size-3.5" />
                 </Button>
-                <Button
-                  aria-label="Delete other income"
-                  onClick={() => onDeleteLine(line)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-3.5 text-destructive" />
-                </Button>
+                <QuickDeleteButton
+                  ariaLabel="Delete other income"
+                  disabled={isDeletePending}
+                  onClick={(event) => onDeleteLine(line, event)}
+                  quickDeleteActive={isQuickDeleteActive}
+                />
               </>
             )}
           </div>
@@ -660,6 +672,9 @@ const IncomeEntryRow = memo(
   ({
     canManage,
     entry,
+    isDeleteLinePending,
+    isDeleteStayPending,
+    isQuickDeleteActive,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
@@ -672,9 +687,12 @@ const IncomeEntryRow = memo(
   }: {
     canManage: boolean;
     entry: TPropertyIncomeEntry;
+    isDeleteLinePending: boolean;
+    isDeleteStayPending: boolean;
+    isQuickDeleteActive: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
-    onDeleteLine: (line: IPropertyIncomeLine) => void;
-    onDeleteStay: (stay: IPropertyReservation) => void;
+    onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
+    onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
@@ -686,6 +704,8 @@ const IncomeEntryRow = memo(
       return (
         <IncomeStayEntryRow
           canManage={canManage}
+          isDeletePending={isDeleteStayPending}
+          isQuickDeleteActive={isQuickDeleteActive}
           onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
           onDeleteStay={onDeleteStay}
           onEditStay={onEditStay}
@@ -700,6 +720,8 @@ const IncomeEntryRow = memo(
     return (
       <IncomeLineEntryRow
         canManage={canManage}
+        isDeletePending={isDeleteLinePending}
+        isQuickDeleteActive={isQuickDeleteActive}
         line={entry.line}
         onDeleteLine={onDeleteLine}
         onEditLine={onEditLine}
@@ -828,17 +850,33 @@ const PropertyIncomePage = memo(() => {
 
   const {
     deleteConfirmationDialog: lineDeleteConfirmationDialog,
-    requestDelete: requestLineDelete,
-  } = useDeleteConfirmation<IPropertyIncomeLine>(deleteLineMutation.isPending, (line, onDeleted) =>
-    deleteLineMutation.mutate(line, { onSuccess: onDeleted })
-  );
+    handleDelete: handleDeleteLine,
+    isQuickDeleteActive: isLineQuickDeleteActive,
+  } = useQuickDelete<IPropertyIncomeLine>({
+    deleteFn: (line, onDeleted) => deleteLineMutation.mutate(line, { onSuccess: onDeleted }),
+    getConfirmationOptions: (line) => ({
+      description: `Delete ${line.incomeLineTypeName ?? line.incomeLineTypeId} entry? It will be hidden from reports.`,
+      target: line,
+      title: "Delete other income",
+    }),
+    isPending: deleteLineMutation.isPending,
+  });
 
   const {
     deleteConfirmationDialog: stayDeleteConfirmationDialog,
-    requestDelete: requestStayDelete,
-  } = useDeleteConfirmation<IPropertyReservation>(deleteStayMutation.isPending, (stay, onDeleted) =>
-    deleteStayMutation.mutate(stay, { onSuccess: onDeleted })
-  );
+    handleDelete: handleDeleteStay,
+    isQuickDeleteActive: isStayQuickDeleteActive,
+  } = useQuickDelete<IPropertyReservation>({
+    deleteFn: (stay, onDeleted) => deleteStayMutation.mutate(stay, { onSuccess: onDeleted }),
+    getConfirmationOptions: (stay) => ({
+      description: `Delete stay for ${stay.guestName}? It will be hidden from reports.`,
+      target: stay,
+      title: "Delete stay",
+    }),
+    isPending: deleteStayMutation.isPending,
+  });
+
+  const isQuickDeleteActive = isLineQuickDeleteActive || isStayQuickDeleteActive;
 
   const restoreStayMutation = useMutation({
     mutationFn: (reservation: IPropertyReservation) =>
@@ -892,28 +930,6 @@ const PropertyIncomePage = memo(() => {
   const handleAddStay = useCallback(() => {
     setCreateStayOpen(true);
   }, []);
-
-  const handleDeleteLine = useCallback(
-    (line: IPropertyIncomeLine) => {
-      requestLineDelete({
-        description: `Delete ${line.incomeLineTypeName ?? line.incomeLineTypeId} entry? It will be hidden from reports.`,
-        target: line,
-        title: "Delete other income",
-      });
-    },
-    [requestLineDelete]
-  );
-
-  const handleDeleteStay = useCallback(
-    (stay: IPropertyReservation) => {
-      requestStayDelete({
-        description: `Delete stay for ${stay.guestName}? It will be hidden from reports.`,
-        target: stay,
-        title: "Delete stay",
-      });
-    },
-    [requestStayDelete]
-  );
 
   useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay);
 
@@ -974,7 +990,10 @@ const PropertyIncomePage = memo(() => {
             entries={sortedEntries}
             getColumnAriaSort={getColumnAriaSort}
             getColumnDirection={getColumnDirection}
+            isDeleteLinePending={deleteLineMutation.isPending}
+            isDeleteStayPending={deleteStayMutation.isPending}
             isLoading={isLoading}
+            isQuickDeleteActive={isQuickDeleteActive}
             onAddOtherIncomeFromStay={(stay) =>
               openOtherIncomeFromStay(stay, incomeLineTypes, {
                 setCreateLineLockedStay,
