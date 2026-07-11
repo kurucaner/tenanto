@@ -14,6 +14,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -223,6 +224,12 @@ export const PropertyUnitsPage = memo(() => {
 
   const sortedUnits = useMemo(() => sortUnits(units, sortState), [sortState, units]);
 
+  const unitTypeCounts = useMemo(() => {
+    const shortTerm = units.filter((u) => u.rentalType === UnitRentalType.SHORT_TERM).length;
+    const longTerm = units.filter((u) => u.rentalType === UnitRentalType.LONG_TERM).length;
+    return { longTerm, shortTerm, total: units.length };
+  }, [units]);
+
   const handleOpenCreateUnit = useCallback(() => {
     setCreateOpen(true);
   }, []);
@@ -289,6 +296,27 @@ export const PropertyUnitsPage = memo(() => {
                   ))
                 )}
               </TableBody>
+              {units.length > 0 ? (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell className="text-muted-foreground text-xs" colSpan={canManage ? 6 : 5}>
+                      <div className="flex items-center gap-4">
+                        <span>
+                          Total: <span className="text-foreground font-medium">{unitTypeCounts.total}</span>
+                        </span>
+                        <span>
+                          Short Term:{" "}
+                          <span className="text-foreground font-medium">{unitTypeCounts.shortTerm}</span>
+                        </span>
+                        <span>
+                          Long Term:{" "}
+                          <span className="text-foreground font-medium">{unitTypeCounts.longTerm}</span>
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              ) : null}
             </Table>
           )}
         </CardContent>
