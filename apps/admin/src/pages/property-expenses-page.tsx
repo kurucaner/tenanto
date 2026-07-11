@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
+import { useLayoutScrollElement } from "@/contexts/layout-scroll-context";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import {
   type TPropertyExpensesListFilters,
@@ -100,6 +102,12 @@ const ExpenseRow = memo(
   )
 );
 ExpenseRow.displayName = "ExpenseRow";
+
+const EXPENSE_ROW_ESTIMATED_HEIGHT = 44;
+
+function getExpenseKey(expense: IPropertyExpense): string {
+  return expense.id;
+}
 
 const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
   categoryId: string;
@@ -199,6 +207,24 @@ const PropertyExpensesTable = memo(
     onRestore: (expense: IPropertyExpense) => void;
     scrollSentinelRef: RefObject<HTMLDivElement | null>;
   }) => {
+    const scrollElement = useLayoutScrollElement();
+
+    const renderExpenseRow = useCallback(
+      (expense: IPropertyExpense) => (
+        <ExpenseRow
+          canManage={canManage}
+          expense={expense}
+          isDeletePending={isDeletePending}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={expense.id}
+          onDelete={onDelete}
+          onEdit={onEdit}
+          onRestore={onRestore}
+        />
+      ),
+      [canManage, isDeletePending, isQuickDeleteActive, onDelete, onEdit, onRestore]
+    );
+
     if (isPending) {
       return (
         <div className="space-y-3">
@@ -224,36 +250,34 @@ const PropertyExpensesTable = memo(
               {canManage ? <TableHead>Actions</TableHead> : null}
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {expenses.length === 0 ? (
+          {expenses.length === 0 ? (
+            <TableBody>
               <TableRow>
                 <TableCell className="text-muted-foreground" colSpan={columnCount}>
                   No expenses yet.
                   {canManage ? " Add an expense to get started." : ""}
                 </TableCell>
               </TableRow>
-            ) : (
-              expenses.map((expense) => (
-                <ExpenseRow
-                  canManage={canManage}
-                  expense={expense}
-                  isDeletePending={isDeletePending}
-                  isQuickDeleteActive={isQuickDeleteActive}
-                  key={expense.id}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  onRestore={onRestore}
-                />
-              ))
-            )}
-            {isFetchingNextPage ? (
+            </TableBody>
+          ) : (
+            <VirtualizedTableBody
+              colSpan={columnCount}
+              estimateRowHeight={EXPENSE_ROW_ESTIMATED_HEIGHT}
+              getItemKey={getExpenseKey}
+              items={expenses}
+              renderRow={renderExpenseRow}
+              scrollElement={scrollElement}
+            />
+          )}
+          {isFetchingNextPage ? (
+            <TableBody>
               <TableRow>
                 <TableCell colSpan={columnCount}>
                   <Skeleton className="h-8 w-full" />
                 </TableCell>
               </TableRow>
-            ) : null}
-          </TableBody>
+            </TableBody>
+          ) : null}
         </Table>
         <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
         {expenses.length > 0 && !hasNextPage && !isFetchingNextPage ? (

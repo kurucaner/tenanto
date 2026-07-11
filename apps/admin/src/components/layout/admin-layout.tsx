@@ -11,6 +11,7 @@ import {
   MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
   MOBILE_ADMIN_SHELL_OVERFLOW_CLASS,
 } from "@/config/mobile-layout";
+import { LayoutScrollContext } from "@/contexts/layout-scroll-context";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 const AdminLayoutInner = memo(() => {
   const resolvedDark = useResolvedAdminDark();
   const [suppressToasts, setSuppressToasts] = useState(false);
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const streamStatus = useNotificationStream({ suppressToasts });
   const streamContextValue = useMemo(
     () => ({ setSuppressToasts, status: streamStatus }),
@@ -35,7 +37,9 @@ const AdminLayoutInner = memo(() => {
           className={cn(
             "admin-app-surface overflow-hidden",
             MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
-            "max-md:h-full md:min-h-svh"
+            // Fixed height on desktop so the content div below is the real
+            // scroll container (required for page-level list virtualization).
+            "max-md:h-full md:h-svh"
           )}
         >
           <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
@@ -46,8 +50,13 @@ const AdminLayoutInner = memo(() => {
               <AdminThemeSwitcher compact />
             </div>
           </header>
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6 md:p-8 md:pb-8">
-            <Outlet />
+          <div
+            className="flex min-h-0 flex-1 flex-col overflow-auto p-6 md:p-8 md:pb-8"
+            ref={setScrollElement}
+          >
+            <LayoutScrollContext.Provider value={scrollElement}>
+              <Outlet />
+            </LayoutScrollContext.Provider>
           </div>
           <MobileBottomNav />
         </SidebarInset>
