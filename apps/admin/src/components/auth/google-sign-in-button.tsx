@@ -1,5 +1,5 @@
 import { type CredentialResponse, GoogleLogin } from "@react-oauth/google";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -13,24 +13,8 @@ export const GoogleSignInButton = memo(() => {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [buttonWidth, setButtonWidth] = useState<number>();
   const resolvedDark = useResolvedAdminDark();
   const clientId = getGoogleClientId();
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const updateWidth = () => {
-      setButtonWidth(container.offsetWidth);
-    };
-
-    updateWidth();
-    const resizeObserver = new ResizeObserver(updateWidth);
-    resizeObserver.observe(container);
-    return () => resizeObserver.disconnect();
-  }, []);
 
   const handleSuccess = async (response: CredentialResponse) => {
     const idToken = response.credential;
@@ -67,22 +51,21 @@ export const GoogleSignInButton = memo(() => {
   return (
     <div
       aria-busy={submitting}
-      className={submitting ? "pointer-events-none opacity-60" : ""}
-      ref={containerRef}
+      className={`flex w-full justify-center ${submitting ? "pointer-events-none opacity-60" : ""}`}
     >
-      {buttonWidth ? (
-        <GoogleLogin
-          key={`${resolvedDark ? "dark" : "light"}-${buttonWidth}`}
-          logo_alignment="left"
-          onError={handleError}
-          onSuccess={handleSuccess}
-          shape="pill"
-          size="medium"
-          text="signin_with"
-          theme={resolvedDark ? "filled_black" : "outline"}
-          width={buttonWidth}
-        />
-      ) : null}
+      <GoogleLogin
+        containerProps={{
+          className: "overflow-hidden leading-none",
+        }}
+        key={resolvedDark ? "dark" : "light"}
+        logo_alignment="left"
+        onError={handleError}
+        onSuccess={handleSuccess}
+        shape="pill"
+        size="medium"
+        text="signin_with"
+        theme={resolvedDark ? "filled_black" : "outline"}
+      />
     </div>
   );
 });
