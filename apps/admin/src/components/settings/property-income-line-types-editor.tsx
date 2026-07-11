@@ -1,6 +1,7 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { memo } from "react";
 
+import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -13,7 +14,10 @@ export interface PropertyIncomeLineTypeFormRow {
 export interface PropertyIncomeLineTypesEditorProps {
   disabled?: boolean;
   incomeLineTypes: PropertyIncomeLineTypeFormRow[];
+  isSavingIncomeType?: boolean;
   onChange: (incomeLineTypes: PropertyIncomeLineTypeFormRow[]) => void;
+  onSaveIncomeType?: () => void;
+  showSaveIncomeType?: boolean;
 }
 
 function createClientId(): string {
@@ -21,7 +25,14 @@ function createClientId(): string {
 }
 
 export const PropertyIncomeLineTypesEditor = memo(
-  ({ disabled = false, incomeLineTypes, onChange }: PropertyIncomeLineTypesEditorProps) => {
+  ({
+    disabled = false,
+    incomeLineTypes,
+    isSavingIncomeType = false,
+    onChange,
+    onSaveIncomeType,
+    showSaveIncomeType = false,
+  }: PropertyIncomeLineTypesEditorProps) => {
     const updateRow = (clientId: string, patch: Partial<PropertyIncomeLineTypeFormRow>) => {
       onChange(
         incomeLineTypes.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row))
@@ -47,7 +58,7 @@ export const PropertyIncomeLineTypesEditor = memo(
               <span className="w-8" />
             </div>
             <ul className="divide-y">
-              {incomeLineTypes.map((row, index) => (
+              {incomeLineTypes.map((row) => (
                 <li
                   className="grid grid-cols-[1fr_auto] items-center gap-3 px-3 py-2"
                   key={row.clientId}
@@ -55,7 +66,7 @@ export const PropertyIncomeLineTypesEditor = memo(
                   <Input
                     disabled={disabled}
                     onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
-                    placeholder={`Type ${index + 1}`}
+                    placeholder="Income type name"
                     value={row.name}
                   />
                   <Button
@@ -74,17 +85,15 @@ export const PropertyIncomeLineTypesEditor = memo(
           </div>
         )}
 
-        <Button
-          className="gap-1.5"
+        <PropertySettingsListFooter
+          addLabel="Add income type"
           disabled={disabled}
-          onClick={addRow}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          Add income type
-        </Button>
+          isSaving={isSavingIncomeType}
+          onAdd={addRow}
+          onSave={onSaveIncomeType}
+          saveLabel="Save income type"
+          showSave={showSaveIncomeType}
+        />
       </div>
     );
   }

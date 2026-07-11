@@ -1,6 +1,7 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { memo } from "react";
 
+import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,10 @@ export interface PropertyExpenseCategoryTypeFormRow {
 export interface PropertyExpenseCategoryTypesEditorProps {
   disabled?: boolean;
   expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[];
+  isSavingExpenses?: boolean;
   onChange: (expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[]) => void;
+  onSaveExpenses?: () => void;
+  showSaveExpenses?: boolean;
 }
 
 function createClientId(): string {
@@ -26,7 +30,10 @@ export const PropertyExpenseCategoryTypesEditor = memo(
   ({
     disabled = false,
     expenseCategoryTypes,
+    isSavingExpenses = false,
     onChange,
+    onSaveExpenses,
+    showSaveExpenses = false,
   }: PropertyExpenseCategoryTypesEditorProps) => {
     const updateRow = (clientId: string, patch: Partial<PropertyExpenseCategoryTypeFormRow>) => {
       onChange(
@@ -95,17 +102,15 @@ export const PropertyExpenseCategoryTypesEditor = memo(
           </div>
         )}
 
-        <Button
-          className="gap-1.5"
+        <PropertySettingsListFooter
+          addLabel="Add category"
           disabled={disabled}
-          onClick={addRow}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          Add category
-        </Button>
+          isSaving={isSavingExpenses}
+          onAdd={addRow}
+          onSave={onSaveExpenses}
+          saveLabel="Save expenses"
+          showSave={showSaveExpenses}
+        />
       </div>
     );
   }

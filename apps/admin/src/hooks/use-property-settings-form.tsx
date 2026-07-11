@@ -4,125 +4,37 @@ import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  type PropertyExpenseCategoryTypeFormRow,
   PropertyExpenseCategoryTypesEditor,
 } from "@/components/settings/property-expense-category-types-editor";
 import {
-  type PropertyIncomeLineTypeFormRow,
   PropertyIncomeLineTypesEditor,
 } from "@/components/settings/property-income-line-types-editor";
 import { PercentField } from "@/components/settings/property-settings-percent-field";
 import {
-  type PropertyTaxRateFormRow,
   PropertyTaxRatesEditor,
 } from "@/components/settings/property-tax-rates-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { settingsApi } from "@/lib/api-client";
+import {
+  buildSectionPatchBody,
+  formStateToBody,
+  hasNewRows,
+  mergeSavedSectionIntoForm,
+  sectionSaveSuccessMessage,
+  settingsToFormState,
+  type TPropertySettingsFormState,
+  type TPropertySettingsListSection,
+  validatePropertySettingsForm,
+  validatePropertySettingsSection,
+} from "@/lib/property-settings-form-utils";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   DEFAULT_PROPERTY_SETTINGS,
   DEFAULT_PROPERTY_TAX_RATES,
-  formatRateAsPercent,
-  type IPropertyExpenseCategoryType,
-  type IPropertyExpenseCategoryTypeInput,
-  type IPropertyIncomeLineType,
-  type IPropertyIncomeLineTypeInput,
   type IPropertySettings,
-  type IPropertyTaxRate,
-  type IPropertyTaxRateInput,
-  percentToRate,
 } from "@/packages/shared";
-
-type TSettingsFormState = {
-  airbnbCommissionRate: string;
-  bookingCommissionRate: string;
-  directCommissionRate: string;
-  expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[];
-  expediaCommissionRate: string;
-  incomeLineTypes: PropertyIncomeLineTypeFormRow[];
-  taxRates: PropertyTaxRateFormRow[];
-};
-
-const MAX_TAX_NAME_LENGTH = 80;
-const MAX_INCOME_TYPE_NAME_LENGTH = 80;
-const MAX_EXPENSE_CATEGORY_NAME_LENGTH = 80;
-
-const taxRateToFormRow = (tax: IPropertyTaxRate): PropertyTaxRateFormRow => ({
-  clientId: tax.id,
-  id: tax.id,
-  name: tax.name,
-  ratePercent: formatRateAsPercent(tax.rate),
-});
-
-const incomeLineTypeToFormRow = (type: IPropertyIncomeLineType): PropertyIncomeLineTypeFormRow => ({
-  clientId: type.id,
-  id: type.id,
-  name: type.name,
-});
-
-const expenseCategoryTypeToFormRow = (
-  type: IPropertyExpenseCategoryType
-): PropertyExpenseCategoryTypeFormRow => ({
-  clientId: type.id,
-  id: type.id,
-  isAnnualAmount: type.isAnnualAmount,
-  name: type.name,
-});
-
-const settingsToFormState = (settings: IPropertySettings): TSettingsFormState => ({
-  airbnbCommissionRate: formatRateAsPercent(settings.airbnbCommissionRate),
-  bookingCommissionRate: formatRateAsPercent(settings.bookingCommissionRate),
-  directCommissionRate: formatRateAsPercent(settings.directCommissionRate),
-  expediaCommissionRate: formatRateAsPercent(settings.expediaCommissionRate),
-  expenseCategoryTypes: settings.expenseCategoryTypes.map(expenseCategoryTypeToFormRow),
-  incomeLineTypes: settings.incomeLineTypes.map(incomeLineTypeToFormRow),
-  taxRates: settings.taxRates.map(taxRateToFormRow),
-});
-
-const formTaxRatesToBody = (taxRates: PropertyTaxRateFormRow[]): IPropertyTaxRateInput[] =>
-  taxRates.map((row, index) => ({
-    ...(row.id == null ? {} : { id: row.id }),
-    name: row.name.trim(),
-    rate: percentToRate(Number(row.ratePercent)),
-    sortOrder: index,
-  }));
-
-const formIncomeLineTypesToBody = (
-  incomeLineTypes: PropertyIncomeLineTypeFormRow[]
-): IPropertyIncomeLineTypeInput[] =>
-  incomeLineTypes.map((row, index) => ({
-    ...(row.id == null ? {} : { id: row.id }),
-    name: row.name.trim(),
-    sortOrder: index,
-  }));
-
-const formExpenseCategoryTypesToBody = (
-  expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[]
-): IPropertyExpenseCategoryTypeInput[] =>
-  expenseCategoryTypes.map((row, index) => ({
-    ...(row.id == null ? {} : { id: row.id }),
-    isAnnualAmount: row.isAnnualAmount,
-    name: row.name.trim(),
-    sortOrder: index,
-  }));
-
-const formStateToBody = (form: TSettingsFormState) => ({
-  airbnbCommissionRate: percentToRate(Number(form.airbnbCommissionRate)),
-  bookingCommissionRate: percentToRate(Number(form.bookingCommissionRate)),
-  directCommissionRate: percentToRate(Number(form.directCommissionRate)),
-  expediaCommissionRate: percentToRate(Number(form.expediaCommissionRate)),
-  expenseCategoryTypes: formExpenseCategoryTypesToBody(form.expenseCategoryTypes),
-  incomeLineTypes: formIncomeLineTypesToBody(form.incomeLineTypes),
-  taxRates: formTaxRatesToBody(form.taxRates),
-});
-
-const parsePercent = (value: string): number | null => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) return null;
-  return parsed;
-};
 
 interface UsePropertySettingsFormOptions {
   canEdit: boolean;
@@ -137,12 +49,28 @@ export const usePropertySettingsForm = ({
 }: UsePropertySettingsFormOptions) => {
   const queryClient = useQueryClient();
   const savedForm = useMemo(() => settingsToFormState(settings), [settings]);
-  const [form, setForm] = useState<TSettingsFormState>(savedForm);
+  const [form, setForm] = useState<TPropertySettingsFormState>(savedForm);
 
   const hasChanges = useMemo(
     () => JSON.stringify(form) !== JSON.stringify(savedForm),
     [form, savedForm]
   );
+
+  const hasNewExpenseRows = useMemo(
+    () => hasNewRows(form.expenseCategoryTypes),
+    [form.expenseCategoryTypes]
+  );
+  const hasNewIncomeTypeRows = useMemo(
+    () => hasNewRows(form.incomeLineTypes),
+    [form.incomeLineTypes]
+  );
+  const hasNewTaxRows = useMemo(() => hasNewRows(form.taxRates), [form.taxRates]);
+
+  const parsePercent = (value: string): number | null => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) return null;
+    return parsed;
+  };
 
   const totalTaxPercent = useMemo(() => {
     let total = 0;
@@ -186,89 +114,37 @@ export const usePropertySettingsForm = ({
     },
   });
 
+  const sectionSaveMutation = useMutation({
+    mutationFn: (section: TPropertySettingsListSection) => {
+      const validation = validatePropertySettingsSection(section, form);
+      if (!validation.ok) {
+        throw new Error(validation.error);
+      }
+      return settingsApi.update(propertyId, buildSectionPatchBody(section, form));
+    },
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    },
+    onSuccess: (res, section) => {
+      toast.success(sectionSaveSuccessMessage[section]);
+      queryClient.setQueryData(adminQueryKeys.propertySettings(propertyId), res);
+      setForm((prev) => mergeSavedSectionIntoForm(prev, res.settings, section));
+    },
+  });
+
   const updateField = (
-    field: Exclude<keyof TSettingsFormState, "incomeLineTypes" | "taxRates">,
+    field: Exclude<keyof TPropertySettingsFormState, "incomeLineTypes" | "taxRates">,
     value: string
   ) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const validateForm = useCallback((): boolean => {
-    const commissionFields = [
-      form.airbnbCommissionRate,
-      form.bookingCommissionRate,
-      form.directCommissionRate,
-      form.expediaCommissionRate,
-    ];
-    if (commissionFields.some((value) => parsePercent(value) === null)) {
-      toast.error("All commission rates must be numbers between 0 and 100");
+    const result = validatePropertySettingsForm(form);
+    if (!result.ok) {
+      toast.error(result.error);
       return false;
     }
-
-    const seenTaxNames = new Set<string>();
-    for (const row of form.taxRates) {
-      const name = row.name.trim();
-      if (name.length === 0) {
-        toast.error("Each tax must have a name");
-        return false;
-      }
-      if (name.length > MAX_TAX_NAME_LENGTH) {
-        toast.error(`Tax names must be at most ${MAX_TAX_NAME_LENGTH} characters`);
-        return false;
-      }
-      const normalized = name.toLowerCase();
-      if (seenTaxNames.has(normalized)) {
-        toast.error("Tax names must be unique");
-        return false;
-      }
-      seenTaxNames.add(normalized);
-
-      if (parsePercent(row.ratePercent) === null) {
-        toast.error("All tax rates must be numbers between 0 and 100");
-        return false;
-      }
-    }
-
-    const seenIncomeTypeNames = new Set<string>();
-    for (const row of form.incomeLineTypes) {
-      const name = row.name.trim();
-      if (name.length === 0) {
-        toast.error("Each other income type must have a name");
-        return false;
-      }
-      if (name.length > MAX_INCOME_TYPE_NAME_LENGTH) {
-        toast.error(`Income type names must be at most ${MAX_INCOME_TYPE_NAME_LENGTH} characters`);
-        return false;
-      }
-      const normalized = name.toLowerCase();
-      if (seenIncomeTypeNames.has(normalized)) {
-        toast.error("Income type names must be unique");
-        return false;
-      }
-      seenIncomeTypeNames.add(normalized);
-    }
-
-    const seenExpenseCategoryNames = new Set<string>();
-    for (const row of form.expenseCategoryTypes) {
-      const name = row.name.trim();
-      if (name.length === 0) {
-        toast.error("Each expense category must have a name");
-        return false;
-      }
-      if (name.length > MAX_EXPENSE_CATEGORY_NAME_LENGTH) {
-        toast.error(
-          `Expense category names must be at most ${MAX_EXPENSE_CATEGORY_NAME_LENGTH} characters`
-        );
-        return false;
-      }
-      const normalized = name.toLowerCase();
-      if (seenExpenseCategoryNames.has(normalized)) {
-        toast.error("Expense category names must be unique");
-        return false;
-      }
-      seenExpenseCategoryNames.add(normalized);
-    }
-
     return true;
   }, [form]);
 
@@ -277,7 +153,15 @@ export const usePropertySettingsForm = ({
     saveMutation.mutate();
   }, [saveMutation, validateForm]);
 
-  const isPending = saveMutation.isPending || resetMutation.isPending;
+  const handleSectionSave = useCallback(
+    (section: TPropertySettingsListSection) => {
+      sectionSaveMutation.mutate(section);
+    },
+    [sectionSaveMutation]
+  );
+
+  const isPending =
+    saveMutation.isPending || resetMutation.isPending || sectionSaveMutation.isPending;
 
   const headerActions: ReactNode = useMemo(
     () =>
@@ -334,9 +218,12 @@ export const usePropertySettingsForm = ({
           <PropertyExpenseCategoryTypesEditor
             disabled={!canEdit || isPending}
             expenseCategoryTypes={form.expenseCategoryTypes}
+            isSavingExpenses={sectionSaveMutation.isPending}
             onChange={(expenseCategoryTypes) =>
               setForm((prev) => ({ ...prev, expenseCategoryTypes }))
             }
+            onSaveExpenses={() => handleSectionSave("expenseCategoryTypes")}
+            showSaveExpenses={hasNewExpenseRows}
           />
         </div>
 
@@ -350,7 +237,10 @@ export const usePropertySettingsForm = ({
           <PropertyIncomeLineTypesEditor
             disabled={!canEdit || isPending}
             incomeLineTypes={form.incomeLineTypes}
+            isSavingIncomeType={sectionSaveMutation.isPending}
             onChange={(incomeLineTypes) => setForm((prev) => ({ ...prev, incomeLineTypes }))}
+            onSaveIncomeType={() => handleSectionSave("incomeLineTypes")}
+            showSaveIncomeType={hasNewIncomeTypeRows}
           />
         </div>
 
@@ -368,7 +258,10 @@ export const usePropertySettingsForm = ({
           </div>
           <PropertyTaxRatesEditor
             disabled={!canEdit || isPending}
+            isSavingTaxRates={sectionSaveMutation.isPending}
             onChange={(taxRates) => setForm((prev) => ({ ...prev, taxRates }))}
+            onSaveTaxRates={() => handleSectionSave("taxRates")}
+            showSaveTaxRates={hasNewTaxRows}
             taxRates={form.taxRates}
           />
         </div>

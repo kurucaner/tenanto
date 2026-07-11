@@ -1,6 +1,7 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { memo } from "react";
 
+import { PropertySettingsListFooter } from "@/components/settings/property-settings-list-footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
@@ -14,7 +15,10 @@ export interface PropertyTaxRateFormRow {
 
 export interface PropertyTaxRatesEditorProps {
   disabled?: boolean;
+  isSavingTaxRates?: boolean;
   onChange: (taxRates: PropertyTaxRateFormRow[]) => void;
+  onSaveTaxRates?: () => void;
+  showSaveTaxRates?: boolean;
   taxRates: PropertyTaxRateFormRow[];
 }
 
@@ -23,7 +27,14 @@ function createClientId(): string {
 }
 
 export const PropertyTaxRatesEditor = memo(
-  ({ disabled = false, onChange, taxRates }: PropertyTaxRatesEditorProps) => {
+  ({
+    disabled = false,
+    isSavingTaxRates = false,
+    onChange,
+    onSaveTaxRates,
+    showSaveTaxRates = false,
+    taxRates,
+  }: PropertyTaxRatesEditorProps) => {
     const updateRow = (clientId: string, patch: Partial<PropertyTaxRateFormRow>) => {
       onChange(taxRates.map((row) => (row.clientId === clientId ? { ...row, ...patch } : row)));
     };
@@ -48,7 +59,7 @@ export const PropertyTaxRatesEditor = memo(
               <span className="w-8" />
             </div>
             <ul className="divide-y">
-              {taxRates.map((row, index) => (
+              {taxRates.map((row) => (
                 <li
                   className="grid grid-cols-[1fr_140px_auto] items-center gap-3 px-3 py-2"
                   key={row.clientId}
@@ -56,7 +67,7 @@ export const PropertyTaxRatesEditor = memo(
                   <Input
                     disabled={disabled}
                     onChange={(e) => updateRow(row.clientId, { name: e.target.value })}
-                    placeholder={`Tax ${index + 1}`}
+                    placeholder="Tax name"
                     value={row.name}
                   />
                   <div className="relative">
@@ -90,17 +101,15 @@ export const PropertyTaxRatesEditor = memo(
           </div>
         )}
 
-        <Button
-          className="gap-1.5"
+        <PropertySettingsListFooter
+          addLabel="Add tax"
           disabled={disabled}
-          onClick={addRow}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Plus className="size-3.5" />
-          Add tax
-        </Button>
+          isSaving={isSavingTaxRates}
+          onAdd={addRow}
+          onSave={onSaveTaxRates}
+          saveLabel="Save tax rates"
+          showSave={showSaveTaxRates}
+        />
       </div>
     );
   }
