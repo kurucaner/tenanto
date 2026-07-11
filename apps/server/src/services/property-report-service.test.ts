@@ -4,7 +4,6 @@ import {
   type IPropertyIncomeLine,
   type IPropertyReservation,
   type IPropertyUnit,
-  ReservationChannel,
   ReservationStatus,
   UnitRentalType,
 } from "@/packages/shared";
@@ -34,14 +33,17 @@ function makeUnit(overrides: Partial<IPropertyUnit> = {}): IPropertyUnit {
 
 function makeStay(overrides: Partial<IPropertyReservation> = {}): IPropertyReservation {
   return {
-    channel: ReservationChannel.AIRBNB,
     channelCommission: 10,
+    channelCommissionId: "channel-airbnb",
     channelCommissionRate: 0.1,
+    channelName: "Airbnb",
     checkIn: "2026-01-05",
     checkOut: "2026-01-08",
     cleaningFee: 50,
     createdAt: "2026-01-01T00:00:00.000Z",
     deletedAt: null,
+    excludeCleaningFromCommissionBase: false,
+    excludeResortTaxFromPayout: true,
     grossIncome: 500,
     guestName: "Guest",
     id: "stay-1",

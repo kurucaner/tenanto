@@ -1,4 +1,3 @@
-import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import {
   compareDates,
   compareNumbers,
@@ -71,7 +70,7 @@ export function sortChannelSummaryRows(
     case "stays":
       return sortByNumberField(rows, sortState, (row) => row.stayCount);
     default:
-      return sortByStringField(rows, sortState, (row) => formatChannelLabel(row.channel));
+      return sortByStringField(rows, sortState, (row) => row.name);
   }
 }
 

@@ -19,7 +19,7 @@ import {
 } from "@/components/income/income-line-form-options";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
 import {
-  CHANNEL_OPTIONS,
+  buildChannelOptions,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
@@ -134,14 +134,14 @@ const INCOME_TABLE_COLUMNS: {
 ];
 
 const INCOME_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
-  channel: string;
+  channelCommissionId: string;
   from: string;
   incomeType: string;
   status: string;
   to: string;
   unitId: string;
 }>({
-  channel: { defaultValue: "" },
+  channelCommissionId: { defaultValue: "" },
   from: { defaultValue: "" },
   incomeType: { defaultValue: "" },
   status: { defaultValue: "" },
@@ -159,11 +159,11 @@ function buildDateFilters(from: string, to: string, unitId: string) {
 
 function buildReservationFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
-  channel: string,
+  channelCommissionId: string,
   status: string
 ): IPropertyReservationsListQuery {
   const next: IPropertyReservationsListQuery = { ...dateFilters };
-  if (channel) next.channel = channel as IPropertyReservationsListQuery["channel"];
+  if (channelCommissionId) next.channelCommissionId = channelCommissionId;
   if (status) next.status = status as IPropertyReservationsListQuery["status"];
   return next;
 }
@@ -500,7 +500,7 @@ const IncomeStayEntryRow = memo(
         <TableCell>{stay.checkOut}</TableCell>
         <TableCell>{stay.nights}</TableCell>
         <TableCell>
-          <ReservationChannelBadge channel={stay.channel} />
+          <ReservationChannelBadge channelName={stay.channelName} />
         </TableCell>
         <TableCell>
           <ReservationStatusBadge status={stay.status} />
@@ -768,7 +768,7 @@ const PropertyIncomePage = memo(() => {
     stay: IPropertyReservation;
   } | null>(null);
   const { filters, setFilter } = useUrlFilterState(INCOME_URL_FILTER_SCHEMA);
-  const { channel, from, incomeType, status, to, unitId } = filters;
+  const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
   const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
     defaultColumnId: "date",
     defaultDirection: "desc",
@@ -777,8 +777,8 @@ const PropertyIncomePage = memo(() => {
   const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
 
   const reservationFilters = useMemo(
-    () => buildReservationFilters(dateFilters, channel, status),
-    [channel, dateFilters, status]
+    () => buildReservationFilters(dateFilters, channelCommissionId, status),
+    [channelCommissionId, dateFilters, status]
   );
 
   const lineFilters = useMemo(
@@ -818,6 +818,11 @@ const PropertyIncomePage = memo(() => {
   const incomeTypeFilterOptions = useMemo(
     () => buildIncomeTypeFilterOptions(incomeLineTypes),
     [incomeLineTypes]
+  );
+
+  const channelFilterOptions = useMemo(
+    () => buildChannelOptions(settingsQuery.data?.settings.channelCommissions ?? []),
+    [settingsQuery.data?.settings.channelCommissions]
   );
 
   const unitLabelById = useMemo(
@@ -970,9 +975,9 @@ const PropertyIncomePage = memo(() => {
               emptyOptionLabel="All channels"
               id="filter-channel"
               label="Channel"
-              onChange={(e) => setFilter("channel", e.target.value)}
-              options={CHANNEL_OPTIONS}
-              value={channel}
+              onChange={(e) => setFilter("channelCommissionId", e.target.value)}
+              options={channelFilterOptions}
+              value={channelCommissionId}
             />
             <FilterSelectField
               disabled={!showStays}

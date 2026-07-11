@@ -1,11 +1,7 @@
-import {
-  type IPropertyReservation,
-  ReservationChannel,
-  type TReservationChannel,
-} from "./property-reservation-types";
+import { type IPropertyChannelCommission } from "./property-channel-commission-config";
+import { type IPropertyReservation } from "./property-reservation-types";
 import {
   formatRateAsPercent,
-  type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   RESORT_TAX_NAME,
 } from "./property-settings-types";
@@ -31,19 +27,24 @@ export interface IStayCalculationBreakdown {
   totalLabel: string;
 }
 
+export type TStayChannelBehavior = Pick<
+  IPropertyChannelCommission,
+  "excludeCleaningFromCommissionBase" | "excludeResortTaxFromPayout"
+>;
+
 // Whether an operand appears as its own line in a metric's Details breakdown.
 // Keep in sync with getStayCommissionBase and docs/CALCULATION_RULES.md.
 export function isOperandInMetric(
   operand: TBreakdownOperand,
   metric: TStayCalculationMetric,
-  channel: TReservationChannel
+  channel: TStayChannelBehavior
 ): boolean {
   switch (metric) {
     case "taxes":
       return true;
     case "commission":
       if (operand === "cleaningFee") {
-        return channel !== ReservationChannel.EXPEDIA;
+        return !channel.excludeCleaningFromCommissionBase;
       }
       return true;
     case "gross":
@@ -54,10 +55,11 @@ export function isOperandInMetric(
 
 type TStayBreakdownInput = Pick<
   IPropertyReservation,
-  | "channel"
   | "channelCommission"
   | "channelCommissionRate"
   | "cleaningFee"
+  | "excludeCleaningFromCommissionBase"
+  | "excludeResortTaxFromPayout"
   | "grossIncome"
   | "netIncome"
   | "nights"
@@ -69,28 +71,10 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-export type TChannelCommissionSettings = Pick<
-  IPropertySettings,
-  | "airbnbCommissionRate"
-  | "bookingCommissionRate"
-  | "directCommissionRate"
-  | "expediaCommissionRate"
->;
-
-export function getChannelCommissionRate(
-  channel: TReservationChannel,
-  settings: TChannelCommissionSettings
+export function getChannelCommissionRateFromRow(
+  channel: Pick<IPropertyChannelCommission, "rate">
 ): number {
-  switch (channel) {
-    case ReservationChannel.AIRBNB:
-      return settings.airbnbCommissionRate;
-    case ReservationChannel.BOOKING:
-      return settings.bookingCommissionRate;
-    case ReservationChannel.EXPEDIA:
-      return settings.expediaCommissionRate;
-    case ReservationChannel.DIRECT:
-      return settings.directCommissionRate;
-  }
+  return channel.rate;
 }
 
 export function sumTaxBreakdown(taxBreakdown: IPropertyTaxBreakdownItem[]): number {
@@ -118,12 +102,13 @@ export function getStayAverageDailyRate(
 }
 
 export function getStayCommissionBase(
-  channel: TReservationChannel,
+  channel: TStayChannelBehavior,
   roomTotal: number,
   cleaningFee: number
 ): number {
-  const base =
-    channel === ReservationChannel.EXPEDIA ? roomTotal : roundMoney(roomTotal + cleaningFee);
+  const base = channel.excludeCleaningFromCommissionBase
+    ? roomTotal
+    : roundMoney(roomTotal + cleaningFee);
   return roundMoney(base);
 }
 
@@ -140,11 +125,11 @@ export function getStayTaxableBase(roomTotal: number, cleaningFee: number): numb
   return roundMoney(roomTotal + cleaningFee);
 }
 
-function getAirbnbResortAdjustment(
-  channel: TReservationChannel,
+function getResortTaxAdjustment(
+  channel: TStayChannelBehavior,
   taxBreakdown: IPropertyTaxBreakdownItem[]
 ): number {
-  return channel === ReservationChannel.AIRBNB ? getResortTaxAmount(taxBreakdown) : 0;
+  return channel.excludeResortTaxFromPayout ? getResortTaxAmount(taxBreakdown) : 0;
 }
 
 export function buildStayTaxesBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
@@ -167,25 +152,24 @@ export function buildStayTaxesBreakdown(stay: TStayBreakdownInput): IStayCalcula
 }
 
 export function buildStayCommissionBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
-  const commissionBase = getStayCommissionBase(stay.channel, stay.roomTotal, stay.cleaningFee);
+  const commissionBase = getStayCommissionBase(stay, stay.roomTotal, stay.cleaningFee);
   const rateLabel = formatRateAsPercent(stay.channelCommissionRate);
 
-  const baseLines: IStayCalculationLine[] =
-    stay.channel === ReservationChannel.EXPEDIA
-      ? [
-          {
-            amount: stay.roomTotal,
-            label: "Room total",
-            note: "Commission base",
-          },
-        ]
-      : [
-          {
-            amount: commissionBase,
-            label: "Commission base",
-            note: "Room total + cleaning fee",
-          },
-        ];
+  const baseLines: IStayCalculationLine[] = stay.excludeCleaningFromCommissionBase
+    ? [
+        {
+          amount: stay.roomTotal,
+          label: "Commission base",
+          note: "(Room total)",
+        },
+      ]
+    : [
+        {
+          amount: commissionBase,
+          label: "Commission base",
+          note: "(Room total + cleaning fee)",
+        },
+      ];
 
   return {
     baseLines,
@@ -210,7 +194,7 @@ export function buildStayCommissionBreakdown(stay: TStayBreakdownInput): IStayCa
 export function buildStayGrossBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
   const taxableBase = getStayTaxableBase(stay.roomTotal, stay.cleaningFee);
   const taxesTotal = getStayTaxesTotal(stay);
-  const resortAdjustment = getAirbnbResortAdjustment(stay.channel, stay.taxBreakdown);
+  const resortAdjustment = getResortTaxAdjustment(stay, stay.taxBreakdown);
 
   const detailLines: IStayCalculationLine[] = [
     { amount: taxesTotal, label: "Total taxes", sign: "+" },
@@ -220,7 +204,7 @@ export function buildStayGrossBreakdown(stay: TStayBreakdownInput): IStayCalcula
     detailLines.push({
       amount: resortAdjustment,
       label: "Resort tax",
-      note: "Remitted by Airbnb",
+      note: "Remitted by channel",
       sign: "−",
     });
   }
@@ -235,7 +219,7 @@ export function buildStayGrossBreakdown(stay: TStayBreakdownInput): IStayCalcula
 
 export function buildStayNetPayoutBreakdown(stay: TStayBreakdownInput): IStayCalculationBreakdown {
   const taxableBase = getStayTaxableBase(stay.roomTotal, stay.cleaningFee);
-  const resortAdjustment = getAirbnbResortAdjustment(stay.channel, stay.taxBreakdown);
+  const resortAdjustment = getResortTaxAdjustment(stay, stay.taxBreakdown);
   const netPayout = getStayNetPayout(stay);
 
   const detailLines: IStayCalculationLine[] = [
@@ -246,7 +230,7 @@ export function buildStayNetPayoutBreakdown(stay: TStayBreakdownInput): IStayCal
     detailLines.push({
       amount: resortAdjustment,
       label: "Resort tax",
-      note: "Remitted by Airbnb",
+      note: "Remitted by channel",
       sign: "−",
     });
   }

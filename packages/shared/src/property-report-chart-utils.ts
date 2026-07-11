@@ -152,26 +152,24 @@ export function incomeCompositionToSegments(
 }
 
 export function channelSummaryToSegments(
-  channelSummary: IPropertyReportChannelSummary[],
-  formatChannelLabel: (channel: IPropertyReportChannelSummary["channel"]) => string
+  channelSummary: IPropertyReportChannelSummary[]
 ): IReportChartSegment[] {
   return buildReportChartSegments(
     channelSummary.map((row) => ({
-      id: row.channel,
-      label: formatChannelLabel(row.channel),
+      id: row.channelCommissionId,
+      label: row.name,
       value: row.grossIncome,
     }))
   );
 }
 
 export function channelCommissionSummaryToSegments(
-  channelSummary: IPropertyReportChannelSummary[],
-  formatChannelLabel: (channel: IPropertyReportChannelSummary["channel"]) => string
+  channelSummary: IPropertyReportChannelSummary[]
 ): IReportChartSegment[] {
   return buildReportChartSegments(
     channelSummary.map((row) => ({
-      id: row.channel,
-      label: formatChannelLabel(row.channel),
+      id: row.channelCommissionId,
+      label: row.name,
       value: row.channelCommission,
     }))
   );

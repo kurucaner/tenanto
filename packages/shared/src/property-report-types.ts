@@ -1,4 +1,3 @@
-import type { TReservationChannel } from "./property-reservation-types";
 import type { TUnitRentalType } from "./property-types";
 
 export const ReportRentalTypeFilter = {
@@ -11,7 +10,7 @@ export type TReportRentalTypeFilter =
   (typeof ReportRentalTypeFilter)[keyof typeof ReportRentalTypeFilter];
 
 export interface IPropertyReportsQuery {
-  channel?: TReservationChannel;
+  channelCommissionId?: string;
   from: string;
   rentalType?: TReportRentalTypeFilter;
   to: string;
@@ -38,9 +37,10 @@ export interface IPropertyReportSalesTypeBreakdown {
 }
 
 export interface IPropertyReportChannelSummary {
-  channel: TReservationChannel;
   channelCommission: number;
+  channelCommissionId: string;
   grossIncome: number;
+  name: string;
   stayCount: number;
 }
 

@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { propertyChannelCommissionsDb } from "@/db/property-channel-commissions";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertySettingsDb } from "@/db/property-settings";
 import { propertyUnitsDb } from "@/db/property-units";
@@ -9,9 +10,7 @@ import {
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IUpdatePropertyReservationBody,
-  ReservationChannel,
   ReservationStatus,
-  type TReservationChannel,
   type TReservationStatus,
   type TUnitRentalType,
   UnitRentalType,
@@ -32,7 +31,6 @@ import {
 import { rejectIfDeleted } from "./reject-if-deleted";
 
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
-const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
 
 function parseReservationStatus(raw: unknown): TReservationStatus | null {
@@ -40,9 +38,8 @@ function parseReservationStatus(raw: unknown): TReservationStatus | null {
   return RESERVATION_STATUSES.has(raw as TReservationStatus) ? (raw as TReservationStatus) : null;
 }
 
-function parseReservationChannel(raw: unknown): TReservationChannel | null {
-  if (typeof raw !== "string") return null;
-  return RESERVATION_CHANNELS.has(raw as TReservationChannel) ? (raw as TReservationChannel) : null;
+function parseReservationChannelCommissionId(raw: unknown): string | null {
+  return parseUuidParam(raw);
 }
 
 function parseCreateReservationBody(
@@ -73,12 +70,9 @@ function parseCreateReservationBody(
     };
   }
 
-  const channel = parseReservationChannel(r["channel"]);
-  if (channel === null) {
-    return {
-      error: `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`,
-      ok: false,
-    };
+  const channelCommissionId = parseReservationChannelCommissionId(r["channelCommissionId"]);
+  if (channelCommissionId === null) {
+    return { error: "channelCommissionId must be a valid UUID", ok: false };
   }
 
   const roomTotal = parseMoney(r["roomTotal"]);
@@ -99,7 +93,7 @@ function parseCreateReservationBody(
 
   return {
     body: {
-      channel,
+      channelCommissionId,
       checkIn,
       checkOut,
       cleaningFee,
@@ -120,7 +114,7 @@ const UPDATE_FIELDS = [
   "checkIn",
   "checkOut",
   "status",
-  "channel",
+  "channelCommissionId",
   "roomTotal",
   "cleaningFee",
 ] as const;
@@ -185,15 +179,15 @@ function parseUpdateStatus(
   return null;
 }
 
-function parseUpdateChannel(
+function parseUpdateChannelCommissionId(
   r: Record<string, unknown>,
   body: IUpdatePropertyReservationBody
 ): string | null {
-  const channel = parseReservationChannel(r["channel"]);
-  if (channel === null) {
-    return `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`;
+  const channelCommissionId = parseReservationChannelCommissionId(r["channelCommissionId"]);
+  if (channelCommissionId === null) {
+    return "channelCommissionId must be a valid UUID";
   }
-  body.channel = channel;
+  body.channelCommissionId = channelCommissionId;
   return null;
 }
 
@@ -234,7 +228,7 @@ const UPDATE_RESERVATION_FIELD_PARSERS: Record<
   TUpdateReservationField,
   TUpdateReservationFieldParser
 > = {
-  channel: parseUpdateChannel,
+  channelCommissionId: parseUpdateChannelCommissionId,
   checkIn: parseUpdateCheckIn,
   checkOut: parseUpdateCheckOut,
   cleaningFee: parseUpdateCleaningFee,
@@ -358,15 +352,15 @@ function parseReservationsListQuery(
     if (!result.ok) return result;
   }
 
-  if (query["channel"] !== undefined && query["channel"] !== "") {
-    const channel = parseReservationChannel(query["channel"]);
-    if (channel === null) {
+  if (query["channelCommissionId"] !== undefined && query["channelCommissionId"] !== "") {
+    const channelCommissionId = parseReservationChannelCommissionId(query["channelCommissionId"]);
+    if (channelCommissionId === null) {
       return {
-        error: `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`,
+        error: "channelCommissionId must be a valid UUID",
         ok: false,
       };
     }
-    filters.channel = channel;
+    filters.channelCommissionId = channelCommissionId;
   }
 
   if (query["status"] !== undefined && query["status"] !== "") {
@@ -412,7 +406,7 @@ async function resolveRentableUnitForProperty(
 async function buildComputedFields(
   propertyId: string,
   input: {
-    channel: TReservationChannel;
+    channelCommissionId: string;
     checkIn: string;
     checkOut: string;
     cleaningFee: number;
@@ -432,6 +426,15 @@ async function buildComputedFields(
     return null;
   }
 
+  const channelCommission = await propertyChannelCommissionsDb.findByIdForProperty(
+    input.channelCommissionId,
+    propertyId
+  );
+  if (!channelCommission) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Channel not found for this property" });
+    return null;
+  }
+
   let nights: number;
   try {
     nights = calculateNights(input.checkIn, input.checkOut);
@@ -444,11 +447,10 @@ async function buildComputedFields(
 
   const settings = await propertySettingsDb.getOrCreateDefaults(propertyId);
   const income = calculateStayIncome({
-    channel: input.channel,
+    channelCommission,
     cleaningFee: input.cleaningFee,
     nights,
     roomTotal: input.roomTotal,
-    settings,
     taxRates: settings.taxRates,
     unitRentalType: unit.rentalType,
   });
@@ -461,7 +463,7 @@ function mergeReservationInput(
   patch: IUpdatePropertyReservationBody
 ): ICreatePropertyReservationBody {
   return {
-    channel: patch.channel ?? existing.channel,
+    channelCommissionId: patch.channelCommissionId ?? existing.channelCommissionId,
     checkIn: patch.checkIn ?? existing.checkIn,
     checkOut: patch.checkOut ?? existing.checkOut,
     cleaningFee: patch.cleaningFee ?? existing.cleaningFee,

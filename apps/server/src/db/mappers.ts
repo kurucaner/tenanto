@@ -1,6 +1,7 @@
 import {
   type IAppConfig,
   type IProperty,
+  type IPropertyChannelCommission,
   type IPropertyExpense,
   type IPropertyExpenseCategoryType,
   type IPropertyIncomeLine,
@@ -22,7 +23,6 @@ import {
   toIso,
   type TPropertyInviteStatus,
   type TPropertyRole,
-  type TReservationChannel,
   type TReservationStatus,
   type TUnitRentalType,
   UserType,
@@ -138,14 +138,25 @@ export const mapPropertyExpenseCategoryTypeRow = (
   sortOrder: Number(row.sort_order),
 });
 
+export const mapPropertyChannelCommissionRow = (
+  row: Record<string, unknown>
+): IPropertyChannelCommission => ({
+  excludeCleaningFromCommissionBase: row.exclude_cleaning_from_commission_base as boolean,
+  excludeResortTaxFromPayout: row.exclude_resort_tax_from_payout as boolean,
+  id: row.id as string,
+  name: row.name as string,
+  propertyId: row.property_id as string,
+  rate: Number(row.rate),
+  sortOrder: Number(row.sort_order),
+});
+
 export const mapPropertySettingsRow = (
   row: Record<string, unknown>
-): Omit<IPropertySettings, "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"> => ({
-  airbnbCommissionRate: Number(row.airbnb_commission_rate),
-  bookingCommissionRate: Number(row.booking_commission_rate),
+): Omit<
+  IPropertySettings,
+  "channelCommissions" | "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
+> => ({
   createdAt: (row.created_at as Date).toISOString(),
-  directCommissionRate: Number(row.direct_commission_rate),
-  expediaCommissionRate: Number(row.expedia_commission_rate),
   propertyId: row.property_id as string,
   updatedAt: (row.updated_at as Date).toISOString(),
 });
@@ -180,14 +191,17 @@ const formatDateColumn = (value: unknown): string => {
 };
 
 export const mapPropertyReservationRow = (row: Record<string, unknown>): IPropertyReservation => ({
-  channel: row.channel as TReservationChannel,
   channelCommission: Number(row.channel_commission),
+  channelCommissionId: row.channel_commission_id as string,
   channelCommissionRate: Number(row.channel_commission_rate),
+  channelName: row.channel_name as string,
   checkIn: formatDateColumn(row.check_in),
   checkOut: formatDateColumn(row.check_out),
   cleaningFee: Number(row.cleaning_fee),
   createdAt: (row.created_at as Date).toISOString(),
   deletedAt: toIso(row.deleted_at),
+  excludeCleaningFromCommissionBase: row.exclude_cleaning_from_commission_base as boolean,
+  excludeResortTaxFromPayout: row.exclude_resort_tax_from_payout as boolean,
   grossIncome: Number(row.gross_income),
   guestName: row.guest_name as string,
   id: row.id as string,

@@ -1,5 +1,4 @@
 import {
-  formatChannelLabel,
   formatStatusLabel,
 } from "@/components/income/reservation-form-options";
 import {
@@ -77,7 +76,7 @@ function getIncomeEntrySortValue(
       case "nights":
         return stay.nights;
       case "channel":
-        return formatChannelLabel(stay.channel);
+        return stay.channelName;
       case "status":
         return formatStatusLabel(stay.status);
       case "roomTotal":

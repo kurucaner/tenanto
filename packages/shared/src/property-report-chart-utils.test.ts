@@ -12,7 +12,6 @@ import {
   otherIncomeTypeToSegments,
   PROPERTY_AMENITY_UNIT_ID,
 } from "./property-report-chart-utils";
-import { ReservationChannel } from "./property-reservation-types";
 import { UnitRentalType } from "./property-types";
 
 function makeUnitRow(
@@ -254,44 +253,39 @@ describe("buildProfitTrendChartRows", () => {
 });
 
 describe("channelCommissionSummaryToSegments", () => {
-  const formatChannelLabel = (channel: string) => channel;
-
   test("builds segments from channel commission totals", () => {
-    const segments = channelCommissionSummaryToSegments(
-      [
-        {
-          channel: ReservationChannel.AIRBNB,
-          channelCommission: 120,
-          grossIncome: 1200,
-          stayCount: 3,
-        },
-        {
-          channel: ReservationChannel.BOOKING,
-          channelCommission: 80,
-          grossIncome: 800,
-          stayCount: 2,
-        },
-      ],
-      formatChannelLabel
-    );
+    const segments = channelCommissionSummaryToSegments([
+      {
+        channelCommission: 120,
+        channelCommissionId: "channel-airbnb",
+        grossIncome: 1200,
+        name: "Airbnb",
+        stayCount: 3,
+      },
+      {
+        channelCommission: 80,
+        channelCommissionId: "channel-booking",
+        grossIncome: 800,
+        name: "Booking.com",
+        stayCount: 2,
+      },
+    ]);
 
     expect(segments).toHaveLength(2);
     expect(segments.reduce((sum, segment) => sum + segment.value, 0)).toBe(200);
-    expect(segments[0]?.label).toBe(ReservationChannel.AIRBNB);
+    expect(segments[0]?.label).toBe("Airbnb");
   });
 
   test("returns empty segments when all channel commission is zero", () => {
-    const segments = channelCommissionSummaryToSegments(
-      [
-        {
-          channel: ReservationChannel.AIRBNB,
-          channelCommission: 0,
-          grossIncome: 500,
-          stayCount: 1,
-        },
-      ],
-      formatChannelLabel
-    );
+    const segments = channelCommissionSummaryToSegments([
+      {
+        channelCommission: 0,
+        channelCommissionId: "channel-airbnb",
+        grossIncome: 500,
+        name: "Airbnb",
+        stayCount: 1,
+      },
+    ]);
 
     expect(segments).toEqual([]);
   });

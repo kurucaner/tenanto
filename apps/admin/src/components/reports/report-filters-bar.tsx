@@ -2,16 +2,14 @@ import { memo } from "react";
 
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
-import {
-  CHANNEL_OPTIONS,
-} from "@/components/income/reservation-form-options";
 import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-options";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import type { IPropertyUnit } from "@/packages/shared";
 
 export interface ReportFiltersBarProps {
-  channel?: string;
+  channelCommissionId?: string;
+  channelOptions?: { label: string; value: string }[];
   from: string;
   onChannelChange?: (value: string) => void;
   onFromChange: (value: string) => void;
@@ -28,7 +26,8 @@ export interface ReportFiltersBarProps {
 
 export const ReportFiltersBar = memo(
   ({
-    channel = "",
+    channelCommissionId = "",
+    channelOptions = [],
     from,
     onChannelChange,
     onFromChange,
@@ -75,8 +74,8 @@ export const ReportFiltersBar = memo(
               id="report-channel"
               label="Channel"
               onChange={(e) => onChannelChange?.(e.target.value)}
-              options={CHANNEL_OPTIONS}
-              value={channel}
+              options={channelOptions}
+              value={channelCommissionId}
             />
           ) : null}
           <FilterSelectField

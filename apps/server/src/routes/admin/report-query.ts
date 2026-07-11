@@ -1,20 +1,12 @@
 import {
   type IPropertyReportsQuery,
   ReportRentalTypeFilter,
-  ReservationChannel,
   type TReportRentalTypeFilter,
-  type TReservationChannel,
 } from "@/packages/shared";
 
 import { parseDateString, parseOptionalQueryUuid } from "./admin-query-utils";
 
 const REPORT_RENTAL_TYPES = new Set<TReportRentalTypeFilter>(Object.values(ReportRentalTypeFilter));
-const RESERVATION_CHANNELS = new Set<TReservationChannel>(Object.values(ReservationChannel));
-
-function parseReservationChannel(raw: unknown): TReservationChannel | null {
-  if (typeof raw !== "string") return null;
-  return RESERVATION_CHANNELS.has(raw as TReservationChannel) ? (raw as TReservationChannel) : null;
-}
 
 function parseReportRentalType(raw: unknown): TReportRentalTypeFilter | null {
   if (typeof raw !== "string") return null;
@@ -23,19 +15,16 @@ function parseReportRentalType(raw: unknown): TReportRentalTypeFilter | null {
     : null;
 }
 
-function parseOptionalReportChannel(
+function parseOptionalReportChannelCommissionId(
   query: Record<string, unknown>
-): { error: string; ok: false } | { ok: true; value?: TReservationChannel } {
-  const raw = query["channel"];
-  if (raw === undefined || raw === "") return { ok: true };
-  const channel = parseReservationChannel(raw);
-  if (channel === null) {
-    return {
-      error: `channel must be one of: ${[...RESERVATION_CHANNELS].join(", ")}`,
-      ok: false,
-    };
-  }
-  return { ok: true, value: channel };
+): { error: string; ok: false } | { ok: true; value?: string } {
+  const result = parseOptionalQueryUuid(
+    query,
+    "channelCommissionId",
+    "channelCommissionId must be a valid UUID"
+  );
+  if (!result.ok) return result;
+  return { ok: true, value: result.value };
 }
 
 function parseOptionalReportRentalType(
@@ -68,9 +57,9 @@ export function parseReportsQuery(
   if (!unitIdResult.ok) return unitIdResult;
   if (unitIdResult.value) filters.unitId = unitIdResult.value;
 
-  const channelResult = parseOptionalReportChannel(query);
+  const channelResult = parseOptionalReportChannelCommissionId(query);
   if (!channelResult.ok) return channelResult;
-  if (channelResult.value) filters.channel = channelResult.value;
+  if (channelResult.value) filters.channelCommissionId = channelResult.value;
 
   const rentalTypeResult = parseOptionalReportRentalType(query);
   if (!rentalTypeResult.ok) return rentalTypeResult;

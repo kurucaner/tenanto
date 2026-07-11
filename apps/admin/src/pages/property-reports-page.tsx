@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { buildChannelOptions } from "@/components/income/reservation-form-options";
 import { ReportChartsSection } from "@/components/reports/charts/report-charts-section";
 import { ReportChartsSkeleton } from "@/components/reports/charts/report-charts-skeleton";
 import { ReportFiltersBar } from "@/components/reports/report-filters-bar";
@@ -19,7 +20,7 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
-import { reportsApi, unitsApi } from "@/lib/api-client";
+import { reportsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -136,13 +137,13 @@ export const PropertyReportsPage = memo(() => {
   const reportFilterSchema = useMemo(
     () =>
       defineUrlFilterSchema<{
-        channel: string;
+        channelCommissionId: string;
         from: string;
         rentalType: string;
         to: string;
         unitId: string;
       }>({
-        channel: { defaultValue: "" },
+        channelCommissionId: { defaultValue: "" },
         from: { defaultValue: defaultRange.from },
         rentalType: { defaultValue: "" },
         to: { defaultValue: defaultRange.to },
@@ -151,17 +152,17 @@ export const PropertyReportsPage = memo(() => {
     [defaultRange.from, defaultRange.to]
   );
   const { filters, setFilter } = useUrlFilterState(reportFilterSchema);
-  const { channel, from, rentalType, to, unitId } = filters;
+  const { channelCommissionId, from, rentalType, to, unitId } = filters;
   const [isExporting, setIsExporting] = useState(false);
 
   const reportQuery = useMemo<IPropertyReportsQuery | null>(() => {
     if (!from || !to || from > to) return null;
     const next: IPropertyReportsQuery = { from, to };
     if (unitId) next.unitId = unitId;
-    if (channel) next.channel = channel as IPropertyReportsQuery["channel"];
+    if (channelCommissionId) next.channelCommissionId = channelCommissionId;
     if (rentalType) next.rentalType = rentalType as TReportRentalTypeFilter;
     return next;
-  }, [channel, from, rentalType, to, unitId]);
+  }, [channelCommissionId, from, rentalType, to, unitId]);
 
   const summaryQuery = useQuery({
     enabled: reportQuery !== null,
@@ -173,6 +174,16 @@ export const PropertyReportsPage = memo(() => {
     queryFn: () => unitsApi.list(propertyId),
     queryKey: adminQueryKeys.propertyUnits(propertyId),
   });
+
+  const settingsQuery = useQuery({
+    queryFn: () => settingsApi.get(propertyId),
+    queryKey: adminQueryKeys.propertySettings(propertyId),
+  });
+
+  const channelFilterOptions = useMemo(
+    () => buildChannelOptions(settingsQuery.data?.settings.channelCommissions ?? []),
+    [settingsQuery.data?.settings.channelCommissions]
+  );
 
   const units = unitsQuery.data?.units ?? [];
   const summary = summaryQuery.data?.summary;
@@ -216,9 +227,10 @@ export const PropertyReportsPage = memo(() => {
     <Card>
       <CardContent className="space-y-4 p-4">
         <ReportFiltersBar
-          channel={channel}
+          channelCommissionId={channelCommissionId}
+          channelOptions={channelFilterOptions}
           from={from}
-          onChannelChange={(value) => setFilter("channel", value)}
+          onChannelChange={(value) => setFilter("channelCommissionId", value)}
           onFromChange={(value) => setFilter("from", value)}
           onRentalTypeChange={(value) => setFilter("rentalType", value)}
           onToChange={(value) => setFilter("to", value)}

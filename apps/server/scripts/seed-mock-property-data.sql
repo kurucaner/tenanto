@@ -171,36 +171,15 @@ AS $$
   SELECT ROUND(value, 2);
 $$;
 
-CREATE OR REPLACE FUNCTION seed_channel_commission_rate(
-  channel property_reservation_channel,
-  airbnb_rate NUMERIC,
-  booking_rate NUMERIC,
-  expedia_rate NUMERIC,
-  direct_rate NUMERIC
-)
-RETURNS NUMERIC
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE channel
-    WHEN 'airbnb'::property_reservation_channel THEN airbnb_rate
-    WHEN 'booking'::property_reservation_channel THEN booking_rate
-    WHEN 'expedia'::property_reservation_channel THEN expedia_rate
-    WHEN 'direct'::property_reservation_channel THEN direct_rate
-  END;
-$$;
-
 CREATE OR REPLACE FUNCTION seed_calc_stay_income(
   p_nights INTEGER,
   p_room_total NUMERIC,
   p_cleaning_fee NUMERIC,
-  p_channel property_reservation_channel,
   p_rental_type property_unit_rental_type,
   p_property_id UUID,
-  p_airbnb_commission_rate NUMERIC,
-  p_booking_commission_rate NUMERIC,
-  p_expedia_commission_rate NUMERIC,
-  p_direct_commission_rate NUMERIC
+  p_channel_rate NUMERIC,
+  p_exclude_cleaning_from_commission_base BOOLEAN,
+  p_exclude_resort_tax_from_payout BOOLEAN
 )
 RETURNS TABLE (
   gross_income NUMERIC,
@@ -219,6 +198,7 @@ DECLARE
   v_commission_rate NUMERIC;
   v_commission NUMERIC;
   v_commission_base NUMERIC;
+  v_resort_adjustment NUMERIC;
 BEGIN
   v_room_total := seed_round_money(p_room_total);
 
@@ -254,23 +234,26 @@ BEGIN
   INTO v_total_taxes
   FROM jsonb_array_elements(tax_breakdown) AS item;
 
-  v_commission_rate := seed_channel_commission_rate(
-    p_channel,
-    p_airbnb_commission_rate,
-    p_booking_commission_rate,
-    p_expedia_commission_rate,
-    p_direct_commission_rate
-  );
+  v_commission_rate := p_channel_rate;
   v_commission_base := CASE
-    WHEN p_channel = 'expedia'::property_reservation_channel THEN v_room_total
+    WHEN p_exclude_cleaning_from_commission_base THEN v_room_total
     ELSE v_taxable_base
   END;
   v_commission := seed_round_money(v_commission_base * v_commission_rate);
 
-  gross_income := seed_round_money(v_taxable_base + v_total_taxes);
+  SELECT COALESCE(
+    SUM((item->>'amount')::numeric),
+    0
+  )
+  INTO v_resort_adjustment
+  FROM jsonb_array_elements(tax_breakdown) AS item
+  WHERE LOWER(TRIM(item->>'name')) = 'resort tax'
+    AND p_exclude_resort_tax_from_payout;
+
+  gross_income := seed_round_money(v_taxable_base + v_total_taxes - v_resort_adjustment);
   channel_commission := v_commission;
   channel_commission_rate := v_commission_rate;
-  net_income := seed_round_money(v_taxable_base - v_total_taxes - v_commission);
+  net_income := seed_round_money(v_taxable_base - v_total_taxes - v_commission - v_resort_adjustment);
   RETURN NEXT;
 END;
 $$;
@@ -389,51 +372,67 @@ ON CONFLICT (property_id, user_id) DO NOTHING;
 -- ---------------------------------------------------------------------------
 -- Property settings (varied rates)
 -- ---------------------------------------------------------------------------
-INSERT INTO property_settings (
+INSERT INTO property_settings (property_id)
+SELECT seed.property_id
+FROM (
+  VALUES
+    ('f0000000-0000-4000-8000-000000000001'::uuid),
+    ('f0000000-0000-4000-8000-000000000002'::uuid),
+    ('f0000000-0000-4000-8000-000000000003'::uuid),
+    ('f0000000-0000-4000-8000-000000000004'::uuid),
+    ('f0000000-0000-4000-8000-000000000005'::uuid),
+    ('f0000000-0000-4000-8000-000000000006'::uuid)
+) AS seed(property_id)
+INNER JOIN properties p ON p.id = seed.property_id;
+
+INSERT INTO property_channel_commissions (
   property_id,
-  airbnb_commission_rate,
-  booking_commission_rate,
-  expedia_commission_rate,
-  direct_commission_rate
+  name,
+  rate,
+  sort_order,
+  exclude_cleaning_from_commission_base,
+  exclude_resort_tax_from_payout
 )
 SELECT
   seed.property_id,
-  seed.airbnb_commission_rate,
-  seed.booking_commission_rate,
-  seed.expedia_commission_rate,
-  seed.direct_commission_rate
+  seed.name,
+  seed.rate,
+  seed.sort_order,
+  seed.exclude_cleaning_from_commission_base,
+  seed.exclude_resort_tax_from_payout
 FROM (
   VALUES
-    (
-      'f0000000-0000-4000-8000-000000000001'::uuid,
-      0.155::numeric, 0.15::numeric, 0.15::numeric, 0.035::numeric
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000002'::uuid,
-      0.17::numeric, 0.15::numeric, 0.16::numeric, 0.04::numeric
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000003'::uuid,
-      0.155::numeric, 0.14::numeric, 0.15::numeric, 0.03::numeric
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000004'::uuid,
-      0.155::numeric, 0.15::numeric, 0.15::numeric, 0.025::numeric
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000005'::uuid,
-      0.16::numeric, 0.155::numeric, 0.155::numeric, 0.035::numeric
-    ),
-    (
-      'f0000000-0000-4000-8000-000000000006'::uuid,
-      0.15::numeric, 0.145::numeric, 0.145::numeric, 0.03::numeric
-    )
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Airbnb', 0.155::numeric, 0, false, true),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Booking.com', 0.15::numeric, 1, false, false),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Expedia', 0.15::numeric, 2, true, false),
+    ('f0000000-0000-4000-8000-000000000001'::uuid, 'Direct web / merchant', 0.035::numeric, 3, false, false),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Airbnb', 0.17::numeric, 0, false, true),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Booking.com', 0.15::numeric, 1, false, false),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Expedia', 0.16::numeric, 2, true, false),
+    ('f0000000-0000-4000-8000-000000000002'::uuid, 'Direct web / merchant', 0.04::numeric, 3, false, false),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Airbnb', 0.155::numeric, 0, false, true),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Booking.com', 0.14::numeric, 1, false, false),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Expedia', 0.15::numeric, 2, true, false),
+    ('f0000000-0000-4000-8000-000000000003'::uuid, 'Direct web / merchant', 0.03::numeric, 3, false, false),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Airbnb', 0.155::numeric, 0, false, true),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Booking.com', 0.15::numeric, 1, false, false),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Expedia', 0.15::numeric, 2, true, false),
+    ('f0000000-0000-4000-8000-000000000004'::uuid, 'Direct web / merchant', 0.025::numeric, 3, false, false),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Airbnb', 0.16::numeric, 0, false, true),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Booking.com', 0.155::numeric, 1, false, false),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Expedia', 0.155::numeric, 2, true, false),
+    ('f0000000-0000-4000-8000-000000000005'::uuid, 'Direct web / merchant', 0.035::numeric, 3, false, false),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Airbnb', 0.15::numeric, 0, false, true),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Booking.com', 0.145::numeric, 1, false, false),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Expedia', 0.145::numeric, 2, true, false),
+    ('f0000000-0000-4000-8000-000000000006'::uuid, 'Direct web / merchant', 0.03::numeric, 3, false, false)
 ) AS seed(
   property_id,
-  airbnb_commission_rate,
-  booking_commission_rate,
-  expedia_commission_rate,
-  direct_commission_rate
+  name,
+  rate,
+  sort_order,
+  exclude_cleaning_from_commission_base,
+  exclude_resort_tax_from_payout
 )
 INNER JOIN properties p ON p.id = seed.property_id;
 
@@ -570,7 +569,7 @@ INSERT INTO property_reservations (
   check_out,
   nights,
   status,
-  channel,
+  channel_commission_id,
   room_total,
   cleaning_fee,
   gross_income,
@@ -589,7 +588,7 @@ SELECT
   r.check_out,
   r.nights,
   r.status::property_reservation_status,
-  r.channel::property_reservation_channel,
+  r.channel_commission_id,
   r.room_total,
   r.cleaning_fee,
   calc.gross_income,
@@ -602,10 +601,10 @@ FROM (
     u.property_id,
     u.id AS unit_id,
     u.rental_type,
-    ps.airbnb_commission_rate,
-    ps.booking_commission_rate,
-    ps.expedia_commission_rate,
-    ps.direct_commission_rate,
+    pcc.id AS channel_commission_id,
+    pcc.rate AS channel_rate,
+    pcc.exclude_cleaning_from_commission_base,
+    pcc.exclude_resort_tax_from_payout,
     (ARRAY[
       'Emma Johnson', 'Liam Martinez', 'Olivia Chen', 'Noah Williams',
       'Ava Thompson', 'Ethan Garcia', 'Sophia Lee', 'Mason Brown',
@@ -627,7 +626,7 @@ FROM (
     (ARRAY['stayed', 'stayed', 'stayed', 'stayed', 'active', 'canceled', 'no_show'])[
       1 + ((prop_idx + stay_idx) % 7)
     ] AS status,
-    (ARRAY['airbnb', 'booking', 'expedia', 'direct'])[1 + ((prop_idx + stay_idx) % 4)] AS channel,
+    ((prop_idx + stay_idx) % 4) AS channel_sort_order,
     CASE
       WHEN u.rental_type = 'long_term'::property_unit_rental_type
         THEN seed_round_money((1800 + (prop_idx * 120) + (stay_idx * 35)) * (2 + ((prop_idx + stay_idx) % 6)))
@@ -651,19 +650,19 @@ FROM (
        ELSE (200 + (((stay_idx - 1) % 10) - 5))::text
      END
    )
-  INNER JOIN property_settings ps ON ps.property_id = u.property_id
+  INNER JOIN property_channel_commissions pcc
+    ON pcc.property_id = u.property_id
+   AND pcc.sort_order = ((prop_idx + stay_idx) % 4)
 ) AS r
 CROSS JOIN LATERAL seed_calc_stay_income(
   r.nights,
   r.room_total,
   r.cleaning_fee,
-  r.channel::property_reservation_channel,
   r.rental_type,
   r.property_id,
-  r.airbnb_commission_rate,
-  r.booking_commission_rate,
-  r.expedia_commission_rate,
-  r.direct_commission_rate
+  r.channel_rate,
+  r.exclude_cleaning_from_commission_base,
+  r.exclude_resort_tax_from_payout
 ) AS calc;
 
 -- ---------------------------------------------------------------------------
@@ -835,11 +834,8 @@ CROSS JOIN (
 -- Drop temporary helper functions
 -- ---------------------------------------------------------------------------
 DROP FUNCTION IF EXISTS seed_calc_stay_income(
-  INTEGER, NUMERIC, NUMERIC, property_reservation_channel, property_unit_rental_type,
-  UUID, NUMERIC, NUMERIC, NUMERIC, NUMERIC
-);
-DROP FUNCTION IF EXISTS seed_channel_commission_rate(
-  property_reservation_channel, NUMERIC, NUMERIC, NUMERIC, NUMERIC
+  INTEGER, NUMERIC, NUMERIC, property_unit_rental_type,
+  UUID, NUMERIC, BOOLEAN, BOOLEAN
 );
 DROP FUNCTION IF EXISTS seed_round_money(NUMERIC);
 

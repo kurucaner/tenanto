@@ -1,9 +1,9 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  CHANNEL_OPTIONS,
+  buildChannelOptions,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
@@ -21,10 +21,11 @@ import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { reservationsApi } from "@/lib/api-client";
+import { reservationsApi, settingsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { adminQueryKeys } from "@/lib/query-keys";
 import {
   getMinCheckOutDate,
   isValidStayDateRange,
@@ -33,8 +34,6 @@ import {
 import {
   type IPropertyReservation,
   type IPropertyUnit,
-  ReservationChannel,
-  type TReservationChannel,
   type TReservationStatus,
 } from "@/packages/shared";
 
@@ -49,20 +48,33 @@ interface EditReservationDialogProps {
 export const EditReservationDialog = memo(
   ({ onOpenChange, open, propertyId, reservation, units }: EditReservationDialogProps) => {
     const queryClient = useQueryClient();
+    const settingsQuery = useQuery({
+      enabled: open,
+      queryFn: () => settingsApi.get(propertyId),
+      queryKey: adminQueryKeys.propertySettings(propertyId),
+    });
+    const channelOptions = useMemo(
+      () => buildChannelOptions(settingsQuery.data?.settings.channelCommissions ?? []),
+      [settingsQuery.data?.settings.channelCommissions]
+    );
     const [unitId, setUnitId] = useState(reservation.unitId);
     const [guestName, setGuestName] = useState(reservation.guestName);
     const [reservationNumber, setReservationNumber] = useState(reservation.reservationNumber ?? "");
     const [checkIn, setCheckIn] = useState(reservation.checkIn);
     const [checkOut, setCheckOut] = useState(reservation.checkOut);
     const [status, setStatus] = useState<TReservationStatus>(reservation.status);
-    const [channel, setChannel] = useState<TReservationChannel>(reservation.channel);
+    const [channelCommissionId, setChannelCommissionId] = useState(reservation.channelCommissionId);
     const [roomTotal, setRoomTotal] = useState(String(reservation.roomTotal));
     const [cleaningFee, setCleaningFee] = useState(String(reservation.cleaningFee));
+
+    const selectedChannel = settingsQuery.data?.settings.channelCommissions.find(
+      (channel) => channel.id === channelCommissionId
+    );
 
     const mutation = useMutation({
       mutationFn: () =>
         reservationsApi.update(propertyId, reservation.id, {
-          channel,
+          channelCommissionId,
           checkIn,
           checkOut,
           cleaningFee: Number(cleaningFee) || 0,
@@ -174,15 +186,15 @@ export const EditReservationDialog = memo(
               <FormSelectField
                 id="edit-reservation-channel"
                 label="Channel"
-                onChange={(e) => setChannel(e.target.value as TReservationChannel)}
-                options={CHANNEL_OPTIONS}
-                value={channel}
+                onChange={(e) => setChannelCommissionId(e.target.value)}
+                options={channelOptions}
+                value={channelCommissionId}
               />
             </div>
 
-            {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
+            {selectedChannel?.excludeCleaningFromCommissionBase && Number(cleaningFee) > 0 ? (
               <p className="text-muted-foreground text-xs">
-                Expedia commission is calculated on room total only.
+                This channel&apos;s commission is calculated on room total only.
               </p>
             ) : null}
 

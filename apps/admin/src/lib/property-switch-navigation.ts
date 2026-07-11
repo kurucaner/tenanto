@@ -1,4 +1,4 @@
-const PRESERVED_PROPERTY_SWITCH_PARAMS = ["channel", "from", "rentalType", "to"] as const;
+const PRESERVED_PROPERTY_SWITCH_PARAMS = ["channelCommissionId", "from", "rentalType", "to"] as const;
 
 export function getPropertyTabSuffix(pathname: string, propertyId: string): string {
   const base = `/properties/${propertyId}`;

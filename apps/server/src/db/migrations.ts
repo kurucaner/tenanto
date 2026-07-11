@@ -2064,4 +2064,117 @@ export const migrations: IMigration[] = [
     },
     version: 47,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_settings
+          ADD COLUMN IF NOT EXISTS airbnb_commission_rate NUMERIC(6,5) NOT NULL DEFAULT 0.155,
+          ADD COLUMN IF NOT EXISTS booking_commission_rate NUMERIC(6,5) NOT NULL DEFAULT 0.15,
+          ADD COLUMN IF NOT EXISTS expedia_commission_rate NUMERIC(6,5) NOT NULL DEFAULT 0.15,
+          ADD COLUMN IF NOT EXISTS direct_commission_rate NUMERIC(6,5) NOT NULL DEFAULT 0.035;
+      `);
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_reservation_channel AS ENUM ('airbnb', 'booking', 'expedia', 'direct');
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN IF NOT EXISTS channel property_reservation_channel;
+      `);
+      await client.query(`
+        ALTER TABLE property_reservations DROP COLUMN IF EXISTS channel_commission_id;
+      `);
+      await client.query(`DROP TABLE IF EXISTS property_channel_commissions CASCADE;`);
+    },
+    name: "property_channel_commissions",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_channel_commissions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          name VARCHAR(80) NOT NULL,
+          rate NUMERIC(6,5) NOT NULL CHECK (rate >= 0 AND rate <= 1),
+          sort_order INT NOT NULL DEFAULT 0,
+          exclude_cleaning_from_commission_base BOOLEAN NOT NULL DEFAULT false,
+          exclude_resort_tax_from_payout BOOLEAN NOT NULL DEFAULT false,
+          legacy_key TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_property_channel_commissions_property
+        ON property_channel_commissions (property_id, sort_order);
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_property_channel_commissions_updated_at
+          BEFORE UPDATE ON property_channel_commissions
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        INSERT INTO property_channel_commissions (
+          property_id,
+          name,
+          rate,
+          sort_order,
+          exclude_cleaning_from_commission_base,
+          exclude_resort_tax_from_payout,
+          legacy_key
+        )
+        SELECT property_id, 'Airbnb', airbnb_commission_rate, 0, false, true, 'airbnb'
+        FROM property_settings
+        UNION ALL
+        SELECT property_id, 'Booking.com', booking_commission_rate, 1, false, false, 'booking'
+        FROM property_settings
+        UNION ALL
+        SELECT property_id, 'Expedia', expedia_commission_rate, 2, true, false, 'expedia'
+        FROM property_settings
+        UNION ALL
+        SELECT property_id, 'Direct web / merchant', direct_commission_rate, 3, false, false, 'direct'
+        FROM property_settings;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN channel_commission_id UUID REFERENCES property_channel_commissions(id);
+      `);
+
+      await client.query(`
+        UPDATE property_reservations pr
+        SET channel_commission_id = pcc.id
+        FROM property_channel_commissions pcc
+        WHERE pcc.property_id = pr.property_id
+          AND pcc.legacy_key = pr.channel::text;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations
+          ALTER COLUMN channel_commission_id SET NOT NULL;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_reservations DROP COLUMN channel;
+      `);
+
+      await client.query(`DROP TYPE property_reservation_channel;`);
+
+      await client.query(`
+        ALTER TABLE property_channel_commissions DROP COLUMN legacy_key;
+      `);
+
+      await client.query(`
+        ALTER TABLE property_settings
+          DROP COLUMN airbnb_commission_rate,
+          DROP COLUMN booking_commission_rate,
+          DROP COLUMN expedia_commission_rate,
+          DROP COLUMN direct_commission_rate;
+      `);
+    },
+    version: 48,
+  },
 ];

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import {
-  CHANNEL_OPTIONS,
+  buildChannelOptions,
   STATUS_OPTIONS,
 } from "@/components/income/reservation-form-options";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
@@ -24,7 +24,7 @@ import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { reservationsApi, unitsApi } from "@/lib/api-client";
+import { reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { optionalNonNegativeMoneyField } from "@/lib/money-field-validation";
@@ -34,16 +34,11 @@ import {
   isValidStayDateRange,
   shouldClearCheckOutOnCheckInChange,
 } from "@/lib/reservation-date-utils";
-import { ReservationChannel, ReservationStatus, UnitRentalType } from "@/packages/shared";
+import { ReservationStatus, UnitRentalType } from "@/packages/shared";
 
 const createReservationSchema = z
   .object({
-    channel: z.enum([
-      ReservationChannel.AIRBNB,
-      ReservationChannel.BOOKING,
-      ReservationChannel.DIRECT,
-      ReservationChannel.EXPEDIA,
-    ]),
+    channelCommissionId: z.string().uuid("Channel is required"),
     checkIn: z.string().min(1, "Check-in is required"),
     checkOut: z.string().min(1, "Check-out is required"),
     cleaningFee: optionalNonNegativeMoneyField("Cleaning fee must be a non-negative number"),
@@ -70,9 +65,9 @@ const createReservationSchema = z
 
 type TCreateReservationFormValues = z.infer<typeof createReservationSchema>;
 
-function getDefaultValues(): TCreateReservationFormValues {
+function getDefaultValues(defaultChannelCommissionId = ""): TCreateReservationFormValues {
   return {
-    channel: ReservationChannel.AIRBNB,
+    channelCommissionId: defaultChannelCommissionId,
     checkIn: "",
     checkOut: "",
     cleaningFee: "",
@@ -93,8 +88,21 @@ interface CreateReservationDialogProps {
 export const CreateReservationDialog = memo(
   ({ onOpenChange, open, propertyId }: CreateReservationDialogProps) => {
     const queryClient = useQueryClient();
+    const settingsQuery = useQuery({
+      enabled: open,
+      queryFn: () => settingsApi.get(propertyId),
+      queryKey: adminQueryKeys.propertySettings(propertyId),
+    });
+
+    const channelOptions = useMemo(
+      () => buildChannelOptions(settingsQuery.data?.settings.channelCommissions ?? []),
+      [settingsQuery.data?.settings.channelCommissions]
+    );
+
+    const defaultChannelCommissionId = channelOptions[0]?.value ?? "";
+
     const form = useForm<TCreateReservationFormValues>({
-      defaultValues: getDefaultValues(),
+      defaultValues: getDefaultValues(defaultChannelCommissionId),
       resolver: zodResolver(createReservationSchema),
     });
 
@@ -106,8 +114,12 @@ export const CreateReservationDialog = memo(
 
     const checkIn = form.watch("checkIn");
     const checkOut = form.watch("checkOut");
-    const channel = form.watch("channel");
+    const channelCommissionId = form.watch("channelCommissionId");
     const cleaningFee = form.watch("cleaningFee");
+
+    const selectedChannel = settingsQuery.data?.settings.channelCommissions.find(
+      (channel) => channel.id === channelCommissionId
+    );
 
     const shortTermUnits = useMemo(
       () =>
@@ -122,7 +134,7 @@ export const CreateReservationDialog = memo(
     const mutation = useMutation({
       mutationFn: (values: TCreateReservationFormValues) =>
         reservationsApi.create(propertyId, {
-          channel: values.channel,
+          channelCommissionId: values.channelCommissionId,
           checkIn: values.checkIn,
           checkOut: values.checkOut,
           cleaningFee: Number(values.cleaningFee) || 0,
@@ -145,11 +157,11 @@ export const CreateReservationDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(getDefaultValues());
+          form.reset(getDefaultValues(defaultChannelCommissionId));
         }
         onOpenChange(nextOpen);
       },
-      [form, onOpenChange]
+      [defaultChannelCommissionId, form, onOpenChange]
     );
 
     const onSubmit = form.handleSubmit((values) => {
@@ -249,17 +261,17 @@ export const CreateReservationDialog = memo(
                   {...form.register("status")}
                 />
                 <FormSelectField
-                  error={errors.channel?.message}
+                  error={errors.channelCommissionId?.message}
                   id="reservation-channel"
                   label="Channel"
-                  options={CHANNEL_OPTIONS}
-                  {...form.register("channel")}
+                  options={channelOptions}
+                  {...form.register("channelCommissionId")}
                 />
               </div>
 
-              {channel === ReservationChannel.EXPEDIA && Number(cleaningFee) > 0 ? (
+              {selectedChannel?.excludeCleaningFromCommissionBase && Number(cleaningFee) > 0 ? (
                 <p className="text-muted-foreground text-xs">
-                  Expedia commission is calculated on room total only.
+                  This channel&apos;s commission is calculated on room total only.
                 </p>
               ) : null}
 

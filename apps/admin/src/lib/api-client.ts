@@ -736,7 +736,7 @@ function buildReservationsSearchParams(query: IPropertyReservationsListQuery = {
   if (query.checkOutFrom) params.set("checkOutFrom", query.checkOutFrom);
   if (query.checkInTo) params.set("checkInTo", query.checkInTo);
   if (query.unitId) params.set("unitId", query.unitId);
-  if (query.channel) params.set("channel", query.channel);
+  if (query.channelCommissionId) params.set("channelCommissionId", query.channelCommissionId);
   if (query.status) params.set("status", query.status);
   if (query.rentalType) params.set("rentalType", query.rentalType);
   if (query.includeReservationId) params.set("includeReservationId", query.includeReservationId);
@@ -877,7 +877,7 @@ function buildReportsSearchParams(query: IPropertyReportsQuery): string {
   params.set("from", query.from);
   params.set("to", query.to);
   if (query.unitId) params.set("unitId", query.unitId);
-  if (query.channel) params.set("channel", query.channel);
+  if (query.channelCommissionId) params.set("channelCommissionId", query.channelCommissionId);
   if (query.rentalType) params.set("rentalType", query.rentalType);
   const search = params.toString();
   return search ? `?${search}` : "";

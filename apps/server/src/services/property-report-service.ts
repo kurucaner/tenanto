@@ -21,10 +21,8 @@ import {
   PROPERTY_AMENITY_UNIT_ID,
   PROPERTY_AMENITY_UNIT_LABEL,
   ReportRentalTypeFilter,
-  ReservationChannel,
   ReservationStatus,
   type TReportRentalTypeFilter,
-  type TReservationChannel,
   type TUnitRentalType,
 } from "@/packages/shared";
 import { roundMoney } from "@/services/property-income-calculator";
@@ -118,7 +116,7 @@ export async function loadReportData(
 ): Promise<IReportData> {
   const rentalType = resolveRentalTypeFilter(query.rentalType);
   const listFilters = {
-    channel: query.channel,
+    channelCommissionId: query.channelCommissionId,
     from: query.from,
     rentalType,
     to: query.to,
@@ -201,14 +199,25 @@ function mergeOtherIncomeByType(
   }
 }
 
-function initChannelMap(): Map<TReservationChannel, IPropertyReportChannelSummary> {
-  const channels = Object.values(ReservationChannel) as TReservationChannel[];
-  return new Map(
-    channels.map((channel) => [
-      channel,
-      { channel, channelCommission: 0, grossIncome: 0, stayCount: 0 },
-    ])
-  );
+function upsertChannelSummary(
+  channelMap: Map<string, IPropertyReportChannelSummary>,
+  stay: IPropertyReservation
+): void {
+  const existing = channelMap.get(stay.channelCommissionId);
+  if (existing) {
+    existing.grossIncome = roundMoney(existing.grossIncome + stay.grossIncome);
+    existing.channelCommission = roundMoney(existing.channelCommission + stay.channelCommission);
+    existing.stayCount += 1;
+    return;
+  }
+
+  channelMap.set(stay.channelCommissionId, {
+    channelCommission: stay.channelCommission,
+    channelCommissionId: stay.channelCommissionId,
+    grossIncome: stay.grossIncome,
+    name: stay.channelName,
+    stayCount: 1,
+  });
 }
 
 function initUnitMap(units: IPropertyUnit[], from: string, to: string) {
@@ -296,7 +305,7 @@ function mergeTaxSummary(
 interface IPropertyReportAccumulator {
   amenityGrossIncome: number;
   amenityNetIncome: number;
-  channelMap: Map<TReservationChannel, IPropertyReportChannelSummary>;
+  channelMap: Map<string, IPropertyReportChannelSummary>;
   expenseCategoryMap: Map<string, { amount: number; name: string }>;
   grossIncome: number;
   monthMap: Map<string, IPropertyReportMonthSummary>;
@@ -322,12 +331,7 @@ function applyReservationToReport(
     accumulator.salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
   );
 
-  const channel = accumulator.channelMap.get(stay.channel);
-  if (channel) {
-    channel.grossIncome = roundMoney(channel.grossIncome + stay.grossIncome);
-    channel.channelCommission = roundMoney(channel.channelCommission + stay.channelCommission);
-    channel.stayCount += 1;
-  }
+  upsertChannelSummary(accumulator.channelMap, stay);
 
   const unit = accumulator.unitMap.get(stay.unitId);
   if (unit) {
@@ -445,7 +449,7 @@ function buildUnitSummaries(
 
 interface IRollupAccumulator {
   byUnit: IPropertyReportUnitSummary[];
-  channelMap: Map<TReservationChannel, IPropertyReportChannelSummary>;
+  channelMap: Map<string, IPropertyReportChannelSummary>;
   expenseCategoryMap: Map<string, { amount: number; name: string }>;
   grossIncome: number;
   monthMap: Map<string, IPropertyReportMonthSummary>;
@@ -476,13 +480,13 @@ function mergeSummaryIntoRollup(summary: IPropertyReportSummary, rollup: IRollup
   );
 
   for (const row of summary.channelSummary) {
-    const existing = rollup.channelMap.get(row.channel);
+    const existing = rollup.channelMap.get(row.channelCommissionId);
     if (existing) {
       existing.grossIncome = roundMoney(existing.grossIncome + row.grossIncome);
       existing.channelCommission = roundMoney(existing.channelCommission + row.channelCommission);
       existing.stayCount += row.stayCount;
     } else {
-      rollup.channelMap.set(row.channel, { ...row });
+      rollup.channelMap.set(row.channelCommissionId, { ...row });
     }
   }
 
@@ -520,7 +524,7 @@ export function buildPropertyReportSummary(
   const accumulator: IPropertyReportAccumulator = {
     amenityGrossIncome: 0,
     amenityNetIncome: 0,
-    channelMap: initChannelMap(),
+    channelMap: new Map<string, IPropertyReportChannelSummary>(),
     expenseCategoryMap: new Map<string, { amount: number; name: string }>(),
     grossIncome: 0,
     monthMap: initMonthMap(months),
@@ -637,7 +641,7 @@ export function rollupSummaries(
 
   const rollup: IRollupAccumulator = {
     byUnit: [],
-    channelMap: new Map<TReservationChannel, IPropertyReportChannelSummary>(),
+    channelMap: new Map<string, IPropertyReportChannelSummary>(),
     expenseCategoryMap: new Map<string, { amount: number; name: string }>(),
     grossIncome: 0,
     monthMap: new Map<string, IPropertyReportMonthSummary>(),
@@ -749,7 +753,7 @@ function appendPropertyReportCsvSections(csv: string, summary: IPropertyReportSu
   next += "\n";
   next += csvRow(["Channel Summary", "Gross Income", "Commission", "Stays"]);
   for (const row of summary.channelSummary) {
-    next += csvRow([row.channel, row.grossIncome, row.channelCommission, row.stayCount]);
+    next += csvRow([row.name, row.grossIncome, row.channelCommission, row.stayCount]);
   }
   next += "\n";
   next += csvRow(["Tax Summary", "Amount"]);

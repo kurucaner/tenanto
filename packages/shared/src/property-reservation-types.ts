@@ -10,25 +10,19 @@ export const ReservationStatus = {
 
 export type TReservationStatus = (typeof ReservationStatus)[keyof typeof ReservationStatus];
 
-export const ReservationChannel = {
-  AIRBNB: "airbnb",
-  BOOKING: "booking",
-  DIRECT: "direct",
-  EXPEDIA: "expedia",
-} as const;
-
-export type TReservationChannel = (typeof ReservationChannel)[keyof typeof ReservationChannel];
-
 export interface IPropertyReservation {
-  channel: TReservationChannel;
   channelCommission: number;
+  channelCommissionId: string;
   /** Decimal rate used when commission was calculated (e.g. 0.155). */
   channelCommissionRate: number;
+  channelName: string;
   checkIn: string;
   checkOut: string;
   cleaningFee: number;
   createdAt: string;
   deletedAt: string | null;
+  excludeCleaningFromCommissionBase: boolean;
+  excludeResortTaxFromPayout: boolean;
   grossIncome: number;
   guestName: string;
   id: string;
@@ -45,7 +39,7 @@ export interface IPropertyReservation {
 }
 
 export interface ICreatePropertyReservationBody {
-  channel: TReservationChannel;
+  channelCommissionId: string;
   checkIn: string;
   checkOut: string;
   cleaningFee: number;
@@ -57,7 +51,7 @@ export interface ICreatePropertyReservationBody {
 }
 
 export interface IUpdatePropertyReservationBody {
-  channel?: TReservationChannel;
+  channelCommissionId?: string;
   checkIn?: string;
   checkOut?: string;
   cleaningFee?: number;
@@ -69,7 +63,7 @@ export interface IUpdatePropertyReservationBody {
 }
 
 export interface IPropertyReservationsListQuery {
-  channel?: TReservationChannel;
+  channelCommissionId?: string;
   checkInTo?: string;
   checkOutFrom?: string;
   from?: string;

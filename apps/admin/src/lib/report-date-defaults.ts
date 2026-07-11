@@ -22,7 +22,7 @@ export function formatReportMonthLabel(month: string): string {
 export function buildPropertyReportsPath(
   propertyId: string,
   options: {
-    channel?: string;
+    channelCommissionId?: string;
     from: string;
     rentalType?: string;
     to: string;
@@ -34,7 +34,7 @@ export function buildPropertyReportsPath(
   params.set("to", options.to);
   if (options.rentalType) params.set("rentalType", options.rentalType);
   if (options.unitId) params.set("unitId", options.unitId);
-  if (options.channel) params.set("channel", options.channel);
+  if (options.channelCommissionId) params.set("channelCommissionId", options.channelCommissionId);
   const search = params.toString();
   const querySuffix = search ? `?${search}` : "";
   return `/properties/${propertyId}/reports${querySuffix}`;

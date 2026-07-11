@@ -9,6 +9,17 @@ import type {
 import { mapPropertyReservationRow } from "./mappers";
 import { pool } from "./pool";
 
+const RESERVATION_SELECT = `
+  pr.*,
+  pcc.name AS channel_name,
+  pcc.exclude_cleaning_from_commission_base,
+  pcc.exclude_resort_tax_from_payout
+`;
+
+const RESERVATION_CHANNEL_JOIN = `
+  INNER JOIN property_channel_commissions pcc ON pcc.id = pr.channel_commission_id
+`;
+
 interface IReservationListQueryParts {
   conditions: string[];
   joinUnits: string;
@@ -81,12 +92,8 @@ function buildReservationListQuery(
 
   applyIncludeReservationIdFilter(filters, parts);
 
-  if (filters.channel) {
-    pushReservationCondition(
-      parts,
-      "pr.channel = $?::property_reservation_channel",
-      filters.channel
-    );
+  if (filters.channelCommissionId) {
+    pushReservationCondition(parts, "pr.channel_commission_id = $?", filters.channelCommissionId);
   }
   if (filters.status) {
     pushReservationCondition(parts, "pr.status = $?::property_reservation_status", filters.status);
@@ -121,30 +128,35 @@ export const propertyReservationsDb = {
     computed: IPropertyReservationComputedFields
   ): Promise<IPropertyReservation> {
     const result = await pool.query(
-      `INSERT INTO property_reservations (
-         property_id,
-         unit_id,
-         guest_name,
-         reservation_number,
-         check_in,
-         check_out,
-         nights,
-         status,
-         channel,
-         room_total,
-         cleaning_fee,
-         gross_income,
-         tax_breakdown,
-         channel_commission,
-         channel_commission_rate,
-         net_income
-       ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7,
-         $8::property_reservation_status,
-         $9::property_reservation_channel,
-         $10, $11, $12, $13::jsonb, $14, $15, $16
+      `WITH inserted AS (
+         INSERT INTO property_reservations (
+           property_id,
+           unit_id,
+           guest_name,
+           reservation_number,
+           check_in,
+           check_out,
+           nights,
+           status,
+           channel_commission_id,
+           room_total,
+           cleaning_fee,
+           gross_income,
+           tax_breakdown,
+           channel_commission,
+           channel_commission_rate,
+           net_income
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6, $7,
+           $8::property_reservation_status,
+           $9,
+           $10, $11, $12, $13::jsonb, $14, $15, $16
+         )
+         RETURNING *
        )
-       RETURNING *`,
+       SELECT ${RESERVATION_SELECT}
+       FROM inserted pr
+       ${RESERVATION_CHANNEL_JOIN}`,
       [
         propertyId,
         input.unitId,
@@ -154,7 +166,7 @@ export const propertyReservationsDb = {
         input.checkOut,
         computed.nights,
         input.status,
-        input.channel,
+        input.channelCommissionId,
         input.roomTotal,
         input.cleaningFee,
         computed.grossIncome,
@@ -168,7 +180,13 @@ export const propertyReservationsDb = {
   },
 
   async findById(id: string): Promise<IPropertyReservation | null> {
-    const result = await pool.query(`SELECT * FROM property_reservations WHERE id = $1`, [id]);
+    const result = await pool.query(
+      `SELECT ${RESERVATION_SELECT}
+       FROM property_reservations pr
+       ${RESERVATION_CHANNEL_JOIN}
+       WHERE pr.id = $1`,
+      [id]
+    );
     if (result.rows.length === 0) return null;
     return mapPropertyReservationRow(result.rows[0] as Record<string, unknown>);
   },
@@ -185,8 +203,9 @@ export const propertyReservationsDb = {
     );
 
     const result = await pool.query(
-      `SELECT pr.*
+      `SELECT ${RESERVATION_SELECT}
        FROM property_reservations pr
+       ${RESERVATION_CHANNEL_JOIN}
        ${joinUnits}
        WHERE ${sqlConditions}
        ORDER BY pr.check_in DESC, pr.created_at DESC${limitClause}`,
@@ -245,9 +264,9 @@ export const propertyReservationsDb = {
       setClauses.push(`status = $${p++}::property_reservation_status`);
       values.push(input.status);
     }
-    if (input.channel !== undefined) {
-      setClauses.push(`channel = $${p++}::property_reservation_channel`);
-      values.push(input.channel);
+    if (input.channelCommissionId !== undefined) {
+      setClauses.push(`channel_commission_id = $${p++}`);
+      values.push(input.channelCommissionId);
     }
     if (input.roomTotal !== undefined) {
       setClauses.push(`room_total = $${p++}`);
@@ -273,7 +292,12 @@ export const propertyReservationsDb = {
 
     values.push(id);
     const result = await pool.query(
-      `UPDATE property_reservations SET ${setClauses.join(", ")} WHERE id = $${p} RETURNING *`,
+      `WITH updated AS (
+         UPDATE property_reservations SET ${setClauses.join(", ")} WHERE id = $${p} RETURNING *
+       )
+       SELECT ${RESERVATION_SELECT}
+       FROM updated pr
+       ${RESERVATION_CHANNEL_JOIN}`,
       values
     );
     if (result.rows.length === 0) return null;

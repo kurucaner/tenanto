@@ -1,6 +1,5 @@
 import { memo, useMemo } from "react";
 
-import { formatChannelLabel } from "@/components/income/reservation-form-options";
 import { ReportDonutChart } from "@/components/reports/charts/report-donut-chart";
 import {
   channelCommissionSummaryToSegments,
@@ -14,7 +13,7 @@ interface ReportChannelCommissionChartProps {
 export const ReportChannelCommissionChart = memo(
   ({ channelSummary }: ReportChannelCommissionChartProps) => {
     const segments = useMemo(
-      () => channelCommissionSummaryToSegments(channelSummary, formatChannelLabel),
+      () => channelCommissionSummaryToSegments(channelSummary),
       [channelSummary]
     );
 

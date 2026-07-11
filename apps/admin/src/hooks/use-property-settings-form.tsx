@@ -3,9 +3,9 @@ import { Settings2 } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { PropertyChannelCommissionsEditor } from "@/components/settings/property-channel-commissions-editor";
 import { PropertyExpenseCategoryTypesEditor } from "@/components/settings/property-expense-category-types-editor";
 import { PropertyIncomeLineTypesEditor } from "@/components/settings/property-income-line-types-editor";
-import { PercentField } from "@/components/settings/property-settings-percent-field";
 import { PropertyTaxRatesEditor } from "@/components/settings/property-tax-rates-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ import {
 } from "@/lib/property-settings-form-utils";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
-  DEFAULT_PROPERTY_SETTINGS,
+  DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
   DEFAULT_PROPERTY_TAX_RATES,
   type IPropertySettings,
 } from "@/packages/shared";
@@ -57,6 +57,10 @@ export const usePropertySettingsForm = ({
   const hasNewIncomeTypeRows = useMemo(
     () => hasNewRows(form.incomeLineTypes),
     [form.incomeLineTypes]
+  );
+  const hasNewChannelRows = useMemo(
+    () => hasNewRows(form.channelCommissions),
+    [form.channelCommissions]
   );
   const hasNewTaxRows = useMemo(() => hasNewRows(form.taxRates), [form.taxRates]);
 
@@ -91,7 +95,13 @@ export const usePropertySettingsForm = ({
   const resetMutation = useMutation({
     mutationFn: () =>
       settingsApi.update(propertyId, {
-        ...DEFAULT_PROPERTY_SETTINGS,
+        channelCommissions: DEFAULT_PROPERTY_CHANNEL_COMMISSIONS.map((channel, index) => ({
+          excludeCleaningFromCommissionBase: channel.excludeCleaningFromCommissionBase ?? false,
+          excludeResortTaxFromPayout: channel.excludeResortTaxFromPayout ?? false,
+          name: channel.name,
+          rate: channel.rate,
+          sortOrder: index,
+        })),
         taxRates: DEFAULT_PROPERTY_TAX_RATES.map((tax, index) => ({
           name: tax.name,
           rate: tax.rate,
@@ -125,13 +135,6 @@ export const usePropertySettingsForm = ({
       setForm((prev) => mergeSavedSectionIntoForm(prev, res.settings, section));
     },
   });
-
-  const updateField = (
-    field: Exclude<keyof TPropertySettingsFormState, "incomeLineTypes" | "taxRates">,
-    value: string
-  ) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
 
   const validateForm = useCallback((): boolean => {
     const result = validatePropertySettingsForm(form);
@@ -264,44 +267,18 @@ export const usePropertySettingsForm = ({
           <div>
             <h3 className="text-sm font-medium">Channel commissions</h3>
             <p className="text-muted-foreground text-xs">
-              Applied to room total + cleaning fee for most channels. Expedia uses room total only.
+              Booking channels available when adding stays. Use the rules to match each channel&apos;s
+              commission base and payout treatment.
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="airbnb-commission"
-              label="Airbnb"
-              onChange={(v) => updateField("airbnbCommissionRate", v)}
-              value={form.airbnbCommissionRate}
-            />
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="booking-commission"
-              label="Booking.com"
-              onChange={(v) => updateField("bookingCommissionRate", v)}
-              value={form.bookingCommissionRate}
-            />
-            <div className="flex flex-col gap-1.5">
-              <PercentField
-                disabled={!canEdit || isPending}
-                id="expedia-commission"
-                label="Expedia"
-                onChange={(v) => updateField("expediaCommissionRate", v)}
-                value={form.expediaCommissionRate}
-              />
-              <p className="text-muted-foreground text-xs">
-                Commission base excludes cleaning fee.
-              </p>
-            </div>
-            <PercentField
-              disabled={!canEdit || isPending}
-              id="direct-commission"
-              label="Direct web / merchant"
-              onChange={(v) => updateField("directCommissionRate", v)}
-              value={form.directCommissionRate}
-            />
-          </div>
+          <PropertyChannelCommissionsEditor
+            channelCommissions={form.channelCommissions}
+            disabled={!canEdit || isPending}
+            isSavingChannelCommissions={sectionSaveMutation.isPending}
+            onChange={(channelCommissions) => setForm((prev) => ({ ...prev, channelCommissions }))}
+            onSaveChannelCommissions={() => handleSectionSave("channelCommissions")}
+            showSaveChannelCommissions={hasNewChannelRows}
+          />
         </div>
 
         {canEdit ? null : (

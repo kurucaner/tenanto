@@ -1,15 +1,13 @@
 import {
-  getChannelCommissionRate,
+  getChannelCommissionRateFromRow,
   getResortTaxAmount,
   getStayCommissionBase,
+  type IPropertyChannelCommission,
   type IPropertyIncomeLineComputedFields,
   type IPropertyReservationComputedFields,
-  type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
-  ReservationChannel,
   sumTaxBreakdown,
-  type TReservationChannel,
   type TUnitRentalType,
   UnitRentalType,
 } from "@/packages/shared";
@@ -46,11 +44,10 @@ function buildTaxBreakdown(
 }
 
 export interface ICalculateStayIncomeInput {
-  channel: TReservationChannel;
+  channelCommission: IPropertyChannelCommission;
   cleaningFee: number;
   nights: number;
   roomTotal: number;
-  settings: IPropertySettings;
   taxRates: IPropertyTaxRate[];
   unitRentalType: TUnitRentalType;
 }
@@ -59,10 +56,9 @@ export function calculateStayIncome(
   input: ICalculateStayIncomeInput
 ): Omit<IPropertyReservationComputedFields, "nights"> {
   const {
-    channel,
+    channelCommission: channelCommissionRow,
     cleaningFee,
     roomTotal: inputRoomTotal,
-    settings,
     taxRates,
     unitRentalType,
   } = input;
@@ -81,18 +77,19 @@ export function calculateStayIncome(
   const taxableBase = roundMoney(roomTotal + cleaningFee);
   const taxBreakdown = buildTaxBreakdown(taxableBase, taxRates);
   const totalTaxes = sumTaxBreakdown(taxBreakdown);
-  const channelCommissionRate = getChannelCommissionRate(channel, settings);
-  const commissionBase = getStayCommissionBase(channel, roomTotal, cleaningFee);
-  const channelCommission = roundMoney(commissionBase * channelCommissionRate);
-  // Airbnb remits the resort tax directly, so it is excluded from the host's gross and
-  // withheld from the payout (netIncome). Other channels keep the standard formula.
-  const resortAdjustment =
-    channel === ReservationChannel.AIRBNB ? getResortTaxAmount(taxBreakdown) : 0;
+  const channelCommissionRate = getChannelCommissionRateFromRow(channelCommissionRow);
+  const commissionBase = getStayCommissionBase(channelCommissionRow, roomTotal, cleaningFee);
+  const channelCommissionAmount = roundMoney(commissionBase * channelCommissionRate);
+  const resortAdjustment = channelCommissionRow.excludeResortTaxFromPayout
+    ? getResortTaxAmount(taxBreakdown)
+    : 0;
   const grossIncome = roundMoney(taxableBase + totalTaxes - resortAdjustment);
-  const netIncome = roundMoney(taxableBase - totalTaxes - channelCommission - resortAdjustment);
+  const netIncome = roundMoney(
+    taxableBase - totalTaxes - channelCommissionAmount - resortAdjustment
+  );
 
   return {
-    channelCommission,
+    channelCommission: channelCommissionAmount,
     channelCommissionRate,
     grossIncome,
     netIncome,

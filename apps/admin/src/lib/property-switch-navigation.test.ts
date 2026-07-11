@@ -28,9 +28,11 @@ describe("sanitizePropertySwitchSearchParams", () => {
   test("keeps cross-property-safe params", () => {
     expect(
       sanitizePropertySwitchSearchParams(
-        "?from=2026-01-01&to=2026-01-31&channel=airbnb&rentalType=short_term"
+        "?from=2026-01-01&to=2026-01-31&channelCommissionId=channel-airbnb&rentalType=short_term"
       )
-    ).toBe("?channel=airbnb&from=2026-01-01&rentalType=short_term&to=2026-01-31");
+    ).toBe(
+      "?channelCommissionId=channel-airbnb&from=2026-01-01&rentalType=short_term&to=2026-01-31"
+    );
   });
 
   test("strips property-scoped params", () => {

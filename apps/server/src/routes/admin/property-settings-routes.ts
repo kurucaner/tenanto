@@ -1,10 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { propertyChannelCommissionsDb } from "@/db/property-channel-commissions";
 import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-types";
 import { propertyIncomeLineTypesDb } from "@/db/property-income-line-types";
 import { propertySettingsDb } from "@/db/property-settings";
 import {
   HttpStatus,
+  type IPropertyChannelCommissionInput,
   type IPropertyExpenseCategoryTypeInput,
   type IPropertyIncomeLineTypeInput,
   type IPropertyTaxRateInput,
@@ -14,24 +16,14 @@ import {
 import { parseUuidParam } from "./admin-query-utils";
 import { assertPropertyMemberAccess, assertPropertyStructureAccess } from "./property-route-access";
 
-const COMMISSION_FIELDS: Array<
-  Exclude<
-    keyof IUpdatePropertySettingsBody,
-    "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
-  >
-> = [
-  "airbnbCommissionRate",
-  "bookingCommissionRate",
-  "expediaCommissionRate",
-  "directCommissionRate",
-];
-
 const MAX_TAX_RATES = 20;
 const MAX_INCOME_LINE_TYPES = 20;
 const MAX_EXPENSE_CATEGORY_TYPES = 50;
+const MAX_CHANNEL_COMMISSIONS = 20;
 const MAX_TAX_NAME_LENGTH = 80;
 const MAX_INCOME_TYPE_NAME_LENGTH = 80;
 const MAX_EXPENSE_CATEGORY_NAME_LENGTH = 80;
+const MAX_CHANNEL_NAME_LENGTH = 80;
 
 function isValidRate(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
@@ -76,6 +68,7 @@ function parseNamedSortableItem(
   const normalizedName = name.toLowerCase();
   if (seenNames.has(normalizedName)) {
     const uniqueErrorMap: Record<string, string> = {
+      channelCommissions: "Channel names must be unique",
       expenseCategoryTypes: "Expense category names must be unique",
       incomeLineTypes: "Income type names must be unique",
       taxRates: "Tax names must be unique",
@@ -234,6 +227,76 @@ function parseExpenseCategoryTypes(
   return { expenseCategoryTypes, ok: true };
 }
 
+function parseChannelCommissionItem(
+  item: unknown,
+  index: number,
+  seenNames: Set<string>
+): { error: string; ok: false } | { channel: IPropertyChannelCommissionInput; ok: true } {
+  const parsed = parseNamedSortableItem(
+    item,
+    index,
+    "channelCommissions",
+    MAX_CHANNEL_NAME_LENGTH,
+    seenNames
+  );
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const rateRaw = (item as Record<string, unknown>)["rate"];
+  if (!isValidRate(rateRaw)) {
+    return { error: `channelCommissions[${index}].rate must be a number between 0 and 1`, ok: false };
+  }
+
+  const record = item as Record<string, unknown>;
+  const excludeCleaningFromCommissionBase =
+    typeof record["excludeCleaningFromCommissionBase"] === "boolean"
+      ? record["excludeCleaningFromCommissionBase"]
+      : false;
+  const excludeResortTaxFromPayout =
+    typeof record["excludeResortTaxFromPayout"] === "boolean"
+      ? record["excludeResortTaxFromPayout"]
+      : false;
+
+  return {
+    channel: {
+      ...parsed.item,
+      excludeCleaningFromCommissionBase,
+      excludeResortTaxFromPayout,
+      rate: rateRaw,
+    },
+    ok: true,
+  };
+}
+
+function parseChannelCommissions(raw: unknown):
+  | { channelCommissions: IPropertyChannelCommissionInput[]; ok: true }
+  | { channelCommissions: IPropertyChannelCommissionInput[]; error: string; ok: false } {
+  if (!Array.isArray(raw)) {
+    return { channelCommissions: [], error: "channelCommissions must be an array", ok: false };
+  }
+  if (raw.length > MAX_CHANNEL_COMMISSIONS) {
+    return {
+      channelCommissions: [],
+      error: `You can configure up to ${MAX_CHANNEL_COMMISSIONS} channel commissions`,
+      ok: false,
+    };
+  }
+
+  const channelCommissions: IPropertyChannelCommissionInput[] = [];
+  const seenNames = new Set<string>();
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const parsed = parseChannelCommissionItem(raw[index], index, seenNames);
+    if (!parsed.ok) {
+      return { ...parsed, channelCommissions: [] };
+    }
+    channelCommissions.push(parsed.channel);
+  }
+
+  return { channelCommissions, ok: true };
+}
+
 function parseUpdateSettingsBody(
   raw: unknown
 ): { body: IUpdatePropertySettingsBody; ok: true } | { error: string; ok: false } {
@@ -243,7 +306,7 @@ function parseUpdateSettingsBody(
 
   const r = raw as Record<string, unknown>;
   const allowedKeys = new Set<string>([
-    ...COMMISSION_FIELDS,
+    "channelCommissions",
     "expenseCategoryTypes",
     "incomeLineTypes",
     "taxRates",
@@ -254,13 +317,13 @@ function parseUpdateSettingsBody(
   }
 
   const body: IUpdatePropertySettingsBody = {};
-  for (const field of COMMISSION_FIELDS) {
-    if (!(field in r)) continue;
-    const value = r[field];
-    if (!isValidRate(value)) {
-      return { error: `${field} must be a number between 0 and 1`, ok: false };
+
+  if ("channelCommissions" in r) {
+    const parsedChannelCommissions = parseChannelCommissions(r["channelCommissions"]);
+    if (!parsedChannelCommissions.ok) {
+      return { error: parsedChannelCommissions.error, ok: false };
     }
-    body[field] = value;
+    body.channelCommissions = parsedChannelCommissions.channelCommissions;
   }
 
   if ("taxRates" in r) {
@@ -328,6 +391,27 @@ async function validateExpenseCategoryTypeRemoval(
     if (count > 0) {
       return {
         error: `Cannot remove "${type.name}" because ${count} expense(s) still use it`,
+        ok: false,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+async function validateChannelCommissionRemoval(
+  propertyId: string,
+  incoming: IPropertyChannelCommissionInput[]
+): Promise<{ error: string; ok: false } | { ok: true }> {
+  const existing = await propertyChannelCommissionsDb.findByProperty(propertyId);
+  const incomingIds = new Set(incoming.flatMap((input) => (input.id != null ? [input.id] : [])));
+  const removed = existing.filter((channel) => !incomingIds.has(channel.id));
+
+  for (const channel of removed) {
+    const count = await propertyChannelCommissionsDb.countUsage(channel.id);
+    if (count > 0) {
+      return {
+        error: `Cannot remove "${channel.name}" because ${count} reservation(s) still use it`,
         ok: false,
       };
     }
@@ -412,6 +496,16 @@ export const propertySettingsRoutes = async (server: FastifyInstance): Promise<v
         const removalCheck = await validateExpenseCategoryTypeRemoval(
           propertyId,
           parsed.body.expenseCategoryTypes
+        );
+        if (!removalCheck.ok) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: removalCheck.error });
+        }
+      }
+
+      if (parsed.body.channelCommissions != null) {
+        const removalCheck = await validateChannelCommissionRemoval(
+          propertyId,
+          parsed.body.channelCommissions
         );
         if (!removalCheck.ok) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: removalCheck.error });

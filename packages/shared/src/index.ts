@@ -104,11 +104,12 @@ export {
 
 // Property Settings Types
 export {
-  DEFAULT_PROPERTY_SETTINGS,
+  DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
   DEFAULT_PROPERTY_TAX_RATES,
   formatRateAsPercent,
+  type IPropertyChannelCommission,
+  type IPropertyChannelCommissionInput,
   type IPropertySettings,
-  type IPropertySettingsDefaults,
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
   type IPropertyTaxRateInput,
@@ -136,9 +137,7 @@ export {
   type IPropertyReservationComputedFields,
   type IPropertyReservationsListQuery,
   type IUpdatePropertyReservationBody,
-  ReservationChannel,
   ReservationStatus,
-  type TReservationChannel,
   type TReservationStatus,
 } from "./property-reservation-types";
 
@@ -268,7 +267,7 @@ export {
   buildStayGrossBreakdown,
   buildStayNetPayoutBreakdown,
   buildStayTaxesBreakdown,
-  getChannelCommissionRate,
+  getChannelCommissionRateFromRow,
   getResortTaxAmount,
   getStayAverageDailyRate,
   getStayCommissionBase,
@@ -280,7 +279,7 @@ export {
   type IStayCalculationLine,
   sumTaxBreakdown,
   type TBreakdownOperand,
-  type TChannelCommissionSettings,
+  type TStayChannelBehavior,
   type TStayCalculationMetric,
 } from "./property-income-utils";
 

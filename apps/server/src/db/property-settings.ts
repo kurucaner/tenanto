@@ -1,36 +1,24 @@
 import {
-  DEFAULT_PROPERTY_SETTINGS,
   type IPropertySettings,
   type IUpdatePropertySettingsBody,
 } from "@/packages/shared";
 
 import { mapPropertySettingsRow } from "./mappers";
 import { pool } from "./pool";
+import { propertyChannelCommissionsDb } from "./property-channel-commissions";
 import { propertyExpenseCategoryTypesDb } from "./property-expense-category-types";
 import { propertyIncomeLineTypesDb } from "./property-income-line-types";
 import { propertyTaxRatesDb } from "./property-tax-rates";
 
-const BODY_TO_COLUMN: Record<
-  Exclude<
-    keyof IUpdatePropertySettingsBody,
-    "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
-  >,
-  string
-> = {
-  airbnbCommissionRate: "airbnb_commission_rate",
-  bookingCommissionRate: "booking_commission_rate",
-  directCommissionRate: "direct_commission_rate",
-  expediaCommissionRate: "expedia_commission_rate",
-};
-
 async function mergeSettingsWithRelated(row: Record<string, unknown>): Promise<IPropertySettings> {
   const base = mapPropertySettingsRow(row);
-  const [taxRates, incomeLineTypes, expenseCategoryTypes] = await Promise.all([
+  const [taxRates, incomeLineTypes, expenseCategoryTypes, channelCommissions] = await Promise.all([
     propertyTaxRatesDb.findByProperty(base.propertyId),
     propertyIncomeLineTypesDb.findByProperty(base.propertyId),
     propertyExpenseCategoryTypesDb.findByProperty(base.propertyId),
+    propertyChannelCommissionsDb.findByProperty(base.propertyId),
   ]);
-  return { ...base, expenseCategoryTypes, incomeLineTypes, taxRates };
+  return { ...base, channelCommissions, expenseCategoryTypes, incomeLineTypes, taxRates };
 }
 
 export const propertySettingsDb = {
@@ -44,27 +32,15 @@ export const propertySettingsDb = {
 
   async getOrCreateDefaults(propertyId: string): Promise<IPropertySettings> {
     await pool.query(
-      `INSERT INTO property_settings (
-         property_id,
-         airbnb_commission_rate,
-         booking_commission_rate,
-         expedia_commission_rate,
-         direct_commission_rate
-       ) VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (property_id) DO NOTHING`,
-      [
-        propertyId,
-        DEFAULT_PROPERTY_SETTINGS.airbnbCommissionRate,
-        DEFAULT_PROPERTY_SETTINGS.bookingCommissionRate,
-        DEFAULT_PROPERTY_SETTINGS.expediaCommissionRate,
-        DEFAULT_PROPERTY_SETTINGS.directCommissionRate,
-      ]
+      `INSERT INTO property_settings (property_id) VALUES ($1) ON CONFLICT (property_id) DO NOTHING`,
+      [propertyId]
     );
 
     await Promise.all([
       propertyTaxRatesDb.seedDefaults(propertyId),
       propertyIncomeLineTypesDb.seedDefaults(propertyId),
       propertyExpenseCategoryTypesDb.seedDefaults(propertyId),
+      propertyChannelCommissionsDb.seedDefaults(propertyId),
     ]);
 
     const settings = await propertySettingsDb.findByProperty(propertyId);
@@ -72,40 +48,6 @@ export const propertySettingsDb = {
       throw new Error(`Failed to load property settings for property ${propertyId}`);
     }
     return settings;
-  },
-
-  async updateCommissions(
-    propertyId: string,
-    input: IUpdatePropertySettingsBody
-  ): Promise<IPropertySettings | null> {
-    const setClauses: string[] = [];
-    const values: unknown[] = [];
-    let p = 1;
-
-    for (const key of Object.keys(BODY_TO_COLUMN) as Array<
-      Exclude<
-        keyof IUpdatePropertySettingsBody,
-        "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
-      >
-    >) {
-      const value = input[key];
-      if (value === undefined) continue;
-      const column = BODY_TO_COLUMN[key];
-      setClauses.push(`${column} = $${p++}`);
-      values.push(value);
-    }
-
-    if (setClauses.length === 0) {
-      return propertySettingsDb.findByProperty(propertyId);
-    }
-
-    values.push(propertyId);
-    const result = await pool.query(
-      `UPDATE property_settings SET ${setClauses.join(", ")} WHERE property_id = $${p} RETURNING *`,
-      values
-    );
-    if (result.rows.length === 0) return null;
-    return mergeSettingsWithRelated(result.rows[0] as Record<string, unknown>);
   },
 
   async updateWithTaxRates(
@@ -132,33 +74,8 @@ export const propertySettingsDb = {
         );
       }
 
-      const setClauses: string[] = [];
-      const values: unknown[] = [];
-      let p = 1;
-
-      for (const key of Object.keys(BODY_TO_COLUMN) as Array<
-        Exclude<
-          keyof IUpdatePropertySettingsBody,
-          "expenseCategoryTypes" | "incomeLineTypes" | "taxRates"
-        >
-      >) {
-        const value = input[key];
-        if (value === undefined) continue;
-        const column = BODY_TO_COLUMN[key];
-        setClauses.push(`${column} = $${p++}`);
-        values.push(value);
-      }
-
-      if (setClauses.length > 0) {
-        values.push(propertyId);
-        const result = await client.query(
-          `UPDATE property_settings SET ${setClauses.join(", ")} WHERE property_id = $${p} RETURNING *`,
-          values
-        );
-        if (result.rows.length === 0) {
-          await client.query("ROLLBACK");
-          return null;
-        }
+      if (input.channelCommissions != null) {
+        await propertyChannelCommissionsDb.replaceAll(propertyId, input.channelCommissions, client);
       }
 
       await client.query("COMMIT");

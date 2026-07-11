@@ -20,8 +20,8 @@ export interface IPropertyTaxBreakdownItem {
   taxRateId: string;
 }
 
-// Name of the resort tax line. Airbnb income excludes this tax from gross/net payout;
-// it is matched by name since tax rates have no stable type/category.
+// Name of the resort tax line. Channels with excludeResortTaxFromPayout exclude this tax
+// from gross/net payout; it is matched by name since tax rates have no stable type/category.
 export const RESORT_TAX_NAME = "Resort tax";
 
 export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "rate">[] = [
@@ -29,6 +29,10 @@ export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "r
   { name: RESORT_TAX_NAME, rate: 0.04 },
 ];
 
+import type {
+  IPropertyChannelCommission,
+  IPropertyChannelCommissionInput,
+} from "./property-channel-commission-config";
 import type {
   IPropertyExpenseCategoryType,
   IPropertyExpenseCategoryTypeInput,
@@ -38,12 +42,12 @@ import type {
   IPropertyIncomeLineTypeInput,
 } from "./property-income-line-type-config";
 
+export type { IPropertyChannelCommission, IPropertyChannelCommissionInput };
+export { DEFAULT_PROPERTY_CHANNEL_COMMISSIONS } from "./property-channel-commission-config";
+
 export interface IPropertySettings {
-  airbnbCommissionRate: number;
-  bookingCommissionRate: number;
+  channelCommissions: IPropertyChannelCommission[];
   createdAt: string;
-  directCommissionRate: number;
-  expediaCommissionRate: number;
   expenseCategoryTypes: IPropertyExpenseCategoryType[];
   incomeLineTypes: IPropertyIncomeLineType[];
   propertyId: string;
@@ -51,25 +55,8 @@ export interface IPropertySettings {
   updatedAt: string;
 }
 
-export interface IPropertySettingsDefaults {
-  airbnbCommissionRate: number;
-  bookingCommissionRate: number;
-  directCommissionRate: number;
-  expediaCommissionRate: number;
-}
-
-export const DEFAULT_PROPERTY_SETTINGS: IPropertySettingsDefaults = {
-  airbnbCommissionRate: 0.155,
-  bookingCommissionRate: 0.15,
-  directCommissionRate: 0.035,
-  expediaCommissionRate: 0.15,
-};
-
 export interface IUpdatePropertySettingsBody {
-  airbnbCommissionRate?: number;
-  bookingCommissionRate?: number;
-  directCommissionRate?: number;
-  expediaCommissionRate?: number;
+  channelCommissions?: IPropertyChannelCommissionInput[];
   expenseCategoryTypes?: IPropertyExpenseCategoryTypeInput[];
   incomeLineTypes?: IPropertyIncomeLineTypeInput[];
   taxRates?: IPropertyTaxRateInput[];
