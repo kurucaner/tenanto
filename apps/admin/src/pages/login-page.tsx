@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
 import { loginSchema, type TLoginFormValues } from "@/lib/auth-form-schemas";
+import { getGoogleClientId, logGoogleAuth } from "@/lib/google-auth-client-id";
 import { useAuthStore } from "@/stores/auth-store";
 
 const LoginPageInner = memo(() => {
@@ -24,6 +25,12 @@ const LoginPageInner = memo(() => {
     defaultValues: { email: "", password: "" },
     resolver: zodResolver(loginSchema),
   });
+
+  useEffect(() => {
+    logGoogleAuth("login page mounted", {
+      hasClientId: Boolean(getGoogleClientId()),
+    });
+  }, []);
 
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitting(true);

@@ -5,12 +5,13 @@ import { toast } from "sonner";
 
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
+import {
+  errorGoogleAuth,
+  getGoogleClientId,
+  logGoogleAuth,
+  warnGoogleAuth,
+} from "@/lib/google-auth-client-id";
 import { useAuthStore } from "@/stores/auth-store";
-
-function getGoogleClientId(): string | undefined {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  return clientId != null && clientId !== "" ? clientId : undefined;
-}
 
 export const GoogleSignInButton = memo(() => {
   const setSession = useAuthStore((s) => s.setSession);
@@ -18,9 +19,19 @@ export const GoogleSignInButton = memo(() => {
   const [submitting, setSubmitting] = useState(false);
   const clientId = getGoogleClientId();
 
+  logGoogleAuth("button render", {
+    clientIdPrefix: clientId?.slice(0, 12),
+    hasClientId: Boolean(clientId),
+  });
+
   const handleSuccess = async (response: CredentialResponse) => {
+    logGoogleAuth("GoogleLogin onSuccess", {
+      hasCredential: Boolean(response.credential),
+    });
+
     const idToken = response.credential;
     if (!idToken) {
+      warnGoogleAuth("GoogleLogin succeeded but credential was empty");
       toast.error("Google sign-in failed");
       return;
     }
@@ -36,6 +47,7 @@ export const GoogleSignInButton = memo(() => {
       toast.success("Signed in");
       navigate("/home", { replace: true });
     } catch (error) {
+      errorGoogleAuth("backend login failed", { error });
       toast.error(getAuthApiErrorMessage(error, "Google sign-in failed"));
     } finally {
       setSubmitting(false);
@@ -43,10 +55,12 @@ export const GoogleSignInButton = memo(() => {
   };
 
   const handleError = () => {
+    errorGoogleAuth("GoogleLogin onError");
     toast.error("Google sign-in was cancelled");
   };
 
   if (!clientId) {
+    warnGoogleAuth("button hidden — no client id");
     return null;
   }
 
