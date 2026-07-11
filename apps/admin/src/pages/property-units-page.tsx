@@ -89,10 +89,14 @@ const UnitRow = memo(
           <RentalTypeBadge type={unit.rentalType} />
         </TableCell>
         <TableCell>
-          {isLongTerm && !unit.isDeleted ? (
-            isVacant ? (
-              <Badge variant="outline">Vacant</Badge>
-            ) : (
+          {(() => {
+            if (!isLongTerm || unit.isDeleted) {
+              return <span className="text-muted-foreground text-xs">—</span>;
+            }
+            if (isVacant) {
+              return <Badge variant="outline">Vacant</Badge>;
+            }
+            return (
               <div className="flex flex-wrap gap-1">
                 {occupancyNames.map((name, index) => (
                   <Badge key={`${name}-${index}`} variant="secondary">
@@ -100,10 +104,8 @@ const UnitRow = memo(
                   </Badge>
                 ))}
               </div>
-            )
-          ) : (
-            <span className="text-muted-foreground text-xs">—</span>
-          )}
+            );
+          })()}
         </TableCell>
         <TableCell className="text-muted-foreground text-xs">
           {new Date(unit.createdAt).toLocaleDateString()}
