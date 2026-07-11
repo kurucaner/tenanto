@@ -3,16 +3,10 @@ import { Settings2 } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import {
-  PropertyExpenseCategoryTypesEditor,
-} from "@/components/settings/property-expense-category-types-editor";
-import {
-  PropertyIncomeLineTypesEditor,
-} from "@/components/settings/property-income-line-types-editor";
+import { PropertyExpenseCategoryTypesEditor } from "@/components/settings/property-expense-category-types-editor";
+import { PropertyIncomeLineTypesEditor } from "@/components/settings/property-income-line-types-editor";
 import { PercentField } from "@/components/settings/property-settings-percent-field";
-import {
-  PropertyTaxRatesEditor,
-} from "@/components/settings/property-tax-rates-editor";
+import { PropertyTaxRatesEditor } from "@/components/settings/property-tax-rates-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -206,7 +200,7 @@ export const usePropertySettingsForm = ({
         </p>
       </CardHeader>
       <Separator />
-      <CardContent className="space-y-8 pt-6">
+      <CardContent className="space-y-8 pt-2">
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-medium">Expense categories</h3>
