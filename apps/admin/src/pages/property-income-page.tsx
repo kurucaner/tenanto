@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus } from "lucide-react";
-import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
+import { memo, type MouseEvent, type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { DataTable } from "@/components/data-table/data-table";
+import {
+  type DataTableColumn,
+  type DataTableSortController,
+} from "@/components/data-table/data-table-types";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
@@ -22,9 +27,7 @@ import { StayCalculationDetailsDialog } from "@/components/income/stay-calculati
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
@@ -85,48 +88,52 @@ function buildMergedEntries(
   return entries;
 }
 
-const INCOME_TABLE_COLUMNS: {
-  align?: "left" | "right";
-  id: TIncomeEntrySortColumnId;
-  info?: string;
-  label: string;
-  sortable?: boolean;
-}[] = [
-  { id: "type", label: "Type" },
-  { id: "unit", label: "Unit" },
-  { id: "guest", label: "Guest" },
-  { id: "date", label: "Date / Check-in" },
-  { id: "checkOut", label: "Check-out" },
-  { id: "nights", label: "Nights" },
-  { id: "channel", label: "Channel" },
-  { id: "status", label: "Status" },
-  { align: "right", id: "roomTotal", label: "Room total" },
-  { align: "right", id: "cleaning", label: "Cleaning" },
+const INCOME_ROW_ESTIMATED_HEIGHT = 64;
+
+const INCOME_SORTABLE_COLUMNS: (DataTableColumn & { id: TIncomeEntrySortColumnId })[] = [
+  { id: "type", label: "Type", sortable: true },
+  { id: "unit", label: "Unit", sortable: true },
+  { id: "guest", label: "Guest", sortable: true },
+  { id: "date", label: "Date / Check-in", sortable: true },
+  { id: "checkOut", label: "Check-out", sortable: true },
+  { id: "nights", label: "Nights", sortable: true },
+  { id: "channel", label: "Channel", sortable: true },
+  { id: "status", label: "Status", sortable: true },
+  { align: "right", id: "roomTotal", label: "Room total", sortable: true },
+  { align: "right", id: "cleaning", label: "Cleaning", sortable: true },
   {
     align: "right",
     id: "taxes",
     info: "Applicable taxes on the room + cleaning subtotal.",
     label: "Taxes",
+    sortable: true,
   },
   {
     align: "right",
     id: "commission",
     info: "Channel commission. Expedia applies the rate to room total only (cleaning fee excluded).",
     label: "Commission",
+    sortable: true,
   },
   {
     align: "right",
     id: "gross",
     info: "Total billed for the stay, including taxes.",
     label: "Gross",
+    sortable: true,
   },
   {
     align: "right",
     id: "netPayout",
     info: "What you keep after the booking channel's commission.",
     label: "Net Payout",
+    sortable: true,
   },
 ];
+
+function getIncomeColumns(canManage: boolean): DataTableColumn[] {
+  return [...INCOME_SORTABLE_COLUMNS, { hidden: !canManage, id: "actions", label: "Actions" }];
+}
 
 const INCOME_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
   channelCommissionId: string;
@@ -218,12 +225,96 @@ function handleCreateIncomeLineOpenChange(
   }
 }
 
+type TIncomeFilterKey =
+  | "channelCommissionId"
+  | "from"
+  | "incomeType"
+  | "status"
+  | "to"
+  | "unitId";
+
+const PropertyIncomeFilters = memo(
+  ({
+    channelCommissionId,
+    channelFilterOptions,
+    from,
+    incomeType,
+    incomeTypeFilterOptions,
+    onFilterChange,
+    showStays,
+    status,
+    to,
+    unitId,
+    units,
+  }: {
+    channelCommissionId: string;
+    channelFilterOptions: { label: string; value: string }[];
+    from: string;
+    incomeType: string;
+    incomeTypeFilterOptions: { label: string; value: string }[];
+    onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    showStays: boolean;
+    status: string;
+    to: string;
+    unitId: string;
+    units: IPropertyUnit[];
+  }) => (
+    <div className={getLedgerFiltersGridClass(6)}>
+      <DateFilterField
+        id="filter-from"
+        label="From"
+        onChange={(e) => onFilterChange("from", e.target.value)}
+        value={from}
+      />
+      <DateFilterField
+        id="filter-to"
+        label="To"
+        onChange={(e) => onFilterChange("to", e.target.value)}
+        value={to}
+      />
+      <FilterSelectField
+        id="filter-unit"
+        label="Unit"
+        onChange={(e) => onFilterChange("unitId", e.target.value)}
+        value={unitId}
+      >
+        <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
+      </FilterSelectField>
+      <FilterSelectField
+        id="filter-income-type"
+        label="Income type"
+        onChange={(e) => onFilterChange("incomeType", e.target.value)}
+        options={incomeTypeFilterOptions}
+        value={incomeType}
+      />
+      <FilterSelectField
+        disabled={!showStays}
+        emptyOptionLabel="All channels"
+        id="filter-channel"
+        label="Channel"
+        onChange={(e) => onFilterChange("channelCommissionId", e.target.value)}
+        options={channelFilterOptions}
+        value={channelCommissionId}
+      />
+      <FilterSelectField
+        disabled={!showStays}
+        emptyOptionLabel="All statuses"
+        id="filter-status"
+        label="Status"
+        onChange={(e) => onFilterChange("status", e.target.value)}
+        options={STATUS_OPTIONS}
+        value={status}
+      />
+    </div>
+  )
+);
+PropertyIncomeFilters.displayName = "PropertyIncomeFilters";
+
 const PropertyIncomeEntriesTable = memo(
   ({
     canManage,
     entries,
-    getColumnAriaSort,
-    getColumnDirection,
+    filters,
     isDeleteLinePending,
     isDeleteStayPending,
     isLoading,
@@ -236,13 +327,12 @@ const PropertyIncomeEntriesTable = memo(
     onRestoreLine,
     onRestoreStay,
     onShowCalculationDetails,
-    onSortColumn,
+    sort,
     unitLabelById,
   }: {
     canManage: boolean;
     entries: TPropertyIncomeEntry[];
-    getColumnAriaSort: (columnId: string) => "ascending" | "descending" | "none";
-    getColumnDirection: (columnId: string) => "asc" | "desc" | null;
+    filters: ReactNode;
     isDeleteLinePending: boolean;
     isDeleteStayPending: boolean;
     isLoading: boolean;
@@ -255,78 +345,60 @@ const PropertyIncomeEntriesTable = memo(
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
-    onSortColumn: (columnId: string) => void;
+    sort: DataTableSortController;
     unitLabelById: Map<string, string>;
   }) => {
-    if (isLoading) {
-      return (
-        <div className="space-y-3">
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      );
-    }
+    const renderIncomeEntryRow = useCallback(
+      (entry: TPropertyIncomeEntry) => (
+        <IncomeEntryRow
+          canManage={canManage}
+          entry={entry}
+          isDeleteLinePending={isDeleteLinePending}
+          isDeleteStayPending={isDeleteStayPending}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={getIncomeEntryKey(entry)}
+          onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
+          onDeleteLine={onDeleteLine}
+          onDeleteStay={onDeleteStay}
+          onEditLine={onEditLine}
+          onEditStay={onEditStay}
+          onRestoreLine={onRestoreLine}
+          onRestoreStay={onRestoreStay}
+          onShowCalculationDetails={onShowCalculationDetails}
+          unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
+        />
+      ),
+      [
+        canManage,
+        isDeleteLinePending,
+        isDeleteStayPending,
+        isQuickDeleteActive,
+        onAddOtherIncomeFromStay,
+        onDeleteLine,
+        onDeleteStay,
+        onEditLine,
+        onEditStay,
+        onRestoreLine,
+        onRestoreStay,
+        onShowCalculationDetails,
+        unitLabelById,
+      ]
+    );
+
+    const columns = useMemo(() => getIncomeColumns(canManage), [canManage]);
 
     return (
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {INCOME_TABLE_COLUMNS.map((column) => (
-                <SortableTableHead
-                  align={column.align}
-                  ariaSort={getColumnAriaSort(column.id)}
-                  direction={getColumnDirection(column.id)}
-                  info={column.info}
-                  key={column.id}
-                  label={column.label}
-                  onSort={() => onSortColumn(column.id)}
-                />
-              ))}
-              {canManage ? (
-                <SortableTableHead
-                  ariaSort="none"
-                  direction={null}
-                  label="Actions"
-                  onSort={() => {}}
-                  sortable={false}
-                />
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {entries.length === 0 ? (
-              <TableRow>
-                <TableCell className="text-muted-foreground" colSpan={canManage ? 15 : 14}>
-                  No income entries yet.
-                  {canManage ? " Add a stay or other income to get started." : ""}
-                </TableCell>
-              </TableRow>
-            ) : (
-              entries.map((entry) => (
-                <IncomeEntryRow
-                  canManage={canManage}
-                  entry={entry}
-                  isDeleteLinePending={isDeleteLinePending}
-                  isDeleteStayPending={isDeleteStayPending}
-                  isQuickDeleteActive={isQuickDeleteActive}
-                  key={getIncomeEntryKey(entry)}
-                  onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
-                  onDeleteLine={onDeleteLine}
-                  onDeleteStay={onDeleteStay}
-                  onEditLine={onEditLine}
-                  onEditStay={onEditStay}
-                  onRestoreLine={onRestoreLine}
-                  onRestoreStay={onRestoreStay}
-                  onShowCalculationDetails={onShowCalculationDetails}
-                  unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
-                />
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        emptyMessage={`No income entries yet.${canManage ? " Add a stay or other income to get started." : ""}`}
+        filters={filters}
+        getItemKey={getIncomeEntryKey}
+        isPending={isLoading}
+        items={entries}
+        renderRow={renderIncomeEntryRow}
+        sort={sort}
+        virtualization={{ estimateRowHeight: INCOME_ROW_ESTIMATED_HEIGHT }}
+      />
     );
   }
 );
@@ -764,10 +836,11 @@ const PropertyIncomePage = memo(() => {
   } | null>(null);
   const { filters, setFilter } = useUrlFilterState(INCOME_URL_FILTER_SCHEMA);
   const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
-  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
+  const sortController = useUrlTableSort({
     defaultColumnId: "date",
     defaultDirection: "desc",
   });
+  const { sortState } = sortController;
 
   const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
 
@@ -936,60 +1009,25 @@ const PropertyIncomePage = memo(() => {
   return (
     <>
       <Card>
-        <CardContent className="space-y-4 p-4">
-          <div className={getLedgerFiltersGridClass(6)}>
-            <DateFilterField
-              id="filter-from"
-              label="From"
-              onChange={(e) => setFilter("from", e.target.value)}
-              value={from}
-            />
-            <DateFilterField
-              id="filter-to"
-              label="To"
-              onChange={(e) => setFilter("to", e.target.value)}
-              value={to}
-            />
-            <FilterSelectField
-              id="filter-unit"
-              label="Unit"
-              onChange={(e) => setFilter("unitId", e.target.value)}
-              value={unitId}
-            >
-              <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
-            </FilterSelectField>
-            <FilterSelectField
-              id="filter-income-type"
-              label="Income type"
-              onChange={(e) => setFilter("incomeType", e.target.value)}
-              options={incomeTypeFilterOptions}
-              value={incomeType}
-            />
-            <FilterSelectField
-              disabled={!showStays}
-              emptyOptionLabel="All channels"
-              id="filter-channel"
-              label="Channel"
-              onChange={(e) => setFilter("channelCommissionId", e.target.value)}
-              options={channelFilterOptions}
-              value={channelCommissionId}
-            />
-            <FilterSelectField
-              disabled={!showStays}
-              emptyOptionLabel="All statuses"
-              id="filter-status"
-              label="Status"
-              onChange={(e) => setFilter("status", e.target.value)}
-              options={STATUS_OPTIONS}
-              value={status}
-            />
-          </div>
-
+        <CardContent className="space-y-4 p-0">
           <PropertyIncomeEntriesTable
             canManage={canManage}
             entries={sortedEntries}
-            getColumnAriaSort={getColumnAriaSort}
-            getColumnDirection={getColumnDirection}
+            filters={
+              <PropertyIncomeFilters
+                channelCommissionId={channelCommissionId}
+                channelFilterOptions={channelFilterOptions}
+                from={from}
+                incomeType={incomeType}
+                incomeTypeFilterOptions={incomeTypeFilterOptions}
+                onFilterChange={setFilter}
+                showStays={showStays}
+                status={status}
+                to={to}
+                unitId={unitId}
+                units={units}
+              />
+            }
             isDeleteLinePending={deleteLineMutation.isPending}
             isDeleteStayPending={deleteStayMutation.isPending}
             isLoading={isLoading}
@@ -1008,7 +1046,7 @@ const PropertyIncomePage = memo(() => {
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
             onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
             onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
-            onSortColumn={toggleSort}
+            sort={sortController}
             unitLabelById={unitLabelById}
           />
         </CardContent>
