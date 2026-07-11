@@ -31,7 +31,7 @@ const SupportRequestTableRow = memo(
         className="cursor-pointer"
         onClick={() => navigate(`/support-requests/${encodeURIComponent(row.id)}`)}
       >
-        <TableCell className="max-w-[120px] font-mono text-xs text-muted-foreground">
+        <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
           {new Date(row.createdAt).toLocaleString()}
         </TableCell>
         <TableCell>
@@ -78,7 +78,7 @@ const SupportRequestTableRow = memo(
             <p className="text-muted-foreground mt-1 text-xs">{row.messageCount} messages</p>
           ) : null}
         </TableCell>
-        <TableCell className="max-w-[120px] text-xs text-muted-foreground">
+        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
           {new Date(row.updatedAt).toLocaleString()}
         </TableCell>
       </TableRow>
