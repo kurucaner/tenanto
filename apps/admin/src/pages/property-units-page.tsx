@@ -3,23 +3,18 @@ import { CirclePlus, Pencil, Plus } from "lucide-react";
 import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { DataTable } from "@/components/data-table/data-table";
+import {
+  type DataTableColumn,
+  type DataTableSortController,
+} from "@/components/data-table/data-table-types";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SortableTableHead } from "@/components/ui/sortable-table-head";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
@@ -30,7 +25,6 @@ import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { type TAriaSort, type TSortDirection } from "@/lib/table-sort";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import { sortUnits } from "@/lib/unit-sort";
 import {
@@ -154,113 +148,111 @@ const UnitRow = memo(
 );
 UnitRow.displayName = "UnitRow";
 
-const UnitsTableSkeleton = memo(() => (
-  <div className="space-y-3 p-6">
-    <Skeleton className="h-8 w-full" />
-    <Skeleton className="h-8 w-full" />
-    <Skeleton className="h-8 w-full" />
-  </div>
-));
-UnitsTableSkeleton.displayName = "UnitsTableSkeleton";
+const UNIT_ROW_ESTIMATED_HEIGHT = 44;
+
+function getUnitKey(unit: IPropertyUnit): string {
+  return unit.id;
+}
+
+function getUnitColumns(canManage: boolean): DataTableColumn[] {
+  return [
+    { id: "name", label: "Name" },
+    { id: "layout", label: "Layout" },
+    { id: "type", label: "Type", sortable: true },
+    { id: "occupancy", label: "Occupancy" },
+    { id: "added", label: "Added" },
+    { hidden: !canManage, id: "actions", label: "Actions" },
+  ];
+}
 
 const PropertyUnitsTable = memo(
   ({
     activeLeaseByUnitId,
     canManage,
-    getColumnAriaSort,
-    getColumnDirection,
     isDeletePending,
+    isPending,
     isQuickDeleteActive,
     onDelete,
     onEdit,
     onRestore,
     onStartLease,
+    sort,
     sortedUnits,
-    toggleSort,
-    units,
     unitTypeCounts,
   }: {
     activeLeaseByUnitId: Map<string, IPropertyLongStay>;
     canManage: boolean;
-    getColumnAriaSort: (columnId: string) => TAriaSort;
-    getColumnDirection: (columnId: string) => TSortDirection | null;
     isDeletePending: boolean;
+    isPending: boolean;
     isQuickDeleteActive: boolean;
     onDelete: (unit: IPropertyUnit, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (unit: IPropertyUnit) => void;
     onRestore: (unit: IPropertyUnit) => void;
     onStartLease: (unit: IPropertyUnit) => void;
+    sort: DataTableSortController;
     sortedUnits: IPropertyUnit[];
-    toggleSort: (columnId: string) => void;
-    units: IPropertyUnit[];
     unitTypeCounts: { longTerm: number; shortTerm: number; total: number };
   }) => {
-    const colSpan = canManage ? 6 : 5;
+    const renderUnitRow = useCallback(
+      (unit: IPropertyUnit) => (
+        <UnitRow
+          activeLease={activeLeaseByUnitId.get(unit.id)}
+          canManage={canManage}
+          isDeletePending={isDeletePending}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={unit.id}
+          onDelete={onDelete}
+          onEdit={onEdit}
+          onRestore={onRestore}
+          onStartLease={onStartLease}
+          unit={unit}
+        />
+      ),
+      [
+        activeLeaseByUnitId,
+        canManage,
+        isDeletePending,
+        isQuickDeleteActive,
+        onDelete,
+        onEdit,
+        onRestore,
+        onStartLease,
+      ]
+    );
+
+    const columns = useMemo(() => getUnitColumns(canManage), [canManage]);
+    const colSpan = columns.filter((column) => !column.hidden).length;
 
     return (
-      <Table>
-        <TableHeader>
+      <DataTable
+        columns={columns}
+        emptyMessage={`No units yet.${canManage ? " Add a unit to get started." : ""}`}
+        footer={
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Layout</TableHead>
-            <SortableTableHead
-              ariaSort={getColumnAriaSort("type")}
-              direction={getColumnDirection("type")}
-              label="Type"
-              onSort={() => toggleSort("type")}
-            />
-            <TableHead>Occupancy</TableHead>
-            <TableHead>Added</TableHead>
-            {canManage ? <TableHead>Actions</TableHead> : null}
+            <TableCell className="text-muted-foreground text-xs" colSpan={colSpan}>
+              <div className="flex items-center gap-4">
+                <span>
+                  Total: <span className="text-foreground font-medium">{unitTypeCounts.total}</span>
+                </span>
+                <span>
+                  Short Term:{" "}
+                  <span className="text-foreground font-medium">{unitTypeCounts.shortTerm}</span>
+                </span>
+                <span>
+                  Long Term:{" "}
+                  <span className="text-foreground font-medium">{unitTypeCounts.longTerm}</span>
+                </span>
+              </div>
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedUnits.length === 0 ? (
-            <TableRow>
-              <TableCell className="text-muted-foreground" colSpan={colSpan}>
-                No units yet.{canManage ? " Add a unit to get started." : ""}
-              </TableCell>
-            </TableRow>
-          ) : (
-            sortedUnits.map((unit) => (
-              <UnitRow
-                activeLease={activeLeaseByUnitId.get(unit.id)}
-                canManage={canManage}
-                isDeletePending={isDeletePending}
-                isQuickDeleteActive={isQuickDeleteActive}
-                key={unit.id}
-                onDelete={onDelete}
-                onEdit={onEdit}
-                onRestore={onRestore}
-                onStartLease={onStartLease}
-                unit={unit}
-              />
-            ))
-          )}
-        </TableBody>
-        {units.length > 0 ? (
-          <TableFooter>
-            <TableRow>
-              <TableCell className="text-muted-foreground text-xs" colSpan={colSpan}>
-                <div className="flex items-center gap-4">
-                  <span>
-                    Total:{" "}
-                    <span className="text-foreground font-medium">{unitTypeCounts.total}</span>
-                  </span>
-                  <span>
-                    Short Term:{" "}
-                    <span className="text-foreground font-medium">{unitTypeCounts.shortTerm}</span>
-                  </span>
-                  <span>
-                    Long Term:{" "}
-                    <span className="text-foreground font-medium">{unitTypeCounts.longTerm}</span>
-                  </span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableFooter>
-        ) : null}
-      </Table>
+        }
+        getItemKey={getUnitKey}
+        isPending={isPending}
+        items={sortedUnits}
+        renderRow={renderUnitRow}
+        sort={sort}
+        virtualization={{ estimateRowHeight: UNIT_ROW_ESTIMATED_HEIGHT }}
+      />
     );
   }
 );
@@ -325,10 +317,11 @@ export const PropertyUnitsPage = memo(() => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
   const [startLeaseUnit, setStartLeaseUnit] = useState<IPropertyUnit | null>(null);
-  const { getColumnAriaSort, getColumnDirection, sortState, toggleSort } = useUrlTableSort({
+  const sortController = useUrlTableSort({
     defaultColumnId: "type",
     defaultDirection: "asc",
   });
+  const { sortState } = sortController;
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
@@ -416,26 +409,20 @@ export const PropertyUnitsPage = memo(() => {
     <>
       <Card>
         <CardContent className="p-0">
-          {unitsQuery.isPending ? (
-            <UnitsTableSkeleton />
-          ) : (
-            <PropertyUnitsTable
-              activeLeaseByUnitId={activeLeaseByUnitId}
-              canManage={canManage}
-              getColumnAriaSort={getColumnAriaSort}
-              getColumnDirection={getColumnDirection}
-              isDeletePending={deleteMutation.isPending}
-              isQuickDeleteActive={isQuickDeleteActive}
-              onDelete={handleDelete}
-              onEdit={setEditUnit}
-              onRestore={handleRestoreUnit}
-              onStartLease={setStartLeaseUnit}
-              sortedUnits={sortedUnits}
-              toggleSort={toggleSort}
-              units={units}
-              unitTypeCounts={unitTypeCounts}
-            />
-          )}
+          <PropertyUnitsTable
+            activeLeaseByUnitId={activeLeaseByUnitId}
+            canManage={canManage}
+            isDeletePending={deleteMutation.isPending}
+            isPending={unitsQuery.isPending}
+            isQuickDeleteActive={isQuickDeleteActive}
+            onDelete={handleDelete}
+            onEdit={setEditUnit}
+            onRestore={handleRestoreUnit}
+            onStartLease={setStartLeaseUnit}
+            sort={sortController}
+            sortedUnits={sortedUnits}
+            unitTypeCounts={unitTypeCounts}
+          />
         </CardContent>
       </Card>
 

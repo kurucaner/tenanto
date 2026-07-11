@@ -3,6 +3,8 @@ import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { DataTable } from "@/components/data-table/data-table";
+import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import {
   CreateIncomeLineDialog,
@@ -13,15 +15,7 @@ import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import {
@@ -33,7 +27,6 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
-import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
@@ -43,6 +36,7 @@ import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
+  type IPropertyUnit,
   PropertyLongStayStatus,
   resolveRentIncomeLineTypeId,
   type TPropertyLongStayStatus,
@@ -53,6 +47,22 @@ const LEASE_STATUS_FILTER_OPTIONS = [
   { label: "Active", value: PropertyLongStayStatus.ACTIVE },
   { label: "Ended", value: PropertyLongStayStatus.ENDED },
 ] as const;
+
+const LEASE_ROW_ESTIMATED_HEIGHT = 44;
+
+const LEASE_COLUMNS: DataTableColumn[] = [
+  { id: "unit", label: "Unit" },
+  { id: "tenant", label: "Tenant" },
+  { id: "start", label: "Start" },
+  { id: "end", label: "End" },
+  { align: "right", id: "rent", label: "Rent/mo" },
+  { id: "status", label: "Status" },
+  { id: "actions", label: "Actions" },
+];
+
+function getLeaseKey(lease: IPropertyLongStay): string {
+  return lease.id;
+}
 
 const LEASE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
   status: string;
@@ -168,6 +178,42 @@ const LeaseRow = memo(
 );
 LeaseRow.displayName = "LeaseRow";
 
+const PropertyLeaseFilters = memo(
+  ({
+    onStatusChange,
+    onUnitIdChange,
+    status,
+    unitId,
+    units,
+  }: {
+    onStatusChange: (value: string) => void;
+    onUnitIdChange: (value: string) => void;
+    status: string;
+    unitId: string;
+    units: IPropertyUnit[];
+  }) => (
+    <div className={getLedgerFiltersGridClass(2)}>
+      <FilterSelectField
+        id="lease-filter-status"
+        label="Status"
+        onChange={(e) => onStatusChange(e.target.value)}
+        options={LEASE_STATUS_FILTER_OPTIONS}
+        value={status}
+      />
+      <FilterSelectField
+        emptyOptionLabel="All units"
+        id="lease-filter-unit"
+        label="Unit"
+        onChange={(e) => onUnitIdChange(e.target.value)}
+        value={unitId}
+      >
+        <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
+      </FilterSelectField>
+    </div>
+  )
+);
+PropertyLeaseFilters.displayName = "PropertyLeaseFilters";
+
 export const PropertyLeasesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
@@ -262,91 +308,45 @@ export const PropertyLeasesPage = memo(() => {
     [propertyId, queryClient, rentIncomeLineTypeId]
   );
 
-  const leases = longStays;
+  const renderLeaseRow = useCallback(
+    (lease: IPropertyLongStay) => (
+      <LeaseRow
+        canManage={canManage}
+        key={lease.id}
+        lease={lease}
+        leaseDetailPath={`/properties/${propertyId}/leases/${lease.id}`}
+        onEndLease={setEndLease}
+        onRecordRent={handleRecordRent}
+        unitLabel={unitLabelById.get(lease.unitId) ?? lease.unitId}
+      />
+    ),
+    [canManage, handleRecordRent, propertyId, unitLabelById]
+  );
 
   return (
     <>
       <Card>
-        <CardContent className="p-0">
-          <div className={`border-b p-4 ${getLedgerFiltersGridClass(2)}`}>
-            <FilterSelectField
-              id="lease-filter-status"
-              label="Status"
-              onChange={(e) => setFilters({ status: e.target.value })}
-              options={LEASE_STATUS_FILTER_OPTIONS}
-              value={status}
-            />
-            <FilterSelectField
-              emptyOptionLabel="All units"
-              id="lease-filter-unit"
-              label="Unit"
-              onChange={(e) => setFilters({ unitId: e.target.value })}
-              value={unitId}
-            >
-              <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
-            </FilterSelectField>
-          </div>
-
-          {isPending ? (
-            <div className="space-y-3 p-6">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Tenant</TableHead>
-                    <TableHead>Start</TableHead>
-                    <TableHead>End</TableHead>
-                    <TableHead className="text-right">Rent/mo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leases.length === 0 ? (
-                    <TableRow>
-                      <TableCell className="text-muted-foreground" colSpan={7}>
-                        No leases yet.{canManage ? " Start a lease to get started." : ""}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    leases.map((lease) => (
-                      <LeaseRow
-                        canManage={canManage}
-                        key={lease.id}
-                        lease={lease}
-                        leaseDetailPath={`/properties/${propertyId}/leases/${lease.id}`}
-                        onEndLease={setEndLease}
-                        onRecordRent={handleRecordRent}
-                        unitLabel={unitLabelById.get(lease.unitId) ?? lease.unitId}
-                      />
-                    ))
-                  )}
-                  {isFetchingNextPage ? (
-                    <TableRow>
-                      <TableCell colSpan={7}>
-                        <Skeleton className="h-8 w-full" />
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-              <div aria-hidden className="h-px w-full" ref={scrollSentinelRef} />
-              {leases.length > 0 && !hasNextPage && !isFetchingNextPage ? (
-                <p className="text-muted-foreground py-3 text-center text-sm">
-                  {getInfiniteListLoadMoreLabel({
-                    hasNextPage: false,
-                    isFetchingNextPage: false,
-                  })}
-                </p>
-              ) : null}
-            </>
-          )}
+        <CardContent className="space-y-4 p-0">
+          <DataTable
+            columns={LEASE_COLUMNS}
+            emptyMessage={`No leases yet.${canManage ? " Start a lease to get started." : ""}`}
+            filters={
+              <PropertyLeaseFilters
+                onStatusChange={(value) => setFilters({ status: value })}
+                onUnitIdChange={(value) => setFilters({ unitId: value })}
+                status={status}
+                unitId={unitId}
+                units={units}
+              />
+            }
+            getItemKey={getLeaseKey}
+            infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+            infiniteScrollSentinelRef={scrollSentinelRef}
+            isPending={isPending}
+            items={longStays}
+            renderRow={renderLeaseRow}
+            virtualization={{ estimateRowHeight: LEASE_ROW_ESTIMATED_HEIGHT }}
+          />
         </CardContent>
       </Card>
 
