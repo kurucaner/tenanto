@@ -31,7 +31,6 @@ import { optionalNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   getMinCheckOutDate,
-  getTodayLocalIsoDate,
   isValidStayDateRange,
   shouldClearCheckOutOnCheckInChange,
 } from "@/lib/reservation-date-utils";
@@ -60,14 +59,6 @@ const createReservationSchema = z
     unitId: z.string().min(1, "Unit is required"),
   })
   .superRefine((values, ctx) => {
-    if (values.checkIn !== "" && values.checkIn < getTodayLocalIsoDate()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Check-in cannot be in the past",
-        path: ["checkIn"],
-      });
-    }
-
     if (!isValidStayDateRange(values.checkIn, values.checkOut)) {
       ctx.addIssue({
         code: "custom",
@@ -126,7 +117,6 @@ export const CreateReservationDialog = memo(
       [unitsQuery.data?.units]
     );
 
-    const minCheckInDate = getTodayLocalIsoDate();
     const minCheckOutDate = getMinCheckOutDate(checkIn);
 
     const mutation = useMutation({
@@ -219,7 +209,6 @@ export const CreateReservationDialog = memo(
                     render={({ field }) => (
                       <Input
                         id="check-in"
-                        min={minCheckInDate}
                         onChange={(e) => {
                           const nextCheckIn = e.target.value;
                           field.onChange(nextCheckIn);
