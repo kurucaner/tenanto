@@ -448,6 +448,27 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
     }
   );
 
+  server.post<{ Params: { id: string } }>(
+    "/support/:id/close",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const idParsed = parseUuidParam(request.params.id);
+      if (idParsed === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid support request id" });
+      }
+
+      const updated = await supportRequestsDb.closeForUser(idParsed, request.user.userId);
+      if (updated == null) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Support request not found" });
+      }
+
+      publishSupportRequestUpdated(idParsed, request.user.userId, request.log);
+
+      const detail = await supportRequestsDb.findDetailByIdForUser(idParsed, request.user.userId);
+      return reply.send({ item: detail });
+    }
+  );
+
   server.patch<{ Params: { id: string } }>(
     "/support/:id",
     { preHandler: adminPre },

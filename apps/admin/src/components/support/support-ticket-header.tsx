@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { supportDetailMetaClass } from "@/components/support/support-constants";
 import { SupportStatusBadge } from "@/components/support/support-status-badge";
 import { SupportTicketTriageActions } from "@/components/support/support-ticket-triage-actions";
+import { SupportTicketUserActions } from "@/components/support/support-ticket-user-actions";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useNotificationStreamStatus } from "@/contexts/notification-stream-context";
@@ -18,9 +19,11 @@ import {
 
 export interface SupportTicketHeaderProps {
   category: SupportCategory;
+  closeBusy: boolean;
   createdAt: string;
   id: string;
   isAdmin: boolean;
+  onClose: () => void;
   onPatchStatus: (status: TAdminSupportRequestSettableStatus) => void;
   patchBusy: boolean;
   status: SupportRequestStatus;
@@ -57,9 +60,11 @@ LiveIndicator.displayName = "SupportTicketLiveIndicator";
 export const SupportTicketHeader = memo(
   ({
     category,
+    closeBusy,
     createdAt,
     id,
     isAdmin,
+    onClose,
     onPatchStatus,
     patchBusy,
     status,
@@ -85,15 +90,17 @@ export const SupportTicketHeader = memo(
             <LiveIndicator />
           </div>
 
-          {isAdmin ? (
-            <div className="ml-auto flex min-h-8 items-center gap-2">
+          <div className="ml-auto flex min-h-8 items-center gap-2">
+            {isAdmin ? (
               <SupportTicketTriageActions
                 busy={patchBusy}
                 onPatchStatus={onPatchStatus}
                 status={status}
               />
-            </div>
-          ) : null}
+            ) : (
+              <SupportTicketUserActions busy={closeBusy} onClose={onClose} status={status} />
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

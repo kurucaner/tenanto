@@ -125,3 +125,7 @@ export interface ISupportRequestsListResponse {
   items: ISupportRequestListItem[];
   nextCursor: string | null;
 }
+
+export interface ISupportCloseResponse {
+  item: ISupportRequestDetail;
+}

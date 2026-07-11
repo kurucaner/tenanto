@@ -99,6 +99,15 @@ function buildListFilters(params: {
 }
 
 export const supportRequestsDb = {
+  async closeForUser(id: string, userId: string): Promise<ISupportRequest | null> {
+    const result = await pool.query(
+      `UPDATE support_requests SET status = 'resolved' WHERE id = $1 AND user_id = $2 RETURNING *`,
+      [id, userId]
+    );
+    if (result.rows.length === 0) return null;
+    return mapSupportRequestRow(result.rows[0] as Record<string, unknown>);
+  },
+
   async createWithInitialMessage(input: CreateSupportRequestInput): Promise<ISupportRequestDetail> {
     const client = await pool.connect();
     try {

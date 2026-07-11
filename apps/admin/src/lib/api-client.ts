@@ -44,6 +44,7 @@ import {
   type IPropertyUnit,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
+  type ISupportCloseResponse,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
   type ISupportRequestDetail,
@@ -435,6 +436,12 @@ export interface ISupportCreateResponse {
 }
 
 export const supportApi = {
+  close: (id: string) =>
+    authenticatedRequest<ISupportCloseResponse>(`/support/${encodeURIComponent(id)}/close`, {
+      method: "POST",
+      omitDefaultContentType: true,
+    }),
+
   create: (body: ISupportCreateBody) =>
     authenticatedRequest<ISupportCreateResponse>("/support", {
       body: JSON.stringify(body),

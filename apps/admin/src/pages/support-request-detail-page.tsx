@@ -37,19 +37,30 @@ const DetailLoadingShell = memo(() => (
 DetailLoadingShell.displayName = "SupportDetailLoadingShell";
 
 interface SupportTicketHeaderSectionProps {
+  closeBusy: boolean;
   isAdmin: boolean;
+  onClose: () => void;
   onPatchStatus: (status: TAdminSupportRequestSettableStatus) => void;
   patchBusy: boolean;
   ticket: ISupportRequest;
 }
 
 const SupportTicketHeaderSection = memo(
-  ({ isAdmin, onPatchStatus, patchBusy, ticket }: SupportTicketHeaderSectionProps) => (
+  ({
+    closeBusy,
+    isAdmin,
+    onClose,
+    onPatchStatus,
+    patchBusy,
+    ticket,
+  }: SupportTicketHeaderSectionProps) => (
     <SupportTicketHeader
       category={ticket.category}
+      closeBusy={closeBusy}
       createdAt={ticket.createdAt}
       id={ticket.id}
       isAdmin={isAdmin}
+      onClose={onClose}
       onPatchStatus={onPatchStatus}
       patchBusy={patchBusy}
       status={ticket.status}
@@ -140,6 +151,22 @@ const SupportRequestDetailPageInner = memo(() => {
     },
   });
 
+  const closeMutation = useMutation({
+    mutationFn: (id: string) => supportApi.close(id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Could not close ticket");
+    },
+    onSuccess: (data) => {
+      toast.success("Ticket closed");
+      queryClient.setQueryData<ISupportRequestDetail | undefined>(
+        adminQueryKeys.supportRequest(data.item.item.id),
+        (old) => (old == null ? old : { ...old, item: { ...old.item, status: "resolved" } })
+      );
+      queryClient.invalidateQueries({ queryKey: ["support-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["support", "list"] });
+    },
+  });
+
   const handlePatchStatus = useCallback(
     (status: TAdminSupportRequestSettableStatus) => {
       if (!supportRequestId) return;
@@ -147,6 +174,11 @@ const SupportRequestDetailPageInner = memo(() => {
     },
     [patchMutation, supportRequestId]
   );
+
+  const handleClose = useCallback(() => {
+    if (!supportRequestId) return;
+    closeMutation.mutate(supportRequestId);
+  }, [closeMutation, supportRequestId]);
 
   const invalidateLists = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["support-requests"] });
@@ -197,7 +229,8 @@ const SupportRequestDetailPageInner = memo(() => {
 
   const ticket = ticketQuery.data;
   const messages = messagesQuery.data ?? [];
-  const busy = patchMutation.isPending;
+  const patchBusy = patchMutation.isPending;
+  const closeBusy = closeMutation.isPending;
 
   if (ticket == null) {
     return null;
@@ -207,9 +240,11 @@ const SupportRequestDetailPageInner = memo(() => {
     <div className={supportDetailFullBleedClass}>
       <SupportTicketDetailShell>
         <SupportTicketHeaderSection
+          closeBusy={closeBusy}
           isAdmin={isAdmin}
+          onClose={handleClose}
           onPatchStatus={handlePatchStatus}
-          patchBusy={busy}
+          patchBusy={patchBusy}
           ticket={ticket}
         />
 

@@ -48,6 +48,7 @@ export type {
   ISupportAttachmentPresignFile,
   ISupportAttachmentPresignItem,
   ISupportAttachmentPresignResponse,
+  ISupportCloseResponse,
   ISupportCreateBody,
   ISupportMessage,
   ISupportMessageCreateBody,
