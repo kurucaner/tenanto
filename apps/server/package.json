@@ -21,6 +21,7 @@
     "@aws-sdk/client-s3": "^3.999.0",
     "@aws-sdk/client-scheduler": "^3.1002.0",
     "@aws-sdk/client-sesv2": "^3.1002.0",
+    "@aws-sdk/client-sns": "^3.1085.0",
     "@aws-sdk/s3-request-presigner": "^3.999.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",
