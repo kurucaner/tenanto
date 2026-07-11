@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import {
   ReservationChannel,
   ReservationStatus,
@@ -6,11 +5,7 @@ import {
   type TReservationStatus,
 } from "@/packages/shared";
 
-export const reservationSelectClassName = cn(
-  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none",
-  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-  "dark:bg-input/30"
-);
+export { nativeSelectClassName as reservationSelectClassName } from "@/lib/native-select-class-name";
 
 export const STATUS_OPTIONS: { label: string; value: TReservationStatus }[] = [
   { label: "Active", value: ReservationStatus.ACTIVE },

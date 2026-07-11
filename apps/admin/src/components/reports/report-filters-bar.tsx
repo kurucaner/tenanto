@@ -10,10 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
-import { cn } from "@/lib/utils";
 import type { IPropertyUnit } from "@/packages/shared";
-
-const reportSelectClassName = cn(reservationSelectClassName, "bg-background");
 
 export interface ReportFiltersBarProps {
   channel?: string;
@@ -74,7 +71,7 @@ export const ReportFiltersBar = memo(
             <FilterField>
               <Label htmlFor="report-unit">Unit</Label>
               <select
-                className={reportSelectClassName}
+                className={reservationSelectClassName}
                 id="report-unit"
                 onChange={(e) => onUnitChange?.(e.target.value)}
                 value={unitId}
@@ -87,7 +84,7 @@ export const ReportFiltersBar = memo(
             <FilterField>
               <Label htmlFor="report-channel">Channel</Label>
               <select
-                className={reportSelectClassName}
+                className={reservationSelectClassName}
                 id="report-channel"
                 onChange={(e) => onChannelChange?.(e.target.value)}
                 value={channel}
@@ -104,7 +101,7 @@ export const ReportFiltersBar = memo(
           <FilterField>
             <Label htmlFor="report-rental-type">Rental type</Label>
             <select
-              className={reportSelectClassName}
+              className={reservationSelectClassName}
               id="report-rental-type"
               onChange={(e) => onRentalTypeChange(e.target.value)}
               value={rentalType}
