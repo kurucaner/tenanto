@@ -21,6 +21,23 @@ else
   bunx lint-staged
 fi
 
+SHARED_CHANGED=$(echo "$CHANGED" | grep -q "packages/shared/" && echo "true" || echo "false")
+
+if [ "$SHARED_CHANGED" = "true" ] || echo "$CHANGED" | grep -q "apps/admin/"; then
+  echo "▸ Type-checking admin…"
+  (cd apps/admin && tsc -p tsconfig.app.json --noEmit)
+fi
+
+if [ "$SHARED_CHANGED" = "true" ] || echo "$CHANGED" | grep -q "apps/server/"; then
+  echo "▸ Type-checking server…"
+  (cd apps/server && tsc -p tsconfig.json --noEmit)
+fi
+
+if [ "$SHARED_CHANGED" = "true" ] || echo "$CHANGED" | grep -q "apps/web/"; then
+  echo "▸ Type-checking web…"
+  (cd apps/web && tsc -p tsconfig.json --noEmit)
+fi
+
 if ! git diff --quiet; then
   echo "▸ Auto-fixed files detected — committing…"
   git add -A
