@@ -2048,4 +2048,20 @@ export const migrations: IMigration[] = [
     },
     version: 46,
   },
+  {
+    down: async (client: TDBClient) => {
+      // Re-add as nullable — enum values and NOT NULL cannot be restored without original data
+      await client.query(`
+        ALTER TABLE property_expenses
+          ADD COLUMN IF NOT EXISTS category TEXT;
+      `);
+    },
+    name: "drop_legacy_expense_category_column",
+    up: async (client: TDBClient) => {
+      await client.query(`DROP INDEX IF EXISTS idx_property_expenses_property_category;`);
+      await client.query(`ALTER TABLE property_expenses DROP COLUMN IF EXISTS category;`);
+      await client.query(`DROP TYPE IF EXISTS property_expense_category;`);
+    },
+    version: 47,
+  },
 ];
