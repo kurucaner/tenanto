@@ -17,18 +17,29 @@ const sns = new SNSClient({
 });
 
 export interface ISendSmsOptions {
+  /** 10DLC / toll-free origination number (E.164). Falls back to SNS_SMS_ORIGINATION_NUMBER. */
+  fromPhoneNumber?: string;
   message: string;
   phoneNumber: string;
 }
 
-export function resolveSmsPhoneNumber(phoneNumber: string): string {
+export function resolveSmsPhoneNumber(phoneNumber: string, fieldName = "phoneNumber"): string {
   const trimmed = phoneNumber.trim();
   const normalized =
     normalizeToE164(trimmed) ?? parsePhoneToParts(trimmed, PHONE_DEFAULT_COUNTRY).e164;
   if (!normalized || !isValidE164(normalized)) {
-    throw new Error("phoneNumber must be a valid E.164 phone number");
+    throw new Error(`${fieldName} must be a valid E.164 phone number`);
   }
   return normalized;
+}
+
+function resolveConfiguredOriginationNumber(fromPhoneNumber?: string): string | undefined {
+  const configured = fromPhoneNumber?.trim() || process.env.SNS_SMS_ORIGINATION_NUMBER?.trim();
+  if (!configured) {
+    return undefined;
+  }
+
+  return resolveSmsPhoneNumber(configured, "fromPhoneNumber");
 }
 
 export async function sendSms(opts: ISendSmsOptions) {
@@ -44,6 +55,14 @@ export async function sendSms(opts: ISendSmsOptions) {
       StringValue: "Transactional",
     },
   };
+
+  const originationNumber = resolveConfiguredOriginationNumber(opts.fromPhoneNumber);
+  if (originationNumber) {
+    messageAttributes["AWS.MM.SMS.OriginationNumber"] = {
+      DataType: "String",
+      StringValue: originationNumber,
+    };
+  }
 
   if (APP_NAME) {
     messageAttributes["AWS.SNS.SMS.SenderID"] = {

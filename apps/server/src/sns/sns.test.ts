@@ -31,11 +31,18 @@ describe("resolveSmsPhoneNumber", () => {
       "phoneNumber must be a valid E.164 phone number"
     );
   });
+
+  test("uses a custom field name in validation errors", () => {
+    expect(() => resolveSmsPhoneNumber("not-a-phone", "fromPhoneNumber")).toThrow(
+      "fromPhoneNumber must be a valid E.164 phone number"
+    );
+  });
 });
 
 describe("sendSms", () => {
   beforeEach(() => {
     mockSnsSend.mockClear();
+    delete process.env.SNS_SMS_ORIGINATION_NUMBER;
   });
 
   test("publishes a transactional SMS to a normalized phone number", async () => {
@@ -49,9 +56,64 @@ describe("sendSms", () => {
     expect(command.input.PhoneNumber).toBe("+14155552671");
     expect(command.input.Message).toBe("Rent payment received.");
     expect(command.input.MessageAttributes).toEqual({
+      "AWS.SNS.SMS.SenderID": {
+        DataType: "String",
+        StringValue: "PropertyOS",
+      },
       "AWS.SNS.SMS.SMSType": {
         DataType: "String",
         StringValue: "Transactional",
+      },
+    });
+  });
+
+  test("sets the origination number when fromPhoneNumber is provided", async () => {
+    await sendSms({
+      fromPhoneNumber: "+1 (800) 555-0100",
+      message: "Rent payment received.",
+      phoneNumber: "+14155552671",
+    });
+
+    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    expect(command.input.MessageAttributes).toMatchObject({
+      "AWS.MM.SMS.OriginationNumber": {
+        DataType: "String",
+        StringValue: "+18005550100",
+      },
+    });
+  });
+
+  test("uses SNS_SMS_ORIGINATION_NUMBER when fromPhoneNumber is omitted", async () => {
+    process.env.SNS_SMS_ORIGINATION_NUMBER = "+18005550199";
+
+    await sendSms({
+      message: "Rent payment received.",
+      phoneNumber: "+14155552671",
+    });
+
+    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    expect(command.input.MessageAttributes).toMatchObject({
+      "AWS.MM.SMS.OriginationNumber": {
+        DataType: "String",
+        StringValue: "+18005550199",
+      },
+    });
+  });
+
+  test("prefers fromPhoneNumber over SNS_SMS_ORIGINATION_NUMBER", async () => {
+    process.env.SNS_SMS_ORIGINATION_NUMBER = "+18005550199";
+
+    await sendSms({
+      fromPhoneNumber: "+18005550100",
+      message: "Rent payment received.",
+      phoneNumber: "+14155552671",
+    });
+
+    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    expect(command.input.MessageAttributes).toMatchObject({
+      "AWS.MM.SMS.OriginationNumber": {
+        DataType: "String",
+        StringValue: "+18005550100",
       },
     });
   });
@@ -74,6 +136,18 @@ describe("sendSms", () => {
         phoneNumber: "not-a-phone",
       })
     ).rejects.toThrow("phoneNumber must be a valid E.164 phone number");
+
+    expect(mockSnsSend).not.toHaveBeenCalled();
+  });
+
+  test("throws when fromPhoneNumber is invalid", async () => {
+    await expect(
+      sendSms({
+        fromPhoneNumber: "not-a-phone",
+        message: "Hello",
+        phoneNumber: "+14155552671",
+      })
+    ).rejects.toThrow("fromPhoneNumber must be a valid E.164 phone number");
 
     expect(mockSnsSend).not.toHaveBeenCalled();
   });

@@ -35,6 +35,8 @@ declare global {
       /** Base URL for the admin app (e.g. https://admin.propertyos.app) - used for magic links in emails */
       PLATFORM_APP_URL: string;
       PORT: string;
+      /** Optional default 10DLC / toll-free origination number (E.164) for outbound SMS */
+      SNS_SMS_ORIGINATION_NUMBER?: string;
       /** Optional SNS SMS sender ID shown on supported carriers */
       SNS_SMS_SENDER_ID?: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */
