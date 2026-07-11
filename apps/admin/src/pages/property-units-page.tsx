@@ -30,6 +30,7 @@ import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import { sortUnits } from "@/lib/unit-sort";
 import {
   getLeaseOccupancyNames,
@@ -39,20 +40,13 @@ import {
 } from "@/packages/shared";
 import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
 
-const RentalTypeBadge = memo(({ type }: { type: TUnitRentalType }) => {
-  const isShort = type === UnitRentalType.SHORT_TERM;
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        isShort
-          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-          : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-      }`}
-    >
-      {formatUnitRentalTypeLabel(type)}
-    </span>
-  );
-});
+const RentalTypeBadge = memo(({ type }: { type: TUnitRentalType }) => (
+  <span
+    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getUnitRentalTypeBadgeClassName(type)}`}
+  >
+    {formatUnitRentalTypeLabel(type)}
+  </span>
+));
 RentalTypeBadge.displayName = "RentalTypeBadge";
 
 const UnitRow = memo(

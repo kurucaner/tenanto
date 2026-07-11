@@ -14,18 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LayoutPicker } from "@/components/units/layout-picker";
+import { RentalTypePicker } from "@/components/units/rental-type-picker";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
-import { type TUnitRentalType, UnitRentalType } from "@/packages/shared";
-
-const RENTAL_TYPE_OPTIONS: { label: string; value: TUnitRentalType }[] = [
-  { label: "Short Term", value: UnitRentalType.SHORT_TERM },
-  { label: "Long Term", value: UnitRentalType.LONG_TERM },
-];
+import { UnitRentalType } from "@/packages/shared";
 
 const createUnitSchema = z.object({
   layout: z.string().trim().min(1, "Layout is required"),
@@ -129,12 +124,17 @@ export const CreateUnitDialog = memo(
                 ) : null}
               </div>
 
-              <FormSelectField
-                error={errors.rentalType?.message}
-                id="unit-rental-type"
-                label="Rental Type"
-                options={RENTAL_TYPE_OPTIONS}
-                {...form.register("rentalType")}
+              <Controller
+                control={form.control}
+                name="rentalType"
+                render={({ field }) => (
+                  <RentalTypePicker
+                    error={errors.rentalType?.message}
+                    id="unit-rental-type"
+                    onChange={field.onChange}
+                    value={field.value}
+                  />
+                )}
               />
             </div>
 

@@ -11,19 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LayoutPicker } from "@/components/units/layout-picker";
+import { RentalTypePicker } from "@/components/units/rental-type-picker";
 import { unitsApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import type { IPropertyUnit, TUnitRentalType } from "@/packages/shared";
-import { UnitRentalType } from "@/packages/shared";
-
-const RENTAL_TYPE_OPTIONS: { label: string; value: TUnitRentalType }[] = [
-  { label: "Short Term", value: UnitRentalType.SHORT_TERM },
-  { label: "Long Term", value: UnitRentalType.LONG_TERM },
-];
 
 interface EditUnitDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -82,11 +76,9 @@ export const EditUnitDialog = memo(
               <LayoutPicker onChange={setLayout} value={layout} />
             </div>
 
-            <FormSelectField
+            <RentalTypePicker
               id="edit-unit-rental-type"
-              label="Rental Type"
-              onChange={(e) => setRentalType(e.target.value as TUnitRentalType)}
-              options={RENTAL_TYPE_OPTIONS}
+              onChange={setRentalType}
               value={rentalType}
             />
           </div>
