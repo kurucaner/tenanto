@@ -132,6 +132,13 @@ export const formStateToBody = (form: TPropertySettingsFormState): IUpdateProper
 export const hasNewRows = (rows: { id?: string }[]): boolean =>
   rows.some((row) => row.id == null);
 
+export const expenseCategoryTypesDiffer = (
+  current: PropertyExpenseCategoryTypeFormRow[],
+  saved: PropertyExpenseCategoryTypeFormRow[]
+): boolean =>
+  JSON.stringify(formExpenseCategoryTypesToBody(current)) !==
+  JSON.stringify(formExpenseCategoryTypesToBody(saved));
+
 export const validateChannelCommissions = (
   channelCommissions: PropertyChannelCommissionFormRow[]
 ): TValidationResult => {

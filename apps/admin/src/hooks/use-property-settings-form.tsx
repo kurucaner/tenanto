@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { settingsApi } from "@/lib/api-client";
 import {
   buildSectionPatchBody,
+  expenseCategoryTypesDiffer,
   formStateToBody,
   hasNewRows,
   mergeSavedSectionIntoForm,
@@ -50,9 +51,10 @@ export const usePropertySettingsForm = ({
     [form, savedForm]
   );
 
-  const hasNewExpenseRows = useMemo(
-    () => hasNewRows(form.expenseCategoryTypes),
-    [form.expenseCategoryTypes]
+  const hasExpenseSectionChanges = useMemo(
+    () =>
+      expenseCategoryTypesDiffer(form.expenseCategoryTypes, savedForm.expenseCategoryTypes),
+    [form.expenseCategoryTypes, savedForm.expenseCategoryTypes]
   );
   const hasNewIncomeTypeRows = useMemo(
     () => hasNewRows(form.incomeLineTypes),
@@ -220,7 +222,7 @@ export const usePropertySettingsForm = ({
               setForm((prev) => ({ ...prev, expenseCategoryTypes }))
             }
             onSaveExpenses={() => handleSectionSave("expenseCategoryTypes")}
-            showSaveExpenses={hasNewExpenseRows}
+            showSaveExpenses={hasExpenseSectionChanges}
           />
         </div>
 
