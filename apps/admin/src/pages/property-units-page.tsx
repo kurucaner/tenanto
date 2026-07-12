@@ -1,14 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus } from "lucide-react";
-import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
+import { memo, type MouseEvent, type RefObject, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
-import {
-  type DataTableColumn,
-  type DataTableSortController,
-} from "@/components/data-table/data-table-types";
+import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
@@ -18,16 +15,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { CreateUnitDialog } from "@/components/units/create-unit-dialog";
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { usePropertyUnitsInfiniteList } from "@/hooks/use-property-units-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
-import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
-import { sortUnits } from "@/lib/unit-sort";
 import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
@@ -160,7 +157,7 @@ function getUnitColumns(canManage: boolean): DataTableColumn[] {
   return [
     { id: "name", label: "Name" },
     { id: "layout", label: "Layout" },
-    { id: "type", label: "Type", sortable: true },
+    { id: "type", label: "Type" },
     { id: "occupancy", label: "Occupancy" },
     { id: "added", label: "Added" },
     { hidden: !canManage, id: "actions", label: "Actions" },
@@ -179,7 +176,10 @@ const PropertyUnitsTable = memo(
   ({
     activeLeaseByUnitId,
     canManage,
+    hasNextPage,
+    infiniteScrollSentinelRef,
     isDeletePending,
+    isFetchingNextPage,
     isPending,
     isQuickDeleteActive,
     listMeta,
@@ -187,12 +187,14 @@ const PropertyUnitsTable = memo(
     onEdit,
     onRestore,
     onStartLease,
-    sort,
-    sortedUnits,
+    units,
   }: {
     activeLeaseByUnitId: Map<string, IPropertyLongStay>;
     canManage: boolean;
+    hasNextPage: boolean;
+    infiniteScrollSentinelRef: RefObject<HTMLDivElement | null>;
     isDeletePending: boolean;
+    isFetchingNextPage: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
     listMeta?: IPropertyUnitsListMeta;
@@ -200,8 +202,7 @@ const PropertyUnitsTable = memo(
     onEdit: (unit: IPropertyUnit) => void;
     onRestore: (unit: IPropertyUnit) => void;
     onStartLease: (unit: IPropertyUnit) => void;
-    sort: DataTableSortController;
-    sortedUnits: IPropertyUnit[];
+    units: IPropertyUnit[];
   }) => {
     const renderUnitRow = useCallback(
       (unit: IPropertyUnit) => (
@@ -243,10 +244,11 @@ const PropertyUnitsTable = memo(
           ) : undefined
         }
         getItemKey={getUnitKey}
+        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+        infiniteScrollSentinelRef={infiniteScrollSentinelRef}
         isPending={isPending}
-        items={sortedUnits}
+        items={units}
         renderRow={renderUnitRow}
-        sort={sort}
         virtualization={{ estimateRowHeight: UNIT_ROW_ESTIMATED_HEIGHT }}
       />
     );
@@ -317,16 +319,31 @@ export const PropertyUnitsPage = memo(() => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
   const [startLeaseUnit, setStartLeaseUnit] = useState<IPropertyUnit | null>(null);
-  const sortController = useUrlTableSort({
-    defaultColumnId: "type",
-    defaultDirection: "asc",
-  });
-  const { sortState } = sortController;
 
-  const unitsQuery = useQuery({
-    queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    meta: listMeta,
+    units,
+  } = usePropertyUnitsInfiniteList(propertyId);
+
+  const scrollSentinelRef = useInfiniteScrollTrigger({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   });
+
+  const pickerUnitsQuery = useQuery({
+    queryFn: () => unitsApi.list(propertyId),
+    queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
+  });
+
+  const pickerUnits = useMemo(
+    () => pickerUnitsQuery.data?.units ?? [],
+    [pickerUnitsQuery.data?.units]
+  );
 
   const { activeLeases } = usePropertyActiveLeases(propertyId);
 
@@ -371,11 +388,6 @@ export const PropertyUnitsPage = memo(() => {
     },
   });
 
-  const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
-  const listMeta = unitsQuery.data?.meta;
-
-  const sortedUnits = useMemo(() => sortUnits(units, sortState), [sortState, units]);
-
   const handleOpenCreateUnit = useCallback(() => {
     setCreateOpen(true);
   }, []);
@@ -407,16 +419,18 @@ export const PropertyUnitsPage = memo(() => {
           <PropertyUnitsTable
             activeLeaseByUnitId={activeLeaseByUnitId}
             canManage={canManage}
+            hasNextPage={hasNextPage}
+            infiniteScrollSentinelRef={scrollSentinelRef}
             isDeletePending={deleteMutation.isPending}
-            isPending={unitsQuery.isPending}
+            isFetchingNextPage={isFetchingNextPage}
+            isPending={isPending}
             isQuickDeleteActive={isQuickDeleteActive}
             listMeta={listMeta}
             onDelete={handleDelete}
             onEdit={setEditUnit}
             onRestore={handleRestoreUnit}
             onStartLease={setStartLeaseUnit}
-            sort={sortController}
-            sortedUnits={sortedUnits}
+            units={units}
           />
         </CardContent>
       </Card>
@@ -433,7 +447,7 @@ export const PropertyUnitsPage = memo(() => {
         }
         propertyId={propertyId}
         startLeaseUnit={startLeaseUnit}
-        units={units}
+        units={pickerUnits}
       />
     </>
   );

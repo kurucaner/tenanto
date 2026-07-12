@@ -115,3 +115,46 @@ export function encodeLeaseKeysetCursor(
     "base64url"
   );
 }
+
+/**
+ * Unit list keyset cursor (v1): rentalType + unitNumber + id.
+ * Matches ORDER BY rental_type ASC, unit_number ASC, id ASC.
+ */
+export type UnitKeysetCursorV1 = {
+  id: string;
+  rentalType: string;
+  unitNumber: string;
+};
+
+export function decodeUnitKeysetCursor(raw: string): UnitKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      id?: unknown;
+      rentalType?: unknown;
+      unitNumber?: unknown;
+    };
+    if (
+      typeof parsed.id !== "string" ||
+      typeof parsed.rentalType !== "string" ||
+      typeof parsed.unitNumber !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      id: parsed.id,
+      rentalType: parsed.rentalType,
+      unitNumber: parsed.unitNumber,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeUnitKeysetCursor(
+  rentalType: string,
+  unitNumber: string,
+  id: string
+): string {
+  return Buffer.from(JSON.stringify({ id, rentalType, unitNumber }), "utf8").toString("base64url");
+}

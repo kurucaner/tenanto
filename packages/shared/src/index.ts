@@ -92,6 +92,7 @@ export {
   type IPropertyMember,
   type IPropertyMemberUser,
   type IPropertyUnit,
+  type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
   type IUpdatePropertyUnitBody,
   PropertyInviteStatus,
@@ -218,6 +219,7 @@ export {
   type TExpenseImportFileStatus,
 } from "./property-expense-import-types";
 export { EXPENSES_LIST_LIMIT, EXPENSES_LIST_MAX_LIMIT } from "./property-expense-list-constants";
+export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 export {
   type ICreatePropertyExpenseBody,
   type IPropertyExpense,

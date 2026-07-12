@@ -7,8 +7,11 @@ import {
   type IUpdatePropertyUnitBody,
   type TUnitRentalType,
   UnitRentalType,
+  UNITS_LIST_LIMIT,
+  UNITS_LIST_MAX_LIMIT,
   UserType,
 } from "@/packages/shared";
+import { decodeUnitKeysetCursor } from "@/pagination/keyset-cursor";
 
 import { parseUuidParam } from "./admin-query-utils";
 import {
@@ -25,6 +28,31 @@ import { rejectIfDeleted } from "./reject-if-deleted";
 import { replyFromDatabaseError } from "./reply-from-database-error";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
+
+function parseUnitsListLimit(raw: unknown): number {
+  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+  if (!Number.isFinite(n) || n < 1) return UNITS_LIST_LIMIT;
+  return Math.min(UNITS_LIST_MAX_LIMIT, Math.floor(n));
+}
+
+function parseUnitsListQuery(query: Record<string, unknown>):
+  | {
+      cursor?: string;
+      isPaginated: boolean;
+      limit: number;
+      ok: true;
+    }
+  | { error: string; ok: false } {
+  const isPaginated =
+    (query["limit"] !== undefined && query["limit"] !== "") ||
+    (typeof query["cursor"] === "string" && query["cursor"] !== "");
+
+  const limit = parseUnitsListLimit(query["limit"]);
+  const cursor =
+    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
+
+  return { cursor, isPaginated, limit, ok: true };
+}
 
 function parseRentalType(raw: unknown): TUnitRentalType | null {
   if (typeof raw !== "string") return null;
@@ -113,10 +141,13 @@ const unitDatabaseErrorOptions = (duplicateMessage: string) => ({
 export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
-  server.get<{ Params: IPropertyParams }>(
+  server.get<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>(
     "/properties/:propertyId/units",
     { preHandler: authPre },
-    async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
+      reply: FastifyReply
+    ) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -130,12 +161,34 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
+      const parsed = parseUnitsListQuery(request.query);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      if (parsed.cursor != null) {
+        try {
+          decodeUnitKeysetCursor(parsed.cursor);
+        } catch {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+        }
+      }
+
       const includeDeleted = request.user.userType === UserType.ADMIN;
+
+      if (parsed.isPaginated) {
+        const { meta, nextCursor, units } = await propertyUnitsDb.listPaginatedByProperty(
+          propertyId,
+          { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
+        );
+        return reply.send(meta ? { meta, nextCursor, units } : { nextCursor, units });
+      }
+
       const [units, meta] = await Promise.all([
         propertyUnitsDb.findByProperty(propertyId, includeDeleted),
         propertyUnitsDb.getListMetaByProperty(propertyId, includeDeleted),
       ]);
-      return reply.send({ meta, units });
+      return reply.send({ meta, nextCursor: null, units });
     }
   );
 

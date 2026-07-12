@@ -42,6 +42,7 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
+  type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
@@ -655,9 +656,9 @@ export const unitsApi = {
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
-  list: (propertyId: string) =>
+  list: (propertyId: string, query?: IPropertyUnitsListQuery) =>
     authenticatedRequest<IPropertyUnitsListResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/units`
+      `/properties/${encodeURIComponent(propertyId)}/units${buildUnitsSearchParams(query)}`
     ),
 
   restore: (propertyId: string, unitId: string) =>
@@ -672,6 +673,14 @@ export const unitsApi = {
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
+
+function buildUnitsSearchParams(query: IPropertyUnitsListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
 
 export const longStaysApi = {
   create: (propertyId: string, body: ICreatePropertyLongStayBody) =>

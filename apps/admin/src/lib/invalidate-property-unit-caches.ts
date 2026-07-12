@@ -7,6 +7,9 @@ export function invalidatePropertyUnitCaches(queryClient: QueryClient, propertyI
     queryKey: adminQueryKeys.propertyUnits(propertyId),
   });
   void queryClient.invalidateQueries({
+    queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
+  });
+  void queryClient.invalidateQueries({
     queryKey: adminQueryKeys.propertyDetail(propertyId),
   });
 }

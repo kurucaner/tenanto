@@ -6,6 +6,7 @@ import type {
   IPropertyLongStaysListQuery,
   IPropertyReportsQuery,
   IPropertyReservationsListQuery,
+  IPropertyUnitsListQuery,
   ISupportRequestsListQuery,
 } from "@/packages/shared";
 
@@ -39,7 +40,8 @@ export const adminQueryKeys = {
   propertyReservations: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
     ["property", propertyId, "reservations", filters] as const,
   propertySettings: (propertyId: string) => ["property", propertyId, "settings"] as const,
-  propertyUnits: (propertyId: string) => ["property", propertyId, "units"] as const,
+  propertyUnits: (propertyId: string, filters: IPropertyUnitsListQuery = {}) =>
+    ["property", propertyId, "units", filters] as const,
   propertyUnitsPicker: (propertyId: string) => ["property", propertyId, "units-picker"] as const,
   supportRequest: (id: string) => ["support", "request", id] as const,
   supportRequestsList: (filters: Omit<ISupportRequestsListQuery, "cursor" | "limit">) =>

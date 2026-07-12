@@ -5,6 +5,9 @@ import type {
   IUpdatePropertyUnitBody,
 } from "@/packages/shared";
 import { UnitRentalType } from "@/packages/shared";
+import { decodeUnitKeysetCursor, encodeUnitKeysetCursor } from "@/pagination/keyset-cursor";
+import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
+import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { mapPropertyUnitRow } from "./mappers";
 import { pool } from "./pool";
@@ -99,6 +102,68 @@ export const propertyUnitsDb = {
       incomeLineCount: row?.income_line_count ?? 0,
       longStayCount: row?.long_stay_count ?? 0,
       reservationCount: row?.reservation_count ?? 0,
+    };
+  },
+
+  async listPaginatedByProperty(
+    propertyId: string,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{
+    meta?: IPropertyUnitsListMeta;
+    nextCursor: string | null;
+    units: IPropertyUnit[];
+  }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const includeMeta = shouldIncludeListMeta(options.cursor);
+    const listPromise = propertyUnitsDb.listPaginatedPage(propertyId, options);
+    const metaPromise = includeMeta
+      ? propertyUnitsDb.getListMetaByProperty(propertyId, includeDeleted)
+      : Promise.resolve(undefined);
+
+    const [{ nextCursor, units }, meta] = await Promise.all([listPromise, metaPromise]);
+
+    return meta == null ? { nextCursor, units } : { meta, nextCursor, units };
+  },
+
+  async listPaginatedPage(
+    propertyId: string,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{ nextCursor: string | null; units: IPropertyUnit[] }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const conditions = ["property_id = $1"];
+    const values: unknown[] = [propertyId];
+    if (!includeDeleted) {
+      conditions.push("is_deleted = false");
+    }
+    let p = values.length + 1;
+
+    if (options.cursor != null && options.cursor !== "") {
+      const decoded = decodeUnitKeysetCursor(options.cursor);
+      conditions.push(
+        `(rental_type, unit_number, id) > ($${p++}::property_unit_rental_type, $${p++}, $${p++}::uuid)`
+      );
+      values.push(decoded.rentalType, decoded.unitNumber, decoded.id);
+    }
+
+    const limitParam = p;
+    values.push(options.limit + 1);
+
+    const result = await pool.query(
+      `SELECT * FROM property_units
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY rental_type ASC, unit_number ASC, id ASC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
+      encodeUnitKeysetCursor(last.rental_type as string, last.unit_number as string, last.id as string)
+    );
+
+    return {
+      nextCursor,
+      units: pageRows.map((row) => mapPropertyUnitRow(row)),
     };
   },
 

@@ -108,8 +108,14 @@ export interface IUpdatePropertyUnitBody {
   unitNumber?: string;
 }
 
+export interface IPropertyUnitsListQuery {
+  cursor?: string;
+  limit?: number;
+}
+
 export interface IPropertyUnitsListResponse {
-  meta: IPropertyUnitsListMeta;
+  meta?: IPropertyUnitsListMeta;
+  nextCursor: string | null;
   units: IPropertyUnit[];
 }
 
