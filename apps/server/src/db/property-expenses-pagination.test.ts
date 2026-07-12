@@ -3,8 +3,14 @@ import { describe, expect, mock, test } from "bun:test";
 const CATEGORY_ID_1 = "cat00000-0000-4000-8000-000000000001";
 const CATEGORY_ID_2 = "cat00000-0000-4000-8000-000000000002";
 
-const mockQuery = mock(() =>
-  Promise.resolve({
+const mockQuery = mock((sql: string) => {
+  if (sql.includes("COUNT(*)")) {
+    return Promise.resolve({
+      rows: [{ total_amount: "175.00", total_count: 3 }],
+    });
+  }
+
+  return Promise.resolve({
     rows: [
       {
         amount: "100.00",
@@ -52,8 +58,8 @@ const mockQuery = mock(() =>
         updated_at: new Date("2026-07-07T10:00:00.000Z"),
       },
     ],
-  })
-);
+  });
+});
 
 mock.module("./pool", () => ({
   pool: { query: mockQuery },
@@ -71,8 +77,12 @@ describe("propertyExpensesDb.listPaginatedByProperty", () => {
     expect(firstPage.expenses[0]?.expenseDate).toBe("2026-07-09");
     expect(firstPage.expenses[1]?.expenseDate).toBe("2026-07-08");
     expect(firstPage.nextCursor).toBeString();
+    expect(firstPage.meta).toEqual({ totalAmount: 175, totalCount: 3 });
+    expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls[0]?.[0] as string;
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
     expect(sql).toContain("COALESCE(pe.expense_date");
     expect(sql).toContain("LIMIT $");
   });
@@ -92,5 +102,23 @@ describe("propertyExpensesDb.listPaginatedByProperty", () => {
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
     expect(sql).toContain("pe.created_at, pe.id) <");
+    expect(mockQuery.mock.calls).toHaveLength(1);
+  });
+
+  test("omits meta on cursor pages", async () => {
+    mockQuery.mockClear();
+
+    const firstPage = await propertyExpensesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    expect(firstPage.meta).toBeDefined();
+
+    mockQuery.mockClear();
+    const secondPage = await propertyExpensesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { cursor: firstPage.nextCursor!, limit: 2 }
+    );
+
+    expect(secondPage.meta).toBeUndefined();
+    expect(mockQuery.mock.calls).toHaveLength(1);
   });
 });

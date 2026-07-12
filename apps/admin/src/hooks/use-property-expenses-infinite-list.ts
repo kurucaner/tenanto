@@ -44,6 +44,8 @@ export function usePropertyExpensesInfiniteList(
     [query.data?.pages]
   );
 
+  const meta = query.data?.pages[0]?.meta;
+
   return {
     error: query.error,
     expenses,
@@ -53,5 +55,6 @@ export function usePropertyExpensesInfiniteList(
     isFetching: query.isFetching,
     isFetchingNextPage: query.isFetchingNextPage,
     isPending: query.isPending,
+    meta,
   };
 }

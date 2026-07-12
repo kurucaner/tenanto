@@ -92,6 +92,7 @@ export {
   type IPropertyMember,
   type IPropertyMemberUser,
   type IPropertyUnit,
+  type IPropertyUnitsListResponse,
   type IUpdatePropertyUnitBody,
   PropertyInviteStatus,
   PropertyRole,
@@ -160,6 +161,11 @@ export {
   validateExtendLease,
 } from "./lease-rent-utils";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
+export {
+  type IPropertyExpensesListMeta,
+  type IPropertyLongStaysListMeta,
+  type IPropertyUnitsListMeta,
+} from "./list-meta-types";
 export { LEASES_LIST_LIMIT, LEASES_LIST_MAX_LIMIT } from "./property-long-stay-list-constants";
 export {
   type ICreatePropertyLongStayBody,

@@ -237,12 +237,12 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
       }
 
       const includeDeleted = request.user.userType === UserType.ADMIN;
-      const { expenses, nextCursor } = await propertyExpensesDb.listPaginatedByProperty(
+      const { expenses, meta, nextCursor } = await propertyExpensesDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
         { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
-      return reply.send({ expenses, nextCursor });
+      return reply.send(meta ? { expenses, meta, nextCursor } : { expenses, nextCursor });
     }
   );
 

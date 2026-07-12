@@ -1,3 +1,5 @@
+import type { IPropertyExpensesListMeta } from "./list-meta-types";
+
 export interface IPropertyExpense {
   amount: number;
   categoryId: string;
@@ -40,5 +42,6 @@ export interface IPropertyExpensesListQuery {
 
 export interface IPropertyExpensesListResponse {
   expenses: IPropertyExpense[];
+  meta?: IPropertyExpensesListMeta;
   nextCursor: string | null;
 }

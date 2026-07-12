@@ -4,6 +4,7 @@ import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import {
   type DataTableColumn,
   type DataTableSortController,
@@ -31,6 +32,7 @@ import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyUnit,
+  type IPropertyUnitsListMeta,
   TUnitRentalType,
 } from "@/packages/shared";
 import { formatUnitRentalTypeLabel, UnitRentalType } from "@/packages/shared";
@@ -165,6 +167,14 @@ function getUnitColumns(canManage: boolean): DataTableColumn[] {
   ];
 }
 
+function buildUnitsFooterItems(meta: IPropertyUnitsListMeta) {
+  return [
+    { label: "Total", value: String(meta.totalCount) },
+    { label: "Short Term", value: String(meta.shortTermCount) },
+    { label: "Long Term", value: String(meta.longTermCount) },
+  ];
+}
+
 const PropertyUnitsTable = memo(
   ({
     activeLeaseByUnitId,
@@ -172,26 +182,26 @@ const PropertyUnitsTable = memo(
     isDeletePending,
     isPending,
     isQuickDeleteActive,
+    listMeta,
     onDelete,
     onEdit,
     onRestore,
     onStartLease,
     sort,
     sortedUnits,
-    unitTypeCounts,
   }: {
     activeLeaseByUnitId: Map<string, IPropertyLongStay>;
     canManage: boolean;
     isDeletePending: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
+    listMeta?: IPropertyUnitsListMeta;
     onDelete: (unit: IPropertyUnit, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (unit: IPropertyUnit) => void;
     onRestore: (unit: IPropertyUnit) => void;
     onStartLease: (unit: IPropertyUnit) => void;
     sort: DataTableSortController;
     sortedUnits: IPropertyUnit[];
-    unitTypeCounts: { longTerm: number; shortTerm: number; total: number };
   }) => {
     const renderUnitRow = useCallback(
       (unit: IPropertyUnit) => (
@@ -228,23 +238,9 @@ const PropertyUnitsTable = memo(
         columns={columns}
         emptyMessage={`No units yet.${canManage ? " Add a unit to get started." : ""}`}
         footer={
-          <TableRow>
-            <TableCell className="text-muted-foreground text-xs" colSpan={colSpan}>
-              <div className="flex items-center gap-4">
-                <span>
-                  Total: <span className="text-foreground font-medium">{unitTypeCounts.total}</span>
-                </span>
-                <span>
-                  Short Term:{" "}
-                  <span className="text-foreground font-medium">{unitTypeCounts.shortTerm}</span>
-                </span>
-                <span>
-                  Long Term:{" "}
-                  <span className="text-foreground font-medium">{unitTypeCounts.longTerm}</span>
-                </span>
-              </div>
-            </TableCell>
-          </TableRow>
+          listMeta ? (
+            <DataTableCountFooter colSpan={colSpan} items={buildUnitsFooterItems(listMeta)} />
+          ) : undefined
         }
         getItemKey={getUnitKey}
         isPending={isPending}
@@ -285,7 +281,11 @@ const PropertyUnitsPageDialogs = memo(
     units: IPropertyUnit[];
   }) => (
     <>
-      <CreateUnitDialog onOpenChange={onCreateOpenChange} open={createOpen} propertyId={propertyId} />
+      <CreateUnitDialog
+        onOpenChange={onCreateOpenChange}
+        open={createOpen}
+        propertyId={propertyId}
+      />
       {editUnit ? (
         <EditUnitDialog
           key={editUnit.id}
@@ -372,14 +372,9 @@ export const PropertyUnitsPage = memo(() => {
   });
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
+  const listMeta = unitsQuery.data?.meta;
 
   const sortedUnits = useMemo(() => sortUnits(units, sortState), [sortState, units]);
-
-  const unitTypeCounts = useMemo(() => {
-    const shortTerm = units.filter((u) => u.rentalType === UnitRentalType.SHORT_TERM).length;
-    const longTerm = units.filter((u) => u.rentalType === UnitRentalType.LONG_TERM).length;
-    return { longTerm, shortTerm, total: units.length };
-  }, [units]);
 
   const handleOpenCreateUnit = useCallback(() => {
     setCreateOpen(true);
@@ -415,13 +410,13 @@ export const PropertyUnitsPage = memo(() => {
             isDeletePending={deleteMutation.isPending}
             isPending={unitsQuery.isPending}
             isQuickDeleteActive={isQuickDeleteActive}
+            listMeta={listMeta}
             onDelete={handleDelete}
             onEdit={setEditUnit}
             onRestore={handleRestoreUnit}
             onStartLease={setStartLeaseUnit}
             sort={sortController}
             sortedUnits={sortedUnits}
-            unitTypeCounts={unitTypeCounts}
           />
         </CardContent>
       </Card>

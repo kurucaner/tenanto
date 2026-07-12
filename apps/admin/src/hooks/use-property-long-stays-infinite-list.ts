@@ -42,6 +42,8 @@ export function usePropertyLongStaysInfiniteList(
     [query.data?.pages]
   );
 
+  const meta = query.data?.pages[0]?.meta;
+
   return {
     error: query.error,
     fetchNextPage: query.fetchNextPage,
@@ -51,5 +53,6 @@ export function usePropertyLongStaysInfiniteList(
     isFetchingNextPage: query.isFetchingNextPage,
     isPending: query.isPending,
     longStays,
+    meta,
   };
 }

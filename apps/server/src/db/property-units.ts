@@ -1,6 +1,7 @@
 import type {
   ICreatePropertyUnitBody,
   IPropertyUnit,
+  IPropertyUnitsListMeta,
   IUpdatePropertyUnitBody,
 } from "@/packages/shared";
 import { UnitRentalType } from "@/packages/shared";
@@ -48,6 +49,37 @@ export const propertyUnitsDb = {
       [propertyId]
     );
     return result.rows.map((row) => mapPropertyUnitRow(row as Record<string, unknown>));
+  },
+
+  async getListMetaByProperty(
+    propertyId: string,
+    includeDeleted = false
+  ): Promise<IPropertyUnitsListMeta> {
+    const conditions = ["property_id = $1"];
+    if (!includeDeleted) {
+      conditions.push("is_deleted = false");
+    }
+
+    const result = await pool.query<{
+      long_term_count: number;
+      short_term_count: number;
+      total_count: number;
+    }>(
+      `SELECT
+         COUNT(*)::int AS total_count,
+         COUNT(*) FILTER (WHERE rental_type = 'short_term')::int AS short_term_count,
+         COUNT(*) FILTER (WHERE rental_type = 'long_term')::int AS long_term_count
+       FROM property_units
+       WHERE ${conditions.join(" AND ")}`,
+      [propertyId]
+    );
+
+    const row = result.rows[0];
+    return {
+      longTermCount: row?.long_term_count ?? 0,
+      shortTermCount: row?.short_term_count ?? 0,
+      totalCount: row?.total_count ?? 0,
+    };
   },
 
   async getUnitDeleteBlockers(unitId: string): Promise<IUnitDeleteBlockers> {

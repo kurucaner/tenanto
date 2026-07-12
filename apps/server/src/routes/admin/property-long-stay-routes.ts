@@ -430,12 +430,12 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         }
       }
 
-      const { longStays, nextCursor } = await propertyLongStaysDb.listPaginatedByProperty(
+      const { longStays, meta, nextCursor } = await propertyLongStaysDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
         { cursor: parsed.cursor, limit: parsed.limit }
       );
-      return reply.send({ longStays, nextCursor });
+      return reply.send(meta ? { longStays, meta, nextCursor } : { longStays, nextCursor });
     }
   );
 

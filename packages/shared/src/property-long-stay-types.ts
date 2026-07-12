@@ -1,3 +1,5 @@
+import type { IPropertyLongStaysListMeta } from "./list-meta-types";
+
 export type TPropertyLongStayStatus = "active" | "ended";
 
 export const PropertyLongStayStatus = {
@@ -48,6 +50,7 @@ export interface IPropertyLongStaysListQuery {
 
 export interface IPropertyLongStaysListResponse {
   longStays: IPropertyLongStay[];
+  meta?: IPropertyLongStaysListMeta;
   nextCursor: string | null;
 }
 

@@ -1,11 +1,13 @@
 import type {
   ICreatePropertyExpenseBody,
   IPropertyExpense,
+  IPropertyExpensesListMeta,
   IPropertyExpensesListQuery,
   IUpdatePropertyExpenseBody,
 } from "@/packages/shared";
 import { decodeExpenseKeysetCursor, encodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
+import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { mapPropertyExpenseRow } from "./mappers";
 import { pool } from "./pool";
@@ -176,7 +178,59 @@ export const propertyExpensesDb = {
     return result.rows.map((row) => mapPropertyExpenseRow(row as Record<string, unknown>));
   },
 
+  async getListMetaByProperty(
+    propertyId: string,
+    filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
+    includeDeleted = false
+  ): Promise<IPropertyExpensesListMeta> {
+    const { conditions, values } = buildPropertyExpenseListConditions(
+      propertyId,
+      filters,
+      includeDeleted
+    );
+
+    const result = await pool.query<{
+      total_amount: string;
+      total_count: number;
+    }>(
+      `SELECT
+         COUNT(*)::int AS total_count,
+         COALESCE(SUM(pe.amount), 0) AS total_amount
+       FROM property_expenses pe
+       JOIN property_expense_category_types pect ON pe.category_id = pect.id
+       WHERE ${conditions.join(" AND ")}`,
+      values
+    );
+
+    const row = result.rows[0];
+    return {
+      totalAmount: Number(row?.total_amount ?? 0),
+      totalCount: row?.total_count ?? 0,
+    };
+  },
+
   async listPaginatedByProperty(
+    propertyId: string,
+    filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{
+    expenses: IPropertyExpense[];
+    meta?: IPropertyExpensesListMeta;
+    nextCursor: string | null;
+  }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const includeMeta = shouldIncludeListMeta(options.cursor);
+    const listPromise = propertyExpensesDb.listPaginatedPage(propertyId, filters, options);
+    const metaPromise = includeMeta
+      ? propertyExpensesDb.getListMetaByProperty(propertyId, filters, includeDeleted)
+      : Promise.resolve(undefined);
+
+    const [{ expenses, nextCursor }, meta] = await Promise.all([listPromise, metaPromise]);
+
+    return meta == null ? { expenses, nextCursor } : { expenses, meta, nextCursor };
+  },
+
+  async listPaginatedPage(
     propertyId: string,
     filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
     options: { cursor?: string; includeDeleted?: boolean; limit: number }

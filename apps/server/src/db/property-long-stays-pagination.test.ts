@@ -2,8 +2,14 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { PropertyLongStayStatus } from "@/packages/shared";
 
-const mockQuery = mock(() =>
-  Promise.resolve({
+const mockQuery = mock((sql: string) => {
+  if (sql.includes("COUNT(*)")) {
+    return Promise.resolve({
+      rows: [{ active_count: 1, ended_count: 2, total_count: 3 }],
+    });
+  }
+
+  return Promise.resolve({
     rows: [
       {
         actual_end_date: null,
@@ -57,8 +63,8 @@ const mockQuery = mock(() =>
         updated_at: new Date("2026-05-31T10:00:00.000Z"),
       },
     ],
-  })
-);
+  });
+});
 
 mock.module("./pool", () => ({
   pool: { query: mockQuery },
@@ -76,8 +82,10 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
     expect(firstPage.longStays[0]?.leaseStartDate).toBe("2026-07-09");
     expect(firstPage.longStays[1]?.leaseStartDate).toBe("2026-01-01");
     expect(firstPage.nextCursor).toBeString();
+    expect(firstPage.meta).toEqual({ activeCount: 1, endedCount: 2, totalCount: 3 });
+    expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls[0]?.[0] as string;
+    const sql = mockQuery.mock.calls.find(([query]) => !(query as string).includes("COUNT(*)"))?.[0] as string;
     expect(sql).toContain("lease_start_date DESC");
     expect(sql).toContain("LIMIT $");
   });
@@ -97,5 +105,24 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
     expect(sql).toContain("(lease_start_date, created_at, id) <");
+    expect(mockQuery.mock.calls).toHaveLength(1);
+  });
+
+  test("omits meta on cursor pages", async () => {
+    mockQuery.mockClear();
+
+    const firstPage = await propertyLongStaysDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    expect(firstPage.meta).toBeDefined();
+
+    mockQuery.mockClear();
+    const secondPage = await propertyLongStaysDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { cursor: firstPage.nextCursor!, limit: 2 }
+    );
+
+    expect(secondPage.meta).toBeUndefined();
+    expect(mockQuery.mock.calls).toHaveLength(1);
+    expect(mockQuery.mock.calls[0]?.[0] as string).toContain("LIMIT $");
   });
 });

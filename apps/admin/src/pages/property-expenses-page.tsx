@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog";
@@ -39,7 +40,7 @@ import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expen
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import { type IPropertyExpense, type IPropertyExpenseCategoryType } from "@/packages/shared";
+import { type IPropertyExpense, type IPropertyExpenseCategoryType, type IPropertyExpensesListMeta } from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -116,6 +117,13 @@ function getExpenseColumns(canManage: boolean): DataTableColumn[] {
     { id: "tax", label: "Tax" },
     { align: "right", id: "amount", label: "Amount" },
     { hidden: !canManage, id: "actions", label: "Actions" },
+  ];
+}
+
+function buildExpensesFooterItems(meta: IPropertyExpensesListMeta) {
+  return [
+    { label: "Total", value: String(meta.totalCount) },
+    { label: "Total amount", value: formatMoney(meta.totalAmount) },
   ];
 }
 
@@ -201,6 +209,7 @@ const PropertyExpensesTable = memo(
     isFetchingNextPage,
     isPending,
     isQuickDeleteActive,
+    listMeta,
     onDelete,
     onEdit,
     onRestore,
@@ -214,6 +223,7 @@ const PropertyExpensesTable = memo(
     isFetchingNextPage: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
+    listMeta?: IPropertyExpensesListMeta;
     onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (expense: IPropertyExpense) => void;
     onRestore: (expense: IPropertyExpense) => void;
@@ -236,12 +246,18 @@ const PropertyExpensesTable = memo(
     );
 
     const columns = useMemo(() => getExpenseColumns(canManage), [canManage]);
+    const colSpan = columns.filter((column) => !column.hidden).length;
 
     return (
       <DataTable
         columns={columns}
         emptyMessage={`No expenses yet.${canManage ? " Add an expense to get started." : ""}`}
         filters={filters}
+        footer={
+          listMeta ? (
+            <DataTableCountFooter colSpan={colSpan} items={buildExpensesFooterItems(listMeta)} />
+          ) : undefined
+        }
         getItemKey={getExpenseKey}
         infiniteScroll={{ hasNextPage, isFetchingNextPage }}
         infiniteScrollSentinelRef={scrollSentinelRef}
@@ -357,7 +373,7 @@ export const PropertyExpensesPage = memo(() => {
 
   const filters = useMemo(() => buildExpenseFilters(categoryId, from, to), [categoryId, from, to]);
 
-  const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending } =
+  const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
     usePropertyExpensesInfiniteList(propertyId, filters);
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
@@ -439,6 +455,7 @@ export const PropertyExpensesPage = memo(() => {
             isFetchingNextPage={isFetchingNextPage}
             isPending={isPending}
             isQuickDeleteActive={isQuickDeleteActive}
+            listMeta={meta}
             onDelete={handleDelete}
             onEdit={setEditExpense}
             onRestore={handleRestoreExpense}

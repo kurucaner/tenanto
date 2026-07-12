@@ -1,3 +1,5 @@
+import type { IPropertyUnitsListMeta } from "./list-meta-types";
+
 export const PropertyRole = {
   ACCOUNTANT: "accountant",
   MANAGER: "manager",
@@ -104,6 +106,11 @@ export interface IUpdatePropertyUnitBody {
   layout?: string;
   rentalType?: TUnitRentalType;
   unitNumber?: string;
+}
+
+export interface IPropertyUnitsListResponse {
+  meta: IPropertyUnitsListMeta;
+  units: IPropertyUnit[];
 }
 
 export const PropertyInviteStatus = {

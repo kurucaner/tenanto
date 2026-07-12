@@ -4,6 +4,7 @@ import type {
   IPropertyLongStay,
   IPropertyLongStayRentMonth,
   IPropertyLongStayRentPeriod,
+  IPropertyLongStaysListMeta,
   IPropertyLongStaysListQuery,
   IUpdatePropertyLongStayBody,
 } from "@/packages/shared";
@@ -18,6 +19,7 @@ import {
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
+import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { mapPropertyLongStayRentPeriodRow, mapPropertyLongStayRow } from "./mappers";
 import { pool } from "./pool";
@@ -243,6 +245,34 @@ export const propertyLongStaysDb = {
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async getListMetaByProperty(
+    propertyId: string,
+    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">
+  ): Promise<IPropertyLongStaysListMeta> {
+    const { conditions, values } = buildPropertyLongStayListConditions(propertyId, filters);
+
+    const result = await pool.query<{
+      active_count: number;
+      ended_count: number;
+      total_count: number;
+    }>(
+      `SELECT
+         COUNT(*)::int AS total_count,
+         COUNT(*) FILTER (WHERE status = 'active')::int AS active_count,
+         COUNT(*) FILTER (WHERE status = 'ended')::int AS ended_count
+       FROM property_long_stays
+       WHERE ${conditions.join(" AND ")}`,
+      values
+    );
+
+    const row = result.rows[0];
+    return {
+      activeCount: row?.active_count ?? 0,
+      endedCount: row?.ended_count ?? 0,
+      totalCount: row?.total_count ?? 0,
+    };
+  },
+
   async getRentSchedule(longStayId: string): Promise<IPropertyLongStayRentMonth[]> {
     const longStay = await propertyLongStaysDb.findById(longStayId);
     if (!longStay) {
@@ -301,6 +331,26 @@ export const propertyLongStaysDb = {
   },
 
   async listPaginatedByProperty(
+    propertyId: string,
+    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">,
+    options: { cursor?: string; limit: number }
+  ): Promise<{
+    longStays: IPropertyLongStay[];
+    meta?: IPropertyLongStaysListMeta;
+    nextCursor: string | null;
+  }> {
+    const includeMeta = shouldIncludeListMeta(options.cursor);
+    const listPromise = propertyLongStaysDb.listPaginatedPage(propertyId, filters, options);
+    const metaPromise = includeMeta
+      ? propertyLongStaysDb.getListMetaByProperty(propertyId, filters)
+      : Promise.resolve(undefined);
+
+    const [{ longStays, nextCursor }, meta] = await Promise.all([listPromise, metaPromise]);
+
+    return meta == null ? { longStays, nextCursor } : { longStays, meta, nextCursor };
+  },
+
+  async listPaginatedPage(
     propertyId: string,
     filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">,
     options: { cursor?: string; limit: number }

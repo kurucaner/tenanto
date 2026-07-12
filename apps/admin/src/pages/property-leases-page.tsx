@@ -4,6 +4,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import {
@@ -36,6 +37,7 @@ import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
+  type IPropertyLongStaysListMeta,
   type IPropertyUnit,
   PropertyLongStayStatus,
   resolveRentIncomeLineTypeId,
@@ -59,6 +61,14 @@ const LEASE_COLUMNS: DataTableColumn[] = [
   { id: "status", label: "Status" },
   { id: "actions", label: "Actions" },
 ];
+
+function buildLeasesFooterItems(meta: IPropertyLongStaysListMeta) {
+  return [
+    { label: "Total", value: String(meta.totalCount) },
+    { label: "Active", value: String(meta.activeCount) },
+    { label: "Ended", value: String(meta.endedCount) },
+  ];
+}
 
 function getLeaseKey(lease: IPropertyLongStay): string {
   return lease.id;
@@ -239,7 +249,7 @@ export const PropertyLeasesPage = memo(() => {
     return query;
   }, [status, unitId]);
 
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending, longStays } =
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending, longStays, meta } =
     usePropertyLongStaysInfiniteList(propertyId, listQueryFilters);
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
@@ -338,6 +348,14 @@ export const PropertyLeasesPage = memo(() => {
                 unitId={unitId}
                 units={units}
               />
+            }
+            footer={
+              meta ? (
+                <DataTableCountFooter
+                  colSpan={LEASE_COLUMNS.length}
+                  items={buildLeasesFooterItems(meta)}
+                />
+              ) : undefined
             }
             getItemKey={getLeaseKey}
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}

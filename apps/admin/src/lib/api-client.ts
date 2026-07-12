@@ -42,6 +42,7 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyUnit,
+  type IPropertyUnitsListResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
   type ISupportCloseResponse,
@@ -655,7 +656,7 @@ export const unitsApi = {
     ),
 
   list: (propertyId: string) =>
-    authenticatedRequest<{ units: IPropertyUnit[] }>(
+    authenticatedRequest<IPropertyUnitsListResponse>(
       `/properties/${encodeURIComponent(propertyId)}/units`
     ),
 

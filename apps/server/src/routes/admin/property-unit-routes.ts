@@ -131,8 +131,11 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       if (!hasAccess) return;
 
       const includeDeleted = request.user.userType === UserType.ADMIN;
-      const units = await propertyUnitsDb.findByProperty(propertyId, includeDeleted);
-      return reply.send({ units });
+      const [units, meta] = await Promise.all([
+        propertyUnitsDb.findByProperty(propertyId, includeDeleted),
+        propertyUnitsDb.getListMetaByProperty(propertyId, includeDeleted),
+      ]);
+      return reply.send({ meta, units });
     }
   );
 
