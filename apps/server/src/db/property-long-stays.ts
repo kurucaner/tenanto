@@ -288,6 +288,7 @@ export const propertyLongStaysDb = {
        FROM property_income_lines
        WHERE long_stay_id = $1
          AND is_deleted = false
+         AND refunded_at IS NULL
        ORDER BY transaction_date ASC`,
       [longStayId]
     );

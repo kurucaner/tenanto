@@ -112,7 +112,7 @@ Add `rejectIfRefunded` next to existing `rejectIfDeleted` in `routes/admin/rejec
 | Already refunded (on refund) | 409 |
 | Not refunded (on unrefund) | 409 |
 
-**Edit/delete while refunded:** Block edit; allow delete or block delete — pick one and document (recommend: block edit, allow delete).
+**Edit/delete while refunded:** Block edit (`rejectIfRefunded` on PATCH); allow delete (soft-delete unchanged).
 
 ### Report exclusion
 

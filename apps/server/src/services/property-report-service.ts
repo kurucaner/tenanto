@@ -321,6 +321,8 @@ function applyReservationToReport(
   query: IPropertyReportsQuery,
   accumulator: IPropertyReportAccumulator
 ): void {
+  if (stay.refundedAt !== null) return;
+
   accumulator.grossIncome = roundMoney(accumulator.grossIncome + stay.grossIncome);
   accumulator.netIncome = roundMoney(accumulator.netIncome + stay.netIncome);
 
@@ -357,6 +359,8 @@ function applyIncomeLineToReport(
   line: IPropertyIncomeLine,
   accumulator: IPropertyReportAccumulator
 ): void {
+  if (line.refundedAt !== null) return;
+
   accumulator.grossIncome = roundMoney(accumulator.grossIncome + line.grossIncome);
   accumulator.netIncome = roundMoney(accumulator.netIncome + line.netIncome);
 

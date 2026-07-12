@@ -19,6 +19,7 @@ import {
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
 import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-route-actions";
 import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
   applyOptionalQueryDateFilter,
@@ -29,6 +30,7 @@ import {
   assertPropertyMemberAccess,
 } from "./property-route-access";
 import { rejectIfDeleted } from "./reject-if-deleted";
+import { rejectIfRefunded } from "./reject-if-refunded";
 
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
@@ -598,6 +600,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       }
 
       if (rejectIfDeleted(existing, reply, "reservation")) return;
+      if (rejectIfRefunded(existing, reply, "reservation")) return;
 
       const parsed = parseUpdateReservationBody(request.body);
       if (!parsed.ok) {
@@ -681,6 +684,98 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
 
       await propertyReservationsDb.restore(reservationId);
       return reply.status(HttpStatus.NO_CONTENT).send();
+    }
+  );
+
+  server.post<{ Params: IPropertyReservationParams }>(
+    "/properties/:propertyId/reservations/:reservationId/refund",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const reservationId = parseUuidParam(request.params.reservationId);
+      if (reservationId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const isOwner = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage income entries"
+      );
+      if (!isOwner) return;
+
+      const existing = await propertyReservationsDb.findById(reservationId);
+      await executeLedgerRefund(reply, {
+        db: propertyReservationsDb,
+        entity: existing,
+        entityId: reservationId,
+        entityName: "Reservation",
+        label: "reservation",
+        notFoundError: "Reservation not found",
+        propertyId,
+        userId: request.user.userId,
+      });
+    }
+  );
+
+  server.post<{ Params: IPropertyReservationParams }>(
+    "/properties/:propertyId/reservations/:reservationId/unrefund",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const reservationId = parseUuidParam(request.params.reservationId);
+      if (reservationId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const isOwner = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage income entries"
+      );
+      if (!isOwner) return;
+
+      const existing = await propertyReservationsDb.findById(reservationId);
+      await executeLedgerUnrefund(reply, {
+        db: propertyReservationsDb,
+        entity: existing,
+        entityId: reservationId,
+        entityName: "Reservation",
+        notFoundError: "Reservation not found",
+        propertyId,
+      });
     }
   );
 };

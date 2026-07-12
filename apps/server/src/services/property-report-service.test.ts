@@ -153,6 +153,53 @@ describe("buildPropertyReportSummary byUnit stayGrossIncome", () => {
   });
 });
 
+describe("buildPropertyReportSummary refunds", () => {
+  test("excludes refunded stays from totals", () => {
+    const summary = buildPropertyReportSummary(
+      makeReportData({
+        reservations: [
+          makeStay({ grossIncome: 500, netIncome: 400 }),
+          makeStay({
+            grossIncome: 300,
+            id: "stay-refunded",
+            netIncome: 250,
+            refundedAt: "2026-03-01T00:00:00.000Z",
+          }),
+        ],
+      }),
+      QUERY
+    );
+
+    expect(summary.totals).toMatchObject({
+      grossIncome: 500,
+      netIncome: 400,
+    });
+  });
+
+  test("excludes refunded income lines from totals", () => {
+    const summary = buildPropertyReportSummary(
+      makeReportData({
+        incomeLines: [
+          makeIncomeLine({ amount: 75, grossIncome: 75, netIncome: 75 }),
+          makeIncomeLine({
+            amount: 50,
+            grossIncome: 50,
+            id: "line-refunded",
+            netIncome: 50,
+            refundedAt: "2026-03-01T00:00:00.000Z",
+          }),
+        ],
+      }),
+      QUERY
+    );
+
+    expect(summary.totals).toMatchObject({
+      grossIncome: 75,
+      netIncome: 75,
+    });
+  });
+});
+
 describe("rollupSummaries taxSummary", () => {
   test("merges tax rows across property summaries", () => {
     const first = buildPropertyReportSummary(

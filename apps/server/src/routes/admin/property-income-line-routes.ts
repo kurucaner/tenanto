@@ -18,6 +18,7 @@ import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications"
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
 import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-route-actions";
 import {
   parseJsonObject,
   parseMoney,
@@ -35,6 +36,7 @@ import {
   assertPropertyMemberAccess,
 } from "./property-route-access";
 import { rejectIfDeleted } from "./reject-if-deleted";
+import { rejectIfRefunded } from "./reject-if-refunded";
 
 function getTodayUtcIsoDate(): string {
   const date = new Date();
@@ -537,6 +539,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       }
 
       if (rejectIfDeleted(existing, reply, "income line")) return;
+      if (rejectIfRefunded(existing, reply, "income line")) return;
 
       const parsed = parseUpdateIncomeLineBody(request.body);
       if (!parsed.ok) {
@@ -643,6 +646,92 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       await propertyIncomeLinesDb.restore(lineId);
       return reply.status(HttpStatus.NO_CONTENT).send();
+    }
+  );
+
+  server.post<{ Params: IPropertyIncomeLineParams }>(
+    "/properties/:propertyId/income-lines/:lineId/refund",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const lineId = parseUuidParam(request.params.lineId);
+      if (lineId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid lineId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const isOwner = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage income entries"
+      );
+      if (!isOwner) return;
+
+      const existing = await propertyIncomeLinesDb.findById(lineId);
+      await executeLedgerRefund(reply, {
+        db: propertyIncomeLinesDb,
+        entity: existing,
+        entityId: lineId,
+        entityName: "Income line",
+        label: "income line",
+        notFoundError: "Income line not found",
+        propertyId,
+        userId: request.user.userId,
+      });
+    }
+  );
+
+  server.post<{ Params: IPropertyIncomeLineParams }>(
+    "/properties/:propertyId/income-lines/:lineId/unrefund",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const lineId = parseUuidParam(request.params.lineId);
+      if (lineId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid lineId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const isOwner = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage income entries"
+      );
+      if (!isOwner) return;
+
+      const existing = await propertyIncomeLinesDb.findById(lineId);
+      await executeLedgerUnrefund(reply, {
+        db: propertyIncomeLinesDb,
+        entity: existing,
+        entityId: lineId,
+        entityName: "Income line",
+        notFoundError: "Income line not found",
+        propertyId,
+      });
     }
   );
 };
