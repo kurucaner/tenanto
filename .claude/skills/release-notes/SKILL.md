@@ -65,6 +65,19 @@ drive the in-app "What's changed" dialog and version label.
    - Present the final notes to the user for a quick read; version numbers and copy are
      easy to tweak.
 
+8. **Always give git commands.** End every release-notes run by printing the exact commit
+   commands for the user — same structure every time. Do **not** run them unless the user
+   asks you to commit; just provide the block so they can copy-paste.
+
+   ```bash
+   git add package.json apps/admin/src/config/release-notes.ts
+   git commit -m "docs: Add <NEW_VERSION> What's changed release notes"
+   ```
+
+   Replace `<NEW_VERSION>` with the version you just shipped (e.g. `2026.10.0`). Only these
+   two files belong in the commit unless the user explicitly included other changes in the
+   release.
+
 ## Notes
 - Do not commit or tag unless the user asks.
 - Keep entries balanced — a few `new`, a few `improved`, a few `fixed` reads better than a
