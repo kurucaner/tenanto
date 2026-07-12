@@ -8,7 +8,13 @@ import {
   type DataTableColumn,
   type DataTableSortController,
 } from "@/components/data-table/data-table-types";
-import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
+import {
+  DeletedBadge,
+  ledgerEntryRowClassName,
+  RefundedBadge,
+  RefundEntityButton,
+  RestoreEntityButton,
+} from "@/components/deleted-badge";
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
@@ -31,6 +37,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
+import {
+  type TDeleteConfirmationOptions,
+  useDeleteConfirmation,
+} from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
@@ -188,6 +198,48 @@ function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
     : `line-${entry.line.id}`;
 }
 
+function buildStayRefundConfirmationOptions(
+  stay: IPropertyReservation
+): TDeleteConfirmationOptions<IPropertyReservation> {
+  if (stay.refundedAt) {
+    return {
+      confirmLabel: "Undo refund",
+      description: `Restore ${stay.guestName}'s stay to financial reports?`,
+      target: stay,
+      title: "Undo stay refund",
+    };
+  }
+
+  return {
+    confirmLabel: "Refund",
+    description: `Refund stay for ${stay.guestName}? It will be excluded from reports but remain visible here.`,
+    target: stay,
+    title: "Refund stay",
+  };
+}
+
+function buildLineRefundConfirmationOptions(
+  line: IPropertyIncomeLine
+): TDeleteConfirmationOptions<IPropertyIncomeLine> {
+  const label = line.incomeLineTypeName ?? line.incomeLineTypeId;
+
+  if (line.refundedAt) {
+    return {
+      confirmLabel: "Undo refund",
+      description: `Restore this ${label} entry to financial reports?`,
+      target: line,
+      title: "Undo income refund",
+    };
+  }
+
+  return {
+    confirmLabel: "Refund",
+    description: `Refund this ${label} entry? It will be excluded from reports but remain visible here.`,
+    target: line,
+    title: "Refund income",
+  };
+}
+
 function buildOtherIncomePrefillFromStay(
   stay: IPropertyReservation,
   incomeLineTypes: IPropertyIncomeLineType[]
@@ -226,13 +278,7 @@ function handleCreateIncomeLineOpenChange(
   }
 }
 
-type TIncomeFilterKey =
-  | "channelCommissionId"
-  | "from"
-  | "incomeType"
-  | "status"
-  | "to"
-  | "unitId";
+type TIncomeFilterKey = "channelCommissionId" | "from" | "incomeType" | "status" | "to" | "unitId";
 
 const PropertyIncomeFilters = memo(
   ({
@@ -322,11 +368,15 @@ const PropertyIncomeEntriesTable = memo(
     isDeleteStayPending,
     isLoading,
     isQuickDeleteActive,
+    isRefundLinePending,
+    isRefundStayPending,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
     onEditLine,
     onEditStay,
+    onRefundLine,
+    onRefundStay,
     onRestoreLine,
     onRestoreStay,
     onShowCalculationDetails,
@@ -340,11 +390,15 @@ const PropertyIncomeEntriesTable = memo(
     isDeleteStayPending: boolean;
     isLoading: boolean;
     isQuickDeleteActive: boolean;
+    isRefundLinePending: boolean;
+    isRefundStayPending: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
     onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
+    onRefundLine: (line: IPropertyIncomeLine) => void;
+    onRefundStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
@@ -359,12 +413,16 @@ const PropertyIncomeEntriesTable = memo(
           isDeleteLinePending={isDeleteLinePending}
           isDeleteStayPending={isDeleteStayPending}
           isQuickDeleteActive={isQuickDeleteActive}
+          isRefundLinePending={isRefundLinePending}
+          isRefundStayPending={isRefundStayPending}
           key={getIncomeEntryKey(entry)}
           onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
           onDeleteLine={onDeleteLine}
           onDeleteStay={onDeleteStay}
           onEditLine={onEditLine}
           onEditStay={onEditStay}
+          onRefundLine={onRefundLine}
+          onRefundStay={onRefundStay}
           onRestoreLine={onRestoreLine}
           onRestoreStay={onRestoreStay}
           onShowCalculationDetails={onShowCalculationDetails}
@@ -376,11 +434,15 @@ const PropertyIncomeEntriesTable = memo(
         isDeleteLinePending,
         isDeleteStayPending,
         isQuickDeleteActive,
+        isRefundLinePending,
+        isRefundStayPending,
         onAddOtherIncomeFromStay,
         onDeleteLine,
         onDeleteStay,
         onEditLine,
         onEditStay,
+        onRefundLine,
+        onRefundStay,
         onRestoreLine,
         onRestoreStay,
         onShowCalculationDetails,
@@ -529,9 +591,11 @@ type IncomeStayEntryRowProps = {
   canManage: boolean;
   isDeletePending: boolean;
   isQuickDeleteActive: boolean;
+  isRefundPending: boolean;
   onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
   onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
   onEditStay: (stay: IPropertyReservation) => void;
+  onRefundStay: (stay: IPropertyReservation) => void;
   onRestoreStay: (stay: IPropertyReservation) => void;
   onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
   stay: IPropertyReservation;
@@ -543,25 +607,29 @@ const IncomeStayEntryRow = memo(
     canManage,
     isDeletePending,
     isQuickDeleteActive,
+    isRefundPending,
     onAddOtherIncomeFromStay,
     onDeleteStay,
     onEditStay,
+    onRefundStay,
     onRestoreStay,
     onShowCalculationDetails,
     stay,
     unitLabel,
   }: IncomeStayEntryRowProps) => {
+    const isRefunded = stay.refundedAt !== null;
     const taxesTotal = getStayTaxesTotal(stay);
     const showTaxesDetails = taxesTotal > 0;
     const showCommissionDetails = stay.channelCommission > 0;
     const netPayout = getStayNetPayout(stay);
 
     return (
-      <TableRow className={stay.isDeleted ? deletedRowClassName : undefined}>
+      <TableRow className={ledgerEntryRowClassName(stay.isDeleted, stay.refundedAt)}>
         <TableCell>
           <div className="flex items-center gap-2">
             <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
             {stay.isDeleted ? <DeletedBadge /> : null}
+            {!stay.isDeleted && isRefunded ? <RefundedBadge /> : null}
           </div>
         </TableCell>
         <TableCell className="font-medium">{unitLabel}</TableCell>
@@ -621,28 +689,38 @@ const IncomeStayEntryRow = memo(
                 <RestoreEntityButton ariaLabel="Restore stay" onClick={() => onRestoreStay(stay)} />
               ) : (
                 <>
-                  <Button
-                    aria-label="Add other income for this stay"
-                    onClick={() => onAddOtherIncomeFromStay(stay)}
-                    size="icon-sm"
-                    title="Add other income"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <CirclePlus className="size-3.5" />
-                  </Button>
-                  <Button
-                    aria-label="Edit stay"
-                    onClick={() => onEditStay(stay)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
+                  {!isRefunded ? (
+                    <Button
+                      aria-label="Add other income for this stay"
+                      onClick={() => onAddOtherIncomeFromStay(stay)}
+                      size="icon-sm"
+                      title="Add other income"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <CirclePlus className="size-3.5" />
+                    </Button>
+                  ) : null}
+                  {!isRefunded ? (
+                    <Button
+                      aria-label="Edit stay"
+                      onClick={() => onEditStay(stay)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  ) : null}
+                  <RefundEntityButton
+                    ariaLabel={isRefunded ? "Undo stay refund" : "Refund stay"}
+                    disabled={isRefundPending}
+                    isRefunded={isRefunded}
+                    onClick={() => onRefundStay(stay)}
+                  />
                   <QuickDeleteButton
                     ariaLabel="Delete stay"
-                    disabled={isDeletePending}
+                    disabled={isDeletePending || isRefundPending}
                     onClick={(event) => onDeleteStay(stay, event)}
                     quickDeleteActive={isQuickDeleteActive}
                   />
@@ -661,9 +739,11 @@ type IncomeLineEntryRowProps = {
   canManage: boolean;
   isDeletePending: boolean;
   isQuickDeleteActive: boolean;
+  isRefundPending: boolean;
   line: IPropertyIncomeLine;
   onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
   onEditLine: (line: IPropertyIncomeLine) => void;
+  onRefundLine: (line: IPropertyIncomeLine) => void;
   onRestoreLine: (line: IPropertyIncomeLine) => void;
   unitLabel: string;
 };
@@ -673,68 +753,83 @@ const IncomeLineEntryRow = memo(
     canManage,
     isDeletePending,
     isQuickDeleteActive,
+    isRefundPending,
     line,
     onDeleteLine,
     onEditLine,
+    onRefundLine,
     onRestoreLine,
     unitLabel,
-  }: IncomeLineEntryRowProps) => (
-    <TableRow className={line.isDeleted ? deletedRowClassName : undefined}>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <IncomeEntryTypeBadge
-            entryKind={IncomeEntryKind.LINE}
-            incomeLineTypeId={line.incomeLineTypeId}
-            label={line.incomeLineTypeName ?? line.incomeLineTypeId}
-          />
-          {line.isDeleted ? <DeletedBadge /> : null}
-        </div>
-      </TableCell>
-      <TableCell className="font-medium">{unitLabel}</TableCell>
-      <TableCell>{line.guestName ?? "—"}</TableCell>
-      <TableCell>{line.transactionDate}</TableCell>
-      <TableCell>—</TableCell>
-      <TableCell>—</TableCell>
-      <TableCell>—</TableCell>
-      <TableCell>—</TableCell>
-      <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
-      <TableCell className="text-right">—</TableCell>
-      <TableCell className="text-right">—</TableCell>
-      <TableCell className="text-right">—</TableCell>
-      <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
-      <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
-      {canManage ? (
+  }: IncomeLineEntryRowProps) => {
+    const isRefunded = line.refundedAt !== null;
+
+    return (
+      <TableRow className={ledgerEntryRowClassName(line.isDeleted, line.refundedAt)}>
         <TableCell>
-          <div className="flex items-center gap-1">
-            {line.isDeleted ? (
-              <RestoreEntityButton
-                ariaLabel="Restore other income"
-                onClick={() => onRestoreLine(line)}
-              />
-            ) : (
-              <>
-                <Button
-                  aria-label="Edit other income"
-                  onClick={() => onEditLine(line)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <QuickDeleteButton
-                  ariaLabel="Delete other income"
-                  disabled={isDeletePending}
-                  onClick={(event) => onDeleteLine(line, event)}
-                  quickDeleteActive={isQuickDeleteActive}
-                />
-              </>
-            )}
+          <div className="flex items-center gap-2">
+            <IncomeEntryTypeBadge
+              entryKind={IncomeEntryKind.LINE}
+              incomeLineTypeId={line.incomeLineTypeId}
+              label={line.incomeLineTypeName ?? line.incomeLineTypeId}
+            />
+            {line.isDeleted ? <DeletedBadge /> : null}
+            {!line.isDeleted && isRefunded ? <RefundedBadge /> : null}
           </div>
         </TableCell>
-      ) : null}
-    </TableRow>
-  )
+        <TableCell className="font-medium">{unitLabel}</TableCell>
+        <TableCell>{line.guestName ?? "—"}</TableCell>
+        <TableCell>{line.transactionDate}</TableCell>
+        <TableCell>—</TableCell>
+        <TableCell>—</TableCell>
+        <TableCell>—</TableCell>
+        <TableCell>—</TableCell>
+        <TableCell className="text-right">{formatMoney(line.amount)}</TableCell>
+        <TableCell className="text-right">—</TableCell>
+        <TableCell className="text-right">—</TableCell>
+        <TableCell className="text-right">—</TableCell>
+        <TableCell className="text-right">{formatMoney(line.grossIncome)}</TableCell>
+        <TableCell className="text-right">{formatMoney(line.netIncome)}</TableCell>
+        {canManage ? (
+          <TableCell>
+            <div className="flex items-center gap-1">
+              {line.isDeleted ? (
+                <RestoreEntityButton
+                  ariaLabel="Restore other income"
+                  onClick={() => onRestoreLine(line)}
+                />
+              ) : (
+                <>
+                  {!isRefunded ? (
+                    <Button
+                      aria-label="Edit other income"
+                      onClick={() => onEditLine(line)}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  ) : null}
+                  <RefundEntityButton
+                    ariaLabel={isRefunded ? "Undo income refund" : "Refund income"}
+                    disabled={isRefundPending}
+                    isRefunded={isRefunded}
+                    onClick={() => onRefundLine(line)}
+                  />
+                  <QuickDeleteButton
+                    ariaLabel="Delete other income"
+                    disabled={isDeletePending || isRefundPending}
+                    onClick={(event) => onDeleteLine(line, event)}
+                    quickDeleteActive={isQuickDeleteActive}
+                  />
+                </>
+              )}
+            </div>
+          </TableCell>
+        ) : null}
+      </TableRow>
+    );
+  }
 );
 IncomeLineEntryRow.displayName = "IncomeLineEntryRow";
 
@@ -745,11 +840,15 @@ const IncomeEntryRow = memo(
     isDeleteLinePending,
     isDeleteStayPending,
     isQuickDeleteActive,
+    isRefundLinePending,
+    isRefundStayPending,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
     onEditLine,
     onEditStay,
+    onRefundLine,
+    onRefundStay,
     onRestoreLine,
     onRestoreStay,
     onShowCalculationDetails,
@@ -760,11 +859,15 @@ const IncomeEntryRow = memo(
     isDeleteLinePending: boolean;
     isDeleteStayPending: boolean;
     isQuickDeleteActive: boolean;
+    isRefundLinePending: boolean;
+    isRefundStayPending: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
     onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
     onEditLine: (line: IPropertyIncomeLine) => void;
     onEditStay: (stay: IPropertyReservation) => void;
+    onRefundLine: (line: IPropertyIncomeLine) => void;
+    onRefundStay: (stay: IPropertyReservation) => void;
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
@@ -776,9 +879,11 @@ const IncomeEntryRow = memo(
           canManage={canManage}
           isDeletePending={isDeleteStayPending}
           isQuickDeleteActive={isQuickDeleteActive}
+          isRefundPending={isRefundStayPending}
           onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
           onDeleteStay={onDeleteStay}
           onEditStay={onEditStay}
+          onRefundStay={onRefundStay}
           onRestoreStay={onRestoreStay}
           onShowCalculationDetails={onShowCalculationDetails}
           stay={entry.stay}
@@ -792,9 +897,11 @@ const IncomeEntryRow = memo(
         canManage={canManage}
         isDeletePending={isDeleteLinePending}
         isQuickDeleteActive={isQuickDeleteActive}
+        isRefundPending={isRefundLinePending}
         line={entry.line}
         onDeleteLine={onDeleteLine}
         onEditLine={onEditLine}
+        onRefundLine={onRefundLine}
         onRestoreLine={onRestoreLine}
         unitLabel={unitLabel}
       />
@@ -977,6 +1084,89 @@ const PropertyIncomePage = memo(() => {
     },
   });
 
+  const refundStayMutation = useMutation({
+    mutationFn: (stay: IPropertyReservation) => reservationsApi.refund(propertyId, stay.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to refund stay");
+    },
+    onSuccess: () => {
+      toast.success("Stay refunded");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
+
+  const unrefundStayMutation = useMutation({
+    mutationFn: (stay: IPropertyReservation) => reservationsApi.unrefund(propertyId, stay.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to undo stay refund");
+    },
+    onSuccess: () => {
+      toast.success("Stay refund undone");
+      invalidatePropertyIncomeCaches(queryClient, propertyId);
+    },
+  });
+
+  const refundLineMutation = useMutation({
+    mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.refund(propertyId, line.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to refund income");
+    },
+    onSuccess: (_, line) => {
+      toast.success("Income refunded");
+      invalidatePropertyIncomeCaches(queryClient, propertyId, { longStayId: line.longStayId });
+    },
+  });
+
+  const unrefundLineMutation = useMutation({
+    mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.unrefund(propertyId, line.id),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to undo income refund");
+    },
+    onSuccess: (_, line) => {
+      toast.success("Income refund undone");
+      invalidatePropertyIncomeCaches(queryClient, propertyId, { longStayId: line.longStayId });
+    },
+  });
+
+  const isRefundStayPending = refundStayMutation.isPending || unrefundStayMutation.isPending;
+  const isRefundLinePending = refundLineMutation.isPending || unrefundLineMutation.isPending;
+
+  const {
+    deleteConfirmationDialog: stayRefundConfirmationDialog,
+    requestDelete: requestStayRefund,
+  } = useDeleteConfirmation<IPropertyReservation>(isRefundStayPending, (stay, onDone) => {
+    if (stay.refundedAt) {
+      unrefundStayMutation.mutate(stay, { onSuccess: onDone });
+      return;
+    }
+    refundStayMutation.mutate(stay, { onSuccess: onDone });
+  });
+
+  const {
+    deleteConfirmationDialog: lineRefundConfirmationDialog,
+    requestDelete: requestLineRefund,
+  } = useDeleteConfirmation<IPropertyIncomeLine>(isRefundLinePending, (line, onDone) => {
+    if (line.refundedAt) {
+      unrefundLineMutation.mutate(line, { onSuccess: onDone });
+      return;
+    }
+    refundLineMutation.mutate(line, { onSuccess: onDone });
+  });
+
+  const handleRefundStay = useCallback(
+    (stay: IPropertyReservation) => {
+      requestStayRefund(buildStayRefundConfirmationOptions(stay));
+    },
+    [requestStayRefund]
+  );
+
+  const handleRefundLine = useCallback(
+    (line: IPropertyIncomeLine) => {
+      requestLineRefund(buildLineRefundConfirmationOptions(line));
+    },
+    [requestLineRefund]
+  );
+
   const entries = useMemo(
     () =>
       buildMergedEntries(
@@ -1035,6 +1225,8 @@ const PropertyIncomePage = memo(() => {
             isDeleteStayPending={deleteStayMutation.isPending}
             isLoading={isLoading}
             isQuickDeleteActive={isQuickDeleteActive}
+            isRefundLinePending={isRefundLinePending}
+            isRefundStayPending={isRefundStayPending}
             onAddOtherIncomeFromStay={(stay) =>
               openOtherIncomeFromStay(stay, incomeLineTypes, {
                 setCreateLineLockedStay,
@@ -1046,6 +1238,8 @@ const PropertyIncomePage = memo(() => {
             onDeleteStay={handleDeleteStay}
             onEditLine={setEditIncomeLine}
             onEditStay={setEditReservation}
+            onRefundLine={handleRefundLine}
+            onRefundStay={handleRefundStay}
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
             onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
             onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
@@ -1068,6 +1262,8 @@ const PropertyIncomePage = memo(() => {
 
       {lineDeleteConfirmationDialog}
       {stayDeleteConfirmationDialog}
+      {lineRefundConfirmationDialog}
+      {stayRefundConfirmationDialog}
 
       <PropertyIncomePageDialogs
         createLineLockedStay={createLineLockedStay}

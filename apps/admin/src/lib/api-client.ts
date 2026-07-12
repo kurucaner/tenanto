@@ -775,9 +775,21 @@ export const reservationsApi = {
       `/properties/${encodeURIComponent(propertyId)}/reservations${buildReservationsSearchParams(query)}`
     ),
 
+  refund: (propertyId: string, reservationId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/refund`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
   restore: (propertyId: string, reservationId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  unrefund: (propertyId: string, reservationId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/unrefund`,
       { method: "POST", omitDefaultContentType: true }
     ),
 
@@ -817,9 +829,21 @@ export const incomeLinesApi = {
       `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
     ),
 
+  refund: (propertyId: string, lineId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}/refund`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
   restore: (propertyId: string, lineId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}/restore`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  unrefund: (propertyId: string, lineId: string) =>
+    authenticatedRequest<void>(
+      `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}/unrefund`,
       { method: "POST", omitDefaultContentType: true }
     ),
 

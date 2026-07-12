@@ -296,8 +296,6 @@ const CreateIncomeLineDialogForm = memo(
             )}
           />
 
-          <p className="text-muted-foreground text-xs">Date cannot be in the future.</p>
-
           <p className="text-muted-foreground text-xs">
             {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel
             commission applied.
