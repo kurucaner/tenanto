@@ -1,8 +1,8 @@
 import { Receipt, RotateCcw } from "lucide-react";
 import { memo } from "react";
 
+import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 /**
  * Marks a soft-deleted row. Only platform admins ever see deleted rows; the
@@ -25,9 +25,9 @@ RefundedBadge.displayName = "RefundedBadge";
 
 export const RestoreEntityButton = memo(
   ({ ariaLabel, onClick }: { ariaLabel: string; onClick: () => void }) => (
-    <Button aria-label={ariaLabel} onClick={onClick} size="icon-sm" type="button" variant="ghost">
+    <TableIconButton ariaLabel={ariaLabel} onClick={onClick} tooltip={ariaLabel}>
       <RotateCcw className="size-3.5" />
-    </Button>
+    </TableIconButton>
   )
 );
 RestoreEntityButton.displayName = "RestoreEntityButton";
@@ -44,16 +44,14 @@ export const RefundEntityButton = memo(
     isRefunded: boolean;
     onClick: () => void;
   }) => (
-    <Button
-      aria-label={ariaLabel}
+    <TableIconButton
+      ariaLabel={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      size="icon-sm"
-      type="button"
-      variant="ghost"
+      tooltip={ariaLabel}
     >
       {isRefunded ? <RotateCcw className="size-3.5" /> : <Receipt className="size-3.5" />}
-    </Button>
+    </TableIconButton>
   )
 );
 RefundEntityButton.displayName = "RefundEntityButton";

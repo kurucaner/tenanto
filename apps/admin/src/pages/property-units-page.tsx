@@ -9,6 +9,7 @@ import { type DataTableColumn, type DataTableSortController } from "@/components
 import { DeletedBadge, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
+import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -113,25 +114,21 @@ const UnitRow = memo(
               ) : (
                 <>
                   {isLongTerm && isVacant ? (
-                    <Button
-                      aria-label="Start lease"
+                    <TableIconButton
+                      ariaLabel="Start lease"
                       onClick={() => onStartLease(unit)}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
+                      tooltip="Start lease"
                     >
                       <CirclePlus className="size-3.5" />
-                    </Button>
+                    </TableIconButton>
                   ) : null}
-                  <Button
-                    aria-label="Edit unit"
+                  <TableIconButton
+                    ariaLabel="Edit unit"
                     onClick={() => onEdit(unit)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
+                    tooltip="Edit unit"
                   >
                     <Pencil className="size-3.5" />
-                  </Button>
+                  </TableIconButton>
                   <QuickDeleteButton
                     ariaLabel="Delete unit"
                     disabled={isDeletePending}

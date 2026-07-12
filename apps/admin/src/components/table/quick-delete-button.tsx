@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { memo, type MouseEvent } from "react";
 
-import { Button } from "@/components/ui/button";
+import { TableIconButton } from "@/components/table/table-icon-button";
 import { getPrimaryModifierKeyLabel } from "@/lib/primary-modifier-key";
 import { cn } from "@/lib/utils";
 
@@ -14,19 +14,23 @@ interface QuickDeleteButtonProps {
 
 export const QuickDeleteButton = memo(
   ({ ariaLabel, disabled, onClick, quickDeleteActive }: QuickDeleteButtonProps) => (
-    <Button
+    <TableIconButton
       aria-keyshortcuts="Shift+Click"
-      aria-label={ariaLabel}
+      ariaLabel={ariaLabel}
       className={cn(quickDeleteActive && "bg-muted text-foreground dark:bg-muted/50")}
       disabled={disabled}
       onClick={onClick}
-      size="icon-sm"
-      title={`Hold ${getPrimaryModifierKeyLabel()} to delete without confirmation`}
-      type="button"
-      variant="ghost"
+      tooltip={
+        <span className="flex flex-col gap-0.5">
+          <span>{ariaLabel}</span>
+          <span className="text-background/80">
+            Hold {getPrimaryModifierKeyLabel()} to delete without confirmation
+          </span>
+        </span>
+      }
     >
       <Trash2 className="size-3.5 text-destructive" />
-    </Button>
+    </TableIconButton>
   )
 );
 QuickDeleteButton.displayName = "QuickDeleteButton";

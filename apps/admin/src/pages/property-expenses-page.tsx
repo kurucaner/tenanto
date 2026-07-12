@@ -25,6 +25,7 @@ import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
+import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,15 +90,13 @@ const ExpenseRow = memo(
               <RestoreEntityButton ariaLabel="Restore expense" onClick={() => onRestore(expense)} />
             ) : (
               <>
-                <Button
-                  aria-label="Edit expense"
+                <TableIconButton
+                  ariaLabel="Edit expense"
                   onClick={() => onEdit(expense)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
+                  tooltip="Edit expense"
                 >
                   <Pencil className="size-3.5" />
-                </Button>
+                </TableIconButton>
                 <QuickDeleteButton
                   ariaLabel="Delete expense"
                   disabled={isDeletePending}

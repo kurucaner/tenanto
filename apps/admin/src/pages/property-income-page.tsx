@@ -32,6 +32,7 @@ import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reserva
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
 import { StayCalculationDetailsDialog } from "@/components/income/stay-calculation-details-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
+import { TableIconButton } from "@/components/table/table-icon-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -690,27 +691,22 @@ const IncomeStayEntryRow = memo(
               ) : (
                 <>
                   {!isRefunded ? (
-                    <Button
-                      aria-label="Add other income for this stay"
+                    <TableIconButton
+                      ariaLabel="Add other income for this stay"
                       onClick={() => onAddOtherIncomeFromStay(stay)}
-                      size="icon-sm"
-                      title="Add other income"
-                      type="button"
-                      variant="ghost"
+                      tooltip="Add other income"
                     >
                       <CirclePlus className="size-3.5" />
-                    </Button>
+                    </TableIconButton>
                   ) : null}
                   {!isRefunded ? (
-                    <Button
-                      aria-label="Edit stay"
+                    <TableIconButton
+                      ariaLabel="Edit stay"
                       onClick={() => onEditStay(stay)}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
+                      tooltip="Edit stay"
                     >
                       <Pencil className="size-3.5" />
-                    </Button>
+                    </TableIconButton>
                   ) : null}
                   <RefundEntityButton
                     ariaLabel={isRefunded ? "Undo stay refund" : "Refund stay"}
@@ -800,15 +796,13 @@ const IncomeLineEntryRow = memo(
               ) : (
                 <>
                   {!isRefunded ? (
-                    <Button
-                      aria-label="Edit other income"
+                    <TableIconButton
+                      ariaLabel="Edit other income"
                       onClick={() => onEditLine(line)}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
+                      tooltip="Edit other income"
                     >
                       <Pencil className="size-3.5" />
-                    </Button>
+                    </TableIconButton>
                   ) : null}
                   <RefundEntityButton
                     ariaLabel={isRefunded ? "Undo income refund" : "Refund income"}

@@ -15,6 +15,7 @@ import {
 } from "@/components/income/create-income-line-dialog";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
+import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -148,37 +149,35 @@ const LeaseRow = memo(
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
-            <Button aria-label="View lease" asChild size="icon-sm" type="button" variant="ghost">
-              <Link to={leaseDetailPath}>
-                <Eye className="size-3.5" />
-              </Link>
-            </Button>
+            <TableIconButton ariaLabel="View lease" asChild tooltip="View lease">
+              <Button asChild size="icon-sm" type="button" variant="ghost">
+                <Link aria-label="View lease" to={leaseDetailPath}>
+                  <Eye className="size-3.5" />
+                </Link>
+              </Button>
+            </TableIconButton>
             {canManage && lease.status === PropertyLongStayStatus.ACTIVE ? (
               <>
-                <Button
-                  aria-label="Record rent"
+                <TableIconButton
+                  ariaLabel="Record rent"
                   onClick={(event) => {
                     event.stopPropagation();
                     onRecordRent(lease);
                   }}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
+                  tooltip="Record rent"
                 >
                   <CircleDollarSign className="size-3.5" />
-                </Button>
-                <Button
-                  aria-label="End lease"
+                </TableIconButton>
+                <TableIconButton
+                  ariaLabel="End lease"
                   onClick={(event) => {
                     event.stopPropagation();
                     onEndLease(lease);
                   }}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
+                  tooltip="End lease"
                 >
                   <SquarePen className="size-3.5" />
-                </Button>
+                </TableIconButton>
               </>
             ) : null}
           </div>
