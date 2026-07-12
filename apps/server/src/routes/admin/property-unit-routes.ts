@@ -5,6 +5,8 @@ import {
   HttpStatus,
   type ICreatePropertyUnitBody,
   type IUpdatePropertyUnitBody,
+  type TPropertyUnitsListSortBy,
+  type TPropertyUnitsListSortDir,
   type TUnitRentalType,
   UnitRentalType,
   UNITS_LIST_LIMIT,
@@ -35,12 +37,26 @@ function parseUnitsListLimit(raw: unknown): number {
   return Math.min(UNITS_LIST_MAX_LIMIT, Math.floor(n));
 }
 
+function parseUnitsListSortBy(raw: unknown): TPropertyUnitsListSortBy | null | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (raw === "type") return "type";
+  return null;
+}
+
+function parseUnitsListSortDir(raw: unknown): TPropertyUnitsListSortDir | null | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (raw === "asc" || raw === "desc") return raw;
+  return null;
+}
+
 function parseUnitsListQuery(query: Record<string, unknown>):
   | {
       cursor?: string;
       isPaginated: boolean;
       limit: number;
       ok: true;
+      sortBy: TPropertyUnitsListSortBy;
+      sortDir: TPropertyUnitsListSortDir;
     }
   | { error: string; ok: false } {
   const isPaginated =
@@ -51,7 +67,24 @@ function parseUnitsListQuery(query: Record<string, unknown>):
   const cursor =
     typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
 
-  return { cursor, isPaginated, limit, ok: true };
+  const sortByRaw = parseUnitsListSortBy(query["sortBy"]);
+  if (sortByRaw === null) {
+    return { error: 'sortBy must be "type"', ok: false };
+  }
+
+  const sortDirRaw = parseUnitsListSortDir(query["sortDir"]);
+  if (sortDirRaw === null) {
+    return { error: 'sortDir must be "asc" or "desc"', ok: false };
+  }
+
+  return {
+    cursor,
+    isPaginated,
+    limit,
+    ok: true,
+    sortBy: sortByRaw ?? "type",
+    sortDir: sortDirRaw ?? "asc",
+  };
 }
 
 function parseRentalType(raw: unknown): TUnitRentalType | null {
@@ -179,7 +212,13 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       if (parsed.isPaginated) {
         const { meta, nextCursor, units } = await propertyUnitsDb.listPaginatedByProperty(
           propertyId,
-          { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
+          {
+            cursor: parsed.cursor,
+            includeDeleted,
+            limit: parsed.limit,
+            sortBy: parsed.sortBy,
+            sortDir: parsed.sortDir,
+          }
         );
         return reply.send(meta ? { meta, nextCursor, units } : { nextCursor, units });
       }

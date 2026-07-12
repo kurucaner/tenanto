@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
-import { type DataTableColumn } from "@/components/data-table/data-table-types";
+import { type DataTableColumn, type DataTableSortController } from "@/components/data-table/data-table-types";
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
@@ -21,6 +21,7 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { usePropertyUnitsInfiniteList } from "@/hooks/use-property-units-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
@@ -157,7 +158,7 @@ function getUnitColumns(canManage: boolean): DataTableColumn[] {
   return [
     { id: "name", label: "Name" },
     { id: "layout", label: "Layout" },
-    { id: "type", label: "Type" },
+    { id: "type", label: "Type", sortable: true },
     { id: "occupancy", label: "Occupancy" },
     { id: "added", label: "Added" },
     { hidden: !canManage, id: "actions", label: "Actions" },
@@ -187,6 +188,7 @@ const PropertyUnitsTable = memo(
     onEdit,
     onRestore,
     onStartLease,
+    sort,
     units,
   }: {
     activeLeaseByUnitId: Map<string, IPropertyLongStay>;
@@ -202,6 +204,7 @@ const PropertyUnitsTable = memo(
     onEdit: (unit: IPropertyUnit) => void;
     onRestore: (unit: IPropertyUnit) => void;
     onStartLease: (unit: IPropertyUnit) => void;
+    sort: DataTableSortController;
     units: IPropertyUnit[];
   }) => {
     const renderUnitRow = useCallback(
@@ -249,6 +252,7 @@ const PropertyUnitsTable = memo(
         isPending={isPending}
         items={units}
         renderRow={renderUnitRow}
+        sort={sort}
         virtualization={{ estimateRowHeight: UNIT_ROW_ESTIMATED_HEIGHT }}
       />
     );
@@ -319,6 +323,11 @@ export const PropertyUnitsPage = memo(() => {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
   const [startLeaseUnit, setStartLeaseUnit] = useState<IPropertyUnit | null>(null);
+  const sortController = useUrlTableSort({
+    defaultColumnId: "type",
+    defaultDirection: "asc",
+  });
+  const { sortState } = sortController;
 
   const {
     fetchNextPage,
@@ -327,7 +336,7 @@ export const PropertyUnitsPage = memo(() => {
     isPending,
     meta: listMeta,
     units,
-  } = usePropertyUnitsInfiniteList(propertyId);
+  } = usePropertyUnitsInfiniteList(propertyId, sortState);
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -430,6 +439,7 @@ export const PropertyUnitsPage = memo(() => {
             onEdit={setEditUnit}
             onRestore={handleRestoreUnit}
             onStartLease={setStartLeaseUnit}
+            sort={sortController}
             units={units}
           />
         </CardContent>

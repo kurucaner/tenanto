@@ -27,6 +27,7 @@ import {
   type IAdminUsersListResponse,
 } from "@/lib/api-client";
 import { copyUserIdToClipboard } from "@/lib/copy-user-id";
+import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import type { IUser } from "@/packages/shared";
@@ -107,16 +108,6 @@ const UsersListPageInner = memo(() => {
     });
 
   const users = data?.pages.flatMap((p: IAdminUsersListResponse) => p.users) ?? [];
-
-  const loadMoreButtonLabel = useMemo(() => {
-    if (isFetchingNextPage) {
-      return "Loading…";
-    } else if (hasNextPage) {
-      return "Load more";
-    } else {
-      return "End of list";
-    }
-  }, [isFetchingNextPage, hasNextPage]);
 
   const handleLoadMore = useCallback(() => {
     fetchNextPage();
@@ -220,7 +211,7 @@ const UsersListPageInner = memo(() => {
                   type="button"
                   variant="outline"
                 >
-                  {loadMoreButtonLabel}
+                  {getInfiniteListLoadMoreLabel({ hasNextPage, isFetchingNextPage })}
                 </Button>
               </div>
             </>

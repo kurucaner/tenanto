@@ -108,9 +108,14 @@ export interface IUpdatePropertyUnitBody {
   unitNumber?: string;
 }
 
+export type TPropertyUnitsListSortBy = "type";
+export type TPropertyUnitsListSortDir = "asc" | "desc";
+
 export interface IPropertyUnitsListQuery {
   cursor?: string;
   limit?: number;
+  sortBy?: TPropertyUnitsListSortBy;
+  sortDir?: TPropertyUnitsListSortDir;
 }
 
 export interface IPropertyUnitsListResponse {

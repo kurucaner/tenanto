@@ -100,6 +100,8 @@ export {
   type TAddPropertyMemberResponse,
   type TPropertyInviteStatus,
   type TPropertyRole,
+  type TPropertyUnitsListSortBy,
+  type TPropertyUnitsListSortDir,
   type TUnitRentalType,
   UnitRentalType,
 } from "./property-types";
@@ -219,7 +221,6 @@ export {
   type TExpenseImportFileStatus,
 } from "./property-expense-import-types";
 export { EXPENSES_LIST_LIMIT, EXPENSES_LIST_MAX_LIMIT } from "./property-expense-list-constants";
-export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 export {
   type ICreatePropertyExpenseBody,
   type IPropertyExpense,
@@ -228,6 +229,7 @@ export {
   type IUpdatePropertyExpenseBody,
   type TPropertyExpensesListFilters,
 } from "./property-expense-types";
+export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 
 // Home Financial Overview Types
 export type { IHomeFinancialOverview } from "./home-financial-overview-types";

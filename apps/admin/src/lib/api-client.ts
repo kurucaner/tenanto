@@ -678,6 +678,8 @@ function buildUnitsSearchParams(query: IPropertyUnitsListQuery = {}): string {
   const params = new URLSearchParams();
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.sortBy != null) params.set("sortBy", query.sortBy);
+  if (query.sortDir != null) params.set("sortDir", query.sortDir);
   const search = params.toString();
   return search ? `?${search}` : "";
 }

@@ -104,4 +104,32 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
     expect(secondPage.meta).toBeUndefined();
     expect(mockQuery.mock.calls).toHaveLength(1);
   });
+
+  test("uses desc order and less-than cursor predicate when sortDir is desc", async () => {
+    mockQuery.mockClear();
+
+    await propertyUnitsDb.listPaginatedByProperty("prop-1", { limit: 2, sortDir: "desc" });
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("ORDER BY rental_type DESC, unit_number DESC, id DESC");
+
+    mockQuery.mockClear();
+    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {
+      limit: 2,
+      sortDir: "desc",
+    });
+    expect(firstPage.nextCursor).toBeString();
+
+    mockQuery.mockClear();
+    await propertyUnitsDb.listPaginatedByProperty("prop-1", {
+      cursor: firstPage.nextCursor!,
+      limit: 2,
+      sortDir: "desc",
+    });
+
+    const cursorSql = mockQuery.mock.calls[0]?.[0] as string;
+    expect(cursorSql).toContain("(rental_type, unit_number, id) <");
+  });
 });

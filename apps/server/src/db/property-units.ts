@@ -3,6 +3,8 @@ import type {
   IPropertyUnit,
   IPropertyUnitsListMeta,
   IUpdatePropertyUnitBody,
+  TPropertyUnitsListSortBy,
+  TPropertyUnitsListSortDir,
 } from "@/packages/shared";
 import { UnitRentalType } from "@/packages/shared";
 import { decodeUnitKeysetCursor, encodeUnitKeysetCursor } from "@/pagination/keyset-cursor";
@@ -16,6 +18,31 @@ export interface IUnitDeleteBlockers {
   incomeLineCount: number;
   longStayCount: number;
   reservationCount: number;
+}
+
+interface IUnitsListPaginatedOptions {
+  cursor?: string;
+  includeDeleted?: boolean;
+  limit: number;
+  sortBy?: TPropertyUnitsListSortBy;
+  sortDir?: TPropertyUnitsListSortDir;
+}
+
+function getUnitsListSortClause(sortDir: TPropertyUnitsListSortDir): {
+  cursorOperator: ">" | "<";
+  orderByClause: string;
+} {
+  if (sortDir === "desc") {
+    return {
+      cursorOperator: "<",
+      orderByClause: "rental_type DESC, unit_number DESC, id DESC",
+    };
+  }
+
+  return {
+    cursorOperator: ">",
+    orderByClause: "rental_type ASC, unit_number ASC, id ASC",
+  };
 }
 
 export const propertyUnitsDb = {
@@ -107,7 +134,7 @@ export const propertyUnitsDb = {
 
   async listPaginatedByProperty(
     propertyId: string,
-    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+    options: IUnitsListPaginatedOptions
   ): Promise<{
     meta?: IPropertyUnitsListMeta;
     nextCursor: string | null;
@@ -127,9 +154,11 @@ export const propertyUnitsDb = {
 
   async listPaginatedPage(
     propertyId: string,
-    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+    options: IUnitsListPaginatedOptions
   ): Promise<{ nextCursor: string | null; units: IPropertyUnit[] }> {
     const includeDeleted = options.includeDeleted ?? false;
+    const sortDir = options.sortDir ?? "asc";
+    const { cursorOperator, orderByClause } = getUnitsListSortClause(sortDir);
     const conditions = ["property_id = $1"];
     const values: unknown[] = [propertyId];
     if (!includeDeleted) {
@@ -140,7 +169,7 @@ export const propertyUnitsDb = {
     if (options.cursor != null && options.cursor !== "") {
       const decoded = decodeUnitKeysetCursor(options.cursor);
       conditions.push(
-        `(rental_type, unit_number, id) > ($${p++}::property_unit_rental_type, $${p++}, $${p++}::uuid)`
+        `(rental_type, unit_number, id) ${cursorOperator} ($${p++}::property_unit_rental_type, $${p++}, $${p++}::uuid)`
       );
       values.push(decoded.rentalType, decoded.unitNumber, decoded.id);
     }
@@ -151,7 +180,7 @@ export const propertyUnitsDb = {
     const result = await pool.query(
       `SELECT * FROM property_units
        WHERE ${conditions.join(" AND ")}
-       ORDER BY rental_type ASC, unit_number ASC, id ASC
+       ORDER BY ${orderByClause}
        LIMIT $${limitParam}`,
       values
     );
