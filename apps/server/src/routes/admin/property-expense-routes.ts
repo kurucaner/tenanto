@@ -13,8 +13,8 @@ import {
   EXPENSES_LIST_MAX_LIMIT,
   HttpStatus,
   type IPropertyExpense,
-  type IPropertyExpensesListQuery,
   type IUpdatePropertyExpenseBody,
+  type TPropertyExpensesListFilters,
   UserType,
 } from "@/packages/shared";
 import { decodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
@@ -149,12 +149,12 @@ function parseUpdateExpenseBody(
 function parseExpensesListQuery(query: Record<string, unknown>):
   | {
       cursor?: string;
-      filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">;
+      filters: TPropertyExpensesListFilters;
       limit: number;
       ok: true;
     }
   | { error: string; ok: false } {
-  const filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to"> = {};
+  const filters: TPropertyExpensesListFilters = {};
 
   if (query["from"] !== undefined && query["from"] !== "") {
     const from = parseDateString(query["from"]);

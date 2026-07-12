@@ -40,6 +40,11 @@ export interface IPropertyExpensesListQuery {
   to?: string;
 }
 
+export type TPropertyExpensesListFilters = Pick<
+  IPropertyExpensesListQuery,
+  "categoryId" | "from" | "to"
+>;
+
 export interface IPropertyExpensesListResponse {
   expenses: IPropertyExpense[];
   meta?: IPropertyExpensesListMeta;

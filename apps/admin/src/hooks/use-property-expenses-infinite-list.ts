@@ -5,14 +5,11 @@ import { expensesApi } from "@/lib/api-client";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   EXPENSES_LIST_LIMIT,
-  type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
+  type TPropertyExpensesListFilters,
 } from "@/packages/shared";
 
-export type TPropertyExpensesListFilters = Pick<
-  IPropertyExpensesListQuery,
-  "categoryId" | "from" | "to"
->;
+export type { TPropertyExpensesListFilters };
 
 export function usePropertyExpensesInfiniteList(
   propertyId: string,

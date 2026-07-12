@@ -4,6 +4,7 @@ import type {
   IPropertyExpensesListMeta,
   IPropertyExpensesListQuery,
   IUpdatePropertyExpenseBody,
+  TPropertyExpensesListFilters,
 } from "@/packages/shared";
 import { decodeExpenseKeysetCursor, encodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
@@ -25,7 +26,7 @@ const EXPENSE_SELECT = `
 
 function buildPropertyExpenseListConditions(
   propertyId: string,
-  filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
+  filters: TPropertyExpensesListFilters,
   includeDeleted: boolean
 ): { conditions: string[]; values: unknown[] } {
   const conditions = ["pe.property_id = $1"];
@@ -180,7 +181,7 @@ export const propertyExpensesDb = {
 
   async getListMetaByProperty(
     propertyId: string,
-    filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
+    filters: TPropertyExpensesListFilters,
     includeDeleted = false
   ): Promise<IPropertyExpensesListMeta> {
     const { conditions, values } = buildPropertyExpenseListConditions(
@@ -206,7 +207,7 @@ export const propertyExpensesDb = {
 
   async listPaginatedByProperty(
     propertyId: string,
-    filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
+    filters: TPropertyExpensesListFilters,
     options: { cursor?: string; includeDeleted?: boolean; limit: number }
   ): Promise<{
     expenses: IPropertyExpense[];
@@ -227,7 +228,7 @@ export const propertyExpensesDb = {
 
   async listPaginatedPage(
     propertyId: string,
-    filters: Pick<IPropertyExpensesListQuery, "categoryId" | "from" | "to">,
+    filters: TPropertyExpensesListFilters,
     options: { cursor?: string; includeDeleted?: boolean; limit: number }
   ): Promise<{ expenses: IPropertyExpense[]; nextCursor: string | null }> {
     const includeDeleted = options.includeDeleted ?? false;

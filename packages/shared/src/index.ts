@@ -224,6 +224,7 @@ export {
   type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
   type IUpdatePropertyExpenseBody,
+  type TPropertyExpensesListFilters,
 } from "./property-expense-types";
 
 // Home Financial Overview Types
