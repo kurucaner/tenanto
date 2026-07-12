@@ -138,6 +138,16 @@ export const propertyIncomeLinesDb = {
     return result.rows.map((row) => mapPropertyIncomeLineRow(row as Record<string, unknown>));
   },
 
+  async refund(id: string, userId: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_income_lines
+       SET refunded_at = NOW(), refunded_by = $2
+       WHERE id = $1 AND refunded_at IS NULL`,
+      [id, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
   async restore(id: string): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_income_lines SET is_deleted = false, deleted_at = NULL WHERE id = $1`,
@@ -149,6 +159,16 @@ export const propertyIncomeLinesDb = {
   async softDelete(id: string): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_income_lines SET is_deleted = true, deleted_at = NOW() WHERE id = $1`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async unrefund(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `UPDATE property_income_lines
+       SET refunded_at = NULL, refunded_by = NULL
+       WHERE id = $1 AND refunded_at IS NOT NULL`,
       [id]
     );
     return (result.rowCount ?? 0) > 0;

@@ -20,6 +20,8 @@ export interface IPropertyIncomeLine {
   longStayId: string | null;
   netIncome: number;
   propertyId: string;
+  refundedAt: string | null;
+  refundedBy: string | null;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   transactionDate: string;

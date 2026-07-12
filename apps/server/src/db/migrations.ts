@@ -2177,4 +2177,32 @@ export const migrations: IMigration[] = [
     },
     version: 48,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          DROP COLUMN IF EXISTS refunded_at,
+          DROP COLUMN IF EXISTS refunded_by;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN IF EXISTS refunded_at,
+          DROP COLUMN IF EXISTS refunded_by;
+      `);
+    },
+    name: "income_refund_columns",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS refunded_by UUID REFERENCES users(id);
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS refunded_by UUID REFERENCES users(id);
+      `);
+    },
+    version: 49,
+  },
 ];
