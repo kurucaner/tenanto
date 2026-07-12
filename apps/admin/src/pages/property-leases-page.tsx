@@ -7,6 +7,8 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
+import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
+import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -28,7 +30,6 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
-import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -202,24 +203,26 @@ const PropertyLeaseFilters = memo(
     unitId: string;
     units: IPropertyUnit[];
   }) => (
-    <div className={getLedgerFiltersGridClass(2)}>
-      <FilterSelectField
-        id="lease-filter-status"
-        label="Status"
-        onChange={(e) => onStatusChange(e.target.value)}
-        options={LEASE_STATUS_FILTER_OPTIONS}
-        value={status}
-      />
-      <FilterSelectField
-        emptyOptionLabel="All units"
-        id="lease-filter-unit"
-        label="Unit"
-        onChange={(e) => onUnitIdChange(e.target.value)}
-        value={unitId}
-      >
-        <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
-      </FilterSelectField>
-    </div>
+    <LedgerFiltersSection>
+      <LedgerFilterGrid filterCount={2}>
+        <FilterSelectField
+          id="lease-filter-status"
+          label="Status"
+          onChange={(e) => onStatusChange(e.target.value)}
+          options={LEASE_STATUS_FILTER_OPTIONS}
+          value={status}
+        />
+        <FilterSelectField
+          emptyOptionLabel="All units"
+          id="lease-filter-unit"
+          label="Unit"
+          onChange={(e) => onUnitIdChange(e.target.value)}
+          value={unitId}
+        >
+          <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
+        </FilterSelectField>
+      </LedgerFilterGrid>
+    </LedgerFiltersSection>
   )
 );
 PropertyLeaseFilters.displayName = "PropertyLeaseFilters";

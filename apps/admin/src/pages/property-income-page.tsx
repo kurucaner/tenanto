@@ -11,6 +11,8 @@ import {
 import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
+import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
+import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -43,7 +45,6 @@ import {
   type TIncomeEntrySortColumnId,
 } from "@/lib/income-entry-sort";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -259,53 +260,55 @@ const PropertyIncomeFilters = memo(
     unitId: string;
     units: IPropertyUnit[];
   }) => (
-    <div className={getLedgerFiltersGridClass(6)}>
-      <DateFilterField
-        id="filter-from"
-        label="From"
-        onChange={(e) => onFilterChange("from", e.target.value)}
-        value={from}
-      />
-      <DateFilterField
-        id="filter-to"
-        label="To"
-        onChange={(e) => onFilterChange("to", e.target.value)}
-        value={to}
-      />
-      <FilterSelectField
-        id="filter-unit"
-        label="Unit"
-        onChange={(e) => onFilterChange("unitId", e.target.value)}
-        value={unitId}
-      >
-        <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
-      </FilterSelectField>
-      <FilterSelectField
-        id="filter-income-type"
-        label="Income type"
-        onChange={(e) => onFilterChange("incomeType", e.target.value)}
-        options={incomeTypeFilterOptions}
-        value={incomeType}
-      />
-      <FilterSelectField
-        disabled={!showStays}
-        emptyOptionLabel="All channels"
-        id="filter-channel"
-        label="Channel"
-        onChange={(e) => onFilterChange("channelCommissionId", e.target.value)}
-        options={channelFilterOptions}
-        value={channelCommissionId}
-      />
-      <FilterSelectField
-        disabled={!showStays}
-        emptyOptionLabel="All statuses"
-        id="filter-status"
-        label="Status"
-        onChange={(e) => onFilterChange("status", e.target.value)}
-        options={STATUS_OPTIONS}
-        value={status}
-      />
-    </div>
+    <LedgerFiltersSection>
+      <LedgerFilterGrid filterCount={6}>
+        <DateFilterField
+          id="filter-from"
+          label="From"
+          onChange={(e) => onFilterChange("from", e.target.value)}
+          value={from}
+        />
+        <DateFilterField
+          id="filter-to"
+          label="To"
+          onChange={(e) => onFilterChange("to", e.target.value)}
+          value={to}
+        />
+        <FilterSelectField
+          id="filter-unit"
+          label="Unit"
+          onChange={(e) => onFilterChange("unitId", e.target.value)}
+          value={unitId}
+        >
+          <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
+        </FilterSelectField>
+        <FilterSelectField
+          id="filter-income-type"
+          label="Income type"
+          onChange={(e) => onFilterChange("incomeType", e.target.value)}
+          options={incomeTypeFilterOptions}
+          value={incomeType}
+        />
+        <FilterSelectField
+          disabled={!showStays}
+          emptyOptionLabel="All channels"
+          id="filter-channel"
+          label="Channel"
+          onChange={(e) => onFilterChange("channelCommissionId", e.target.value)}
+          options={channelFilterOptions}
+          value={channelCommissionId}
+        />
+        <FilterSelectField
+          disabled={!showStays}
+          emptyOptionLabel="All statuses"
+          id="filter-status"
+          label="Status"
+          onChange={(e) => onFilterChange("status", e.target.value)}
+          options={STATUS_OPTIONS}
+          value={status}
+        />
+      </LedgerFilterGrid>
+    </LedgerFiltersSection>
   )
 );
 PropertyIncomeFilters.displayName = "PropertyIncomeFilters";

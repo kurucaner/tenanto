@@ -13,9 +13,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { portfolioReportsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
+import { LEDGER_CARD_HORIZONTAL_INSET } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
+import { cn } from "@/lib/utils";
 import {
   type IPortfolioReportSummary,
   type IPropertyReportsQuery,
@@ -146,7 +148,7 @@ export const ReportsPage = memo(() => {
       }}
     >
       <Card>
-        <CardContent className="space-y-4 p-4">
+        <CardContent className="space-y-4 p-0">
           <ReportFiltersBar
             from={from}
             onFromChange={(value) => setFilter("from", value)}
@@ -156,16 +158,18 @@ export const ReportsPage = memo(() => {
             to={to}
           />
 
-          <PortfolioReportBody
-            error={summaryQuery.error}
-            from={from}
-            isError={summaryQuery.isError}
-            isPending={summaryQuery.isPending}
-            rentalType={rentalType}
-            reportQuery={reportQuery}
-            summary={summary}
-            to={to}
-          />
+          <div className={cn("space-y-6 pb-4", LEDGER_CARD_HORIZONTAL_INSET)}>
+            <PortfolioReportBody
+              error={summaryQuery.error}
+              from={from}
+              isError={summaryQuery.isError}
+              isPending={summaryQuery.isPending}
+              rentalType={rentalType}
+              reportQuery={reportQuery}
+              summary={summary}
+              to={to}
+            />
+          </div>
         </CardContent>
       </Card>
     </AdminPageLayout>

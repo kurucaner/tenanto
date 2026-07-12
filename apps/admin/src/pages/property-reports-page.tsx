@@ -23,10 +23,12 @@ import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { reportsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
+import { LEDGER_CARD_HORIZONTAL_INSET } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { formatReportPercent, getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { sortUnitSummaryRows } from "@/lib/report-table-sort";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
+import { cn } from "@/lib/utils";
 import {
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
@@ -225,7 +227,7 @@ export const PropertyReportsPage = memo(() => {
 
   return (
     <Card>
-      <CardContent className="space-y-4 p-4">
+      <CardContent className="space-y-4 p-0">
         <ReportFiltersBar
           channelCommissionId={channelCommissionId}
           channelOptions={channelFilterOptions}
@@ -243,13 +245,15 @@ export const PropertyReportsPage = memo(() => {
           units={units}
         />
 
-        <PropertyReportBody
-          error={summaryQuery.error}
-          isError={summaryQuery.isError}
-          isPending={summaryQuery.isPending}
-          reportQuery={reportQuery}
-          summary={summary}
-        />
+        <div className={cn("space-y-6 pb-4", LEDGER_CARD_HORIZONTAL_INSET)}>
+          <PropertyReportBody
+            error={summaryQuery.error}
+            isError={summaryQuery.isError}
+            isPending={summaryQuery.isPending}
+            reportQuery={reportQuery}
+            summary={summary}
+          />
+        </div>
       </CardContent>
     </Card>
   );

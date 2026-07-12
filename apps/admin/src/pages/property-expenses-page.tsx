@@ -22,6 +22,8 @@ import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterField } from "@/components/filters/filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
+import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
+import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +43,6 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi, settingsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
-import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -188,7 +189,7 @@ const PropertyExpensesFilters = memo(
     searchInput: string;
     to: string;
   }) => (
-    <div className="space-y-3 px-4 pt-4">
+    <LedgerFiltersSection>
       <FilterField>
         <Label htmlFor="expense-filter-search">Search</Label>
         <div className="relative">
@@ -202,7 +203,7 @@ const PropertyExpensesFilters = memo(
           />
         </div>
       </FilterField>
-      <div className={getLedgerFiltersGridClass(3)}>
+      <LedgerFilterGrid filterCount={3}>
         <DateFilterField
           id="expense-filter-from"
           label="From"
@@ -223,8 +224,8 @@ const PropertyExpensesFilters = memo(
           options={categoryTypes.map((cat) => ({ label: cat.name, value: cat.id }))}
           value={categoryId}
         />
-      </div>
-    </div>
+      </LedgerFilterGrid>
+    </LedgerFiltersSection>
   )
 );
 PropertyExpensesFilters.displayName = "PropertyExpensesFilters";

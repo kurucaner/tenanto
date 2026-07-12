@@ -1,3 +1,5 @@
+export const LEDGER_CARD_HORIZONTAL_INSET = "px-4";
+
 const DEFAULT_STYLE = "grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3";
 
 export function getLedgerFiltersGridClass(filterCount: number): string {

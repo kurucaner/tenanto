@@ -2,9 +2,10 @@ import { memo } from "react";
 
 import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
+import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
+import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import { RENTAL_TYPE_FILTER_OPTIONS } from "@/components/reports/report-form-options";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import type { IPropertyUnit } from "@/packages/shared";
 
 export interface ReportFiltersBarProps {
@@ -44,8 +45,17 @@ export const ReportFiltersBar = memo(
     const filterCount = 2 + (showUnitFilter ? 1 : 0) + (showChannelFilter ? 1 : 0) + 1;
 
     return (
-      <div className="space-y-4">
-        <div className={getLedgerFiltersGridClass(filterCount)}>
+      <LedgerFiltersSection
+        footer={
+          rentalType ? (
+            <p className="text-muted-foreground text-xs">
+              Expenses are property-wide and included when the property has units of the selected
+              rental type.
+            </p>
+          ) : undefined
+        }
+      >
+        <LedgerFilterGrid filterCount={filterCount}>
           <DateFilterField
             id="report-from"
             label="From"
@@ -85,15 +95,8 @@ export const ReportFiltersBar = memo(
             options={RENTAL_TYPE_FILTER_OPTIONS}
             value={rentalType}
           />
-        </div>
-
-        {rentalType ? (
-          <p className="text-muted-foreground text-xs">
-            Expenses are property-wide and included when the property has units of the selected
-            rental type.
-          </p>
-        ) : null}
-      </div>
+        </LedgerFilterGrid>
+      </LedgerFiltersSection>
     );
   }
 );
