@@ -1,4 +1,4 @@
-import { Receipt, RotateCcw } from "lucide-react";
+import { DollarSign, RotateCcw } from "lucide-react";
 import { memo } from "react";
 
 import { TableIconButton } from "@/components/table/table-icon-button";
@@ -50,7 +50,7 @@ export const RefundEntityButton = memo(
       onClick={onClick}
       tooltip={ariaLabel}
     >
-      {isRefunded ? <RotateCcw className="size-3.5" /> : <Receipt className="size-3.5" />}
+      {isRefunded ? <RotateCcw className="size-3.5" /> : <DollarSign className="size-3.5" />}
     </TableIconButton>
   )
 );
