@@ -37,6 +37,78 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "Hold Shift and click the trash icon to delete expenses, stays, other income, units, or property settings rows without a confirmation step.",
+      },
+      {
+        category: "new",
+        description:
+          "Password fields include a show/hide control so you can check what you typed when signing in or resetting your password.",
+      },
+      {
+        category: "new",
+        description:
+          "You can set up your own booking channels and commission rules in Property Settings instead of using a fixed list.",
+      },
+      {
+        category: "new",
+        description:
+          "Property Settings lets you save tax rates, expense categories, channels, and income types one section at a time.",
+      },
+      {
+        category: "new",
+        description:
+          "The primary tenant on a lease receives an email when rent is recorded for their unit.",
+      },
+      {
+        category: "improved",
+        description:
+          "Expenses, Income, Units, and Leases tables share a cleaner, more consistent layout.",
+      },
+      {
+        category: "improved",
+        description:
+          "Long lists — including the expense CSV import preview — scroll more smoothly on large properties.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property Settings lists stay within a fixed height with sticky column headers as you scroll.",
+      },
+      {
+        category: "improved",
+        description:
+          "Adding or editing a unit uses a clearer Short Term / Long Term picker instead of a dropdown.",
+      },
+      {
+        category: "improved",
+        description: "The Google sign-in button displays correctly in dark mode.",
+      },
+      {
+        category: "fixed",
+        description:
+          "The main content area scrolls correctly on desktop instead of the whole page shifting.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Removing a property team member follows the same delete confirmation as other lists.",
+      },
+      {
+        category: "fixed",
+        description: "Support reply emails show formatted content again instead of plain text.",
+      },
+    ],
+    id: "2026.10.0",
+    publishedAt: "2026-07-12",
+    summary:
+      "Shift-click quick delete, show/hide passwords, customizable booking channels, and smoother tables across the app.",
+    version: "2026.10.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "You can create an account with email or sign in with Google, and reset your password if you forget it.",
       },
       {
