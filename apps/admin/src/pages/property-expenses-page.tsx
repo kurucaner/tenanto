@@ -121,10 +121,7 @@ function getExpenseColumns(canManage: boolean): DataTableColumn[] {
 }
 
 function buildExpensesFooterItems(meta: IPropertyExpensesListMeta) {
-  return [
-    { label: "Total", value: String(meta.totalCount) },
-    { label: "Total amount", value: formatMoney(meta.totalAmount) },
-  ];
+  return [{ label: "Total", value: String(meta.totalCount) }];
 }
 
 const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{

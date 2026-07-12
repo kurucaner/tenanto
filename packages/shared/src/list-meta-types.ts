@@ -11,6 +11,5 @@ export interface IPropertyLongStaysListMeta {
 }
 
 export interface IPropertyExpensesListMeta {
-  totalAmount: number;
   totalCount: number;
 }

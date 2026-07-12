@@ -190,21 +190,16 @@ export const propertyExpensesDb = {
     );
 
     const result = await pool.query<{
-      total_amount: string;
       total_count: number;
     }>(
-      `SELECT
-         COUNT(*)::int AS total_count,
-         COALESCE(SUM(pe.amount), 0) AS total_amount
+      `SELECT COUNT(*)::int AS total_count
        FROM property_expenses pe
-       JOIN property_expense_category_types pect ON pe.category_id = pect.id
        WHERE ${conditions.join(" AND ")}`,
       values
     );
 
     const row = result.rows[0];
     return {
-      totalAmount: Number(row?.total_amount ?? 0),
       totalCount: row?.total_count ?? 0,
     };
   },

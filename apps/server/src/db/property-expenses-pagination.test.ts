@@ -6,7 +6,7 @@ const CATEGORY_ID_2 = "cat00000-0000-4000-8000-000000000002";
 const mockQuery = mock((sql: string) => {
   if (sql.includes("COUNT(*)")) {
     return Promise.resolve({
-      rows: [{ total_amount: "175.00", total_count: 3 }],
+      rows: [{ total_count: 3 }],
     });
   }
 
@@ -77,7 +77,7 @@ describe("propertyExpensesDb.listPaginatedByProperty", () => {
     expect(firstPage.expenses[0]?.expenseDate).toBe("2026-07-09");
     expect(firstPage.expenses[1]?.expenseDate).toBe("2026-07-08");
     expect(firstPage.nextCursor).toBeString();
-    expect(firstPage.meta).toEqual({ totalAmount: 175, totalCount: 3 });
+    expect(firstPage.meta).toEqual({ totalCount: 3 });
     expect(mockQuery.mock.calls).toHaveLength(2);
 
     const sql = mockQuery.mock.calls.find(
