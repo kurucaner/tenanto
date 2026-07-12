@@ -280,8 +280,8 @@ export {
   type IStayCalculationLine,
   sumTaxBreakdown,
   type TBreakdownOperand,
-  type TStayChannelBehavior,
   type TStayCalculationMetric,
+  type TStayChannelBehavior,
 } from "./property-income-utils";
 
 // Property unit utilities

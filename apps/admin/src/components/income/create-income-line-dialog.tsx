@@ -25,11 +25,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
+import { PROPERTY_AMENITY_UNIT_VALUE } from "@/lib/property-amenity-unit";
 import {
   clampToMaxLocalIsoDate,
   getTodayLocalIsoDate,
@@ -184,7 +184,7 @@ const CreateIncomeLineDialogForm = memo(
     return (
       <form onSubmit={onSubmit}>
         <DialogHeader>
-          <DialogTitle>{isRentRecording ? "Record Rent" : "Add Other Income"}</DialogTitle>
+          <DialogTitle>{getDialogTitle(isRentRecording)}</DialogTitle>
           <DialogDescription>{getDialogDescription(lockedLease, lockedStay)}</DialogDescription>
         </DialogHeader>
 
@@ -318,9 +318,13 @@ const CreateIncomeLineDialogForm = memo(
 );
 CreateIncomeLineDialogForm.displayName = "CreateIncomeLineDialogForm";
 
+function getDialogTitle(isRentRecording: boolean): string {
+  return isRentRecording ? "Record Rent" : "Add Other Income";
+}
+
 function getSubmitLabel(isPending: boolean, isRentRecording: boolean): string {
   if (isPending) return isRentRecording ? "Recording…" : "Creating…";
-  return isRentRecording ? "Record Rent" : "Add Other Income";
+  return getDialogTitle(isRentRecording);
 }
 
 function getDialogDescription(

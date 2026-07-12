@@ -4,6 +4,7 @@ import { memo, useMemo } from "react";
 import { FieldLabel } from "@/components/ui/field-label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { reservationsApi } from "@/lib/api-client";
+import { isPropertyAmenityUnit } from "@/lib/property-amenity-unit";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   buildStayLinkPickerFilters,
@@ -39,6 +40,9 @@ function getLinkToStayHelperMessage(
   if (unitId === "") {
     return "Select a unit to see matching stays.";
   }
+  if (isPropertyAmenityUnit(unitId)) {
+    return "Property amenity income is not linked to a unit or stay.";
+  }
   if (isPending) {
     return "Loading stays…";
   }
@@ -70,7 +74,7 @@ export const LinkToStayField = memo(
     );
 
     const reservationsQuery = useQuery({
-      enabled: unitId !== "",
+      enabled: unitId !== "" && !isPropertyAmenityUnit(unitId),
       queryFn: () => reservationsApi.list(propertyId, pickerFilters),
       queryKey: adminQueryKeys.propertyReservationPicker(propertyId, pickerFilters),
     });
@@ -92,7 +96,12 @@ export const LinkToStayField = memo(
           Link to stay
         </FieldLabel>
         <NativeSelect
-          disabled={disabled || unitId === "" || reservationsQuery.isPending}
+          disabled={
+            disabled ||
+            unitId === "" ||
+            isPropertyAmenityUnit(unitId) ||
+            reservationsQuery.isPending
+          }
           emptyOptionLabel="No linked stay"
           id={id}
           onChange={(e) => onReservationIdChange(e.target.value)}

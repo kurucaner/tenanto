@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-options";
 import { unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
+import { isPropertyAmenityUnit } from "@/lib/property-amenity-unit";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
   type IPropertyLongStay,
@@ -240,7 +241,7 @@ export const IncomeLineUnitSection = memo(
           <LockedLeaseSummary lease={lockedLease} />
         ) : lockedStay ? (
           <LockedStaySummary stay={lockedStay} />
-        ) : (
+        ) : isPropertyAmenityUnit(unitId) ? null : (
           <LinkToStayField
             id={`${fieldIdPrefix}-reservation`}
             includeReservationId={includeReservationId}

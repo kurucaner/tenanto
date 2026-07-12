@@ -19,10 +19,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PROPERTY_AMENITY_UNIT_VALUE } from "@/components/units/income-unit-select-options";
 import { incomeLinesApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { PROPERTY_AMENITY_UNIT_VALUE } from "@/lib/property-amenity-unit";
 import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLineType,
