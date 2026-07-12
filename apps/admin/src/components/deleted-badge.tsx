@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 
 /**
  * Marks a soft-deleted row. Only platform admins ever see deleted rows; the
- * row itself is dimmed (see `deletedRowClassName`) and this badge labels it.
+ * row itself is dimmed (see `deletedRowClassName` in `ledger-entry-row-styles`)
+ * and this badge labels it.
  */
 export const DeletedBadge = memo(() => (
   <Badge className="uppercase" variant="destructive">
@@ -15,27 +16,12 @@ export const DeletedBadge = memo(() => (
 ));
 DeletedBadge.displayName = "DeletedBadge";
 
-/** Applied to a soft-deleted `<TableRow>` to visually de-emphasize it. */
-export const deletedRowClassName = "opacity-55";
-
 export const RefundedBadge = memo(() => (
   <Badge className="uppercase" variant="secondary">
     Refunded
   </Badge>
 ));
 RefundedBadge.displayName = "RefundedBadge";
-
-/** Applied to a refunded (non-deleted) `<TableRow>` to visually de-emphasize it. */
-export const refundedRowClassName = "opacity-80";
-
-export function ledgerEntryRowClassName(
-  isDeleted: boolean,
-  refundedAt: string | null
-): string | undefined {
-  if (isDeleted) return deletedRowClassName;
-  if (refundedAt) return refundedRowClassName;
-  return undefined;
-}
 
 export const RestoreEntityButton = memo(
   ({ ariaLabel, onClick }: { ariaLabel: string; onClick: () => void }) => (

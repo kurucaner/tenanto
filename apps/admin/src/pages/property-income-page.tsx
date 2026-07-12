@@ -10,7 +10,6 @@ import {
 } from "@/components/data-table/data-table-types";
 import {
   DeletedBadge,
-  ledgerEntryRowClassName,
   RefundedBadge,
   RefundEntityButton,
   RestoreEntityButton,
@@ -55,6 +54,7 @@ import {
   type TIncomeEntrySortColumnId,
 } from "@/lib/income-entry-sort";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
+import { ledgerEntryRowClassName } from "@/lib/ledger-entry-row-styles";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {

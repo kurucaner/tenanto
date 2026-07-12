@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import { type DataTableColumn, type DataTableSortController } from "@/components/data-table/data-table-types";
-import { DeletedBadge, deletedRowClassName, RestoreEntityButton } from "@/components/deleted-badge";
+import { DeletedBadge, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
+import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import {
