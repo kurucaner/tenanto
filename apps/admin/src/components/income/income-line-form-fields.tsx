@@ -221,6 +221,25 @@ export const IncomeLineUnitSection = memo(
       [onUnitChange]
     );
 
+    let stayLinkSection = null;
+    if (lockedLease) {
+      stayLinkSection = <LockedLeaseSummary lease={lockedLease} />;
+    } else if (lockedStay) {
+      stayLinkSection = <LockedStaySummary stay={lockedStay} />;
+    } else if (!isPropertyAmenityUnit(unitId)) {
+      stayLinkSection = (
+        <LinkToStayField
+          id={`${fieldIdPrefix}-reservation`}
+          includeReservationId={includeReservationId}
+          onReservationIdChange={onReservationIdChange}
+          propertyId={propertyId}
+          reservationId={reservationId}
+          transactionDate={transactionDate}
+          unitId={unitId}
+        />
+      );
+    }
+
     return (
       <>
         <FormSelectField
@@ -237,21 +256,7 @@ export const IncomeLineUnitSection = memo(
           />
         </FormSelectField>
 
-        {lockedLease ? (
-          <LockedLeaseSummary lease={lockedLease} />
-        ) : lockedStay ? (
-          <LockedStaySummary stay={lockedStay} />
-        ) : isPropertyAmenityUnit(unitId) ? null : (
-          <LinkToStayField
-            id={`${fieldIdPrefix}-reservation`}
-            includeReservationId={includeReservationId}
-            onReservationIdChange={onReservationIdChange}
-            propertyId={propertyId}
-            reservationId={reservationId}
-            transactionDate={transactionDate}
-            unitId={unitId}
-          />
-        )}
+        {stayLinkSection}
       </>
     );
   }
