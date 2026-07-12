@@ -11,6 +11,7 @@ import {
 import {
   EXPENSES_LIST_LIMIT,
   EXPENSES_LIST_MAX_LIMIT,
+  EXPENSES_SEARCH_MAX_LENGTH,
   HttpStatus,
   type IPropertyExpense,
   type IUpdatePropertyExpenseBody,
@@ -172,6 +173,22 @@ function parseExpensesListQuery(query: Record<string, unknown>):
       return { error: "categoryId must be a valid UUID", ok: false };
     }
     filters.categoryId = categoryId;
+  }
+
+  if (query["q"] !== undefined && query["q"] !== "") {
+    if (typeof query["q"] !== "string") {
+      return { error: "q must be a string", ok: false };
+    }
+    const q = query["q"].trim();
+    if (q.length > EXPENSES_SEARCH_MAX_LENGTH) {
+      return {
+        error: `q must be at most ${EXPENSES_SEARCH_MAX_LENGTH} characters`,
+        ok: false,
+      };
+    }
+    if (q !== "") {
+      filters.q = q;
+    }
   }
 
   const limit = parseExpensesListLimit(query["limit"]);

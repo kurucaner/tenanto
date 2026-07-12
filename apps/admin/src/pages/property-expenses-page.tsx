@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Sparkles } from "lucide-react";
+import { Pencil, Plus, Search, Sparkles } from "lucide-react";
 import {
   memo,
   type MouseEvent,
   type ReactNode,
   type RefObject,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -19,11 +20,14 @@ import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
 import { DateFilterField } from "@/components/filters/date-filter-field";
+import { FilterField } from "@/components/filters/filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import {
@@ -40,7 +44,12 @@ import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expen
 import { getLedgerFiltersGridClass } from "@/lib/ledger-filter-grid";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import { type IPropertyExpense, type IPropertyExpenseCategoryType, type IPropertyExpensesListMeta } from "@/packages/shared";
+import {
+  EXPENSES_SEARCH_DEBOUNCE_MS,
+  type IPropertyExpense,
+  type IPropertyExpenseCategoryType,
+  type IPropertyExpensesListMeta,
+} from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -127,22 +136,27 @@ function buildExpensesFooterItems(meta: IPropertyExpensesListMeta) {
 const EXPENSE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
   categoryId: string;
   from: string;
+  q: string;
   to: string;
 }>({
   categoryId: { defaultValue: "" },
   from: { defaultValue: "" },
+  q: { defaultValue: "" },
   to: { defaultValue: "" },
 });
 
 function buildExpenseFilters(
   categoryId: string,
   from: string,
+  q: string,
   to: string
 ): TPropertyExpensesListFilters {
   const next: TPropertyExpensesListFilters = {};
   if (from) next.from = from;
   if (to) next.to = to;
   if (categoryId) next.categoryId = categoryId;
+  const qTrim = q.trim();
+  if (qTrim) next.q = qTrim;
   return next;
 }
 
@@ -159,7 +173,9 @@ const PropertyExpensesFilters = memo(
     from,
     onCategoryIdChange,
     onFromChange,
+    onSearchInputChange,
     onToChange,
+    searchInput,
     to,
   }: {
     categoryId: string;
@@ -167,30 +183,47 @@ const PropertyExpensesFilters = memo(
     from: string;
     onCategoryIdChange: (value: string) => void;
     onFromChange: (value: string) => void;
+    onSearchInputChange: (value: string) => void;
     onToChange: (value: string) => void;
+    searchInput: string;
     to: string;
   }) => (
-    <div className={getLedgerFiltersGridClass(3)}>
-      <DateFilterField
-        id="expense-filter-from"
-        label="From"
-        onChange={(e) => onFromChange(e.target.value)}
-        value={from}
-      />
-      <DateFilterField
-        id="expense-filter-to"
-        label="To"
-        onChange={(e) => onToChange(e.target.value)}
-        value={to}
-      />
-      <FilterSelectField
-        emptyOptionLabel="All categories"
-        id="expense-filter-category"
-        label="Category"
-        onChange={(e) => onCategoryIdChange(e.target.value)}
-        options={categoryTypes.map((cat) => ({ label: cat.name, value: cat.id }))}
-        value={categoryId}
-      />
+    <div className="space-y-3 px-4 pt-4">
+      <FilterField>
+        <Label htmlFor="expense-filter-search">Search</Label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            id="expense-filter-search"
+            onChange={(e) => onSearchInputChange(e.target.value)}
+            placeholder="Search description or category…"
+            value={searchInput}
+          />
+        </div>
+      </FilterField>
+      <div className={getLedgerFiltersGridClass(3)}>
+        <DateFilterField
+          id="expense-filter-from"
+          label="From"
+          onChange={(e) => onFromChange(e.target.value)}
+          value={from}
+        />
+        <DateFilterField
+          id="expense-filter-to"
+          label="To"
+          onChange={(e) => onToChange(e.target.value)}
+          value={to}
+        />
+        <FilterSelectField
+          emptyOptionLabel="All categories"
+          id="expense-filter-category"
+          label="Category"
+          onChange={(e) => onCategoryIdChange(e.target.value)}
+          options={categoryTypes.map((cat) => ({ label: cat.name, value: cat.id }))}
+          value={categoryId}
+        />
+      </div>
     </div>
   )
 );
@@ -356,7 +389,25 @@ export const PropertyExpensesPage = memo(() => {
   const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
-  const { categoryId, from, to } = urlFilters;
+  const { categoryId, from, q, to } = urlFilters;
+  const [draftQ, setDraftQ] = useState<string | null>(null);
+  const searchInput = draftQ ?? q;
+
+  useEffect(() => {
+    if (draftQ === null) return;
+    const id = setTimeout(() => {
+      const trimmed = draftQ.trim();
+      if (trimmed !== q) {
+        setFilter("q", trimmed);
+      }
+      setDraftQ(null);
+    }, EXPENSES_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(id);
+  }, [draftQ, q, setFilter]);
+
+  const handleSearchInputChange = useCallback((value: string) => {
+    setDraftQ(value);
+  }, []);
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
@@ -368,7 +419,10 @@ export const PropertyExpensesPage = memo(() => {
     [settingsQuery.data?.settings.expenseCategoryTypes]
   );
 
-  const filters = useMemo(() => buildExpenseFilters(categoryId, from, to), [categoryId, from, to]);
+  const filters = useMemo(
+    () => buildExpenseFilters(categoryId, from, q, to),
+    [categoryId, from, q, to]
+  );
 
   const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
     usePropertyExpensesInfiniteList(propertyId, filters);
@@ -443,7 +497,9 @@ export const PropertyExpensesPage = memo(() => {
                 from={from}
                 onCategoryIdChange={(value) => setFilter("categoryId", value)}
                 onFromChange={(value) => setFilter("from", value)}
+                onSearchInputChange={handleSearchInputChange}
                 onToChange={(value) => setFilter("to", value)}
+                searchInput={searchInput}
                 to={to}
               />
             }

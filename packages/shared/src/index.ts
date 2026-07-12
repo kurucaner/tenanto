@@ -220,7 +220,12 @@ export {
   type IExpenseImportParseResponse,
   type TExpenseImportFileStatus,
 } from "./property-expense-import-types";
-export { EXPENSES_LIST_LIMIT, EXPENSES_LIST_MAX_LIMIT } from "./property-expense-list-constants";
+export {
+  EXPENSES_LIST_LIMIT,
+  EXPENSES_LIST_MAX_LIMIT,
+  EXPENSES_SEARCH_DEBOUNCE_MS,
+  EXPENSES_SEARCH_MAX_LENGTH,
+} from "./property-expense-list-constants";
 export {
   type ICreatePropertyExpenseBody,
   type IPropertyExpense,

@@ -37,12 +37,13 @@ export interface IPropertyExpensesListQuery {
   cursor?: string;
   from?: string;
   limit?: number;
+  q?: string;
   to?: string;
 }
 
 export type TPropertyExpensesListFilters = Pick<
   IPropertyExpensesListQuery,
-  "categoryId" | "from" | "to"
+  "categoryId" | "from" | "q" | "to"
 >;
 
 export interface IPropertyExpensesListResponse {

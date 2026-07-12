@@ -121,4 +121,16 @@ describe("propertyExpensesDb.listPaginatedByProperty", () => {
     expect(secondPage.meta).toBeUndefined();
     expect(mockQuery.mock.calls).toHaveLength(1);
   });
+
+  test("applies search filter on description and category name", async () => {
+    mockQuery.mockClear();
+
+    await propertyExpensesDb.listPaginatedByProperty("prop-1", { q: "clean" }, { limit: 2 });
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("pe.description ILIKE");
+    expect(sql).toContain("pect.name ILIKE");
+  });
 });

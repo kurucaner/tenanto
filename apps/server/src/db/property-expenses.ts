@@ -50,6 +50,13 @@ function buildPropertyExpenseListConditions(
     values.push(filters.categoryId);
   }
 
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    conditions.push(`(pe.description ILIKE $${p++} OR pect.name ILIKE $${p++})`);
+    const pattern = `%${qTrim}%`;
+    values.push(pattern, pattern);
+  }
+
   return { conditions, values };
 }
 
@@ -195,6 +202,7 @@ export const propertyExpensesDb = {
     }>(
       `SELECT COUNT(*)::int AS total_count
        FROM property_expenses pe
+       JOIN property_expense_category_types pect ON pe.category_id = pect.id
        WHERE ${conditions.join(" AND ")}`,
       values
     );
