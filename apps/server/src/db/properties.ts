@@ -17,6 +17,64 @@ import { pool } from "./pool";
 
 type DbQueryable = Pool | PoolClient;
 
+const PROPERTY_LIST_SELECT = `
+  p.*, COUNT(pm.id)::int AS member_count,
+  (SELECT COUNT(*)::int FROM property_units pu
+   WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count,
+  MAX(puf.favorited_at) AS favorited_at`;
+
+function propertyFavoriteJoin(userIdParamIndex: number): string {
+  return `
+       LEFT JOIN property_user_favorites puf
+         ON puf.property_id = p.id AND puf.user_id = $${userIdParamIndex}`;
+}
+
+function propertyByIdSelectSql(viewerUserIdParamIndex: number | null): string {
+  const favoritedAtSelect =
+    viewerUserIdParamIndex == null
+      ? "NULL::timestamptz AS favorited_at"
+      : "puf.favorited_at";
+  const favoriteJoin =
+    viewerUserIdParamIndex == null ? "" : propertyFavoriteJoin(viewerUserIdParamIndex);
+  const groupByFavorite =
+    viewerUserIdParamIndex == null ? "" : ", puf.favorited_at";
+
+  return `
+      SELECT p.*, COUNT(pm.id)::int AS member_count,
+             (SELECT COUNT(*)::int FROM property_units pu
+              WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count,
+             ${favoritedAtSelect}
+       FROM properties p
+       LEFT JOIN property_members pm ON pm.property_id = p.id
+       ${favoriteJoin}
+       WHERE p.id = $1
+       GROUP BY p.id${groupByFavorite}`;
+}
+
+function propertyDetailByIdSelectSql(viewerUserIdParamIndex: number | null): string {
+  const favoritedAtSelect =
+    viewerUserIdParamIndex == null
+      ? "NULL::timestamptz AS favorited_at"
+      : "puf.favorited_at";
+  const favoriteJoin =
+    viewerUserIdParamIndex == null ? "" : propertyFavoriteJoin(viewerUserIdParamIndex);
+  const groupByFavorite =
+    viewerUserIdParamIndex == null ? "" : ", puf.favorited_at";
+
+  return `
+      SELECT p.*, COUNT(pm.id)::int AS member_count,
+             (SELECT COUNT(*)::int FROM property_units pu
+              WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count,
+             ${favoritedAtSelect},
+             u.name AS creator_name, u.email AS creator_email
+       FROM properties p
+       LEFT JOIN property_members pm ON pm.property_id = p.id
+       ${favoriteJoin}
+       INNER JOIN users u ON u.id = p.created_by
+       WHERE p.id = $1
+       GROUP BY p.id, u.name, u.email${groupByFavorite}`;
+}
+
 export const propertiesDb = {
   async create(
     input: IAdminCreatePropertyBody,
@@ -52,33 +110,29 @@ export const propertiesDb = {
     return (result.rowCount ?? 0) > 0;
   },
 
-  async findById(id: string): Promise<IProperty | null> {
+  async findById(id: string, viewerUserId?: string): Promise<IProperty | null> {
+    const values: unknown[] = [id];
+    if (viewerUserId != null) {
+      values.push(viewerUserId);
+    }
+
     const result = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count,
-              (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count
-       FROM properties p
-       LEFT JOIN property_members pm ON pm.property_id = p.id
-       WHERE p.id = $1
-       GROUP BY p.id`,
-      [id]
+      propertyByIdSelectSql(viewerUserId != null ? 2 : null),
+      values
     );
     if (result.rows.length === 0) return null;
     return mapPropertyRow(result.rows[0] as Record<string, unknown>);
   },
 
-  async findDetailById(id: string): Promise<IPropertyDetail | null> {
+  async findDetailById(id: string, viewerUserId?: string): Promise<IPropertyDetail | null> {
+    const values: unknown[] = [id];
+    if (viewerUserId != null) {
+      values.push(viewerUserId);
+    }
+
     const propertyResult = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count,
-              (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count,
-              u.name AS creator_name, u.email AS creator_email
-       FROM properties p
-       LEFT JOIN property_members pm ON pm.property_id = p.id
-       INNER JOIN users u ON u.id = p.created_by
-       WHERE p.id = $1
-       GROUP BY p.id, u.name, u.email`,
-      [id]
+      propertyDetailByIdSelectSql(viewerUserId != null ? 2 : null),
+      values
     );
     if (propertyResult.rows.length === 0) return null;
 
@@ -136,10 +190,11 @@ export const propertiesDb = {
     cursor?: string;
     limit: number;
     q?: string;
+    userId: string;
   }): Promise<{ items: IProperty[]; nextCursor: string | null }> {
     const fragments: string[] = [];
-    const values: unknown[] = [];
-    let p = 1;
+    const values: unknown[] = [params.userId];
+    let p = 2;
 
     if (params.q != null && params.q.trim() !== "") {
       fragments.push(`(p.name ILIKE $${p} OR p.address ILIKE $${p})`);
@@ -158,11 +213,10 @@ export const propertiesDb = {
     values.push(params.limit + 1);
 
     const result = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count,
-              (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count
+      `SELECT ${PROPERTY_LIST_SELECT}
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
+       ${propertyFavoriteJoin(1)}
        ${whereClause}
        GROUP BY p.id
        ORDER BY p.created_at DESC, p.id DESC
@@ -210,11 +264,10 @@ export const propertiesDb = {
     values.push(params.limit + 1);
 
     const result = await pool.query(
-      `SELECT p.*, COUNT(pm.id)::int AS member_count,
-              (SELECT COUNT(*)::int FROM property_units pu
-               WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count
+      `SELECT ${PROPERTY_LIST_SELECT}
        FROM properties p
        LEFT JOIN property_members pm ON pm.property_id = p.id
+       ${propertyFavoriteJoin(1)}
        ${whereClause}
        GROUP BY p.id
        ORDER BY p.created_at DESC, p.id DESC

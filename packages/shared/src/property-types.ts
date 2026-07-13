@@ -12,7 +12,9 @@ export interface IProperty {
   address: string;
   createdAt: string;
   createdBy: string;
+  favoritedAt: string | null;
   id: string;
+  isFavorite: boolean;
   legalName: string | null;
   memberCount: number;
   name: string;
@@ -66,6 +68,10 @@ export interface IAdminUpdatePropertyBody {
   legalName?: string | null;
   name?: string;
   phoneNumber?: string | null;
+}
+
+export interface IAdminSetPropertyFavoriteBody {
+  favorite: boolean;
 }
 
 export interface IAdminAddPropertyMemberBody {

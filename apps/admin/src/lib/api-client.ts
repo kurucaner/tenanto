@@ -7,6 +7,7 @@ import {
   type IAdminPatchAppConfigBody,
   type IAdminPlatformStats,
   type IAdminPropertiesListResponse,
+  type IAdminSetPropertyFavoriteBody,
   type IAdminSupportRequestPatchBody,
   type IAdminSupportRequestPatchResponse,
   type IAdminUpdatePropertyBody,
@@ -629,6 +630,12 @@ export const propertiesApi = {
   list: (query: IAdminPropertiesListQuery = {}) =>
     authenticatedRequest<IAdminPropertiesListResponse>(
       `/properties${buildPropertiesListSearchParams(query)}`
+    ),
+
+  setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>
+    authenticatedRequest<{ property: IProperty }>(
+      `/properties/${encodeURIComponent(propertyId)}/favorite`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   removeMember: (propertyId: string, userId: string) =>

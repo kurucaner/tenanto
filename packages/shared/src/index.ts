@@ -83,6 +83,7 @@ export {
   type IAdminCreatePropertyBody,
   type IAdminPropertiesListQuery,
   type IAdminPropertiesListResponse,
+  type IAdminSetPropertyFavoriteBody,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type ICreatePropertyUnitBody,
