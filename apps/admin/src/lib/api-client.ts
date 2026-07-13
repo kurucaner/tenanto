@@ -66,6 +66,7 @@ import {
   type ITenantEmailCampaignDetailResponse,
   type ITenantEmailCampaignListResponse,
   type ITenantEmailCampaignPreviewResponse,
+  type ITenantEmailCampaignReenqueueResponse,
   type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
   type IUpdatePropertyLongStayBody,
@@ -775,6 +776,12 @@ export const tenantEmailCampaignsApi = {
   preview: (propertyId: string) =>
     authenticatedRequest<ITenantEmailCampaignPreviewResponse>(
       `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns/preview`
+    ),
+
+  reenqueue: (propertyId: string, campaignId: string) =>
+    authenticatedRequest<ITenantEmailCampaignReenqueueResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns/${encodeURIComponent(campaignId)}/reenqueue`,
+      { method: "POST" }
     ),
 };
 

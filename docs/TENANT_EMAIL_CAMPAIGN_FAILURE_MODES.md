@@ -34,7 +34,7 @@ If the API or worker restarts, queued DB rows remain the source of truth; jobs c
 - Worker process running: `cd apps/server && bun run worker:email`
 - BullMQ queue has pending jobs
 
-**Recovery:** Start worker; re-enqueue jobs for recipients still in `queued` status if needed.
+**Recovery:** Start worker; it re-enqueues queued recipients on startup. Use **Retry delivery** in campaign details, `POST .../tenant-email-campaigns/:campaignId/reenqueue`, or resubmit with the same `Idempotency-Key` (re-enqueues without creating a duplicate campaign).
 
 ### Individual recipient `failed`
 

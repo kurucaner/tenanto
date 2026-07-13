@@ -1,10 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type VariantProps } from "class-variance-authority";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import { memo, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { TenantEmailCampaignStatusBadge } from "@/components/communications/tenant-email-campaign-status-badge";
 import { Badge, type badgeVariants } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -47,6 +49,12 @@ function getCampaignDetailErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Campaign not found";
 }
 
+function hasQueuedRecipients(detail: ITenantEmailCampaignDetailResponse): boolean {
+  return detail.recipients.some(
+    (recipient) => recipient.status === TenantEmailRecipientStatus.QUEUED
+  );
+}
+
 interface ITenantEmailCampaignDetailSheetProps {
   campaignId: string | null;
   onOpenChange: (open: boolean) => void;
@@ -77,16 +85,44 @@ function compareRecipientRows(
   return left.tenantName.localeCompare(right.tenantName);
 }
 
-function renderCampaignDetailContent(detail: ITenantEmailCampaignDetailResponse) {
+function renderCampaignDetailContent(
+  detail: ITenantEmailCampaignDetailResponse,
+  options: {
+    isReenqueuePending: boolean;
+    onReenqueue: () => void;
+  }
+) {
   const failedRecipients = detail.recipients.filter(
     (recipient) => recipient.status === TenantEmailRecipientStatus.FAILED
   );
   const sortedRecipients = [...detail.recipients].sort(compareRecipientRows);
+  const showReenqueue = hasQueuedRecipients(detail);
 
   return (
-    <div className="space-y-4 px-4 pb-6">
+    <div className="space-y-4 pb-6">
+      {showReenqueue ? (
+        <div className="mx-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+          <div className="space-y-1">
+            <p className="font-medium text-sm">Delivery pending</p>
+            <p className="text-muted-foreground text-sm">
+              Some recipients are still queued. Retry if the worker was offline when this campaign
+              was created.
+            </p>
+          </div>
+          <Button
+            disabled={options.isReenqueuePending}
+            onClick={options.onReenqueue}
+            type="button"
+            variant="outline"
+          >
+            {options.isReenqueuePending ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+            Retry delivery
+          </Button>
+        </div>
+      ) : null}
+
       {detail.campaign.failedCount > 0 ? (
-        <div className="border-destructive/50 bg-destructive/10 text-destructive flex gap-3 rounded-lg border p-4 text-sm">
+        <div className="border-destructive/50 bg-destructive/10 text-destructive mx-4 flex gap-3 rounded-lg border p-4 text-sm">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <div className="space-y-1">
             <p className="font-medium">Failed deliveries</p>
@@ -99,7 +135,7 @@ function renderCampaignDetailContent(detail: ITenantEmailCampaignDetailResponse)
         </div>
       ) : null}
 
-      <div className="space-y-2">
+      <div className="space-y-2 px-4">
         <div className="flex flex-wrap items-center gap-2">
           <TenantEmailCampaignStatusBadge status={detail.campaign.status} />
           <span className="text-muted-foreground text-xs">
@@ -149,12 +185,18 @@ function renderCampaignDetailContent(detail: ITenantEmailCampaignDetailResponse)
   );
 }
 
-function renderSheetBody(detailQuery: {
-  data: ITenantEmailCampaignDetailResponse | undefined;
-  error: unknown;
-  isError: boolean;
-  isPending: boolean;
-}): ReactNode {
+function renderSheetBody(
+  detailQuery: {
+    data: ITenantEmailCampaignDetailResponse | undefined;
+    error: unknown;
+    isError: boolean;
+    isPending: boolean;
+  },
+  options: {
+    isReenqueuePending: boolean;
+    onReenqueue: () => void;
+  }
+): ReactNode {
   if (detailQuery.isPending) {
     return (
       <div className="flex items-center gap-2 py-8 text-sm">
@@ -172,11 +214,13 @@ function renderSheetBody(detailQuery: {
     );
   }
 
-  return renderCampaignDetailContent(detailQuery.data);
+  return renderCampaignDetailContent(detailQuery.data, options);
 }
 
 export const TenantEmailCampaignDetailSheet = memo(
   ({ campaignId, onOpenChange, open, propertyId }: ITenantEmailCampaignDetailSheetProps) => {
+    const queryClient = useQueryClient();
+
     const detailQuery = useQuery({
       enabled: open && campaignId != null,
       queryFn: () => tenantEmailCampaignsApi.get(propertyId, campaignId!),
@@ -184,6 +228,28 @@ export const TenantEmailCampaignDetailSheet = memo(
         campaignId == null
           ? queryKeys.propertyTenantEmailCampaign(propertyId, "missing")
           : queryKeys.propertyTenantEmailCampaign(propertyId, campaignId),
+    });
+
+    const reenqueueMutation = useMutation({
+      mutationFn: () => tenantEmailCampaignsApi.reenqueue(propertyId, campaignId!),
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to retry delivery");
+      },
+      onSuccess: (response) => {
+        if (response.enqueuedCount === 0) {
+          toast.message("No queued recipients to retry");
+        } else {
+          toast.success(`Re-queued ${response.enqueuedCount} recipient(s)`);
+        }
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.propertyTenantEmailCampaigns(propertyId),
+        });
+        if (campaignId != null) {
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.propertyTenantEmailCampaign(propertyId, campaignId),
+          });
+        }
+      },
     });
 
     return (
@@ -196,7 +262,10 @@ export const TenantEmailCampaignDetailSheet = memo(
             </SheetDescription>
           </SheetHeader>
 
-          {renderSheetBody(detailQuery)}
+          {renderSheetBody(detailQuery, {
+            isReenqueuePending: reenqueueMutation.isPending,
+            onReenqueue: () => reenqueueMutation.mutate(),
+          })}
         </SheetContent>
       </Sheet>
     );

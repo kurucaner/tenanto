@@ -417,6 +417,7 @@ export {
   type ITenantEmailCampaignPreviewRecipient,
   type ITenantEmailCampaignPreviewResponse,
   type ITenantEmailCampaignPreviewSkipped,
+  type ITenantEmailCampaignReenqueueResponse,
   type ITenantEmailCampaignRecipient,
   type ITenantEmailRecipientResolution,
   type ITenantEmailResolvedRecipient,

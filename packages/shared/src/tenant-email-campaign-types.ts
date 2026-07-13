@@ -98,6 +98,12 @@ export interface ITenantEmailCampaignListResponse {
   campaigns: ITenantEmailCampaign[];
 }
 
+export interface ITenantEmailCampaignReenqueueResponse {
+  campaignId: string;
+  enqueuedCount: number;
+  status: TTenantEmailCampaignStatus;
+}
+
 export interface ITenantEmailResolvedRecipient {
   email: string;
   leaseId: string;

@@ -19,6 +19,10 @@ interface ITenantEmailComposeCardProps {
   propertyId: string;
 }
 
+function createTenantEmailIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
 export const TenantEmailComposeCard = memo(
   ({ disabled = false, onQueued, propertyId }: ITenantEmailComposeCardProps) => {
     const queryClient = useQueryClient();
@@ -26,10 +30,22 @@ export const TenantEmailComposeCard = memo(
     const [htmlBody, setHtmlBody] = useState("<p></p>");
     const [previewOpen, setPreviewOpen] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [idempotencyKey, setIdempotencyKey] = useState(createTenantEmailIdempotencyKey);
+
+    const resetComposeSession = useCallback(() => {
+      setSubject("");
+      setHtmlBody("<p></p>");
+      setSubmitted(false);
+      setIdempotencyKey(createTenantEmailIdempotencyKey());
+    }, []);
 
     const createMutation = useMutation({
-      mutationFn: (input: { htmlBody: string; subject: string }) =>
-        tenantEmailCampaignsApi.create(propertyId, input, crypto.randomUUID()),
+      mutationFn: (input: { htmlBody: string; idempotencyKey: string; subject: string }) =>
+        tenantEmailCampaignsApi.create(
+          propertyId,
+          { htmlBody: input.htmlBody, subject: input.subject },
+          input.idempotencyKey
+        ),
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to queue notification");
       },
@@ -58,8 +74,8 @@ export const TenantEmailComposeCard = memo(
         return;
       }
 
-      createMutation.mutate({ htmlBody, subject: trimmedSubject });
-    }, [createMutation, htmlBody, subject]);
+      createMutation.mutate({ htmlBody, idempotencyKey, subject: trimmedSubject });
+    }, [createMutation, htmlBody, idempotencyKey, subject]);
 
     const isBusy = disabled || createMutation.isPending;
     const canSend = !isBusy && !submitted;
@@ -109,9 +125,14 @@ export const TenantEmailComposeCard = memo(
                 Send notification
               </Button>
               {submitted ? (
-                <p className="text-muted-foreground text-sm">
-                  Notification queued. Track progress below.
-                </p>
+                <>
+                  <p className="text-muted-foreground text-sm">
+                    Notification queued. Track progress below.
+                  </p>
+                  <Button onClick={resetComposeSession} type="button" variant="outline">
+                    Compose another
+                  </Button>
+                </>
               ) : null}
             </div>
           </CardContent>
