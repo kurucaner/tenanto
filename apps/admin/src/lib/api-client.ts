@@ -632,16 +632,16 @@ export const propertiesApi = {
       `/properties${buildPropertiesListSearchParams(query)}`
     ),
 
-  setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>
-    authenticatedRequest<{ property: IProperty }>(
-      `/properties/${encodeURIComponent(propertyId)}/favorite`,
-      { body: JSON.stringify(body), method: "PATCH" }
-    ),
-
   removeMember: (propertyId: string, userId: string) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+
+  setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>
+    authenticatedRequest<{ property: IProperty }>(
+      `/properties/${encodeURIComponent(propertyId)}/favorite`,
+      { body: JSON.stringify(body), method: "PATCH" }
     ),
 
   update: (propertyId: string, body: IAdminUpdatePropertyBody) =>

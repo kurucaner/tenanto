@@ -7,12 +7,14 @@ import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
+import { PropertyFavoriteButton } from "@/components/properties/property-favorite-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
+import { useSetPropertyFavorite } from "@/hooks/use-set-property-favorite";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { formatPhoneDisplay, type IProperty } from "@/packages/shared";
@@ -22,6 +24,7 @@ const PROPERTIES_URL_FILTER_SCHEMA = defineUrlFilterSchema<{ q: string }>({
 });
 
 const PROPERTY_COLUMNS: DataTableColumn[] = [
+  { id: "favorite", label: "Favorite" },
   { id: "name", label: "Name" },
   { id: "address", label: "Address" },
   { id: "phone", label: "Phone" },
@@ -36,25 +39,43 @@ const PROPERTIES_EMPTY_MESSAGE = (
   </div>
 );
 
-const PropertyTableRow = memo(({ property }: { property: IProperty }) => {
-  const navigate = useNavigate();
+const PropertyTableRow = memo(
+  ({
+    isFavoritePending,
+    onToggleFavorite,
+    property,
+  }: {
+    isFavoritePending: boolean;
+    onToggleFavorite: (property: IProperty) => void;
+    property: IProperty;
+  }) => {
+    const navigate = useNavigate();
 
-  return (
-    <TableRow className="cursor-pointer" onClick={() => navigate(`/properties/${property.id}`)}>
-      <TableCell className="font-medium">{property.name}</TableCell>
-      <TableCell className="max-w-[260px] truncate text-sm">{property.address}</TableCell>
-      <TableCell className="text-sm">{formatPhoneDisplay(property.phoneNumber)}</TableCell>
-      <TableCell className="text-center text-sm">{property.memberCount}</TableCell>
-      <TableCell className="text-muted-foreground text-xs">
-        {new Date(property.createdAt).toLocaleString()}
-      </TableCell>
-    </TableRow>
-  );
-});
+    return (
+      <TableRow className="cursor-pointer" onClick={() => navigate(`/properties/${property.id}`)}>
+        <TableCell className="w-12">
+          <PropertyFavoriteButton
+            disabled={isFavoritePending}
+            isFavorite={property.isFavorite}
+            onToggle={() => onToggleFavorite(property)}
+          />
+        </TableCell>
+        <TableCell className="font-medium">{property.name}</TableCell>
+        <TableCell className="max-w-[260px] truncate text-sm">{property.address}</TableCell>
+        <TableCell className="text-sm">{formatPhoneDisplay(property.phoneNumber)}</TableCell>
+        <TableCell className="text-center text-sm">{property.memberCount}</TableCell>
+        <TableCell className="text-muted-foreground text-xs">
+          {new Date(property.createdAt).toLocaleString()}
+        </TableCell>
+      </TableRow>
+    );
+  }
+);
 PropertyTableRow.displayName = "PropertyTableRow";
 
 const PropertiesListTable = memo(
   ({
+    favoriteMutation,
     hasNextPage,
     infiniteScrollSentinelRef,
     isFetchingNextPage,
@@ -63,6 +84,7 @@ const PropertiesListTable = memo(
     properties,
     searchInput,
   }: {
+    favoriteMutation: ReturnType<typeof useSetPropertyFavorite>;
     hasNextPage: boolean;
     infiniteScrollSentinelRef: RefObject<HTMLDivElement | null>;
     isFetchingNextPage: boolean;
@@ -89,7 +111,17 @@ const PropertiesListTable = memo(
       infiniteScrollSentinelRef={infiniteScrollSentinelRef}
       isPending={isPending}
       items={properties}
-      renderRow={(property) => <PropertyTableRow property={property} />}
+      renderRow={(property) => (
+        <PropertyTableRow
+          isFavoritePending={
+            favoriteMutation.isPending && favoriteMutation.variables?.propertyId === property.id
+          }
+          onToggleFavorite={(item) =>
+            favoriteMutation.mutate({ favorite: !item.isFavorite, propertyId: item.id })
+          }
+          property={property}
+        />
+      )}
     />
   )
 );
@@ -104,8 +136,17 @@ const PropertiesListPageInner = memo(() => {
   );
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, properties } =
-    usePropertiesInfiniteList({ q });
+  const {
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    listFilters,
+    properties,
+  } = usePropertiesInfiniteList({ q });
+
+  const favoriteMutation = useSetPropertyFavorite(listFilters);
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -135,6 +176,7 @@ const PropertiesListPageInner = memo(() => {
       <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
         <CardContent className="space-y-4 p-0">
           <PropertiesListTable
+            favoriteMutation={favoriteMutation}
             hasNextPage={hasNextPage ?? false}
             infiniteScrollSentinelRef={scrollSentinelRef}
             isFetchingNextPage={isFetchingNextPage}
