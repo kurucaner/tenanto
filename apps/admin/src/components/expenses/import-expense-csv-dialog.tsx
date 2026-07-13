@@ -1,8 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileSpreadsheet, Sparkles, Trash2, Upload } from "lucide-react";
-import { type ChangeEvent, type DragEvent, memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { CsvImportFileResultSummary } from "@/components/csv-import/csv-import-file-result-summary";
+import { ImportCsvDialogShell } from "@/components/csv-import/import-csv-dialog-shell";
+import { ImportCsvUploadFooter } from "@/components/csv-import/import-csv-upload-footer";
+import { ImportCsvUploadStep } from "@/components/csv-import/import-csv-upload-step";
 import {
   ImportExpenseCsvPreviewCard,
   ImportExpenseCsvPreviewTableRow,
@@ -14,56 +17,37 @@ import {
   STICKY_AMOUNT_CELL_CLASS_NAME,
 } from "@/components/expenses/import-expense-csv-preview-utils";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { DialogFooter } from "@/components/ui/dialog";
 import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VirtualizedList } from "@/components/virtualized/virtualized-list";
 import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
+import { useCsvFileSelection } from "@/hooks/use-csv-file-selection";
 import { useIsDesktop } from "@/hooks/use-media-query";
 import { expensesApi } from "@/lib/api-client";
 import { isLocalEnvironment } from "@/lib/document-title";
-import {
-  formatExpenseCsvRejections,
-  type ISelectedExpenseCsvFile,
-  parseExpenseCsvFiles,
-  processExpenseCsvIncomingFiles,
-} from "@/lib/expense-csv-import";
+import { parseExpenseCsvFiles } from "@/lib/expense-csv-import";
 import { loadExpenseImportMockParseResponse } from "@/lib/expense-import-mock-data";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { cn } from "@/lib/utils";
 import {
+  EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
   type IExpenseImportFileResult,
   type IExpenseImportParsedRow,
   type IExpenseImportParseResponse,
   type IPropertyExpenseCategoryType,
-  type TExpenseImportFileStatus,
 } from "@/packages/shared";
 
 type TImportStep = "preview" | "upload";
 
+const CSV_IMPORT_LIMITS = {
+  maxBytesPerFile: EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
+  maxFiles: EXPENSE_CSV_IMPORT_MAX_FILES,
+};
+
 const PREVIEW_TABLE_COLUMN_COUNT = 7;
 const PREVIEW_CARD_ESTIMATED_HEIGHT = 320;
 const PREVIEW_TABLE_ROW_ESTIMATED_HEIGHT = 64;
-
-const FILE_RESULT_TONE_CLASS_NAMES: Record<TExpenseImportFileStatus, string> = {
-  error: "border-destructive/30 bg-destructive/5 text-destructive",
-  irrelevant:
-    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200",
-  parsed:
-    "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200",
-};
-
-function getFileResultToneClassName(status: TExpenseImportFileStatus): string {
-  return FILE_RESULT_TONE_CLASS_NAMES[status];
-}
 
 interface ImportExpenseCsvDialogProps {
   categoryTypes: IPropertyExpenseCategoryType[];
@@ -75,58 +59,6 @@ interface ImportExpenseCsvDialogProps {
 function createPreviewRowKey(row: IExpenseImportParsedRow, index: number): string {
   return `${row.sourceFileName}-${row.rowIndex}-${index}`;
 }
-
-const FileResultSummary = memo(({ result }: { result: IExpenseImportFileResult }) => {
-  const toneClassName = getFileResultToneClassName(result.status);
-  const rowCount = result.status === "parsed" ? (result.rows?.length ?? 0) : null;
-
-  return (
-    <div className={cn("min-w-0 rounded-lg border px-3 py-2 text-sm", toneClassName)}>
-      <div className="flex min-w-0 items-baseline gap-x-1">
-        <p className="min-w-0 truncate font-medium" title={result.fileName}>
-          {result.fileName}
-        </p>
-        {rowCount !== null ? (
-          <p className="shrink-0 font-medium whitespace-nowrap">— {rowCount} expense row(s)</p>
-        ) : null}
-      </div>
-      {result.message ? <p className="mt-1 text-xs opacity-90">{result.message}</p> : null}
-    </div>
-  );
-});
-FileResultSummary.displayName = "FileResultSummary";
-
-interface SelectedExpenseCsvFileItemProps {
-  entry: ISelectedExpenseCsvFile;
-  onRemove: (fileId: string) => void;
-}
-
-const SelectedExpenseCsvFileItem = memo(({ entry, onRemove }: SelectedExpenseCsvFileItemProps) => {
-  const handleRemove = useCallback(() => {
-    onRemove(entry.id);
-  }, [entry.id, onRemove]);
-
-  return (
-    <li className="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2">
-      <div className="flex min-w-0 items-center gap-2 text-sm">
-        <FileSpreadsheet className="text-muted-foreground size-4 shrink-0" />
-        <span className="truncate" title={entry.file.name}>
-          {entry.file.name}
-        </span>
-      </div>
-      <Button
-        aria-label={`Remove ${entry.file.name}`}
-        onClick={handleRemove}
-        size="icon-sm"
-        type="button"
-        variant="ghost"
-      >
-        <Trash2 className="size-3.5" />
-      </Button>
-    </li>
-  );
-});
-SelectedExpenseCsvFileItem.displayName = "SelectedExpenseCsvFileItem";
 
 interface ImportExpenseCsvPreviewCardItemProps {
   categoryTypes: IPropertyExpenseCategoryType[];
@@ -227,110 +159,87 @@ function notifyExpenseImportParseOutcome(
   }
 }
 
-interface ImportExpenseCsvDialogFooterProps {
+interface ImportExpenseCsvPreviewFooterProps {
   commitPending: boolean;
   hasBlockingValidationErrors: boolean;
-  isLoadingMock: boolean;
   onBack: () => void;
   onCancel: () => void;
   onCommitImport: () => void;
-  onGenerateMockData: () => void;
-  onSmartRead: () => void;
-  parsePending: boolean;
-  selectedFileCount: number;
-  showMockDataButton: boolean;
-  step: TImportStep;
   validRowCount: number;
 }
 
-const ImportExpenseCsvDialogFooter = memo(
+const ImportExpenseCsvPreviewFooter = memo(
   ({
     commitPending,
     hasBlockingValidationErrors,
-    isLoadingMock,
     onBack,
     onCancel,
     onCommitImport,
-    onGenerateMockData,
-    onSmartRead,
-    parsePending,
-    selectedFileCount,
-    showMockDataButton,
-    step,
     validRowCount,
-  }: ImportExpenseCsvDialogFooterProps) => {
-    const actionsPending = parsePending || commitPending;
-
-    return (
-      <DialogFooter>
-        <Button disabled={actionsPending} onClick={onCancel} type="button" variant="outline">
-          Cancel
-        </Button>
-        {step === "upload" ? (
-          <>
-            {showMockDataButton ? (
-              <Button
-                disabled={isLoadingMock || parsePending}
-                onClick={onGenerateMockData}
-                type="button"
-                variant="secondary"
-              >
-                {isLoadingMock ? "Generating…" : "Generate mock data"}
-              </Button>
-            ) : null}
-            <Button
-              className="gap-1.5"
-              disabled={selectedFileCount === 0 || parsePending || isLoadingMock}
-              onClick={onSmartRead}
-              type="button"
-            >
-              <Sparkles className="size-3.5" />
-              {parsePending ? "Smart reading…" : "Smart read"}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button disabled={actionsPending} onClick={onBack} type="button" variant="outline">
-              Back
-            </Button>
-            <Button
-              disabled={validRowCount === 0 || hasBlockingValidationErrors || commitPending}
-              onClick={onCommitImport}
-              type="button"
-            >
-              {commitPending ? "Importing…" : `Import ${validRowCount} expense(s)`}
-            </Button>
-          </>
-        )}
-      </DialogFooter>
-    );
-  }
+  }: ImportExpenseCsvPreviewFooterProps) => (
+    <DialogFooter>
+      <Button disabled={commitPending} onClick={onCancel} type="button" variant="outline">
+        Cancel
+      </Button>
+      <Button disabled={commitPending} onClick={onBack} type="button" variant="outline">
+        Back
+      </Button>
+      <Button
+        disabled={validRowCount === 0 || hasBlockingValidationErrors || commitPending}
+        onClick={onCommitImport}
+        type="button"
+      >
+        {commitPending ? "Importing…" : `Import ${validRowCount} expense(s)`}
+      </Button>
+    </DialogFooter>
+  )
 );
-ImportExpenseCsvDialogFooter.displayName = "ImportExpenseCsvDialogFooter";
+ImportExpenseCsvPreviewFooter.displayName = "ImportExpenseCsvPreviewFooter";
+
+const ExpenseFileResultSummary = memo(({ result }: { result: IExpenseImportFileResult }) => {
+  const rowCount = result.status === "parsed" ? (result.rows?.length ?? 0) : null;
+
+  return (
+    <CsvImportFileResultSummary
+      fileName={result.fileName}
+      message={result.message}
+      rowCount={rowCount}
+      rowCountLabel="expense row(s)"
+      status={result.status}
+    />
+  );
+});
+ExpenseFileResultSummary.displayName = "ExpenseFileResultSummary";
 
 export const ImportExpenseCsvDialog = memo(
   ({ categoryTypes, onOpenChange, open, propertyId }: ImportExpenseCsvDialogProps) => {
     const queryClient = useQueryClient();
     const [step, setStep] = useState<TImportStep>("upload");
-    const [selectedFiles, setSelectedFiles] = useState<ISelectedExpenseCsvFile[]>([]);
     const [fileResults, setFileResults] = useState<IExpenseImportFileResult[]>([]);
     const [previewRows, setPreviewRows] = useState<IExpenseImportParsedRow[]>([]);
-    const [isDragOver, setIsDragOver] = useState(false);
     const [isLoadingMock, setIsLoadingMock] = useState(false);
-    // Held in state (callback ref) so its attachment re-renders the
-    // virtualizers, which mount in the same commit as this element.
     const [previewScrollElement, setPreviewScrollElement] = useState<HTMLDivElement | null>(null);
     const isDesktop = useIsDesktop();
     const showMockDataButton = isLocalEnvironment();
 
+    const {
+      handleDragLeave,
+      handleDragOver,
+      handleDrop,
+      handleFileInputChange,
+      isDragOver,
+      removeFile,
+      reset: resetFileSelection,
+      selectedFiles,
+    } = useCsvFileSelection({ limits: CSV_IMPORT_LIMITS });
+
     const resetState = useCallback(() => {
       setStep("upload");
-      setSelectedFiles([]);
+      resetFileSelection();
       setFileResults([]);
       setPreviewRows([]);
-      setIsDragOver(false);
       setIsLoadingMock(false);
-    }, []);
+    }, [resetFileSelection]);
 
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
@@ -340,57 +249,6 @@ export const ImportExpenseCsvDialog = memo(
         onOpenChange(nextOpen);
       },
       [onOpenChange, resetState]
-    );
-
-    const addFiles = useCallback((incoming: FileList | File[]) => {
-      const picked = Array.from(incoming);
-      if (picked.length === 0) {
-        return;
-      }
-
-      setSelectedFiles((current) => {
-        const { files, rejections } = processExpenseCsvIncomingFiles(current, picked);
-        const message = formatExpenseCsvRejections(rejections);
-        if (message) {
-          toast.error(message);
-        }
-        return files;
-      });
-    }, []);
-
-    const handleFileInputChange = useCallback(
-      (event: ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files.length > 0) {
-          addFiles(event.target.files);
-        }
-        event.target.value = "";
-      },
-      [addFiles]
-    );
-
-    const removeSelectedFile = useCallback((fileId: string) => {
-      setSelectedFiles((files) => files.filter((file) => file.id !== fileId));
-    }, []);
-
-    const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
-      event.preventDefault();
-      setIsDragOver(true);
-    }, []);
-
-    const handleDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
-      event.preventDefault();
-      setIsDragOver(false);
-    }, []);
-
-    const handleDrop = useCallback(
-      (event: DragEvent<HTMLElement>) => {
-        event.preventDefault();
-        setIsDragOver(false);
-        if (event.dataTransfer.files.length > 0) {
-          addFiles(event.dataTransfer.files);
-        }
-      },
-      [addFiles]
     );
 
     const applyParseResponse = useCallback((response: IExpenseImportParseResponse) => {
@@ -561,99 +419,68 @@ export const ImportExpenseCsvDialog = memo(
       />
     );
 
+    const footer =
+      step === "upload" ? (
+        <ImportCsvUploadFooter
+          isLoadingMock={isLoadingMock}
+          onCancel={handleCancel}
+          onGenerateMockData={handleGenerateMockDataClick}
+          onSmartRead={handleSmartRead}
+          parsePending={parseMutation.isPending}
+          selectedFileCount={selectedFiles.length}
+          showMockDataButton={showMockDataButton}
+        />
+      ) : (
+        <ImportExpenseCsvPreviewFooter
+          commitPending={commitMutation.isPending}
+          hasBlockingValidationErrors={hasBlockingValidationErrors}
+          onBack={handleBackToUpload}
+          onCancel={handleCancel}
+          onCommitImport={handleCommitImport}
+          validRowCount={validRowCount}
+        />
+      );
+
     return (
-      <Dialog onOpenChange={handleOpenChange} open={open}>
-        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col sm:max-w-[min(1100px,calc(100vw-2rem))]">
-          <DialogHeader>
-            <DialogTitle>Import Expenses from CSV</DialogTitle>
-            <DialogDescription>
-              Upload up to {EXPENSE_CSV_IMPORT_MAX_FILES} CSV files. AI reads transactions and
-              suggests categories — review before saving.
-            </DialogDescription>
-          </DialogHeader>
-
-          {step === "upload" ? (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-              <div className="flex flex-col gap-4">
-                <div
-                  className={cn(
-                    "flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-8",
-                    isDragOver && "border-ring bg-muted/30"
-                  )}
-                  onDragLeave={handleDragLeave}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                >
-                  <Upload className="text-muted-foreground size-5" />
-                  <p className="text-muted-foreground text-sm">
-                    Drag CSV files here or choose files below.
-                  </p>
-                  <Label className="cursor-pointer">
-                    <span className="text-primary text-sm font-medium">Choose CSV files</span>
-                    <input
-                      accept=".csv,text/csv"
-                      className="sr-only"
-                      multiple
-                      onChange={handleFileInputChange}
-                      type="file"
-                    />
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    CSV only · up to {EXPENSE_CSV_IMPORT_MAX_FILES} files · 1 MB each
-                  </p>
-                </div>
-
-                {selectedFiles.length > 0 ? (
-                  <ul className="flex flex-col gap-2">
-                    {selectedFiles.map((entry) => (
-                      <SelectedExpenseCsvFileItem
-                        entry={entry}
-                        key={entry.id}
-                        onRemove={removeSelectedFile}
-                      />
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-            </div>
-          ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5" ref={setPreviewScrollElement}>
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  {fileResults.map((result) => (
-                    <FileResultSummary key={result.fileName} result={result} />
-                  ))}
-                </div>
-
-                {previewRows.length > 0 ? (
-                  previewList
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    No expense rows are ready to import. Remove irrelevant files or upload different
-                    CSVs.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <ImportExpenseCsvDialogFooter
-            commitPending={commitMutation.isPending}
-            hasBlockingValidationErrors={hasBlockingValidationErrors}
-            isLoadingMock={isLoadingMock}
-            onBack={handleBackToUpload}
-            onCancel={handleCancel}
-            onCommitImport={handleCommitImport}
-            onGenerateMockData={handleGenerateMockDataClick}
-            onSmartRead={handleSmartRead}
-            parsePending={parseMutation.isPending}
-            selectedFileCount={selectedFiles.length}
-            showMockDataButton={showMockDataButton}
-            step={step}
-            validRowCount={validRowCount}
+      <ImportCsvDialogShell
+        description={`Upload up to ${EXPENSE_CSV_IMPORT_MAX_FILES} CSV files. AI reads transactions and suggests categories — review before saving.`}
+        footer={footer}
+        onOpenChange={handleOpenChange}
+        open={open}
+        title="Import Expenses from CSV"
+      >
+        {step === "upload" ? (
+          <ImportCsvUploadStep
+            isDragOver={isDragOver}
+            maxFiles={EXPENSE_CSV_IMPORT_MAX_FILES}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onFileInputChange={handleFileInputChange}
+            onRemoveFile={removeFile}
+            selectedFiles={selectedFiles}
           />
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <div ref={setPreviewScrollElement}>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                {fileResults.map((result) => (
+                  <ExpenseFileResultSummary key={result.fileName} result={result} />
+                ))}
+              </div>
+
+              {previewRows.length > 0 ? (
+                previewList
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No expense rows are ready to import. Remove irrelevant files or upload different
+                  CSVs.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </ImportCsvDialogShell>
     );
   }
 );

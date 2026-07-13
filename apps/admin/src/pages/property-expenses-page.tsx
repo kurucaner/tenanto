@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Search, Sparkles } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
 import {
   memo,
   type MouseEvent,
@@ -12,6 +12,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
+import { ImportCsvButton } from "@/components/csv-import/import-csv-button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
@@ -305,10 +306,7 @@ PropertyExpensesTable.displayName = "PropertyExpensesTable";
 const PropertyExpensesPageActions = memo(
   ({ onImportCsv, onOpenCreate }: { onImportCsv: () => void; onOpenCreate: () => void }) => (
     <div className="flex items-center gap-2">
-      <Button className="gap-1.5" onClick={onImportCsv} size="sm" type="button" variant="outline">
-        <Sparkles className="size-3.5" />
-        Import CSV
-      </Button>
+      <ImportCsvButton onClick={onImportCsv} />
       <Button className="gap-1.5" onClick={onOpenCreate} size="sm" type="button">
         <Plus className="size-3.5" />
         Add Expense

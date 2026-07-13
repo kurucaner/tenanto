@@ -3,6 +3,7 @@ import { CirclePlus, Pencil, Plus } from "lucide-react";
 import { memo, type MouseEvent, type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { ImportCsvButton } from "@/components/csv-import/import-csv-button";
 import { DataTable } from "@/components/data-table/data-table";
 import {
   type DataTableColumn,
@@ -25,6 +26,7 @@ import {
 import { CreateReservationDialog } from "@/components/income/create-reservation-dialog";
 import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialog";
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
+import { ImportIncomeCsvDialog } from "@/components/income/import-income-csv-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
 import { buildIncomeTypeFilterOptions } from "@/components/income/income-line-form-options";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
@@ -478,11 +480,13 @@ const PropertyIncomePageDialogs = memo(
     createStayOpen,
     editIncomeLine,
     editReservation,
+    importCsvOpen,
     incomeLineTypes,
     onCreateIncomeLineOpenChange,
     onCreateStayOpenChange,
     onEditIncomeLineOpenChange,
     onEditReservationOpenChange,
+    onImportCsvOpenChange,
     propertyId,
     units,
   }: {
@@ -492,11 +496,13 @@ const PropertyIncomePageDialogs = memo(
     createStayOpen: boolean;
     editIncomeLine: IPropertyIncomeLine | null;
     editReservation: IPropertyReservation | null;
+    importCsvOpen: boolean;
     incomeLineTypes: IPropertyIncomeLineType[];
     onCreateIncomeLineOpenChange: (open: boolean) => void;
     onCreateStayOpenChange: (open: boolean) => void;
     onEditIncomeLineOpenChange: (open: boolean) => void;
     onEditReservationOpenChange: (open: boolean) => void;
+    onImportCsvOpenChange: (open: boolean) => void;
     propertyId: string;
     units: IPropertyUnit[];
   }) => (
@@ -515,6 +521,7 @@ const PropertyIncomePageDialogs = memo(
         propertyId={propertyId}
         units={units}
       />
+      <ImportIncomeCsvDialog onOpenChange={onImportCsvOpenChange} open={importCsvOpen} />
       {editReservation ? (
         <EditReservationDialog
           key={editReservation.id}
@@ -548,8 +555,17 @@ function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): 
 }
 
 const PropertyIncomePageActions = memo(
-  ({ onAddOtherIncome, onAddStay }: { onAddOtherIncome: () => void; onAddStay: () => void }) => (
-    <>
+  ({
+    onAddOtherIncome,
+    onAddStay,
+    onImportCsv,
+  }: {
+    onAddOtherIncome: () => void;
+    onAddStay: () => void;
+    onImportCsv: () => void;
+  }) => (
+    <div className="flex items-center gap-2">
+      <ImportCsvButton onClick={onImportCsv} />
       <Button className="gap-1.5" onClick={onAddStay} size="sm" type="button" variant="outline">
         <Plus className="size-3.5" />
         Add Short Stay
@@ -558,7 +574,7 @@ const PropertyIncomePageActions = memo(
         <Plus className="size-3.5" />
         Add Other Income
       </Button>
-    </>
+    </div>
   )
 );
 PropertyIncomePageActions.displayName = "PropertyIncomePageActions";
@@ -907,14 +923,19 @@ IncomeEntryRow.displayName = "IncomeEntryRow";
 function useRegisterIncomePageActions(
   canManage: boolean,
   onAddOtherIncome: () => void,
-  onAddStay: () => void
+  onAddStay: () => void,
+  onImportCsv: () => void
 ) {
   const pageActions = useMemo(
     () =>
       canManage ? (
-        <PropertyIncomePageActions onAddOtherIncome={onAddOtherIncome} onAddStay={onAddStay} />
+        <PropertyIncomePageActions
+          onAddOtherIncome={onAddOtherIncome}
+          onAddStay={onAddStay}
+          onImportCsv={onImportCsv}
+        />
       ) : null,
-    [canManage, onAddOtherIncome, onAddStay]
+    [canManage, onAddOtherIncome, onAddStay, onImportCsv]
   );
 
   usePropertyShellActions(pageActions);
@@ -925,6 +946,7 @@ const PropertyIncomePage = memo(() => {
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
   const [createStayOpen, setCreateStayOpen] = useState(false);
+  const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [createLineOpen, setCreateLineOpen] = useState(false);
   const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
     null
@@ -1191,7 +1213,11 @@ const PropertyIncomePage = memo(() => {
     setCreateStayOpen(true);
   }, []);
 
-  useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay);
+  const handleOpenImportCsv = useCallback(() => {
+    setImportCsvOpen(true);
+  }, []);
+
+  useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay, handleOpenImportCsv);
 
   return (
     <>
@@ -1266,6 +1292,7 @@ const PropertyIncomePage = memo(() => {
         createStayOpen={createStayOpen}
         editIncomeLine={editIncomeLine}
         editReservation={editReservation}
+        importCsvOpen={importCsvOpen}
         incomeLineTypes={incomeLineTypes}
         onCreateIncomeLineOpenChange={(open) =>
           handleCreateIncomeLineOpenChange(open, setCreateLineOpen, () => {
@@ -1280,6 +1307,7 @@ const PropertyIncomePage = memo(() => {
         onEditReservationOpenChange={(open) =>
           handleEditDialogOpenChange(open, () => setEditReservation(null))
         }
+        onImportCsvOpenChange={setImportCsvOpen}
         propertyId={propertyId}
         units={activeUnits}
       />
