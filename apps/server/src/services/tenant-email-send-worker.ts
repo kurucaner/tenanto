@@ -1,5 +1,6 @@
 import { type Job, Worker } from "bullmq";
 
+import { emailUnsubscribesDb } from "@/db/email-unsubscribes";
 import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
 import {
   TENANT_EMAIL_CAMPAIGN_JOB_ATTEMPTS,
@@ -10,6 +11,12 @@ import {
 import { TenantEmailRecipientStatus } from "@/packages/shared";
 import { getRedisConnectionOptions } from "@/queues/redis-connection";
 import { closeTenantEmailQueue, type ITenantEmailSendJobData } from "@/queues/tenant-email-queue";
+import {
+  logTenantEmailRecipientFailed,
+  logTenantEmailRecipientSent,
+  logTenantEmailRecipientSkipped,
+  logTenantEmailWorkerJobFailed,
+} from "@/services/tenant-email-campaign-observability";
 import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
 import {
   getSesErrorMessage,
@@ -17,6 +24,13 @@ import {
   isRetryableSesError,
 } from "@/ses/ses-error-utils";
 import { sendTenantCampaignEmail } from "@/ses/transactional-emails";
+
+const UNSUBSCRIBED_SKIP_REASON = "Recipient unsubscribed";
+
+async function finalizeRecipientAttempt(campaignId: string): Promise<void> {
+  await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
+  await maybePublishTenantEmailCampaignUpdated(campaignId);
+}
 
 async function processTenantEmailSendJob(job: Job<ITenantEmailSendJobData>): Promise<void> {
   const { campaignId, recipientId } = job.data;
@@ -28,6 +42,22 @@ async function processTenantEmailSendJob(job: Job<ITenantEmailSendJobData>): Pro
 
   await propertyTenantEmailCampaignsDb.markCampaignSendingIfQueued(campaignId);
 
+  const isUnsubscribed = await emailUnsubscribesDb.isUnsubscribed(row.email);
+  if (isUnsubscribed) {
+    await propertyTenantEmailCampaignsDb.markRecipientSkipped(
+      recipientId,
+      UNSUBSCRIBED_SKIP_REASON
+    );
+    logTenantEmailRecipientSkipped({
+      campaignId,
+      propertyId: row.propertyId,
+      reason: UNSUBSCRIBED_SKIP_REASON,
+      recipientId,
+    });
+    await finalizeRecipientAttempt(campaignId);
+    return;
+  }
+
   try {
     await sendTenantCampaignEmail(row.email, {
       htmlBody: row.htmlBody,
@@ -37,6 +67,11 @@ async function processTenantEmailSendJob(job: Job<ITenantEmailSendJobData>): Pro
     });
 
     await propertyTenantEmailCampaignsDb.markRecipientSent(recipientId);
+    logTenantEmailRecipientSent({
+      campaignId,
+      propertyId: row.propertyId,
+      recipientId,
+    });
   } catch (error) {
     const message = getSesErrorMessage(error);
 
@@ -46,9 +81,14 @@ async function processTenantEmailSendJob(job: Job<ITenantEmailSendJobData>): Pro
     }
 
     await propertyTenantEmailCampaignsDb.markRecipientFailed(recipientId, message);
+    logTenantEmailRecipientFailed({
+      campaignId,
+      errorMessage: message,
+      propertyId: row.propertyId,
+      recipientId,
+    });
   } finally {
-    await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
-    await maybePublishTenantEmailCampaignUpdated(campaignId);
+    await finalizeRecipientAttempt(campaignId);
   }
 }
 
@@ -88,20 +128,27 @@ export function startTenantEmailSendWorker(): Worker<ITenantEmailSendJobData> {
         return;
       }
 
-      await propertyTenantEmailCampaignsDb.markRecipientFailed(
+      const message = getSesErrorMessage(error);
+      await propertyTenantEmailCampaignsDb.markRecipientFailed(recipientId, message);
+      logTenantEmailRecipientFailed({
+        campaignId,
+        errorMessage: message,
+        propertyId: row.propertyId,
         recipientId,
-        getSesErrorMessage(error)
-      );
-      await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
-      await maybePublishTenantEmailCampaignUpdated(campaignId);
+      });
+      await finalizeRecipientAttempt(campaignId);
     })().catch((handlerError) => {
-      console.error("[tenant-email-worker] failed-handler error", handlerError);
+      logTenantEmailWorkerJobFailed({
+        campaignId: job?.data.campaignId ?? "unknown",
+        errorMessage: getSesErrorMessage(handlerError),
+        recipientId: job?.data.recipientId ?? "unknown",
+      });
     });
 
-    console.error("[tenant-email-worker] job failed", {
-      campaignId: job?.data.campaignId,
-      error: getSesErrorMessage(error),
-      recipientId: job?.data.recipientId,
+    logTenantEmailWorkerJobFailed({
+      campaignId: job?.data.campaignId ?? "unknown",
+      errorMessage: getSesErrorMessage(error),
+      recipientId: job?.data.recipientId ?? "unknown",
     });
   });
 

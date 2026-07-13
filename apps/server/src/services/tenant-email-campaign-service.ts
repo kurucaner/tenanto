@@ -5,9 +5,9 @@ import {
 } from "@/db/property-tenant-email-campaigns";
 import {
   TENANT_EMAIL_CAMPAIGN_MAX_BODY_BYTES,
-  TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS,
   TENANT_EMAIL_CAMPAIGN_MAX_SUBJECT_LENGTH,
 } from "@/lib/tenant-email-campaign-config";
+import { getTenantEmailCampaignMaxRecipients } from "@/lib/tenant-email-campaign-limits";
 import {
   type ICreateTenantEmailCampaignBody,
   type ITenantEmailCampaign,
@@ -18,6 +18,7 @@ import {
   TenantEmailCampaignStatus,
 } from "@/packages/shared";
 import { enqueueTenantEmailSendJobs } from "@/queues/tenant-email-queue";
+import { logTenantEmailCampaignCreated } from "@/services/tenant-email-campaign-observability";
 import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
 import { sanitizeTenantEmailHtml, tenantEmailHtmlToPlainText } from "@/ses/tenant-email-html";
 
@@ -102,9 +103,9 @@ export async function createTenantEmailCampaign(params: {
     throw new TenantEmailCampaignNoRecipientsError();
   }
 
-  if (resolution.recipients.length > TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS) {
+  if (resolution.recipients.length > getTenantEmailCampaignMaxRecipients()) {
     throw new TenantEmailCampaignValidationError(
-      `Campaign exceeds max recipient limit (${TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS})`
+      `Campaign exceeds max recipient limit (${getTenantEmailCampaignMaxRecipients()})`
     );
   }
 
@@ -129,6 +130,14 @@ export async function createTenantEmailCampaign(params: {
     }
 
     const refreshed = (await propertyTenantEmailCampaignsDb.findById(campaign.id)) ?? campaign;
+
+    logTenantEmailCampaignCreated({
+      createdBy: refreshed.createdBy,
+      id: refreshed.id,
+      propertyId: refreshed.propertyId,
+      recipientCount: refreshed.recipientCount,
+      skippedCount: refreshed.skippedCount,
+    });
 
     return {
       campaignId: refreshed.id,

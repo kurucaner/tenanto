@@ -10,6 +10,7 @@ import {
   type ITenantEmailCampaignListResponse,
   type ITenantEmailCampaignPreviewResponse,
 } from "@/packages/shared";
+import { assertTenantEmailCampaignCreateAllowed } from "@/services/tenant-email-campaign-create-rate-limit";
 import {
   buildTenantEmailCampaignPreview,
   createTenantEmailCampaign,
@@ -191,6 +192,14 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
       );
       if (!allowed) {
         return;
+      }
+
+      const rateLimit = await assertTenantEmailCampaignCreateAllowed(userId, propertyId);
+      if (!rateLimit.allowed) {
+        return reply
+          .status(HttpStatus.TOO_MANY_REQUESTS)
+          .header("Retry-After", String(rateLimit.retryAfterSec))
+          .send({ error: "Too many tenant email campaigns. Try again later." });
       }
 
       const parsedBody = parseCreateCampaignBody(request.body);

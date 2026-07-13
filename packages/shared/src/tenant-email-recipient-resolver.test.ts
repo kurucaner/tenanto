@@ -107,6 +107,22 @@ describe("resolveTenantEmailRecipients", () => {
     ]);
   });
 
+  test("resolves 500 unique recipients for load-test sizing", () => {
+    const leases = Array.from({ length: 500 }, (_, index) =>
+      makeLease({
+        guestName: `Tenant ${index}`,
+        id: `lease-${index}`,
+        tenantEmail: `tenant-${index}@example.com`,
+        unitId: `unit-${index}`,
+      })
+    );
+
+    const result = resolveTenantEmailRecipients(leases);
+
+    expect(result.recipients).toHaveLength(500);
+    expect(result.skipped).toHaveLength(0);
+  });
+
   test("records skipped tenants with missing or invalid emails", () => {
     const result = resolveTenantEmailRecipients([
       makeLease({

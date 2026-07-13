@@ -2,6 +2,7 @@ import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campa
 import { TenantEmailCampaignStatus, type TTenantEmailCampaignStatus } from "@/packages/shared";
 
 import { notificationStreamHub } from "./notification-stream-hub";
+import { maybeLogTenantEmailCampaignCompletion } from "./tenant-email-campaign-observability";
 
 const PROGRESS_EMIT_INTERVAL_MS = 2_000;
 const PROGRESS_EMIT_SENT_DELTA = 10;
@@ -65,6 +66,8 @@ export async function maybePublishTenantEmailCampaignUpdated(campaignId: string)
   if (!shouldEmitTenantEmailCampaignUpdate(campaignId, campaign.sentCount, campaign.status)) {
     return;
   }
+
+  maybeLogTenantEmailCampaignCompletion(campaign);
 
   await notificationStreamHub.publishTenantEmailCampaignUpdated({
     campaignId: campaign.id,

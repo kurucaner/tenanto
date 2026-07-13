@@ -2,8 +2,9 @@ import type { OtpPurpose } from "@/db/auth-otps";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
-import { sendTransactionalEmail } from "./ses";
+import { sendSesEmail, sendTransactionalEmail } from "./ses";
 import { escapeHtml } from "./ses-utils";
+import { buildListUnsubscribeUrl } from "./unsubscribe-token";
 
 export interface PropertyInviteEmailOptions {
   inviterEmail: string;
@@ -177,11 +178,13 @@ export async function sendTenantCampaignEmail(
   opts: TenantCampaignEmailOptions
 ): Promise<void> {
   const html = `<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">${opts.htmlBody}</div>`;
+  const unsubUrl = buildListUnsubscribeUrl(to);
 
-  await sendTransactionalEmail({
+  await sendSesEmail({
     html,
     subject: opts.subject,
     text: opts.textBody,
     to,
+    unsubUrl,
   });
 }

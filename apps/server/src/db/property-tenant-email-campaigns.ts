@@ -297,6 +297,16 @@ export const propertyTenantEmailCampaignsDb = {
     );
   },
 
+  async markRecipientSkipped(recipientId: string, reason: string): Promise<void> {
+    await pool.query(
+      `UPDATE property_tenant_email_recipients
+       SET status = 'skipped',
+           last_error = $2
+       WHERE id = $1 AND status = 'queued'`,
+      [recipientId, reason.slice(0, 2000)]
+    );
+  },
+
   async refreshCampaignCompletion(campaignId: string): Promise<void> {
     await pool.query(
       `UPDATE property_tenant_email_campaigns c

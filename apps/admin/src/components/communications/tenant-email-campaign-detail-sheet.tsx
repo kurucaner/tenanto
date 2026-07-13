@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { type VariantProps } from "class-variance-authority";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { memo, type ReactNode } from "react";
 
 import { TenantEmailCampaignStatusBadge } from "@/components/communications/tenant-email-campaign-status-badge";
@@ -54,9 +54,51 @@ interface ITenantEmailCampaignDetailSheetProps {
   propertyId: string;
 }
 
+function compareRecipientRows(
+  left: ITenantEmailCampaignDetailResponse["recipients"][number],
+  right: ITenantEmailCampaignDetailResponse["recipients"][number]
+): number {
+  const priority = (status: TTenantEmailRecipientStatus): number => {
+    if (status === TenantEmailRecipientStatus.FAILED) {
+      return 0;
+    }
+    if (status === TenantEmailRecipientStatus.SKIPPED) {
+      return 1;
+    }
+    return 2;
+  };
+
+  const leftPriority = priority(left.status);
+  const rightPriority = priority(right.status);
+  if (leftPriority !== rightPriority) {
+    return leftPriority - rightPriority;
+  }
+
+  return left.tenantName.localeCompare(right.tenantName);
+}
+
 function renderCampaignDetailContent(detail: ITenantEmailCampaignDetailResponse) {
+  const failedRecipients = detail.recipients.filter(
+    (recipient) => recipient.status === TenantEmailRecipientStatus.FAILED
+  );
+  const sortedRecipients = [...detail.recipients].sort(compareRecipientRows);
+
   return (
     <div className="space-y-4 px-4 pb-6">
+      {detail.campaign.failedCount > 0 ? (
+        <div className="border-destructive/50 bg-destructive/10 text-destructive flex gap-3 rounded-lg border p-4 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div className="space-y-1">
+            <p className="font-medium">Failed deliveries</p>
+            <p className="text-destructive/90">
+              {detail.campaign.failedCount} recipient
+              {detail.campaign.failedCount === 1 ? "" : "s"} could not be delivered. Review the
+              error messages below{failedRecipients.length > 0 ? " (shown first)" : ""}.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
           <TenantEmailCampaignStatusBadge status={detail.campaign.status} />
@@ -80,7 +122,7 @@ function renderCampaignDetailContent(detail: ITenantEmailCampaignDetailResponse)
           </TableRow>
         </TableHeader>
         <TableBody>
-          {detail.recipients.map((recipient) => (
+          {sortedRecipients.map((recipient) => (
             <TableRow key={recipient.id}>
               <TableCell>
                 <div className="space-y-1">
