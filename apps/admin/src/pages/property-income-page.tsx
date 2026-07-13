@@ -46,7 +46,7 @@ import {
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
-import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
@@ -59,6 +59,7 @@ import {
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { ledgerEntryRowClassName } from "@/lib/ledger-entry-row-styles";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   getStayAverageDailyRate,
@@ -148,22 +149,6 @@ const INCOME_SORTABLE_COLUMNS: (DataTableColumn & { id: TIncomeEntrySortColumnId
 function getIncomeColumns(canManage: boolean): DataTableColumn[] {
   return [...INCOME_SORTABLE_COLUMNS, { hidden: !canManage, id: "actions", label: "Actions" }];
 }
-
-const INCOME_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
-  channelCommissionId: string;
-  from: string;
-  incomeType: string;
-  status: string;
-  to: string;
-  unitId: string;
-}>({
-  channelCommissionId: { defaultValue: "" },
-  from: { defaultValue: "" },
-  incomeType: { defaultValue: "" },
-  status: { defaultValue: "" },
-  to: { defaultValue: "" },
-  unitId: { defaultValue: "" },
-});
 
 function buildDateFilters(from: string, to: string, unitId: string) {
   const next: { from?: string; to?: string; unitId?: string } = {};
@@ -285,43 +270,61 @@ type TIncomeFilterKey = "channelCommissionId" | "from" | "incomeType" | "status"
 
 const PropertyIncomeFilters = memo(
   ({
+    allTime,
     channelCommissionId,
     channelFilterOptions,
     from,
     incomeType,
     incomeTypeFilterOptions,
     onFilterChange,
+    onShowAllTime,
     showStays,
     status,
     to,
     unitId,
     units,
   }: {
+    allTime: boolean;
     channelCommissionId: string;
     channelFilterOptions: { label: string; value: string }[];
     from: string;
     incomeType: string;
     incomeTypeFilterOptions: { label: string; value: string }[];
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    onShowAllTime: () => void;
     showStays: boolean;
     status: string;
     to: string;
     unitId: string;
     units: IPropertyUnit[];
   }) => (
-    <LedgerFiltersSection>
+    <LedgerFiltersSection
+      footer={
+        allTime ? (
+          <p className="text-muted-foreground text-xs">
+            Showing all time — narrow dates for faster loading
+          </p>
+        ) : (
+          <div className="flex justify-end">
+            <Button className="h-auto px-0 text-xs" onClick={onShowAllTime} variant="link">
+              Show all time
+            </Button>
+          </div>
+        )
+      }
+    >
       <LedgerFilterGrid filterCount={6}>
         <DateFilterField
           id="filter-from"
           label="From"
           onChange={(e) => onFilterChange("from", e.target.value)}
-          value={from}
+          value={allTime ? "" : from}
         />
         <DateFilterField
           id="filter-to"
           label="To"
           onChange={(e) => onFilterChange("to", e.target.value)}
-          value={to}
+          value={allTime ? "" : to}
         />
         <FilterSelectField
           id="filter-unit"
@@ -964,7 +967,28 @@ const PropertyIncomePage = memo(() => {
     metric: TStayCalculationMetric;
     stay: IPropertyReservation;
   } | null>(null);
-  const { filters, setFilter } = useUrlFilterState(INCOME_URL_FILTER_SCHEMA);
+  const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
+  const incomeFilterSchema = useMemo(
+    () =>
+      defineUrlFilterSchema<{
+        channelCommissionId: string;
+        from: string;
+        incomeType: string;
+        status: string;
+        to: string;
+        unitId: string;
+      }>({
+        channelCommissionId: { defaultValue: "" },
+        from: { defaultValue: defaultDateRange.from },
+        incomeType: { defaultValue: "" },
+        status: { defaultValue: "" },
+        to: { defaultValue: defaultDateRange.to },
+        unitId: { defaultValue: "" },
+      }),
+    [defaultDateRange.from, defaultDateRange.to]
+  );
+  const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
+  const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
   const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
   const sortController = useUrlTableSort({
     defaultColumnId: "date",
@@ -972,7 +996,36 @@ const PropertyIncomePage = memo(() => {
   });
   const { sortState } = sortController;
 
-  const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
+  const handleIncomeFilterChange = useCallback(
+    (key: TIncomeFilterKey, value: string) => {
+      if (key === "from" || key === "to") {
+        if (allTime) {
+          setAllTime(false);
+        }
+
+        const nextFrom = key === "from" ? value : from;
+        const nextTo = key === "to" ? value : to;
+        if (!nextFrom && !nextTo) {
+          setAllTime(true);
+          return;
+        }
+      }
+
+      setFilter(key, value);
+    },
+    [allTime, from, setAllTime, setFilter, to]
+  );
+
+  const handleShowAllTime = useCallback(() => {
+    setAllTime(true);
+  }, [setAllTime]);
+
+  const effectiveFrom = allTime ? "" : from;
+  const effectiveTo = allTime ? "" : to;
+  const dateFilters = useMemo(
+    () => buildDateFilters(effectiveFrom, effectiveTo, unitId),
+    [effectiveFrom, effectiveTo, unitId]
+  );
 
   const reservationFilters = useMemo(
     () => buildReservationFilters(dateFilters, channelCommissionId, status),
@@ -1232,12 +1285,14 @@ const PropertyIncomePage = memo(() => {
             entries={sortedEntries}
             filters={
               <PropertyIncomeFilters
+                allTime={allTime}
                 channelCommissionId={channelCommissionId}
                 channelFilterOptions={channelFilterOptions}
                 from={from}
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
-                onFilterChange={setFilter}
+                onFilterChange={handleIncomeFilterChange}
+                onShowAllTime={handleShowAllTime}
                 showStays={showStays}
                 status={status}
                 to={to}

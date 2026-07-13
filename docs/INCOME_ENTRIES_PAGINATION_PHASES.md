@@ -126,13 +126,13 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Optional: log or monitor list response sizes per property (no API change required)
+- [ ] Optional: log or monitor list response sizes per property (no API change required) — skipped
 
 ### Frontend
 
-- [ ] Add a **default date range** on the income page (e.g. current month or YTD)
-- [ ] Keep "clear dates" / "All time" available, but not the default
-- [ ] Show a subtle hint when no date filter is active: e.g. "Showing all time — narrow dates for faster loading"
+- [x] Add a **default date range** on the income page (e.g. current month or YTD)
+- [x] Keep "clear dates" / "All time" available, but not the default
+- [x] Show a subtle hint when no date filter is active: e.g. "Showing all time — narrow dates for faster loading"
 
 **Exit criteria:** Default view loads fewer rows; unfiltered all-time still works via the old path.
 
