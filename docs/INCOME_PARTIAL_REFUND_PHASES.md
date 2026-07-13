@@ -96,21 +96,41 @@ Full refund with no body `{ }` sets `refunded_amount = cap` (backward compatible
 
 ---
 
-## Phase 0 — Design spike
+## Phase 0 — Design spike ✅
 
 **Goal:** Lock API shape and proportional scaling rules before implementation.
 
 **Deliverable:** Confirm cap fields, rounding rules, and lease rent schedule behavior for partial rent refunds. No user-facing changes.
 
-**Shared helpers (proposed, `packages/shared`):**
+**Implemented in `packages/shared`:**
+
+| File | Contents |
+| ---- | -------- |
+| `property-partial-refund-types.ts` | `IRefundLedgerEntryBody`, `IReportableStayAmounts`, `TReportableIncomeLineAmounts` |
+| `property-partial-refund-utils.ts` | Cap, report-factor, reportable-amount, rent-schedule, and validation helpers |
+| `property-partial-refund-utils.test.ts` | Unit tests for scaling, caps, and lease rent schedule rules |
+
+**Shared helpers:**
 
 ```ts
 getIncomeLineRefundableCap(line: IPropertyIncomeLine): number;
 getStayRefundableCap(stay: IPropertyReservation): number;
 isFullyRefunded(refundedAt: string | null, refundedAmount: number | null, cap: number): boolean;
-getReportableStayAmounts(stay: IPropertyReservation): IPropertyReservationComputedFields;
-getReportableIncomeLineAmounts(line: IPropertyIncomeLine): IPropertyIncomeLineComputedFields;
+getReportableStayAmounts(stay: IPropertyReservation): IReportableStayAmounts;
+getReportableIncomeLineAmounts(line: IPropertyIncomeLine): TReportableIncomeLineAmounts;
+getPartialRefundReportFactor(refundedAt, refundedAmount, cap): number;
+isIncomeLinePaidForRentSchedule(line): boolean;
+validateRefundAmount(body, cap): { ok: true; amount } | { ok: false; error };
 ```
+
+**Locked rules:**
+
+- Stay cap = `grossIncome`; line cap = `amount`
+- Proportional factor = `(cap - refundedAmount) / cap` (not rounded); each monetary field rounded via `roundMoney`
+- `channelCommissionRate` is not scaled
+- Lease rent schedule: month paid when `getReportableIncomeLineAmounts(line).netIncome > 0`
+
+**Types added (ahead of Phase 1 migration):** `refundedAmount: number | null` on `IPropertyReservation` and `IPropertyIncomeLine`; mappers return `null` until migration v52.
 
 ---
 

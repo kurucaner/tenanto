@@ -220,6 +220,10 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   netIncome: Number(row.net_income),
   nights: row.nights as number,
   propertyId: row.property_id as string,
+  refundedAmount:
+    row.refunded_amount != null && row.refunded_amount !== undefined
+      ? Number(row.refunded_amount)
+      : null,
   refundedAt: toIso(row.refunded_at),
   refundedBy: (row.refunded_by as string | null) ?? null,
   reservationNumber: (row.reservation_number as string) ?? null,
@@ -287,6 +291,10 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
   longStayId: (row.long_stay_id as string | null) ?? null,
   netIncome: Number(row.net_income),
   propertyId: row.property_id as string,
+  refundedAmount:
+    row.refunded_amount != null && row.refunded_amount !== undefined
+      ? Number(row.refunded_amount)
+      : null,
   refundedAt: toIso(row.refunded_at),
   refundedBy: (row.refunded_by as string | null) ?? null,
   reservationId: (row.reservation_id as string) ?? null,

@@ -358,6 +358,23 @@ export {
   roundMoney,
 } from "./property-income-calculator";
 
+// Partial refund utilities
+export {
+  type IRefundLedgerEntryBody,
+  type IReportableStayAmounts,
+  type TReportableIncomeLineAmounts,
+} from "./property-partial-refund-types";
+export {
+  getIncomeLineRefundableCap,
+  getPartialRefundReportFactor,
+  getReportableIncomeLineAmounts,
+  getReportableStayAmounts,
+  getStayRefundableCap,
+  isFullyRefunded,
+  isIncomeLinePaidForRentSchedule,
+  validateRefundAmount,
+} from "./property-partial-refund-utils";
+
 // Property unit utilities
 export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./property-unit-utils";
 
