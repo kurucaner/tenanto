@@ -1,4 +1,14 @@
-import { UserType } from "@/packages/shared";
+import {
+  INCOME_ENTRIES_LIST_LIMIT,
+  INCOME_ENTRIES_LIST_MAX_LIMIT,
+  UserType,
+} from "@/packages/shared";
+
+export function parseIncomeEntriesListLimit(raw: unknown): number {
+  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+  if (!Number.isFinite(n) || n < 1) return INCOME_ENTRIES_LIST_LIMIT;
+  return Math.min(INCOME_ENTRIES_LIST_MAX_LIMIT, Math.floor(n));
+}
 
 export function parseAdminLimit(raw: unknown): number {
   const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);

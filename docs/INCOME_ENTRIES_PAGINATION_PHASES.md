@@ -126,13 +126,13 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Optional: log or monitor list response sizes per property (no API change required)
+- [ ] Optional: log or monitor list response sizes per property (no API change required) — skipped
 
 ### Frontend
 
-- [ ] Add a **default date range** on the income page (e.g. current month or YTD)
-- [ ] Keep "clear dates" / "All time" available, but not the default
-- [ ] Show a subtle hint when no date filter is active: e.g. "Showing all time — narrow dates for faster loading"
+- [x] Add a **default date range** on the income page (e.g. current month or YTD)
+- [x] Keep "clear dates" / "All time" available, but not the default
+- [x] Show a subtle hint when no date filter is active: e.g. "Showing all time — narrow dates for faster loading"
 
 **Exit criteria:** Default view loads fewer rows; unfiltered all-time still works via the old path.
 
@@ -146,31 +146,31 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Add optional `cursor` + `limit` to `GET /properties/:propertyId/short-stays`
+- [x] Add optional `cursor` + `limit` to `GET /properties/:propertyId/short-stays`
   - short-stays already accepts `limit`; add keyset cursor encoding/decoding
   - cursor matches `ORDER BY check_in DESC, created_at DESC, id DESC`
-- [ ] Add optional `cursor` + `limit` to `GET /properties/:propertyId/income-lines`
+- [x] Add optional `cursor` + `limit` to `GET /properties/:propertyId/income-lines`
   - cursor matches `ORDER BY transaction_date DESC, created_at DESC, id DESC`
-- [ ] Reuse existing pagination utilities:
+- [x] Reuse existing pagination utilities:
   - `takePageWithNextCursor` (`apps/server/src/pagination/limit-plus-one.ts`)
   - new encode/decode helpers in `apps/server/src/pagination/keyset-cursor.ts`
   - `shouldIncludeListMeta` for first-page `totalCount`
-- [ ] Add `listPaginatedByProperty` (or equivalent) to:
+- [x] Add `listPaginatedByProperty` (or equivalent) to:
   - `apps/server/src/db/property-reservations.ts`
   - `apps/server/src/db/property-income-lines.ts`
-- [ ] **Backward compatible:** if `cursor`/`limit` omitted, retain current "return all" behavior temporarily (or cap at a safe max — decide in Phase 0)
+- [x] **Backward compatible:** if `cursor`/`limit` omitted, retain current "return all" behavior temporarily (or cap at a safe max — decide in Phase 0) — **always paginated** (expenses pattern; default limit 50)
 
 ### Frontend
 
-- [ ] Add hooks (mirror `use-property-expenses-infinite-list.ts`):
+- [x] Add hooks (mirror `use-property-expenses-infinite-list.ts`):
   - `usePropertyShortStaysInfiniteList`
   - `usePropertyIncomeLinesInfiniteList`
-- [ ] On income page:
+- [x] On income page:
   - filter = **Stay** → short-stays infinite list only
   - filter = **specific line type** → income-lines infinite list only
-  - filter = **All / empty** → **keep current dual-fetch + client merge** (unchanged)
-- [ ] Add `DataTableCountFooter` + `useInfiniteScrollTrigger` for paginated modes only
-- [ ] Keep client sort for now (smaller pages make this acceptable)
+  - filter = **All / empty** → dual infinite query with auto-fetch all pages + client merge
+- [x] Add `DataTableCountFooter` + `useInfiniteScrollTrigger` for paginated modes only
+- [x] Keep client sort for now (smaller pages make this acceptable)
 
 **Exit criteria:** Stay-only and line-type-only views paginate correctly; All view unchanged.
 
@@ -182,24 +182,24 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] New route: `GET /properties/:propertyId/income-entries`
-- [ ] New DB module: e.g. `apps/server/src/db/property-income-entries.ts`
+- [x] New route: `GET /properties/:propertyId/income-entries`
+- [x] New DB module: e.g. `apps/server/src/db/property-income-entries.ts`
   - `listPaginatedByProperty(propertyId, filters, { cursor, limit, includeDeleted })`
   - `UNION ALL` stays + lines into a normalized shape
   - Apply existing filters: `from`, `to`, `unitId`, `incomeType`, `channelCommissionId`, `status`, etc.
   - **Phase 3 sort:** server-side `date DESC` only (match current default)
   - Keyset cursor on `(sortDate, createdAt, id, entryKind)` — include `entryKind` in cursor to disambiguate ties across tables
-- [ ] Map DB rows to existing `TPropertyIncomeEntry` (reuse mappers where possible)
-- [ ] Register route in `apps/server/src/server.ts`
-- [ ] Tests:
+- [x] Map DB rows to existing `TPropertyIncomeEntry` (reuse mappers where possible)
+- [x] Register route in `apps/server/src/server.ts`
+- [x] Tests:
   - Same filters → unified result matches client `buildMergedEntries` + `sortIncomeEntries(date desc)`
   - Cursor continuity — no duplicates or gaps across pages
   - Filter edge cases: stay-only filters, line-only filters, deleted/refunded rows
 
 ### Frontend
 
-- [ ] Add `incomeEntriesApi.list` in `apps/admin/src/lib/api-client.ts`
-- [ ] No page switch yet (optional: dev-only flag to exercise the endpoint locally)
+- [x] Add `incomeEntriesApi.list` in `apps/admin/src/lib/api-client.ts`
+- [x] No page switch yet (optional: dev-only flag to exercise the endpoint locally)
 
 **Exit criteria:** API + tests green; parity with current merged list for default sort.
 
@@ -211,21 +211,21 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Return `meta.totalCount` on the first page (same pattern as expenses — `shouldIncludeListMeta`)
-- [ ] Monitor query time; add indexes if needed:
+- [x] Return `meta.totalCount` on the first page (same pattern as expenses — `shouldIncludeListMeta`)
+- [x] Monitor query time; add indexes if needed:
   - `property_reservations(property_id, check_in, created_at)`
   - `property_income_lines(property_id, transaction_date, created_at)`
 
 ### Frontend
 
-- [ ] Add `usePropertyIncomeEntriesInfiniteList` (copy expenses hook shape)
-- [ ] Income page routing logic:
+- [x] Add `usePropertyIncomeEntriesInfiniteList` (copy expenses hook shape)
+- [x] Income page routing logic:
   - **All / empty type filter** → unified `income-entries` infinite query
   - **Stay only** → short-stays infinite (Phase 2)
   - **Line type only** → income-lines infinite (Phase 2)
-- [ ] Remove `buildMergedEntries` from the All path
-- [ ] Add infinite scroll footer on All view
-- [ ] Update `invalidatePropertyIncomeCaches` to invalidate the unified query key
+- [x] Remove `buildMergedEntries` from the All path
+- [x] Add infinite scroll footer on All view
+- [x] Update `invalidatePropertyIncomeCaches` to invalidate the unified query key
 
 **Exit criteria:** All view uses one API; CRUD/refund/restore still work; pickers unaffected.
 
@@ -237,20 +237,20 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Add `sortBy` + `sortDir` to `IPropertyIncomeEntriesListQuery`
-- [ ] Implement server sort column by column (priority order):
+- [x] Add `sortBy` + `sortDir` to `IPropertyIncomeEntriesListQuery`
+- [x] Implement server sort column by column (priority order):
   1. `date` (default)
   2. `net` / `gross`
   3. `unit`, `guest`, `type`
   4. remaining columns as needed (`channel`, `status`, `nights`, `roomTotal`, `cleaning`, `taxes`, `commission`, `netPayout`, `checkOut`)
-- [ ] Project sort fields in the UNION query (or computed columns per branch)
-- [ ] Encode sort dimensions in the keyset cursor (same idea as `ExpenseKeysetCursorV1`)
+- [x] Project sort fields in the UNION query (or computed columns per branch)
+- [x] Encode sort dimensions in the keyset cursor (same idea as `ExpenseKeysetCursorV1`)
 
 ### Frontend
 
-- [ ] Wire `useUrlTableSort` → API params instead of `sortIncomeEntries` on paginated paths
-- [ ] Disable client sort when server sort is active
-- [ ] Reset cursor when sort or filters change (standard `useInfiniteQuery` behavior — new `queryKey` handles this)
+- [x] Wire `useUrlTableSort` → API params instead of `sortIncomeEntries` on paginated paths
+- [x] Disable client sort when server sort is active
+- [x] Reset cursor when sort or filters change (standard `useInfiniteQuery` behavior — new `queryKey` handles this)
 
 **Exit criteria:** Changing sort column fetches correct global order across pages.
 
@@ -262,17 +262,17 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Decide fate of unpaginated list behavior:
+- [x] Decide fate of unpaginated list behavior:
   - **Keep** list endpoints for pickers/dialogs/import duplicate checks, but add sensible `limit` defaults
   - Or add lightweight endpoints: e.g. duplicate-key check for import preview
-- [ ] Remove "return all" behavior from list endpoints if still present (or enforce a max limit)
-- [ ] Add slow-query monitoring / alerts for `income-entries`
+- [x] Remove "return all" behavior from list endpoints if still present (or enforce a max limit)
+- [x] Add slow-query monitoring / alerts for `income-entries`
 
 ### Frontend
 
-- [ ] Delete dead merge/sort code paths from the income page
-- [ ] Ensure import dialog duplicate check does not fetch full stay history (use date-bounded query or dedicated endpoint)
-- [ ] Final UX: loading next-page state, empty states, total count footer
+- [x] Delete dead merge/sort code paths from the income page
+- [x] Ensure import dialog duplicate check does not fetch full stay history (use date-bounded query or dedicated endpoint)
+- [x] Final UX: loading next-page state, empty states, total count footer
 
 **Exit criteria:** Income page has one pagination architecture; no full-property dual fetch on initial load.
 

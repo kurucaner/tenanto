@@ -1,10 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus } from "lucide-react";
-import { memo, type MouseEvent, type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  memo,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { ImportCsvButton } from "@/components/csv-import/import-csv-button";
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import {
   type DataTableColumn,
   type DataTableSortController,
@@ -43,10 +52,14 @@ import {
   type TDeleteConfirmationOptions,
   useDeleteConfirmation,
 } from "@/hooks/use-delete-confirmation";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { usePropertyIncomeEntriesInfiniteList } from "@/hooks/use-property-income-entries-infinite-list";
+import { usePropertyIncomeLinesInfiniteList } from "@/hooks/use-property-income-lines-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
-import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
@@ -59,6 +72,7 @@ import {
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { ledgerEntryRowClassName } from "@/lib/ledger-entry-row-styles";
 import { adminQueryKeys } from "@/lib/query-keys";
+import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   getStayAverageDailyRate,
@@ -72,34 +86,21 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
+  type TPropertyIncomeEntriesListFilters,
   type TPropertyIncomeEntry,
   type TStayCalculationMetric,
 } from "@/packages/shared";
 
-function buildMergedEntries(
-  reservations: IPropertyReservation[],
-  incomeLines: IPropertyIncomeLine[],
-  incomeTypeFilter: string
-): TPropertyIncomeEntry[] {
-  const entries: TPropertyIncomeEntry[] = [];
-  const showStays = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.STAY;
-  const showLines = incomeTypeFilter === "" || incomeTypeFilter !== IncomeEntryKind.STAY;
+function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
+  return { entryKind: IncomeEntryKind.STAY, stay };
+}
 
-  if (showStays) {
-    for (const stay of reservations) {
-      entries.push({ entryKind: IncomeEntryKind.STAY, stay });
-    }
-  }
+function mapLineToEntry(line: IPropertyIncomeLine): TPropertyIncomeEntry {
+  return { entryKind: IncomeEntryKind.LINE, line };
+}
 
-  if (showLines) {
-    for (const line of incomeLines) {
-      if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
-        entries.push({ entryKind: IncomeEntryKind.LINE, line });
-      }
-    }
-  }
-
-  return entries;
+function buildIncomeFooterItems(meta: { totalCount: number }) {
+  return [{ label: "Total", value: String(meta.totalCount) }];
 }
 
 const INCOME_ROW_ESTIMATED_HEIGHT = 64;
@@ -149,22 +150,6 @@ function getIncomeColumns(canManage: boolean): DataTableColumn[] {
   return [...INCOME_SORTABLE_COLUMNS, { hidden: !canManage, id: "actions", label: "Actions" }];
 }
 
-const INCOME_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
-  channelCommissionId: string;
-  from: string;
-  incomeType: string;
-  status: string;
-  to: string;
-  unitId: string;
-}>({
-  channelCommissionId: { defaultValue: "" },
-  from: { defaultValue: "" },
-  incomeType: { defaultValue: "" },
-  status: { defaultValue: "" },
-  to: { defaultValue: "" },
-  unitId: { defaultValue: "" },
-});
-
 function buildDateFilters(from: string, to: string, unitId: string) {
   const next: { from?: string; to?: string; unitId?: string } = {};
   if (from) next.from = from;
@@ -192,6 +177,23 @@ function buildLineFilters(
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
     next.incomeLineTypeId = incomeType;
   }
+  return next;
+}
+
+function buildIncomeEntriesFilters(
+  dateFilters: ReturnType<typeof buildDateFilters>,
+  channelCommissionId: string,
+  status: string,
+  incomeType: string,
+  sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
+  sortDir: TPropertyIncomeEntriesListFilters["sortDir"]
+): TPropertyIncomeEntriesListFilters {
+  const next: TPropertyIncomeEntriesListFilters = { ...dateFilters };
+  if (channelCommissionId) next.channelCommissionId = channelCommissionId;
+  if (status) next.status = status as TPropertyIncomeEntriesListFilters["status"];
+  if (incomeType) next.incomeType = incomeType;
+  if (sortBy) next.sortBy = sortBy;
+  if (sortDir) next.sortDir = sortDir;
   return next;
 }
 
@@ -285,43 +287,61 @@ type TIncomeFilterKey = "channelCommissionId" | "from" | "incomeType" | "status"
 
 const PropertyIncomeFilters = memo(
   ({
+    allTime,
     channelCommissionId,
     channelFilterOptions,
     from,
     incomeType,
     incomeTypeFilterOptions,
     onFilterChange,
+    onShowAllTime,
     showStays,
     status,
     to,
     unitId,
     units,
   }: {
+    allTime: boolean;
     channelCommissionId: string;
     channelFilterOptions: { label: string; value: string }[];
     from: string;
     incomeType: string;
     incomeTypeFilterOptions: { label: string; value: string }[];
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    onShowAllTime: () => void;
     showStays: boolean;
     status: string;
     to: string;
     unitId: string;
     units: IPropertyUnit[];
   }) => (
-    <LedgerFiltersSection>
+    <LedgerFiltersSection
+      footer={
+        allTime ? (
+          <p className="text-muted-foreground text-xs">
+            Showing all time — narrow dates for faster loading
+          </p>
+        ) : (
+          <div className="flex justify-end">
+            <Button className="h-auto px-0 text-xs" onClick={onShowAllTime} variant="link">
+              Show all time
+            </Button>
+          </div>
+        )
+      }
+    >
       <LedgerFilterGrid filterCount={6}>
         <DateFilterField
           id="filter-from"
           label="From"
           onChange={(e) => onFilterChange("from", e.target.value)}
-          value={from}
+          value={allTime ? "" : from}
         />
         <DateFilterField
           id="filter-to"
           label="To"
           onChange={(e) => onFilterChange("to", e.target.value)}
-          value={to}
+          value={allTime ? "" : to}
         />
         <FilterSelectField
           id="filter-unit"
@@ -367,12 +387,15 @@ const PropertyIncomeEntriesTable = memo(
     canManage,
     entries,
     filters,
+    hasNextPage,
     isDeleteLinePending,
     isDeleteStayPending,
+    isFetchingNextPage,
     isLoading,
     isQuickDeleteActive,
     isRefundLinePending,
     isRefundStayPending,
+    listMeta,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
@@ -383,18 +406,22 @@ const PropertyIncomeEntriesTable = memo(
     onRestoreLine,
     onRestoreStay,
     onShowCalculationDetails,
+    scrollSentinelRef,
     sort,
     unitLabelById,
   }: {
     canManage: boolean;
     entries: TPropertyIncomeEntry[];
     filters: ReactNode;
+    hasNextPage: boolean;
     isDeleteLinePending: boolean;
     isDeleteStayPending: boolean;
+    isFetchingNextPage: boolean;
     isLoading: boolean;
     isQuickDeleteActive: boolean;
     isRefundLinePending: boolean;
     isRefundStayPending: boolean;
+    listMeta?: { totalCount: number };
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
     onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
@@ -405,6 +432,7 @@ const PropertyIncomeEntriesTable = memo(
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+    scrollSentinelRef: RefObject<HTMLDivElement | null>;
     sort: DataTableSortController;
     unitLabelById: Map<string, string>;
   }) => {
@@ -454,13 +482,21 @@ const PropertyIncomeEntriesTable = memo(
     );
 
     const columns = useMemo(() => getIncomeColumns(canManage), [canManage]);
+    const colSpan = columns.filter((column) => !column.hidden).length;
 
     return (
       <DataTable
         columns={columns}
         emptyMessage={`No income entries yet.${canManage ? " Add a stay or other income to get started." : ""}`}
         filters={filters}
+        footer={
+          listMeta ? (
+            <DataTableCountFooter colSpan={colSpan} items={buildIncomeFooterItems(listMeta)} />
+          ) : undefined
+        }
         getItemKey={getIncomeEntryKey}
+        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+        infiniteScrollSentinelRef={scrollSentinelRef}
         isPending={isLoading}
         items={entries}
         renderRow={renderIncomeEntryRow}
@@ -964,7 +1000,28 @@ const PropertyIncomePage = memo(() => {
     metric: TStayCalculationMetric;
     stay: IPropertyReservation;
   } | null>(null);
-  const { filters, setFilter } = useUrlFilterState(INCOME_URL_FILTER_SCHEMA);
+  const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
+  const incomeFilterSchema = useMemo(
+    () =>
+      defineUrlFilterSchema<{
+        channelCommissionId: string;
+        from: string;
+        incomeType: string;
+        status: string;
+        to: string;
+        unitId: string;
+      }>({
+        channelCommissionId: { defaultValue: "" },
+        from: { defaultValue: defaultDateRange.from },
+        incomeType: { defaultValue: "" },
+        status: { defaultValue: "" },
+        to: { defaultValue: defaultDateRange.to },
+        unitId: { defaultValue: "" },
+      }),
+    [defaultDateRange.from, defaultDateRange.to]
+  );
+  const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
+  const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
   const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
   const sortController = useUrlTableSort({
     defaultColumnId: "date",
@@ -972,7 +1029,36 @@ const PropertyIncomePage = memo(() => {
   });
   const { sortState } = sortController;
 
-  const dateFilters = useMemo(() => buildDateFilters(from, to, unitId), [from, to, unitId]);
+  const handleIncomeFilterChange = useCallback(
+    (key: TIncomeFilterKey, value: string) => {
+      if (key === "from" || key === "to") {
+        if (allTime) {
+          setAllTime(false);
+        }
+
+        const nextFrom = key === "from" ? value : from;
+        const nextTo = key === "to" ? value : to;
+        if (!nextFrom && !nextTo) {
+          setAllTime(true);
+          return;
+        }
+      }
+
+      setFilter(key, value);
+    },
+    [allTime, from, setAllTime, setFilter, to]
+  );
+
+  const handleShowAllTime = useCallback(() => {
+    setAllTime(true);
+  }, [setAllTime]);
+
+  const effectiveFrom = allTime ? "" : from;
+  const effectiveTo = allTime ? "" : to;
+  const dateFilters = useMemo(
+    () => buildDateFilters(effectiveFrom, effectiveTo, unitId),
+    [effectiveFrom, effectiveTo, unitId]
+  );
 
   const reservationFilters = useMemo(
     () => buildReservationFilters(dateFilters, channelCommissionId, status),
@@ -984,16 +1070,53 @@ const PropertyIncomePage = memo(() => {
     [dateFilters, incomeType]
   );
 
-  const shortStaysQuery = useQuery({
-    enabled: incomeType === "" || incomeType === IncomeEntryKind.STAY,
-    queryFn: () => shortStaysApi.list(propertyId, reservationFilters),
-    queryKey: adminQueryKeys.propertyShortStays(propertyId, reservationFilters),
+  const incomeEntriesFilters = useMemo(
+    () =>
+      buildIncomeEntriesFilters(
+        dateFilters,
+        channelCommissionId,
+        status,
+        incomeType,
+        sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
+        sortState.direction
+      ),
+    [channelCommissionId, dateFilters, incomeType, sortState.columnId, sortState.direction, status]
+  );
+
+  const isAllView = incomeType === "";
+  const isStayOnlyView = incomeType === IncomeEntryKind.STAY;
+  const isLineTypeOnlyView = incomeType !== "" && incomeType !== IncomeEntryKind.STAY;
+  const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
+
+  const incomeEntriesInfinite = usePropertyIncomeEntriesInfiniteList(
+    propertyId,
+    incomeEntriesFilters,
+    { enabled: isAllView }
+  );
+  const shortStaysInfinite = usePropertyShortStaysInfiniteList(propertyId, reservationFilters, {
+    enabled: isStayOnlyView,
+  });
+  const incomeLinesInfinite = usePropertyIncomeLinesInfiniteList(propertyId, lineFilters, {
+    enabled: isLineTypeOnlyView,
   });
 
-  const incomeLinesQuery = useQuery({
-    enabled: incomeType === "" || incomeType !== IncomeEntryKind.STAY,
-    queryFn: () => incomeLinesApi.list(propertyId, lineFilters),
-    queryKey: adminQueryKeys.propertyIncomeLines(propertyId, lineFilters),
+  const scrollSentinelRef = useInfiniteScrollTrigger({
+    enabled: isAllView || isStayOnlyView || isLineTypeOnlyView,
+    fetchNextPage: isAllView
+      ? incomeEntriesInfinite.fetchNextPage
+      : isStayOnlyView
+        ? shortStaysInfinite.fetchNextPage
+        : incomeLinesInfinite.fetchNextPage,
+    hasNextPage: isAllView
+      ? incomeEntriesInfinite.hasNextPage
+      : isStayOnlyView
+        ? shortStaysInfinite.hasNextPage
+        : incomeLinesInfinite.hasNextPage,
+    isFetchingNextPage: isAllView
+      ? incomeEntriesInfinite.isFetchingNextPage
+      : isStayOnlyView
+        ? shortStaysInfinite.isFetchingNextPage
+        : incomeLinesInfinite.isFetchingNextPage,
   });
 
   const unitsQuery = useQuery({
@@ -1187,25 +1310,49 @@ const PropertyIncomePage = memo(() => {
     [requestLineRefund]
   );
 
-  const entries = useMemo(
-    () =>
-      buildMergedEntries(
-        shortStaysQuery.data?.shortStays ?? [],
-        incomeLinesQuery.data?.incomeLines ?? [],
-        incomeType
-      ),
-    [incomeLinesQuery.data?.incomeLines, incomeType, shortStaysQuery.data?.shortStays]
-  );
+  const displayEntries = useMemo(() => {
+    if (isAllView) {
+      return incomeEntriesInfinite.entries;
+    }
 
-  const sortedEntries = useMemo(
-    () => sortIncomeEntries(entries, sortState, unitLabelById),
-    [entries, sortState, unitLabelById]
-  );
+    const mappedEntries = isStayOnlyView
+      ? shortStaysInfinite.shortStays.map(mapStayToEntry)
+      : incomeLinesInfinite.incomeLines.map(mapLineToEntry);
 
-  const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
-  const showLines = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
-  const isLoading =
-    (showStays && shortStaysQuery.isPending) || (showLines && incomeLinesQuery.isPending);
+    return sortIncomeEntries(mappedEntries, sortState, unitLabelById);
+  }, [
+    incomeEntriesInfinite.entries,
+    incomeLinesInfinite.incomeLines,
+    isAllView,
+    isStayOnlyView,
+    shortStaysInfinite.shortStays,
+    sortState,
+    unitLabelById,
+  ]);
+
+  const isLoading = isAllView
+    ? incomeEntriesInfinite.isPending
+    : isStayOnlyView
+      ? shortStaysInfinite.isPending
+      : incomeLinesInfinite.isPending;
+
+  const listMeta = isAllView
+    ? incomeEntriesInfinite.meta
+    : isStayOnlyView
+      ? shortStaysInfinite.meta
+      : incomeLinesInfinite.meta;
+
+  const hasNextPage = isAllView
+    ? Boolean(incomeEntriesInfinite.hasNextPage)
+    : isStayOnlyView
+      ? Boolean(shortStaysInfinite.hasNextPage)
+      : Boolean(incomeLinesInfinite.hasNextPage);
+
+  const isFetchingNextPage = isAllView
+    ? incomeEntriesInfinite.isFetchingNextPage
+    : isStayOnlyView
+      ? shortStaysInfinite.isFetchingNextPage
+      : incomeLinesInfinite.isFetchingNextPage;
 
   const handleAddOtherIncome = useCallback(() => {
     setCreateLinePrefill(null);
@@ -1229,15 +1376,17 @@ const PropertyIncomePage = memo(() => {
         <CardContent className="space-y-4 p-0">
           <PropertyIncomeEntriesTable
             canManage={canManage}
-            entries={sortedEntries}
+            entries={displayEntries}
             filters={
               <PropertyIncomeFilters
+                allTime={allTime}
                 channelCommissionId={channelCommissionId}
                 channelFilterOptions={channelFilterOptions}
                 from={from}
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
-                onFilterChange={setFilter}
+                onFilterChange={handleIncomeFilterChange}
+                onShowAllTime={handleShowAllTime}
                 showStays={showStays}
                 status={status}
                 to={to}
@@ -1245,12 +1394,15 @@ const PropertyIncomePage = memo(() => {
                 units={units}
               />
             }
+            hasNextPage={hasNextPage}
             isDeleteLinePending={deleteLineMutation.isPending}
             isDeleteStayPending={deleteStayMutation.isPending}
+            isFetchingNextPage={isFetchingNextPage}
             isLoading={isLoading}
             isQuickDeleteActive={isQuickDeleteActive}
             isRefundLinePending={isRefundLinePending}
             isRefundStayPending={isRefundStayPending}
+            listMeta={listMeta}
             onAddOtherIncomeFromStay={(stay) =>
               openOtherIncomeFromStay(stay, incomeLineTypes, {
                 setCreateLineLockedStay,
@@ -1267,6 +1419,7 @@ const PropertyIncomePage = memo(() => {
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
             onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
             onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
+            scrollSentinelRef={scrollSentinelRef}
             sort={sortController}
             unitLabelById={unitLabelById}
           />

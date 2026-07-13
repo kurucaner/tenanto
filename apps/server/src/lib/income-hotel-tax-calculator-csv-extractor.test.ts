@@ -183,10 +183,7 @@ describe("extractIncomeRowsFromHotelTaxCalculatorCsv", () => {
   });
 
   test("rejects non-Hotel Tax Calculator files", () => {
-    const result = extractIncomeRowsFromHotelTaxCalculatorCsv(
-      "foo,bar,baz\n1,2,3",
-      "other.csv"
-    );
+    const result = extractIncomeRowsFromHotelTaxCalculatorCsv("foo,bar,baz\n1,2,3", "other.csv");
 
     expect(result).toEqual({
       error: "This file does not match the Hotel Tax Calculator CSV format.",

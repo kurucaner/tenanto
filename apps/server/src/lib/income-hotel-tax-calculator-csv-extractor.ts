@@ -32,8 +32,7 @@ const COLUMN = {
 } as const;
 
 export type TIncomeCsvExtractResult =
-  | { error: string }
-  | { ok: true; rows: IIncomeCsvExtractedRow[] };
+  { error: string } | { ok: true; rows: IIncomeCsvExtractedRow[] };
 
 export function isHotelTaxCalculatorCsv(headers: string[]): boolean {
   const normalized = headers.map((header) => header.trim().toLowerCase());
@@ -142,9 +141,7 @@ function getColumnValue(row: string[], index: number): string {
   return row[index]?.trim() ?? "";
 }
 
-function mapCsvStatus(
-  raw: string
-): { refunded: boolean; status: TReservationStatus } | null {
+function mapCsvStatus(raw: string): { refunded: boolean; status: TReservationStatus } | null {
   const normalized = raw.trim().toLowerCase();
   if (normalized === "checked") {
     return { refunded: false, status: ReservationStatus.STAYED };

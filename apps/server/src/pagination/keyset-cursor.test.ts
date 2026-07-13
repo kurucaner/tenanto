@@ -2,11 +2,17 @@ import { describe, expect, test } from "bun:test";
 
 import {
   decodeExpenseKeysetCursor,
+  decodeIncomeEntryKeysetCursor,
+  decodeIncomeLineKeysetCursor,
   decodeKeysetCursor,
   decodeLeaseKeysetCursor,
+  decodeReservationKeysetCursor,
   encodeExpenseKeysetCursor,
+  encodeIncomeEntryKeysetCursor,
+  encodeIncomeLineKeysetCursor,
   encodeKeysetCursor,
   encodeLeaseKeysetCursor,
+  encodeReservationKeysetCursor,
 } from "./keyset-cursor";
 
 describe("encodeKeysetCursor / decodeKeysetCursor", () => {
@@ -91,5 +97,85 @@ describe("encodeLeaseKeysetCursor / decodeLeaseKeysetCursor", () => {
       "utf8"
     ).toString("base64url");
     expect(() => decodeLeaseKeysetCursor(encoded)).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodeReservationKeysetCursor / decodeReservationKeysetCursor", () => {
+  test("round-trips checkIn, createdAt, and id", () => {
+    const encoded = encodeReservationKeysetCursor(
+      "2026-07-09",
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    const decoded = decodeReservationKeysetCursor(encoded);
+    expect(decoded.checkIn).toBe("2026-07-09");
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodeReservationKeysetCursor("bad")).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodeIncomeLineKeysetCursor / decodeIncomeLineKeysetCursor", () => {
+  test("round-trips transactionDate, createdAt, and id", () => {
+    const encoded = encodeIncomeLineKeysetCursor(
+      "2026-07-09",
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    const decoded = decodeIncomeLineKeysetCursor(encoded);
+    expect(decoded.transactionDate).toBe("2026-07-09");
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodeIncomeLineKeysetCursor("bad")).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodeIncomeEntryKeysetCursor / decodeIncomeEntryKeysetCursor", () => {
+  test("round-trips sort dimensions, createdAt, id, and entryKind", () => {
+    const encoded = encodeIncomeEntryKeysetCursor({
+      createdAt: "2026-07-09T12:00:00.000Z",
+      entryKind: "stay",
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      sortBy: "date",
+      sortDir: "desc",
+      sortKeyDate: "2026-07-09",
+      sortKeyNum: null,
+      sortKeyText: null,
+    });
+    const decoded = decodeIncomeEntryKeysetCursor(encoded);
+    expect(decoded.sortBy).toBe("date");
+    expect(decoded.sortDir).toBe("desc");
+    expect(decoded.sortKeyDate).toBe("2026-07-09");
+    expect(decoded.sortKeyNum).toBeNull();
+    expect(decoded.sortKeyText).toBeNull();
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+    expect(decoded.entryKind).toBe("stay");
+  });
+
+  test("round-trips numeric sort key", () => {
+    const encoded = encodeIncomeEntryKeysetCursor({
+      createdAt: "2026-07-09T12:00:00.000Z",
+      entryKind: "line",
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      sortBy: "net",
+      sortDir: "asc",
+      sortKeyDate: null,
+      sortKeyNum: 42.5,
+      sortKeyText: null,
+    });
+    const decoded = decodeIncomeEntryKeysetCursor(encoded);
+    expect(decoded.sortBy).toBe("net");
+    expect(decoded.sortKeyNum).toBe(42.5);
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodeIncomeEntryKeysetCursor("bad")).toThrow("Invalid cursor");
   });
 });

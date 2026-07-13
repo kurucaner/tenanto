@@ -2205,4 +2205,26 @@ export const migrations: IMigration[] = [
     },
     version: 49,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(
+        `DROP INDEX IF EXISTS idx_property_reservations_property_check_in_created_at;`
+      );
+      await client.query(
+        `DROP INDEX IF EXISTS idx_property_income_lines_property_date_created_at;`
+      );
+    },
+    name: "income_entries_list_pagination_indexes",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_reservations_property_check_in_created_at
+          ON property_reservations (property_id, check_in DESC, created_at DESC);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_property_date_created_at
+          ON property_income_lines (property_id, transaction_date DESC, created_at DESC);
+      `);
+    },
+    version: 50,
+  },
 ];

@@ -1,3 +1,4 @@
+import type { IPropertyShortStaysListMeta } from "./list-meta-types";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 import type { TUnitRentalType } from "./property-types";
 
@@ -68,6 +69,7 @@ export interface IPropertyReservationsListQuery {
   channelCommissionId?: string;
   checkInTo?: string;
   checkOutFrom?: string;
+  cursor?: string;
   from?: string;
   includeReservationId?: string;
   limit?: number;
@@ -77,7 +79,14 @@ export interface IPropertyReservationsListQuery {
   unitId?: string;
 }
 
+export type TPropertyShortStaysListFilters = Pick<
+  IPropertyReservationsListQuery,
+  "channelCommissionId" | "from" | "status" | "to" | "unitId"
+>;
+
 export interface IPropertyShortStaysListResponse {
+  meta?: IPropertyShortStaysListMeta;
+  nextCursor: string | null;
   shortStays: IPropertyReservation[];
 }
 

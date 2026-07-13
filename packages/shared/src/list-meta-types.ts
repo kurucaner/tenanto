@@ -17,3 +17,11 @@ export interface IPropertyExpensesListMeta {
 export interface IPropertyIncomeEntriesListMeta {
   totalCount: number;
 }
+
+export interface IPropertyIncomeLinesListMeta {
+  totalCount: number;
+}
+
+export interface IPropertyShortStaysListMeta {
+  totalCount: number;
+}

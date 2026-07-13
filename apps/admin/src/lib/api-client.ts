@@ -32,8 +32,11 @@ import {
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
+  type IPropertyIncomeEntriesListQuery,
+  type IPropertyIncomeEntriesListResponse,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
+  type IPropertyIncomeLinesListResponse,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
@@ -756,6 +759,7 @@ function buildShortStaysSearchParams(query: IPropertyReservationsListQuery = {})
   if (query.status) params.set("status", query.status);
   if (query.rentalType) params.set("rentalType", query.rentalType);
   if (query.includeReservationId) params.set("includeReservationId", query.includeReservationId);
+  if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
   return search ? `?${search}` : "";
@@ -804,6 +808,29 @@ export const shortStaysApi = {
     ),
 };
 
+function buildIncomeEntriesSearchParams(query: IPropertyIncomeEntriesListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.unitId) params.set("unitId", query.unitId);
+  if (query.channelCommissionId) params.set("channelCommissionId", query.channelCommissionId);
+  if (query.status) params.set("status", query.status);
+  if (query.incomeType) params.set("incomeType", query.incomeType);
+  if (query.sortBy) params.set("sortBy", query.sortBy);
+  if (query.sortDir) params.set("sortDir", query.sortDir);
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+export const incomeEntriesApi = {
+  list: (propertyId: string, query?: IPropertyIncomeEntriesListQuery) =>
+    authenticatedRequest<IPropertyIncomeEntriesListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/income-entries${buildIncomeEntriesSearchParams(query)}`
+    ),
+};
+
 function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {}): string {
   const params = new URLSearchParams();
   if (query.from) params.set("from", query.from);
@@ -811,6 +838,8 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
   if (query.unitId) params.set("unitId", query.unitId);
   if (query.incomeLineTypeId) params.set("incomeLineTypeId", query.incomeLineTypeId);
   if (query.reservationId) params.set("reservationId", query.reservationId);
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
   return search ? `?${search}` : "";
 }
@@ -829,7 +858,7 @@ export const incomeLinesApi = {
     ),
 
   list: (propertyId: string, query?: IPropertyIncomeLinesListQuery) =>
-    authenticatedRequest<{ incomeLines: IPropertyIncomeLine[] }>(
+    authenticatedRequest<IPropertyIncomeLinesListResponse>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
     ),
 

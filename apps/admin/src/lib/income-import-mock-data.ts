@@ -20,7 +20,8 @@ function resolveMockChannel(context: IIncomeImportPreviewContext) {
 
 function buildMockRow(
   context: IIncomeImportPreviewContext,
-  overrides: Partial<IIncomeImportParsedRow> & Pick<IIncomeImportParsedRow, "guestName" | "rowIndex">
+  overrides: Partial<IIncomeImportParsedRow> &
+    Pick<IIncomeImportParsedRow, "guestName" | "rowIndex">
 ): IIncomeImportParsedRow {
   const unit = resolveMockUnit(context);
   const channel = resolveMockChannel(context);

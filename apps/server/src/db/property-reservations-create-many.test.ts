@@ -119,6 +119,7 @@ describe("propertyReservationsDb.createMany refund import", () => {
     );
 
     expect(insertQuery).toBeDefined();
+    expect(insertQuery?.sql).toContain("RETURNING *");
     expect(insertQuery?.sql).toContain("refunded_at");
     expect(insertQuery?.sql).toContain("refunded_by");
     expect(insertQuery?.sql).toContain("CASE WHEN $17::boolean THEN NOW() ELSE NULL END");

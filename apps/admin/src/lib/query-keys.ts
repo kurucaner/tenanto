@@ -30,8 +30,12 @@ export const adminQueryKeys = {
     ["property", propertyId, "expenses", filters] as const,
   propertyIncomeEntries: (propertyId: string, filters: TPropertyIncomeEntriesListFilters = {}) =>
     ["property", propertyId, "income-entries", filters] as const,
-  propertyIncomeLines: (propertyId: string, filters: IPropertyIncomeLinesListQuery = {}) =>
-    ["property", propertyId, "income-lines", filters] as const,
+  propertyIncomeEntriesPrefix: (propertyId: string) =>
+    ["property", propertyId, "income-entries"] as const,
+  propertyIncomeLines: (
+    propertyId: string,
+    filters: Omit<IPropertyIncomeLinesListQuery, "cursor" | "limit"> = {}
+  ) => ["property", propertyId, "income-lines", filters] as const,
   propertyLongStay: (propertyId: string, longStayId: string) =>
     ["property", propertyId, "long-stays", longStayId] as const,
   propertyLongStays: (propertyId: string, filters: IPropertyLongStaysListQuery = {}) =>
@@ -41,8 +45,10 @@ export const adminQueryKeys = {
   propertyReservationPicker: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
     ["property", propertyId, "reservation-picker", filters] as const,
   propertySettings: (propertyId: string) => ["property", propertyId, "settings"] as const,
-  propertyShortStays: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
-    ["property", propertyId, "short-stays", filters] as const,
+  propertyShortStays: (
+    propertyId: string,
+    filters: Omit<IPropertyReservationsListQuery, "cursor" | "limit"> = {}
+  ) => ["property", propertyId, "short-stays", filters] as const,
   propertyUnits: (propertyId: string, filters: IPropertyUnitsListQuery = {}) =>
     ["property", propertyId, "units", filters] as const,
   propertyUnitsPicker: (propertyId: string) => ["property", propertyId, "units-picker"] as const,

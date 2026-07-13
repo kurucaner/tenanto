@@ -13,7 +13,9 @@ import {
 import {
   getImportIncomePreviewRowDuplicateWarning,
   getImportIncomePreviewRowValidationError,
+  type IIncomeImportPreviewRowListItem,
   IMPORT_INCOME_CSV_PREVIEW_TABLE_CLASS_NAME,
+  sortIncomeImportPreviewRowsByAttention,
   STICKY_ACTIONS_CELL_CLASS_NAME,
 } from "@/components/income/import-income-csv-preview-utils";
 import { Button } from "@/components/ui/button";
@@ -22,10 +24,13 @@ import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VirtualizedList } from "@/components/virtualized/virtualized-list";
 import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
 import { useCsvFileSelection } from "@/hooks/use-csv-file-selection";
+import { useFetchAllInfinitePages } from "@/hooks/use-fetch-all-infinite-pages";
 import { useIsDesktop } from "@/hooks/use-media-query";
-import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
+import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
+import { settingsApi, unitsApi } from "@/lib/api-client";
 import { isLocalEnvironment } from "@/lib/document-title";
 import { commitIncomeCsvImport, parseIncomeCsvFiles } from "@/lib/income-csv-import";
+import { buildIncomeImportDuplicateCheckFilters } from "@/lib/income-import-duplicate-check-filters";
 import { buildIncomeImportMockParseResponse } from "@/lib/income-import-mock-data";
 import {
   type IIncomeImportPreviewContext,
@@ -274,10 +279,22 @@ export const ImportIncomeCsvDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
-    const shortStaysQuery = useQuery({
-      enabled: open && step === "preview",
-      queryFn: () => shortStaysApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyShortStays(propertyId),
+    const duplicateCheckFilters = useMemo(
+      () => buildIncomeImportDuplicateCheckFilters(previewRows),
+      [previewRows]
+    );
+
+    const shortStaysInfinite = usePropertyShortStaysInfiniteList(
+      propertyId,
+      duplicateCheckFilters,
+      { enabled: open && step === "preview" && previewRows.length > 0 }
+    );
+
+    useFetchAllInfinitePages({
+      enabled: open && step === "preview" && previewRows.length > 0,
+      fetchNextPage: shortStaysInfinite.fetchNextPage,
+      hasNextPage: shortStaysInfinite.hasNextPage,
+      isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,
     });
 
     const previewContext = useMemo<IIncomeImportPreviewContext>(
@@ -342,7 +359,7 @@ export const ImportIncomeCsvDialog = memo(
 
     const existingStays = useMemo(
       () =>
-        (shortStaysQuery.data?.shortStays ?? [])
+        shortStaysInfinite.shortStays
           .filter((stay) => !stay.isDeleted)
           .map((stay) => ({
             checkIn: stay.checkIn,
@@ -350,7 +367,7 @@ export const ImportIncomeCsvDialog = memo(
             guestName: stay.guestName,
             unitId: stay.unitId,
           })),
-      [shortStaysQuery.data?.shortStays]
+      [shortStaysInfinite.shortStays]
     );
 
     const duplicateWarningsByIndex = useMemo(
@@ -379,6 +396,11 @@ export const ImportIncomeCsvDialog = memo(
 
     const importablePreviewRows = useMemo(
       () => previewRows.filter((row) => getImportIncomePreviewRowValidationError(row) === null),
+      [previewRows]
+    );
+
+    const sortedPreviewRowItems = useMemo(
+      () => sortIncomeImportPreviewRowsByAttention(previewRows),
       [previewRows]
     );
 
@@ -459,19 +481,25 @@ export const ImportIncomeCsvDialog = memo(
       handleGenerateMockData();
     }, [handleGenerateMockData]);
 
+    const getPreviewRowItemKey = useCallback(
+      (item: IIncomeImportPreviewRowListItem) =>
+        createPreviewRowKey(item.row, item.sourceIndex),
+      []
+    );
+
     const renderPreviewCard = useCallback(
-      (row: IIncomeImportParsedRow, index: number) => (
+      (item: IIncomeImportPreviewRowListItem) => (
         <div className="pb-3">
           <ImportIncomeCsvPreviewCardItem
             duplicateWarning={getImportIncomePreviewRowDuplicateWarning(
               duplicateWarningsByIndex,
-              index
+              item.sourceIndex
             )}
-            index={index}
+            index={item.sourceIndex}
             onRemoveRow={removePreviewRow}
             onUpdateRow={updatePreviewRow}
             previewContext={previewContext}
-            row={row}
+            row={item.row}
           />
         </div>
       ),
@@ -479,21 +507,27 @@ export const ImportIncomeCsvDialog = memo(
     );
 
     const renderPreviewTableRow = useCallback(
-      (row: IIncomeImportParsedRow, index: number) => (
+      (item: IIncomeImportPreviewRowListItem) => (
         <ImportIncomeCsvPreviewTableRowItem
           duplicateWarning={getImportIncomePreviewRowDuplicateWarning(
             duplicateWarningsByIndex,
-            index
+            item.sourceIndex
           )}
-          index={index}
-          key={createPreviewRowKey(row, index)}
+          index={item.sourceIndex}
+          key={getPreviewRowItemKey(item)}
           onRemoveRow={removePreviewRow}
           onUpdateRow={updatePreviewRow}
           previewContext={previewContext}
-          row={row}
+          row={item.row}
         />
       ),
-      [duplicateWarningsByIndex, previewContext, removePreviewRow, updatePreviewRow]
+      [
+        duplicateWarningsByIndex,
+        getPreviewRowItemKey,
+        previewContext,
+        removePreviewRow,
+        updatePreviewRow,
+      ]
     );
 
     const previewList = isDesktop ? (
@@ -541,8 +575,8 @@ export const ImportIncomeCsvDialog = memo(
             <VirtualizedTableBody
               colSpan={PREVIEW_TABLE_COLUMN_COUNT}
               estimateRowHeight={PREVIEW_TABLE_ROW_ESTIMATED_HEIGHT}
-              getItemKey={createPreviewRowKey}
-              items={previewRows}
+              getItemKey={getPreviewRowItemKey}
+              items={sortedPreviewRowItems}
               renderRow={renderPreviewTableRow}
               scrollElement={previewScrollElement}
             />
@@ -555,8 +589,8 @@ export const ImportIncomeCsvDialog = memo(
     ) : (
       <VirtualizedList
         estimateItemHeight={PREVIEW_CARD_ESTIMATED_HEIGHT}
-        getItemKey={createPreviewRowKey}
-        items={previewRows}
+        getItemKey={getPreviewRowItemKey}
+        items={sortedPreviewRowItems}
         renderItem={renderPreviewCard}
         scrollElement={previewScrollElement}
       />
