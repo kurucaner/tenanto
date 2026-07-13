@@ -48,7 +48,13 @@ export const server = Fastify({ logger: false });
 server.log = createFastifyLogAdapter();
 
 server.register(cors, {
-  allowedHeaders: ["Accept", "Authorization", "Content-Type", "X-Stream-Client-Id"],
+  allowedHeaders: [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "Idempotency-Key",
+    "X-Stream-Client-Id",
+  ],
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   origin: (origin, callback) => {
     if (origin == null || origin === "") {
