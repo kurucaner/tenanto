@@ -151,10 +151,6 @@ export function decodeUnitKeysetCursor(raw: string): UnitKeysetCursorV1 {
   }
 }
 
-export function encodeUnitKeysetCursor(
-  rentalType: string,
-  unitNumber: string,
-  id: string
-): string {
+export function encodeUnitKeysetCursor(rentalType: string, unitNumber: string, id: string): string {
   return Buffer.from(JSON.stringify({ id, rentalType, unitNumber }), "utf8").toString("base64url");
 }

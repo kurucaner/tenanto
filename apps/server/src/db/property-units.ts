@@ -187,7 +187,11 @@ export const propertyUnitsDb = {
 
     const rows = result.rows as Record<string, unknown>[];
     const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
-      encodeUnitKeysetCursor(last.rental_type as string, last.unit_number as string, last.id as string)
+      encodeUnitKeysetCursor(
+        last.rental_type as string,
+        last.unit_number as string,
+        last.id as string
+      )
     );
 
     return {

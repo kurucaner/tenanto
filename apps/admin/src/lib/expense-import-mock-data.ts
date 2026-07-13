@@ -1,7 +1,4 @@
-import type {
-  IExpenseImportParseResponse,
-  IPropertyExpenseCategoryType,
-} from "@/packages/shared";
+import type { IExpenseImportParseResponse, IPropertyExpenseCategoryType } from "@/packages/shared";
 
 function remapExpenseImportParseResponse(
   response: IExpenseImportParseResponse,
@@ -12,9 +9,7 @@ function remapExpenseImportParseResponse(
   }
 
   const mockCategoryIds = [
-    ...new Set(
-      response.files.flatMap((file) => (file.rows ?? []).map((row) => row.categoryId))
-    ),
+    ...new Set(response.files.flatMap((file) => (file.rows ?? []).map((row) => row.categoryId))),
   ].sort((a, b) => a.localeCompare(b));
 
   const categoryIdByMockId = new Map(

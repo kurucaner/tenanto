@@ -48,12 +48,7 @@ export const ImportCsvUploadFooter = memo(
         ) : null}
         <Button
           className="gap-1.5"
-          disabled={
-            smartReadDisabled ||
-            selectedFileCount === 0 ||
-            parsePending ||
-            isLoadingMock
-          }
+          disabled={smartReadDisabled || selectedFileCount === 0 || parsePending || isLoadingMock}
           onClick={onSmartRead}
           title={smartReadTitle}
           type="button"

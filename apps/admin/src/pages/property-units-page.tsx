@@ -5,7 +5,10 @@ import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
-import { type DataTableColumn, type DataTableSortController } from "@/components/data-table/data-table-types";
+import {
+  type DataTableColumn,
+  type DataTableSortController,
+} from "@/components/data-table/data-table-types";
 import { DeletedBadge, RestoreEntityButton } from "@/components/deleted-badge";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
