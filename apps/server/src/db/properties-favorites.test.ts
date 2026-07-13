@@ -85,7 +85,9 @@ describe("propertiesDb list favorites", () => {
     const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
     expect(sql).toContain("property_user_favorites");
     expect(sql).toContain("MAX(puf.favorited_at) AS favorited_at");
-    expect(sql).toContain("ORDER BY p.created_at DESC, p.id DESC");
+    expect(sql).toContain("COALESCE(MAX(puf.favorited_at), 'infinity'::timestamptz) ASC");
+    expect(sql).toContain("p.created_at DESC");
+    expect(sql).toContain("p.id DESC");
     expect(values[0]).toBe(USER_ID);
   });
 

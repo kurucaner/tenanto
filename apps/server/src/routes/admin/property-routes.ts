@@ -19,7 +19,7 @@ import {
   type TPropertyRole,
   UserType,
 } from "@/packages/shared";
-import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { decodePropertyFavoriteKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyUser } from "@/services/user-notifications";
 import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
 
@@ -344,7 +344,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
 
       if (qs.cursor != null && qs.cursor !== "") {
         try {
-          decodeKeysetCursor(qs.cursor);
+          decodePropertyFavoriteKeysetCursor(qs.cursor);
         } catch {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
         }
