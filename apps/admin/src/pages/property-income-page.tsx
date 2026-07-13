@@ -24,8 +24,8 @@ import {
   RefundEntityButton,
   RestoreEntityButton,
 } from "@/components/deleted-badge";
-import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
+import { LedgerDateRangeFilter } from "@/components/filters/ledger-date-range-filter";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import {
@@ -64,9 +64,11 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
-import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
+import { type TDateRangePresetId } from "@/lib/date-range-presets";
 import { formatMoney } from "@/lib/format-money";
 import {
   getEntryUnitId,
@@ -333,20 +335,21 @@ function handleCreateIncomeLineOpenChange(
   }
 }
 
-type TIncomeFilterKey =
-  "channelCommissionId" | "from" | "incomeType" | "refundStatus" | "status" | "to" | "unitId";
+type TIncomeFilterKey = "channelCommissionId" | "incomeType" | "refundStatus" | "status" | "unitId";
 
 const PropertyIncomeFilters = memo(
   ({
-    allTime,
+    activePreset,
     channelCommissionId,
     channelFilterOptions,
     from,
     incomeType,
     incomeTypeFilterOptions,
     onFilterChange,
+    onFromChange,
+    onPresetChange,
     onSearchInputChange,
-    onShowAllTime,
+    onToChange,
     refundStatus,
     searchInput,
     showStays,
@@ -355,15 +358,17 @@ const PropertyIncomeFilters = memo(
     unitId,
     units,
   }: {
-    allTime: boolean;
+    activePreset: TDateRangePresetId | null;
     channelCommissionId: string;
     channelFilterOptions: { label: string; value: string }[];
     from: string;
     incomeType: string;
     incomeTypeFilterOptions: { label: string; value: string }[];
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    onFromChange: (value: string) => void;
+    onPresetChange: (presetId: TDateRangePresetId) => void;
     onSearchInputChange: (value: string) => void;
-    onShowAllTime: () => void;
+    onToChange: (value: string) => void;
     refundStatus: string;
     searchInput: string;
     showStays: boolean;
@@ -373,18 +378,16 @@ const PropertyIncomeFilters = memo(
     units: IPropertyUnit[];
   }) => (
     <LedgerFiltersSection
-      footer={
-        allTime ? (
-          <p className="text-muted-foreground text-xs">
-            Showing all time — narrow dates for faster loading
-          </p>
-        ) : (
-          <div className="flex justify-end">
-            <Button className="h-auto px-0 text-xs" onClick={onShowAllTime} variant="link">
-              Show all time
-            </Button>
-          </div>
-        )
+      dateRange={
+        <LedgerDateRangeFilter
+          activePreset={activePreset}
+          from={from}
+          idPrefix="income-filter"
+          onFromChange={onFromChange}
+          onPresetChange={onPresetChange}
+          onToChange={onToChange}
+          to={to}
+        />
       }
       search={{
         id: "income-filter-search",
@@ -394,19 +397,7 @@ const PropertyIncomeFilters = memo(
         value: searchInput,
       }}
     >
-      <LedgerFilterGrid filterCount={7}>
-        <DateFilterField
-          id="filter-from"
-          label="From"
-          onChange={(e) => onFilterChange("from", e.target.value)}
-          value={allTime ? "" : from}
-        />
-        <DateFilterField
-          id="filter-to"
-          label="To"
-          onChange={(e) => onFilterChange("to", e.target.value)}
-          value={allTime ? "" : to}
-        />
+      <LedgerFilterGrid filterCount={5}>
         <FilterSelectField
           id="filter-unit"
           label="Unit"
@@ -1108,9 +1099,16 @@ const PropertyIncomePage = memo(() => {
       }),
     [defaultDateRange.from, defaultDateRange.to]
   );
-  const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
-  const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
+  const { filters, setFilter, setFilters } = useUrlFilterState(incomeFilterSchema);
   const { channelCommissionId, from, incomeType, q, refundStatus, status, to, unitId } = filters;
+  const {
+    activePreset,
+    effectiveFrom,
+    effectiveTo,
+    onFromChange,
+    onPresetChange,
+    onToChange,
+  } = useUrlDateRangeFilter({ from, setFilters, to });
   const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
     q,
     setFilter
@@ -1123,30 +1121,11 @@ const PropertyIncomePage = memo(() => {
 
   const handleIncomeFilterChange = useCallback(
     (key: TIncomeFilterKey, value: string) => {
-      if (key === "from" || key === "to") {
-        if (allTime) {
-          setAllTime(false);
-        }
-
-        const nextFrom = key === "from" ? value : from;
-        const nextTo = key === "to" ? value : to;
-        if (!nextFrom && !nextTo) {
-          setAllTime(true);
-          return;
-        }
-      }
-
       setFilter(key, value);
     },
-    [allTime, from, setAllTime, setFilter, to]
+    [setFilter]
   );
 
-  const handleShowAllTime = useCallback(() => {
-    setAllTime(true);
-  }, [setAllTime]);
-
-  const effectiveFrom = allTime ? "" : from;
-  const effectiveTo = allTime ? "" : to;
   const dateFilters = useMemo(
     () => buildDateFilters(effectiveFrom, effectiveTo, unitId),
     [effectiveFrom, effectiveTo, unitId]
@@ -1514,15 +1493,17 @@ const PropertyIncomePage = memo(() => {
             entries={displayEntries}
             filters={
               <PropertyIncomeFilters
-                allTime={allTime}
+                activePreset={activePreset}
                 channelCommissionId={channelCommissionId}
                 channelFilterOptions={channelFilterOptions}
                 from={from}
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
                 onFilterChange={handleIncomeFilterChange}
+                onFromChange={onFromChange}
+                onPresetChange={onPresetChange}
                 onSearchInputChange={handleSearchInputChange}
-                onShowAllTime={handleShowAllTime}
+                onToChange={onToChange}
                 refundStatus={refundStatus}
                 searchInput={searchInput}
                 showStays={showStays}
