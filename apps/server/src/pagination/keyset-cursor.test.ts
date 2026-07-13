@@ -2,11 +2,13 @@ import { describe, expect, test } from "bun:test";
 
 import {
   decodeExpenseKeysetCursor,
+  decodeIncomeEntryKeysetCursor,
   decodeIncomeLineKeysetCursor,
   decodeKeysetCursor,
   decodeLeaseKeysetCursor,
   decodeReservationKeysetCursor,
   encodeExpenseKeysetCursor,
+  encodeIncomeEntryKeysetCursor,
   encodeIncomeLineKeysetCursor,
   encodeKeysetCursor,
   encodeLeaseKeysetCursor,
@@ -131,5 +133,25 @@ describe("encodeIncomeLineKeysetCursor / decodeIncomeLineKeysetCursor", () => {
 
   test("throws on invalid cursor", () => {
     expect(() => decodeIncomeLineKeysetCursor("bad")).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodeIncomeEntryKeysetCursor / decodeIncomeEntryKeysetCursor", () => {
+  test("round-trips sortDate, createdAt, id, and entryKind", () => {
+    const encoded = encodeIncomeEntryKeysetCursor(
+      "2026-07-09",
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000",
+      "stay"
+    );
+    const decoded = decodeIncomeEntryKeysetCursor(encoded);
+    expect(decoded.sortDate).toBe("2026-07-09");
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+    expect(decoded.entryKind).toBe("stay");
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodeIncomeEntryKeysetCursor("bad")).toThrow("Invalid cursor");
   });
 });

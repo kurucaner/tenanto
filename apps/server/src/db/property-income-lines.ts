@@ -26,7 +26,7 @@ const INCOME_LINE_SELECT = `
 
 type TIncomeLineListDbFilters = Omit<IPropertyIncomeLinesListQuery, "cursor" | "limit">;
 
-function buildIncomeLineListParts(
+export function buildIncomeLineListParts(
   propertyId: string,
   filters: TIncomeLineListDbFilters,
   includeDeleted: boolean

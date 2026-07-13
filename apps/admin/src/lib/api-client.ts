@@ -32,6 +32,8 @@ import {
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
+  type IPropertyIncomeEntriesListQuery,
+  type IPropertyIncomeEntriesListResponse,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyIncomeLinesListResponse,
@@ -803,6 +805,27 @@ export const shortStaysApi = {
     authenticatedRequest<{ shortStay: IPropertyReservation }>(
       `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+function buildIncomeEntriesSearchParams(query: IPropertyIncomeEntriesListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.unitId) params.set("unitId", query.unitId);
+  if (query.channelCommissionId) params.set("channelCommissionId", query.channelCommissionId);
+  if (query.status) params.set("status", query.status);
+  if (query.incomeType) params.set("incomeType", query.incomeType);
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+export const incomeEntriesApi = {
+  list: (propertyId: string, query?: IPropertyIncomeEntriesListQuery) =>
+    authenticatedRequest<IPropertyIncomeEntriesListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/income-entries${buildIncomeEntriesSearchParams(query)}`
     ),
 };
 

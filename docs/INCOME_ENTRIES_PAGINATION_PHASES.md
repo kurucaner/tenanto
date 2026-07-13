@@ -182,24 +182,24 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] New route: `GET /properties/:propertyId/income-entries`
-- [ ] New DB module: e.g. `apps/server/src/db/property-income-entries.ts`
+- [x] New route: `GET /properties/:propertyId/income-entries`
+- [x] New DB module: e.g. `apps/server/src/db/property-income-entries.ts`
   - `listPaginatedByProperty(propertyId, filters, { cursor, limit, includeDeleted })`
   - `UNION ALL` stays + lines into a normalized shape
   - Apply existing filters: `from`, `to`, `unitId`, `incomeType`, `channelCommissionId`, `status`, etc.
   - **Phase 3 sort:** server-side `date DESC` only (match current default)
   - Keyset cursor on `(sortDate, createdAt, id, entryKind)` — include `entryKind` in cursor to disambiguate ties across tables
-- [ ] Map DB rows to existing `TPropertyIncomeEntry` (reuse mappers where possible)
-- [ ] Register route in `apps/server/src/server.ts`
-- [ ] Tests:
+- [x] Map DB rows to existing `TPropertyIncomeEntry` (reuse mappers where possible)
+- [x] Register route in `apps/server/src/server.ts`
+- [x] Tests:
   - Same filters → unified result matches client `buildMergedEntries` + `sortIncomeEntries(date desc)`
   - Cursor continuity — no duplicates or gaps across pages
   - Filter edge cases: stay-only filters, line-only filters, deleted/refunded rows
 
 ### Frontend
 
-- [ ] Add `incomeEntriesApi.list` in `apps/admin/src/lib/api-client.ts`
-- [ ] No page switch yet (optional: dev-only flag to exercise the endpoint locally)
+- [x] Add `incomeEntriesApi.list` in `apps/admin/src/lib/api-client.ts`
+- [x] No page switch yet (optional: dev-only flag to exercise the endpoint locally)
 
 **Exit criteria:** API + tests green; parity with current merged list for default sort.
 

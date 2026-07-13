@@ -244,3 +244,54 @@ export function encodeIncomeLineKeysetCursor(
     "base64url"
   );
 }
+
+/**
+ * Unified income-entries list keyset cursor (v1): sortDate (YYYY-MM-DD) + createdAt + id + entryKind.
+ * Matches ORDER BY sort_date DESC, created_at DESC, id DESC, entry_kind DESC.
+ */
+export type IncomeEntryKeysetCursorV1 = {
+  createdAt: string;
+  entryKind: string;
+  id: string;
+  sortDate: string;
+};
+
+export function decodeIncomeEntryKeysetCursor(raw: string): IncomeEntryKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      createdAt?: unknown;
+      entryKind?: unknown;
+      id?: unknown;
+      sortDate?: unknown;
+    };
+    if (
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.entryKind !== "string" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.sortDate !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      entryKind: parsed.entryKind,
+      id: parsed.id,
+      sortDate: parsed.sortDate,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeIncomeEntryKeysetCursor(
+  sortDate: string,
+  createdAt: Date | string,
+  id: string,
+  entryKind: string
+): string {
+  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
+  return Buffer.from(JSON.stringify({ createdAt: iso, entryKind, id, sortDate }), "utf8").toString(
+    "base64url"
+  );
+}

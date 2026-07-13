@@ -81,7 +81,7 @@ function applyIncludeReservationIdFilter(
   pushReservationCondition(parts, "pr.id = $?", filters.includeReservationId);
 }
 
-function buildReservationListParts(
+export function buildReservationListParts(
   propertyId: string,
   filters: IPropertyReservationsListQuery,
   includeDeleted: boolean
