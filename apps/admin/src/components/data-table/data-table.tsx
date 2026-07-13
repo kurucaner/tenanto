@@ -175,7 +175,7 @@ export const DataTable = <TItem,>({
           <div aria-hidden className="h-px w-full" ref={infiniteScrollSentinelRef} />
         ) : null}
         {showEndOfListCaption ? (
-          <p className="text-muted-foreground pt-3 text-center text-sm">
+          <p className="text-muted-foreground text-center text-sm">
             {getInfiniteListLoadMoreLabel({
               hasNextPage: false,
               isFetchingNextPage: false,

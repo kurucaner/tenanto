@@ -6,7 +6,7 @@ import {
   PROPERTIES_LIST_LIMIT,
   PROPERTIES_LIST_STALE_TIME_MS,
 } from "@/lib/properties-list-constants";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { type IAdminPropertiesListResponse } from "@/packages/shared";
 
 export function usePropertiesInfiniteList({
@@ -30,14 +30,14 @@ export function usePropertiesInfiniteList({
     IAdminPropertiesListResponse,
     Error,
     InfiniteData<IAdminPropertiesListResponse>,
-    ReturnType<typeof adminQueryKeys.propertiesList>,
+    ReturnType<typeof queryKeys.propertiesList>,
     string | undefined
   >({
     enabled,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined,
     queryFn: ({ pageParam }) => propertiesApi.list({ ...listFilters, cursor: pageParam }),
-    queryKey: adminQueryKeys.propertiesList(listFilters),
+    queryKey: queryKeys.propertiesList(listFilters),
     staleTime,
   });
 

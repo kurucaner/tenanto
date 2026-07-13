@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { adminApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import type { IAdminAuditEventsListQuery, IAdminAuditEventsListResponse } from "@/packages/shared";
 
@@ -57,7 +57,7 @@ const ActivityPageInner = memo(() => {
     IAdminAuditEventsListResponse,
     Error,
     InfiniteData<IAdminAuditEventsListResponse>,
-    ReturnType<typeof adminQueryKeys.auditLog>,
+    ReturnType<typeof queryKeys.auditLog>,
     string | undefined
   >({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -70,7 +70,7 @@ const ActivityPageInner = memo(() => {
         resource_id: applied.resource_id,
         resource_type: applied.resource_type,
       }),
-    queryKey: adminQueryKeys.auditLog(applied),
+    queryKey: queryKeys.auditLog(applied),
   });
 
   const events = useMemo(

@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import type { IProperty, IPropertyDetail } from "@/packages/shared";
 
 interface EditPropertyDialogProps {
@@ -57,7 +57,7 @@ export const EditPropertyDialog = memo(
         toast.success("Property updated");
         queryClient.invalidateQueries({ queryKey: ["properties"] });
         queryClient.setQueryData<{ property: IPropertyDetail }>(
-          adminQueryKeys.propertyDetail(property.id),
+          queryKeys.propertyDetail(property.id),
           (old) => (old ? { property: { ...old.property, ...data.property } } : old)
         );
         onOpenChange(false);

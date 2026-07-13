@@ -37,7 +37,7 @@ import {
   recomputeIncomeImportPreviewRow,
 } from "@/lib/income-import-preview-row";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   buildIncomeImportDuplicateWarningsByIndex,
   countIncomeImportDuplicateWarnings,
@@ -270,13 +270,13 @@ export const ImportIncomeCsvDialog = memo(
     const settingsQuery = useQuery({
       enabled: open,
       queryFn: () => settingsApi.get(propertyId),
-      queryKey: adminQueryKeys.propertySettings(propertyId),
+      queryKey: queryKeys.propertySettings(propertyId),
     });
 
     const unitsQuery = useQuery({
       enabled: open,
       queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnits(propertyId),
+      queryKey: queryKeys.propertyUnits(propertyId),
     });
 
     const duplicateCheckFilters = useMemo(

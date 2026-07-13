@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { longStaysApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { LEASES_LIST_MAX_LIMIT, PropertyLongStayStatus } from "@/packages/shared";
 
 interface UsePropertyActiveLeasesOptions {
@@ -20,7 +20,7 @@ export function usePropertyActiveLeases(
         limit: LEASES_LIST_MAX_LIMIT,
         status: PropertyLongStayStatus.ACTIVE,
       }),
-    queryKey: adminQueryKeys.propertyActiveLeases(propertyId),
+    queryKey: queryKeys.propertyActiveLeases(propertyId),
   });
 
   const activeLeases = useMemo(() => query.data?.longStays ?? [], [query.data?.longStays]);

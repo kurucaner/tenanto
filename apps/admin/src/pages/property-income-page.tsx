@@ -31,9 +31,7 @@ import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialo
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
 import { ImportIncomeCsvDialog } from "@/components/income/import-income-csv-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
-import {
-  type TIncomeFilterKey,
-} from "@/components/income/income-filter-panel";
+import { type TIncomeFilterKey } from "@/components/income/income-filter-panel";
 import { buildIncomeTypeFilterOptions } from "@/components/income/income-line-form-options";
 import { PropertyIncomeToolbar } from "@/components/income/property-income-toolbar";
 import {
@@ -88,7 +86,7 @@ import {
 } from "@/lib/income-toolbar-filters";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { ledgerEntryRowClassName } from "@/lib/ledger-entry-row-styles";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -1148,12 +1146,12 @@ const PropertyIncomePage = memo(() => {
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
   });
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);

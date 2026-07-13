@@ -1,15 +1,15 @@
 import { type QueryClient } from "@tanstack/react-query";
 
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 
 export function invalidatePropertyUnitCaches(queryClient: QueryClient, propertyId: string) {
   void queryClient.invalidateQueries({
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
   });
   void queryClient.invalidateQueries({
-    queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
+    queryKey: queryKeys.propertyUnitsPicker(propertyId),
   });
   void queryClient.invalidateQueries({
-    queryKey: adminQueryKeys.propertyDetail(propertyId),
+    queryKey: queryKeys.propertyDetail(propertyId),
   });
 }

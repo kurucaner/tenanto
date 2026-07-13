@@ -192,7 +192,7 @@ User ← GET .../exports/:id/download  ←  generateDownloadUrl(s3Key)
 - `expensesApi.createExport(propertyId, { filters, format })`
 - `expensesApi.getExport(propertyId, jobId)`
 - `expensesApi.getExportDownloadUrl(propertyId, jobId)`
-- Query keys: e.g. `adminQueryKeys.propertyExpenseExport(propertyId, jobId)`
+- Query keys: e.g. `queryKeys.propertyExpenseExport(propertyId, jobId)`
 
 **Can run in parallel with BE-1 / BE-2.**
 

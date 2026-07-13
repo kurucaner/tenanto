@@ -11,7 +11,7 @@ import {
   handleSupportRequestUpdated,
   parseSupportAttachmentUpdatedData,
 } from "@/lib/notification-stream-handlers";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { showNotificationToast } from "@/lib/show-notification-toast";
 import {
   type INotificationStreamEvent,
@@ -193,7 +193,7 @@ export function useNotificationStream(
     const applyUnreadCount = (count: unknown): void => {
       if (typeof count !== "number") return;
       queryClient.setQueryData<IUserNotificationsUnreadCountResponse>(
-        adminQueryKeys.notificationsUnreadCount(),
+        queryKeys.notificationsUnreadCount(),
         { count }
       );
     };
@@ -212,7 +212,7 @@ export function useNotificationStream(
 
       if (event.type === "notifications.inbox_updated") {
         if (userType === UserType.USER) {
-          queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsList() });
+          queryClient.invalidateQueries({ queryKey: queryKeys.notificationsList() });
         }
       }
 

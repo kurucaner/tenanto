@@ -29,7 +29,7 @@ import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import {
   getLeaseOccupancyNames,
@@ -347,7 +347,7 @@ export const PropertyUnitsPage = memo(() => {
 
   const pickerUnitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
+    queryKey: queryKeys.propertyUnitsPicker(propertyId),
   });
 
   const pickerUnits = useMemo(
@@ -424,7 +424,7 @@ export const PropertyUnitsPage = memo(() => {
 
   return (
     <>
-      <Card>
+      <Card className="gap-0 py-0">
         <CardContent className="p-0">
           <PropertyUnitsTable
             activeLeaseByUnitId={activeLeaseByUnitId}

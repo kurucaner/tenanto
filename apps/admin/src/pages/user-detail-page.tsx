@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminApi, type IAdminUserDetailUser } from "@/lib/api-client";
 import { copyUserIdToClipboard } from "@/lib/copy-user-id";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { UserType } from "@/packages/shared";
 
 const UserDetailForm = memo(
@@ -34,8 +34,8 @@ const UserDetailForm = memo(
       },
       onSuccess: (data) => {
         toast.success("Account reset");
-        queryClient.setQueryData(adminQueryKeys.user(userId), data);
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.userAudit(userId) });
+        queryClient.setQueryData(queryKeys.user(userId), data);
+        queryClient.invalidateQueries({ queryKey: queryKeys.userAudit(userId) });
         queryClient.invalidateQueries({ queryKey: ["activity"] });
         queryClient.invalidateQueries({ queryKey: ["users"] });
       },
@@ -158,7 +158,7 @@ const UserDetailPageInner = memo(() => {
   const detailQuery = useQuery({
     enabled: Boolean(userId),
     queryFn: () => adminApi.getUser(userId!), // NOSONAR
-    queryKey: adminQueryKeys.user(userId!), // NOSONAR
+    queryKey: queryKeys.user(userId!), // NOSONAR
   });
 
   const user = detailQuery.data?.user;

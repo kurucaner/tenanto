@@ -31,7 +31,7 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -262,12 +262,12 @@ export const PropertyLeasesPage = memo(() => {
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
   });
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
@@ -310,7 +310,7 @@ export const PropertyLeasesPage = memo(() => {
       let expectedAmount: number | undefined;
       if (month) {
         const detail = queryClient.getQueryData<IPropertyLongStayDetailResponse>(
-          adminQueryKeys.propertyLongStay(propertyId, lease.id)
+          queryKeys.propertyLongStay(propertyId, lease.id)
         );
         expectedAmount = detail?.rentSchedule.find((item) => item.month === month)?.expectedRent;
       }
@@ -337,7 +337,7 @@ export const PropertyLeasesPage = memo(() => {
 
   return (
     <>
-      <Card>
+      <Card className="gap-0 py-0">
         <CardContent className="space-y-4 p-0">
           <DataTable
             columns={LEASE_COLUMNS}

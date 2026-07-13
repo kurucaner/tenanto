@@ -54,13 +54,10 @@ import {
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import {
-  type IPropertyExpense,
-  type IPropertyExpenseCategoryType,
-} from "@/packages/shared";
+import { type IPropertyExpense, type IPropertyExpenseCategoryType } from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -364,7 +361,7 @@ export const PropertyExpensesPage = memo(() => {
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   const categoryTypes = useMemo(

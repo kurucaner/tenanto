@@ -6,7 +6,7 @@ import { usePropertySettingsForm } from "@/hooks/use-property-settings-form";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { settingsApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { type IPropertySettings } from "@/packages/shared";
 
 const PropertySettingsForm = memo(
@@ -38,7 +38,7 @@ export const PropertySettingsPage = memo(() => {
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   if (settingsQuery.isPending) {

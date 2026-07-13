@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { notificationsApi } from "@/lib/api-client";
 import { getNotificationHref } from "@/lib/notification-routing";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { type IUserNotification } from "@/packages/shared";
 
@@ -58,7 +58,7 @@ export const NotificationList = memo(
 
     const listQuery = useQuery({
       queryFn: () => notificationsApi.list({ limit: 20 }),
-      queryKey: adminQueryKeys.notificationsList(),
+      queryKey: queryKeys.notificationsList(),
     });
 
     const markAllMutation = useMutation({
@@ -67,8 +67,8 @@ export const NotificationList = memo(
         toast.error(e instanceof Error ? e.message : "Could not mark all as read");
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsUnreadCount() });
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsList() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsUnreadCount() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.notificationsList() });
       },
     });
 
@@ -77,8 +77,8 @@ export const NotificationList = memo(
         if (notification.readAt == null) {
           try {
             await notificationsApi.markRead(notification.id);
-            queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsUnreadCount() });
-            queryClient.invalidateQueries({ queryKey: adminQueryKeys.notificationsList() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.notificationsUnreadCount() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.notificationsList() });
           } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not update notification");
           }

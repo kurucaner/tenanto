@@ -24,7 +24,7 @@ import { reportsApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { formatMoney } from "@/lib/format-money";
 import { LEDGER_CARD_HORIZONTAL_INSET } from "@/lib/ledger-filter-grid";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { formatReportPercent, getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { sortUnitSummaryRows } from "@/lib/report-table-sort";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -169,17 +169,17 @@ export const PropertyReportsPage = memo(() => {
   const summaryQuery = useQuery({
     enabled: reportQuery !== null,
     queryFn: () => reportsApi.summary(propertyId, reportQuery!),
-    queryKey: adminQueryKeys.propertyReportSummary(propertyId, reportQuery!),
+    queryKey: queryKeys.propertyReportSummary(propertyId, reportQuery!),
   });
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
   });
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   const channelFilterOptions = useMemo(

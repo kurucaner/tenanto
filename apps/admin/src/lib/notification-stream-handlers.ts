@@ -1,7 +1,7 @@
 import { type QueryClient } from "@tanstack/react-query";
 
 import { supportApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { notifySupportAttachmentStatus } from "@/lib/support-attachment-status-registry";
 import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
 import {
@@ -50,7 +50,7 @@ export function handlePropertyMembershipNotification(
 
   if (notification.resourceId != null) {
     queryClient.invalidateQueries({
-      queryKey: adminQueryKeys.propertyDetail(notification.resourceId),
+      queryKey: queryKeys.propertyDetail(notification.resourceId),
     });
   }
 }
@@ -74,7 +74,7 @@ export function handleSupportRequestUpdated(
 
   queryClient.fetchQuery({
     queryFn: () => supportApi.get(supportRequestId),
-    queryKey: adminQueryKeys.supportRequest(supportRequestId),
+    queryKey: queryKeys.supportRequest(supportRequestId),
     staleTime: 0,
   });
 }

@@ -28,7 +28,7 @@ import {
 } from "@/lib/api-client";
 import { copyUserIdToClipboard } from "@/lib/copy-user-id";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import type { IUser } from "@/packages/shared";
 import { UserType } from "@/packages/shared";
@@ -104,7 +104,7 @@ const UsersListPageInner = memo(() => {
           ...listFilters,
           cursor: pageParam,
         }),
-      queryKey: adminQueryKeys.usersList(listFilters),
+      queryKey: queryKeys.usersList(listFilters),
     });
 
   const users = data?.pages.flatMap((p: IAdminUsersListResponse) => p.users) ?? [];

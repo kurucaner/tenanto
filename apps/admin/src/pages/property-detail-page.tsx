@@ -24,7 +24,7 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   formatPhoneDisplay,
   type IPropertyMember,
@@ -168,7 +168,7 @@ export const PropertyDetailPage = memo(() => {
     },
     onSuccess: () => {
       toast.success("Role updated");
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.propertyDetail(propertyId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyDetail(propertyId) });
     },
   });
 
@@ -179,7 +179,7 @@ export const PropertyDetailPage = memo(() => {
     },
     onSuccess: () => {
       toast.success("Member removed");
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.propertyDetail(propertyId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyDetail(propertyId) });
     },
   });
 

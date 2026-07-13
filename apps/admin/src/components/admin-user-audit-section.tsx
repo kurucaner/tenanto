@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import type { IAdminAuditEventsListResponse } from "@/packages/shared";
 
 const AdminUserAuditSectionInner = memo(({ userId }: { userId: string }) => {
@@ -15,7 +15,7 @@ const AdminUserAuditSectionInner = memo(({ userId }: { userId: string }) => {
     IAdminAuditEventsListResponse,
     Error,
     InfiniteData<IAdminAuditEventsListResponse>,
-    ReturnType<typeof adminQueryKeys.userAudit>,
+    ReturnType<typeof queryKeys.userAudit>,
     string | undefined
   >({
     enabled: Boolean(userId),
@@ -23,7 +23,7 @@ const AdminUserAuditSectionInner = memo(({ userId }: { userId: string }) => {
     initialPageParam: undefined,
     queryFn: ({ pageParam }) =>
       adminApi.listUserAuditEvents(userId, { cursor: pageParam, limit: 15 }),
-    queryKey: adminQueryKeys.userAudit(userId),
+    queryKey: queryKeys.userAudit(userId),
   });
 
   const events = useMemo(
