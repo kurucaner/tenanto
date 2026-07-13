@@ -1,0 +1,274 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+
+import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
+import { TENANT_EMAIL_CAMPAIGNS_ENABLED } from "@/lib/tenant-email-campaign-config";
+import {
+  HttpStatus,
+  type ICreateTenantEmailCampaignBody,
+  type ITenantEmailCampaignCreateResponse,
+  type ITenantEmailCampaignDetailResponse,
+  type ITenantEmailCampaignListResponse,
+  type ITenantEmailCampaignPreviewResponse,
+  type ITenantEmailCampaignReenqueueResponse,
+} from "@/packages/shared";
+import { assertTenantEmailCampaignCreateAllowed } from "@/services/tenant-email-campaign-create-rate-limit";
+import {
+  reenqueueQueuedRecipientsForCampaign,
+  TenantEmailCampaignNotFoundError,
+} from "@/services/tenant-email-campaign-reenqueue";
+import {
+  buildTenantEmailCampaignPreview,
+  createTenantEmailCampaign,
+  TenantEmailCampaignNoRecipientsError,
+  TenantEmailCampaignValidationError,
+} from "@/services/tenant-email-campaign-service";
+
+import { parseUuidParam } from "./admin-query-utils";
+import { parseJsonObject } from "./parse-body-utils";
+import { assertPropertyTenantNotificationAccess } from "./property-route-access";
+
+const IDEMPOTENCY_KEY_MAX_LENGTH = 128;
+
+function parseIdempotencyKey(raw: unknown): string | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (trimmed.length === 0 || trimmed.length > IDEMPOTENCY_KEY_MAX_LENGTH) {
+    return null;
+  }
+  return trimmed;
+}
+
+function parseCreateCampaignBody(
+  raw: unknown
+): { body: ICreateTenantEmailCampaignBody; ok: true } | { error: string; ok: false } {
+  const parsed = parseJsonObject(raw);
+  if (!parsed) {
+    return { error: "Invalid JSON body", ok: false };
+  }
+
+  const subject = parsed.subject;
+  const htmlBody = parsed.htmlBody;
+
+  if (typeof subject !== "string" || typeof htmlBody !== "string") {
+    return { error: "subject and htmlBody are required", ok: false };
+  }
+
+  return {
+    body: { htmlBody, subject },
+    ok: true,
+  };
+}
+
+function featureDisabled(reply: FastifyReply): FastifyReply {
+  return reply.status(HttpStatus.NOT_FOUND).send({ error: "Not found" });
+}
+
+export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance): Promise<void> => {
+  const authPre = [server.authenticate];
+
+  server.get<{ Params: { propertyId: string } }>(
+    "/properties/:propertyId/tenant-email-campaigns/preview",
+    { preHandler: authPre },
+    async (request, reply) => {
+      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
+        return featureDisabled(reply);
+      }
+
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (!propertyId) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid property id" });
+      }
+
+      const userId = request.user!.userId;
+      const userType = request.user!.userType;
+      const allowed = await assertPropertyTenantNotificationAccess(
+        propertyId,
+        userId,
+        userType,
+        reply
+      );
+      if (!allowed) {
+        return;
+      }
+
+      const preview: ITenantEmailCampaignPreviewResponse =
+        await buildTenantEmailCampaignPreview(propertyId);
+      return reply.send(preview);
+    }
+  );
+
+  server.get<{ Params: { propertyId: string } }>(
+    "/properties/:propertyId/tenant-email-campaigns",
+    { preHandler: authPre },
+    async (request, reply) => {
+      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
+        return featureDisabled(reply);
+      }
+
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (!propertyId) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid property id" });
+      }
+
+      const userId = request.user!.userId;
+      const userType = request.user!.userType;
+      const allowed = await assertPropertyTenantNotificationAccess(
+        propertyId,
+        userId,
+        userType,
+        reply
+      );
+      if (!allowed) {
+        return;
+      }
+
+      const campaigns = await propertyTenantEmailCampaignsDb.listByProperty(propertyId);
+      const response: ITenantEmailCampaignListResponse = { campaigns };
+      return reply.send(response);
+    }
+  );
+
+  server.get<{ Params: { campaignId: string; propertyId: string } }>(
+    "/properties/:propertyId/tenant-email-campaigns/:campaignId",
+    { preHandler: authPre },
+    async (request, reply) => {
+      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
+        return featureDisabled(reply);
+      }
+
+      const propertyId = parseUuidParam(request.params.propertyId);
+      const campaignId = parseUuidParam(request.params.campaignId);
+      if (!propertyId || !campaignId) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid id" });
+      }
+
+      const userId = request.user!.userId;
+      const userType = request.user!.userType;
+      const allowed = await assertPropertyTenantNotificationAccess(
+        propertyId,
+        userId,
+        userType,
+        reply
+      );
+      if (!allowed) {
+        return;
+      }
+
+      const campaign = await propertyTenantEmailCampaignsDb.findById(campaignId);
+      if (!campaign || campaign.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Campaign not found" });
+      }
+
+      const recipients = await propertyTenantEmailCampaignsDb.listRecipients(campaignId);
+      const response: ITenantEmailCampaignDetailResponse = { campaign, recipients };
+      return reply.send(response);
+    }
+  );
+
+  server.post<{ Params: { propertyId: string } }>(
+    "/properties/:propertyId/tenant-email-campaigns",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: { propertyId: string } }>, reply: FastifyReply) => {
+      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
+        return featureDisabled(reply);
+      }
+
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (!propertyId) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid property id" });
+      }
+
+      const idempotencyKey = parseIdempotencyKey(request.headers["idempotency-key"]);
+      if (!idempotencyKey) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "Invalid Idempotency-Key header" });
+      }
+
+      const userId = request.user!.userId;
+      const userType = request.user!.userType;
+      const allowed = await assertPropertyTenantNotificationAccess(
+        propertyId,
+        userId,
+        userType,
+        reply
+      );
+      if (!allowed) {
+        return;
+      }
+
+      const rateLimit = await assertTenantEmailCampaignCreateAllowed(userId, propertyId);
+      if (!rateLimit.allowed) {
+        return reply
+          .status(HttpStatus.TOO_MANY_REQUESTS)
+          .header("Retry-After", String(rateLimit.retryAfterSec))
+          .send({ error: "Too many tenant email campaigns. Try again later." });
+      }
+
+      const parsedBody = parseCreateCampaignBody(request.body);
+      if (!parsedBody.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsedBody.error });
+      }
+
+      try {
+        const response: ITenantEmailCampaignCreateResponse = await createTenantEmailCampaign({
+          body: parsedBody.body,
+          createdBy: userId,
+          idempotencyKey,
+          propertyId,
+        });
+
+        return reply.status(HttpStatus.ACCEPTED).send(response);
+      } catch (error) {
+        if (error instanceof TenantEmailCampaignValidationError) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
+        if (error instanceof TenantEmailCampaignNoRecipientsError) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post<{ Params: { campaignId: string; propertyId: string } }>(
+    "/properties/:propertyId/tenant-email-campaigns/:campaignId/reenqueue",
+    { preHandler: authPre },
+    async (request, reply) => {
+      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
+        return featureDisabled(reply);
+      }
+
+      const propertyId = parseUuidParam(request.params.propertyId);
+      const campaignId = parseUuidParam(request.params.campaignId);
+      if (!propertyId || !campaignId) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid id" });
+      }
+
+      const userId = request.user!.userId;
+      const userType = request.user!.userType;
+      const allowed = await assertPropertyTenantNotificationAccess(
+        propertyId,
+        userId,
+        userType,
+        reply
+      );
+      if (!allowed) {
+        return;
+      }
+
+      try {
+        const response: ITenantEmailCampaignReenqueueResponse =
+          await reenqueueQueuedRecipientsForCampaign(campaignId, propertyId);
+        return reply.status(HttpStatus.ACCEPTED).send(response);
+      } catch (error) {
+        if (error instanceof TenantEmailCampaignNotFoundError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+};

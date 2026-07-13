@@ -1,5 +1,6 @@
 # Build context: repository root
-# Railway service config: deploy/railway/server.toml
+# Railway API service: apps/server/railway.toml
+# Railway email worker: apps/server/railway.email-worker.toml
 
 FROM node:24 AS base-builder
 

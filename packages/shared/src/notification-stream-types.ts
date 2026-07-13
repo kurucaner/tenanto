@@ -1,5 +1,6 @@
 import { type IUserNotification } from "./notification-types";
 import { type TSupportStagedUploadStatus } from "./support-types";
+import { type TTenantEmailCampaignStatus } from "./tenant-email-campaign-types";
 
 export type NotificationStreamEventType =
   | "connected"
@@ -8,7 +9,8 @@ export type NotificationStreamEventType =
   | "notifications.unread_count"
   | "notifications.inbox_updated"
   | "support_attachment.updated"
-  | "support_request.updated";
+  | "support_request.updated"
+  | "tenant_email_campaign.updated";
 
 export interface INotificationStreamEvent {
   data: Record<string, unknown>;
@@ -37,4 +39,14 @@ export interface INotificationStreamSupportAttachmentUpdatedData {
   status: TSupportStagedUploadStatus;
   storageKey: string;
   supportRequestId?: string;
+}
+
+export interface INotificationStreamTenantEmailCampaignUpdatedData {
+  campaignId: string;
+  failedCount: number;
+  propertyId: string;
+  sentCount: number;
+  skippedCount: number;
+  status: TTenantEmailCampaignStatus;
+  totalCount: number;
 }

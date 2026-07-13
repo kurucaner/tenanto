@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createContext, memo, type ReactNode, useContext, useEffect } from "react";
-import { Link, NavLink, Outlet, useParams } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
 
 import {
   PropertyShellActionsProvider,
@@ -9,8 +9,10 @@ import {
 import { PropertySwitcher } from "@/components/properties/property-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { propertiesApi } from "@/lib/api-client";
+import { isPropertyLeaseDetailPath } from "@/lib/property-shell-routes";
+import { getVisiblePropertyShellTabs } from "@/lib/property-shell-tab-visibility";
 import { queryKeys } from "@/lib/query-keys";
 import { recordRecentProperty } from "@/lib/recent-properties-storage";
 import { type IPropertyDetail } from "@/packages/shared";
@@ -32,29 +34,63 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
       : "text-muted-foreground hover:text-foreground"
   }`;
 
-export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) => (
-  <div className="-mx-1 px-1">
-    <div className="flex flex-wrap items-center gap-1 border-b">
-      {PROPERTY_SHELL_TABS.map((tab) => (
-        <NavLink
-          className={tabClass}
-          end={tab.end}
-          key={tab.path || "overview"}
-          to={tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`}
-        >
-          {tab.label}
-        </NavLink>
-      ))}
+export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) => {
+  const { permissions } = usePropertyShell();
+  const tabs = getVisiblePropertyShellTabs(permissions);
+
+  return (
+    <div className="-mx-1 px-1">
+      <div className="flex flex-wrap items-center gap-1 border-b">
+        {tabs.map((tab) => (
+          <NavLink
+            className={tabClass}
+            end={tab.end}
+            key={tab.path || "overview"}
+            to={tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`}
+          >
+            {tab.label}
+          </NavLink>
+        ))}
+      </div>
     </div>
+  );
+});
+PropertyShellTabs.displayName = "PropertyShellTabs";
+
+const LeaseDetailShellLoadingSkeleton = memo(() => (
+  <div className="space-y-4">
+    <Skeleton className="h-4 w-32" />
+    <Skeleton className="h-10 w-full max-w-xl" />
+    <Skeleton className="h-64 w-full max-w-2xl" />
   </div>
 ));
-PropertyShellTabs.displayName = "PropertyShellTabs";
+LeaseDetailShellLoadingSkeleton.displayName = "LeaseDetailShellLoadingSkeleton";
+
+const PropertyShellLoadingSkeleton = memo(() => (
+  <div className="space-y-4">
+    <Skeleton className="h-8 w-48" />
+    <Skeleton className="h-10 w-full" />
+    <Skeleton className="h-64 w-full" />
+  </div>
+));
+PropertyShellLoadingSkeleton.displayName = "PropertyShellLoadingSkeleton";
 
 export const PropertyPageShell = memo(
   ({ children, propertyId, propertyName }: PropertyPageShellProps) => {
     const isNested = useContext(PropertyShellDepthContext);
+    const { pathname } = useLocation();
+    const hideParentChrome = isPropertyLeaseDetailPath(pathname);
+
     if (isNested) {
       throw new Error("PropertyPageShell cannot be nested inside another PropertyPageShell");
+    }
+
+    if (hideParentChrome) {
+      return (
+        <PropertyShellDepthContext.Provider value={true}>
+          {children}
+        </PropertyShellDepthContext.Provider>
+      );
     }
 
     return (
@@ -104,6 +140,8 @@ PropertyShellLayoutContent.displayName = "PropertyShellLayoutContent";
 
 export const PropertyShellLayout = memo(() => {
   const { propertyId } = useParams<{ propertyId: string }>();
+  const { pathname } = useLocation();
+  const isLeaseDetailRoute = isPropertyLeaseDetailPath(pathname);
 
   const detailQuery = useQuery({
     enabled: Boolean(propertyId),
@@ -116,12 +154,10 @@ export const PropertyShellLayout = memo(() => {
   }
 
   if (detailQuery.isPending) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
+    return isLeaseDetailRoute ? (
+      <LeaseDetailShellLoadingSkeleton />
+    ) : (
+      <PropertyShellLoadingSkeleton />
     );
   }
 

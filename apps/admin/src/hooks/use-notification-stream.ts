@@ -9,7 +9,9 @@ import {
   handlePropertyMembershipNotification,
   handleSupportAttachmentUpdated,
   handleSupportRequestUpdated,
+  handleTenantEmailCampaignUpdated,
   parseSupportAttachmentUpdatedData,
+  parseTenantEmailCampaignUpdatedData,
 } from "@/lib/notification-stream-handlers";
 import { queryKeys } from "@/lib/query-keys";
 import { showNotificationToast } from "@/lib/show-notification-toast";
@@ -238,6 +240,13 @@ export function useNotificationStream(
         const parsed = parseSupportAttachmentUpdatedData(event.data);
         if (parsed != null && userType != null) {
           handleSupportAttachmentUpdated(queryClient, parsed, pathnameRef.current, userType);
+        }
+      }
+
+      if (event.type === "tenant_email_campaign.updated") {
+        const parsed = parseTenantEmailCampaignUpdatedData(event.data);
+        if (parsed != null) {
+          handleTenantEmailCampaignUpdated(queryClient, parsed, pathnameRef.current);
         }
       }
     };

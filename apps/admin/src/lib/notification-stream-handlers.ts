@@ -1,13 +1,17 @@
 import { type QueryClient } from "@tanstack/react-query";
 
-import { supportApi } from "@/lib/api-client";
+import { supportApi, tenantEmailCampaignsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { notifySupportAttachmentStatus } from "@/lib/support-attachment-status-registry";
 import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
 import {
   type INotificationStreamSupportAttachmentUpdatedData,
+  type INotificationStreamTenantEmailCampaignUpdatedData,
+  type ITenantEmailCampaignDetailResponse,
   type IUserNotification,
+  TenantEmailCampaignStatus,
   type TSupportStagedUploadStatus,
+  type TTenantEmailCampaignStatus,
   UserType,
 } from "@/packages/shared";
 
@@ -75,6 +79,93 @@ export function handleSupportRequestUpdated(
   queryClient.fetchQuery({
     queryFn: () => supportApi.get(supportRequestId),
     queryKey: queryKeys.supportRequest(supportRequestId),
+    staleTime: 0,
+  });
+}
+
+function isTenantEmailCampaignStatus(value: unknown): value is TTenantEmailCampaignStatus {
+  return (
+    value === TenantEmailCampaignStatus.COMPLETED ||
+    value === TenantEmailCampaignStatus.COMPLETED_WITH_ERRORS ||
+    value === TenantEmailCampaignStatus.FAILED ||
+    value === TenantEmailCampaignStatus.QUEUED ||
+    value === TenantEmailCampaignStatus.SENDING
+  );
+}
+
+export function parseTenantEmailCampaignUpdatedData(
+  data: Record<string, unknown>
+): INotificationStreamTenantEmailCampaignUpdatedData | null {
+  const campaignId = data.campaignId;
+  const propertyId = data.propertyId;
+  const status = data.status;
+  const sentCount = data.sentCount;
+  const failedCount = data.failedCount;
+  const skippedCount = data.skippedCount;
+  const totalCount = data.totalCount;
+
+  if (
+    typeof campaignId !== "string" ||
+    typeof propertyId !== "string" ||
+    !isTenantEmailCampaignStatus(status) ||
+    typeof sentCount !== "number" ||
+    typeof failedCount !== "number" ||
+    typeof skippedCount !== "number" ||
+    typeof totalCount !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    campaignId,
+    failedCount,
+    propertyId,
+    sentCount,
+    skippedCount,
+    status,
+    totalCount,
+  };
+}
+
+function patchTenantEmailCampaignDetail(
+  existing: ITenantEmailCampaignDetailResponse,
+  update: INotificationStreamTenantEmailCampaignUpdatedData
+): ITenantEmailCampaignDetailResponse {
+  return {
+    ...existing,
+    campaign: {
+      ...existing.campaign,
+      failedCount: update.failedCount,
+      recipientCount: update.totalCount,
+      sentCount: update.sentCount,
+      skippedCount: update.skippedCount,
+      status: update.status,
+    },
+  };
+}
+
+export function handleTenantEmailCampaignUpdated(
+  queryClient: QueryClient,
+  data: INotificationStreamTenantEmailCampaignUpdatedData,
+  pathname: string
+): void {
+  queryClient.setQueryData<ITenantEmailCampaignDetailResponse>(
+    queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
+    (existing) => (existing == null ? existing : patchTenantEmailCampaignDetail(existing, data))
+  );
+
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.propertyTenantEmailCampaigns(data.propertyId),
+  });
+
+  const communicationsPath = `/properties/${data.propertyId}/communications`;
+  if (pathname !== communicationsPath || document.visibilityState !== "visible") {
+    return;
+  }
+
+  queryClient.fetchQuery({
+    queryFn: () => tenantEmailCampaignsApi.get(data.propertyId, data.campaignId),
+    queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
     staleTime: 0,
   });
 }
