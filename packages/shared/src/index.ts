@@ -246,6 +246,7 @@ export {
   INCOME_IMPORT_COMMIT_STATUSES,
   recomputeIncomeImportPreviewRow,
 } from "./income-import-preview-row";
+export { LIST_SEARCH_DEBOUNCE_MS, LIST_SEARCH_MAX_LENGTH } from "./list-search-constants";
 export {
   EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
@@ -259,12 +260,7 @@ export {
   type IExpenseImportParseResponse,
   type TExpenseImportFileStatus,
 } from "./property-expense-import-types";
-export {
-  EXPENSES_LIST_LIMIT,
-  EXPENSES_LIST_MAX_LIMIT,
-  EXPENSES_SEARCH_DEBOUNCE_MS,
-  EXPENSES_SEARCH_MAX_LENGTH,
-} from "./property-expense-list-constants";
+export { EXPENSES_LIST_LIMIT, EXPENSES_LIST_MAX_LIMIT } from "./property-expense-list-constants";
 export {
   type ICreatePropertyExpenseBody,
   type IPropertyExpense,

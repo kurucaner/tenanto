@@ -1,0 +1,2 @@
+export const LIST_SEARCH_DEBOUNCE_MS = 300;
+export const LIST_SEARCH_MAX_LENGTH = 100;

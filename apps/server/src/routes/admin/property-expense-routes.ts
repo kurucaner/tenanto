@@ -11,7 +11,6 @@ import {
 import {
   EXPENSES_LIST_LIMIT,
   EXPENSES_LIST_MAX_LIMIT,
-  EXPENSES_SEARCH_MAX_LENGTH,
   HttpStatus,
   type IPropertyExpense,
   type IUpdatePropertyExpenseBody,
@@ -22,6 +21,7 @@ import { decodeExpenseKeysetCursor } from "@/pagination/keyset-cursor";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject, parseMoney as parseBodyMoney } from "./parse-body-utils";
+import { applyOptionalQuerySearchFilter } from "./parse-list-query-filters";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
@@ -175,20 +175,9 @@ function parseExpensesListQuery(query: Record<string, unknown>):
     filters.categoryId = categoryId;
   }
 
-  if (query["q"] !== undefined && query["q"] !== "") {
-    if (typeof query["q"] !== "string") {
-      return { error: "q must be a string", ok: false };
-    }
-    const q = query["q"].trim();
-    if (q.length > EXPENSES_SEARCH_MAX_LENGTH) {
-      return {
-        error: `q must be at most ${EXPENSES_SEARCH_MAX_LENGTH} characters`,
-        ok: false,
-      };
-    }
-    if (q !== "") {
-      filters.q = q;
-    }
+  const searchResult = applyOptionalQuerySearchFilter(query, filters);
+  if (!searchResult.ok) {
+    return searchResult;
   }
 
   const limit = parseExpensesListLimit(query["limit"]);

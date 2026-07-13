@@ -1,12 +1,12 @@
-import { Building2, Plus, Search } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { Building2, Plus } from "lucide-react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
+import { SearchFilterField } from "@/components/filters/search-filter-field";
 import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -16,10 +16,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDebouncedUrlFilter } from "@/hooks/use-debounced-url-filter";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
-import { PROPERTIES_SEARCH_DEBOUNCE_MS } from "@/lib/properties-list-constants";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { formatPhoneDisplay, type IProperty } from "@/packages/shared";
 
@@ -47,22 +47,13 @@ PropertyTableRow.displayName = "PropertyTableRow";
 const PropertiesListPageInner = memo(() => {
   const { filters, setFilter } = useUrlFilterState(PROPERTIES_URL_FILTER_SCHEMA);
   const { q } = filters;
-  const [searchInput, setSearchInput] = useState(q);
+  const { inputValue: searchInput, onInputChange: handleSearchInputChange } = useDebouncedUrlFilter(
+    {
+      committedValue: q,
+      onCommit: (value) => setFilter("q", value),
+    }
+  );
   const [createOpen, setCreateOpen] = useState(false);
-
-  useEffect(() => {
-    setSearchInput(q);
-  }, [q]);
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      const trimmed = searchInput.trim();
-      if (trimmed !== q) {
-        setFilter("q", trimmed);
-      }
-    }, PROPERTIES_SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  }, [q, searchInput, setFilter]);
 
   const {
     error,
@@ -83,10 +74,6 @@ const PropertiesListPageInner = memo(() => {
     setCreateOpen(true);
   }, []);
 
-  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchInput(e.target.value);
-  }, []);
-
   return (
     <AdminPageLayout gap={6}>
       <div className="flex items-center justify-end gap-4">
@@ -96,15 +83,12 @@ const PropertiesListPageInner = memo(() => {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          onChange={handleSearchInputChange}
-          placeholder="Search by name or address…"
-          value={searchInput}
-        />
-      </div>
+      <SearchFilterField
+        id="properties-list-search"
+        onChange={handleSearchInputChange}
+        placeholder="Search by name or address…"
+        value={searchInput}
+      />
 
       {error ? (
         <p className="text-destructive text-sm">

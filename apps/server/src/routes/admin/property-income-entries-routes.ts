@@ -23,6 +23,7 @@ import {
 } from "./admin-query-utils";
 import {
   applyOptionalQueryDateFilter,
+  applyOptionalQuerySearchFilter,
   applyOptionalQueryUuidFilter,
 } from "./parse-list-query-filters";
 import { assertPropertyMemberAccess } from "./property-route-access";
@@ -43,7 +44,9 @@ function parseIncomeType(raw: unknown): string | null | undefined {
   return parseOptionalUuid(trimmed) ?? null;
 }
 
-function parseIncomeEntriesSortBy(raw: unknown): TPropertyIncomeEntriesListSortBy | null | undefined {
+function parseIncomeEntriesSortBy(
+  raw: unknown
+): TPropertyIncomeEntriesListSortBy | null | undefined {
   if (raw === undefined || raw === "") return undefined;
   if (typeof raw !== "string") return null;
   return (INCOME_ENTRIES_SORT_BY_VALUES as readonly string[]).includes(raw)
@@ -75,6 +78,7 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
     () => applyOptionalQueryDateFilter(query, "from", filters, "from must be YYYY-MM-DD"),
     () => applyOptionalQueryDateFilter(query, "to", filters, "to must be YYYY-MM-DD"),
     () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
+    () => applyOptionalQuerySearchFilter(query, filters),
   ];
 
   for (const applyFilter of filterSteps) {
@@ -118,7 +122,10 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
 
   const sortBy = parseIncomeEntriesSortBy(query["sortBy"]);
   if (sortBy === null) {
-    return { error: `sortBy must be one of: ${INCOME_ENTRIES_SORT_BY_VALUES.join(", ")}`, ok: false };
+    return {
+      error: `sortBy must be one of: ${INCOME_ENTRIES_SORT_BY_VALUES.join(", ")}`,
+      ok: false,
+    };
   }
   if (sortBy) {
     filters.sortBy = sortBy;
@@ -126,7 +133,10 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
 
   const sortDir = parseIncomeEntriesSortDir(query["sortDir"]);
   if (sortDir === null) {
-    return { error: `sortDir must be one of: ${INCOME_ENTRIES_SORT_DIR_VALUES.join(", ")}`, ok: false };
+    return {
+      error: `sortDir must be one of: ${INCOME_ENTRIES_SORT_DIR_VALUES.join(", ")}`,
+      ok: false,
+    };
   }
   if (sortDir) {
     filters.sortDir = sortDir;

@@ -9,10 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
 import { useRecentProperties } from "@/hooks/use-recent-properties";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
-import { PROPERTIES_SEARCH_DEBOUNCE_MS } from "@/lib/properties-list-constants";
 import { buildPropertySwitchPath } from "@/lib/property-switch-navigation";
 import { cn } from "@/lib/utils";
-import { type IProperty } from "@/packages/shared";
+import { type IProperty, LIST_SEARCH_DEBOUNCE_MS } from "@/packages/shared";
 
 type TPropertySwitcherRow = Pick<IProperty, "address" | "id" | "name">;
 
@@ -65,7 +64,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   useEffect(() => {
     const id = setTimeout(() => {
       setDebouncedQuery(searchInput.trim());
-    }, PROPERTIES_SEARCH_DEBOUNCE_MS);
+    }, LIST_SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(id);
   }, [searchInput]);
 

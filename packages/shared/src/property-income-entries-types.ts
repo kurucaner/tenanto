@@ -28,6 +28,7 @@ export interface IPropertyIncomeEntriesListQuery {
   /** Empty = all entries; `stay` = stays only; otherwise an income line type id. */
   incomeType?: string;
   limit?: number;
+  q?: string;
   sortBy?: TPropertyIncomeEntriesListSortBy;
   sortDir?: TPropertyIncomeEntriesListSortDir;
   status?: TReservationStatus;
@@ -40,6 +41,7 @@ export type TPropertyIncomeEntriesListFilters = Pick<
   | "channelCommissionId"
   | "from"
   | "incomeType"
+  | "q"
   | "sortBy"
   | "sortDir"
   | "status"

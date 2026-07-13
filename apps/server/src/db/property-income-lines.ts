@@ -30,10 +30,11 @@ export function buildIncomeLineListParts(
   propertyId: string,
   filters: TIncomeLineListDbFilters,
   includeDeleted: boolean
-): { conditions: string[]; joinUnits: string; values: unknown[] } {
+): { conditions: string[]; joinLineTypes: string; joinUnits: string; values: unknown[] } {
   const conditions = ["pil.property_id = $1"];
   const values: unknown[] = [propertyId];
   let p = 2;
+  let joinLineTypes = "";
 
   if (!includeDeleted) {
     conditions.push("pil.is_deleted = false");
@@ -70,7 +71,17 @@ export function buildIncomeLineListParts(
     values.push(filters.rentalType);
   }
 
-  return { conditions, joinUnits, values };
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    joinLineTypes = "INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id";
+    const pattern = `%${qTrim}%`;
+    conditions.push(
+      `(COALESCE(pil.guest_name, '') ILIKE $${p++} OR COALESCE(pil.description, '') ILIKE $${p++} OR ilt.name ILIKE $${p++})`
+    );
+    values.push(pattern, pattern, pattern);
+  }
+
+  return { conditions, joinLineTypes, joinUnits, values };
 }
 
 function formatTransactionDateForCursor(transactionDate: unknown): string {
@@ -174,7 +185,7 @@ export const propertyIncomeLinesDb = {
     filters: TIncomeLineListDbFilters,
     includeDeleted = false
   ): Promise<IPropertyIncomeLinesListMeta> {
-    const { conditions, joinUnits, values } = buildIncomeLineListParts(
+    const { conditions, joinLineTypes, joinUnits, values } = buildIncomeLineListParts(
       propertyId,
       filters,
       includeDeleted
@@ -183,6 +194,7 @@ export const propertyIncomeLinesDb = {
     const result = await pool.query<{ total_count: number }>(
       `SELECT COUNT(*)::int AS total_count
        FROM property_income_lines pil
+       ${joinLineTypes}
        ${joinUnits}
        WHERE ${conditions.join(" AND ")}`,
       values

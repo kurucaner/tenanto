@@ -28,6 +28,7 @@ import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
+import { SearchFilterField } from "@/components/filters/search-filter-field";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -48,6 +49,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
+import { useDebouncedUrlFilter } from "@/hooks/use-debounced-url-filter";
 import {
   type TDeleteConfirmationOptions,
   useDeleteConfirmation,
@@ -158,26 +160,36 @@ function buildDateFilters(from: string, to: string, unitId: string) {
   return next;
 }
 
+function appendSearchQuery<T extends { q?: string }>(next: T, q: string): T {
+  const qTrim = q.trim();
+  if (qTrim) {
+    next.q = qTrim;
+  }
+  return next;
+}
+
 function buildReservationFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
-  status: string
+  status: string,
+  q: string
 ): IPropertyReservationsListQuery {
   const next: IPropertyReservationsListQuery = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
   if (status) next.status = status as IPropertyReservationsListQuery["status"];
-  return next;
+  return appendSearchQuery(next, q);
 }
 
 function buildLineFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
-  incomeType: string
+  incomeType: string,
+  q: string
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
     next.incomeLineTypeId = incomeType;
   }
-  return next;
+  return appendSearchQuery(next, q);
 }
 
 function buildIncomeEntriesFilters(
@@ -186,7 +198,8 @@ function buildIncomeEntriesFilters(
   status: string,
   incomeType: string,
   sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
-  sortDir: TPropertyIncomeEntriesListFilters["sortDir"]
+  sortDir: TPropertyIncomeEntriesListFilters["sortDir"],
+  q: string
 ): TPropertyIncomeEntriesListFilters {
   const next: TPropertyIncomeEntriesListFilters = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
@@ -194,7 +207,7 @@ function buildIncomeEntriesFilters(
   if (incomeType) next.incomeType = incomeType;
   if (sortBy) next.sortBy = sortBy;
   if (sortDir) next.sortDir = sortDir;
-  return next;
+  return appendSearchQuery(next, q);
 }
 
 function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
@@ -294,7 +307,9 @@ const PropertyIncomeFilters = memo(
     incomeType,
     incomeTypeFilterOptions,
     onFilterChange,
+    onSearchInputChange,
     onShowAllTime,
+    searchInput,
     showStays,
     status,
     to,
@@ -308,7 +323,9 @@ const PropertyIncomeFilters = memo(
     incomeType: string;
     incomeTypeFilterOptions: { label: string; value: string }[];
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    onSearchInputChange: (value: string) => void;
     onShowAllTime: () => void;
+    searchInput: string;
     showStays: boolean;
     status: string;
     to: string;
@@ -330,6 +347,13 @@ const PropertyIncomeFilters = memo(
         )
       }
     >
+      <SearchFilterField
+        id="filter-search"
+        label="Search"
+        onChange={onSearchInputChange}
+        placeholder="Search guest, description, unit, or channel…"
+        value={searchInput}
+      />
       <LedgerFilterGrid filterCount={6}>
         <DateFilterField
           id="filter-from"
@@ -1007,6 +1031,7 @@ const PropertyIncomePage = memo(() => {
         channelCommissionId: string;
         from: string;
         incomeType: string;
+        q: string;
         status: string;
         to: string;
         unitId: string;
@@ -1014,6 +1039,7 @@ const PropertyIncomePage = memo(() => {
         channelCommissionId: { defaultValue: "" },
         from: { defaultValue: defaultDateRange.from },
         incomeType: { defaultValue: "" },
+        q: { defaultValue: "" },
         status: { defaultValue: "" },
         to: { defaultValue: defaultDateRange.to },
         unitId: { defaultValue: "" },
@@ -1022,7 +1048,13 @@ const PropertyIncomePage = memo(() => {
   );
   const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
   const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
-  const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
+  const { channelCommissionId, from, incomeType, q, status, to, unitId } = filters;
+  const { inputValue: searchInput, onInputChange: handleSearchInputChange } = useDebouncedUrlFilter(
+    {
+      committedValue: q,
+      onCommit: (value) => setFilter("q", value),
+    }
+  );
   const sortController = useUrlTableSort({
     defaultColumnId: "date",
     defaultDirection: "desc",
@@ -1061,13 +1093,13 @@ const PropertyIncomePage = memo(() => {
   );
 
   const reservationFilters = useMemo(
-    () => buildReservationFilters(dateFilters, channelCommissionId, status),
-    [channelCommissionId, dateFilters, status]
+    () => buildReservationFilters(dateFilters, channelCommissionId, status, q),
+    [channelCommissionId, dateFilters, q, status]
   );
 
   const lineFilters = useMemo(
-    () => buildLineFilters(dateFilters, incomeType),
-    [dateFilters, incomeType]
+    () => buildLineFilters(dateFilters, incomeType, q),
+    [dateFilters, incomeType, q]
   );
 
   const incomeEntriesFilters = useMemo(
@@ -1078,9 +1110,18 @@ const PropertyIncomePage = memo(() => {
         status,
         incomeType,
         sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
-        sortState.direction
+        sortState.direction,
+        q
       ),
-    [channelCommissionId, dateFilters, incomeType, sortState.columnId, sortState.direction, status]
+    [
+      channelCommissionId,
+      dateFilters,
+      incomeType,
+      q,
+      sortState.columnId,
+      sortState.direction,
+      status,
+    ]
   );
 
   const isAllView = incomeType === "";
@@ -1386,7 +1427,9 @@ const PropertyIncomePage = memo(() => {
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
                 onFilterChange={handleIncomeFilterChange}
+                onSearchInputChange={handleSearchInputChange}
                 onShowAllTime={handleShowAllTime}
+                searchInput={searchInput}
                 showStays={showStays}
                 status={status}
                 to={to}

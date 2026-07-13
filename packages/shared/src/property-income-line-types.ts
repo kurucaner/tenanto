@@ -65,6 +65,7 @@ export interface IPropertyIncomeLinesListQuery {
   incomeLineTypeId?: string;
   limit?: number;
   longStayId?: string;
+  q?: string;
   rentalType?: import("./property-types").TUnitRentalType;
   reservationId?: string;
   to?: string;
@@ -73,7 +74,7 @@ export interface IPropertyIncomeLinesListQuery {
 
 export type TPropertyIncomeLinesListFilters = Pick<
   IPropertyIncomeLinesListQuery,
-  "from" | "incomeLineTypeId" | "to" | "unitId"
+  "from" | "incomeLineTypeId" | "q" | "to" | "unitId"
 >;
 
 export interface IPropertyIncomeLinesListResponse {

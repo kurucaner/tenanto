@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Search } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import {
   memo,
   type MouseEvent,
   type ReactNode,
   type RefObject,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -21,18 +20,17 @@ import { CreateExpenseDialog } from "@/components/expenses/create-expense-dialog
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
 import { DateFilterField } from "@/components/filters/date-filter-field";
-import { FilterField } from "@/components/filters/filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
+import { SearchFilterField } from "@/components/filters/search-filter-field";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { useDebouncedUrlFilter } from "@/hooks/use-debounced-url-filter";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import {
   type TPropertyExpensesListFilters,
@@ -49,7 +47,6 @@ import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
-  EXPENSES_SEARCH_DEBOUNCE_MS,
   type IPropertyExpense,
   type IPropertyExpenseCategoryType,
   type IPropertyExpensesListMeta,
@@ -191,19 +188,13 @@ const PropertyExpensesFilters = memo(
     to: string;
   }) => (
     <LedgerFiltersSection>
-      <FilterField>
-        <Label htmlFor="expense-filter-search">Search</Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            id="expense-filter-search"
-            onChange={(e) => onSearchInputChange(e.target.value)}
-            placeholder="Search description or category…"
-            value={searchInput}
-          />
-        </div>
-      </FilterField>
+      <SearchFilterField
+        id="expense-filter-search"
+        label="Search"
+        onChange={onSearchInputChange}
+        placeholder="Search description or category…"
+        value={searchInput}
+      />
       <LedgerFilterGrid filterCount={3}>
         <DateFilterField
           id="expense-filter-from"
@@ -389,24 +380,12 @@ export const PropertyExpensesPage = memo(() => {
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
   const { categoryId, from, q, to } = urlFilters;
-  const [draftQ, setDraftQ] = useState<string | null>(null);
-  const searchInput = draftQ ?? q;
-
-  useEffect(() => {
-    if (draftQ === null) return;
-    const id = setTimeout(() => {
-      const trimmed = draftQ.trim();
-      if (trimmed !== q) {
-        setFilter("q", trimmed);
-      }
-      setDraftQ(null);
-    }, EXPENSES_SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  }, [draftQ, q, setFilter]);
-
-  const handleSearchInputChange = useCallback((value: string) => {
-    setDraftQ(value);
-  }, []);
+  const { inputValue: searchInput, onInputChange: handleSearchInputChange } = useDebouncedUrlFilter(
+    {
+      committedValue: q,
+      onCommit: (value) => setFilter("q", value),
+    }
+  );
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),

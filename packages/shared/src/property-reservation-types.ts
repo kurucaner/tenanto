@@ -73,6 +73,7 @@ export interface IPropertyReservationsListQuery {
   from?: string;
   includeReservationId?: string;
   limit?: number;
+  q?: string;
   rentalType?: TUnitRentalType;
   status?: TReservationStatus;
   to?: string;
@@ -81,7 +82,7 @@ export interface IPropertyReservationsListQuery {
 
 export type TPropertyShortStaysListFilters = Pick<
   IPropertyReservationsListQuery,
-  "channelCommissionId" | "from" | "status" | "to" | "unitId"
+  "channelCommissionId" | "from" | "q" | "status" | "to" | "unitId"
 >;
 
 export interface IPropertyShortStaysListResponse {
