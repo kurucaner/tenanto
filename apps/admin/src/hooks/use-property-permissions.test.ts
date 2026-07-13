@@ -122,5 +122,24 @@ describe("derivePropertyPermissions", () => {
     expect(permissions.canManageStructure).toBe(true);
     expect(permissions.canManageLedger).toBe(true);
     expect(permissions.canView).toBe(true);
+    expect(permissions.canSendTenantNotifications).toBe(true);
+  });
+
+  test("manager cannot send tenant notifications", () => {
+    const permissions = derivePropertyPermissions(
+      makeProperty([makeMember(managerId, PropertyRole.MANAGER)]),
+      makeUser(managerId, UserType.USER)
+    );
+
+    expect(permissions.canSendTenantNotifications).toBe(false);
+  });
+
+  test("owner can send tenant notifications", () => {
+    const permissions = derivePropertyPermissions(
+      makeProperty([makeMember(ownerId, PropertyRole.OWNER)]),
+      makeUser(ownerId, UserType.USER)
+    );
+
+    expect(permissions.canSendTenantNotifications).toBe(true);
   });
 });

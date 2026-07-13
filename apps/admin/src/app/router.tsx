@@ -14,6 +14,7 @@ import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { PropertiesListPage } from "@/pages/properties-list-page";
+import { PropertyCommunicationsPage } from "@/pages/property-communications-page";
 import { PropertyDetailPage } from "@/pages/property-detail-page";
 import { PropertyExpensesPage } from "@/pages/property-expenses-page";
 import { PropertyIncomePage } from "@/pages/property-income-page";
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
                   { element: <PropertyLeaseDetailPage />, path: "leases/:leaseId" },
                   { element: <PropertyIncomePage />, path: "income" },
                   { element: <PropertyExpensesPage />, path: "expenses" },
+                  { element: <PropertyCommunicationsPage />, path: "communications" },
                   { element: <PropertyReportsPage />, path: "reports" },
                   { element: <PropertySettingsPage />, path: "settings" },
                 ],

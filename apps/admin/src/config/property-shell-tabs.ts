@@ -10,6 +10,7 @@ export const PROPERTY_SHELL_TABS: IPropertyShellTab[] = [
   { label: "Leases", path: "leases" },
   { label: "Income", path: "income" },
   { label: "Expenses", path: "expenses" },
+  { label: "Communications", path: "communications" },
   { label: "Reports", path: "reports" },
   { label: "Settings", path: "settings" },
 ];

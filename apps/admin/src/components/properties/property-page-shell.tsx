@@ -9,9 +9,10 @@ import {
 import { PropertySwitcher } from "@/components/properties/property-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
+import { usePropertyShell } from "@/hooks/use-property-shell";
 import { propertiesApi } from "@/lib/api-client";
 import { isPropertyLeaseDetailPath } from "@/lib/property-shell-routes";
+import { getVisiblePropertyShellTabs } from "@/lib/property-shell-tab-visibility";
 import { queryKeys } from "@/lib/query-keys";
 import { recordRecentProperty } from "@/lib/recent-properties-storage";
 import { type IPropertyDetail } from "@/packages/shared";
@@ -33,22 +34,27 @@ const tabClass = ({ isActive }: { isActive: boolean }) =>
       : "text-muted-foreground hover:text-foreground"
   }`;
 
-export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) => (
-  <div className="-mx-1 px-1">
-    <div className="flex flex-wrap items-center gap-1 border-b">
-      {PROPERTY_SHELL_TABS.map((tab) => (
-        <NavLink
-          className={tabClass}
-          end={tab.end}
-          key={tab.path || "overview"}
-          to={tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`}
-        >
-          {tab.label}
-        </NavLink>
-      ))}
+export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) => {
+  const { permissions } = usePropertyShell();
+  const tabs = getVisiblePropertyShellTabs(permissions);
+
+  return (
+    <div className="-mx-1 px-1">
+      <div className="flex flex-wrap items-center gap-1 border-b">
+        {tabs.map((tab) => (
+          <NavLink
+            className={tabClass}
+            end={tab.end}
+            key={tab.path || "overview"}
+            to={tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`}
+          >
+            {tab.label}
+          </NavLink>
+        ))}
+      </div>
     </div>
-  </div>
-));
+  );
+});
 PropertyShellTabs.displayName = "PropertyShellTabs";
 
 const LeaseDetailShellLoadingSkeleton = memo(() => (
@@ -81,7 +87,9 @@ export const PropertyPageShell = memo(
 
     if (hideParentChrome) {
       return (
-        <PropertyShellDepthContext.Provider value={true}>{children}</PropertyShellDepthContext.Provider>
+        <PropertyShellDepthContext.Provider value={true}>
+          {children}
+        </PropertyShellDepthContext.Provider>
       );
     }
 
