@@ -1,0 +1,132 @@
+import { describe, expect, test } from "bun:test";
+
+import type { IPropertyLongStay } from "./property-long-stay-types";
+import {
+  isValidTenantEmail,
+  normalizeTenantEmail,
+  resolveTenantEmailRecipients,
+} from "./tenant-email-recipient-resolver";
+
+function makeLease(
+  overrides: Partial<IPropertyLongStay> & Pick<IPropertyLongStay, "id">
+): IPropertyLongStay {
+  return {
+    actualEndDate: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    guestName: "Primary Tenant",
+    leaseEndDate: "2027-01-01",
+    leaseStartDate: "2026-01-01",
+    monthlyRent: 1000,
+    propertyId: "property-1",
+    secondaryTenants: [],
+    status: "active",
+    tenantEmail: "primary@example.com",
+    tenantPhone: null,
+    termMonths: 12,
+    unitId: "unit-1",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("normalizeTenantEmail", () => {
+  test("trims and lowercases", () => {
+    expect(normalizeTenantEmail("  Tenant@Example.COM ")).toBe("tenant@example.com");
+  });
+});
+
+describe("isValidTenantEmail", () => {
+  test("accepts common addresses", () => {
+    expect(isValidTenantEmail("tenant@example.com")).toBe(true);
+  });
+
+  test("rejects malformed addresses", () => {
+    expect(isValidTenantEmail("not-an-email")).toBe(false);
+    expect(isValidTenantEmail("")).toBe(false);
+  });
+});
+
+describe("resolveTenantEmailRecipients", () => {
+  test("includes primary and secondary tenants from active leases", () => {
+    const result = resolveTenantEmailRecipients([
+      makeLease({
+        id: "lease-1",
+        secondaryTenants: [{ email: "secondary@example.com", name: "Secondary", phone: null }],
+        tenantEmail: "primary@example.com",
+      }),
+    ]);
+
+    expect(result.recipients).toEqual([
+      {
+        email: "primary@example.com",
+        leaseId: "lease-1",
+        tenantName: "Primary Tenant",
+        tenantRole: "primary",
+      },
+      {
+        email: "secondary@example.com",
+        leaseId: "lease-1",
+        tenantName: "Secondary",
+        tenantRole: "secondary",
+      },
+    ]);
+    expect(result.skipped).toEqual([]);
+  });
+
+  test("skips ended leases", () => {
+    const result = resolveTenantEmailRecipients([
+      makeLease({ id: "lease-1", status: "ended", tenantEmail: "primary@example.com" }),
+    ]);
+
+    expect(result.recipients).toEqual([]);
+    expect(result.skipped).toEqual([]);
+  });
+
+  test("dedupes normalized email addresses across leases", () => {
+    const result = resolveTenantEmailRecipients([
+      makeLease({ id: "lease-1", tenantEmail: "Shared@Example.com" }),
+      makeLease({
+        guestName: "Other Tenant",
+        id: "lease-2",
+        tenantEmail: "shared@example.com",
+        unitId: "unit-2",
+      }),
+    ]);
+
+    expect(result.recipients).toHaveLength(1);
+    expect(result.skipped).toEqual([
+      {
+        leaseId: "lease-2",
+        reason: "Duplicate email address in campaign audience",
+        tenantName: "Other Tenant",
+        tenantRole: "primary",
+      },
+    ]);
+  });
+
+  test("records skipped tenants with missing or invalid emails", () => {
+    const result = resolveTenantEmailRecipients([
+      makeLease({
+        id: "lease-1",
+        secondaryTenants: [{ email: "bad-email", name: "Bad Secondary", phone: null }],
+        tenantEmail: null,
+      }),
+    ]);
+
+    expect(result.recipients).toEqual([]);
+    expect(result.skipped).toEqual([
+      {
+        leaseId: "lease-1",
+        reason: "Missing email address",
+        tenantName: "Primary Tenant",
+        tenantRole: "primary",
+      },
+      {
+        leaseId: "lease-1",
+        reason: "Invalid email address",
+        tenantName: "Bad Secondary",
+        tenantRole: "secondary",
+      },
+    ]);
+  });
+});

@@ -406,6 +406,33 @@ export {
   toE164,
 } from "./phone";
 
+// Tenant email campaigns
+export {
+  type ICreateTenantEmailCampaignBody,
+  type ITenantEmailCampaign,
+  type ITenantEmailCampaignCreateResponse,
+  type ITenantEmailCampaignDetailResponse,
+  type ITenantEmailCampaignListResponse,
+  type ITenantEmailCampaignPreviewRecipient,
+  type ITenantEmailCampaignPreviewResponse,
+  type ITenantEmailCampaignPreviewSkipped,
+  type ITenantEmailCampaignRecipient,
+  type ITenantEmailRecipientResolution,
+  type ITenantEmailResolvedRecipient,
+  type ITenantEmailSkippedRecipient,
+  TenantEmailCampaignStatus,
+  TenantEmailRecipientStatus,
+  TenantEmailTenantRole,
+  type TTenantEmailCampaignStatus,
+  type TTenantEmailRecipientStatus,
+  type TTenantEmailTenantRole,
+} from "./tenant-email-campaign-types";
+export {
+  isValidTenantEmail,
+  normalizeTenantEmail,
+  resolveTenantEmailRecipients,
+} from "./tenant-email-recipient-resolver";
+
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";
 

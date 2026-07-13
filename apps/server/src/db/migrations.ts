@@ -2284,4 +2284,95 @@ export const migrations: IMigration[] = [
     },
     version: 52,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_tenant_email_recipients;`);
+      await client.query(`DROP TABLE IF EXISTS property_tenant_email_campaigns;`);
+      await client.query(`DROP TYPE IF EXISTS property_tenant_email_tenant_role;`);
+      await client.query(`DROP TYPE IF EXISTS property_tenant_email_recipient_status;`);
+      await client.query(`DROP TYPE IF EXISTS property_tenant_email_campaign_status;`);
+    },
+    name: "property_tenant_email_campaigns",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TYPE property_tenant_email_campaign_status AS ENUM (
+          'queued',
+          'sending',
+          'completed',
+          'completed_with_errors',
+          'failed'
+        );
+      `);
+      await client.query(`
+        CREATE TYPE property_tenant_email_recipient_status AS ENUM (
+          'queued',
+          'sent',
+          'failed',
+          'skipped'
+        );
+      `);
+      await client.query(`
+        CREATE TYPE property_tenant_email_tenant_role AS ENUM ('primary', 'secondary');
+      `);
+      await client.query(`
+        CREATE TABLE property_tenant_email_campaigns (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          created_by UUID NOT NULL REFERENCES users(id),
+          subject VARCHAR(500) NOT NULL,
+          html_body TEXT NOT NULL,
+          text_body TEXT NOT NULL,
+          status property_tenant_email_campaign_status NOT NULL DEFAULT 'queued',
+          recipient_count INT NOT NULL DEFAULT 0,
+          sent_count INT NOT NULL DEFAULT 0,
+          failed_count INT NOT NULL DEFAULT 0,
+          skipped_count INT NOT NULL DEFAULT 0,
+          idempotency_key VARCHAR(128) NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          completed_at TIMESTAMPTZ,
+          UNIQUE (property_id, idempotency_key)
+        );
+      `);
+      await client.query(`
+        CREATE TABLE property_tenant_email_recipients (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          campaign_id UUID NOT NULL REFERENCES property_tenant_email_campaigns(id) ON DELETE CASCADE,
+          lease_id UUID NOT NULL REFERENCES property_long_stays(id) ON DELETE CASCADE,
+          tenant_role property_tenant_email_tenant_role NOT NULL,
+          tenant_name VARCHAR(255) NOT NULL,
+          email VARCHAR(320) NOT NULL,
+          status property_tenant_email_recipient_status NOT NULL DEFAULT 'queued',
+          attempts INT NOT NULL DEFAULT 0,
+          last_error TEXT,
+          sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_tenant_email_campaigns_property_created
+          ON property_tenant_email_campaigns (property_id, created_at DESC);
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_tenant_email_recipients_campaign
+          ON property_tenant_email_recipients (campaign_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_tenant_email_recipients_campaign_status
+          ON property_tenant_email_recipients (campaign_id, status);
+      `);
+      await client.query(`
+        CREATE TRIGGER update_property_tenant_email_campaigns_updated_at
+          BEFORE UPDATE ON property_tenant_email_campaigns
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+      await client.query(`
+        CREATE TRIGGER update_property_tenant_email_recipients_updated_at
+          BEFORE UPDATE ON property_tenant_email_recipients
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+    },
+    version: 53,
+  },
 ];

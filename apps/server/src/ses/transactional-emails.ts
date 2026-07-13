@@ -164,3 +164,24 @@ export async function sendRentPaymentRecordedEmail(
 
   await sendTransactionalEmail({ html, subject, text, to });
 }
+
+export interface TenantCampaignEmailOptions {
+  htmlBody: string;
+  propertyName: string;
+  subject: string;
+  textBody: string;
+}
+
+export async function sendTenantCampaignEmail(
+  to: string,
+  opts: TenantCampaignEmailOptions
+): Promise<void> {
+  const html = `<div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">${opts.htmlBody}</div>`;
+
+  await sendTransactionalEmail({
+    html,
+    subject: opts.subject,
+    text: opts.textBody,
+    to,
+  });
+}

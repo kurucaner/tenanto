@@ -25,7 +25,8 @@
       "@/push/*": ["./src/push/*"],
       "@/scheduler/*": ["./src/scheduler/*"],
       "@/services/*": ["./src/services/*"],
-      "@/ses/*": ["./src/ses/*"]
+      "@/ses/*": ["./src/ses/*"],
+      "@/queues/*": ["./src/queues/*"]
     }
   },
   "include": ["src/**/*"],

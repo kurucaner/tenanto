@@ -1,0 +1,27 @@
+export const TENANT_EMAIL_CAMPAIGNS_ENABLED = process.env.TENANT_EMAIL_CAMPAIGNS_ENABLED === "true";
+
+export const TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS = Number.parseInt(
+  process.env.TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS ?? "500",
+  10
+);
+
+export const TENANT_EMAIL_CAMPAIGN_MAX_BODY_BYTES = Number.parseInt(
+  process.env.TENANT_EMAIL_CAMPAIGN_MAX_BODY_BYTES ?? "102400",
+  10
+);
+
+export const TENANT_EMAIL_CAMPAIGN_MAX_SUBJECT_LENGTH = 500;
+
+export const TENANT_EMAIL_CAMPAIGN_QUEUE_NAME = "tenant-email-send";
+
+export const TENANT_EMAIL_CAMPAIGN_JOB_ATTEMPTS = 5;
+
+export const TENANT_EMAIL_CAMPAIGN_RATE_LIMIT_MAX = Number.parseInt(
+  process.env.TENANT_EMAIL_CAMPAIGN_RATE_LIMIT_MAX ?? "14",
+  10
+);
+
+export const TENANT_EMAIL_CAMPAIGN_RATE_LIMIT_DURATION_MS = Number.parseInt(
+  process.env.TENANT_EMAIL_CAMPAIGN_RATE_LIMIT_DURATION_MS ?? "1000",
+  10
+);
