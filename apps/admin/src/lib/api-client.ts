@@ -23,6 +23,8 @@ import {
   type IExpenseImportParseResponse,
   type IExtendPropertyLongStayBody,
   type IHomeFinancialOverview,
+  type IIncomeImportCommitBody,
+  type IIncomeImportCommitResponse,
   type IIncomeImportParseResponse,
   type IPortfolioReportSummary,
   type IProperty,
@@ -911,6 +913,12 @@ export const expensesApi = {
 };
 
 export const incomeImportApi = {
+  importCommit: (propertyId: string, body: IIncomeImportCommitBody) =>
+    authenticatedRequest<IIncomeImportCommitResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/income/import/commit`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
   importParse: (propertyId: string, formData: FormData) =>
     authenticatedMultipartRequest<IIncomeImportParseResponse>(
       `/properties/${encodeURIComponent(propertyId)}/income/import/parse`,

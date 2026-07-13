@@ -54,17 +54,17 @@ User reviews/edits preview → POST .../income/import/commit
 
 **Import these columns:**
 
-| CSV column | Tenanto field | Notes |
-| ---------- | ------------- | ----- |
-| `Guess Name` | `guestName` | Header typo only |
-| `Room No` | `unitId` | Resolve by unit label/name (e.g. `210`, `Abbott 3`) |
-| `Check in date` | `checkIn` | Normalize to `YYYY-MM-DD` |
-| `Check out date` | `checkOut` | Normalize to `YYYY-MM-DD` |
-| `Number of Night` | validate vs computed `nights` | Server computes nights from dates |
-| `Status` | `status` (+ `refunded` flag) | See status map below |
-| `Room Rate` | `roomTotal` | Strip `$` and commas |
-| `Cleaning Fee` | `cleaningFee` | Stored on reservation |
-| `Channel` | `channelCommissionId` | Match via alias table |
+| CSV column        | Tenanto field                 | Notes                                               |
+| ----------------- | ----------------------------- | --------------------------------------------------- |
+| `Guess Name`      | `guestName`                   | Header typo only                                    |
+| `Room No`         | `unitId`                      | Resolve by unit label/name (e.g. `210`, `Abbott 3`) |
+| `Check in date`   | `checkIn`                     | Normalize to `YYYY-MM-DD`                           |
+| `Check out date`  | `checkOut`                    | Normalize to `YYYY-MM-DD`                           |
+| `Number of Night` | validate vs computed `nights` | Server computes nights from dates                   |
+| `Status`          | `status` (+ `refunded` flag)  | See status map below                                |
+| `Room Rate`       | `roomTotal`                   | Strip `$` and commas                                |
+| `Cleaning Fee`    | `cleaningFee`                 | Stored on reservation                               |
+| `Channel`         | `channelCommissionId`         | Match via alias table                               |
 
 **Ignore these columns:**
 
@@ -76,24 +76,24 @@ User reviews/edits preview → POST .../income/import/commit
 
 ### Status map
 
-| CSV `Status` | Tenanto `status` | `refunded` (preview) | Notes |
-| ------------ | ---------------- | -------------------- | ----- |
-| `Checked` | `stayed` | `false` | Completed stay |
-| `Canceled` | `canceled` | `false` | Import amounts as-is even when non-zero |
-| `No Show` | `no_show` | `false` | Import amounts as-is even when non-zero |
-| `refund` | `stayed` | `true` | Not `canceled`; see refund section below |
-| empty / `Err:522` | skip row | — | Junk rows at end of spreadsheet export |
+| CSV `Status`      | Tenanto `status` | `refunded` (preview) | Notes                                    |
+| ----------------- | ---------------- | -------------------- | ---------------------------------------- |
+| `Checked`         | `stayed`         | `false`              | Completed stay                           |
+| `Canceled`        | `canceled`       | `false`              | Import amounts as-is even when non-zero  |
+| `No Show`         | `no_show`        | `false`              | Import amounts as-is even when non-zero  |
+| `refund`          | `stayed`         | `true`               | Not `canceled`; see refund section below |
+| empty / `Err:522` | skip row         | —                    | Junk rows at end of spreadsheet export   |
 
 ### Refund handling
 
 Refund state is split across two dimensions (see `docs/INCOME_REFUND_PHASES.md`):
 
-| Field | Parse API | Preview UI | Commit |
-| ----- | --------- | ---------- | ------ |
-| `refunded` (`boolean`) | Set from CSV (`refund` → `true`) | **Editable checkbox** | Re-validated from payload |
-| `status` | Mapped from CSV | **Editable select** | Re-validated from payload |
-| `refundedAt` | Not set | Not shown | `NOW()` when `refunded === true` |
-| `refundedBy` | Not set | Not shown | `request.user.userId` (the importing user) |
+| Field                  | Parse API                        | Preview UI            | Commit                                     |
+| ---------------------- | -------------------------------- | --------------------- | ------------------------------------------ |
+| `refunded` (`boolean`) | Set from CSV (`refund` → `true`) | **Editable checkbox** | Re-validated from payload                  |
+| `status`               | Mapped from CSV                  | **Editable select**   | Re-validated from payload                  |
+| `refundedAt`           | Not set                          | Not shown             | `NOW()` when `refunded === true`           |
+| `refundedBy`           | Not set                          | Not shown             | `request.user.userId` (the importing user) |
 
 **Rules:**
 
@@ -105,27 +105,27 @@ Refund state is split across two dimensions (see `docs/INCOME_REFUND_PHASES.md`)
 
 ### Channel aliases (v1)
 
-| CSV `Channel` | Match to property channel name |
-| ------------- | ------------------------------ |
-| `Booking` | `Booking.com` |
-| `Airbnb` | `Airbnb` |
-| `Expedia EC` | Expedia channel(s) configured on property |
-| `Expedia HC` | Expedia channel(s) configured on property |
-| `Direct` | `Direct web / merchant` |
+| CSV `Channel` | Match to property channel name            |
+| ------------- | ----------------------------------------- |
+| `Booking`     | `Booking.com`                             |
+| `Airbnb`      | `Airbnb`                                  |
+| `Expedia EC`  | Expedia channel(s) configured on property |
+| `Expedia HC`  | Expedia channel(s) configured on property |
+| `Direct`      | `Direct web / merchant`                   |
 
 ### Design decisions (lock in Phase 0)
 
-| Decision | Recommendation |
-| -------- | -------------- |
-| Supported format v1 | Hotel Tax Calculator CSV only (detect by header signature) |
-| Unit match | `Room No` → unit `label` exact, then case-insensitive trim |
-| Canceled/no-show with $ | Import amounts as-is (sample file has non-zero canceled/no-show rows) |
-| Duplicates v1 | Warn in preview; don't auto-skip unless exact match (guest + unit + check-in + check-out) |
-| Row limits | Start aligned with expenses: 5 files, 1 MB each, ~2000 rows total (add `INCOME_CSV_IMPORT_*` constants in Phase 6) |
-| Financial preview | Show **computed** commission/taxes/net/gross, not CSV columns |
-| Cleaning fee | Part of reservation (`cleaningFee`); not a separate income line in v1 |
-| Date formats | `MM-DD-YYYY`, `M/D/YYYY` → `YYYY-MM-DD` |
-| CSV parsing | Proper parser for quoted commas (e.g. `"$1,375.20"`); reuse/share `parseCsvRecords()` from expense extractor |
+| Decision                | Recommendation                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Supported format v1     | Hotel Tax Calculator CSV only (detect by header signature)                                                         |
+| Unit match              | `Room No` → unit `label` exact, then case-insensitive trim                                                         |
+| Canceled/no-show with $ | Import amounts as-is (sample file has non-zero canceled/no-show rows)                                              |
+| Duplicates v1           | Warn in preview; don't auto-skip unless exact match (guest + unit + check-in + check-out)                          |
+| Row limits              | Start aligned with expenses: 5 files, 1 MB each, ~2000 rows total (add `INCOME_CSV_IMPORT_*` constants in Phase 6) |
+| Financial preview       | Show **computed** commission/taxes/net/gross, not CSV columns                                                      |
+| Cleaning fee            | Part of reservation (`cleaningFee`); not a separate income line in v1                                              |
+| Date formats            | `MM-DD-YYYY`, `M/D/YYYY` → `YYYY-MM-DD`                                                                            |
+| CSV parsing             | Proper parser for quoted commas (e.g. `"$1,375.20"`); reuse/share `parseCsvRecords()` from expense extractor       |
 
 ### Shared contract (`packages/shared`) — preview row shape
 
@@ -183,11 +183,11 @@ New `property-income-import-types.ts`:
 
 ### Server
 
-| File | Change |
-| ---- | ------ |
-| `lib/income-hotel-tax-calculator-csv-extractor.ts` | Deterministic extractor for known headers |
-| `lib/income-hotel-tax-calculator-csv-extractor.test.ts` | Fixture tests against sample CSV |
-| `lib/expense-csv-row-extractor.ts` | Extract/share `parseCsvRecords()` if not already shared |
+| File                                                    | Change                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------- |
+| `lib/income-hotel-tax-calculator-csv-extractor.ts`      | Deterministic extractor for known headers               |
+| `lib/income-hotel-tax-calculator-csv-extractor.test.ts` | Fixture tests against sample CSV                        |
+| `lib/expense-csv-row-extractor.ts`                      | Extract/share `parseCsvRecords()` if not already shared |
 
 **Parser responsibilities:**
 
@@ -217,10 +217,10 @@ New `property-income-import-types.ts`:
 
 ### Server
 
-| File | Change |
-| ---- | ------ |
-| `routes/admin/property-income-import-routes.ts` | New route module |
-| `server.ts` | Register income import routes |
+| File                                            | Change                        |
+| ----------------------------------------------- | ----------------------------- |
+| `routes/admin/property-income-import-routes.ts` | New route module              |
+| `server.ts`                                     | Register income import routes |
 
 **Endpoints:**
 
@@ -238,10 +238,10 @@ Return per-file results (`parsed` / `error` / `irrelevant`) like expense import.
 
 ### Admin
 
-| File | Change |
-| ---- | ------ |
-| `lib/income-csv-import.ts` | `parseIncomeCsvFiles()` API client wrapper |
-| `lib/api-client.ts` | `incomeImport.parse` method |
+| File                                             | Change                                                |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| `lib/income-csv-import.ts`                       | `parseIncomeCsvFiles()` API client wrapper            |
+| `lib/api-client.ts`                              | `incomeImport.parse` method                           |
 | `components/income/import-income-csv-dialog.tsx` | Enable Smart Read; parse mutation; preview step shell |
 
 **Exit criteria:** upload sample CSV → API returns parsed rows with computed financials and `refunded` flag; invalid rows show clear errors. Commit still disabled.
@@ -254,10 +254,10 @@ Return per-file results (`parsed` / `error` / `irrelevant`) like expense import.
 
 ### Admin (new income-specific preview components)
 
-| File | Change |
-| ---- | ------ |
-| `components/income/import-income-csv-preview-fields.tsx` | Editable preview table/cards |
-| `components/income/import-income-csv-preview-utils.ts` | Validation helpers, column classes |
+| File                                                     | Change                             |
+| -------------------------------------------------------- | ---------------------------------- |
+| `components/income/import-income-csv-preview-fields.tsx` | Editable preview table/cards       |
+| `components/income/import-income-csv-preview-utils.ts`   | Validation helpers, column classes |
 
 **Preview columns:**
 
@@ -285,10 +285,10 @@ Modeled on expense import preview (`import-expense-csv-preview-fields.tsx`). `Re
 
 ### Server
 
-| File | Change |
-| ---- | ------ |
-| `db/property-reservations.ts` | `createMany()` for bulk insert (reservations lack this today; expenses have it) |
-| `routes/admin/property-income-import-routes.ts` | `POST .../income/import/commit` |
+| File                                            | Change                                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| `db/property-reservations.ts`                   | `createMany()` for bulk insert (reservations lack this today; expenses have it) |
+| `routes/admin/property-income-import-routes.ts` | `POST .../income/import/commit`                                                 |
 
 **Commit behavior:**
 
@@ -301,17 +301,11 @@ Modeled on expense import preview (`import-expense-csv-preview-fields.tsx`). `Re
 
 ### Admin
 
-| File | Change |
-| ---- | ------ |
-| `components/income/import-income-csv-dialog.tsx` | Import button on preview footer |
-| `lib/income-csv-import.ts` | `commitIncomeCsvImport()` |
-| `lib/invalidate-property-*-caches.ts` | Invalidate reservation/income caches on success |
-
-**Exit criteria:** import sample file minus 3 refund rows → reservations appear on Income page with correct computed totals.
-
-### Optional vertical slice (recommended)
-
-Ship Phase 4 with **`stayed` rows only** first (~372 rows from sample file). Proves parser, unit/channel resolution, computed preview, and bulk create. Then widen to `canceled` / `no_show`.
+| File                                             | Change                                          |
+| ------------------------------------------------ | ----------------------------------------------- |
+| `components/income/import-income-csv-dialog.tsx` | Import button on preview footer                 |
+| `lib/income-csv-import.ts`                       | `commitIncomeCsvImport()`                       |
+| `lib/invalidate-property-*-caches.ts`            | Invalidate reservation/income caches on success |
 
 ---
 

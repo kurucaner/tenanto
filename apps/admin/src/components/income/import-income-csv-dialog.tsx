@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,11 +24,12 @@ import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table
 import { useCsvFileSelection } from "@/hooks/use-csv-file-selection";
 import { useIsDesktop } from "@/hooks/use-media-query";
 import { settingsApi, unitsApi } from "@/lib/api-client";
-import { parseIncomeCsvFiles } from "@/lib/income-csv-import";
+import { commitIncomeCsvImport, parseIncomeCsvFiles } from "@/lib/income-csv-import";
 import {
   type IIncomeImportPreviewContext,
   recomputeIncomeImportPreviewRow,
 } from "@/lib/income-import-preview-row";
+import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import {
@@ -163,13 +164,36 @@ const ImportIncomeCsvPreviewTableRowItem = memo(
 ImportIncomeCsvPreviewTableRowItem.displayName = "ImportIncomeCsvPreviewTableRowItem";
 
 const ImportIncomeCsvPreviewFooter = memo(
-  ({ onBack, onCancel }: { onBack: () => void; onCancel: () => void }) => (
+  ({
+    commitPending,
+    hasBlockingValidationErrors,
+    importButtonLabel,
+    onBack,
+    onCancel,
+    onCommitImport,
+    validRowCount,
+  }: {
+    commitPending: boolean;
+    hasBlockingValidationErrors: boolean;
+    importButtonLabel: string;
+    onBack: () => void;
+    onCancel: () => void;
+    onCommitImport: () => void;
+    validRowCount: number;
+  }) => (
     <DialogFooter>
-      <Button onClick={onCancel} type="button" variant="outline">
+      <Button disabled={commitPending} onClick={onCancel} type="button" variant="outline">
         Cancel
       </Button>
-      <Button onClick={onBack} type="button" variant="outline">
+      <Button disabled={commitPending} onClick={onBack} type="button" variant="outline">
         Back
+      </Button>
+      <Button
+        disabled={validRowCount === 0 || hasBlockingValidationErrors || commitPending}
+        onClick={onCommitImport}
+        type="button"
+      >
+        {commitPending ? "Importing…" : importButtonLabel}
       </Button>
     </DialogFooter>
   )
@@ -193,6 +217,7 @@ IncomeFileResultSummary.displayName = "IncomeFileResultSummary";
 
 export const ImportIncomeCsvDialog = memo(
   ({ onOpenChange, open, propertyId }: ImportIncomeCsvDialogProps) => {
+    const queryClient = useQueryClient();
     const [step, setStep] = useState<TImportStep>("upload");
     const [fileResults, setFileResults] = useState<IIncomeImportFileResult[]>([]);
     const [previewRows, setPreviewRows] = useState<IIncomeImportParsedRow[]>([]);
@@ -270,6 +295,49 @@ export const ImportIncomeCsvDialog = memo(
       () => previewRows.filter((row) => getImportIncomePreviewRowValidationError(row) === null).length,
       [previewRows]
     );
+
+    const refundRowCount = useMemo(
+      () =>
+        previewRows.filter(
+          (row) => row.refunded && getImportIncomePreviewRowValidationError(row) === null
+        ).length,
+      [previewRows]
+    );
+
+    const importablePreviewRows = useMemo(
+      () => previewRows.filter((row) => getImportIncomePreviewRowValidationError(row) === null),
+      [previewRows]
+    );
+
+    const hasBlockingValidationErrors = previewRows.some(
+      (row) => getImportIncomePreviewRowValidationError(row) !== null
+    );
+
+    const importButtonLabel = useMemo(() => {
+      const baseLabel = `Import ${validRowCount} stay(s)`;
+      if (refundRowCount === 0) {
+        return baseLabel;
+      }
+      return `${baseLabel} (${refundRowCount} refunded)`;
+    }, [refundRowCount, validRowCount]);
+
+    const commitMutation = useMutation({
+      mutationFn: (rows: IIncomeImportParsedRow[]) => commitIncomeCsvImport(propertyId, rows),
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to import income");
+      },
+      onSuccess: (response) => {
+        const refundSuffix =
+          response.refundCount > 0 ? ` (${response.refundCount} marked refunded)` : "";
+        toast.success(`Imported ${response.createdCount} stay(s)${refundSuffix}`);
+        invalidatePropertyIncomeCaches(queryClient, propertyId);
+        handleOpenChange(false);
+      },
+    });
+
+    const handleCommitImport = useCallback(() => {
+      commitMutation.mutate(importablePreviewRows);
+    }, [commitMutation, importablePreviewRows]);
 
     const updatePreviewRow = useCallback(
       (index: number, nextRow: IIncomeImportParsedRow) => {
@@ -404,7 +472,15 @@ export const ImportIncomeCsvDialog = memo(
           selectedFileCount={selectedFiles.length}
         />
       ) : (
-        <ImportIncomeCsvPreviewFooter onBack={handleBackToUpload} onCancel={handleCancel} />
+        <ImportIncomeCsvPreviewFooter
+          commitPending={commitMutation.isPending}
+          hasBlockingValidationErrors={hasBlockingValidationErrors}
+          importButtonLabel={importButtonLabel}
+          onBack={handleBackToUpload}
+          onCancel={handleCancel}
+          onCommitImport={handleCommitImport}
+          validRowCount={validRowCount}
+        />
       );
 
     return (
@@ -438,8 +514,7 @@ export const ImportIncomeCsvDialog = memo(
               {previewRows.length > 0 ? (
                 <>
                   <p className="text-muted-foreground text-sm">
-                    {validRowCount} of {previewRows.length} stay row(s) passed validation. Edit
-                    rows before importing in the next phase.
+                    {validRowCount} of {previewRows.length} stay row(s) passed validation.
                   </p>
                   {previewList}
                 </>

@@ -208,6 +208,12 @@ export {
 
 // Property Expense Types
 export {
+  getIncomeImportPreviewTaxesTotal,
+  type IIncomeImportPreviewContext,
+  INCOME_IMPORT_COMMIT_STATUSES,
+  recomputeIncomeImportPreviewRow,
+} from "./income-import-preview-row";
+export {
   EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
   EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE,

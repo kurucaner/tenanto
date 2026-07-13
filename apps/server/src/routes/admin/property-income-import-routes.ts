@@ -1,9 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertyChannelCommissionsDb } from "@/db/property-channel-commissions";
+import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertySettingsDb } from "@/db/property-settings";
 import { propertyTaxRatesDb } from "@/db/property-tax-rates";
 import { propertyUnitsDb } from "@/db/property-units";
+import { validateIncomeImportCommitRows } from "@/lib/income-csv-import-commit";
 import {
   buildIncomeImportParsedRow,
   type IIncomeCsvImportContext,
@@ -12,6 +14,8 @@ import { extractIncomeRowsFromHotelTaxCalculatorCsv } from "@/lib/income-hotel-t
 import { readMultipartCsvFiles } from "@/lib/read-multipart-csv-files";
 import {
   HttpStatus,
+  type IIncomeImportCommitBody,
+  type IIncomeImportCommitResponse,
   type IIncomeImportFileResult,
   type IIncomeImportParseResponse,
   INCOME_CSV_IMPORT_MAX_BYTES_PER_FILE,
@@ -162,6 +166,72 @@ export const propertyIncomeImportRoutes = async (server: FastifyInstance): Promi
 
       const response: IIncomeImportParseResponse = { files };
       return reply.send(response);
+    }
+  );
+
+  server.post<{ Body: IIncomeImportCommitBody; Params: IPropertyParams }>(
+    "/properties/:propertyId/income/import/commit",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Body: IIncomeImportCommitBody; Params: IPropertyParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+
+      const hasAccess = await assertPropertyMemberAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!hasAccess) return;
+
+      const canWrite = await assertPropertyLedgerWriteAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners and managers can manage income entries"
+      );
+      if (!canWrite) return;
+
+      await propertySettingsDb.getOrCreateDefaults(propertyId);
+      const context = await loadIncomeCsvImportContext(propertyId);
+      const body = request.body as IIncomeImportCommitBody;
+      const validated = validateIncomeImportCommitRows(
+        body.rows,
+        context,
+        propertyId,
+        INCOME_CSV_IMPORT_MAX_ROWS_TOTAL
+      );
+      if ("error" in validated) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: validated.error });
+      }
+
+      const reservations = await propertyReservationsDb.createMany(
+        propertyId,
+        validated.rows,
+        request.user.userId
+      );
+      const refundCount = validated.rows.filter((row) => row.refunded).length;
+
+      request.log.info({
+        createdCount: reservations.length,
+        event: "income_csv_import_commit",
+        propertyId,
+        refundCount,
+        userId: request.user.userId,
+      });
+
+      const response: IIncomeImportCommitResponse = {
+        createdCount: reservations.length,
+        refundCount,
+        reservations,
+      };
+      return reply.status(HttpStatus.CREATED).send(response);
     }
   );
 };

@@ -1,6 +1,8 @@
 import { incomeImportApi } from "@/lib/api-client";
-import { type ISelectedCsvFile,processCsvIncomingFiles } from "@/lib/csv-file-import";
+import { type ISelectedCsvFile, processCsvIncomingFiles } from "@/lib/csv-file-import";
 import {
+  type IIncomeImportCommitResponse,
+  type IIncomeImportParsedRow,
   type IIncomeImportParseResponse,
   INCOME_CSV_IMPORT_MAX_BYTES_PER_FILE,
   INCOME_CSV_IMPORT_MAX_FILES,
@@ -33,4 +35,11 @@ export async function parseIncomeCsvFiles(
     formData.append("files", entry.file, entry.file.name);
   }
   return incomeImportApi.importParse(propertyId, formData);
+}
+
+export async function commitIncomeCsvImport(
+  propertyId: string,
+  rows: IIncomeImportParsedRow[]
+): Promise<IIncomeImportCommitResponse> {
+  return incomeImportApi.importCommit(propertyId, { rows });
 }
