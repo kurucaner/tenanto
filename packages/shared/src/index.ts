@@ -234,6 +234,19 @@ export {
   type IUpdatePropertyExpenseBody,
   type TPropertyExpensesListFilters,
 } from "./property-expense-types";
+export {
+  type IIncomeCsvExtractedRow,
+  type IIncomeImportCommitBody,
+  type IIncomeImportCommitResponse,
+  type IIncomeImportFileResult,
+  type IIncomeImportParsedRow,
+  type IIncomeImportParseResponse,
+  INCOME_CSV_IMPORT_MAX_BYTES_PER_FILE,
+  INCOME_CSV_IMPORT_MAX_FILES,
+  INCOME_CSV_IMPORT_MAX_ROWS_PER_FILE,
+  INCOME_CSV_IMPORT_MAX_ROWS_TOTAL,
+  type TIncomeImportFileStatus,
+} from "./property-income-import-types";
 export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 
 // Home Financial Overview Types
