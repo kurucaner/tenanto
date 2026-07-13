@@ -86,6 +86,7 @@ import {
   getStayRefundableCap,
   getStayTaxesTotal,
   IncomeEntryKind,
+  IncomeRefundFilter,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyIncomeLineType,
@@ -93,10 +94,17 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
+  type TIncomeRefundFilter,
   type TPropertyIncomeEntriesListFilters,
   type TPropertyIncomeEntry,
   type TStayCalculationMetric,
 } from "@/packages/shared";
+
+const REFUND_STATUS_FILTER_OPTIONS = [
+  { label: "All incomes", value: "" },
+  { label: "Refunded", value: IncomeRefundFilter.REFUNDED },
+  { label: "Not refunded", value: IncomeRefundFilter.NOT_REFUNDED },
+];
 
 function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
   return { entryKind: IncomeEntryKind.STAY, stay };
@@ -169,6 +177,7 @@ function buildReservationFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
   q: string,
+  refundStatus: string,
   status: string
 ): IPropertyReservationsListQuery {
   const next: IPropertyReservationsListQuery = { ...dateFilters };
@@ -176,13 +185,15 @@ function buildReservationFilters(
   if (status) next.status = status as IPropertyReservationsListQuery["status"];
   const qTrim = q.trim();
   if (qTrim) next.q = qTrim;
+  if (refundStatus) next.refundStatus = refundStatus as TIncomeRefundFilter;
   return next;
 }
 
 function buildLineFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   incomeType: string,
-  q: string
+  q: string,
+  refundStatus: string
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
@@ -190,6 +201,7 @@ function buildLineFilters(
   }
   const qTrim = q.trim();
   if (qTrim) next.q = qTrim;
+  if (refundStatus) next.refundStatus = refundStatus as TIncomeRefundFilter;
   return next;
 }
 
@@ -197,6 +209,7 @@ function buildIncomeEntriesFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
   q: string,
+  refundStatus: string,
   status: string,
   incomeType: string,
   sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
@@ -210,6 +223,7 @@ function buildIncomeEntriesFilters(
   if (sortDir) next.sortDir = sortDir;
   const qTrim = q.trim();
   if (qTrim) next.q = qTrim;
+  if (refundStatus) next.refundStatus = refundStatus as TIncomeRefundFilter;
   return next;
 }
 
@@ -319,7 +333,8 @@ function handleCreateIncomeLineOpenChange(
   }
 }
 
-type TIncomeFilterKey = "channelCommissionId" | "from" | "incomeType" | "status" | "to" | "unitId";
+type TIncomeFilterKey =
+  "channelCommissionId" | "from" | "incomeType" | "refundStatus" | "status" | "to" | "unitId";
 
 const PropertyIncomeFilters = memo(
   ({
@@ -332,6 +347,7 @@ const PropertyIncomeFilters = memo(
     onFilterChange,
     onSearchInputChange,
     onShowAllTime,
+    refundStatus,
     searchInput,
     showStays,
     status,
@@ -348,6 +364,7 @@ const PropertyIncomeFilters = memo(
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
     onSearchInputChange: (value: string) => void;
     onShowAllTime: () => void;
+    refundStatus: string;
     searchInput: string;
     showStays: boolean;
     status: string;
@@ -377,7 +394,7 @@ const PropertyIncomeFilters = memo(
         value: searchInput,
       }}
     >
-      <LedgerFilterGrid filterCount={6}>
+      <LedgerFilterGrid filterCount={7}>
         <DateFilterField
           id="filter-from"
           label="From"
@@ -422,6 +439,13 @@ const PropertyIncomeFilters = memo(
           onChange={(e) => onFilterChange("status", e.target.value)}
           options={STATUS_OPTIONS}
           value={status}
+        />
+        <FilterSelectField
+          id="filter-refund-status"
+          label="Refund"
+          onChange={(e) => onFilterChange("refundStatus", e.target.value)}
+          options={REFUND_STATUS_FILTER_OPTIONS}
+          value={refundStatus}
         />
       </LedgerFilterGrid>
     </LedgerFiltersSection>
@@ -1068,6 +1092,7 @@ const PropertyIncomePage = memo(() => {
         from: string;
         incomeType: string;
         q: string;
+        refundStatus: string;
         status: string;
         to: string;
         unitId: string;
@@ -1076,6 +1101,7 @@ const PropertyIncomePage = memo(() => {
         from: { defaultValue: defaultDateRange.from },
         incomeType: { defaultValue: "" },
         q: { defaultValue: "" },
+        refundStatus: { defaultValue: "" },
         status: { defaultValue: "" },
         to: { defaultValue: defaultDateRange.to },
         unitId: { defaultValue: "" },
@@ -1084,7 +1110,7 @@ const PropertyIncomePage = memo(() => {
   );
   const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
   const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
-  const { channelCommissionId, from, incomeType, q, status, to, unitId } = filters;
+  const { channelCommissionId, from, incomeType, q, refundStatus, status, to, unitId } = filters;
   const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
     q,
     setFilter
@@ -1127,13 +1153,13 @@ const PropertyIncomePage = memo(() => {
   );
 
   const reservationFilters = useMemo(
-    () => buildReservationFilters(dateFilters, channelCommissionId, q, status),
-    [channelCommissionId, dateFilters, q, status]
+    () => buildReservationFilters(dateFilters, channelCommissionId, q, refundStatus, status),
+    [channelCommissionId, dateFilters, q, refundStatus, status]
   );
 
   const lineFilters = useMemo(
-    () => buildLineFilters(dateFilters, incomeType, q),
-    [dateFilters, incomeType, q]
+    () => buildLineFilters(dateFilters, incomeType, q, refundStatus),
+    [dateFilters, incomeType, q, refundStatus]
   );
 
   const incomeEntriesFilters = useMemo(
@@ -1142,6 +1168,7 @@ const PropertyIncomePage = memo(() => {
         dateFilters,
         channelCommissionId,
         q,
+        refundStatus,
         status,
         incomeType,
         sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
@@ -1152,6 +1179,7 @@ const PropertyIncomePage = memo(() => {
       dateFilters,
       incomeType,
       q,
+      refundStatus,
       sortState.columnId,
       sortState.direction,
       status,
@@ -1304,11 +1332,7 @@ const PropertyIncomePage = memo(() => {
 
   const refundStayMutation = useMutation({
     mutationFn: ({ amount, stay }: { amount?: number; stay: IPropertyReservation }) =>
-      shortStaysApi.refund(
-        propertyId,
-        stay.id,
-        amount !== undefined ? { amount } : undefined
-      ),
+      shortStaysApi.refund(propertyId, stay.id, amount !== undefined ? { amount } : undefined),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to refund stay");
     },
@@ -1331,11 +1355,7 @@ const PropertyIncomePage = memo(() => {
 
   const refundLineMutation = useMutation({
     mutationFn: ({ amount, line }: { amount?: number; line: IPropertyIncomeLine }) =>
-      incomeLinesApi.refund(
-        propertyId,
-        line.id,
-        amount !== undefined ? { amount } : undefined
-      ),
+      incomeLinesApi.refund(propertyId, line.id, amount !== undefined ? { amount } : undefined),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to refund income");
     },
@@ -1503,6 +1523,7 @@ const PropertyIncomePage = memo(() => {
                 onFilterChange={handleIncomeFilterChange}
                 onSearchInputChange={handleSearchInputChange}
                 onShowAllTime={handleShowAllTime}
+                refundStatus={refundStatus}
                 searchInput={searchInput}
                 showStays={showStays}
                 status={status}

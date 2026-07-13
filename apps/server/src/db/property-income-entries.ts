@@ -62,6 +62,7 @@ function toStayListFilters(filters: TIncomeEntriesListDbFilters): IPropertyReser
     channelCommissionId: filters.channelCommissionId,
     from: filters.from,
     q: filters.q,
+    refundStatus: filters.refundStatus,
     status: filters.status,
     to: filters.to,
     unitId: filters.unitId,
@@ -75,6 +76,7 @@ function toLineListFilters(
   const next: IPropertyIncomeLinesListQuery = {
     from: filters.from,
     q: filters.q,
+    refundStatus: filters.refundStatus,
     to: filters.to,
     unitId: filters.unitId,
   };

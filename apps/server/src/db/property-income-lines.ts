@@ -13,6 +13,7 @@ import {
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
+import { applyRefundStatusFilter } from "./apply-refund-status-filter";
 import { mapPropertyIncomeLineRow } from "./mappers";
 import { pool } from "./pool";
 
@@ -64,6 +65,8 @@ export function buildIncomeLineListParts(
     conditions.push(`pil.long_stay_id = $${p++}`);
     values.push(filters.longStayId);
   }
+
+  applyRefundStatusFilter("pil", filters.refundStatus, conditions);
 
   const joinUnits = filters.rentalType ? "INNER JOIN property_units pu ON pu.id = pil.unit_id" : "";
   if (filters.rentalType) {

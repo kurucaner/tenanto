@@ -1,4 +1,5 @@
 import type { IPropertyShortStaysListMeta } from "./list-meta-types";
+import type { TIncomeRefundFilter } from "./property-income-refund-filter-types";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 import type { TUnitRentalType } from "./property-types";
 
@@ -75,6 +76,7 @@ export interface IPropertyReservationsListQuery {
   includeReservationId?: string;
   limit?: number;
   q?: string;
+  refundStatus?: TIncomeRefundFilter;
   rentalType?: TUnitRentalType;
   status?: TReservationStatus;
   to?: string;
@@ -83,7 +85,7 @@ export interface IPropertyReservationsListQuery {
 
 export type TPropertyShortStaysListFilters = Pick<
   IPropertyReservationsListQuery,
-  "channelCommissionId" | "from" | "q" | "status" | "to" | "unitId"
+  "channelCommissionId" | "from" | "q" | "refundStatus" | "status" | "to" | "unitId"
 >;
 
 export interface IPropertyShortStaysListResponse {

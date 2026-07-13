@@ -199,4 +199,24 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
     expect(sql).toContain("pcc.name ILIKE");
     expect(sql).toContain("pu.unit_number ILIKE");
   });
+
+  test("applies refundStatus filter", async () => {
+    mockQuery.mockClear();
+
+    await propertyReservationsDb.listPaginatedByProperty(
+      "prop-1",
+      { refundStatus: "refunded" },
+      { limit: 2 }
+    );
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(listSql).toContain("pr.refunded_at IS NOT NULL");
+
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(countSql).toContain("pr.refunded_at IS NOT NULL");
+  });
 });

@@ -189,4 +189,24 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
     )?.[0] as string;
     expect(metaSql).toContain("property_income_line_types ilt");
   });
+
+  test("applies refundStatus filter", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeLinesDb.listPaginatedByProperty(
+      "prop-1",
+      { refundStatus: "not_refunded" },
+      { limit: 2 }
+    );
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(listSql).toContain("pil.refunded_at IS NULL");
+
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(countSql).toContain("pil.refunded_at IS NULL");
+  });
 });
