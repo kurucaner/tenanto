@@ -1007,7 +1007,6 @@ const PropertyIncomePage = memo(() => {
         channelCommissionId: string;
         from: string;
         incomeType: string;
-        q: string;
         status: string;
         to: string;
         unitId: string;
@@ -1015,7 +1014,6 @@ const PropertyIncomePage = memo(() => {
         channelCommissionId: { defaultValue: "" },
         from: { defaultValue: defaultDateRange.from },
         incomeType: { defaultValue: "" },
-        q: { defaultValue: "" },
         status: { defaultValue: "" },
         to: { defaultValue: defaultDateRange.to },
         unitId: { defaultValue: "" },
@@ -1024,11 +1022,7 @@ const PropertyIncomePage = memo(() => {
   );
   const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
   const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
-  const { channelCommissionId, from, incomeType, q, status, to, unitId } = filters;
-  const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
-    q,
-    setFilter
-  );
+  const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
   const sortController = useUrlTableSort({
     defaultColumnId: "date",
     defaultDirection: "desc",
@@ -1067,13 +1061,13 @@ const PropertyIncomePage = memo(() => {
   );
 
   const reservationFilters = useMemo(
-    () => buildReservationFilters(dateFilters, channelCommissionId, status, q),
-    [channelCommissionId, dateFilters, q, status]
+    () => buildReservationFilters(dateFilters, channelCommissionId, status),
+    [channelCommissionId, dateFilters, status]
   );
 
   const lineFilters = useMemo(
-    () => buildLineFilters(dateFilters, incomeType, q),
-    [dateFilters, incomeType, q]
+    () => buildLineFilters(dateFilters, incomeType),
+    [dateFilters, incomeType]
   );
 
   const incomeEntriesFilters = useMemo(
@@ -1084,18 +1078,9 @@ const PropertyIncomePage = memo(() => {
         status,
         incomeType,
         sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
-        sortState.direction,
-        q
+        sortState.direction
       ),
-    [
-      channelCommissionId,
-      dateFilters,
-      incomeType,
-      q,
-      sortState.columnId,
-      sortState.direction,
-      status,
-    ]
+    [channelCommissionId, dateFilters, incomeType, sortState.columnId, sortState.direction, status]
   );
 
   const isAllView = incomeType === "";
@@ -1401,9 +1386,7 @@ const PropertyIncomePage = memo(() => {
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
                 onFilterChange={handleIncomeFilterChange}
-                onSearchInputChange={handleSearchInputChange}
                 onShowAllTime={handleShowAllTime}
-                searchInput={searchInput}
                 showStays={showStays}
                 status={status}
                 to={to}
