@@ -347,6 +347,7 @@ const PropertyIncomeFilters = memo(
       }
       search={{
         id: "filter-search",
+        label: "Search",
         onChange: onSearchInputChange,
         placeholder: "Search guest, description, unit, or channel…",
         value: searchInput,

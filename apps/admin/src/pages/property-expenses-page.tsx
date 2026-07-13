@@ -189,6 +189,7 @@ const PropertyExpensesFilters = memo(
     <LedgerFiltersSection
       search={{
         id: "expense-filter-search",
+        label: "Search",
         onChange: onSearchInputChange,
         placeholder: "Search description or category…",
         value: searchInput,

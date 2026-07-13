@@ -12,7 +12,7 @@ export interface ILedgerFiltersSearchConfig {
 }
 
 interface LedgerFiltersSectionProps {
-  children: ReactNode;
+  children?: ReactNode;
   footer?: ReactNode;
   search?: ILedgerFiltersSearchConfig;
 }
@@ -24,7 +24,7 @@ export const LedgerFiltersSection = memo(
         <SearchFilterField
           className={search.className}
           id={search.id}
-          label={search.label ?? "Search"}
+          label={search.label}
           onChange={search.onChange}
           placeholder={search.placeholder}
           value={search.value}
