@@ -18,3 +18,25 @@ export function getImportIncomePreviewRowDuplicateWarning(
 ): string | null {
   return duplicateWarningsByIndex.get(index) ?? null;
 }
+
+export interface IIncomeImportPreviewRowListItem {
+  row: IIncomeImportParsedRow;
+  sourceIndex: number;
+}
+
+export function sortIncomeImportPreviewRowsByAttention(
+  rows: readonly IIncomeImportParsedRow[]
+): IIncomeImportPreviewRowListItem[] {
+  return rows
+    .map((row, sourceIndex) => ({ row, sourceIndex }))
+    .sort((left, right) => {
+      const leftHasError = getImportIncomePreviewRowValidationError(left.row) !== null;
+      const rightHasError = getImportIncomePreviewRowValidationError(right.row) !== null;
+
+      if (leftHasError !== rightHasError) {
+        return leftHasError ? -1 : 1;
+      }
+
+      return left.sourceIndex - right.sourceIndex;
+    });
+}

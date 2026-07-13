@@ -264,7 +264,7 @@ export const propertyReservationsDb = {
                CASE WHEN $17::boolean THEN NOW() ELSE NULL END,
                CASE WHEN $17::boolean THEN $18::uuid ELSE NULL END
              )
-             RETURNING id
+             RETURNING *
            )
            SELECT ${RESERVATION_SELECT}
            FROM inserted pr

@@ -13,7 +13,9 @@ import {
 import {
   getImportIncomePreviewRowDuplicateWarning,
   getImportIncomePreviewRowValidationError,
+  type IIncomeImportPreviewRowListItem,
   IMPORT_INCOME_CSV_PREVIEW_TABLE_CLASS_NAME,
+  sortIncomeImportPreviewRowsByAttention,
   STICKY_ACTIONS_CELL_CLASS_NAME,
 } from "@/components/income/import-income-csv-preview-utils";
 import { Button } from "@/components/ui/button";
@@ -397,6 +399,11 @@ export const ImportIncomeCsvDialog = memo(
       [previewRows]
     );
 
+    const sortedPreviewRowItems = useMemo(
+      () => sortIncomeImportPreviewRowsByAttention(previewRows),
+      [previewRows]
+    );
+
     const hasBlockingValidationErrors = previewRows.some(
       (row) => getImportIncomePreviewRowValidationError(row) !== null
     );
@@ -474,19 +481,25 @@ export const ImportIncomeCsvDialog = memo(
       handleGenerateMockData();
     }, [handleGenerateMockData]);
 
+    const getPreviewRowItemKey = useCallback(
+      (item: IIncomeImportPreviewRowListItem) =>
+        createPreviewRowKey(item.row, item.sourceIndex),
+      []
+    );
+
     const renderPreviewCard = useCallback(
-      (row: IIncomeImportParsedRow, index: number) => (
+      (item: IIncomeImportPreviewRowListItem) => (
         <div className="pb-3">
           <ImportIncomeCsvPreviewCardItem
             duplicateWarning={getImportIncomePreviewRowDuplicateWarning(
               duplicateWarningsByIndex,
-              index
+              item.sourceIndex
             )}
-            index={index}
+            index={item.sourceIndex}
             onRemoveRow={removePreviewRow}
             onUpdateRow={updatePreviewRow}
             previewContext={previewContext}
-            row={row}
+            row={item.row}
           />
         </div>
       ),
@@ -494,21 +507,27 @@ export const ImportIncomeCsvDialog = memo(
     );
 
     const renderPreviewTableRow = useCallback(
-      (row: IIncomeImportParsedRow, index: number) => (
+      (item: IIncomeImportPreviewRowListItem) => (
         <ImportIncomeCsvPreviewTableRowItem
           duplicateWarning={getImportIncomePreviewRowDuplicateWarning(
             duplicateWarningsByIndex,
-            index
+            item.sourceIndex
           )}
-          index={index}
-          key={createPreviewRowKey(row, index)}
+          index={item.sourceIndex}
+          key={getPreviewRowItemKey(item)}
           onRemoveRow={removePreviewRow}
           onUpdateRow={updatePreviewRow}
           previewContext={previewContext}
-          row={row}
+          row={item.row}
         />
       ),
-      [duplicateWarningsByIndex, previewContext, removePreviewRow, updatePreviewRow]
+      [
+        duplicateWarningsByIndex,
+        getPreviewRowItemKey,
+        previewContext,
+        removePreviewRow,
+        updatePreviewRow,
+      ]
     );
 
     const previewList = isDesktop ? (
@@ -556,8 +575,8 @@ export const ImportIncomeCsvDialog = memo(
             <VirtualizedTableBody
               colSpan={PREVIEW_TABLE_COLUMN_COUNT}
               estimateRowHeight={PREVIEW_TABLE_ROW_ESTIMATED_HEIGHT}
-              getItemKey={createPreviewRowKey}
-              items={previewRows}
+              getItemKey={getPreviewRowItemKey}
+              items={sortedPreviewRowItems}
               renderRow={renderPreviewTableRow}
               scrollElement={previewScrollElement}
             />
@@ -570,8 +589,8 @@ export const ImportIncomeCsvDialog = memo(
     ) : (
       <VirtualizedList
         estimateItemHeight={PREVIEW_CARD_ESTIMATED_HEIGHT}
-        getItemKey={createPreviewRowKey}
-        items={previewRows}
+        getItemKey={getPreviewRowItemKey}
+        items={sortedPreviewRowItems}
         renderItem={renderPreviewCard}
         scrollElement={previewScrollElement}
       />
