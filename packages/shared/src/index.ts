@@ -313,6 +313,15 @@ export {
   type TStayChannelBehavior,
 } from "./property-income-utils";
 
+// Property income calculator
+export {
+  calculateMiscIncomeLine,
+  calculateNights,
+  calculateStayIncome,
+  type ICalculateStayIncomeInput,
+  roundMoney,
+} from "./property-income-calculator";
+
 // Property unit utilities
 export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./property-unit-utils";
 
