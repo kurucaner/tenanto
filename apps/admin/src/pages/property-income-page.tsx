@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CirclePlus, Pencil, Plus } from "lucide-react";
+import { CirclePlus, MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
 import {
   memo,
   type MouseEvent,
@@ -11,9 +11,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-import { ImportCsvButton } from "@/components/csv-import/import-csv-button";
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import {
   type DataTableColumn,
   type DataTableSortController,
@@ -24,10 +22,6 @@ import {
   RefundEntityButton,
   RestoreEntityButton,
 } from "@/components/deleted-badge";
-import { FilterSelectField } from "@/components/filters/filter-select-field";
-import { LedgerDateRangeFilter } from "@/components/filters/ledger-date-range-filter";
-import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
-import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -37,7 +31,11 @@ import { EditIncomeLineDialog } from "@/components/income/edit-income-line-dialo
 import { EditReservationDialog } from "@/components/income/edit-reservation-dialog";
 import { ImportIncomeCsvDialog } from "@/components/income/import-income-csv-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
+import {
+  type TIncomeFilterKey,
+} from "@/components/income/income-filter-panel";
 import { buildIncomeTypeFilterOptions } from "@/components/income/income-line-form-options";
+import { PropertyIncomeToolbar } from "@/components/income/property-income-toolbar";
 import {
   RefundEntryDialog,
   type TRefundEntryConfirmPayload,
@@ -50,8 +48,13 @@ import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import {
   type TDeleteConfirmationOptions,
   useDeleteConfirmation,
@@ -65,10 +68,10 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
-import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
-import { type TDateRangePresetId } from "@/lib/date-range-presets";
+import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { formatMoney } from "@/lib/format-money";
 import {
   getEntryUnitId,
@@ -76,12 +79,20 @@ import {
   sortIncomeEntries,
   type TIncomeEntrySortColumnId,
 } from "@/lib/income-entry-sort";
+import {
+  buildIncomeToolbarClearAllPatch,
+  buildIncomeToolbarClearOnePatch,
+  buildIncomeToolbarFilterItems,
+  countIncomeSecondaryFilters,
+  type TIncomeToolbarFilterId,
+} from "@/lib/income-toolbar-filters";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { ledgerEntryRowClassName } from "@/lib/ledger-entry-row-styles";
 import { adminQueryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  formatPropertyUnitSelectLabel,
   getIncomeLineRefundableCap,
   getStayAverageDailyRate,
   getStayNetPayout,
@@ -114,10 +125,6 @@ function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
 
 function mapLineToEntry(line: IPropertyIncomeLine): TPropertyIncomeEntry {
   return { entryKind: IncomeEntryKind.LINE, line };
-}
-
-function buildIncomeFooterItems(meta: { totalCount: number }) {
-  return [{ label: "Total", value: String(meta.totalCount) }];
 }
 
 const INCOME_ROW_ESTIMATED_HEIGHT = 64;
@@ -335,120 +342,10 @@ function handleCreateIncomeLineOpenChange(
   }
 }
 
-type TIncomeFilterKey = "channelCommissionId" | "incomeType" | "refundStatus" | "status" | "unitId";
-
-const PropertyIncomeFilters = memo(
-  ({
-    activePreset,
-    channelCommissionId,
-    channelFilterOptions,
-    from,
-    incomeType,
-    incomeTypeFilterOptions,
-    onFilterChange,
-    onFromChange,
-    onPresetChange,
-    onSearchInputChange,
-    onToChange,
-    refundStatus,
-    searchInput,
-    showStays,
-    status,
-    to,
-    unitId,
-    units,
-  }: {
-    activePreset: TDateRangePresetId | null;
-    channelCommissionId: string;
-    channelFilterOptions: { label: string; value: string }[];
-    from: string;
-    incomeType: string;
-    incomeTypeFilterOptions: { label: string; value: string }[];
-    onFilterChange: (key: TIncomeFilterKey, value: string) => void;
-    onFromChange: (value: string) => void;
-    onPresetChange: (presetId: TDateRangePresetId) => void;
-    onSearchInputChange: (value: string) => void;
-    onToChange: (value: string) => void;
-    refundStatus: string;
-    searchInput: string;
-    showStays: boolean;
-    status: string;
-    to: string;
-    unitId: string;
-    units: IPropertyUnit[];
-  }) => (
-    <LedgerFiltersSection
-      dateRange={
-        <LedgerDateRangeFilter
-          activePreset={activePreset}
-          from={from}
-          idPrefix="income-filter"
-          onFromChange={onFromChange}
-          onPresetChange={onPresetChange}
-          onToChange={onToChange}
-          to={to}
-        />
-      }
-      search={{
-        id: "income-filter-search",
-        label: "Search",
-        onChange: onSearchInputChange,
-        placeholder: "Search guest, unit, channel, or description…",
-        value: searchInput,
-      }}
-    >
-      <LedgerFilterGrid filterCount={5}>
-        <FilterSelectField
-          id="filter-unit"
-          label="Unit"
-          onChange={(e) => onFilterChange("unitId", e.target.value)}
-          value={unitId}
-        >
-          <PropertyUnitSelectOptions emptyOptionLabel="All units" units={units} />
-        </FilterSelectField>
-        <FilterSelectField
-          id="filter-income-type"
-          label="Income type"
-          onChange={(e) => onFilterChange("incomeType", e.target.value)}
-          options={incomeTypeFilterOptions}
-          value={incomeType}
-        />
-        <FilterSelectField
-          disabled={!showStays}
-          emptyOptionLabel="All channels"
-          id="filter-channel"
-          label="Channel"
-          onChange={(e) => onFilterChange("channelCommissionId", e.target.value)}
-          options={channelFilterOptions}
-          value={channelCommissionId}
-        />
-        <FilterSelectField
-          disabled={!showStays}
-          emptyOptionLabel="All statuses"
-          id="filter-status"
-          label="Status"
-          onChange={(e) => onFilterChange("status", e.target.value)}
-          options={STATUS_OPTIONS}
-          value={status}
-        />
-        <FilterSelectField
-          id="filter-refund-status"
-          label="Refund"
-          onChange={(e) => onFilterChange("refundStatus", e.target.value)}
-          options={REFUND_STATUS_FILTER_OPTIONS}
-          value={refundStatus}
-        />
-      </LedgerFilterGrid>
-    </LedgerFiltersSection>
-  )
-);
-PropertyIncomeFilters.displayName = "PropertyIncomeFilters";
-
 const PropertyIncomeEntriesTable = memo(
   ({
     canManage,
     entries,
-    filters,
     hasNextPage,
     isDeleteLinePending,
     isDeleteStayPending,
@@ -457,7 +354,6 @@ const PropertyIncomeEntriesTable = memo(
     isQuickDeleteActive,
     isRefundLinePending,
     isRefundStayPending,
-    listMeta,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
@@ -470,11 +366,11 @@ const PropertyIncomeEntriesTable = memo(
     onShowCalculationDetails,
     scrollSentinelRef,
     sort,
+    toolbar,
     unitLabelById,
   }: {
     canManage: boolean;
     entries: TPropertyIncomeEntry[];
-    filters: ReactNode;
     hasNextPage: boolean;
     isDeleteLinePending: boolean;
     isDeleteStayPending: boolean;
@@ -483,7 +379,6 @@ const PropertyIncomeEntriesTable = memo(
     isQuickDeleteActive: boolean;
     isRefundLinePending: boolean;
     isRefundStayPending: boolean;
-    listMeta?: { totalCount: number };
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
     onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
@@ -496,6 +391,7 @@ const PropertyIncomeEntriesTable = memo(
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
     scrollSentinelRef: RefObject<HTMLDivElement | null>;
     sort: DataTableSortController;
+    toolbar: ReactNode;
     unitLabelById: Map<string, string>;
   }) => {
     const renderIncomeEntryRow = useCallback(
@@ -544,18 +440,10 @@ const PropertyIncomeEntriesTable = memo(
     );
 
     const columns = useMemo(() => getIncomeColumns(canManage), [canManage]);
-    const colSpan = columns.filter((column) => !column.hidden).length;
-
     return (
       <DataTable
         columns={columns}
         emptyMessage={`No income entries yet.${canManage ? " Add a stay or other income to get started." : ""}`}
-        filters={filters}
-        footer={
-          listMeta ? (
-            <DataTableCountFooter colSpan={colSpan} items={buildIncomeFooterItems(listMeta)} />
-          ) : undefined
-        }
         getItemKey={getIncomeEntryKey}
         infiniteScroll={{ hasNextPage, isFetchingNextPage }}
         infiniteScrollSentinelRef={scrollSentinelRef}
@@ -563,6 +451,7 @@ const PropertyIncomeEntriesTable = memo(
         items={entries}
         renderRow={renderIncomeEntryRow}
         sort={sort}
+        toolbar={toolbar}
         virtualization={{ estimateRowHeight: INCOME_ROW_ESTIMATED_HEIGHT }}
       />
     );
@@ -667,8 +556,13 @@ const PropertyIncomePageActions = memo(
     onImportCsv: () => void;
   }) => (
     <div className="flex items-center gap-2">
-      <ImportCsvButton onClick={onImportCsv} />
-      <Button className="gap-1.5" onClick={onAddStay} size="sm" type="button" variant="outline">
+      <Button
+        className="hidden gap-1.5 sm:inline-flex"
+        onClick={onAddStay}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
         <Plus className="size-3.5" />
         Add Short Stay
       </Button>
@@ -676,6 +570,23 @@ const PropertyIncomePageActions = memo(
         <Plus className="size-3.5" />
         Add Other Income
       </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button aria-label="More income actions" size="icon-sm" type="button" variant="outline">
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem className="sm:hidden" onSelect={onAddStay}>
+            <Plus />
+            Add Short Stay
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={onImportCsv}>
+            <Sparkles />
+            Import CSV
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 );
@@ -1079,6 +990,7 @@ const PropertyIncomePage = memo(() => {
   const incomeFilterSchema = useMemo(
     () =>
       defineUrlFilterSchema<{
+        allTime: string;
         channelCommissionId: string;
         from: string;
         incomeType: string;
@@ -1088,6 +1000,7 @@ const PropertyIncomePage = memo(() => {
         to: string;
         unitId: string;
       }>({
+        allTime: { defaultValue: "" },
         channelCommissionId: { defaultValue: "" },
         from: { defaultValue: defaultDateRange.from },
         incomeType: { defaultValue: "" },
@@ -1099,9 +1012,19 @@ const PropertyIncomePage = memo(() => {
       }),
     [defaultDateRange.from, defaultDateRange.to]
   );
-  const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
-  const [allTime] = useUrlFilterBoolean("allTime", false);
-  const { channelCommissionId, from, incomeType, q, refundStatus, status, to, unitId } = filters;
+  const { filters, setFilter, setFilters } = useUrlFilterState(incomeFilterSchema);
+  const {
+    allTime: allTimeParam,
+    channelCommissionId,
+    from,
+    incomeType,
+    q,
+    refundStatus,
+    status,
+    to,
+    unitId,
+  } = filters;
+  const allTime = allTimeParam === "true";
   const {
     activePreset,
     displayFrom,
@@ -1240,6 +1163,87 @@ const PropertyIncomePage = memo(() => {
     () => new Map((unitsQuery.data?.units ?? []).map((unit) => [unit.id, unit.unitNumber])),
     [unitsQuery.data?.units]
   );
+
+  const unitFilterOptions = useMemo(
+    () =>
+      activeUnits.map((unit) => ({
+        label: formatPropertyUnitSelectLabel(unit),
+        value: unit.id,
+      })),
+    [activeUnits]
+  );
+
+  const activeSecondaryFilterCount = useMemo(
+    () =>
+      countIncomeSecondaryFilters({
+        channelCommissionId,
+        incomeType,
+        refundStatus,
+        status,
+        unitId,
+      }),
+    [channelCommissionId, incomeType, refundStatus, status, unitId]
+  );
+
+  const dateSummary = getDateRangeSummary(activePreset, displayFrom, displayTo);
+  const activeFilterItems = useMemo(
+    () =>
+      buildIncomeToolbarFilterItems({
+        activePreset,
+        channelCommissionId,
+        channelOptions: channelFilterOptions,
+        dateSummary,
+        incomeType,
+        incomeTypeOptions: incomeTypeFilterOptions,
+        isDefaultDateRange:
+          !allTime && from === defaultDateRange.from && to === defaultDateRange.to,
+        refundStatus,
+        refundStatusOptions: REFUND_STATUS_FILTER_OPTIONS,
+        status,
+        statusOptions: STATUS_OPTIONS,
+        unitId,
+        unitOptions: unitFilterOptions,
+      }),
+    [
+      activePreset,
+      allTime,
+      channelCommissionId,
+      channelFilterOptions,
+      dateSummary,
+      defaultDateRange.from,
+      defaultDateRange.to,
+      from,
+      incomeType,
+      incomeTypeFilterOptions,
+      refundStatus,
+      status,
+      to,
+      unitFilterOptions,
+      unitId,
+    ]
+  );
+
+  const handleClearSecondaryFilters = useCallback(() => {
+    setFilters({
+      channelCommissionId: "",
+      incomeType: "",
+      refundStatus: "",
+      status: "",
+      unitId: "",
+    });
+  }, [setFilters]);
+
+  const handleRemoveToolbarFilter = useCallback(
+    (id: TIncomeToolbarFilterId) => {
+      setFilters(buildIncomeToolbarClearOnePatch(id, defaultDateRange));
+    },
+    [defaultDateRange, setFilters]
+  );
+
+  const handleClearAllToolbarFilters = useCallback(() => {
+    handleSearchInputChange("");
+    setFilters(buildIncomeToolbarClearAllPatch(defaultDateRange));
+  }, [defaultDateRange, handleSearchInputChange, setFilters]);
 
   const deleteStayMutation = useMutation({
     mutationFn: (reservation: IPropertyReservation) =>
@@ -1494,33 +1498,11 @@ const PropertyIncomePage = memo(() => {
 
   return (
     <>
-      <Card>
-        <CardContent className="space-y-4 p-0">
+      <Card className="gap-0 py-0">
+        <CardContent className="p-0">
           <PropertyIncomeEntriesTable
             canManage={canManage}
             entries={displayEntries}
-            filters={
-              <PropertyIncomeFilters
-                activePreset={activePreset}
-                channelCommissionId={channelCommissionId}
-                channelFilterOptions={channelFilterOptions}
-                from={displayFrom}
-                incomeType={incomeType}
-                incomeTypeFilterOptions={incomeTypeFilterOptions}
-                onFilterChange={handleIncomeFilterChange}
-                onFromChange={onFromChange}
-                onPresetChange={onPresetChange}
-                onSearchInputChange={handleSearchInputChange}
-                onToChange={onToChange}
-                refundStatus={refundStatus}
-                searchInput={searchInput}
-                showStays={showStays}
-                status={status}
-                to={displayTo}
-                unitId={unitId}
-                units={units}
-              />
-            }
             hasNextPage={hasNextPage}
             isDeleteLinePending={deleteLineMutation.isPending}
             isDeleteStayPending={deleteStayMutation.isPending}
@@ -1529,7 +1511,6 @@ const PropertyIncomePage = memo(() => {
             isQuickDeleteActive={isQuickDeleteActive}
             isRefundLinePending={isRefundLinePending}
             isRefundStayPending={isRefundStayPending}
-            listMeta={listMeta}
             onAddOtherIncomeFromStay={(stay) =>
               openOtherIncomeFromStay(stay, incomeLineTypes, {
                 setCreateLineLockedStay,
@@ -1548,6 +1529,36 @@ const PropertyIncomePage = memo(() => {
             onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
             scrollSentinelRef={scrollSentinelRef}
             sort={sortController}
+            toolbar={
+              <PropertyIncomeToolbar
+                activeFilterCount={activeSecondaryFilterCount}
+                activeFilterItems={activeFilterItems}
+                activePreset={activePreset}
+                channelCommissionId={channelCommissionId}
+                channelFilterOptions={channelFilterOptions}
+                countLabel={listMeta ? `${listMeta.totalCount} entries` : undefined}
+                from={displayFrom}
+                incomeType={incomeType}
+                incomeTypeFilterOptions={incomeTypeFilterOptions}
+                onClearAll={handleClearAllToolbarFilters}
+                onClearSecondaryFilters={handleClearSecondaryFilters}
+                onFilterChange={handleIncomeFilterChange}
+                onFromChange={onFromChange}
+                onPresetChange={onPresetChange}
+                onRemoveFilter={handleRemoveToolbarFilter}
+                onSearchInputChange={handleSearchInputChange}
+                onToChange={onToChange}
+                refundStatus={refundStatus}
+                refundStatusFilterOptions={REFUND_STATUS_FILTER_OPTIONS}
+                searchInput={searchInput}
+                showStays={showStays}
+                status={status}
+                statusOptions={STATUS_OPTIONS}
+                to={displayTo}
+                unitId={unitId}
+                units={activeUnits}
+              />
+            }
             unitLabelById={unitLabelById}
           />
         </CardContent>

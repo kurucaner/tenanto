@@ -18,6 +18,21 @@ export const DATE_RANGE_PRESET_OPTIONS: { id: TDateRangePresetId; label: string 
   { id: DateRangePreset.ALL, label: "All time" },
 ];
 
+export function getDateRangeSummary(
+  activePreset: TDateRangePresetId | null,
+  from: string,
+  to: string
+): string {
+  const presetLabel = DATE_RANGE_PRESET_OPTIONS.find((option) => option.id === activePreset)?.label;
+  if (presetLabel) {
+    return presetLabel;
+  }
+  if (from && to) {
+    return `${from} – ${to}`;
+  }
+  return from || to || "Custom";
+}
+
 export function formatUtcDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
