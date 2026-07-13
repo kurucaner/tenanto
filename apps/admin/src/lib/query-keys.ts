@@ -8,6 +8,7 @@ import type {
   IPropertyReservationsListQuery,
   IPropertyUnitsListQuery,
   ISupportRequestsListQuery,
+  TPropertyIncomeEntriesListFilters,
 } from "@/packages/shared";
 
 export const adminQueryKeys = {
@@ -27,6 +28,8 @@ export const adminQueryKeys = {
   propertyDetail: (propertyId: string) => ["property", propertyId] as const,
   propertyExpenses: (propertyId: string, filters: IPropertyExpensesListQuery = {}) =>
     ["property", propertyId, "expenses", filters] as const,
+  propertyIncomeEntries: (propertyId: string, filters: TPropertyIncomeEntriesListFilters = {}) =>
+    ["property", propertyId, "income-entries", filters] as const,
   propertyIncomeLines: (propertyId: string, filters: IPropertyIncomeLinesListQuery = {}) =>
     ["property", propertyId, "income-lines", filters] as const,
   propertyLongStay: (propertyId: string, longStayId: string) =>

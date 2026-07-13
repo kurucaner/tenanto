@@ -167,6 +167,7 @@ export {
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
   type IPropertyExpensesListMeta,
+  type IPropertyIncomeEntriesListMeta,
   type IPropertyLongStaysListMeta,
   type IPropertyUnitsListMeta,
 } from "./list-meta-types";
@@ -186,6 +187,21 @@ export {
   PropertyLongStayStatus,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
+
+// Property Income Entries List (unified ledger pagination)
+export {
+  INCOME_ENTRIES_DEFAULT_SORT_BY,
+  INCOME_ENTRIES_DEFAULT_SORT_DIR,
+  INCOME_ENTRIES_LIST_LIMIT,
+  INCOME_ENTRIES_LIST_MAX_LIMIT,
+} from "./property-income-entries-list-constants";
+export {
+  type IPropertyIncomeEntriesListQuery,
+  type IPropertyIncomeEntriesListResponse,
+  type TPropertyIncomeEntriesListFilters,
+  type TPropertyIncomeEntriesListSortBy,
+  type TPropertyIncomeEntriesListSortDir,
+} from "./property-income-entries-types";
 
 // Property Income Line Types
 export {

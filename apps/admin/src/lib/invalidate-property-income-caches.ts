@@ -8,6 +8,9 @@ export function invalidatePropertyIncomeCaches(
   options: { longStayId?: string | null } = {}
 ): void {
   queryClient.invalidateQueries({
+    queryKey: ["property", propertyId, "income-entries"],
+  });
+  queryClient.invalidateQueries({
     queryKey: ["property", propertyId, "income-lines"],
   });
   queryClient.invalidateQueries({
