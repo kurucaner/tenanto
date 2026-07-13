@@ -1,4 +1,4 @@
-import { AlertCircle, Trash2 } from "lucide-react";
+import { AlertCircle, Trash2, TriangleAlert } from "lucide-react";
 import { memo } from "react";
 
 import {
@@ -284,16 +284,22 @@ export const ImportIncomeCsvPreviewFields = memo(
 ImportIncomeCsvPreviewFields.displayName = "ImportIncomeCsvPreviewFields";
 
 interface ImportIncomeCsvPreviewRowActionsProps {
+  duplicateWarning: string | null;
   onRemove: () => void;
   row: IIncomeImportParsedRow;
 }
 
 const ImportIncomeCsvPreviewRowActions = memo(
-  ({ onRemove, row }: ImportIncomeCsvPreviewRowActionsProps) => {
+  ({ duplicateWarning, onRemove, row }: ImportIncomeCsvPreviewRowActionsProps) => {
     const validationError = getImportIncomePreviewRowValidationError(row);
 
     return (
       <div className="flex items-center gap-2">
+        {duplicateWarning ? (
+          <Badge title={duplicateWarning} variant="outline">
+            <TriangleAlert className="size-3 text-amber-600" />
+          </Badge>
+        ) : null}
         {validationError ? (
           <Badge title={validationError} variant="destructive">
             <AlertCircle className="size-3" />
@@ -316,6 +322,7 @@ ImportIncomeCsvPreviewRowActions.displayName = "ImportIncomeCsvPreviewRowActions
 
 interface ImportIncomeCsvPreviewCardProps {
   channelCommissions: IPropertyChannelCommission[];
+  duplicateWarning: string | null;
   idPrefix: string;
   onChange: (next: IIncomeImportParsedRow) => void;
   onRemove: () => void;
@@ -326,6 +333,7 @@ interface ImportIncomeCsvPreviewCardProps {
 export const ImportIncomeCsvPreviewCard = memo(
   ({
     channelCommissions,
+    duplicateWarning,
     idPrefix,
     onChange,
     onRemove,
@@ -345,7 +353,11 @@ export const ImportIncomeCsvPreviewCard = memo(
         variant="card"
       />
       <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-        <ImportIncomeCsvPreviewRowActions onRemove={onRemove} row={row} />
+        <ImportIncomeCsvPreviewRowActions
+          duplicateWarning={duplicateWarning}
+          onRemove={onRemove}
+          row={row}
+        />
       </div>
     </article>
   )
@@ -354,6 +366,7 @@ ImportIncomeCsvPreviewCard.displayName = "ImportIncomeCsvPreviewCard";
 
 interface ImportIncomeCsvPreviewTableRowProps {
   channelCommissions: IPropertyChannelCommission[];
+  duplicateWarning: string | null;
   idPrefix: string;
   onChange: (next: IIncomeImportParsedRow) => void;
   onRemove: () => void;
@@ -364,6 +377,7 @@ interface ImportIncomeCsvPreviewTableRowProps {
 export const ImportIncomeCsvPreviewTableRow = memo(
   ({
     channelCommissions,
+    duplicateWarning,
     idPrefix,
     onChange,
     onRemove,
@@ -407,7 +421,11 @@ export const ImportIncomeCsvPreviewTableRow = memo(
           {formatReadOnlyMoney(row.netIncome)}
         </TableCell>
         <TableCell className={STICKY_ACTIONS_CELL_CLASS_NAME}>
-          <ImportIncomeCsvPreviewRowActions onRemove={onRemove} row={row} />
+          <ImportIncomeCsvPreviewRowActions
+            duplicateWarning={duplicateWarning}
+            onRemove={onRemove}
+            row={row}
+          />
         </TableCell>
       </TableRow>
     );

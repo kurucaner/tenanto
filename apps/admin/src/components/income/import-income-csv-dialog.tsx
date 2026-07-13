@@ -11,6 +11,7 @@ import {
   ImportIncomeCsvPreviewTableRow,
 } from "@/components/income/import-income-csv-preview-fields";
 import {
+  getImportIncomePreviewRowDuplicateWarning,
   getImportIncomePreviewRowValidationError,
   IMPORT_INCOME_CSV_PREVIEW_TABLE_CLASS_NAME,
   STICKY_ACTIONS_CELL_CLASS_NAME,
@@ -23,8 +24,10 @@ import { VirtualizedList } from "@/components/virtualized/virtualized-list";
 import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
 import { useCsvFileSelection } from "@/hooks/use-csv-file-selection";
 import { useIsDesktop } from "@/hooks/use-media-query";
-import { settingsApi, unitsApi } from "@/lib/api-client";
+import { reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
+import { isLocalEnvironment } from "@/lib/document-title";
 import { commitIncomeCsvImport, parseIncomeCsvFiles } from "@/lib/income-csv-import";
+import { buildIncomeImportMockParseResponse } from "@/lib/income-import-mock-data";
 import {
   type IIncomeImportPreviewContext,
   recomputeIncomeImportPreviewRow,
@@ -33,11 +36,15 @@ import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income
 import { adminQueryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import {
+  buildIncomeImportDuplicateWarningsByIndex,
+  countIncomeImportDuplicateWarnings,
+  type IIncomeImportCommitResponse,
   type IIncomeImportFileResult,
   type IIncomeImportParsedRow,
   type IIncomeImportParseResponse,
   INCOME_CSV_IMPORT_MAX_BYTES_PER_FILE,
   INCOME_CSV_IMPORT_MAX_FILES,
+  ReservationStatus,
   UnitRentalType,
 } from "@/packages/shared";
 
@@ -81,7 +88,33 @@ function notifyIncomeImportParseOutcome(
   }
 }
 
+function formatIncomeImportSuccessMessage(response: IIncomeImportCommitResponse): string {
+  const stayedCount = response.reservations.filter(
+    (reservation) =>
+      reservation.status === ReservationStatus.STAYED && reservation.refundedAt === null
+  ).length;
+  const canceledCount = response.reservations.filter(
+    (reservation) => reservation.status === ReservationStatus.CANCELED
+  ).length;
+  const noShowCount = response.reservations.filter(
+    (reservation) => reservation.status === ReservationStatus.NO_SHOW
+  ).length;
+
+  const breakdown: string[] = [];
+  if (stayedCount > 0) breakdown.push(`${stayedCount} stayed`);
+  if (canceledCount > 0) breakdown.push(`${canceledCount} canceled`);
+  if (noShowCount > 0) breakdown.push(`${noShowCount} no-show`);
+  if (response.refundCount > 0) breakdown.push(`${response.refundCount} refunded`);
+
+  if (breakdown.length === 0) {
+    return `Imported ${response.createdCount} stay(s)`;
+  }
+
+  return `Imported ${response.createdCount} stay(s) (${breakdown.join(", ")})`;
+}
+
 interface ImportIncomeCsvPreviewCardItemProps {
+  duplicateWarning: string | null;
   index: number;
   onRemoveRow: (index: number) => void;
   onUpdateRow: (index: number, nextRow: IIncomeImportParsedRow) => void;
@@ -91,6 +124,7 @@ interface ImportIncomeCsvPreviewCardItemProps {
 
 const ImportIncomeCsvPreviewCardItem = memo(
   ({
+    duplicateWarning,
     index,
     onRemoveRow,
     onUpdateRow,
@@ -111,6 +145,7 @@ const ImportIncomeCsvPreviewCardItem = memo(
     return (
       <ImportIncomeCsvPreviewCard
         channelCommissions={previewContext.channels}
+        duplicateWarning={duplicateWarning}
         idPrefix={`import-preview-${index}`}
         onChange={handleChange}
         onRemove={handleRemove}
@@ -123,6 +158,7 @@ const ImportIncomeCsvPreviewCardItem = memo(
 ImportIncomeCsvPreviewCardItem.displayName = "ImportIncomeCsvPreviewCardItem";
 
 interface ImportIncomeCsvPreviewTableRowItemProps {
+  duplicateWarning: string | null;
   index: number;
   onRemoveRow: (index: number) => void;
   onUpdateRow: (index: number, nextRow: IIncomeImportParsedRow) => void;
@@ -132,6 +168,7 @@ interface ImportIncomeCsvPreviewTableRowItemProps {
 
 const ImportIncomeCsvPreviewTableRowItem = memo(
   ({
+    duplicateWarning,
     index,
     onRemoveRow,
     onUpdateRow,
@@ -152,6 +189,7 @@ const ImportIncomeCsvPreviewTableRowItem = memo(
     return (
       <ImportIncomeCsvPreviewTableRow
         channelCommissions={previewContext.channels}
+        duplicateWarning={duplicateWarning}
         idPrefix={`import-preview-${index}`}
         onChange={handleChange}
         onRemove={handleRemove}
@@ -222,7 +260,9 @@ export const ImportIncomeCsvDialog = memo(
     const [fileResults, setFileResults] = useState<IIncomeImportFileResult[]>([]);
     const [previewRows, setPreviewRows] = useState<IIncomeImportParsedRow[]>([]);
     const [previewScrollElement, setPreviewScrollElement] = useState<HTMLDivElement | null>(null);
+    const [isLoadingMock, setIsLoadingMock] = useState(false);
     const isDesktop = useIsDesktop();
+    const showMockDataButton = isLocalEnvironment();
 
     const settingsQuery = useQuery({
       enabled: open,
@@ -236,6 +276,12 @@ export const ImportIncomeCsvDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
+    const reservationsQuery = useQuery({
+      enabled: open && step === "preview",
+      queryFn: () => reservationsApi.list(propertyId),
+      queryKey: adminQueryKeys.propertyReservations(propertyId),
+    });
+
     const previewContext = useMemo<IIncomeImportPreviewContext>(
       () => ({
         channels: settingsQuery.data?.settings.channelCommissions ?? [],
@@ -244,7 +290,11 @@ export const ImportIncomeCsvDialog = memo(
           (unit) => !unit.isDeleted && unit.rentalType === UnitRentalType.SHORT_TERM
         ),
       }),
-      [settingsQuery.data?.settings.channelCommissions, settingsQuery.data?.settings.taxRates, unitsQuery.data?.units]
+      [
+        settingsQuery.data?.settings.channelCommissions,
+        settingsQuery.data?.settings.taxRates,
+        unitsQuery.data?.units,
+      ]
     );
 
     const {
@@ -263,6 +313,7 @@ export const ImportIncomeCsvDialog = memo(
       resetFileSelection();
       setFileResults([]);
       setPreviewRows([]);
+      setIsLoadingMock(false);
     }, [resetFileSelection]);
 
     const handleOpenChange = useCallback(
@@ -286,13 +337,37 @@ export const ImportIncomeCsvDialog = memo(
     const parseMutation = useMutation({
       mutationFn: () => parseIncomeCsvFiles(propertyId, selectedFiles),
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : "Smart read failed");
+        toast.error(error instanceof Error ? error.message : "Read CSV failed");
       },
       onSuccess: applyParseResponse,
     });
 
+    const existingStays = useMemo(
+      () =>
+        (reservationsQuery.data?.reservations ?? [])
+          .filter((reservation) => !reservation.isDeleted)
+          .map((reservation) => ({
+            checkIn: reservation.checkIn,
+            checkOut: reservation.checkOut,
+            guestName: reservation.guestName,
+            unitId: reservation.unitId,
+          })),
+      [reservationsQuery.data?.reservations]
+    );
+
+    const duplicateWarningsByIndex = useMemo(
+      () => buildIncomeImportDuplicateWarningsByIndex(previewRows, existingStays),
+      [existingStays, previewRows]
+    );
+
+    const duplicateRowCount = useMemo(
+      () => countIncomeImportDuplicateWarnings(previewRows, existingStays),
+      [existingStays, previewRows]
+    );
+
     const validRowCount = useMemo(
-      () => previewRows.filter((row) => getImportIncomePreviewRowValidationError(row) === null).length,
+      () =>
+        previewRows.filter((row) => getImportIncomePreviewRowValidationError(row) === null).length,
       [previewRows]
     );
 
@@ -327,9 +402,7 @@ export const ImportIncomeCsvDialog = memo(
         toast.error(error instanceof Error ? error.message : "Failed to import income");
       },
       onSuccess: (response) => {
-        const refundSuffix =
-          response.refundCount > 0 ? ` (${response.refundCount} marked refunded)` : "";
-        toast.success(`Imported ${response.createdCount} stay(s)${refundSuffix}`);
+        toast.success(formatIncomeImportSuccessMessage(response));
         invalidatePropertyIncomeCaches(queryClient, propertyId);
         handleOpenChange(false);
       },
@@ -366,10 +439,36 @@ export const ImportIncomeCsvDialog = memo(
       parseMutation.mutate();
     }, [parseMutation]);
 
+    const handleGenerateMockData = useCallback(() => {
+      if (!showMockDataButton) {
+        return;
+      }
+
+      setIsLoadingMock(true);
+      try {
+        const response = buildIncomeImportMockParseResponse(previewContext);
+        const rowCount = response.files.flatMap((file) => file.rows ?? []).length;
+        applyParseResponse(response);
+        toast.success(`Loaded ${rowCount} mock income row(s)`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load mock data");
+      } finally {
+        setIsLoadingMock(false);
+      }
+    }, [applyParseResponse, previewContext, showMockDataButton]);
+
+    const handleGenerateMockDataClick = useCallback(() => {
+      handleGenerateMockData();
+    }, [handleGenerateMockData]);
+
     const renderPreviewCard = useCallback(
       (row: IIncomeImportParsedRow, index: number) => (
         <div className="pb-3">
           <ImportIncomeCsvPreviewCardItem
+            duplicateWarning={getImportIncomePreviewRowDuplicateWarning(
+              duplicateWarningsByIndex,
+              index
+            )}
             index={index}
             onRemoveRow={removePreviewRow}
             onUpdateRow={updatePreviewRow}
@@ -378,12 +477,16 @@ export const ImportIncomeCsvDialog = memo(
           />
         </div>
       ),
-      [previewContext, removePreviewRow, updatePreviewRow]
+      [duplicateWarningsByIndex, previewContext, removePreviewRow, updatePreviewRow]
     );
 
     const renderPreviewTableRow = useCallback(
       (row: IIncomeImportParsedRow, index: number) => (
         <ImportIncomeCsvPreviewTableRowItem
+          duplicateWarning={getImportIncomePreviewRowDuplicateWarning(
+            duplicateWarningsByIndex,
+            index
+          )}
           index={index}
           key={createPreviewRowKey(row, index)}
           onRemoveRow={removePreviewRow}
@@ -392,7 +495,7 @@ export const ImportIncomeCsvDialog = memo(
           row={row}
         />
       ),
-      [previewContext, removePreviewRow, updatePreviewRow]
+      [duplicateWarningsByIndex, previewContext, removePreviewRow, updatePreviewRow]
     );
 
     const previewList = isDesktop ? (
@@ -433,9 +536,7 @@ export const ImportIncomeCsvDialog = memo(
                 <TableHead className="text-right">Commission</TableHead>
                 <TableHead className="text-right">Taxes</TableHead>
                 <TableHead className="text-right">Gross</TableHead>
-                <TableHead className={cn(STICKY_NET_CELL_CLASS_NAME, "text-right")}>
-                  Net
-                </TableHead>
+                <TableHead className={cn(STICKY_NET_CELL_CLASS_NAME, "text-right")}>Net</TableHead>
                 <TableHead className={STICKY_ACTIONS_CELL_CLASS_NAME}>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -466,10 +567,16 @@ export const ImportIncomeCsvDialog = memo(
     const footer =
       step === "upload" ? (
         <ImportCsvUploadFooter
+          isLoadingMock={isLoadingMock}
           onCancel={handleCancel}
+          onGenerateMockData={handleGenerateMockDataClick}
           onSmartRead={handleSmartRead}
           parsePending={parseMutation.isPending}
           selectedFileCount={selectedFiles.length}
+          showMockDataButton={showMockDataButton}
+          showSmartReadIcon={false}
+          smartReadLabel="Read CSV"
+          smartReadPendingLabel="Reading…"
         />
       ) : (
         <ImportIncomeCsvPreviewFooter
@@ -515,6 +622,9 @@ export const ImportIncomeCsvDialog = memo(
                 <>
                   <p className="text-muted-foreground text-sm">
                     {validRowCount} of {previewRows.length} stay row(s) passed validation.
+                    {duplicateRowCount > 0
+                      ? ` ${duplicateRowCount} row(s) match existing stays or repeat within this import.`
+                      : null}
                   </p>
                   {previewList}
                 </>

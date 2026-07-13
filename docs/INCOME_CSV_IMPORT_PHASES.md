@@ -347,6 +347,21 @@ Re-validate: `refunded: true` requires `status: stayed`; reject conflicting payl
 
 **Exit criteria:** operator can import full sample file end-to-end with confidence; edge cases documented.
 
+### Edge cases (v1)
+
+| Scenario | Behavior |
+| -------- | -------- |
+| Re-import same CSV after a successful import | Preview shows **Similar stay already exists** on matching rows (guest + unit + check-in + check-out); import is not blocked |
+| Duplicate rows within one CSV upload | Second and later matching rows show **Duplicate row in this import** |
+| `refund` CSV rows | Parse as `stayed` + refunded checkbox checked; commit sets `refunded_at` / `refunded_by` |
+| `Canceled` / `No Show` rows | Import with that status; amounts from room total / cleaning fee |
+| Refund + canceled/no-show in same row | Validation error in preview and rejected at commit |
+| Missing unit or channel | Per-row validation error until user fixes unit/channel in preview |
+| Computed totals differ from spreadsheet | Expected — Tenanto uses property tax rates and channel commission settings |
+| Deleted units | Not offered in preview unit picker; rows referencing deleted units fail validation |
+| Junk `Err:522` rows | Skipped during parse |
+| Zero-amount refund rows | Supported |
+
 ---
 
 ## Phase diagram

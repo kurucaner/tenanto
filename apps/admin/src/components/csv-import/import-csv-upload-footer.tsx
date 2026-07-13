@@ -12,8 +12,11 @@ interface ImportCsvUploadFooterProps {
   parsePending?: boolean;
   selectedFileCount: number;
   showMockDataButton?: boolean;
+  showSmartReadIcon?: boolean;
   smartReadDisabled?: boolean;
   smartReadDisabledReason?: string;
+  smartReadLabel?: string;
+  smartReadPendingLabel?: string;
 }
 
 export const ImportCsvUploadFooter = memo(
@@ -25,8 +28,11 @@ export const ImportCsvUploadFooter = memo(
     parsePending = false,
     selectedFileCount,
     showMockDataButton = false,
+    showSmartReadIcon = true,
     smartReadDisabled = false,
     smartReadDisabledReason,
+    smartReadLabel = "Smart read",
+    smartReadPendingLabel = "Smart reading…",
   }: ImportCsvUploadFooterProps) => {
     const actionsPending = parsePending || isLoadingMock;
     const smartReadTitle = smartReadDisabled ? smartReadDisabledReason : undefined;
@@ -47,14 +53,14 @@ export const ImportCsvUploadFooter = memo(
           </Button>
         ) : null}
         <Button
-          className="gap-1.5"
+          className={showSmartReadIcon ? "gap-1.5" : undefined}
           disabled={smartReadDisabled || selectedFileCount === 0 || parsePending || isLoadingMock}
           onClick={onSmartRead}
           title={smartReadTitle}
           type="button"
         >
-          <Sparkles className="size-3.5" />
-          {parsePending ? "Smart reading…" : "Smart read"}
+          {showSmartReadIcon ? <Sparkles className="size-3.5" /> : null}
+          {parsePending ? smartReadPendingLabel : smartReadLabel}
         </Button>
       </DialogFooter>
     );

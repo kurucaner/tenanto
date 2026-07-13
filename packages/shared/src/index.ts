@@ -253,6 +253,14 @@ export {
   INCOME_CSV_IMPORT_MAX_ROWS_TOTAL,
   type TIncomeImportFileStatus,
 } from "./property-income-import-types";
+export {
+  buildIncomeImportDuplicateWarningsByIndex,
+  buildIncomeImportStayDuplicateKey,
+  countIncomeImportDuplicateWarnings,
+  INCOME_IMPORT_BATCH_DUPLICATE_WARNING,
+  INCOME_IMPORT_DUPLICATE_WARNING,
+  type IIncomeImportDuplicateMatchInput,
+} from "./income-import-duplicate-utils";
 export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 
 // Home Financial Overview Types

@@ -22,6 +22,7 @@ import {
   INCOME_CSV_IMPORT_MAX_FILES,
   INCOME_CSV_IMPORT_MAX_ROWS_PER_FILE,
   INCOME_CSV_IMPORT_MAX_ROWS_TOTAL,
+  ReservationStatus,
 } from "@/packages/shared";
 
 import { parseUuidParam } from "./admin-query-utils";
@@ -159,6 +160,9 @@ export const propertyIncomeImportRoutes = async (server: FastifyInstance): Promi
       request.log.info({
         event: "income_csv_import_parse",
         fileCount: files.length,
+        invalidRowCount: files
+          .flatMap((file) => file.rows ?? [])
+          .filter((row) => row.validationError).length,
         propertyId,
         rowCount: totalRows,
         userId: request.user.userId,
@@ -217,12 +221,24 @@ export const propertyIncomeImportRoutes = async (server: FastifyInstance): Promi
         request.user.userId
       );
       const refundCount = validated.rows.filter((row) => row.refunded).length;
+      const stayedCount = validated.rows.filter(
+        (row) => !row.refunded && row.input.status === ReservationStatus.STAYED
+      ).length;
+      const canceledCount = validated.rows.filter(
+        (row) => row.input.status === ReservationStatus.CANCELED
+      ).length;
+      const noShowCount = validated.rows.filter(
+        (row) => row.input.status === ReservationStatus.NO_SHOW
+      ).length;
 
       request.log.info({
+        canceledCount,
         createdCount: reservations.length,
         event: "income_csv_import_commit",
+        noShowCount,
         propertyId,
         refundCount,
+        stayedCount,
         userId: request.user.userId,
       });
 

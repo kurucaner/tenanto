@@ -12,3 +12,10 @@ export function getImportIncomePreviewRowValidationError(
 ): string | null {
   return row.validationError ?? null;
 }
+
+export function getImportIncomePreviewRowDuplicateWarning(
+  duplicateWarningsByIndex: ReadonlyMap<number, string>,
+  index: number
+): string | null {
+  return duplicateWarningsByIndex.get(index) ?? null;
+}
