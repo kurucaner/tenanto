@@ -146,31 +146,31 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Add optional `cursor` + `limit` to `GET /properties/:propertyId/short-stays`
+- [x] Add optional `cursor` + `limit` to `GET /properties/:propertyId/short-stays`
   - short-stays already accepts `limit`; add keyset cursor encoding/decoding
   - cursor matches `ORDER BY check_in DESC, created_at DESC, id DESC`
-- [ ] Add optional `cursor` + `limit` to `GET /properties/:propertyId/income-lines`
+- [x] Add optional `cursor` + `limit` to `GET /properties/:propertyId/income-lines`
   - cursor matches `ORDER BY transaction_date DESC, created_at DESC, id DESC`
-- [ ] Reuse existing pagination utilities:
+- [x] Reuse existing pagination utilities:
   - `takePageWithNextCursor` (`apps/server/src/pagination/limit-plus-one.ts`)
   - new encode/decode helpers in `apps/server/src/pagination/keyset-cursor.ts`
   - `shouldIncludeListMeta` for first-page `totalCount`
-- [ ] Add `listPaginatedByProperty` (or equivalent) to:
+- [x] Add `listPaginatedByProperty` (or equivalent) to:
   - `apps/server/src/db/property-reservations.ts`
   - `apps/server/src/db/property-income-lines.ts`
-- [ ] **Backward compatible:** if `cursor`/`limit` omitted, retain current "return all" behavior temporarily (or cap at a safe max — decide in Phase 0)
+- [x] **Backward compatible:** if `cursor`/`limit` omitted, retain current "return all" behavior temporarily (or cap at a safe max — decide in Phase 0) — **always paginated** (expenses pattern; default limit 50)
 
 ### Frontend
 
-- [ ] Add hooks (mirror `use-property-expenses-infinite-list.ts`):
+- [x] Add hooks (mirror `use-property-expenses-infinite-list.ts`):
   - `usePropertyShortStaysInfiniteList`
   - `usePropertyIncomeLinesInfiniteList`
-- [ ] On income page:
+- [x] On income page:
   - filter = **Stay** → short-stays infinite list only
   - filter = **specific line type** → income-lines infinite list only
-  - filter = **All / empty** → **keep current dual-fetch + client merge** (unchanged)
-- [ ] Add `DataTableCountFooter` + `useInfiniteScrollTrigger` for paginated modes only
-- [ ] Keep client sort for now (smaller pages make this acceptable)
+  - filter = **All / empty** → dual infinite query with auto-fetch all pages + client merge
+- [x] Add `DataTableCountFooter` + `useInfiniteScrollTrigger` for paginated modes only
+- [x] Keep client sort for now (smaller pages make this acceptable)
 
 **Exit criteria:** Stay-only and line-type-only views paginate correctly; All view unchanged.
 

@@ -2,11 +2,15 @@ import { describe, expect, test } from "bun:test";
 
 import {
   decodeExpenseKeysetCursor,
+  decodeIncomeLineKeysetCursor,
   decodeKeysetCursor,
   decodeLeaseKeysetCursor,
+  decodeReservationKeysetCursor,
   encodeExpenseKeysetCursor,
+  encodeIncomeLineKeysetCursor,
   encodeKeysetCursor,
   encodeLeaseKeysetCursor,
+  encodeReservationKeysetCursor,
 } from "./keyset-cursor";
 
 describe("encodeKeysetCursor / decodeKeysetCursor", () => {
@@ -91,5 +95,41 @@ describe("encodeLeaseKeysetCursor / decodeLeaseKeysetCursor", () => {
       "utf8"
     ).toString("base64url");
     expect(() => decodeLeaseKeysetCursor(encoded)).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodeReservationKeysetCursor / decodeReservationKeysetCursor", () => {
+  test("round-trips checkIn, createdAt, and id", () => {
+    const encoded = encodeReservationKeysetCursor(
+      "2026-07-09",
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    const decoded = decodeReservationKeysetCursor(encoded);
+    expect(decoded.checkIn).toBe("2026-07-09");
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodeReservationKeysetCursor("bad")).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodeIncomeLineKeysetCursor / decodeIncomeLineKeysetCursor", () => {
+  test("round-trips transactionDate, createdAt, and id", () => {
+    const encoded = encodeIncomeLineKeysetCursor(
+      "2026-07-09",
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    const decoded = decodeIncomeLineKeysetCursor(encoded);
+    expect(decoded.transactionDate).toBe("2026-07-09");
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodeIncomeLineKeysetCursor("bad")).toThrow("Invalid cursor");
   });
 });

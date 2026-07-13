@@ -1,3 +1,4 @@
+import type { IPropertyIncomeLinesListMeta } from "./list-meta-types";
 import type { IPropertyReservation } from "./property-reservation-types";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 
@@ -59,13 +60,26 @@ export interface IUpdatePropertyIncomeLineBody {
 }
 
 export interface IPropertyIncomeLinesListQuery {
+  cursor?: string;
   from?: string;
   incomeLineTypeId?: string;
+  limit?: number;
   longStayId?: string;
   rentalType?: import("./property-types").TUnitRentalType;
   reservationId?: string;
   to?: string;
   unitId?: string;
+}
+
+export type TPropertyIncomeLinesListFilters = Pick<
+  IPropertyIncomeLinesListQuery,
+  "from" | "incomeLineTypeId" | "to" | "unitId"
+>;
+
+export interface IPropertyIncomeLinesListResponse {
+  incomeLines: IPropertyIncomeLine[];
+  meta?: IPropertyIncomeLinesListMeta;
+  nextCursor: string | null;
 }
 
 export type TPropertyIncomeEntry =

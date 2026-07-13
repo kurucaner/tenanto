@@ -3,8 +3,15 @@ import type {
   IPropertyReservation,
   IPropertyReservationComputedFields,
   IPropertyReservationsListQuery,
+  IPropertyShortStaysListMeta,
   IUpdatePropertyReservationBody,
 } from "@/packages/shared";
+import {
+  decodeReservationKeysetCursor,
+  encodeReservationKeysetCursor,
+} from "@/pagination/keyset-cursor";
+import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
+import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { mapPropertyReservationRow } from "./mappers";
 import { pool } from "./pool";
@@ -15,6 +22,8 @@ const RESERVATION_SELECT = `
   pcc.exclude_cleaning_from_commission_base,
   pcc.exclude_resort_tax_from_payout
 `;
+
+type TReservationListDbFilters = Omit<IPropertyReservationsListQuery, "cursor" | "limit">;
 
 const RESERVATION_CHANNEL_JOIN = `
   INNER JOIN property_channel_commissions pcc ON pcc.id = pr.channel_commission_id
@@ -72,11 +81,11 @@ function applyIncludeReservationIdFilter(
   pushReservationCondition(parts, "pr.id = $?", filters.includeReservationId);
 }
 
-function buildReservationListQuery(
+function buildReservationListParts(
   propertyId: string,
   filters: IPropertyReservationsListQuery,
   includeDeleted: boolean
-): { joinUnits: string; limitClause: string; sqlConditions: string; values: unknown[] } {
+): { conditions: string[]; joinUnits: string; values: unknown[] } {
   const parts: IReservationListQueryParts = {
     conditions: ["pr.property_id = $1"],
     joinUnits: "",
@@ -110,14 +119,42 @@ function buildReservationListQuery(
     parts.conditions.push("pr.is_deleted = false");
   }
 
+  return {
+    conditions: parts.conditions,
+    joinUnits: parts.joinUnits,
+    values: parts.values,
+  };
+}
+
+function formatCheckInForCursor(checkIn: unknown): string {
+  if (checkIn instanceof Date) {
+    return checkIn.toISOString().slice(0, 10);
+  }
+  if (typeof checkIn === "string") {
+    return checkIn.slice(0, 10);
+  }
+  throw new TypeError("Invalid check_in for cursor");
+}
+
+function buildReservationListQuery(
+  propertyId: string,
+  filters: IPropertyReservationsListQuery,
+  includeDeleted: boolean
+): { joinUnits: string; limitClause: string; sqlConditions: string; values: unknown[] } {
+  const { conditions, joinUnits, values } = buildReservationListParts(
+    propertyId,
+    filters,
+    includeDeleted
+  );
+
   const limitClause =
     filters.limit != null && filters.limit > 0 ? ` LIMIT ${Math.floor(filters.limit)}` : "";
 
   return {
-    joinUnits: parts.joinUnits,
+    joinUnits,
     limitClause,
-    sqlConditions: parts.conditions.join(" AND "),
-    values: parts.values,
+    sqlConditions: conditions.join(" AND "),
+    values,
   };
 }
 
@@ -302,6 +339,103 @@ export const propertyReservationsDb = {
     );
 
     return result.rows.map((row) => mapPropertyReservationRow(row as Record<string, unknown>));
+  },
+
+  async getListMetaByProperty(
+    propertyId: string,
+    filters: TReservationListDbFilters,
+    includeDeleted = false
+  ): Promise<IPropertyShortStaysListMeta> {
+    const { conditions, joinUnits, values } = buildReservationListParts(
+      propertyId,
+      filters,
+      includeDeleted
+    );
+
+    const result = await pool.query<{ total_count: number }>(
+      `SELECT COUNT(*)::int AS total_count
+       FROM property_reservations pr
+       ${RESERVATION_CHANNEL_JOIN}
+       ${joinUnits}
+       WHERE ${conditions.join(" AND ")}`,
+      values
+    );
+
+    const row = result.rows[0];
+    return {
+      totalCount: row?.total_count ?? 0,
+    };
+  },
+
+  async listPaginatedByProperty(
+    propertyId: string,
+    filters: TReservationListDbFilters,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{
+    meta?: IPropertyShortStaysListMeta;
+    nextCursor: string | null;
+    shortStays: IPropertyReservation[];
+  }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const includeMeta = shouldIncludeListMeta(options.cursor);
+    const listPromise = propertyReservationsDb.listPaginatedPage(propertyId, filters, options);
+    const metaPromise = includeMeta
+      ? propertyReservationsDb.getListMetaByProperty(propertyId, filters, includeDeleted)
+      : Promise.resolve(undefined);
+
+    const [{ nextCursor, shortStays }, meta] = await Promise.all([listPromise, metaPromise]);
+
+    return meta == null ? { nextCursor, shortStays } : { meta, nextCursor, shortStays };
+  },
+
+  async listPaginatedPage(
+    propertyId: string,
+    filters: TReservationListDbFilters,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{ nextCursor: string | null; shortStays: IPropertyReservation[] }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const { conditions, joinUnits, values } = buildReservationListParts(
+      propertyId,
+      filters,
+      includeDeleted
+    );
+    let p = values.length + 1;
+
+    if (options.cursor != null && options.cursor !== "") {
+      const decoded = decodeReservationKeysetCursor(options.cursor);
+      conditions.push(
+        `(pr.check_in, pr.created_at, pr.id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
+      );
+      values.push(decoded.checkIn, decoded.createdAt, decoded.id);
+    }
+
+    const limitParam = p;
+    values.push(options.limit + 1);
+
+    const result = await pool.query(
+      `SELECT ${RESERVATION_SELECT}
+       FROM property_reservations pr
+       ${RESERVATION_CHANNEL_JOIN}
+       ${joinUnits}
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY pr.check_in DESC, pr.created_at DESC, pr.id DESC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
+      encodeReservationKeysetCursor(
+        formatCheckInForCursor(last.check_in),
+        last.created_at as Date | string,
+        last.id as string
+      )
+    );
+
+    return {
+      nextCursor,
+      shortStays: pageRows.map((row) => mapPropertyReservationRow(row)),
+    };
   },
 
   async refund(id: string, userId: string): Promise<boolean> {

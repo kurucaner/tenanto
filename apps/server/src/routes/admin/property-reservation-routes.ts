@@ -16,9 +16,10 @@ import {
   UnitRentalType,
   UserType,
 } from "@/packages/shared";
+import { decodeReservationKeysetCursor } from "@/pagination/keyset-cursor";
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
-import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import { parseDateString, parseIncomeEntriesListLimit, parseUuidParam } from "./admin-query-utils";
 import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-route-actions";
 import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
@@ -300,25 +301,14 @@ function parseReservationRentalTypeFilter(
   return { ok: true };
 }
 
-function parseReservationLimitFilter(
-  query: Record<string, unknown>,
-  filters: IPropertyReservationsListQuery
-): { error: string; ok: false } | { ok: true } {
-  if (query["limit"] === undefined || query["limit"] === "") {
-    return { ok: true };
-  }
-  const rawLimit = Number(query["limit"]);
-  if (!Number.isInteger(rawLimit) || rawLimit < 1 || rawLimit > 100) {
-    return { error: "limit must be an integer between 1 and 100", ok: false };
-  }
-  filters.limit = rawLimit;
-  return { ok: true };
-}
+type TReservationListRouteFilters = Omit<IPropertyReservationsListQuery, "cursor" | "limit">;
 
 function parseReservationsListQuery(
   query: Record<string, unknown>
-): { filters: IPropertyReservationsListQuery; ok: true } | { error: string; ok: false } {
-  const filters: IPropertyReservationsListQuery = {};
+):
+  | { cursor?: string; filters: TReservationListRouteFilters; limit: number; ok: true }
+  | { error: string; ok: false } {
+  const filters: TReservationListRouteFilters = {};
 
   const filterSteps = [
     () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
@@ -346,7 +336,6 @@ function parseReservationsListQuery(
         "includeReservationId must be a valid UUID"
       ),
     () => parseReservationRentalTypeFilter(query, filters),
-    () => parseReservationLimitFilter(query, filters),
   ];
 
   for (const applyFilter of filterSteps) {
@@ -376,7 +365,11 @@ function parseReservationsListQuery(
     filters.status = status;
   }
 
-  return { filters, ok: true };
+  const limit = parseIncomeEntriesListLimit(query["limit"]);
+  const cursor =
+    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
+
+  return { cursor, filters, limit, ok: true };
 }
 
 interface IPropertyParams {
@@ -510,13 +503,21 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
+      if (parsed.cursor != null) {
+        try {
+          decodeReservationKeysetCursor(parsed.cursor);
+        } catch {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+        }
+      }
+
       const includeDeleted = request.user.userType === UserType.ADMIN;
-      const shortStays = await propertyReservationsDb.findByProperty(
+      const { meta, nextCursor, shortStays } = await propertyReservationsDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
-        includeDeleted
+        { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
-      return reply.send({ shortStays });
+      return reply.send(meta ? { meta, nextCursor, shortStays } : { nextCursor, shortStays });
     }
   );
 

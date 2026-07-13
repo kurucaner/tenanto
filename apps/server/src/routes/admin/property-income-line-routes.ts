@@ -14,10 +14,11 @@ import {
   type IUpdatePropertyIncomeLineBody,
   UserType,
 } from "@/packages/shared";
+import { decodeIncomeLineKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
-import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import { parseDateString, parseIncomeEntriesListLimit, parseUuidParam } from "./admin-query-utils";
 import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-route-actions";
 import {
   parseJsonObject,
@@ -240,6 +241,25 @@ function parseIncomeLinesListQuery(
   return { filters, ok: true };
 }
 
+type TIncomeLineListRouteFilters = Omit<IPropertyIncomeLinesListQuery, "cursor" | "limit">;
+
+function parseIncomeLinesListQueryPaginated(
+  query: Record<string, unknown>
+):
+  | { cursor?: string; filters: TIncomeLineListRouteFilters; limit: number; ok: true }
+  | { error: string; ok: false } {
+  const parsed = parseIncomeLinesListQuery(query);
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const limit = parseIncomeEntriesListLimit(query["limit"]);
+  const cursor =
+    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
+
+  return { cursor, filters: parsed.filters, limit, ok: true };
+}
+
 interface IPropertyParams {
   propertyId: string;
 }
@@ -395,18 +415,26 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (!hasAccess) return;
 
-      const parsed = parseIncomeLinesListQuery(request.query);
+      const parsed = parseIncomeLinesListQueryPaginated(request.query);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
+      if (parsed.cursor != null) {
+        try {
+          decodeIncomeLineKeysetCursor(parsed.cursor);
+        } catch {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+        }
+      }
+
       const includeDeleted = request.user.userType === UserType.ADMIN;
-      const incomeLines = await propertyIncomeLinesDb.findByProperty(
+      const { incomeLines, meta, nextCursor } = await propertyIncomeLinesDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
-        includeDeleted
+        { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
-      return reply.send({ incomeLines });
+      return reply.send(meta ? { incomeLines, meta, nextCursor } : { incomeLines, nextCursor });
     }
   );
 

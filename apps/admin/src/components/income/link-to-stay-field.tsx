@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { memo, useMemo } from "react";
 
 import { FieldLabel } from "@/components/ui/field-label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { shortStaysApi } from "@/lib/api-client";
+import { useFetchAllInfinitePages } from "@/hooks/use-fetch-all-infinite-pages";
+import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { isPropertyAmenityUnit } from "@/lib/property-amenity-unit";
-import { adminQueryKeys } from "@/lib/query-keys";
 import {
   buildStayLinkPickerFilters,
   RECENT_STAY_PICKER_DAYS,
@@ -73,19 +72,29 @@ export const LinkToStayField = memo(
       [includeReservationId, reservationId, transactionDate, unitId]
     );
 
-    const shortStaysQuery = useQuery({
-      enabled: unitId !== "" && !isPropertyAmenityUnit(unitId),
-      queryFn: () => shortStaysApi.list(propertyId, pickerFilters),
-      queryKey: adminQueryKeys.propertyReservationPicker(propertyId, pickerFilters),
+    const pickerEnabled = unitId !== "" && !isPropertyAmenityUnit(unitId);
+    const shortStaysInfinite = usePropertyShortStaysInfiniteList(propertyId, pickerFilters, {
+      enabled: pickerEnabled,
     });
 
-    const shortStays = shortStaysQuery.data?.shortStays ?? [];
+    useFetchAllInfinitePages({
+      enabled: pickerEnabled,
+      fetchNextPage: shortStaysInfinite.fetchNextPage,
+      hasNextPage: shortStaysInfinite.hasNextPage,
+      isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,
+    });
+
+    const shortStays = shortStaysInfinite.shortStays;
+    const isPending =
+      shortStaysInfinite.isPending ||
+      shortStaysInfinite.isFetchingNextPage ||
+      Boolean(shortStaysInfinite.hasNextPage);
     const helperText = transactionDate
       ? `Showing stays within ±${STAY_PICKER_DATE_WINDOW_DAYS} days of the selected date.`
       : `Showing stays from the last ${RECENT_STAY_PICKER_DAYS} days.`;
     const statusMessage = getLinkToStayHelperMessage(
       unitId,
-      shortStaysQuery.isPending,
+      isPending,
       shortStays.length,
       helperText
     );
@@ -96,9 +105,7 @@ export const LinkToStayField = memo(
           Link to stay
         </FieldLabel>
         <NativeSelect
-          disabled={
-            disabled || unitId === "" || isPropertyAmenityUnit(unitId) || shortStaysQuery.isPending
-          }
+          disabled={disabled || unitId === "" || isPropertyAmenityUnit(unitId) || isPending}
           emptyOptionLabel="No linked stay"
           id={id}
           onChange={(e) => onReservationIdChange(e.target.value)}

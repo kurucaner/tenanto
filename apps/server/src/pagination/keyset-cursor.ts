@@ -154,3 +154,93 @@ export function decodeUnitKeysetCursor(raw: string): UnitKeysetCursorV1 {
 export function encodeUnitKeysetCursor(rentalType: string, unitNumber: string, id: string): string {
   return Buffer.from(JSON.stringify({ id, rentalType, unitNumber }), "utf8").toString("base64url");
 }
+
+/**
+ * Short-stay list keyset cursor (v1): checkIn (YYYY-MM-DD) + createdAt + id.
+ * Matches ORDER BY check_in DESC, created_at DESC, id DESC.
+ */
+export type ReservationKeysetCursorV1 = {
+  checkIn: string;
+  createdAt: string;
+  id: string;
+};
+
+export function decodeReservationKeysetCursor(raw: string): ReservationKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      checkIn?: unknown;
+      createdAt?: unknown;
+      id?: unknown;
+    };
+    if (
+      typeof parsed.checkIn !== "string" ||
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.id !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      checkIn: parsed.checkIn,
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeReservationKeysetCursor(
+  checkIn: string,
+  createdAt: Date | string,
+  id: string
+): string {
+  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
+  return Buffer.from(JSON.stringify({ checkIn, createdAt: iso, id }), "utf8").toString("base64url");
+}
+
+/**
+ * Income line list keyset cursor (v1): transactionDate (YYYY-MM-DD) + createdAt + id.
+ * Matches ORDER BY transaction_date DESC, created_at DESC, id DESC.
+ */
+export type IncomeLineKeysetCursorV1 = {
+  createdAt: string;
+  id: string;
+  transactionDate: string;
+};
+
+export function decodeIncomeLineKeysetCursor(raw: string): IncomeLineKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      createdAt?: unknown;
+      id?: unknown;
+      transactionDate?: unknown;
+    };
+    if (
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.transactionDate !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+      transactionDate: parsed.transactionDate,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeIncomeLineKeysetCursor(
+  transactionDate: string,
+  createdAt: Date | string,
+  id: string
+): string {
+  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
+  return Buffer.from(JSON.stringify({ createdAt: iso, id, transactionDate }), "utf8").toString(
+    "base64url"
+  );
+}

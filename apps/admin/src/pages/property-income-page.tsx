@@ -1,10 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus } from "lucide-react";
-import { memo, type MouseEvent, type ReactNode, useCallback, useMemo, useState } from "react";
+import {
+  memo,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 import { ImportCsvButton } from "@/components/csv-import/import-csv-button";
 import { DataTable } from "@/components/data-table/data-table";
+import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import {
   type DataTableColumn,
   type DataTableSortController,
@@ -43,8 +52,12 @@ import {
   type TDeleteConfirmationOptions,
   useDeleteConfirmation,
 } from "@/hooks/use-delete-confirmation";
+import { useFetchAllInfinitePages } from "@/hooks/use-fetch-all-infinite-pages";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { usePropertyIncomeLinesInfiniteList } from "@/hooks/use-property-income-lines-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
@@ -101,6 +114,18 @@ function buildMergedEntries(
   }
 
   return entries;
+}
+
+function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
+  return { entryKind: IncomeEntryKind.STAY, stay };
+}
+
+function mapLineToEntry(line: IPropertyIncomeLine): TPropertyIncomeEntry {
+  return { entryKind: IncomeEntryKind.LINE, line };
+}
+
+function buildIncomeFooterItems(meta: { totalCount: number }) {
+  return [{ label: "Total", value: String(meta.totalCount) }];
 }
 
 const INCOME_ROW_ESTIMATED_HEIGHT = 64;
@@ -370,12 +395,15 @@ const PropertyIncomeEntriesTable = memo(
     canManage,
     entries,
     filters,
+    hasNextPage,
     isDeleteLinePending,
     isDeleteStayPending,
+    isFetchingNextPage,
     isLoading,
     isQuickDeleteActive,
     isRefundLinePending,
     isRefundStayPending,
+    listMeta,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
@@ -386,18 +414,22 @@ const PropertyIncomeEntriesTable = memo(
     onRestoreLine,
     onRestoreStay,
     onShowCalculationDetails,
+    scrollSentinelRef,
     sort,
     unitLabelById,
   }: {
     canManage: boolean;
     entries: TPropertyIncomeEntry[];
     filters: ReactNode;
+    hasNextPage: boolean;
     isDeleteLinePending: boolean;
     isDeleteStayPending: boolean;
+    isFetchingNextPage: boolean;
     isLoading: boolean;
     isQuickDeleteActive: boolean;
     isRefundLinePending: boolean;
     isRefundStayPending: boolean;
+    listMeta?: { totalCount: number };
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
     onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
@@ -408,6 +440,7 @@ const PropertyIncomeEntriesTable = memo(
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+    scrollSentinelRef: RefObject<HTMLDivElement | null>;
     sort: DataTableSortController;
     unitLabelById: Map<string, string>;
   }) => {
@@ -457,13 +490,21 @@ const PropertyIncomeEntriesTable = memo(
     );
 
     const columns = useMemo(() => getIncomeColumns(canManage), [canManage]);
+    const colSpan = columns.filter((column) => !column.hidden).length;
 
     return (
       <DataTable
         columns={columns}
         emptyMessage={`No income entries yet.${canManage ? " Add a stay or other income to get started." : ""}`}
         filters={filters}
+        footer={
+          listMeta ? (
+            <DataTableCountFooter colSpan={colSpan} items={buildIncomeFooterItems(listMeta)} />
+          ) : undefined
+        }
         getItemKey={getIncomeEntryKey}
+        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+        infiniteScrollSentinelRef={scrollSentinelRef}
         isPending={isLoading}
         items={entries}
         renderRow={renderIncomeEntryRow}
@@ -1037,16 +1078,45 @@ const PropertyIncomePage = memo(() => {
     [dateFilters, incomeType]
   );
 
-  const shortStaysQuery = useQuery({
-    enabled: incomeType === "" || incomeType === IncomeEntryKind.STAY,
-    queryFn: () => shortStaysApi.list(propertyId, reservationFilters),
-    queryKey: adminQueryKeys.propertyShortStays(propertyId, reservationFilters),
+  const isAllView = incomeType === "";
+  const isStayOnlyView = incomeType === IncomeEntryKind.STAY;
+  const isLineTypeOnlyView = incomeType !== "" && incomeType !== IncomeEntryKind.STAY;
+  const showStaysInQuery = incomeType === "" || incomeType === IncomeEntryKind.STAY;
+  const showLinesInQuery = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
+
+  const shortStaysInfinite = usePropertyShortStaysInfiniteList(propertyId, reservationFilters, {
+    enabled: showStaysInQuery,
+  });
+  const incomeLinesInfinite = usePropertyIncomeLinesInfiniteList(propertyId, lineFilters, {
+    enabled: showLinesInQuery,
   });
 
-  const incomeLinesQuery = useQuery({
-    enabled: incomeType === "" || incomeType !== IncomeEntryKind.STAY,
-    queryFn: () => incomeLinesApi.list(propertyId, lineFilters),
-    queryKey: adminQueryKeys.propertyIncomeLines(propertyId, lineFilters),
+  useFetchAllInfinitePages({
+    enabled: isAllView && showStaysInQuery,
+    fetchNextPage: shortStaysInfinite.fetchNextPage,
+    hasNextPage: shortStaysInfinite.hasNextPage,
+    isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,
+  });
+  useFetchAllInfinitePages({
+    enabled: isAllView && showLinesInQuery,
+    fetchNextPage: incomeLinesInfinite.fetchNextPage,
+    hasNextPage: incomeLinesInfinite.hasNextPage,
+    isFetchingNextPage: incomeLinesInfinite.isFetchingNextPage,
+  });
+
+  const scrollSentinelRef = useInfiniteScrollTrigger({
+    enabled: isStayOnlyView || isLineTypeOnlyView,
+    fetchNextPage: isStayOnlyView
+      ? shortStaysInfinite.fetchNextPage
+      : incomeLinesInfinite.fetchNextPage,
+    hasNextPage: isStayOnlyView
+      ? shortStaysInfinite.hasNextPage
+      : isLineTypeOnlyView
+        ? incomeLinesInfinite.hasNextPage
+        : false,
+    isFetchingNextPage: isStayOnlyView
+      ? shortStaysInfinite.isFetchingNextPage
+      : incomeLinesInfinite.isFetchingNextPage,
   });
 
   const unitsQuery = useQuery({
@@ -1240,25 +1310,62 @@ const PropertyIncomePage = memo(() => {
     [requestLineRefund]
   );
 
-  const entries = useMemo(
-    () =>
-      buildMergedEntries(
-        shortStaysQuery.data?.shortStays ?? [],
-        incomeLinesQuery.data?.incomeLines ?? [],
+  const entries = useMemo(() => {
+    if (isAllView) {
+      return buildMergedEntries(
+        shortStaysInfinite.shortStays,
+        incomeLinesInfinite.incomeLines,
         incomeType
-      ),
-    [incomeLinesQuery.data?.incomeLines, incomeType, shortStaysQuery.data?.shortStays]
-  );
+      );
+    }
+    if (isStayOnlyView) {
+      return shortStaysInfinite.shortStays.map(mapStayToEntry);
+    }
+    return incomeLinesInfinite.incomeLines.map(mapLineToEntry);
+  }, [
+    incomeLinesInfinite.incomeLines,
+    incomeType,
+    isAllView,
+    isStayOnlyView,
+    shortStaysInfinite.shortStays,
+  ]);
 
   const sortedEntries = useMemo(
     () => sortIncomeEntries(entries, sortState, unitLabelById),
     [entries, sortState, unitLabelById]
   );
 
-  const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
-  const showLines = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
-  const isLoading =
-    (showStays && shortStaysQuery.isPending) || (showLines && incomeLinesQuery.isPending);
+  const showStays = showStaysInQuery;
+  const isLoading = isAllView
+    ? (showStaysInQuery &&
+        (shortStaysInfinite.isPending ||
+          shortStaysInfinite.isFetchingNextPage ||
+          shortStaysInfinite.hasNextPage)) ||
+      (showLinesInQuery &&
+        (incomeLinesInfinite.isPending ||
+          incomeLinesInfinite.isFetchingNextPage ||
+          incomeLinesInfinite.hasNextPage))
+    : isStayOnlyView
+      ? shortStaysInfinite.isPending
+      : incomeLinesInfinite.isPending;
+
+  const listMeta = isStayOnlyView
+    ? shortStaysInfinite.meta
+    : isLineTypeOnlyView
+      ? incomeLinesInfinite.meta
+      : undefined;
+
+  const hasNextPage = isStayOnlyView
+    ? Boolean(shortStaysInfinite.hasNextPage)
+    : isLineTypeOnlyView
+      ? Boolean(incomeLinesInfinite.hasNextPage)
+      : false;
+
+  const isFetchingNextPage = isStayOnlyView
+    ? shortStaysInfinite.isFetchingNextPage
+    : isLineTypeOnlyView
+      ? incomeLinesInfinite.isFetchingNextPage
+      : false;
 
   const handleAddOtherIncome = useCallback(() => {
     setCreateLinePrefill(null);
@@ -1300,12 +1407,15 @@ const PropertyIncomePage = memo(() => {
                 units={units}
               />
             }
+            hasNextPage={hasNextPage}
             isDeleteLinePending={deleteLineMutation.isPending}
             isDeleteStayPending={deleteStayMutation.isPending}
+            isFetchingNextPage={isFetchingNextPage}
             isLoading={isLoading}
             isQuickDeleteActive={isQuickDeleteActive}
             isRefundLinePending={isRefundLinePending}
             isRefundStayPending={isRefundStayPending}
+            listMeta={listMeta}
             onAddOtherIncomeFromStay={(stay) =>
               openOtherIncomeFromStay(stay, incomeLineTypes, {
                 setCreateLineLockedStay,
@@ -1322,6 +1432,7 @@ const PropertyIncomePage = memo(() => {
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
             onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
             onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
+            scrollSentinelRef={scrollSentinelRef}
             sort={sortController}
             unitLabelById={unitLabelById}
           />

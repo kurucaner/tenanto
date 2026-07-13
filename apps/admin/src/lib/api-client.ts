@@ -34,6 +34,7 @@ import {
   type IPropertyExpensesListResponse,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
+  type IPropertyIncomeLinesListResponse,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
@@ -756,6 +757,7 @@ function buildShortStaysSearchParams(query: IPropertyReservationsListQuery = {})
   if (query.status) params.set("status", query.status);
   if (query.rentalType) params.set("rentalType", query.rentalType);
   if (query.includeReservationId) params.set("includeReservationId", query.includeReservationId);
+  if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
   return search ? `?${search}` : "";
@@ -811,6 +813,8 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
   if (query.unitId) params.set("unitId", query.unitId);
   if (query.incomeLineTypeId) params.set("incomeLineTypeId", query.incomeLineTypeId);
   if (query.reservationId) params.set("reservationId", query.reservationId);
+  if (query.cursor) params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
   return search ? `?${search}` : "";
 }
@@ -829,7 +833,7 @@ export const incomeLinesApi = {
     ),
 
   list: (propertyId: string, query?: IPropertyIncomeLinesListQuery) =>
-    authenticatedRequest<{ incomeLines: IPropertyIncomeLine[] }>(
+    authenticatedRequest<IPropertyIncomeLinesListResponse>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
     ),
 

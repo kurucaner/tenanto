@@ -2,9 +2,16 @@ import type {
   ICreatePropertyIncomeLineBody,
   IPropertyIncomeLine,
   IPropertyIncomeLineComputedFields,
+  IPropertyIncomeLinesListMeta,
   IPropertyIncomeLinesListQuery,
   IUpdatePropertyIncomeLineBody,
 } from "@/packages/shared";
+import {
+  decodeIncomeLineKeysetCursor,
+  encodeIncomeLineKeysetCursor,
+} from "@/pagination/keyset-cursor";
+import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
+import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { mapPropertyIncomeLineRow } from "./mappers";
 import { pool } from "./pool";
@@ -16,6 +23,65 @@ const INCOME_LINE_SELECT = `
   FROM property_income_lines pil
   INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
 `;
+
+type TIncomeLineListDbFilters = Omit<IPropertyIncomeLinesListQuery, "cursor" | "limit">;
+
+function buildIncomeLineListParts(
+  propertyId: string,
+  filters: TIncomeLineListDbFilters,
+  includeDeleted: boolean
+): { conditions: string[]; joinUnits: string; values: unknown[] } {
+  const conditions = ["pil.property_id = $1"];
+  const values: unknown[] = [propertyId];
+  let p = 2;
+
+  if (!includeDeleted) {
+    conditions.push("pil.is_deleted = false");
+  }
+
+  if (filters.from) {
+    conditions.push(`pil.transaction_date >= $${p++}`);
+    values.push(filters.from);
+  }
+  if (filters.to) {
+    conditions.push(`pil.transaction_date <= $${p++}`);
+    values.push(filters.to);
+  }
+  if (filters.unitId) {
+    conditions.push(`pil.unit_id = $${p++}`);
+    values.push(filters.unitId);
+  }
+  if (filters.incomeLineTypeId) {
+    conditions.push(`pil.income_line_type_id = $${p++}`);
+    values.push(filters.incomeLineTypeId);
+  }
+  if (filters.reservationId) {
+    conditions.push(`pil.reservation_id = $${p++}`);
+    values.push(filters.reservationId);
+  }
+  if (filters.longStayId) {
+    conditions.push(`pil.long_stay_id = $${p++}`);
+    values.push(filters.longStayId);
+  }
+
+  const joinUnits = filters.rentalType ? "INNER JOIN property_units pu ON pu.id = pil.unit_id" : "";
+  if (filters.rentalType) {
+    conditions.push(`pu.rental_type = $${p++}::property_unit_rental_type`);
+    values.push(filters.rentalType);
+  }
+
+  return { conditions, joinUnits, values };
+}
+
+function formatTransactionDateForCursor(transactionDate: unknown): string {
+  if (transactionDate instanceof Date) {
+    return transactionDate.toISOString().slice(0, 10);
+  }
+  if (typeof transactionDate === "string") {
+    return transactionDate.slice(0, 10);
+  }
+  throw new TypeError("Invalid transaction_date for cursor");
+}
 
 export const propertyIncomeLinesDb = {
   async create(
@@ -86,46 +152,11 @@ export const propertyIncomeLinesDb = {
     filters: IPropertyIncomeLinesListQuery = {},
     includeDeleted = false
   ): Promise<IPropertyIncomeLine[]> {
-    const conditions = ["pil.property_id = $1"];
-    const values: unknown[] = [propertyId];
-    let p = 2;
-
-    if (!includeDeleted) {
-      conditions.push("pil.is_deleted = false");
-    }
-
-    if (filters.from) {
-      conditions.push(`pil.transaction_date >= $${p++}`);
-      values.push(filters.from);
-    }
-    if (filters.to) {
-      conditions.push(`pil.transaction_date <= $${p++}`);
-      values.push(filters.to);
-    }
-    if (filters.unitId) {
-      conditions.push(`pil.unit_id = $${p++}`);
-      values.push(filters.unitId);
-    }
-    if (filters.incomeLineTypeId) {
-      conditions.push(`pil.income_line_type_id = $${p++}`);
-      values.push(filters.incomeLineTypeId);
-    }
-    if (filters.reservationId) {
-      conditions.push(`pil.reservation_id = $${p++}`);
-      values.push(filters.reservationId);
-    }
-    if (filters.longStayId) {
-      conditions.push(`pil.long_stay_id = $${p++}`);
-      values.push(filters.longStayId);
-    }
-
-    const joinUnits = filters.rentalType
-      ? "INNER JOIN property_units pu ON pu.id = pil.unit_id"
-      : "";
-    if (filters.rentalType) {
-      conditions.push(`pu.rental_type = $${p++}::property_unit_rental_type`);
-      values.push(filters.rentalType);
-    }
+    const { conditions, joinUnits, values } = buildIncomeLineListParts(
+      propertyId,
+      filters,
+      includeDeleted
+    );
 
     const result = await pool.query(
       `${INCOME_LINE_SELECT}
@@ -136,6 +167,100 @@ export const propertyIncomeLinesDb = {
     );
 
     return result.rows.map((row) => mapPropertyIncomeLineRow(row as Record<string, unknown>));
+  },
+
+  async getListMetaByProperty(
+    propertyId: string,
+    filters: TIncomeLineListDbFilters,
+    includeDeleted = false
+  ): Promise<IPropertyIncomeLinesListMeta> {
+    const { conditions, joinUnits, values } = buildIncomeLineListParts(
+      propertyId,
+      filters,
+      includeDeleted
+    );
+
+    const result = await pool.query<{ total_count: number }>(
+      `SELECT COUNT(*)::int AS total_count
+       FROM property_income_lines pil
+       ${joinUnits}
+       WHERE ${conditions.join(" AND ")}`,
+      values
+    );
+
+    const row = result.rows[0];
+    return {
+      totalCount: row?.total_count ?? 0,
+    };
+  },
+
+  async listPaginatedByProperty(
+    propertyId: string,
+    filters: TIncomeLineListDbFilters,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{
+    incomeLines: IPropertyIncomeLine[];
+    meta?: IPropertyIncomeLinesListMeta;
+    nextCursor: string | null;
+  }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const includeMeta = shouldIncludeListMeta(options.cursor);
+    const listPromise = propertyIncomeLinesDb.listPaginatedPage(propertyId, filters, options);
+    const metaPromise = includeMeta
+      ? propertyIncomeLinesDb.getListMetaByProperty(propertyId, filters, includeDeleted)
+      : Promise.resolve(undefined);
+
+    const [{ incomeLines, nextCursor }, meta] = await Promise.all([listPromise, metaPromise]);
+
+    return meta == null ? { incomeLines, nextCursor } : { incomeLines, meta, nextCursor };
+  },
+
+  async listPaginatedPage(
+    propertyId: string,
+    filters: TIncomeLineListDbFilters,
+    options: { cursor?: string; includeDeleted?: boolean; limit: number }
+  ): Promise<{ incomeLines: IPropertyIncomeLine[]; nextCursor: string | null }> {
+    const includeDeleted = options.includeDeleted ?? false;
+    const { conditions, joinUnits, values } = buildIncomeLineListParts(
+      propertyId,
+      filters,
+      includeDeleted
+    );
+    let p = values.length + 1;
+
+    if (options.cursor != null && options.cursor !== "") {
+      const decoded = decodeIncomeLineKeysetCursor(options.cursor);
+      conditions.push(
+        `(pil.transaction_date, pil.created_at, pil.id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
+      );
+      values.push(decoded.transactionDate, decoded.createdAt, decoded.id);
+    }
+
+    const limitParam = p;
+    values.push(options.limit + 1);
+
+    const result = await pool.query(
+      `${INCOME_LINE_SELECT}
+       ${joinUnits}
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY pil.transaction_date DESC, pil.created_at DESC, pil.id DESC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
+      encodeIncomeLineKeysetCursor(
+        formatTransactionDateForCursor(last.transaction_date),
+        last.created_at as Date | string,
+        last.id as string
+      )
+    );
+
+    return {
+      incomeLines: pageRows.map((row) => mapPropertyIncomeLineRow(row)),
+      nextCursor,
+    };
   },
 
   async refund(id: string, userId: string): Promise<boolean> {

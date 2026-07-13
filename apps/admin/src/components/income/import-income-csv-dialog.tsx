@@ -22,8 +22,10 @@ import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VirtualizedList } from "@/components/virtualized/virtualized-list";
 import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
 import { useCsvFileSelection } from "@/hooks/use-csv-file-selection";
+import { useFetchAllInfinitePages } from "@/hooks/use-fetch-all-infinite-pages";
 import { useIsDesktop } from "@/hooks/use-media-query";
-import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
+import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
+import { settingsApi, unitsApi } from "@/lib/api-client";
 import { isLocalEnvironment } from "@/lib/document-title";
 import { commitIncomeCsvImport, parseIncomeCsvFiles } from "@/lib/income-csv-import";
 import { buildIncomeImportMockParseResponse } from "@/lib/income-import-mock-data";
@@ -274,10 +276,17 @@ export const ImportIncomeCsvDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
-    const shortStaysQuery = useQuery({
+    const shortStaysInfinite = usePropertyShortStaysInfiniteList(
+      propertyId,
+      {},
+      { enabled: open && step === "preview" }
+    );
+
+    useFetchAllInfinitePages({
       enabled: open && step === "preview",
-      queryFn: () => shortStaysApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyShortStays(propertyId),
+      fetchNextPage: shortStaysInfinite.fetchNextPage,
+      hasNextPage: shortStaysInfinite.hasNextPage,
+      isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,
     });
 
     const previewContext = useMemo<IIncomeImportPreviewContext>(
@@ -342,7 +351,7 @@ export const ImportIncomeCsvDialog = memo(
 
     const existingStays = useMemo(
       () =>
-        (shortStaysQuery.data?.shortStays ?? [])
+        shortStaysInfinite.shortStays
           .filter((stay) => !stay.isDeleted)
           .map((stay) => ({
             checkIn: stay.checkIn,
@@ -350,7 +359,7 @@ export const ImportIncomeCsvDialog = memo(
             guestName: stay.guestName,
             unitId: stay.unitId,
           })),
-      [shortStaysQuery.data?.shortStays]
+      [shortStaysInfinite.shortStays]
     );
 
     const duplicateWarningsByIndex = useMemo(
