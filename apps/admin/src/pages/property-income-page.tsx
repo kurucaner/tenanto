@@ -52,8 +52,8 @@ import {
   type TDeleteConfirmationOptions,
   useDeleteConfirmation,
 } from "@/hooks/use-delete-confirmation";
-import { useFetchAllInfinitePages } from "@/hooks/use-fetch-all-infinite-pages";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { usePropertyIncomeEntriesInfiniteList } from "@/hooks/use-property-income-entries-infinite-list";
 import { usePropertyIncomeLinesInfiniteList } from "@/hooks/use-property-income-lines-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
@@ -86,35 +86,10 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
+  type TPropertyIncomeEntriesListFilters,
   type TPropertyIncomeEntry,
   type TStayCalculationMetric,
 } from "@/packages/shared";
-
-function buildMergedEntries(
-  reservations: IPropertyReservation[],
-  incomeLines: IPropertyIncomeLine[],
-  incomeTypeFilter: string
-): TPropertyIncomeEntry[] {
-  const entries: TPropertyIncomeEntry[] = [];
-  const showStays = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.STAY;
-  const showLines = incomeTypeFilter === "" || incomeTypeFilter !== IncomeEntryKind.STAY;
-
-  if (showStays) {
-    for (const stay of reservations) {
-      entries.push({ entryKind: IncomeEntryKind.STAY, stay });
-    }
-  }
-
-  if (showLines) {
-    for (const line of incomeLines) {
-      if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
-        entries.push({ entryKind: IncomeEntryKind.LINE, line });
-      }
-    }
-  }
-
-  return entries;
-}
 
 function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
   return { entryKind: IncomeEntryKind.STAY, stay };
@@ -202,6 +177,19 @@ function buildLineFilters(
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
     next.incomeLineTypeId = incomeType;
   }
+  return next;
+}
+
+function buildIncomeEntriesFilters(
+  dateFilters: ReturnType<typeof buildDateFilters>,
+  channelCommissionId: string,
+  status: string,
+  incomeType: string
+): TPropertyIncomeEntriesListFilters {
+  const next: TPropertyIncomeEntriesListFilters = { ...dateFilters };
+  if (channelCommissionId) next.channelCommissionId = channelCommissionId;
+  if (status) next.status = status as TPropertyIncomeEntriesListFilters["status"];
+  if (incomeType) next.incomeType = incomeType;
   return next;
 }
 
@@ -1078,45 +1066,45 @@ const PropertyIncomePage = memo(() => {
     [dateFilters, incomeType]
   );
 
+  const incomeEntriesFilters = useMemo(
+    () => buildIncomeEntriesFilters(dateFilters, channelCommissionId, status, incomeType),
+    [channelCommissionId, dateFilters, incomeType, status]
+  );
+
   const isAllView = incomeType === "";
   const isStayOnlyView = incomeType === IncomeEntryKind.STAY;
   const isLineTypeOnlyView = incomeType !== "" && incomeType !== IncomeEntryKind.STAY;
-  const showStaysInQuery = incomeType === "" || incomeType === IncomeEntryKind.STAY;
-  const showLinesInQuery = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
+  const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
 
+  const incomeEntriesInfinite = usePropertyIncomeEntriesInfiniteList(
+    propertyId,
+    incomeEntriesFilters,
+    { enabled: isAllView }
+  );
   const shortStaysInfinite = usePropertyShortStaysInfiniteList(propertyId, reservationFilters, {
-    enabled: showStaysInQuery,
+    enabled: isStayOnlyView,
   });
   const incomeLinesInfinite = usePropertyIncomeLinesInfiniteList(propertyId, lineFilters, {
-    enabled: showLinesInQuery,
-  });
-
-  useFetchAllInfinitePages({
-    enabled: isAllView && showStaysInQuery,
-    fetchNextPage: shortStaysInfinite.fetchNextPage,
-    hasNextPage: shortStaysInfinite.hasNextPage,
-    isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,
-  });
-  useFetchAllInfinitePages({
-    enabled: isAllView && showLinesInQuery,
-    fetchNextPage: incomeLinesInfinite.fetchNextPage,
-    hasNextPage: incomeLinesInfinite.hasNextPage,
-    isFetchingNextPage: incomeLinesInfinite.isFetchingNextPage,
+    enabled: isLineTypeOnlyView,
   });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
-    enabled: isStayOnlyView || isLineTypeOnlyView,
-    fetchNextPage: isStayOnlyView
-      ? shortStaysInfinite.fetchNextPage
-      : incomeLinesInfinite.fetchNextPage,
-    hasNextPage: isStayOnlyView
-      ? shortStaysInfinite.hasNextPage
-      : isLineTypeOnlyView
-        ? incomeLinesInfinite.hasNextPage
-        : false,
-    isFetchingNextPage: isStayOnlyView
-      ? shortStaysInfinite.isFetchingNextPage
-      : incomeLinesInfinite.isFetchingNextPage,
+    enabled: isAllView || isStayOnlyView || isLineTypeOnlyView,
+    fetchNextPage: isAllView
+      ? incomeEntriesInfinite.fetchNextPage
+      : isStayOnlyView
+        ? shortStaysInfinite.fetchNextPage
+        : incomeLinesInfinite.fetchNextPage,
+    hasNextPage: isAllView
+      ? incomeEntriesInfinite.hasNextPage
+      : isStayOnlyView
+        ? shortStaysInfinite.hasNextPage
+        : incomeLinesInfinite.hasNextPage,
+    isFetchingNextPage: isAllView
+      ? incomeEntriesInfinite.isFetchingNextPage
+      : isStayOnlyView
+        ? shortStaysInfinite.isFetchingNextPage
+        : incomeLinesInfinite.isFetchingNextPage,
   });
 
   const unitsQuery = useQuery({
@@ -1312,19 +1300,15 @@ const PropertyIncomePage = memo(() => {
 
   const entries = useMemo(() => {
     if (isAllView) {
-      return buildMergedEntries(
-        shortStaysInfinite.shortStays,
-        incomeLinesInfinite.incomeLines,
-        incomeType
-      );
+      return incomeEntriesInfinite.entries;
     }
     if (isStayOnlyView) {
       return shortStaysInfinite.shortStays.map(mapStayToEntry);
     }
     return incomeLinesInfinite.incomeLines.map(mapLineToEntry);
   }, [
+    incomeEntriesInfinite.entries,
     incomeLinesInfinite.incomeLines,
-    incomeType,
     isAllView,
     isStayOnlyView,
     shortStaysInfinite.shortStays,
@@ -1335,37 +1319,29 @@ const PropertyIncomePage = memo(() => {
     [entries, sortState, unitLabelById]
   );
 
-  const showStays = showStaysInQuery;
   const isLoading = isAllView
-    ? (showStaysInQuery &&
-        (shortStaysInfinite.isPending ||
-          shortStaysInfinite.isFetchingNextPage ||
-          shortStaysInfinite.hasNextPage)) ||
-      (showLinesInQuery &&
-        (incomeLinesInfinite.isPending ||
-          incomeLinesInfinite.isFetchingNextPage ||
-          incomeLinesInfinite.hasNextPage))
+    ? incomeEntriesInfinite.isPending
     : isStayOnlyView
       ? shortStaysInfinite.isPending
       : incomeLinesInfinite.isPending;
 
-  const listMeta = isStayOnlyView
-    ? shortStaysInfinite.meta
-    : isLineTypeOnlyView
-      ? incomeLinesInfinite.meta
-      : undefined;
+  const listMeta = isAllView
+    ? incomeEntriesInfinite.meta
+    : isStayOnlyView
+      ? shortStaysInfinite.meta
+      : incomeLinesInfinite.meta;
 
-  const hasNextPage = isStayOnlyView
-    ? Boolean(shortStaysInfinite.hasNextPage)
-    : isLineTypeOnlyView
-      ? Boolean(incomeLinesInfinite.hasNextPage)
-      : false;
+  const hasNextPage = isAllView
+    ? Boolean(incomeEntriesInfinite.hasNextPage)
+    : isStayOnlyView
+      ? Boolean(shortStaysInfinite.hasNextPage)
+      : Boolean(incomeLinesInfinite.hasNextPage);
 
-  const isFetchingNextPage = isStayOnlyView
-    ? shortStaysInfinite.isFetchingNextPage
-    : isLineTypeOnlyView
-      ? incomeLinesInfinite.isFetchingNextPage
-      : false;
+  const isFetchingNextPage = isAllView
+    ? incomeEntriesInfinite.isFetchingNextPage
+    : isStayOnlyView
+      ? shortStaysInfinite.isFetchingNextPage
+      : incomeLinesInfinite.isFetchingNextPage;
 
   const handleAddOtherIncome = useCallback(() => {
     setCreateLinePrefill(null);

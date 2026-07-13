@@ -30,6 +30,8 @@ export const adminQueryKeys = {
     ["property", propertyId, "expenses", filters] as const,
   propertyIncomeEntries: (propertyId: string, filters: TPropertyIncomeEntriesListFilters = {}) =>
     ["property", propertyId, "income-entries", filters] as const,
+  propertyIncomeEntriesPrefix: (propertyId: string) =>
+    ["property", propertyId, "income-entries"] as const,
   propertyIncomeLines: (
     propertyId: string,
     filters: Omit<IPropertyIncomeLinesListQuery, "cursor" | "limit"> = {}

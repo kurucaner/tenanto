@@ -211,21 +211,21 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Return `meta.totalCount` on the first page (same pattern as expenses — `shouldIncludeListMeta`)
-- [ ] Monitor query time; add indexes if needed:
+- [x] Return `meta.totalCount` on the first page (same pattern as expenses — `shouldIncludeListMeta`)
+- [x] Monitor query time; add indexes if needed:
   - `property_reservations(property_id, check_in, created_at)`
   - `property_income_lines(property_id, transaction_date, created_at)`
 
 ### Frontend
 
-- [ ] Add `usePropertyIncomeEntriesInfiniteList` (copy expenses hook shape)
-- [ ] Income page routing logic:
+- [x] Add `usePropertyIncomeEntriesInfiniteList` (copy expenses hook shape)
+- [x] Income page routing logic:
   - **All / empty type filter** → unified `income-entries` infinite query
   - **Stay only** → short-stays infinite (Phase 2)
   - **Line type only** → income-lines infinite (Phase 2)
-- [ ] Remove `buildMergedEntries` from the All path
-- [ ] Add infinite scroll footer on All view
-- [ ] Update `invalidatePropertyIncomeCaches` to invalidate the unified query key
+- [x] Remove `buildMergedEntries` from the All path
+- [x] Add infinite scroll footer on All view
+- [x] Update `invalidatePropertyIncomeCaches` to invalidate the unified query key
 
 **Exit criteria:** All view uses one API; CRUD/refund/restore still work; pickers unaffected.
 
