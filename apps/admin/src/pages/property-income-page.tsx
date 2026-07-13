@@ -28,7 +28,6 @@ import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
-import { SearchFilterField } from "@/components/filters/search-filter-field";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -49,12 +48,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { useDebouncedUrlFilter } from "@/hooks/use-debounced-url-filter";
 import {
   type TDeleteConfirmationOptions,
   useDeleteConfirmation,
 } from "@/hooks/use-delete-confirmation";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertyIncomeEntriesInfiniteList } from "@/hooks/use-property-income-entries-infinite-list";
 import { usePropertyIncomeLinesInfiniteList } from "@/hooks/use-property-income-lines-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
@@ -346,14 +345,13 @@ const PropertyIncomeFilters = memo(
           </div>
         )
       }
+      search={{
+        id: "filter-search",
+        onChange: onSearchInputChange,
+        placeholder: "Search guest, description, unit, or channel…",
+        value: searchInput,
+      }}
     >
-      <SearchFilterField
-        id="filter-search"
-        label="Search"
-        onChange={onSearchInputChange}
-        placeholder="Search guest, description, unit, or channel…"
-        value={searchInput}
-      />
       <LedgerFilterGrid filterCount={6}>
         <DateFilterField
           id="filter-from"
@@ -1049,11 +1047,9 @@ const PropertyIncomePage = memo(() => {
   const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
   const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
   const { channelCommissionId, from, incomeType, q, status, to, unitId } = filters;
-  const { inputValue: searchInput, onInputChange: handleSearchInputChange } = useDebouncedUrlFilter(
-    {
-      committedValue: q,
-      onCommit: (value) => setFilter("q", value),
-    }
+  const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
+    q,
+    setFilter
   );
   const sortController = useUrlTableSort({
     defaultColumnId: "date",

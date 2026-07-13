@@ -23,15 +23,14 @@ import { DateFilterField } from "@/components/filters/date-filter-field";
 import { FilterSelectField } from "@/components/filters/filter-select-field";
 import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
 import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
-import { SearchFilterField } from "@/components/filters/search-filter-field";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { useDebouncedUrlFilter } from "@/hooks/use-debounced-url-filter";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import {
   type TPropertyExpensesListFilters,
   usePropertyExpensesInfiniteList,
@@ -187,14 +186,14 @@ const PropertyExpensesFilters = memo(
     searchInput: string;
     to: string;
   }) => (
-    <LedgerFiltersSection>
-      <SearchFilterField
-        id="expense-filter-search"
-        label="Search"
-        onChange={onSearchInputChange}
-        placeholder="Search description or category…"
-        value={searchInput}
-      />
+    <LedgerFiltersSection
+      search={{
+        id: "expense-filter-search",
+        onChange: onSearchInputChange,
+        placeholder: "Search description or category…",
+        value: searchInput,
+      }}
+    >
       <LedgerFilterGrid filterCount={3}>
         <DateFilterField
           id="expense-filter-from"
@@ -380,11 +379,9 @@ export const PropertyExpensesPage = memo(() => {
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
   const { filters: urlFilters, setFilter } = useUrlFilterState(EXPENSE_URL_FILTER_SCHEMA);
   const { categoryId, from, q, to } = urlFilters;
-  const { inputValue: searchInput, onInputChange: handleSearchInputChange } = useDebouncedUrlFilter(
-    {
-      committedValue: q,
-      onCommit: (value) => setFilter("q", value),
-    }
+  const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
+    q,
+    setFilter
   );
 
   const settingsQuery = useQuery({
