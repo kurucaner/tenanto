@@ -17,4 +17,6 @@ export interface IReportableStayAmounts {
   taxBreakdown: IPropertyTaxBreakdownItem[];
 }
 
-export type TReportableIncomeLineAmounts = IPropertyIncomeLineComputedFields;
+export type TReportableIncomeLineAmounts = IPropertyIncomeLineComputedFields & {
+  amount: number;
+};

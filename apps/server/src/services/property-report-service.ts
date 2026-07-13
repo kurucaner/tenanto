@@ -3,6 +3,8 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
+  getReportableIncomeLineAmounts,
+  getReportableStayAmounts,
   type IPortfolioPropertyReportRow,
   type IPortfolioReportSummary,
   type IPropertyExpense,
@@ -167,19 +169,20 @@ function initSalesBreakdown(): IPropertyReportSalesTypeBreakdown {
 
 function addOtherIncomeToBreakdown(
   breakdown: IPropertyReportSalesTypeBreakdown,
-  line: IPropertyIncomeLine
+  line: Pick<IPropertyIncomeLine, "incomeLineTypeId" | "incomeLineTypeName">,
+  amount: number
 ): void {
   const typeName = line.incomeLineTypeName ?? line.incomeLineTypeId;
   const existing = breakdown.otherIncomeByType.find(
     (row) => row.incomeLineTypeId === line.incomeLineTypeId
   );
   if (existing) {
-    existing.amount = roundMoney(existing.amount + line.amount);
+    existing.amount = roundMoney(existing.amount + amount);
     return;
   }
 
   breakdown.otherIncomeByType.push({
-    amount: line.amount,
+    amount,
     incomeLineTypeId: line.incomeLineTypeId,
     name: typeName,
   });
@@ -201,20 +204,23 @@ function mergeOtherIncomeByType(
 
 function upsertChannelSummary(
   channelMap: Map<string, IPropertyReportChannelSummary>,
-  stay: IPropertyReservation
+  stay: Pick<IPropertyReservation, "channelCommissionId" | "channelName">,
+  reportable: Pick<IPropertyReservation, "channelCommission" | "grossIncome">
 ): void {
   const existing = channelMap.get(stay.channelCommissionId);
   if (existing) {
-    existing.grossIncome = roundMoney(existing.grossIncome + stay.grossIncome);
-    existing.channelCommission = roundMoney(existing.channelCommission + stay.channelCommission);
+    existing.grossIncome = roundMoney(existing.grossIncome + reportable.grossIncome);
+    existing.channelCommission = roundMoney(
+      existing.channelCommission + reportable.channelCommission
+    );
     existing.stayCount += 1;
     return;
   }
 
   channelMap.set(stay.channelCommissionId, {
-    channelCommission: stay.channelCommission,
+    channelCommission: reportable.channelCommission,
     channelCommissionId: stay.channelCommissionId,
-    grossIncome: stay.grossIncome,
+    grossIncome: reportable.grossIncome,
     name: stay.channelName,
     stayCount: 1,
   });
@@ -321,36 +327,42 @@ function applyReservationToReport(
   query: IPropertyReportsQuery,
   accumulator: IPropertyReportAccumulator
 ): void {
-  if (stay.refundedAt !== null) return;
+  const reportable = getReportableStayAmounts(stay);
+  if (reportable.grossIncome === 0) return;
 
-  accumulator.grossIncome = roundMoney(accumulator.grossIncome + stay.grossIncome);
-  accumulator.netIncome = roundMoney(accumulator.netIncome + stay.netIncome);
+  accumulator.grossIncome = roundMoney(accumulator.grossIncome + reportable.grossIncome);
+  accumulator.netIncome = roundMoney(accumulator.netIncome + reportable.netIncome);
 
   accumulator.salesTypeBreakdown.room = roundMoney(
-    accumulator.salesTypeBreakdown.room + stay.roomTotal
+    accumulator.salesTypeBreakdown.room + reportable.roomTotal
   );
   accumulator.salesTypeBreakdown.cleaningFromStays = roundMoney(
-    accumulator.salesTypeBreakdown.cleaningFromStays + stay.cleaningFee
+    accumulator.salesTypeBreakdown.cleaningFromStays + reportable.cleaningFee
   );
 
-  upsertChannelSummary(accumulator.channelMap, stay);
+  upsertChannelSummary(accumulator.channelMap, stay, reportable);
 
   const unit = accumulator.unitMap.get(stay.unitId);
   if (unit) {
-    unit.grossIncome = roundMoney(unit.grossIncome + stay.grossIncome);
-    unit.netIncome = roundMoney(unit.netIncome + stay.netIncome);
-    unit.stayGrossIncome = roundMoney(unit.stayGrossIncome + stay.grossIncome);
+    unit.grossIncome = roundMoney(unit.grossIncome + reportable.grossIncome);
+    unit.netIncome = roundMoney(unit.netIncome + reportable.netIncome);
+    unit.stayGrossIncome = roundMoney(unit.stayGrossIncome + reportable.grossIncome);
     if (isOccupancyStay(stay.status)) {
       const booked = nightsOverlappingRange(stay.checkIn, stay.checkOut, query.from, query.to);
       unit.bookedNights += booked;
-      unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + stay.roomTotal);
+      unit.adrRoomTotal = roundMoney(unit.adrRoomTotal + reportable.roomTotal);
       unit.adrNights += stay.nights;
     }
   }
 
-  addToMonth(accumulator.monthMap, monthFromDate(stay.checkIn), stay.grossIncome, stay.netIncome);
+  addToMonth(
+    accumulator.monthMap,
+    monthFromDate(stay.checkIn),
+    reportable.grossIncome,
+    reportable.netIncome
+  );
 
-  for (const taxItem of stay.taxBreakdown) {
+  for (const taxItem of reportable.taxBreakdown) {
     addTaxToMap(accumulator.taxMap, taxItem.taxRateId, taxItem.name, taxItem.amount);
   }
 }
@@ -359,30 +371,33 @@ function applyIncomeLineToReport(
   line: IPropertyIncomeLine,
   accumulator: IPropertyReportAccumulator
 ): void {
-  if (line.refundedAt !== null) return;
+  const reportable = getReportableIncomeLineAmounts(line);
+  if (reportable.grossIncome === 0) return;
 
-  accumulator.grossIncome = roundMoney(accumulator.grossIncome + line.grossIncome);
-  accumulator.netIncome = roundMoney(accumulator.netIncome + line.netIncome);
+  accumulator.grossIncome = roundMoney(accumulator.grossIncome + reportable.grossIncome);
+  accumulator.netIncome = roundMoney(accumulator.netIncome + reportable.netIncome);
 
-  addOtherIncomeToBreakdown(accumulator.salesTypeBreakdown, line);
+  addOtherIncomeToBreakdown(accumulator.salesTypeBreakdown, line, reportable.amount);
 
   if (line.unitId === null) {
-    accumulator.amenityGrossIncome = roundMoney(accumulator.amenityGrossIncome + line.grossIncome);
-    accumulator.amenityNetIncome = roundMoney(accumulator.amenityNetIncome + line.netIncome);
+    accumulator.amenityGrossIncome = roundMoney(
+      accumulator.amenityGrossIncome + reportable.grossIncome
+    );
+    accumulator.amenityNetIncome = roundMoney(accumulator.amenityNetIncome + reportable.netIncome);
     return;
   }
 
   const unit = accumulator.unitMap.get(line.unitId);
   if (unit) {
-    unit.grossIncome = roundMoney(unit.grossIncome + line.grossIncome);
-    unit.netIncome = roundMoney(unit.netIncome + line.netIncome);
+    unit.grossIncome = roundMoney(unit.grossIncome + reportable.grossIncome);
+    unit.netIncome = roundMoney(unit.netIncome + reportable.netIncome);
   }
 
   addToMonth(
     accumulator.monthMap,
     monthFromDate(line.transactionDate),
-    line.grossIncome,
-    line.netIncome
+    reportable.grossIncome,
+    reportable.netIncome
   );
 }
 

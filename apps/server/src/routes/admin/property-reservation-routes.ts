@@ -5,10 +5,12 @@ import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertySettingsDb } from "@/db/property-settings";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
+  getStayRefundableCap,
   HttpStatus,
   type ICreatePropertyReservationBody,
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
+  type IRefundLedgerEntryBody,
   type IUpdatePropertyReservationBody,
   ReservationStatus,
   type TReservationStatus,
@@ -20,7 +22,11 @@ import { decodeReservationKeysetCursor } from "@/pagination/keyset-cursor";
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
 import { parseDateString, parseIncomeEntriesListLimit, parseUuidParam } from "./admin-query-utils";
-import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-route-actions";
+import {
+  executeLedgerRefund,
+  executeLedgerUnrefund,
+  parseRefundLedgerEntryBody,
+} from "./ledger-refund-route-actions";
 import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
   applyOptionalQueryDateFilter,
@@ -681,10 +687,13 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
     }
   );
 
-  server.post<{ Params: IPropertyShortStayParams }>(
+  server.post<{ Body: IRefundLedgerEntryBody; Params: IPropertyShortStayParams }>(
     "/properties/:propertyId/short-stays/:shortStayId/refund",
     { preHandler: authPre },
-    async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Body: IRefundLedgerEntryBody; Params: IPropertyShortStayParams }>,
+      reply: FastifyReply
+    ) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -712,7 +721,17 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       if (!isOwner) return;
 
       const existing = await propertyReservationsDb.findById(shortStayId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Short stay not found" });
+      }
+
+      const parsedBody = parseRefundLedgerEntryBody(request.body);
+      if (!parsedBody.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsedBody.error });
+      }
+
       await executeLedgerRefund(reply, {
+        body: parsedBody.body,
         db: propertyReservationsDb,
         entity: existing,
         entityId: shortStayId,
@@ -720,6 +739,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
         label: "short stay",
         notFoundError: "Short stay not found",
         propertyId,
+        refundableCap: getStayRefundableCap(existing),
         userId: request.user.userId,
       });
     }

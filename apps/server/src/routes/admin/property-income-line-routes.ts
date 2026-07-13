@@ -6,10 +6,12 @@ import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
+  getIncomeLineRefundableCap,
   HttpStatus,
   type ICreatePropertyIncomeLineBody,
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
+  type IRefundLedgerEntryBody,
   isRentIncomeLineType,
   type IUpdatePropertyIncomeLineBody,
   UserType,
@@ -19,7 +21,11 @@ import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications"
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
 import { parseDateString, parseIncomeEntriesListLimit, parseUuidParam } from "./admin-query-utils";
-import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-route-actions";
+import {
+  executeLedgerRefund,
+  executeLedgerUnrefund,
+  parseRefundLedgerEntryBody,
+} from "./ledger-refund-route-actions";
 import {
   parseJsonObject,
   parseMoney,
@@ -679,10 +685,13 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
     }
   );
 
-  server.post<{ Params: IPropertyIncomeLineParams }>(
+  server.post<{ Body: IRefundLedgerEntryBody; Params: IPropertyIncomeLineParams }>(
     "/properties/:propertyId/income-lines/:lineId/refund",
     { preHandler: authPre },
-    async (request: FastifyRequest<{ Params: IPropertyIncomeLineParams }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{ Body: IRefundLedgerEntryBody; Params: IPropertyIncomeLineParams }>,
+      reply: FastifyReply
+    ) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
@@ -710,7 +719,17 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       if (!isOwner) return;
 
       const existing = await propertyIncomeLinesDb.findById(lineId);
+      if (!existing || existing.propertyId !== propertyId) {
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Income line not found" });
+      }
+
+      const parsedBody = parseRefundLedgerEntryBody(request.body);
+      if (!parsedBody.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsedBody.error });
+      }
+
       await executeLedgerRefund(reply, {
+        body: parsedBody.body,
         db: propertyIncomeLinesDb,
         entity: existing,
         entityId: lineId,
@@ -718,6 +737,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         label: "income line",
         notFoundError: "Income line not found",
         propertyId,
+        refundableCap: getIncomeLineRefundableCap(existing),
         userId: request.user.userId,
       });
     }

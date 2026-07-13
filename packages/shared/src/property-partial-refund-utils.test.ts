@@ -141,6 +141,7 @@ describe("getReportableStayAmounts", () => {
 describe("getReportableIncomeLineAmounts", () => {
   test("returns original amounts when not refunded", () => {
     expect(getReportableIncomeLineAmounts(lineBase)).toEqual({
+      amount: 1500,
       channelCommission: 0,
       grossIncome: 1500,
       netIncome: 1500,
@@ -156,6 +157,7 @@ describe("getReportableIncomeLineAmounts", () => {
         refundedAt: "2026-03-01T00:00:00.000Z",
       })
     ).toEqual({
+      amount: 0,
       channelCommission: 0,
       grossIncome: 0,
       netIncome: 0,
@@ -171,6 +173,7 @@ describe("getReportableIncomeLineAmounts", () => {
         refundedAt: "2026-03-01T00:00:00.000Z",
       })
     ).toEqual({
+      amount: 1000,
       channelCommission: 0,
       grossIncome: 1000,
       netIncome: 1000,

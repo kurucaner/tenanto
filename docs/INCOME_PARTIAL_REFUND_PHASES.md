@@ -172,7 +172,7 @@ Cap + reportable-amount helpers — ✅ (Phase 0)
 
 ---
 
-## Phase 2 — API + report logic
+## Phase 2 — API + report logic ✅
 
 **Goal:** Refund endpoints accept optional amount; financial and lease logic use reportable (remaining) amounts.
 
@@ -200,33 +200,24 @@ Existing endpoints gain an optional JSON body:
 | `amount > cap` | 400 |
 | Invalid / non-numeric amount | 400 |
 
-Update `executeLedgerRefund` in `ledger-refund-route-actions.ts` to parse body and pass amount to DB.
+`executeLedgerRefund` + `parseRefundLedgerEntryBody` parse body, validate via `validateRefundAmount`, pass amount to DB.
 
 ### Report logic
 
-In `property-report-service.ts`, replace early return on `refundedAt !== null` with reportable amounts:
-
-- `applyReservationToReport` → use `getReportableStayAmounts(stay)`; skip if reportable gross is 0
-- `applyIncomeLineToReport` → use `getReportableIncomeLineAmounts(line)`; skip if reportable gross is 0
-
-This automatically fixes property reports, portfolio reports, and `/home/financial-overview`.
+In `property-report-service.ts`, `applyReservationToReport` / `applyIncomeLineToReport` use `getReportableStayAmounts` / `getReportableIncomeLineAmounts`; skip when reportable gross is 0.
 
 ### Lease rent schedule
 
-Update `getRentSchedule` in `property-long-stays.ts`:
-
-- Replace `refunded_at IS NULL` with logic that treats a rent line as paid when **reportable amount > 0**
-- Full refund → month unpaid (same as v1)
-- Partial refund → month still paid if remaining rent > 0
+`getRentSchedule` in `property-long-stays.ts` uses `isIncomeLinePaidForRentSchedule` — partial refund keeps month paid when reportable net income > 0.
 
 ### Tests
 
 | File | Coverage |
 | ---- | -------- |
-| `packages/shared` (new) | Cap helpers, proportional scaling, rounding edge cases |
-| `property-report-service.test.ts` | Partial stay/line reduces gross/net; full still excluded |
-| `ledger-refund-route-actions.test.ts` | Amount validation (400, 409) |
-| `property-long-stays-rent-schedule.test.ts` | Partial rent refund → month still paid; full → unpaid |
+| `property-partial-refund-utils.test.ts` | Cap helpers, proportional scaling, rounding ✅ |
+| `property-report-service.test.ts` | Partial stay/line reduces gross/net; full excluded ✅ |
+| `ledger-refund-route-actions.test.ts` | Amount validation + partial/full refund ✅ |
+| `property-long-stays-rent-schedule.test.ts` | Partial rent refund → paid; full → unpaid ✅ |
 
 **Milestone:** Partial refund works via API; reports and rent schedule correct.
 

@@ -110,6 +110,7 @@ export function getReportableIncomeLineAmounts(
   const factor = getPartialRefundReportFactor(line.refundedAt, line.refundedAmount, cap);
 
   return {
+    amount: scaleMoney(line.amount, factor),
     channelCommission: scaleMoney(line.channelCommission, factor),
     grossIncome: scaleMoney(line.grossIncome, factor),
     netIncome: scaleMoney(line.netIncome, factor),
