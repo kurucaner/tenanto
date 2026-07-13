@@ -23,6 +23,9 @@ import {
   type IExpenseImportParseResponse,
   type IExtendPropertyLongStayBody,
   type IHomeFinancialOverview,
+  type IIncomeImportCommitBody,
+  type IIncomeImportCommitResponse,
+  type IIncomeImportParseResponse,
   type IPortfolioReportSummary,
   type IProperty,
   type IPropertyDetail,
@@ -906,6 +909,20 @@ export const expensesApi = {
     authenticatedRequest<{ expense: IPropertyExpense }>(
       `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const incomeImportApi = {
+  importCommit: (propertyId: string, body: IIncomeImportCommitBody) =>
+    authenticatedRequest<IIncomeImportCommitResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/income/import/commit`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  importParse: (propertyId: string, formData: FormData) =>
+    authenticatedMultipartRequest<IIncomeImportParseResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/income/import/parse`,
+      formData
     ),
 };
 

@@ -179,6 +179,95 @@ export const propertyReservationsDb = {
     return mapPropertyReservationRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async createMany(
+    propertyId: string,
+    inputs: Array<{
+      computed: IPropertyReservationComputedFields;
+      input: ICreatePropertyReservationBody;
+      refunded: boolean;
+    }>,
+    refundedByUserId: string
+  ): Promise<IPropertyReservation[]> {
+    if (inputs.length === 0) {
+      return [];
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const reservations: IPropertyReservation[] = [];
+
+      for (const entry of inputs) {
+        const insertResult = await client.query(
+          `WITH inserted AS (
+             INSERT INTO property_reservations (
+               property_id,
+               unit_id,
+               guest_name,
+               reservation_number,
+               check_in,
+               check_out,
+               nights,
+               status,
+               channel_commission_id,
+               room_total,
+               cleaning_fee,
+               gross_income,
+               tax_breakdown,
+               channel_commission,
+               channel_commission_rate,
+               net_income,
+               refunded_at,
+               refunded_by
+             ) VALUES (
+               $1, $2, $3, $4, $5, $6, $7,
+               $8::property_reservation_status,
+               $9,
+               $10, $11, $12, $13::jsonb, $14, $15, $16,
+               CASE WHEN $17::boolean THEN NOW() ELSE NULL END,
+               CASE WHEN $17::boolean THEN $18::uuid ELSE NULL END
+             )
+             RETURNING id
+           )
+           SELECT ${RESERVATION_SELECT}
+           FROM inserted pr
+           ${RESERVATION_CHANNEL_JOIN}`,
+          [
+            propertyId,
+            entry.input.unitId,
+            entry.input.guestName.trim(),
+            entry.input.reservationNumber?.trim() || null,
+            entry.input.checkIn,
+            entry.input.checkOut,
+            entry.computed.nights,
+            entry.input.status,
+            entry.input.channelCommissionId,
+            entry.input.roomTotal,
+            entry.input.cleaningFee,
+            entry.computed.grossIncome,
+            JSON.stringify(entry.computed.taxBreakdown),
+            entry.computed.channelCommission,
+            entry.computed.channelCommissionRate,
+            entry.computed.netIncome,
+            entry.refunded,
+            refundedByUserId,
+          ]
+        );
+        reservations.push(
+          mapPropertyReservationRow(insertResult.rows[0] as Record<string, unknown>)
+        );
+      }
+
+      await client.query("COMMIT");
+      return reservations;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
   async findById(id: string): Promise<IPropertyReservation | null> {
     const result = await pool.query(
       `SELECT ${RESERVATION_SELECT}

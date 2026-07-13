@@ -445,6 +445,7 @@ export const ImportExpenseCsvDialog = memo(
       <ImportCsvDialogShell
         description={`Upload up to ${EXPENSE_CSV_IMPORT_MAX_FILES} CSV files. AI reads transactions and suggests categories — review before saving.`}
         footer={footer}
+        onBodyElementReady={setPreviewScrollElement}
         onOpenChange={handleOpenChange}
         open={open}
         title="Import Expenses from CSV"
@@ -461,23 +462,21 @@ export const ImportExpenseCsvDialog = memo(
             selectedFiles={selectedFiles}
           />
         ) : (
-          <div ref={setPreviewScrollElement}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                {fileResults.map((result) => (
-                  <ExpenseFileResultSummary key={result.fileName} result={result} />
-                ))}
-              </div>
-
-              {previewRows.length > 0 ? (
-                previewList
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  No expense rows are ready to import. Remove irrelevant files or upload different
-                  CSVs.
-                </p>
-              )}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              {fileResults.map((result) => (
+                <ExpenseFileResultSummary key={result.fileName} result={result} />
+              ))}
             </div>
+
+            {previewRows.length > 0 ? (
+              previewList
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No expense rows are ready to import. Remove irrelevant files or upload different
+                CSVs.
+              </p>
+            )}
           </div>
         )}
       </ImportCsvDialogShell>

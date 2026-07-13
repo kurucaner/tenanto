@@ -85,7 +85,9 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
     expect(firstPage.meta).toEqual({ activeCount: 1, endedCount: 2, totalCount: 3 });
     expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls.find(([query]) => !(query as string).includes("COUNT(*)"))?.[0] as string;
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
     expect(sql).toContain("lease_start_date DESC");
     expect(sql).toContain("LIMIT $");
   });

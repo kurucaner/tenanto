@@ -1,4 +1,3 @@
-import type { MultipartFile } from "@fastify/multipart";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import OpenAI from "openai";
 
@@ -6,6 +5,7 @@ import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-t
 import { propertyExpensesDb } from "@/db/property-expenses";
 import { getOpenAiApiKey } from "@/lib/expense-csv-import-gate";
 import { extractExpenseRowsFromCsv } from "@/lib/expense-csv-row-extractor";
+import { readMultipartCsvFiles } from "@/lib/read-multipart-csv-files";
 import {
   parseCategoryId,
   validateExpenseDateNotInFuture,
@@ -36,11 +36,6 @@ import {
 
 interface IPropertyParams {
   propertyId: string;
-}
-
-function isBinaryContent(buffer: Buffer): boolean {
-  const sample = buffer.subarray(0, Math.min(buffer.length, 1024));
-  return sample.includes(0);
 }
 
 function buildParsedRow(
@@ -90,47 +85,6 @@ function buildParsedRow(
     sourceFileName,
     taxFree: row.taxFree,
   };
-}
-
-async function readMultipartCsvFiles(
-  request: FastifyRequest
-): Promise<{ error: string } | { files: Array<{ buffer: Buffer; fileName: string }> }> {
-  const files: Array<{ buffer: Buffer; fileName: string }> = [];
-
-  for await (const part of request.parts()) {
-    if (part.type !== "file") {
-      continue;
-    }
-
-    const filePart = part as MultipartFile;
-    if (files.length >= EXPENSE_CSV_IMPORT_MAX_FILES) {
-      return { error: `At most ${EXPENSE_CSV_IMPORT_MAX_FILES} files are allowed` };
-    }
-
-    const fileName = filePart.filename.trim() || "upload.csv";
-    if (!fileName.toLowerCase().endsWith(".csv")) {
-      return { error: "Only .csv files are supported" };
-    }
-
-    const buffer = await filePart.toBuffer();
-    if (buffer.length === 0) {
-      return { error: `${fileName} is empty` };
-    }
-    if (buffer.length > EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE) {
-      return { error: `${fileName} exceeds the 1 MB file size limit` };
-    }
-    if (isBinaryContent(buffer)) {
-      return { error: `${fileName} does not look like a text CSV file` };
-    }
-
-    files.push({ buffer, fileName });
-  }
-
-  if (files.length === 0) {
-    return { error: "At least one CSV file is required" };
-  }
-
-  return { files };
 }
 
 async function parseUploadedCsvFile(
@@ -319,7 +273,10 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
         });
       }
 
-      const fileRead = await readMultipartCsvFiles(request);
+      const fileRead = await readMultipartCsvFiles(request, {
+        maxBytesPerFile: EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
+        maxFiles: EXPENSE_CSV_IMPORT_MAX_FILES,
+      });
       if ("error" in fileRead) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: fileRead.error });
       }

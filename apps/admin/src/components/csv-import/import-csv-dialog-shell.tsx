@@ -1,4 +1,4 @@
-import { memo,type ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 
 import {
   Dialog,
@@ -13,6 +13,11 @@ interface ImportCsvDialogShellProps {
   children: ReactNode;
   description: string;
   footer: ReactNode;
+  /**
+   * Called when the dialog body mount changes. Pass this to VirtualizedTableBody /
+   * VirtualizedList as scrollElement — it is the element with overflow-y-auto.
+   */
+  onBodyElementReady?: (element: HTMLDivElement | null) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   title: string;
@@ -24,6 +29,7 @@ export const ImportCsvDialogShell = memo(
     children,
     description,
     footer,
+    onBodyElementReady,
     onOpenChange,
     open,
     title,
@@ -35,7 +41,10 @@ export const ImportCsvDialogShell = memo(
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className={bodyClassName ?? "min-h-0 flex-1 overflow-y-auto px-6 py-5"}>
+        <div
+          className={bodyClassName ?? "min-h-0 flex-1 overflow-y-auto px-6 py-5"}
+          ref={onBodyElementReady}
+        >
           {children}
         </div>
 

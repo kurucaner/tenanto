@@ -43,9 +43,7 @@ export const CsvFileDropzone = memo(
           type="file"
         />
       </Label>
-      <p className="text-muted-foreground text-xs">
-        CSV only · up to {maxFiles} files · 1 MB each
-      </p>
+      <p className="text-muted-foreground text-xs">CSV only · up to {maxFiles} files · 1 MB each</p>
     </div>
   )
 );

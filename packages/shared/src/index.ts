@@ -208,6 +208,12 @@ export {
 
 // Property Expense Types
 export {
+  getIncomeImportPreviewTaxesTotal,
+  type IIncomeImportPreviewContext,
+  INCOME_IMPORT_COMMIT_STATUSES,
+  recomputeIncomeImportPreviewRow,
+} from "./income-import-preview-row";
+export {
   EXPENSE_CSV_IMPORT_MAX_BYTES_PER_FILE,
   EXPENSE_CSV_IMPORT_MAX_FILES,
   EXPENSE_CSV_IMPORT_MAX_ROWS_PER_FILE,
@@ -234,6 +240,27 @@ export {
   type IUpdatePropertyExpenseBody,
   type TPropertyExpensesListFilters,
 } from "./property-expense-types";
+export {
+  type IIncomeCsvExtractedRow,
+  type IIncomeImportCommitBody,
+  type IIncomeImportCommitResponse,
+  type IIncomeImportFileResult,
+  type IIncomeImportParsedRow,
+  type IIncomeImportParseResponse,
+  INCOME_CSV_IMPORT_MAX_BYTES_PER_FILE,
+  INCOME_CSV_IMPORT_MAX_FILES,
+  INCOME_CSV_IMPORT_MAX_ROWS_PER_FILE,
+  INCOME_CSV_IMPORT_MAX_ROWS_TOTAL,
+  type TIncomeImportFileStatus,
+} from "./property-income-import-types";
+export {
+  buildIncomeImportDuplicateWarningsByIndex,
+  buildIncomeImportStayDuplicateKey,
+  countIncomeImportDuplicateWarnings,
+  INCOME_IMPORT_BATCH_DUPLICATE_WARNING,
+  INCOME_IMPORT_DUPLICATE_WARNING,
+  type IIncomeImportDuplicateMatchInput,
+} from "./income-import-duplicate-utils";
 export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 
 // Home Financial Overview Types
@@ -299,6 +326,15 @@ export {
   type TStayCalculationMetric,
   type TStayChannelBehavior,
 } from "./property-income-utils";
+
+// Property income calculator
+export {
+  calculateMiscIncomeLine,
+  calculateNights,
+  calculateStayIncome,
+  type ICalculateStayIncomeInput,
+  roundMoney,
+} from "./property-income-calculator";
 
 // Property unit utilities
 export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./property-unit-utils";
