@@ -57,6 +57,7 @@ import {
   useDeleteConfirmation,
 } from "@/hooks/use-delete-confirmation";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertyIncomeEntriesInfiniteList } from "@/hooks/use-property-income-entries-infinite-list";
 import { usePropertyIncomeLinesInfiniteList } from "@/hooks/use-property-income-lines-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
@@ -167,28 +168,35 @@ function buildDateFilters(from: string, to: string, unitId: string) {
 function buildReservationFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
+  q: string,
   status: string
 ): IPropertyReservationsListQuery {
   const next: IPropertyReservationsListQuery = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
   if (status) next.status = status as IPropertyReservationsListQuery["status"];
+  const qTrim = q.trim();
+  if (qTrim) next.q = qTrim;
   return next;
 }
 
 function buildLineFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
-  incomeType: string
+  incomeType: string,
+  q: string
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
     next.incomeLineTypeId = incomeType;
   }
+  const qTrim = q.trim();
+  if (qTrim) next.q = qTrim;
   return next;
 }
 
 function buildIncomeEntriesFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
+  q: string,
   status: string,
   incomeType: string,
   sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
@@ -200,6 +208,8 @@ function buildIncomeEntriesFilters(
   if (incomeType) next.incomeType = incomeType;
   if (sortBy) next.sortBy = sortBy;
   if (sortDir) next.sortDir = sortDir;
+  const qTrim = q.trim();
+  if (qTrim) next.q = qTrim;
   return next;
 }
 
@@ -320,7 +330,9 @@ const PropertyIncomeFilters = memo(
     incomeType,
     incomeTypeFilterOptions,
     onFilterChange,
+    onSearchInputChange,
     onShowAllTime,
+    searchInput,
     showStays,
     status,
     to,
@@ -334,7 +346,9 @@ const PropertyIncomeFilters = memo(
     incomeType: string;
     incomeTypeFilterOptions: { label: string; value: string }[];
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    onSearchInputChange: (value: string) => void;
     onShowAllTime: () => void;
+    searchInput: string;
     showStays: boolean;
     status: string;
     to: string;
@@ -355,6 +369,13 @@ const PropertyIncomeFilters = memo(
           </div>
         )
       }
+      search={{
+        id: "income-filter-search",
+        label: "Search",
+        onChange: onSearchInputChange,
+        placeholder: "Search guest, unit, channel, or description…",
+        value: searchInput,
+      }}
     >
       <LedgerFilterGrid filterCount={6}>
         <DateFilterField
@@ -1046,6 +1067,7 @@ const PropertyIncomePage = memo(() => {
         channelCommissionId: string;
         from: string;
         incomeType: string;
+        q: string;
         status: string;
         to: string;
         unitId: string;
@@ -1053,6 +1075,7 @@ const PropertyIncomePage = memo(() => {
         channelCommissionId: { defaultValue: "" },
         from: { defaultValue: defaultDateRange.from },
         incomeType: { defaultValue: "" },
+        q: { defaultValue: "" },
         status: { defaultValue: "" },
         to: { defaultValue: defaultDateRange.to },
         unitId: { defaultValue: "" },
@@ -1061,7 +1084,11 @@ const PropertyIncomePage = memo(() => {
   );
   const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
   const [allTime, setAllTime] = useUrlFilterBoolean("allTime", false);
-  const { channelCommissionId, from, incomeType, status, to, unitId } = filters;
+  const { channelCommissionId, from, incomeType, q, status, to, unitId } = filters;
+  const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
+    q,
+    setFilter
+  );
   const sortController = useUrlTableSort({
     defaultColumnId: "date",
     defaultDirection: "desc",
@@ -1100,13 +1127,13 @@ const PropertyIncomePage = memo(() => {
   );
 
   const reservationFilters = useMemo(
-    () => buildReservationFilters(dateFilters, channelCommissionId, status),
-    [channelCommissionId, dateFilters, status]
+    () => buildReservationFilters(dateFilters, channelCommissionId, q, status),
+    [channelCommissionId, dateFilters, q, status]
   );
 
   const lineFilters = useMemo(
-    () => buildLineFilters(dateFilters, incomeType),
-    [dateFilters, incomeType]
+    () => buildLineFilters(dateFilters, incomeType, q),
+    [dateFilters, incomeType, q]
   );
 
   const incomeEntriesFilters = useMemo(
@@ -1114,12 +1141,21 @@ const PropertyIncomePage = memo(() => {
       buildIncomeEntriesFilters(
         dateFilters,
         channelCommissionId,
+        q,
         status,
         incomeType,
         sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
         sortState.direction
       ),
-    [channelCommissionId, dateFilters, incomeType, sortState.columnId, sortState.direction, status]
+    [
+      channelCommissionId,
+      dateFilters,
+      incomeType,
+      q,
+      sortState.columnId,
+      sortState.direction,
+      status,
+    ]
   );
 
   const isAllView = incomeType === "";
@@ -1465,7 +1501,9 @@ const PropertyIncomePage = memo(() => {
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
                 onFilterChange={handleIncomeFilterChange}
+                onSearchInputChange={handleSearchInputChange}
                 onShowAllTime={handleShowAllTime}
+                searchInput={searchInput}
                 showStays={showStays}
                 status={status}
                 to={to}
