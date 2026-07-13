@@ -536,7 +536,7 @@ export const ImportIncomeCsvDialog = memo(
                 <TableHead className="text-right">Commission</TableHead>
                 <TableHead className="text-right">Taxes</TableHead>
                 <TableHead className="text-right">Gross</TableHead>
-                <TableHead className={cn(STICKY_NET_CELL_CLASS_NAME, "text-right")}>Net</TableHead>
+                <TableHead className="text-right">Net</TableHead>
                 <TableHead className={STICKY_ACTIONS_CELL_CLASS_NAME}>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -594,6 +594,7 @@ export const ImportIncomeCsvDialog = memo(
       <ImportCsvDialogShell
         description={`Upload up to ${INCOME_CSV_IMPORT_MAX_FILES} Hotel Tax Calculator CSV files. Tenanto reads stay rows and computes commission and taxes for review.`}
         footer={footer}
+        onBodyElementReady={setPreviewScrollElement}
         onOpenChange={handleOpenChange}
         open={open}
         title="Import Income from CSV"
@@ -610,31 +611,29 @@ export const ImportIncomeCsvDialog = memo(
             selectedFiles={selectedFiles}
           />
         ) : (
-          <div ref={setPreviewScrollElement}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                {fileResults.map((result) => (
-                  <IncomeFileResultSummary key={result.fileName} result={result} />
-                ))}
-              </div>
-
-              {previewRows.length > 0 ? (
-                <>
-                  <p className="text-muted-foreground text-sm">
-                    {validRowCount} of {previewRows.length} stay row(s) passed validation.
-                    {duplicateRowCount > 0
-                      ? ` ${duplicateRowCount} row(s) match existing stays or repeat within this import.`
-                      : null}
-                  </p>
-                  {previewList}
-                </>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  No income rows are ready to import. Remove irrelevant files or upload different
-                  CSVs.
-                </p>
-              )}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              {fileResults.map((result) => (
+                <IncomeFileResultSummary key={result.fileName} result={result} />
+              ))}
             </div>
+
+            {previewRows.length > 0 ? (
+              <>
+                <p className="text-muted-foreground text-sm">
+                  {validRowCount} of {previewRows.length} stay row(s) passed validation.
+                  {duplicateRowCount > 0
+                    ? ` ${duplicateRowCount} row(s) match existing stays or repeat within this import.`
+                    : null}
+                </p>
+                {previewList}
+              </>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No income rows are ready to import. Remove irrelevant files or upload different
+                CSVs.
+              </p>
+            )}
           </div>
         )}
       </ImportCsvDialogShell>
