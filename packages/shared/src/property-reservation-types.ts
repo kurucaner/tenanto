@@ -77,6 +77,10 @@ export interface IPropertyReservationsListQuery {
   unitId?: string;
 }
 
+export interface IPropertyShortStaysListResponse {
+  shortStays: IPropertyReservation[];
+}
+
 export interface IPropertyReservationComputedFields {
   channelCommission: number;
   channelCommissionRate: number;

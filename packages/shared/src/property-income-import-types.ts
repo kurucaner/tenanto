@@ -67,5 +67,5 @@ export interface IIncomeImportCommitBody {
 export interface IIncomeImportCommitResponse {
   createdCount: number;
   refundCount: number;
-  reservations: IPropertyReservation[];
+  shortStays: IPropertyReservation[];
 }

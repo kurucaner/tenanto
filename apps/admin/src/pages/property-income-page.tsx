@@ -48,7 +48,7 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
-import { incomeLinesApi, reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
+import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { formatMoney } from "@/lib/format-money";
 import {
   getEntryUnitId,
@@ -984,10 +984,10 @@ const PropertyIncomePage = memo(() => {
     [dateFilters, incomeType]
   );
 
-  const reservationsQuery = useQuery({
+  const shortStaysQuery = useQuery({
     enabled: incomeType === "" || incomeType === IncomeEntryKind.STAY,
-    queryFn: () => reservationsApi.list(propertyId, reservationFilters),
-    queryKey: adminQueryKeys.propertyReservations(propertyId, reservationFilters),
+    queryFn: () => shortStaysApi.list(propertyId, reservationFilters),
+    queryKey: adminQueryKeys.propertyShortStays(propertyId, reservationFilters),
   });
 
   const incomeLinesQuery = useQuery({
@@ -1030,7 +1030,7 @@ const PropertyIncomePage = memo(() => {
 
   const deleteStayMutation = useMutation({
     mutationFn: (reservation: IPropertyReservation) =>
-      reservationsApi.delete(propertyId, reservation.id),
+      shortStaysApi.delete(propertyId, reservation.id),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to delete stay");
     },
@@ -1083,7 +1083,7 @@ const PropertyIncomePage = memo(() => {
 
   const restoreStayMutation = useMutation({
     mutationFn: (reservation: IPropertyReservation) =>
-      reservationsApi.restore(propertyId, reservation.id),
+      shortStaysApi.restore(propertyId, reservation.id),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to restore stay");
     },
@@ -1105,7 +1105,7 @@ const PropertyIncomePage = memo(() => {
   });
 
   const refundStayMutation = useMutation({
-    mutationFn: (stay: IPropertyReservation) => reservationsApi.refund(propertyId, stay.id),
+    mutationFn: (stay: IPropertyReservation) => shortStaysApi.refund(propertyId, stay.id),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to refund stay");
     },
@@ -1116,7 +1116,7 @@ const PropertyIncomePage = memo(() => {
   });
 
   const unrefundStayMutation = useMutation({
-    mutationFn: (stay: IPropertyReservation) => reservationsApi.unrefund(propertyId, stay.id),
+    mutationFn: (stay: IPropertyReservation) => shortStaysApi.unrefund(propertyId, stay.id),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to undo stay refund");
     },
@@ -1190,11 +1190,11 @@ const PropertyIncomePage = memo(() => {
   const entries = useMemo(
     () =>
       buildMergedEntries(
-        reservationsQuery.data?.reservations ?? [],
+        shortStaysQuery.data?.shortStays ?? [],
         incomeLinesQuery.data?.incomeLines ?? [],
         incomeType
       ),
-    [incomeLinesQuery.data?.incomeLines, incomeType, reservationsQuery.data?.reservations]
+    [incomeLinesQuery.data?.incomeLines, incomeType, shortStaysQuery.data?.shortStays]
   );
 
   const sortedEntries = useMemo(
@@ -1205,7 +1205,7 @@ const PropertyIncomePage = memo(() => {
   const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
   const showLines = incomeType === "" || incomeType !== IncomeEntryKind.STAY;
   const isLoading =
-    (showStays && reservationsQuery.isPending) || (showLines && incomeLinesQuery.isPending);
+    (showStays && shortStaysQuery.isPending) || (showLines && incomeLinesQuery.isPending);
 
   const handleAddOtherIncome = useCallback(() => {
     setCreateLinePrefill(null);

@@ -44,6 +44,7 @@ import {
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertySettings,
+  type IPropertyShortStaysListResponse,
   type IPropertyUnit,
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
@@ -744,7 +745,7 @@ export const settingsApi = {
     ),
 };
 
-function buildReservationsSearchParams(query: IPropertyReservationsListQuery = {}): string {
+function buildShortStaysSearchParams(query: IPropertyReservationsListQuery = {}): string {
   const params = new URLSearchParams();
   if (query.from) params.set("from", query.from);
   if (query.to) params.set("to", query.to);
@@ -760,45 +761,45 @@ function buildReservationsSearchParams(query: IPropertyReservationsListQuery = {
   return search ? `?${search}` : "";
 }
 
-export const reservationsApi = {
+export const shortStaysApi = {
   create: (propertyId: string, body: ICreatePropertyReservationBody) =>
-    authenticatedRequest<{ reservation: IPropertyReservation }>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations`,
+    authenticatedRequest<{ shortStay: IPropertyReservation }>(
+      `/properties/${encodeURIComponent(propertyId)}/short-stays`,
       { body: JSON.stringify(body), method: "POST" }
     ),
 
-  delete: (propertyId: string, reservationId: string) =>
+  delete: (propertyId: string, shortStayId: string) =>
     authenticatedRequest<void>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
+      `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}`,
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
   list: (propertyId: string, query?: IPropertyReservationsListQuery) =>
-    authenticatedRequest<{ reservations: IPropertyReservation[] }>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations${buildReservationsSearchParams(query)}`
+    authenticatedRequest<IPropertyShortStaysListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/short-stays${buildShortStaysSearchParams(query)}`
     ),
 
-  refund: (propertyId: string, reservationId: string) =>
+  refund: (propertyId: string, shortStayId: string) =>
     authenticatedRequest<void>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/refund`,
+      `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}/refund`,
       { method: "POST", omitDefaultContentType: true }
     ),
 
-  restore: (propertyId: string, reservationId: string) =>
+  restore: (propertyId: string, shortStayId: string) =>
     authenticatedRequest<void>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/restore`,
+      `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}/restore`,
       { method: "POST", omitDefaultContentType: true }
     ),
 
-  unrefund: (propertyId: string, reservationId: string) =>
+  unrefund: (propertyId: string, shortStayId: string) =>
     authenticatedRequest<void>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}/unrefund`,
+      `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}/unrefund`,
       { method: "POST", omitDefaultContentType: true }
     ),
 
-  update: (propertyId: string, reservationId: string, body: IUpdatePropertyReservationBody) =>
-    authenticatedRequest<{ reservation: IPropertyReservation }>(
-      `/properties/${encodeURIComponent(propertyId)}/reservations/${encodeURIComponent(reservationId)}`,
+  update: (propertyId: string, shortStayId: string, body: IUpdatePropertyReservationBody) =>
+    authenticatedRequest<{ shortStay: IPropertyReservation }>(
+      `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 };

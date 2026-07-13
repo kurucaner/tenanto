@@ -21,7 +21,7 @@ import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
+import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { optionalNonNegativeMoneyField } from "@/lib/money-field-validation";
@@ -130,7 +130,7 @@ export const CreateReservationDialog = memo(
 
     const mutation = useMutation({
       mutationFn: (values: TCreateReservationFormValues) =>
-        reservationsApi.create(propertyId, {
+        shortStaysApi.create(propertyId, {
           channelCommissionId: values.channelCommissionId,
           checkIn: values.checkIn,
           checkOut: values.checkOut,

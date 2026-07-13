@@ -3,7 +3,7 @@ import { memo, useMemo } from "react";
 
 import { FieldLabel } from "@/components/ui/field-label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { reservationsApi } from "@/lib/api-client";
+import { shortStaysApi } from "@/lib/api-client";
 import { isPropertyAmenityUnit } from "@/lib/property-amenity-unit";
 import { adminQueryKeys } from "@/lib/query-keys";
 import {
@@ -73,20 +73,20 @@ export const LinkToStayField = memo(
       [includeReservationId, reservationId, transactionDate, unitId]
     );
 
-    const reservationsQuery = useQuery({
+    const shortStaysQuery = useQuery({
       enabled: unitId !== "" && !isPropertyAmenityUnit(unitId),
-      queryFn: () => reservationsApi.list(propertyId, pickerFilters),
+      queryFn: () => shortStaysApi.list(propertyId, pickerFilters),
       queryKey: adminQueryKeys.propertyReservationPicker(propertyId, pickerFilters),
     });
 
-    const reservations = reservationsQuery.data?.reservations ?? [];
+    const shortStays = shortStaysQuery.data?.shortStays ?? [];
     const helperText = transactionDate
       ? `Showing stays within ±${STAY_PICKER_DATE_WINDOW_DAYS} days of the selected date.`
       : `Showing stays from the last ${RECENT_STAY_PICKER_DAYS} days.`;
     const statusMessage = getLinkToStayHelperMessage(
       unitId,
-      reservationsQuery.isPending,
-      reservations.length,
+      shortStaysQuery.isPending,
+      shortStays.length,
       helperText
     );
 
@@ -97,17 +97,14 @@ export const LinkToStayField = memo(
         </FieldLabel>
         <NativeSelect
           disabled={
-            disabled ||
-            unitId === "" ||
-            isPropertyAmenityUnit(unitId) ||
-            reservationsQuery.isPending
+            disabled || unitId === "" || isPropertyAmenityUnit(unitId) || shortStaysQuery.isPending
           }
           emptyOptionLabel="No linked stay"
           id={id}
           onChange={(e) => onReservationIdChange(e.target.value)}
-          options={reservations.map((reservation) => ({
-            label: formatStayOptionLabel(reservation),
-            value: reservation.id,
+          options={shortStays.map((stay) => ({
+            label: formatStayOptionLabel(stay),
+            value: stay.id,
           }))}
           value={reservationId}
         />

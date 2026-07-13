@@ -141,6 +141,7 @@ export {
   type IPropertyReservation,
   type IPropertyReservationComputedFields,
   type IPropertyReservationsListQuery,
+  type IPropertyShortStaysListResponse,
   type IUpdatePropertyReservationBody,
   ReservationStatus,
   type TReservationStatus,
@@ -208,6 +209,14 @@ export {
 
 // Property Expense Types
 export {
+  buildIncomeImportDuplicateWarningsByIndex,
+  buildIncomeImportStayDuplicateKey,
+  countIncomeImportDuplicateWarnings,
+  type IIncomeImportDuplicateMatchInput,
+  INCOME_IMPORT_BATCH_DUPLICATE_WARNING,
+  INCOME_IMPORT_DUPLICATE_WARNING,
+} from "./income-import-duplicate-utils";
+export {
   getIncomeImportPreviewTaxesTotal,
   type IIncomeImportPreviewContext,
   INCOME_IMPORT_COMMIT_STATUSES,
@@ -253,14 +262,6 @@ export {
   INCOME_CSV_IMPORT_MAX_ROWS_TOTAL,
   type TIncomeImportFileStatus,
 } from "./property-income-import-types";
-export {
-  buildIncomeImportDuplicateWarningsByIndex,
-  buildIncomeImportStayDuplicateKey,
-  countIncomeImportDuplicateWarnings,
-  INCOME_IMPORT_BATCH_DUPLICATE_WARNING,
-  INCOME_IMPORT_DUPLICATE_WARNING,
-  type IIncomeImportDuplicateMatchInput,
-} from "./income-import-duplicate-utils";
 export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-constants";
 
 // Home Financial Overview Types

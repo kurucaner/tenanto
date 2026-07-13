@@ -18,7 +18,7 @@ import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
-import { reservationsApi, settingsApi } from "@/lib/api-client";
+import { settingsApi, shortStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
@@ -70,7 +70,7 @@ export const EditReservationDialog = memo(
 
     const mutation = useMutation({
       mutationFn: () =>
-        reservationsApi.update(propertyId, reservation.id, {
+        shortStaysApi.update(propertyId, reservation.id, {
           channelCommissionId,
           checkIn,
           checkOut,

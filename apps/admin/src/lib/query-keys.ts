@@ -37,9 +37,9 @@ export const adminQueryKeys = {
     ["property", propertyId, "reports", filters] as const,
   propertyReservationPicker: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
     ["property", propertyId, "reservation-picker", filters] as const,
-  propertyReservations: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
-    ["property", propertyId, "reservations", filters] as const,
   propertySettings: (propertyId: string) => ["property", propertyId, "settings"] as const,
+  propertyShortStays: (propertyId: string, filters: IPropertyReservationsListQuery = {}) =>
+    ["property", propertyId, "short-stays", filters] as const,
   propertyUnits: (propertyId: string, filters: IPropertyUnitsListQuery = {}) =>
     ["property", propertyId, "units", filters] as const,
   propertyUnitsPicker: (propertyId: string) => ["property", propertyId, "units-picker"] as const,

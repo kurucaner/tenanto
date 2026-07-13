@@ -383,9 +383,9 @@ interface IPropertyParams {
   propertyId: string;
 }
 
-interface IPropertyReservationParams {
+interface IPropertyShortStayParams {
   propertyId: string;
-  reservationId: string;
+  shortStayId: string;
 }
 
 async function resolveRentableUnitForProperty(
@@ -486,7 +486,7 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
   const authPre = [server.authenticate];
 
   server.get<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>(
-    "/properties/:propertyId/reservations",
+    "/properties/:propertyId/short-stays",
     { preHandler: authPre },
     async (
       request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
@@ -511,17 +511,17 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       }
 
       const includeDeleted = request.user.userType === UserType.ADMIN;
-      const reservations = await propertyReservationsDb.findByProperty(
+      const shortStays = await propertyReservationsDb.findByProperty(
         propertyId,
         parsed.filters,
         includeDeleted
       );
-      return reply.send({ reservations });
+      return reply.send({ shortStays });
     }
   );
 
   server.post<{ Params: IPropertyParams }>(
-    "/properties/:propertyId/reservations",
+    "/properties/:propertyId/short-stays",
     { preHandler: authPre },
     async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
@@ -556,25 +556,22 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       });
       if (!computed) return;
 
-      const reservation = await propertyReservationsDb.create(propertyId, parsed.body, computed);
-      return reply.status(HttpStatus.CREATED).send({ reservation });
+      const shortStay = await propertyReservationsDb.create(propertyId, parsed.body, computed);
+      return reply.status(HttpStatus.CREATED).send({ shortStay });
     }
   );
 
-  server.patch<{ Params: IPropertyReservationParams }>(
-    "/properties/:propertyId/reservations/:reservationId",
+  server.patch<{ Params: IPropertyShortStayParams }>(
+    "/properties/:propertyId/short-stays/:shortStayId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
-      const reservationId = parseUuidParam(request.params.reservationId);
-      if (reservationId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      const shortStayId = parseUuidParam(request.params.shortStayId);
+      if (shortStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid shortStayId" });
       }
 
       const hasAccess = await assertPropertyMemberAccess(
@@ -594,13 +591,13 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!isOwner) return;
 
-      const existing = await propertyReservationsDb.findById(reservationId);
+      const existing = await propertyReservationsDb.findById(shortStayId);
       if (!existing || existing.propertyId !== propertyId) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Reservation not found" });
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Short stay not found" });
       }
 
-      if (rejectIfDeleted(existing, reply, "reservation")) return;
-      if (rejectIfRefunded(existing, reply, "reservation")) return;
+      if (rejectIfDeleted(existing, reply, "short stay")) return;
+      if (rejectIfRefunded(existing, reply, "short stay")) return;
 
       const parsed = parseUpdateReservationBody(request.body);
       if (!parsed.ok) {
@@ -611,25 +608,22 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       const computed = await buildComputedFields(propertyId, merged, reply);
       if (!computed) return;
 
-      const reservation = await propertyReservationsDb.update(reservationId, parsed.body, computed);
-      return reply.send({ reservation });
+      const shortStay = await propertyReservationsDb.update(shortStayId, parsed.body, computed);
+      return reply.send({ shortStay });
     }
   );
 
-  server.delete<{ Params: IPropertyReservationParams }>(
-    "/properties/:propertyId/reservations/:reservationId",
+  server.delete<{ Params: IPropertyShortStayParams }>(
+    "/properties/:propertyId/short-stays/:shortStayId",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
-      const reservationId = parseUuidParam(request.params.reservationId);
-      if (reservationId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      const shortStayId = parseUuidParam(request.params.shortStayId);
+      if (shortStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid shortStayId" });
       }
 
       const hasAccess = await assertPropertyMemberAccess(
@@ -649,58 +643,52 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!isOwner) return;
 
-      const existing = await propertyReservationsDb.findById(reservationId);
+      const existing = await propertyReservationsDb.findById(shortStayId);
       if (!existing || existing.propertyId !== propertyId) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Reservation not found" });
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Short stay not found" });
       }
 
-      if (rejectIfDeleted(existing, reply, "reservation")) return;
+      if (rejectIfDeleted(existing, reply, "short stay")) return;
 
-      await propertyReservationsDb.softDelete(reservationId);
+      await propertyReservationsDb.softDelete(shortStayId);
       return reply.status(HttpStatus.NO_CONTENT).send();
     }
   );
 
-  server.post<{ Params: IPropertyReservationParams }>(
-    "/properties/:propertyId/reservations/:reservationId/restore",
+  server.post<{ Params: IPropertyShortStayParams }>(
+    "/properties/:propertyId/short-stays/:shortStayId/restore",
     { preHandler: [server.authenticate, server.requireAdmin] },
-    async (
-      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
-      const reservationId = parseUuidParam(request.params.reservationId);
-      if (reservationId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      const shortStayId = parseUuidParam(request.params.shortStayId);
+      if (shortStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid shortStayId" });
       }
 
-      const existing = await propertyReservationsDb.findById(reservationId);
+      const existing = await propertyReservationsDb.findById(shortStayId);
       if (!existing || existing.propertyId !== propertyId) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Reservation not found" });
+        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Short stay not found" });
       }
 
-      await propertyReservationsDb.restore(reservationId);
+      await propertyReservationsDb.restore(shortStayId);
       return reply.status(HttpStatus.NO_CONTENT).send();
     }
   );
 
-  server.post<{ Params: IPropertyReservationParams }>(
-    "/properties/:propertyId/reservations/:reservationId/refund",
+  server.post<{ Params: IPropertyShortStayParams }>(
+    "/properties/:propertyId/short-stays/:shortStayId/refund",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
-      const reservationId = parseUuidParam(request.params.reservationId);
-      if (reservationId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      const shortStayId = parseUuidParam(request.params.shortStayId);
+      if (shortStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid shortStayId" });
       }
 
       const hasAccess = await assertPropertyMemberAccess(
@@ -720,34 +708,31 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!isOwner) return;
 
-      const existing = await propertyReservationsDb.findById(reservationId);
+      const existing = await propertyReservationsDb.findById(shortStayId);
       await executeLedgerRefund(reply, {
         db: propertyReservationsDb,
         entity: existing,
-        entityId: reservationId,
-        entityName: "Reservation",
-        label: "reservation",
-        notFoundError: "Reservation not found",
+        entityId: shortStayId,
+        entityName: "Short stay",
+        label: "short stay",
+        notFoundError: "Short stay not found",
         propertyId,
         userId: request.user.userId,
       });
     }
   );
 
-  server.post<{ Params: IPropertyReservationParams }>(
-    "/properties/:propertyId/reservations/:reservationId/unrefund",
+  server.post<{ Params: IPropertyShortStayParams }>(
+    "/properties/:propertyId/short-stays/:shortStayId/unrefund",
     { preHandler: authPre },
-    async (
-      request: FastifyRequest<{ Params: IPropertyReservationParams }>,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
       const propertyId = parseUuidParam(request.params.propertyId);
       if (propertyId === null) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
       }
-      const reservationId = parseUuidParam(request.params.reservationId);
-      if (reservationId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid reservationId" });
+      const shortStayId = parseUuidParam(request.params.shortStayId);
+      if (shortStayId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid shortStayId" });
       }
 
       const hasAccess = await assertPropertyMemberAccess(
@@ -767,13 +752,13 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       );
       if (!isOwner) return;
 
-      const existing = await propertyReservationsDb.findById(reservationId);
+      const existing = await propertyReservationsDb.findById(shortStayId);
       await executeLedgerUnrefund(reply, {
         db: propertyReservationsDb,
         entity: existing,
-        entityId: reservationId,
-        entityName: "Reservation",
-        notFoundError: "Reservation not found",
+        entityId: shortStayId,
+        entityName: "Short stay",
+        notFoundError: "Short stay not found",
         propertyId,
       });
     }

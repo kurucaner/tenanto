@@ -215,7 +215,7 @@ export const propertyIncomeImportRoutes = async (server: FastifyInstance): Promi
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: validated.error });
       }
 
-      const reservations = await propertyReservationsDb.createMany(
+      const shortStays = await propertyReservationsDb.createMany(
         propertyId,
         validated.rows,
         request.user.userId
@@ -233,7 +233,7 @@ export const propertyIncomeImportRoutes = async (server: FastifyInstance): Promi
 
       request.log.info({
         canceledCount,
-        createdCount: reservations.length,
+        createdCount: shortStays.length,
         event: "income_csv_import_commit",
         noShowCount,
         propertyId,
@@ -243,9 +243,9 @@ export const propertyIncomeImportRoutes = async (server: FastifyInstance): Promi
       });
 
       const response: IIncomeImportCommitResponse = {
-        createdCount: reservations.length,
+        createdCount: shortStays.length,
         refundCount,
-        reservations,
+        shortStays,
       };
       return reply.status(HttpStatus.CREATED).send(response);
     }

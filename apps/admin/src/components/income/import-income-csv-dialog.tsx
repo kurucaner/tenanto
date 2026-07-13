@@ -23,7 +23,7 @@ import { VirtualizedList } from "@/components/virtualized/virtualized-list";
 import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
 import { useCsvFileSelection } from "@/hooks/use-csv-file-selection";
 import { useIsDesktop } from "@/hooks/use-media-query";
-import { reservationsApi, settingsApi, unitsApi } from "@/lib/api-client";
+import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { isLocalEnvironment } from "@/lib/document-title";
 import { commitIncomeCsvImport, parseIncomeCsvFiles } from "@/lib/income-csv-import";
 import { buildIncomeImportMockParseResponse } from "@/lib/income-import-mock-data";
@@ -87,14 +87,14 @@ function notifyIncomeImportParseOutcome(
 }
 
 function formatIncomeImportSuccessMessage(response: IIncomeImportCommitResponse): string {
-  const stayedCount = response.reservations.filter(
+  const stayedCount = response.shortStays.filter(
     (reservation) =>
       reservation.status === ReservationStatus.STAYED && reservation.refundedAt === null
   ).length;
-  const canceledCount = response.reservations.filter(
+  const canceledCount = response.shortStays.filter(
     (reservation) => reservation.status === ReservationStatus.CANCELED
   ).length;
-  const noShowCount = response.reservations.filter(
+  const noShowCount = response.shortStays.filter(
     (reservation) => reservation.status === ReservationStatus.NO_SHOW
   ).length;
 
@@ -274,10 +274,10 @@ export const ImportIncomeCsvDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
-    const reservationsQuery = useQuery({
+    const shortStaysQuery = useQuery({
       enabled: open && step === "preview",
-      queryFn: () => reservationsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyReservations(propertyId),
+      queryFn: () => shortStaysApi.list(propertyId),
+      queryKey: adminQueryKeys.propertyShortStays(propertyId),
     });
 
     const previewContext = useMemo<IIncomeImportPreviewContext>(
@@ -342,15 +342,15 @@ export const ImportIncomeCsvDialog = memo(
 
     const existingStays = useMemo(
       () =>
-        (reservationsQuery.data?.reservations ?? [])
-          .filter((reservation) => !reservation.isDeleted)
-          .map((reservation) => ({
-            checkIn: reservation.checkIn,
-            checkOut: reservation.checkOut,
-            guestName: reservation.guestName,
-            unitId: reservation.unitId,
+        (shortStaysQuery.data?.shortStays ?? [])
+          .filter((stay) => !stay.isDeleted)
+          .map((stay) => ({
+            checkIn: stay.checkIn,
+            checkOut: stay.checkOut,
+            guestName: stay.guestName,
+            unitId: stay.unitId,
           })),
-      [reservationsQuery.data?.reservations]
+      [shortStaysQuery.data?.shortStays]
     );
 
     const duplicateWarningsByIndex = useMemo(

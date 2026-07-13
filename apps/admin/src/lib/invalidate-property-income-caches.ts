@@ -11,7 +11,7 @@ export function invalidatePropertyIncomeCaches(
     queryKey: ["property", propertyId, "income-lines"],
   });
   queryClient.invalidateQueries({
-    queryKey: ["property", propertyId, "reservations"],
+    queryKey: ["property", propertyId, "short-stays"],
   });
   queryClient.invalidateQueries({
     queryKey: ["property", propertyId, "reports"],
