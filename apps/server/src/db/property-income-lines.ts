@@ -275,12 +275,14 @@ export const propertyIncomeLinesDb = {
     };
   },
 
-  async refund(id: string, userId: string): Promise<boolean> {
+  async refund(id: string, userId: string, refundedAmount?: number): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_income_lines
-       SET refunded_at = NOW(), refunded_by = $2
+       SET refunded_at = NOW(),
+           refunded_by = $2,
+           refunded_amount = COALESCE($3::numeric, amount)
        WHERE id = $1 AND refunded_at IS NULL`,
-      [id, userId]
+      [id, userId, refundedAmount ?? null]
     );
     return (result.rowCount ?? 0) > 0;
   },
@@ -304,7 +306,9 @@ export const propertyIncomeLinesDb = {
   async unrefund(id: string): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_income_lines
-       SET refunded_at = NULL, refunded_by = NULL
+       SET refunded_at = NULL,
+           refunded_by = NULL,
+           refunded_amount = NULL
        WHERE id = $1 AND refunded_at IS NOT NULL`,
       [id]
     );

@@ -29,6 +29,7 @@ function buildReservationRow(id: string, refundedAt: Date | null, refundedBy: st
     net_income: "0.00",
     nights: 1,
     property_id: "00000000-0000-4000-8000-000000000001",
+    refunded_amount: refundedAt ? "0.00" : null,
     refunded_at: refundedAt,
     refunded_by: refundedBy,
     reservation_number: null,
@@ -122,6 +123,7 @@ describe("propertyReservationsDb.createMany refund import", () => {
     expect(insertQuery?.sql).toContain("RETURNING *");
     expect(insertQuery?.sql).toContain("refunded_at");
     expect(insertQuery?.sql).toContain("refunded_by");
+    expect(insertQuery?.sql).toContain("refunded_amount");
     expect(insertQuery?.sql).toContain("CASE WHEN $17::boolean THEN NOW() ELSE NULL END");
     expect(insertQuery?.values[16]).toBe(true);
     expect(insertQuery?.values[17]).toBe(refundedByUserId);
@@ -129,6 +131,7 @@ describe("propertyReservationsDb.createMany refund import", () => {
     expect(reservations).toHaveLength(1);
     expect(reservations[0]?.refundedAt).toBe("2026-02-08T12:00:00.000Z");
     expect(reservations[0]?.refundedBy).toBe(refundedByUserId);
+    expect(reservations[0]?.refundedAmount).toBe(0);
     expect(reservations[0]?.status).toBe(ReservationStatus.STAYED);
   });
 
@@ -171,5 +174,6 @@ describe("propertyReservationsDb.createMany refund import", () => {
     expect(insertQuery?.values[16]).toBe(false);
     expect(reservations[0]?.refundedAt).toBeNull();
     expect(reservations[0]?.refundedBy).toBeNull();
+    expect(reservations[0]?.refundedAmount).toBeNull();
   });
 });

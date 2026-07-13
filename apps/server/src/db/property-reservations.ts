@@ -269,14 +269,16 @@ export const propertyReservationsDb = {
                channel_commission_rate,
                net_income,
                refunded_at,
-               refunded_by
+               refunded_by,
+               refunded_amount
              ) VALUES (
                $1, $2, $3, $4, $5, $6, $7,
                $8::property_reservation_status,
                $9,
                $10, $11, $12, $13::jsonb, $14, $15, $16,
                CASE WHEN $17::boolean THEN NOW() ELSE NULL END,
-               CASE WHEN $17::boolean THEN $18::uuid ELSE NULL END
+               CASE WHEN $17::boolean THEN $18::uuid ELSE NULL END,
+               CASE WHEN $17::boolean THEN $12 ELSE NULL END
              )
              RETURNING *
            )
@@ -452,12 +454,14 @@ export const propertyReservationsDb = {
     };
   },
 
-  async refund(id: string, userId: string): Promise<boolean> {
+  async refund(id: string, userId: string, refundedAmount?: number): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_reservations
-       SET refunded_at = NOW(), refunded_by = $2
+       SET refunded_at = NOW(),
+           refunded_by = $2,
+           refunded_amount = COALESCE($3::numeric, gross_income)
        WHERE id = $1 AND refunded_at IS NULL`,
-      [id, userId]
+      [id, userId, refundedAmount ?? null]
     );
     return (result.rowCount ?? 0) > 0;
   },
@@ -481,7 +485,9 @@ export const propertyReservationsDb = {
   async unrefund(id: string): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_reservations
-       SET refunded_at = NULL, refunded_by = NULL
+       SET refunded_at = NULL,
+           refunded_by = NULL,
+           refunded_amount = NULL
        WHERE id = $1 AND refunded_at IS NOT NULL`,
       [id]
     );

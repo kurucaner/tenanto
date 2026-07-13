@@ -9,7 +9,7 @@ export interface ILedgerRefundableRecord {
 }
 
 export interface ILedgerRefundDb {
-  refund(id: string, userId: string): Promise<boolean>;
+  refund(id: string, userId: string, refundedAmount?: number): Promise<boolean>;
   unrefund(id: string): Promise<boolean>;
 }
 

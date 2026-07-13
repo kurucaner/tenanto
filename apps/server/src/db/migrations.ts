@@ -2248,4 +2248,40 @@ export const migrations: IMigration[] = [
     },
     version: 51,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          DROP COLUMN IF EXISTS refunded_amount;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN IF EXISTS refunded_amount;
+      `);
+    },
+    name: "income_partial_refund_amount",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_reservations
+          ADD COLUMN IF NOT EXISTS refunded_amount NUMERIC(12,2);
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS refunded_amount NUMERIC(12,2);
+      `);
+      await client.query(`
+        UPDATE property_reservations
+        SET refunded_amount = gross_income
+        WHERE refunded_at IS NOT NULL
+          AND refunded_amount IS NULL;
+      `);
+      await client.query(`
+        UPDATE property_income_lines
+        SET refunded_amount = amount
+        WHERE refunded_at IS NOT NULL
+          AND refunded_amount IS NULL;
+      `);
+    },
+    version: 52,
+  },
 ];

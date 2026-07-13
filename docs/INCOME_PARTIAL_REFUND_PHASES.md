@@ -134,7 +134,7 @@ validateRefundAmount(body, cap): { ok: true; amount } | { ok: false; error };
 
 ---
 
-## Phase 1 — Shared contract + DB
+## Phase 1 — Shared contract + DB ✅
 
 **Goal:** Persist partial refund amount; no user-facing changes yet.
 
@@ -142,7 +142,7 @@ validateRefundAmount(body, cap): { ok: true; amount } | { ok: false; error };
 
 Add to `IPropertyReservation` and `IPropertyIncomeLine`:
 
-- `refundedAmount: number | null`
+- `refundedAmount: number | null` ✅ (Phase 0)
 
 Add request body type:
 
@@ -152,18 +152,21 @@ interface IRefundLedgerEntryBody {
 }
 ```
 
-Add cap + reportable-amount helpers (see Phase 0) with unit tests.
+✅ (Phase 0)
+
+Cap + reportable-amount helpers — ✅ (Phase 0)
 
 ### Server
 
 | File | Change |
 | ---- | ------ |
-| `db/migrations.ts` | Migration v52 (`refunded_amount` on both tables) |
-| `db/mappers.ts` | Map `refunded_amount` → `refundedAmount` |
-| `db/property-reservations.ts` | `refund(id, userId, amount?)`, clear `refunded_amount` on `unrefund` |
-| `db/property-income-lines.ts` | Same |
+| `db/migrations.ts` | Migration v52 (`refunded_amount` on both tables) ✅ |
+| `db/mappers.ts` | Map `refunded_amount` → `refundedAmount` ✅ |
+| `db/property-reservations.ts` | `refund(id, userId, amount?)`, clear `refunded_amount` on `unrefund` ✅ |
+| `db/property-income-lines.ts` | Same ✅ |
+| `db/property-partial-refund-db.test.ts` | DB refund/unrefund SQL coverage ✅ |
 
-**Backfill:** Existing refunded rows (where `refunded_at IS NOT NULL`) should get `refunded_amount = cap` in migration `up` so they remain fully refunded.
+**Backfill:** Existing refunded rows get `refunded_amount = gross_income` / `amount` in migration v52 `up`.
 
 **Deliverable:** DB layer ready; list endpoints return `refundedAmount` automatically.
 
