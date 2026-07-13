@@ -255,6 +255,26 @@ export const propertyTenantEmailCampaignsDb = {
     return result.rows.map((row) => mapCampaignRow(row as Record<string, unknown>));
   },
 
+  async listCampaignIdsWithQueuedRecipients(): Promise<string[]> {
+    const result = await pool.query(
+      `SELECT DISTINCT campaign_id
+       FROM property_tenant_email_recipients
+       WHERE status = 'queued'
+       ORDER BY campaign_id`
+    );
+    return result.rows.map((row) => (row as { campaign_id: string }).campaign_id);
+  },
+
+  async listQueuedRecipientIds(campaignId: string): Promise<string[]> {
+    const result = await pool.query(
+      `SELECT id FROM property_tenant_email_recipients
+       WHERE campaign_id = $1 AND status = 'queued'
+       ORDER BY created_at ASC`,
+      [campaignId]
+    );
+    return result.rows.map((row) => (row as { id: string }).id);
+  },
+
   async listRecipients(campaignId: string): Promise<ITenantEmailCampaignRecipient[]> {
     const result = await pool.query(
       `SELECT * FROM property_tenant_email_recipients

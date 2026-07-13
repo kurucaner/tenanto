@@ -9,8 +9,13 @@ import {
   type ITenantEmailCampaignDetailResponse,
   type ITenantEmailCampaignListResponse,
   type ITenantEmailCampaignPreviewResponse,
+  type ITenantEmailCampaignReenqueueResponse,
 } from "@/packages/shared";
 import { assertTenantEmailCampaignCreateAllowed } from "@/services/tenant-email-campaign-create-rate-limit";
+import {
+  reenqueueQueuedRecipientsForCampaign,
+  TenantEmailCampaignNotFoundError,
+} from "@/services/tenant-email-campaign-reenqueue";
 import {
   buildTenantEmailCampaignPreview,
   createTenantEmailCampaign,
@@ -222,6 +227,45 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
         }
         if (error instanceof TenantEmailCampaignNoRecipientsError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post<{ Params: { campaignId: string; propertyId: string } }>(
+    "/properties/:propertyId/tenant-email-campaigns/:campaignId/reenqueue",
+    { preHandler: authPre },
+    async (request, reply) => {
+      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
+        return featureDisabled(reply);
+      }
+
+      const propertyId = parseUuidParam(request.params.propertyId);
+      const campaignId = parseUuidParam(request.params.campaignId);
+      if (!propertyId || !campaignId) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid id" });
+      }
+
+      const userId = request.user!.userId;
+      const userType = request.user!.userType;
+      const allowed = await assertPropertyTenantNotificationAccess(
+        propertyId,
+        userId,
+        userType,
+        reply
+      );
+      if (!allowed) {
+        return;
+      }
+
+      try {
+        const response: ITenantEmailCampaignReenqueueResponse =
+          await reenqueueQueuedRecipientsForCampaign(campaignId, propertyId);
+        return reply.status(HttpStatus.ACCEPTED).send(response);
+      } catch (error) {
+        if (error instanceof TenantEmailCampaignNotFoundError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
         }
         throw error;
       }

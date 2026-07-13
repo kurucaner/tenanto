@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { TENANT_EMAIL_CAMPAIGNS_ENABLED } from "@/lib/tenant-email-campaign-config";
 import { verifyRedisConnection } from "@/queues/redis-connection";
+import { reenqueueAllStuckTenantEmailCampaigns } from "@/services/tenant-email-campaign-reenqueue";
 import {
   startTenantEmailSendWorker,
   stopTenantEmailSendWorker,
@@ -20,7 +21,8 @@ async function main(): Promise<void> {
   }
 
   const worker = startTenantEmailSendWorker();
-  console.info("[tenant-email-worker] started");
+  const reenqueuedCount = await reenqueueAllStuckTenantEmailCampaigns();
+  console.info("[tenant-email-worker] started", { reenqueuedCount });
 
   const shutdown = async (signal: string) => {
     console.info(`[tenant-email-worker] received ${signal}, shutting down`);

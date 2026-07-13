@@ -15,10 +15,10 @@ import {
   type ITenantEmailCampaignPreviewResponse,
   PropertyLongStayStatus,
   resolveTenantEmailRecipients,
-  TenantEmailCampaignStatus,
 } from "@/packages/shared";
 import { enqueueTenantEmailSendJobs } from "@/queues/tenant-email-queue";
 import { logTenantEmailCampaignCreated } from "@/services/tenant-email-campaign-observability";
+import { reenqueueQueuedRecipientsForCampaign } from "@/services/tenant-email-campaign-reenqueue";
 import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
 import { sanitizeTenantEmailHtml, tenantEmailHtmlToPlainText } from "@/ses/tenant-email-html";
 
@@ -151,7 +151,7 @@ export async function createTenantEmailCampaign(params: {
       if (!existing) {
         throw error;
       }
-      return toCreateResponse(existing);
+      return finalizeExistingCampaignResponse(existing);
     }
     throw error;
   }
@@ -166,6 +166,14 @@ function toCreateResponse(campaign: ITenantEmailCampaign): ITenantEmailCampaignC
   };
 }
 
+async function finalizeExistingCampaignResponse(
+  campaign: ITenantEmailCampaign
+): Promise<ITenantEmailCampaignCreateResponse> {
+  await reenqueueQueuedRecipientsForCampaign(campaign.id);
+  const refreshed = (await propertyTenantEmailCampaignsDb.findById(campaign.id)) ?? campaign;
+  return toCreateResponse(refreshed);
+}
+
 export async function getExistingTenantEmailCampaignByIdempotencyKey(
   propertyId: string,
   idempotencyKey: string
@@ -176,5 +184,3 @@ export async function getExistingTenantEmailCampaignByIdempotencyKey(
   );
   return existing ? toCreateResponse(existing) : null;
 }
-
-export { TenantEmailCampaignStatus };

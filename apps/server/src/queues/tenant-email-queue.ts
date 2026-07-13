@@ -17,6 +17,8 @@ export function buildTenantEmailSendJobId(campaignId: string, recipientId: strin
   return `${campaignId}__${recipientId}`;
 }
 
+const ACTIVE_JOB_STATES = new Set(["active", "delayed", "prioritized", "waiting"]);
+
 let queue: Queue<ITenantEmailSendJobData> | null = null;
 
 export function getTenantEmailQueue(): Queue<ITenantEmailSendJobData> {
@@ -38,21 +40,47 @@ export function getTenantEmailQueue(): Queue<ITenantEmailSendJobData> {
   return queue;
 }
 
+export async function ensureTenantEmailSendJobEnqueued(
+  campaignId: string,
+  recipientId: string
+): Promise<boolean> {
+  const tenantEmailQueue = getTenantEmailQueue();
+  const jobId = buildTenantEmailSendJobId(campaignId, recipientId);
+  const existing = await tenantEmailQueue.getJob(jobId);
+
+  if (existing != null) {
+    const state = await existing.getState();
+    if (ACTIVE_JOB_STATES.has(state)) {
+      return false;
+    }
+    await existing.remove();
+  }
+
+  await tenantEmailQueue.add(
+    "send-recipient",
+    { campaignId, recipientId },
+    {
+      jobId,
+    }
+  );
+
+  return true;
+}
+
 export async function enqueueTenantEmailSendJobs(
   campaignId: string,
   recipientIds: readonly string[]
-): Promise<void> {
-  const tenantEmailQueue = getTenantEmailQueue();
+): Promise<number> {
+  let enqueuedCount = 0;
 
-  await tenantEmailQueue.addBulk(
-    recipientIds.map((recipientId) => ({
-      data: { campaignId, recipientId },
-      name: "send-recipient",
-      opts: {
-        jobId: buildTenantEmailSendJobId(campaignId, recipientId),
-      },
-    }))
-  );
+  for (const recipientId of recipientIds) {
+    const enqueued = await ensureTenantEmailSendJobEnqueued(campaignId, recipientId);
+    if (enqueued) {
+      enqueuedCount += 1;
+    }
+  }
+
+  return enqueuedCount;
 }
 
 export async function closeTenantEmailQueue(): Promise<void> {
