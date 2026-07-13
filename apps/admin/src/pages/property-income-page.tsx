@@ -53,7 +53,6 @@ import {
   useDeleteConfirmation,
 } from "@/hooks/use-delete-confirmation";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
-import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertyIncomeEntriesInfiniteList } from "@/hooks/use-property-income-entries-infinite-list";
 import { usePropertyIncomeLinesInfiniteList } from "@/hooks/use-property-income-lines-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
@@ -159,36 +158,26 @@ function buildDateFilters(from: string, to: string, unitId: string) {
   return next;
 }
 
-function appendSearchQuery<T extends { q?: string }>(next: T, q: string): T {
-  const qTrim = q.trim();
-  if (qTrim) {
-    next.q = qTrim;
-  }
-  return next;
-}
-
 function buildReservationFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
-  status: string,
-  q: string
+  status: string
 ): IPropertyReservationsListQuery {
   const next: IPropertyReservationsListQuery = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
   if (status) next.status = status as IPropertyReservationsListQuery["status"];
-  return appendSearchQuery(next, q);
+  return next;
 }
 
 function buildLineFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
-  incomeType: string,
-  q: string
+  incomeType: string
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
   if (incomeType && incomeType !== IncomeEntryKind.STAY) {
     next.incomeLineTypeId = incomeType;
   }
-  return appendSearchQuery(next, q);
+  return next;
 }
 
 function buildIncomeEntriesFilters(
@@ -197,8 +186,7 @@ function buildIncomeEntriesFilters(
   status: string,
   incomeType: string,
   sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
-  sortDir: TPropertyIncomeEntriesListFilters["sortDir"],
-  q: string
+  sortDir: TPropertyIncomeEntriesListFilters["sortDir"]
 ): TPropertyIncomeEntriesListFilters {
   const next: TPropertyIncomeEntriesListFilters = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
@@ -206,7 +194,7 @@ function buildIncomeEntriesFilters(
   if (incomeType) next.incomeType = incomeType;
   if (sortBy) next.sortBy = sortBy;
   if (sortDir) next.sortDir = sortDir;
-  return appendSearchQuery(next, q);
+  return next;
 }
 
 function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
@@ -306,9 +294,7 @@ const PropertyIncomeFilters = memo(
     incomeType,
     incomeTypeFilterOptions,
     onFilterChange,
-    onSearchInputChange,
     onShowAllTime,
-    searchInput,
     showStays,
     status,
     to,
@@ -322,9 +308,7 @@ const PropertyIncomeFilters = memo(
     incomeType: string;
     incomeTypeFilterOptions: { label: string; value: string }[];
     onFilterChange: (key: TIncomeFilterKey, value: string) => void;
-    onSearchInputChange: (value: string) => void;
     onShowAllTime: () => void;
-    searchInput: string;
     showStays: boolean;
     status: string;
     to: string;
@@ -345,13 +329,6 @@ const PropertyIncomeFilters = memo(
           </div>
         )
       }
-      search={{
-        id: "filter-search",
-        label: "Search",
-        onChange: onSearchInputChange,
-        placeholder: "Search guest, description, unit, or channel…",
-        value: searchInput,
-      }}
     >
       <LedgerFilterGrid filterCount={6}>
         <DateFilterField
