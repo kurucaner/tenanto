@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatMoney } from "@/lib/format-money";
 import { parseRefundAmountInput } from "@/lib/parse-refund-amount-input";
@@ -18,7 +19,8 @@ import { parseRefundAmountInput } from "@/lib/parse-refund-amount-input";
 export type TRefundEntryMode = "full" | "partial";
 
 export type TRefundEntryConfirmPayload =
-  { amount?: undefined; mode: "full" } | { amount: number; mode: "partial" };
+  | { amount?: undefined; mode: "full" }
+  | { amount: number; mode: "partial" };
 
 interface RefundEntryDialogProps {
   cap: number;
@@ -40,8 +42,6 @@ export const RefundEntryDialog = memo(
     open,
     title,
   }: RefundEntryDialogProps) => {
-    const fullRefundId = useId();
-    const partialRefundId = useId();
     const amountInputId = useId();
     const [mode, setMode] = useState<TRefundEntryMode>("full");
     const [partialAmount, setPartialAmount] = useState("");
@@ -90,6 +90,10 @@ export const RefundEntryDialog = memo(
       onConfirm({ amount: parsedPartialAmount.amount, mode: "partial" });
     }, [mode, onConfirm, parsedPartialAmount]);
 
+    const handleModeChange = useCallback((nextValue: string) => {
+      setMode(nextValue as TRefundEntryMode);
+    }, []);
+
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[400px]" showCloseButton={false}>
@@ -98,51 +102,27 @@ export const RefundEntryDialog = memo(
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
-          <fieldset className="space-y-3 p-6">
-            <legend className="sr-only">Refund type</legend>
-            <div className="flex items-center gap-2">
-              <input
-                checked={mode === "full"}
-                className="size-4"
-                id={fullRefundId}
-                name="refund-mode"
-                onChange={() => setMode("full")}
-                type="radio"
-              />
-              <Label className="font-normal" htmlFor={fullRefundId}>
-                Full refund
-              </Label>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  checked={mode === "partial"}
-                  className="size-4"
-                  id={partialRefundId}
-                  name="refund-mode"
-                  onChange={() => setMode("partial")}
-                  type="radio"
+          <RadioGroupFieldset
+            legend="Refund type"
+            onValueChange={handleModeChange}
+            value={mode}
+          >
+            <RadioOption label="Full refund" value="full" />
+            <RadioOption label="Partial refund" value="partial">
+              <div className="ml-6 space-y-1.5">
+                <Label htmlFor={amountInputId}>Refund amount</Label>
+                <Input
+                  autoFocus
+                  id={amountInputId}
+                  inputMode="decimal"
+                  onChange={(event) => handlePartialAmountChange(event.target.value)}
+                  placeholder="0.00"
+                  value={partialAmount}
                 />
-                <Label className="font-normal" htmlFor={partialRefundId}>
-                  Partial refund
-                </Label>
+                <p className="text-muted-foreground text-xs">Max refund: {formatMoney(cap)}</p>
               </div>
-              {mode === "partial" ? (
-                <div className="ml-6 space-y-1.5">
-                  <Label htmlFor={amountInputId}>Refund amount</Label>
-                  <Input
-                    autoFocus
-                    id={amountInputId}
-                    inputMode="decimal"
-                    onChange={(event) => handlePartialAmountChange(event.target.value)}
-                    placeholder="0.00"
-                    value={partialAmount}
-                  />
-                  <p className="text-muted-foreground text-xs">Max refund: {formatMoney(cap)}</p>
-                </div>
-              ) : null}
-            </div>
-          </fieldset>
+            </RadioOption>
+          </RadioGroupFieldset>
 
           <DialogFooter>
             <Button
