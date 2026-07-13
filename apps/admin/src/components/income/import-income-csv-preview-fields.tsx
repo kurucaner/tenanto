@@ -1,5 +1,5 @@
 import { AlertCircle, Trash2, TriangleAlert } from "lucide-react";
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 
 import {
   AMOUNT_INPUT_CLASS_NAME,
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatMoney } from "@/lib/format-money";
@@ -302,6 +303,32 @@ interface ImportIncomeCsvPreviewRowActionsProps {
   row: IIncomeImportParsedRow;
 }
 
+interface ImportIncomeCsvPreviewWarningBadgeProps {
+  ariaLabel: string;
+  icon: ReactNode;
+  message: string;
+  variant: "destructive" | "outline";
+}
+
+const ImportIncomeCsvPreviewWarningBadge = memo(
+  ({ ariaLabel, icon, message, variant }: ImportIncomeCsvPreviewWarningBadgeProps) => (
+    <Tooltip delayDuration={0}>
+      <TooltipTrigger asChild>
+        <Badge
+          aria-label={ariaLabel}
+          className="cursor-default"
+          tabIndex={0}
+          variant={variant}
+        >
+          {icon}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent side="top">{message}</TooltipContent>
+    </Tooltip>
+  )
+);
+ImportIncomeCsvPreviewWarningBadge.displayName = "ImportIncomeCsvPreviewWarningBadge";
+
 const ImportIncomeCsvPreviewRowActions = memo(
   ({ duplicateWarning, onRemove, row }: ImportIncomeCsvPreviewRowActionsProps) => {
     const validationError = getImportIncomePreviewRowValidationError(row);
@@ -309,14 +336,20 @@ const ImportIncomeCsvPreviewRowActions = memo(
     return (
       <div className="flex items-center gap-2">
         {duplicateWarning ? (
-          <Badge title={duplicateWarning} variant="outline">
-            <TriangleAlert className="size-3 text-amber-600" />
-          </Badge>
+          <ImportIncomeCsvPreviewWarningBadge
+            ariaLabel="Duplicate warning"
+            icon={<TriangleAlert className="size-3 text-amber-600" />}
+            message={duplicateWarning}
+            variant="outline"
+          />
         ) : null}
         {validationError ? (
-          <Badge title={validationError} variant="destructive">
-            <AlertCircle className="size-3" />
-          </Badge>
+          <ImportIncomeCsvPreviewWarningBadge
+            ariaLabel="Validation error"
+            icon={<AlertCircle className="size-3" />}
+            message={validationError}
+            variant="destructive"
+          />
         ) : null}
         <Button
           aria-label="Remove row"

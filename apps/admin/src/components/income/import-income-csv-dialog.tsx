@@ -482,8 +482,7 @@ export const ImportIncomeCsvDialog = memo(
     }, [handleGenerateMockData]);
 
     const getPreviewRowItemKey = useCallback(
-      (item: IIncomeImportPreviewRowListItem) =>
-        createPreviewRowKey(item.row, item.sourceIndex),
+      (item: IIncomeImportPreviewRowListItem) => createPreviewRowKey(item.row, item.sourceIndex),
       []
     );
 
@@ -554,7 +553,7 @@ export const ImportIncomeCsvDialog = memo(
             </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead>File</TableHead>
+                <TableHead>FileA</TableHead>
                 <TableHead className="whitespace-normal">Guest</TableHead>
                 <TableHead className="whitespace-normal">Unit</TableHead>
                 <TableHead>Check-in</TableHead>
