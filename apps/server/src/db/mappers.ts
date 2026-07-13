@@ -190,6 +190,14 @@ const formatDateColumn = (value: unknown): string => {
   return String(value).slice(0, 10);
 };
 
+const toRequiredIso = (value: unknown): string => {
+  const iso = toIso(value);
+  if (iso == null) {
+    throw new TypeError("Invalid timestamp");
+  }
+  return iso;
+};
+
 export const mapPropertyReservationRow = (row: Record<string, unknown>): IPropertyReservation => ({
   channelCommission: Number(row.channel_commission),
   channelCommissionId: row.channel_commission_id as string,
@@ -198,7 +206,7 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   checkIn: formatDateColumn(row.check_in),
   checkOut: formatDateColumn(row.check_out),
   cleaningFee: Number(row.cleaning_fee),
-  createdAt: (row.created_at as Date).toISOString(),
+  createdAt: toRequiredIso(row.created_at),
   deletedAt: toIso(row.deleted_at),
   excludeCleaningFromCommissionBase: row.exclude_cleaning_from_commission_base as boolean,
   excludeResortTaxFromPayout: row.exclude_resort_tax_from_payout as boolean,
@@ -216,7 +224,7 @@ export const mapPropertyReservationRow = (row: Record<string, unknown>): IProper
   status: row.status as TReservationStatus,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   unitId: row.unit_id as string,
-  updatedAt: (row.updated_at as Date).toISOString(),
+  updatedAt: toRequiredIso(row.updated_at),
 });
 
 export const parseSecondaryTenants = (raw: unknown): IPropertyLongStaySecondaryTenant[] => {
@@ -263,7 +271,7 @@ export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyL
 export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropertyIncomeLine => ({
   amount: Number(row.amount),
   channelCommission: Number(row.channel_commission),
-  createdAt: (row.created_at as Date).toISOString(),
+  createdAt: toRequiredIso(row.created_at),
   deletedAt: toIso(row.deleted_at),
   description: (row.description as string) ?? null,
   grossIncome: Number(row.gross_income),
@@ -282,7 +290,7 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   transactionDate: formatDateColumn(row.transaction_date),
   unitId: (row.unit_id as string | null) ?? null,
-  updatedAt: (row.updated_at as Date).toISOString(),
+  updatedAt: toRequiredIso(row.updated_at),
 });
 
 export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyExpense => ({

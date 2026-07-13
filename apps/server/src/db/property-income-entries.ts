@@ -26,6 +26,7 @@ import { mapPropertyIncomeLineRow, mapPropertyReservationRow } from "./mappers";
 import { pool } from "./pool";
 import { buildIncomeLineListParts } from "./property-income-lines";
 import { buildReservationListParts } from "./property-reservations";
+import { offsetSqlPlaceholders } from "./sql-placeholders";
 
 const RESERVATION_CHANNEL_JOIN = `
   INNER JOIN property_channel_commissions pcc ON pcc.id = pr.channel_commission_id
@@ -222,7 +223,7 @@ function buildMergedUnionSql(
       branchPlan.lineTypeId,
       sort
     );
-    branches.push(lineBranch.sql);
+    branches.push(offsetSqlPlaceholders(lineBranch.sql, values.length));
     values.push(...lineBranch.values);
   }
 

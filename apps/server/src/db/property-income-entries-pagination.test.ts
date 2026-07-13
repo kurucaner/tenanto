@@ -245,6 +245,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     expect(sql).toContain("UNION ALL");
     expect(sql).toContain("ORDER BY merged.sort_key_date DESC");
     expect(sql).toContain("LIMIT $");
+    expect(sql).toContain("pil.property_id = $2");
+    expect(sql).not.toMatch(/property_income_lines[\s\S]*pil\.property_id = \$1/);
   });
 
   test("orders by numeric sort column when sortBy is net", async () => {
