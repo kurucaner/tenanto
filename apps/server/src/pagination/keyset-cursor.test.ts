@@ -137,18 +137,42 @@ describe("encodeIncomeLineKeysetCursor / decodeIncomeLineKeysetCursor", () => {
 });
 
 describe("encodeIncomeEntryKeysetCursor / decodeIncomeEntryKeysetCursor", () => {
-  test("round-trips sortDate, createdAt, id, and entryKind", () => {
-    const encoded = encodeIncomeEntryKeysetCursor(
-      "2026-07-09",
-      "2026-07-09T12:00:00.000Z",
-      "550e8400-e29b-41d4-a716-446655440000",
-      "stay"
-    );
+  test("round-trips sort dimensions, createdAt, id, and entryKind", () => {
+    const encoded = encodeIncomeEntryKeysetCursor({
+      createdAt: "2026-07-09T12:00:00.000Z",
+      entryKind: "stay",
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      sortBy: "date",
+      sortDir: "desc",
+      sortKeyDate: "2026-07-09",
+      sortKeyNum: null,
+      sortKeyText: null,
+    });
     const decoded = decodeIncomeEntryKeysetCursor(encoded);
-    expect(decoded.sortDate).toBe("2026-07-09");
+    expect(decoded.sortBy).toBe("date");
+    expect(decoded.sortDir).toBe("desc");
+    expect(decoded.sortKeyDate).toBe("2026-07-09");
+    expect(decoded.sortKeyNum).toBeNull();
+    expect(decoded.sortKeyText).toBeNull();
     expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
     expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
     expect(decoded.entryKind).toBe("stay");
+  });
+
+  test("round-trips numeric sort key", () => {
+    const encoded = encodeIncomeEntryKeysetCursor({
+      createdAt: "2026-07-09T12:00:00.000Z",
+      entryKind: "line",
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      sortBy: "net",
+      sortDir: "asc",
+      sortKeyDate: null,
+      sortKeyNum: 42.5,
+      sortKeyText: null,
+    });
+    const decoded = decodeIncomeEntryKeysetCursor(encoded);
+    expect(decoded.sortBy).toBe("net");
+    expect(decoded.sortKeyNum).toBe(42.5);
   });
 
   test("throws on invalid cursor", () => {

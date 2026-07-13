@@ -816,6 +816,8 @@ function buildIncomeEntriesSearchParams(query: IPropertyIncomeEntriesListQuery =
   if (query.channelCommissionId) params.set("channelCommissionId", query.channelCommissionId);
   if (query.status) params.set("status", query.status);
   if (query.incomeType) params.set("incomeType", query.incomeType);
+  if (query.sortBy) params.set("sortBy", query.sortBy);
+  if (query.sortDir) params.set("sortDir", query.sortDir);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();

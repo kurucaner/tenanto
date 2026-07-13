@@ -3,9 +3,13 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { propertyIncomeEntriesDb } from "@/db/property-income-entries";
 import {
   HttpStatus,
+  INCOME_ENTRIES_SORT_BY_VALUES,
+  INCOME_ENTRIES_SORT_DIR_VALUES,
   IncomeEntryKind,
   type IPropertyIncomeEntriesListQuery,
   ReservationStatus,
+  type TPropertyIncomeEntriesListSortBy,
+  type TPropertyIncomeEntriesListSortDir,
   type TReservationStatus,
   UserType,
 } from "@/packages/shared";
@@ -36,6 +40,24 @@ function parseIncomeType(raw: unknown): string | null | undefined {
   if (trimmed === "") return undefined;
   if (trimmed === IncomeEntryKind.STAY) return IncomeEntryKind.STAY;
   return parseOptionalUuid(trimmed) ?? null;
+}
+
+function parseIncomeEntriesSortBy(raw: unknown): TPropertyIncomeEntriesListSortBy | null | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (typeof raw !== "string") return null;
+  return (INCOME_ENTRIES_SORT_BY_VALUES as readonly string[]).includes(raw)
+    ? (raw as TPropertyIncomeEntriesListSortBy)
+    : null;
+}
+
+function parseIncomeEntriesSortDir(
+  raw: unknown
+): TPropertyIncomeEntriesListSortDir | null | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (typeof raw !== "string") return null;
+  return (INCOME_ENTRIES_SORT_DIR_VALUES as readonly string[]).includes(raw)
+    ? (raw as TPropertyIncomeEntriesListSortDir)
+    : null;
 }
 
 function parseIncomeEntriesListQuery(query: Record<string, unknown>):
@@ -91,6 +113,22 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
     if (incomeType) {
       filters.incomeType = incomeType;
     }
+  }
+
+  const sortBy = parseIncomeEntriesSortBy(query["sortBy"]);
+  if (sortBy === null) {
+    return { error: `sortBy must be one of: ${INCOME_ENTRIES_SORT_BY_VALUES.join(", ")}`, ok: false };
+  }
+  if (sortBy) {
+    filters.sortBy = sortBy;
+  }
+
+  const sortDir = parseIncomeEntriesSortDir(query["sortDir"]);
+  if (sortDir === null) {
+    return { error: `sortDir must be one of: ${INCOME_ENTRIES_SORT_DIR_VALUES.join(", ")}`, ok: false };
+  }
+  if (sortDir) {
+    filters.sortDir = sortDir;
   }
 
   const limit = parseIncomeEntriesListLimit(query["limit"]);

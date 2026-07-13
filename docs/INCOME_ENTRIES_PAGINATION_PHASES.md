@@ -237,20 +237,20 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Add `sortBy` + `sortDir` to `IPropertyIncomeEntriesListQuery`
-- [ ] Implement server sort column by column (priority order):
+- [x] Add `sortBy` + `sortDir` to `IPropertyIncomeEntriesListQuery`
+- [x] Implement server sort column by column (priority order):
   1. `date` (default)
   2. `net` / `gross`
   3. `unit`, `guest`, `type`
   4. remaining columns as needed (`channel`, `status`, `nights`, `roomTotal`, `cleaning`, `taxes`, `commission`, `netPayout`, `checkOut`)
-- [ ] Project sort fields in the UNION query (or computed columns per branch)
-- [ ] Encode sort dimensions in the keyset cursor (same idea as `ExpenseKeysetCursorV1`)
+- [x] Project sort fields in the UNION query (or computed columns per branch)
+- [x] Encode sort dimensions in the keyset cursor (same idea as `ExpenseKeysetCursorV1`)
 
 ### Frontend
 
-- [ ] Wire `useUrlTableSort` → API params instead of `sortIncomeEntries` on paginated paths
-- [ ] Disable client sort when server sort is active
-- [ ] Reset cursor when sort or filters change (standard `useInfiniteQuery` behavior — new `queryKey` handles this)
+- [x] Wire `useUrlTableSort` → API params instead of `sortIncomeEntries` on paginated paths
+- [x] Disable client sort when server sort is active
+- [x] Reset cursor when sort or filters change (standard `useInfiniteQuery` behavior — new `queryKey` handles this)
 
 **Exit criteria:** Changing sort column fetches correct global order across pages.
 

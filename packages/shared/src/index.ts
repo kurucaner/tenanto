@@ -197,6 +197,8 @@ export {
   INCOME_ENTRIES_DEFAULT_SORT_DIR,
   INCOME_ENTRIES_LIST_LIMIT,
   INCOME_ENTRIES_LIST_MAX_LIMIT,
+  INCOME_ENTRIES_SORT_BY_VALUES,
+  INCOME_ENTRIES_SORT_DIR_VALUES,
 } from "./property-income-entries-list-constants";
 export {
   type IPropertyIncomeEntriesListQuery,

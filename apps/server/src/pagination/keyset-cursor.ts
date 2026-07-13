@@ -246,14 +246,18 @@ export function encodeIncomeLineKeysetCursor(
 }
 
 /**
- * Unified income-entries list keyset cursor (v1): sortDate (YYYY-MM-DD) + createdAt + id + entryKind.
- * Matches ORDER BY sort_date DESC, created_at DESC, id DESC, entry_kind DESC.
+ * Unified income-entries list keyset cursor (v1): sort dimensions + createdAt + id + entryKind.
+ * Matches dynamic ORDER BY with tiebreakers created_at, id, entry_kind.
  */
 export type IncomeEntryKeysetCursorV1 = {
   createdAt: string;
   entryKind: string;
   id: string;
-  sortDate: string;
+  sortBy: string;
+  sortDir: string;
+  sortKeyDate: string | null;
+  sortKeyNum: number | null;
+  sortKeyText: string | null;
 };
 
 export function decodeIncomeEntryKeysetCursor(raw: string): IncomeEntryKeysetCursorV1 {
@@ -263,35 +267,82 @@ export function decodeIncomeEntryKeysetCursor(raw: string): IncomeEntryKeysetCur
       createdAt?: unknown;
       entryKind?: unknown;
       id?: unknown;
+      sortBy?: unknown;
+      sortDir?: unknown;
+      sortKeyDate?: unknown;
+      sortKeyNum?: unknown;
+      sortKeyText?: unknown;
       sortDate?: unknown;
     };
     if (
       typeof parsed.createdAt !== "string" ||
       typeof parsed.entryKind !== "string" ||
-      typeof parsed.id !== "string" ||
-      typeof parsed.sortDate !== "string"
+      typeof parsed.id !== "string"
     ) {
       throw new TypeError("invalid shape");
     }
+
+    const sortBy = typeof parsed.sortBy === "string" ? parsed.sortBy : "date";
+    const sortDir = typeof parsed.sortDir === "string" ? parsed.sortDir : "desc";
+    const sortKeyDate =
+      parsed.sortKeyDate === null
+        ? null
+        : typeof parsed.sortKeyDate === "string"
+          ? parsed.sortKeyDate
+          : typeof parsed.sortDate === "string"
+            ? parsed.sortDate
+            : null;
+    const sortKeyNum =
+      parsed.sortKeyNum === null
+        ? null
+        : typeof parsed.sortKeyNum === "number"
+          ? parsed.sortKeyNum
+          : null;
+    const sortKeyText =
+      parsed.sortKeyText === null
+        ? null
+        : typeof parsed.sortKeyText === "string"
+          ? parsed.sortKeyText
+          : null;
+
     return {
       createdAt: parsed.createdAt,
       entryKind: parsed.entryKind,
       id: parsed.id,
-      sortDate: parsed.sortDate,
+      sortBy,
+      sortDir,
+      sortKeyDate,
+      sortKeyNum,
+      sortKeyText,
     };
   } catch {
     throw new Error("Invalid cursor");
   }
 }
 
-export function encodeIncomeEntryKeysetCursor(
-  sortDate: string,
-  createdAt: Date | string,
-  id: string,
-  entryKind: string
-): string {
-  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
-  return Buffer.from(JSON.stringify({ createdAt: iso, entryKind, id, sortDate }), "utf8").toString(
-    "base64url"
-  );
+export function encodeIncomeEntryKeysetCursor(input: {
+  createdAt: Date | string;
+  entryKind: string;
+  id: string;
+  sortBy: string;
+  sortDir: string;
+  sortKeyDate: string | null;
+  sortKeyNum: number | null;
+  sortKeyText: string | null;
+}): string {
+  const iso =
+    typeof input.createdAt === "string" ? input.createdAt : input.createdAt.toISOString();
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: iso,
+      entryKind: input.entryKind,
+      id: input.id,
+      sortBy: input.sortBy,
+      sortDir: input.sortDir,
+      sortKeyDate: input.sortKeyDate,
+      sortKeyNum: input.sortKeyNum,
+      sortKeyText: input.sortKeyText,
+    }),
+    "utf8"
+  ).toString("base64url");
 }

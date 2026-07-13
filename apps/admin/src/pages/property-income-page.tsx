@@ -184,12 +184,16 @@ function buildIncomeEntriesFilters(
   dateFilters: ReturnType<typeof buildDateFilters>,
   channelCommissionId: string,
   status: string,
-  incomeType: string
+  incomeType: string,
+  sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
+  sortDir: TPropertyIncomeEntriesListFilters["sortDir"]
 ): TPropertyIncomeEntriesListFilters {
   const next: TPropertyIncomeEntriesListFilters = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
   if (status) next.status = status as TPropertyIncomeEntriesListFilters["status"];
   if (incomeType) next.incomeType = incomeType;
+  if (sortBy) next.sortBy = sortBy;
+  if (sortDir) next.sortDir = sortDir;
   return next;
 }
 
@@ -1067,8 +1071,16 @@ const PropertyIncomePage = memo(() => {
   );
 
   const incomeEntriesFilters = useMemo(
-    () => buildIncomeEntriesFilters(dateFilters, channelCommissionId, status, incomeType),
-    [channelCommissionId, dateFilters, incomeType, status]
+    () =>
+      buildIncomeEntriesFilters(
+        dateFilters,
+        channelCommissionId,
+        status,
+        incomeType,
+        sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
+        sortState.direction
+      ),
+    [channelCommissionId, dateFilters, incomeType, sortState.columnId, sortState.direction, status]
   );
 
   const isAllView = incomeType === "";
@@ -1314,10 +1326,12 @@ const PropertyIncomePage = memo(() => {
     shortStaysInfinite.shortStays,
   ]);
 
-  const sortedEntries = useMemo(
-    () => sortIncomeEntries(entries, sortState, unitLabelById),
-    [entries, sortState, unitLabelById]
-  );
+  const sortedEntries = useMemo(() => {
+    if (isAllView) {
+      return entries;
+    }
+    return sortIncomeEntries(entries, sortState, unitLabelById);
+  }, [entries, isAllView, sortState, unitLabelById]);
 
   const isLoading = isAllView
     ? incomeEntriesInfinite.isPending

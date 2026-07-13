@@ -90,42 +90,50 @@ const mergedRowsCanonical = [
     entry_kind: IncomeEntryKind.STAY,
     id: stayRowA.id,
     row_payload: stayRowA,
-    sort_date: stayRowA.check_in,
+    sort_key_date: stayRowA.check_in,
+    sort_key_num: null,
+    sort_key_text: null,
   },
   {
     created_at: lineRowA.created_at,
     entry_kind: IncomeEntryKind.LINE,
     id: lineRowA.id,
     row_payload: lineRowA,
-    sort_date: lineRowA.transaction_date,
+    sort_key_date: lineRowA.transaction_date,
+    sort_key_num: null,
+    sort_key_text: null,
   },
   {
     created_at: stayRowB.created_at,
     entry_kind: IncomeEntryKind.STAY,
     id: stayRowB.id,
     row_payload: stayRowB,
-    sort_date: stayRowB.check_in,
+    sort_key_date: stayRowB.check_in,
+    sort_key_num: null,
+    sort_key_text: null,
   },
   {
     created_at: lineRowB.created_at,
     entry_kind: IncomeEntryKind.LINE,
     id: lineRowB.id,
     row_payload: lineRowB,
-    sort_date: lineRowB.transaction_date,
+    sort_key_date: lineRowB.transaction_date,
+    sort_key_num: null,
+    sort_key_text: null,
   },
 ];
 
-function rowIsBeforeCursor(
+function rowIsBeforeDateCursor(
   row: (typeof mergedRowsCanonical)[number],
-  sortDate: string,
+  sortKeyDate: string,
   createdAt: string,
   id: string,
   entryKind: string
 ): boolean {
-  const rowSortDate = String(row.sort_date).slice(0, 10);
+  const rowSortDate = String(row.sort_key_date).slice(0, 10);
   const rowCreatedAt =
     row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at);
-  if (rowSortDate !== sortDate) return rowSortDate < sortDate;
+  if (rowSortDate !== sortKeyDate) return rowSortDate < sortKeyDate;
   if (rowCreatedAt !== createdAt) return rowCreatedAt < createdAt;
   if (String(row.id) !== id) return String(row.id) < id;
   return String(row.entry_kind) < entryKind;
@@ -138,16 +146,17 @@ const mockQuery = mock((sql: string, values?: unknown[]) => {
     });
   }
 
-  const limitPlusOne = (values?.[values.length - 1] as number | undefined) ?? mergedRowsCanonical.length;
   let rows = [...mergedRowsCanonical];
 
   if (sql.includes("entry_kind) <") && values) {
     const entryKind = values[values.length - 2] as string;
     const id = values[values.length - 3] as string;
     const createdAt = values[values.length - 4] as string;
-    const sortDate = values[values.length - 5] as string;
-    rows = rows.filter((row) => rowIsBeforeCursor(row, sortDate, createdAt, id, entryKind));
+    const sortKey = values[values.length - 5] as string;
+    rows = rows.filter((row) => rowIsBeforeDateCursor(row, sortKey, createdAt, id, entryKind));
   }
+
+  const limitPlusOne = (values?.[values.length - 1] as number | undefined) ?? mergedRowsCanonical.length;
 
   return Promise.resolve({ rows: rows.slice(0, limitPlusOne) });
 });
@@ -234,10 +243,23 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
     expect(sql).toContain("UNION ALL");
-    expect(sql).toContain(
-      "ORDER BY merged.sort_date DESC, merged.created_at DESC, merged.id DESC, merged.entry_kind DESC"
-    );
+    expect(sql).toContain("ORDER BY merged.sort_key_date DESC");
     expect(sql).toContain("LIMIT $");
+  });
+
+  test("orders by numeric sort column when sortBy is net", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      { sortBy: "net", sortDir: "desc" },
+      { limit: 2 }
+    );
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("ORDER BY merged.sort_key_num DESC");
   });
 
   test("passes cursor predicate on subsequent pages", async () => {
@@ -254,9 +276,7 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     );
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
-    expect(sql).toContain(
-      "merged.sort_date, merged.created_at, merged.id, merged.entry_kind) <"
-    );
+    expect(sql).toContain("merged.sort_key_date, merged.created_at, merged.id, merged.entry_kind) <");
     expect(mockQuery.mock.calls).toHaveLength(1);
   });
 

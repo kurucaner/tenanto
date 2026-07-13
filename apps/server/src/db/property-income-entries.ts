@@ -13,6 +13,15 @@ import {
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
+import {
+  buildIncomeEntryCursorPredicate,
+  buildIncomeEntryOrderByClause,
+  getLineSortKeySelects,
+  getStaySortKeySelects,
+  type IIncomeEntryListSortOptions,
+  needsUnitJoinForSort,
+  resolveIncomeEntryListSort,
+} from "./income-entry-list-sort";
 import { mapPropertyIncomeLineRow, mapPropertyReservationRow } from "./mappers";
 import { pool } from "./pool";
 import { buildIncomeLineListParts } from "./property-income-lines";
@@ -29,10 +38,7 @@ const STAY_BRANCH_SELECT = `
   pcc.exclude_resort_tax_from_payout
 `;
 
-type TIncomeEntriesListDbFilters = Omit<
-  IPropertyIncomeEntriesListQuery,
-  "cursor" | "limit" | "sortBy" | "sortDir"
->;
+type TIncomeEntriesListDbFilters = Omit<IPropertyIncomeEntriesListQuery, "cursor" | "limit">;
 
 interface IIncomeEntryBranchPlan {
   includeLines: boolean;
@@ -75,14 +81,26 @@ function toLineListFilters(
   return next;
 }
 
-function formatSortDateForCursor(sortDate: unknown): string {
-  if (sortDate instanceof Date) {
-    return sortDate.toISOString().slice(0, 10);
+function formatSortKeyDate(value: unknown): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
   }
-  if (typeof sortDate === "string") {
-    return sortDate.slice(0, 10);
+  if (typeof value === "string") {
+    return value.slice(0, 10);
   }
-  throw new TypeError("Invalid sort_date for cursor");
+  return null;
+}
+
+function formatSortKeyNum(value: unknown): number | null {
+  if (value == null) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function formatSortKeyText(value: unknown): string | null {
+  if (value == null) return null;
+  return String(value);
 }
 
 function mapUnifiedRow(row: Record<string, unknown>): TPropertyIncomeEntry {
@@ -97,29 +115,41 @@ function mapUnifiedRow(row: Record<string, unknown>): TPropertyIncomeEntry {
 function buildStayBranchSql(
   propertyId: string,
   filters: TIncomeEntriesListDbFilters,
-  includeDeleted: boolean
+  includeDeleted: boolean,
+  sort: IIncomeEntryListSortOptions
 ): { sql: string; values: unknown[] } {
   const { conditions, joinUnits, values } = buildReservationListParts(
     propertyId,
     toStayListFilters(filters),
     includeDeleted
   );
+  const { sortKeyDate, sortKeyNum, sortKeyText } = getStaySortKeySelects(sort.sortBy);
+  const unitJoin = needsUnitJoinForSort(sort.sortBy)
+    ? "LEFT JOIN property_units pu ON pu.id = pr.unit_id"
+    : "";
 
   return {
     sql: `
       SELECT
         '${IncomeEntryKind.STAY}'::text AS entry_kind,
-        stay_payload.check_in AS sort_date,
-        stay_payload.created_at,
-        stay_payload.id,
-        row_to_json(stay_payload) AS row_payload
+        inner_row.sort_key_date,
+        inner_row.sort_key_num,
+        inner_row.sort_key_text,
+        inner_row.created_at,
+        inner_row.id,
+        row_to_json(inner_row) AS row_payload
       FROM (
-        SELECT ${STAY_BRANCH_SELECT}
+        SELECT
+          ${STAY_BRANCH_SELECT},
+          (${sortKeyDate}) AS sort_key_date,
+          (${sortKeyNum}) AS sort_key_num,
+          (${sortKeyText}) AS sort_key_text
         FROM property_reservations pr
         ${RESERVATION_CHANNEL_JOIN}
+        ${unitJoin}
         ${joinUnits}
         WHERE ${conditions.join(" AND ")}
-      ) stay_payload`,
+      ) inner_row`,
     values,
   };
 }
@@ -128,31 +158,42 @@ function buildLineBranchSql(
   propertyId: string,
   filters: TIncomeEntriesListDbFilters,
   includeDeleted: boolean,
-  lineTypeId?: string
+  lineTypeId: string | undefined,
+  sort: IIncomeEntryListSortOptions
 ): { sql: string; values: unknown[] } {
   const { conditions, joinUnits, values } = buildIncomeLineListParts(
     propertyId,
     toLineListFilters(filters, lineTypeId),
     includeDeleted
   );
+  const { sortKeyDate, sortKeyNum, sortKeyText } = getLineSortKeySelects(sort.sortBy);
+  const unitJoin = needsUnitJoinForSort(sort.sortBy)
+    ? "LEFT JOIN property_units pu ON pu.id = pil.unit_id"
+    : "";
 
   return {
     sql: `
       SELECT
         '${IncomeEntryKind.LINE}'::text AS entry_kind,
-        line_payload.transaction_date AS sort_date,
-        line_payload.created_at,
-        line_payload.id,
-        row_to_json(line_payload) AS row_payload
+        inner_row.sort_key_date,
+        inner_row.sort_key_num,
+        inner_row.sort_key_text,
+        inner_row.created_at,
+        inner_row.id,
+        row_to_json(inner_row) AS row_payload
       FROM (
         SELECT
           pil.*,
-          ilt.name AS income_line_type_name
+          ilt.name AS income_line_type_name,
+          (${sortKeyDate}) AS sort_key_date,
+          (${sortKeyNum}) AS sort_key_num,
+          (${sortKeyText}) AS sort_key_text
         FROM property_income_lines pil
         INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
+        ${unitJoin}
         ${joinUnits}
         WHERE ${conditions.join(" AND ")}
-      ) line_payload`,
+      ) inner_row`,
     values,
   };
 }
@@ -160,14 +201,15 @@ function buildLineBranchSql(
 function buildMergedUnionSql(
   propertyId: string,
   filters: TIncomeEntriesListDbFilters,
-  includeDeleted: boolean
+  includeDeleted: boolean,
+  sort: IIncomeEntryListSortOptions
 ): { sql: string; values: unknown[] } {
   const branchPlan = resolveIncomeTypeFilter(filters.incomeType);
   const branches: string[] = [];
   const values: unknown[] = [];
 
   if (branchPlan.includeStays) {
-    const stayBranch = buildStayBranchSql(propertyId, filters, includeDeleted);
+    const stayBranch = buildStayBranchSql(propertyId, filters, includeDeleted, sort);
     branches.push(stayBranch.sql);
     values.push(...stayBranch.values);
   }
@@ -177,7 +219,8 @@ function buildMergedUnionSql(
       propertyId,
       filters,
       includeDeleted,
-      branchPlan.lineTypeId
+      branchPlan.lineTypeId,
+      sort
     );
     branches.push(lineBranch.sql);
     values.push(...lineBranch.values);
@@ -188,7 +231,9 @@ function buildMergedUnionSql(
       sql: `
         SELECT
           ''::text AS entry_kind,
-          CURRENT_DATE AS sort_date,
+          NULL::date AS sort_key_date,
+          NULL::numeric AS sort_key_num,
+          NULL::text AS sort_key_text,
           NOW() AS created_at,
           '00000000-0000-4000-8000-000000000000'::uuid AS id,
           NULL::json AS row_payload
@@ -207,18 +252,31 @@ function buildPaginatedListSql(
   propertyId: string,
   filters: TIncomeEntriesListDbFilters,
   options: { cursor?: string; includeDeleted?: boolean; limit: number }
-): { sql: string; values: unknown[] } {
+): { sort: IIncomeEntryListSortOptions; sql: string; values: unknown[] } {
   const includeDeleted = options.includeDeleted ?? false;
-  const { sql: unionSql, values } = buildMergedUnionSql(propertyId, filters, includeDeleted);
+  const sort = resolveIncomeEntryListSort(filters.sortBy, filters.sortDir);
+  const { sql: unionSql, values } = buildMergedUnionSql(propertyId, filters, includeDeleted, sort);
   const conditions: string[] = [];
   let p = values.length + 1;
 
   if (options.cursor != null && options.cursor !== "") {
     const decoded = decodeIncomeEntryKeysetCursor(options.cursor);
-    conditions.push(
-      `(merged.sort_date, merged.created_at, merged.id, merged.entry_kind) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid, $${p++}::text)`
-    );
-    values.push(decoded.sortDate, decoded.createdAt, decoded.id, decoded.entryKind);
+    if (decoded.sortBy !== sort.sortBy || decoded.sortDir !== sort.sortDir) {
+      throw new Error("Invalid cursor");
+    }
+
+    const { nextParamIndex, predicate } = buildIncomeEntryCursorPredicate(sort, p);
+    conditions.push(predicate);
+
+    if (sort.sortKeyKind === "date") {
+      values.push(decoded.sortKeyDate, decoded.createdAt, decoded.id, decoded.entryKind);
+    } else if (sort.sortKeyKind === "num") {
+      values.push(decoded.sortKeyNum, decoded.createdAt, decoded.id, decoded.entryKind);
+    } else {
+      values.push(decoded.sortKeyText, decoded.createdAt, decoded.id, decoded.entryKind);
+    }
+
+    p = nextParamIndex;
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -226,15 +284,22 @@ function buildPaginatedListSql(
   values.push(options.limit + 1);
 
   const sql = `
-    SELECT merged.entry_kind, merged.sort_date, merged.created_at, merged.id, merged.row_payload
+    SELECT
+      merged.entry_kind,
+      merged.sort_key_date,
+      merged.sort_key_num,
+      merged.sort_key_text,
+      merged.created_at,
+      merged.id,
+      merged.row_payload
     FROM (
       ${unionSql}
     ) merged
     ${whereClause}
-    ORDER BY merged.sort_date DESC, merged.created_at DESC, merged.id DESC, merged.entry_kind DESC
+    ${buildIncomeEntryOrderByClause(sort)}
     LIMIT $${limitParam}`;
 
-  return { sql, values };
+  return { sort, sql, values };
 }
 
 export const propertyIncomeEntriesDb = {
@@ -315,17 +380,21 @@ export const propertyIncomeEntriesDb = {
     filters: TIncomeEntriesListDbFilters,
     options: { cursor?: string; includeDeleted?: boolean; limit: number }
   ): Promise<{ entries: TPropertyIncomeEntry[]; nextCursor: string | null }> {
-    const { sql, values } = buildPaginatedListSql(propertyId, filters, options);
+    const { sort, sql, values } = buildPaginatedListSql(propertyId, filters, options);
     const result = await pool.query(sql, values);
     const rows = result.rows as Record<string, unknown>[];
 
     const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
-      encodeIncomeEntryKeysetCursor(
-        formatSortDateForCursor(last.sort_date),
-        last.created_at as Date | string,
-        last.id as string,
-        last.entry_kind as string
-      )
+      encodeIncomeEntryKeysetCursor({
+        createdAt: last.created_at as Date | string,
+        entryKind: last.entry_kind as string,
+        id: last.id as string,
+        sortBy: sort.sortBy,
+        sortDir: sort.sortDir,
+        sortKeyDate: formatSortKeyDate(last.sort_key_date),
+        sortKeyNum: formatSortKeyNum(last.sort_key_num),
+        sortKeyText: formatSortKeyText(last.sort_key_text),
+      })
     );
 
     return {
