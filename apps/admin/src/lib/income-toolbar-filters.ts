@@ -7,19 +7,15 @@ import {
 import { type TSelectOption } from "@/lib/select-option-types";
 
 export type TIncomeToolbarFilterId =
-  | "channelCommissionId"
-  | "date"
-  | "incomeType"
-  | "refundStatus"
-  | "status"
-  | "unitId";
+  "channelCommissionId" | "date" | "incomeType" | "refundStatus" | "status" | "unitId";
 
 export interface IIncomeToolbarFilterItem {
   id: TIncomeToolbarFilterId;
   label: string;
 }
 
-type TIncomeToolbarUrlKey = Exclude<TIncomeToolbarFilterId, "date"> | "allTime" | "from" | "q" | "to";
+type TIncomeToolbarUrlKey =
+  Exclude<TIncomeToolbarFilterId, "date"> | "allTime" | "from" | "q" | "to";
 
 function findOptionLabel(options: readonly TSelectOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;

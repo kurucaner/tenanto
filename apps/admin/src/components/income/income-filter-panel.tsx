@@ -9,11 +9,7 @@ import { type TSelectOption } from "@/lib/select-option-types";
 import { type IPropertyUnit } from "@/packages/shared";
 
 export type TIncomeFilterKey =
-  | "channelCommissionId"
-  | "incomeType"
-  | "refundStatus"
-  | "status"
-  | "unitId";
+  "channelCommissionId" | "incomeType" | "refundStatus" | "status" | "unitId";
 
 interface IncomeFilterPanelProps {
   activeFilterCount: number;

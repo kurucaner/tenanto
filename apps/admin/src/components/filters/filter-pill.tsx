@@ -1,4 +1,4 @@
-import { type ComponentProps,memo } from "react";
+import { type ComponentProps, memo } from "react";
 
 import { cn } from "@/lib/utils";
 

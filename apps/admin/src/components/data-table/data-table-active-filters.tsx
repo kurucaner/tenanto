@@ -19,11 +19,7 @@ export const DataTableActiveFilters = memo(
     filters.length > 0 ? (
       <div className="flex flex-wrap items-center gap-1.5">
         {filters.map((filter) => (
-          <DataTableFilterChip
-            key={filter.id}
-            label={filter.label}
-            onRemove={filter.onRemove}
-          />
+          <DataTableFilterChip key={filter.id} label={filter.label} onRemove={filter.onRemove} />
         ))}
         <Button className="h-5 px-1.5 text-xs" onClick={onClearAll} type="button" variant="ghost">
           Clear all

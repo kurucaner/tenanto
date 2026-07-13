@@ -63,9 +63,7 @@ export const PropertyExpenseToolbar = memo(
 
     return (
       <DataTableToolbar
-        activeFilters={
-          <DataTableActiveFilters filters={activeFilters} onClearAll={onClearAll} />
-        }
+        activeFilters={<DataTableActiveFilters filters={activeFilters} onClearAll={onClearAll} />}
         controls={
           <>
             <DateRangeFilterPanel

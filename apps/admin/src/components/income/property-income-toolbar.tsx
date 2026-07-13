@@ -7,10 +7,7 @@ import {
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { DateRangeFilterPanel } from "@/components/filters/date-range-filter-panel";
 import { SearchFilterField } from "@/components/filters/search-filter-field";
-import {
-  IncomeFilterPanel,
-  type TIncomeFilterKey,
-} from "@/components/income/income-filter-panel";
+import { IncomeFilterPanel, type TIncomeFilterKey } from "@/components/income/income-filter-panel";
 import { type TDateRangePresetId } from "@/lib/date-range-presets";
 import { type IIncomeToolbarFilterItem } from "@/lib/income-toolbar-filters";
 import { type TSelectOption } from "@/lib/select-option-types";
@@ -82,9 +79,7 @@ export const PropertyIncomeToolbar = memo(
 
     return (
       <DataTableToolbar
-        activeFilters={
-          <DataTableActiveFilters filters={activeFilters} onClearAll={onClearAll} />
-        }
+        activeFilters={<DataTableActiveFilters filters={activeFilters} onClearAll={onClearAll} />}
         controls={
           <>
             <DateRangeFilterPanel

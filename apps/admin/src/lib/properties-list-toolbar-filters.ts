@@ -5,7 +5,9 @@ export interface IPropertiesListToolbarFilterItem {
   label: string;
 }
 
-export function buildPropertiesListToolbarFilterItems(q: string): IPropertiesListToolbarFilterItem[] {
+export function buildPropertiesListToolbarFilterItems(
+  q: string
+): IPropertiesListToolbarFilterItem[] {
   const trimmed = q.trim();
   if (!trimmed) {
     return [];
@@ -19,14 +21,14 @@ export function buildPropertiesListToolbarClearOnePatch(
   return { [id]: "" };
 }
 
-export function buildPropertiesListToolbarClearAllPatch(): Record<TPropertiesListToolbarFilterId, string> {
+export function buildPropertiesListToolbarClearAllPatch(): Record<
+  TPropertiesListToolbarFilterId,
+  string
+> {
   return { q: "" };
 }
 
-export function formatPropertiesListCountLabel(
-  loadedCount: number,
-  hasNextPage: boolean
-): string {
+export function formatPropertiesListCountLabel(loadedCount: number, hasNextPage: boolean): string {
   const suffix = hasNextPage ? "+" : "";
   const noun = loadedCount === 1 ? "property" : "properties";
   return `${loadedCount}${suffix} ${noun}`;

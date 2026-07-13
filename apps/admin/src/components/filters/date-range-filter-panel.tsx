@@ -4,10 +4,7 @@ import { memo } from "react";
 import { LedgerDateRangeFilter } from "@/components/filters/ledger-date-range-filter";
 import { ResponsiveFilterPanel } from "@/components/filters/responsive-filter-panel";
 import { Button } from "@/components/ui/button";
-import {
-  getDateRangeSummary,
-  type TDateRangePresetId,
-} from "@/lib/date-range-presets";
+import { getDateRangeSummary, type TDateRangePresetId } from "@/lib/date-range-presets";
 
 interface DateRangeFilterPanelProps {
   activePreset: TDateRangePresetId | null;

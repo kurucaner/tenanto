@@ -1,10 +1,7 @@
 import { memo } from "react";
 
 import { FilterPill } from "@/components/filters/filter-pill";
-import {
-  DATE_RANGE_PRESET_OPTIONS,
-  type TDateRangePresetId,
-} from "@/lib/date-range-presets";
+import { DATE_RANGE_PRESET_OPTIONS, type TDateRangePresetId } from "@/lib/date-range-presets";
 
 interface DateRangePresetBarProps {
   activePreset: TDateRangePresetId | null;

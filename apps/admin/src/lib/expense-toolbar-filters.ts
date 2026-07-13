@@ -13,7 +13,8 @@ export interface IExpenseToolbarFilterItem {
   label: string;
 }
 
-type TExpenseToolbarUrlKey = Exclude<TExpenseToolbarFilterId, "date"> | "allTime" | "from" | "q" | "to";
+type TExpenseToolbarUrlKey =
+  Exclude<TExpenseToolbarFilterId, "date"> | "allTime" | "from" | "q" | "to";
 
 function findOptionLabel(options: readonly TSelectOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;

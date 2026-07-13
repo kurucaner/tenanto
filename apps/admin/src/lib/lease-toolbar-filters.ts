@@ -13,11 +13,7 @@ export interface ILeaseToolbarFilterItem {
   label: string;
 }
 
-type TLeaseToolbarUrlKey =
-  | Exclude<TLeaseToolbarFilterId, "date">
-  | "allTime"
-  | "from"
-  | "to";
+type TLeaseToolbarUrlKey = Exclude<TLeaseToolbarFilterId, "date"> | "allTime" | "from" | "to";
 
 function findOptionLabel(options: readonly TSelectOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;
