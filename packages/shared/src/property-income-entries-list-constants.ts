@@ -6,6 +6,9 @@ import type {
 export const INCOME_ENTRIES_LIST_LIMIT = 50;
 export const INCOME_ENTRIES_LIST_MAX_LIMIT = 100;
 
+/** Log a warning when unified income-entries list queries exceed this duration. */
+export const INCOME_ENTRIES_SLOW_QUERY_MS = 1000;
+
 /** Canonical server ORDER BY for the unified income-entries list (Phase 3+). */
 export const INCOME_ENTRIES_DEFAULT_SORT_BY = "date";
 export const INCOME_ENTRIES_DEFAULT_SORT_DIR = "desc";

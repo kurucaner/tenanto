@@ -28,6 +28,7 @@ import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-st
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { isLocalEnvironment } from "@/lib/document-title";
 import { commitIncomeCsvImport, parseIncomeCsvFiles } from "@/lib/income-csv-import";
+import { buildIncomeImportDuplicateCheckFilters } from "@/lib/income-import-duplicate-check-filters";
 import { buildIncomeImportMockParseResponse } from "@/lib/income-import-mock-data";
 import {
   type IIncomeImportPreviewContext,
@@ -276,14 +277,19 @@ export const ImportIncomeCsvDialog = memo(
       queryKey: adminQueryKeys.propertyUnits(propertyId),
     });
 
+    const duplicateCheckFilters = useMemo(
+      () => buildIncomeImportDuplicateCheckFilters(previewRows),
+      [previewRows]
+    );
+
     const shortStaysInfinite = usePropertyShortStaysInfiniteList(
       propertyId,
-      {},
-      { enabled: open && step === "preview" }
+      duplicateCheckFilters,
+      { enabled: open && step === "preview" && previewRows.length > 0 }
     );
 
     useFetchAllInfinitePages({
-      enabled: open && step === "preview",
+      enabled: open && step === "preview" && previewRows.length > 0,
       fetchNextPage: shortStaysInfinite.fetchNextPage,
       hasNextPage: shortStaysInfinite.hasNextPage,
       isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,

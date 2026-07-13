@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { propertyIncomeEntriesDb } from "@/db/property-income-entries";
 import {
   HttpStatus,
+  INCOME_ENTRIES_SLOW_QUERY_MS,
   INCOME_ENTRIES_SORT_BY_VALUES,
   INCOME_ENTRIES_SORT_DIR_VALUES,
   IncomeEntryKind,
@@ -179,11 +180,39 @@ export const propertyIncomeEntriesRoutes = async (server: FastifyInstance): Prom
       }
 
       const includeDeleted = request.user.userType === UserType.ADMIN;
+      const startedAt = performance.now();
       const { entries, meta, nextCursor } = await propertyIncomeEntriesDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
         { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
+      const durationMs = performance.now() - startedAt;
+
+      request.log.info({
+        cursor: parsed.cursor != null,
+        durationMs: Math.round(durationMs),
+        entryCount: entries.length,
+        event: "income_entries_list",
+        hasMeta: meta != null,
+        limit: parsed.limit,
+        propertyId,
+        sortBy: parsed.filters.sortBy ?? "date",
+        sortDir: parsed.filters.sortDir ?? "desc",
+        userId: request.user.userId,
+      });
+
+      if (durationMs >= INCOME_ENTRIES_SLOW_QUERY_MS) {
+        request.log.warn({
+          durationMs: Math.round(durationMs),
+          event: "income_entries_list_slow",
+          limit: parsed.limit,
+          propertyId,
+          sortBy: parsed.filters.sortBy ?? "date",
+          sortDir: parsed.filters.sortDir ?? "desc",
+          thresholdMs: INCOME_ENTRIES_SLOW_QUERY_MS,
+          userId: request.user.userId,
+        });
+      }
 
       return reply.send(meta ? { entries, meta, nextCursor } : { entries, nextCursor });
     }

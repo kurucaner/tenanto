@@ -2,7 +2,6 @@ import { memo, useMemo } from "react";
 
 import { FieldLabel } from "@/components/ui/field-label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { useFetchAllInfinitePages } from "@/hooks/use-fetch-all-infinite-pages";
 import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { isPropertyAmenityUnit } from "@/lib/property-amenity-unit";
 import {
@@ -77,18 +76,8 @@ export const LinkToStayField = memo(
       enabled: pickerEnabled,
     });
 
-    useFetchAllInfinitePages({
-      enabled: pickerEnabled,
-      fetchNextPage: shortStaysInfinite.fetchNextPage,
-      hasNextPage: shortStaysInfinite.hasNextPage,
-      isFetchingNextPage: shortStaysInfinite.isFetchingNextPage,
-    });
-
     const shortStays = shortStaysInfinite.shortStays;
-    const isPending =
-      shortStaysInfinite.isPending ||
-      shortStaysInfinite.isFetchingNextPage ||
-      Boolean(shortStaysInfinite.hasNextPage);
+    const isPending = shortStaysInfinite.isPending;
     const helperText = transactionDate
       ? `Showing stays within ±${STAY_PICKER_DATE_WINDOW_DAYS} days of the selected date.`
       : `Showing stays from the last ${RECENT_STAY_PICKER_DAYS} days.`;

@@ -262,17 +262,17 @@ Existing short-stays + income-lines APIs (bounded/paginated where needed)
 
 ### Backend
 
-- [ ] Decide fate of unpaginated list behavior:
+- [x] Decide fate of unpaginated list behavior:
   - **Keep** list endpoints for pickers/dialogs/import duplicate checks, but add sensible `limit` defaults
   - Or add lightweight endpoints: e.g. duplicate-key check for import preview
-- [ ] Remove "return all" behavior from list endpoints if still present (or enforce a max limit)
-- [ ] Add slow-query monitoring / alerts for `income-entries`
+- [x] Remove "return all" behavior from list endpoints if still present (or enforce a max limit)
+- [x] Add slow-query monitoring / alerts for `income-entries`
 
 ### Frontend
 
-- [ ] Delete dead merge/sort code paths from the income page
-- [ ] Ensure import dialog duplicate check does not fetch full stay history (use date-bounded query or dedicated endpoint)
-- [ ] Final UX: loading next-page state, empty states, total count footer
+- [x] Delete dead merge/sort code paths from the income page
+- [x] Ensure import dialog duplicate check does not fetch full stay history (use date-bounded query or dedicated endpoint)
+- [x] Final UX: loading next-page state, empty states, total count footer
 
 **Exit criteria:** Income page has one pagination architecture; no full-property dual fetch on initial load.
 

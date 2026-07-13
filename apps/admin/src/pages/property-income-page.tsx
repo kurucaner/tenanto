@@ -1310,28 +1310,25 @@ const PropertyIncomePage = memo(() => {
     [requestLineRefund]
   );
 
-  const entries = useMemo(() => {
+  const displayEntries = useMemo(() => {
     if (isAllView) {
       return incomeEntriesInfinite.entries;
     }
-    if (isStayOnlyView) {
-      return shortStaysInfinite.shortStays.map(mapStayToEntry);
-    }
-    return incomeLinesInfinite.incomeLines.map(mapLineToEntry);
+
+    const mappedEntries = isStayOnlyView
+      ? shortStaysInfinite.shortStays.map(mapStayToEntry)
+      : incomeLinesInfinite.incomeLines.map(mapLineToEntry);
+
+    return sortIncomeEntries(mappedEntries, sortState, unitLabelById);
   }, [
     incomeEntriesInfinite.entries,
     incomeLinesInfinite.incomeLines,
     isAllView,
     isStayOnlyView,
     shortStaysInfinite.shortStays,
+    sortState,
+    unitLabelById,
   ]);
-
-  const sortedEntries = useMemo(() => {
-    if (isAllView) {
-      return entries;
-    }
-    return sortIncomeEntries(entries, sortState, unitLabelById);
-  }, [entries, isAllView, sortState, unitLabelById]);
 
   const isLoading = isAllView
     ? incomeEntriesInfinite.isPending
@@ -1379,7 +1376,7 @@ const PropertyIncomePage = memo(() => {
         <CardContent className="space-y-4 p-0">
           <PropertyIncomeEntriesTable
             canManage={canManage}
-            entries={sortedEntries}
+            entries={displayEntries}
             filters={
               <PropertyIncomeFilters
                 allTime={allTime}
