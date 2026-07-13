@@ -13,12 +13,13 @@ export interface ILedgerFiltersSearchConfig {
 
 interface LedgerFiltersSectionProps {
   children?: ReactNode;
+  dateRange?: ReactNode;
   footer?: ReactNode;
   search?: ILedgerFiltersSearchConfig;
 }
 
 export const LedgerFiltersSection = memo(
-  ({ children, footer, search }: LedgerFiltersSectionProps) => (
+  ({ children, dateRange, footer, search }: LedgerFiltersSectionProps) => (
     <div className="space-y-3 px-4 pt-4">
       {search ? (
         <SearchFilterField
@@ -30,6 +31,7 @@ export const LedgerFiltersSection = memo(
           value={search.value}
         />
       ) : null}
+      {dateRange}
       {children}
       {footer}
     </div>

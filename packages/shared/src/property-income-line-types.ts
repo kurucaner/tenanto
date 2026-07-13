@@ -1,4 +1,5 @@
 import type { IPropertyIncomeLinesListMeta } from "./list-meta-types";
+import type { TIncomeRefundFilter } from "./property-income-refund-filter-types";
 import type { IPropertyReservation } from "./property-reservation-types";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 
@@ -67,6 +68,7 @@ export interface IPropertyIncomeLinesListQuery {
   limit?: number;
   longStayId?: string;
   q?: string;
+  refundStatus?: TIncomeRefundFilter;
   rentalType?: import("./property-types").TUnitRentalType;
   reservationId?: string;
   to?: string;
@@ -75,7 +77,7 @@ export interface IPropertyIncomeLinesListQuery {
 
 export type TPropertyIncomeLinesListFilters = Pick<
   IPropertyIncomeLinesListQuery,
-  "from" | "incomeLineTypeId" | "q" | "to" | "unitId"
+  "from" | "incomeLineTypeId" | "q" | "refundStatus" | "to" | "unitId"
 >;
 
 export interface IPropertyIncomeLinesListResponse {

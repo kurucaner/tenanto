@@ -31,7 +31,10 @@ const STAY_NET_PAYOUT_SQL = `pr.net_income + ${STAY_TAX_TOTAL_SQL}`;
 
 const SORT_KEY_CONFIG: Record<
   TPropertyIncomeEntriesListSortBy,
-  { line: { date?: string; num?: string; text?: string }; stay: { date?: string; num?: string; text?: string } }
+  {
+    line: { date?: string; num?: string; text?: string };
+    stay: { date?: string; num?: string; text?: string };
+  }
 > = {
   channel: {
     line: { text: "''" },
@@ -102,11 +105,7 @@ export function resolveIncomeEntryListSort(
   const resolvedSortBy = sortBy ?? INCOME_ENTRIES_DEFAULT_SORT_BY;
   const config = SORT_KEY_CONFIG[resolvedSortBy];
   const branch = config.stay;
-  const sortKeyKind: TIncomeEntrySortKeyKind = branch.date
-    ? "date"
-    : branch.num
-      ? "num"
-      : "text";
+  const sortKeyKind: TIncomeEntrySortKeyKind = branch.date ? "date" : branch.num ? "num" : "text";
 
   return {
     sortBy: resolvedSortBy,

@@ -392,10 +392,38 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
 
     await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", { q: "alex" }, { limit: 10 });
 
-    const sql = mockQuery.mock.calls.find(
+    const listSql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
-    expect(sql).toContain("pr.guest_name ILIKE");
-    expect(sql).toContain("ilt.name ILIKE");
+    expect(listSql).toContain("pr.guest_name ILIKE");
+    expect(listSql).toContain("ilt.name ILIKE");
+
+    const countSqls = mockQuery.mock.calls
+      .filter(([query]) => (query as string).includes("COUNT(*)"))
+      .map(([query]) => query as string);
+    expect(countSqls.some((sql) => sql.includes("property_income_line_types ilt"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("ilt.name ILIKE"))).toBe(true);
+  });
+
+  test("applies refundStatus filter across stay and line branches", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      { refundStatus: "refunded" },
+      { limit: 10 }
+    );
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(listSql).toContain("pr.refunded_at IS NOT NULL");
+    expect(listSql).toContain("pil.refunded_at IS NOT NULL");
+
+    const countSqls = mockQuery.mock.calls
+      .filter(([query]) => (query as string).includes("COUNT(*)"))
+      .map(([query]) => query as string);
+    expect(countSqls.some((sql) => sql.includes("pr.refunded_at IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("pil.refunded_at IS NOT NULL"))).toBe(true);
   });
 });

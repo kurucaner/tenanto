@@ -30,6 +30,7 @@ import {
 import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
   applyOptionalQueryDateFilter,
+  applyOptionalQueryRefundStatusFilter,
   applyOptionalQuerySearchFilter,
   applyOptionalQueryUuidFilter,
 } from "./parse-list-query-filters";
@@ -344,6 +345,7 @@ function parseReservationsListQuery(
       ),
     () => parseReservationRentalTypeFilter(query, filters),
     () => applyOptionalQuerySearchFilter(query, filters),
+    () => applyOptionalQueryRefundStatusFilter(query, filters),
   ];
 
   for (const applyFilter of filterSteps) {

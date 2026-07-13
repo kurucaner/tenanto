@@ -27,7 +27,7 @@ import {
   validatePropertySettingsForm,
   validatePropertySettingsSection,
 } from "@/lib/property-settings-form-utils";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
   DEFAULT_PROPERTY_TAX_RATES,
@@ -94,7 +94,7 @@ export const usePropertySettingsForm = ({
     },
     onSuccess: (res) => {
       toast.success("Settings saved");
-      queryClient.setQueryData(adminQueryKeys.propertySettings(propertyId), res);
+      queryClient.setQueryData(queryKeys.propertySettings(propertyId), res);
       setForm(settingsToFormState(res.settings));
     },
   });
@@ -120,7 +120,7 @@ export const usePropertySettingsForm = ({
     },
     onSuccess: (res) => {
       toast.success("Settings reset to defaults");
-      queryClient.setQueryData(adminQueryKeys.propertySettings(propertyId), res);
+      queryClient.setQueryData(queryKeys.propertySettings(propertyId), res);
       setForm(settingsToFormState(res.settings));
     },
   });
@@ -138,7 +138,7 @@ export const usePropertySettingsForm = ({
     },
     onSuccess: (res, section) => {
       toast.success(sectionSaveSuccessMessage[section]);
-      queryClient.setQueryData(adminQueryKeys.propertySettings(propertyId), res);
+      queryClient.setQueryData(queryKeys.propertySettings(propertyId), res);
       setForm((prev) => mergeSavedSectionIntoForm(prev, res.settings, section));
     },
   });

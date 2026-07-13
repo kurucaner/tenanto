@@ -10,7 +10,7 @@ import { ReportSummaryCards } from "@/components/reports/report-summary-cards";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { homeApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 
 function formatPeriodLabel(from: string, to: string): string {
   const fromDate = new Date(`${from}T12:00:00Z`);
@@ -27,7 +27,7 @@ function formatPropertyCount(count: number): string {
 export const HomeFinancialOverview = memo(() => {
   const overviewQuery = useQuery({
     queryFn: () => homeApi.financialOverview(),
-    queryKey: adminQueryKeys.homeFinancialOverview(),
+    queryKey: queryKeys.homeFinancialOverview(),
   });
 
   const overview = overviewQuery.data?.overview;

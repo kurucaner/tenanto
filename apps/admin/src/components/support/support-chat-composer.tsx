@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useSupportImageAttachments } from "@/hooks/use-support-image-attachments";
 import { supportApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { markSupportDetailLocallyUpdated } from "@/lib/support-chat-cache";
 import { toAttachmentInput } from "@/lib/upload-support-attachments";
 import { cn } from "@/lib/utils";
@@ -90,7 +90,7 @@ export const SupportChatComposer = memo(
         setReplyDraft("");
         clearAttachments();
         resetTextareaHeight();
-        queryClient.setQueryData(adminQueryKeys.supportRequest(supportRequestId), detail);
+        queryClient.setQueryData(queryKeys.supportRequest(supportRequestId), detail);
 
         const lastMessageId = detail.messages.at(-1)?.id;
         if (lastMessageId != null) {

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import type { IAppConfig } from "@/packages/shared";
 
 const ConfigForm = memo(({ config }: Readonly<{ config: IAppConfig }>) => {
@@ -37,7 +37,7 @@ const ConfigForm = memo(({ config }: Readonly<{ config: IAppConfig }>) => {
     },
     onSuccess: (res) => {
       toast.success("Configuration saved");
-      queryClient.setQueryData(adminQueryKeys.appConfig(), { config: res.config });
+      queryClient.setQueryData(queryKeys.appConfig(), { config: res.config });
       queryClient.invalidateQueries({ queryKey: ["activity"] });
     },
   });
@@ -140,7 +140,7 @@ const configIntro = {
 const ConfigPageInner = memo(() => {
   const query = useQuery({
     queryFn: () => adminApi.getAppConfig(),
-    queryKey: adminQueryKeys.appConfig(),
+    queryKey: queryKeys.appConfig(),
   });
 
   if (query.isLoading) {

@@ -23,6 +23,7 @@ import {
 } from "./admin-query-utils";
 import {
   applyOptionalQueryDateFilter,
+  applyOptionalQueryRefundStatusFilter,
   applyOptionalQuerySearchFilter,
   applyOptionalQueryUuidFilter,
 } from "./parse-list-query-filters";
@@ -79,6 +80,7 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
     () => applyOptionalQueryDateFilter(query, "to", filters, "to must be YYYY-MM-DD"),
     () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
     () => applyOptionalQuerySearchFilter(query, filters),
+    () => applyOptionalQueryRefundStatusFilter(query, filters),
   ];
 
   for (const applyFilter of filterSteps) {

@@ -2,14 +2,14 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { longStaysApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
-  type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   LEASES_LIST_LIMIT,
+  type TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 
-export type TPropertyLongStaysListFilters = Pick<IPropertyLongStaysListQuery, "status" | "unitId">;
+export type { TPropertyLongStaysListFilters };
 
 export function usePropertyLongStaysInfiniteList(
   propertyId: string,
@@ -27,14 +27,14 @@ export function usePropertyLongStaysInfiniteList(
     IPropertyLongStaysListResponse,
     Error,
     InfiniteData<IPropertyLongStaysListResponse>,
-    ReturnType<typeof adminQueryKeys.propertyLongStays>,
+    ReturnType<typeof queryKeys.propertyLongStays>,
     string | undefined
   >({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined,
     queryFn: ({ pageParam }) =>
       longStaysApi.list(propertyId, { ...listFilters, cursor: pageParam }),
-    queryKey: adminQueryKeys.propertyLongStays(propertyId, filters),
+    queryKey: queryKeys.propertyLongStays(propertyId, filters),
   });
 
   const longStays = useMemo(

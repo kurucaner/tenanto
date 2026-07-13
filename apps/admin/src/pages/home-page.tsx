@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { adminApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -49,7 +49,7 @@ const HomePageInner = memo(() => {
   const statsQuery = useQuery({
     enabled: isAdmin,
     queryFn: () => adminApi.getAdminStats(),
-    queryKey: adminQueryKeys.platformStats(),
+    queryKey: queryKeys.platformStats(),
   });
 
   return (

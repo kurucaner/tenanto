@@ -2,7 +2,7 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { unitsApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { type ISortState } from "@/lib/table-sort";
 import {
   type IPropertyUnitsListQuery,
@@ -28,13 +28,13 @@ export function usePropertyUnitsInfiniteList(propertyId: string, sortState: ISor
     IPropertyUnitsListResponse,
     Error,
     InfiniteData<IPropertyUnitsListResponse>,
-    ReturnType<typeof adminQueryKeys.propertyUnits>,
+    ReturnType<typeof queryKeys.propertyUnits>,
     string | undefined
   >({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined,
     queryFn: ({ pageParam }) => unitsApi.list(propertyId, { ...listFilters, cursor: pageParam }),
-    queryKey: adminQueryKeys.propertyUnits(propertyId, listFilters),
+    queryKey: queryKeys.propertyUnits(propertyId, listFilters),
   });
 
   const units = useMemo(

@@ -727,6 +727,9 @@ export const longStaysApi = {
     const params = new URLSearchParams();
     if (query.status) params.set("status", query.status);
     if (query.unitId) params.set("unitId", query.unitId);
+    if (query.from) params.set("from", query.from);
+    if (query.to) params.set("to", query.to);
+    if (query.q) params.set("q", query.q);
     if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
     if (query.limit != null) params.set("limit", String(query.limit));
     const search = params.toString();
@@ -768,6 +771,7 @@ function buildShortStaysSearchParams(query: IPropertyReservationsListQuery = {})
   if (query.rentalType) params.set("rentalType", query.rentalType);
   if (query.includeReservationId) params.set("includeReservationId", query.includeReservationId);
   if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.refundStatus) params.set("refundStatus", query.refundStatus);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
@@ -830,6 +834,7 @@ function buildIncomeEntriesSearchParams(query: IPropertyIncomeEntriesListQuery =
   if (query.sortBy) params.set("sortBy", query.sortBy);
   if (query.sortDir) params.set("sortDir", query.sortDir);
   if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.refundStatus) params.set("refundStatus", query.refundStatus);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
@@ -851,6 +856,7 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
   if (query.incomeLineTypeId) params.set("incomeLineTypeId", query.incomeLineTypeId);
   if (query.reservationId) params.set("reservationId", query.reservationId);
   if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.refundStatus) params.set("refundStatus", query.refundStatus);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();

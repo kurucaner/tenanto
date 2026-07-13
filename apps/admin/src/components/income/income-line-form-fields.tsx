@@ -15,7 +15,7 @@ import { IncomeUnitSelectOptions } from "@/components/units/income-unit-select-o
 import { unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { isPropertyAmenityUnit } from "@/lib/property-amenity-unit";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   type IPropertyLongStay,
   type IPropertyReservation,
@@ -205,7 +205,7 @@ export const IncomeLineUnitSection = memo(
     const unitsQuery = useQuery({
       enabled: unitsProp == null,
       queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnitsPicker(propertyId),
+      queryKey: queryKeys.propertyUnitsPicker(propertyId),
     });
 
     const units = useMemo(() => {

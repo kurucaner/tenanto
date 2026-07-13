@@ -1,6 +1,6 @@
 import { type QueryClient } from "@tanstack/react-query";
 
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 
 export function invalidatePropertyIncomeCaches(
   queryClient: QueryClient,
@@ -8,7 +8,7 @@ export function invalidatePropertyIncomeCaches(
   options: { longStayId?: string | null } = {}
 ): void {
   queryClient.invalidateQueries({
-    queryKey: adminQueryKeys.propertyIncomeEntriesPrefix(propertyId),
+    queryKey: queryKeys.propertyIncomeEntriesPrefix(propertyId),
   });
   queryClient.invalidateQueries({
     queryKey: ["property", propertyId, "income-lines"],
@@ -23,12 +23,12 @@ export function invalidatePropertyIncomeCaches(
     queryKey: ["portfolio", "reports"],
   });
   queryClient.invalidateQueries({
-    queryKey: adminQueryKeys.homeFinancialOverview(),
+    queryKey: queryKeys.homeFinancialOverview(),
   });
 
   if (options.longStayId) {
     queryClient.invalidateQueries({
-      queryKey: adminQueryKeys.propertyLongStay(propertyId, options.longStayId),
+      queryKey: queryKeys.propertyLongStay(propertyId, options.longStayId),
     });
   }
 }

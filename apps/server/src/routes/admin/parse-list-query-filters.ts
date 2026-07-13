@@ -1,4 +1,5 @@
-import { LIST_SEARCH_MAX_LENGTH } from "@/packages/shared";
+import type { TIncomeRefundFilter } from "@/packages/shared";
+import { INCOME_REFUND_FILTER_VALUES, LIST_SEARCH_MAX_LENGTH } from "@/packages/shared";
 
 import {
   parseOptionalQueryDate,
@@ -58,5 +59,28 @@ export function applyOptionalQuerySearchFilter<T extends { q?: string }>(
     filters.q = q;
   }
 
+  return { ok: true };
+}
+
+export function applyOptionalQueryRefundStatusFilter<
+  T extends { refundStatus?: TIncomeRefundFilter },
+>(query: Record<string, unknown>, filters: T): TQueryParseResult<void> {
+  if (query["refundStatus"] === undefined || query["refundStatus"] === "") {
+    return { ok: true };
+  }
+
+  if (typeof query["refundStatus"] !== "string") {
+    return { error: "refundStatus must be a string", ok: false };
+  }
+
+  const refundStatus = query["refundStatus"] as TIncomeRefundFilter;
+  if (!(INCOME_REFUND_FILTER_VALUES as readonly string[]).includes(refundStatus)) {
+    return {
+      error: `refundStatus must be one of: ${INCOME_REFUND_FILTER_VALUES.join(", ")}`,
+      ok: false,
+    };
+  }
+
+  filters.refundStatus = refundStatus;
   return { ok: true };
 }

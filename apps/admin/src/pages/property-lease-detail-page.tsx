@@ -25,7 +25,7 @@ import {
   LEASE_DETAIL_TABS,
   resolveLeaseDetailTab,
 } from "@/lib/lease-detail-tab-schema";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { formatPropertyUnitSelectLabel, resolveRentIncomeLineTypeId } from "@/packages/shared";
 
@@ -70,12 +70,12 @@ export const PropertyLeaseDetailPage = memo(() => {
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
   });
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   const unitLabel = useMemo(() => {

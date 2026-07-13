@@ -2,7 +2,7 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { shortStaysApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   INCOME_ENTRIES_LIST_LIMIT,
   type IPropertyReservationsListQuery,
@@ -31,7 +31,7 @@ export function usePropertyShortStaysInfiniteList(
     IPropertyShortStaysListResponse,
     Error,
     InfiniteData<IPropertyShortStaysListResponse>,
-    ReturnType<typeof adminQueryKeys.propertyShortStays>,
+    ReturnType<typeof queryKeys.propertyShortStays>,
     string | undefined
   >({
     enabled: options.enabled ?? true,
@@ -39,7 +39,7 @@ export function usePropertyShortStaysInfiniteList(
     initialPageParam: undefined,
     queryFn: ({ pageParam }) =>
       shortStaysApi.list(propertyId, { ...listFilters, cursor: pageParam }),
-    queryKey: adminQueryKeys.propertyShortStays(propertyId, filters),
+    queryKey: queryKeys.propertyShortStays(propertyId, filters),
   });
 
   const shortStays = useMemo(

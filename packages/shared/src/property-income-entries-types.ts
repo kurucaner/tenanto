@@ -1,5 +1,6 @@
 import type { IPropertyIncomeEntriesListMeta } from "./list-meta-types";
 import type { TPropertyIncomeEntry } from "./property-income-line-types";
+import type { TIncomeRefundFilter } from "./property-income-refund-filter-types";
 import type { TReservationStatus } from "./property-reservation-types";
 
 export type TPropertyIncomeEntriesListSortBy =
@@ -29,6 +30,7 @@ export interface IPropertyIncomeEntriesListQuery {
   incomeType?: string;
   limit?: number;
   q?: string;
+  refundStatus?: TIncomeRefundFilter;
   sortBy?: TPropertyIncomeEntriesListSortBy;
   sortDir?: TPropertyIncomeEntriesListSortDir;
   status?: TReservationStatus;
@@ -42,6 +44,7 @@ export type TPropertyIncomeEntriesListFilters = Pick<
   | "from"
   | "incomeType"
   | "q"
+  | "refundStatus"
   | "sortBy"
   | "sortDir"
   | "status"

@@ -50,6 +50,8 @@ export interface DataTableProps<TItem> {
   renderRow: (item: TItem, index: number) => ReactNode;
   /** Enables SortableTableHead for columns marked sortable (pass useUrlTableSort's return). */
   sort?: DataTableSortController;
+  /** Compact controls rendered directly above the table. */
+  toolbar?: ReactNode;
   /** Virtualizes rows against the admin layout scroll container. */
   virtualization?: DataTableVirtualization;
 }
@@ -94,6 +96,7 @@ export const DataTable = <TItem,>({
   items,
   renderRow,
   sort,
+  toolbar,
   virtualization,
 }: DataTableProps<TItem>) => {
   const scrollElement = useLayoutScrollElement();
@@ -103,6 +106,7 @@ export const DataTable = <TItem,>({
   if (isPending) {
     return (
       <>
+        {toolbar}
         {filters}
         {LOADING_SKELETON}
       </>
@@ -144,6 +148,7 @@ export const DataTable = <TItem,>({
 
   return (
     <>
+      {toolbar}
       {filters}
       <div className="overflow-x-auto">
         <Table>
@@ -170,7 +175,7 @@ export const DataTable = <TItem,>({
           <div aria-hidden className="h-px w-full" ref={infiniteScrollSentinelRef} />
         ) : null}
         {showEndOfListCaption ? (
-          <p className="text-muted-foreground pt-3 text-center text-sm">
+          <p className="text-muted-foreground text-center text-sm">
             {getInfiniteListLoadMoreLabel({
               hasNextPage: false,
               isFetchingNextPage: false,

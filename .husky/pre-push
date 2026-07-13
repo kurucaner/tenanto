@@ -41,5 +41,5 @@ fi
 if ! git diff --quiet; then
   echo "▸ Auto-fixed files detected — committing…"
   git add -A
-  git commit -m "linting and prettier auto commit"
+  git commit -m "lint: eslint and prettier auto commit"
 fi

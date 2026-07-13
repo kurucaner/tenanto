@@ -25,7 +25,7 @@ import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { optionalNonNegativeMoneyField } from "@/lib/money-field-validation";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   getMinCheckOutDate,
   isValidStayDateRange,
@@ -88,7 +88,7 @@ export const CreateReservationDialog = memo(
     const settingsQuery = useQuery({
       enabled: open,
       queryFn: () => settingsApi.get(propertyId),
-      queryKey: adminQueryKeys.propertySettings(propertyId),
+      queryKey: queryKeys.propertySettings(propertyId),
     });
 
     const channelOptions = useMemo(
@@ -106,7 +106,7 @@ export const CreateReservationDialog = memo(
     const unitsQuery = useQuery({
       enabled: open,
       queryFn: () => unitsApi.list(propertyId),
-      queryKey: adminQueryKeys.propertyUnits(propertyId),
+      queryKey: queryKeys.propertyUnits(propertyId),
     });
 
     const checkIn = form.watch("checkIn");

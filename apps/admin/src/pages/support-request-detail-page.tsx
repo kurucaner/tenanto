@@ -15,7 +15,7 @@ import { SupportTicketSidebar } from "@/components/support/support-ticket-sideba
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNotificationStreamContext } from "@/contexts/notification-stream-context";
 import { adminApi, supportApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import {
   type ISupportRequest,
@@ -103,7 +103,7 @@ const SupportRequestDetailPageInner = memo(() => {
     };
   }, [setSuppressToasts]);
 
-  const detailQueryKey = adminQueryKeys.supportRequest(supportRequestId ?? "");
+  const detailQueryKey = queryKeys.supportRequest(supportRequestId ?? "");
 
   const detailQuery = useQuery({
     enabled: Boolean(supportRequestId),
@@ -143,7 +143,7 @@ const SupportRequestDetailPageInner = memo(() => {
     onSuccess: (data) => {
       toast.success("Status updated");
       queryClient.setQueryData<ISupportRequestDetail | undefined>(
-        adminQueryKeys.supportRequest(data.item.id),
+        queryKeys.supportRequest(data.item.id),
         (old) => (old == null ? old : { ...old, item: { ...old.item, status: data.item.status } })
       );
       queryClient.invalidateQueries({ queryKey: ["support-requests"] });
@@ -159,7 +159,7 @@ const SupportRequestDetailPageInner = memo(() => {
     onSuccess: (data) => {
       toast.success("Ticket closed");
       queryClient.setQueryData<ISupportRequestDetail | undefined>(
-        adminQueryKeys.supportRequest(data.item.item.id),
+        queryKeys.supportRequest(data.item.item.id),
         (old) => (old == null ? old : { ...old, item: { ...old.item, status: "resolved" } })
       );
       queryClient.invalidateQueries({ queryKey: ["support-requests"] });

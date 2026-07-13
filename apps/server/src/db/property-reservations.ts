@@ -13,6 +13,7 @@ import {
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
+import { applyRefundStatusFilter } from "./apply-refund-status-filter";
 import { mapPropertyReservationRow } from "./mappers";
 import { pool } from "./pool";
 
@@ -107,6 +108,7 @@ export function buildReservationListParts(
   if (filters.status) {
     pushReservationCondition(parts, "pr.status = $?::property_reservation_status", filters.status);
   }
+  applyRefundStatusFilter("pr", filters.refundStatus, parts.conditions);
   if (filters.rentalType) {
     parts.joinUnits = "INNER JOIN property_units pu ON pu.id = pr.unit_id";
     pushReservationCondition(

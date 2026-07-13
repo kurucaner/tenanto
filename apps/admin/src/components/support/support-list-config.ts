@@ -1,7 +1,7 @@
 import { type AdminPageIntroProps } from "@/components/admin-page-intro";
 import { type TAppliedSupportFilters } from "@/components/support/support-constants";
 import { adminApi, supportApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { type IAdminSupportRequestListItem, type ISupportRequestListItem } from "@/packages/shared";
 
 export type TSupportListVariant = "admin" | "user";
@@ -38,7 +38,7 @@ export const ADMIN_SUPPORT_LIST_CONFIG: TSupportListVariantConfig = {
     }),
   filterIdPrefix: "admin-support",
   getQueryKey: (applied) =>
-    adminQueryKeys.supportRequestsList({
+    queryKeys.supportRequestsList({
       category: applied.category,
       status: applied.status,
     }),
@@ -60,7 +60,7 @@ export const USER_SUPPORT_LIST_CONFIG: TSupportListVariantConfig = {
     }),
   filterIdPrefix: "user-support",
   getQueryKey: (applied) =>
-    adminQueryKeys.userSupportList({
+    queryKeys.userSupportList({
       category: applied.category,
       status: applied.status,
     }),

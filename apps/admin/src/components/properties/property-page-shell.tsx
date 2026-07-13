@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
 import { propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { recordRecentProperty } from "@/lib/recent-properties-storage";
 import { type IPropertyDetail } from "@/packages/shared";
 
@@ -59,8 +59,8 @@ export const PropertyPageShell = memo(
 
     return (
       <PropertyShellDepthContext.Provider value={true}>
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             <Link className="text-muted-foreground text-sm hover:underline" to="/properties">
               ← Properties
             </Link>
@@ -108,7 +108,7 @@ export const PropertyShellLayout = memo(() => {
   const detailQuery = useQuery({
     enabled: Boolean(propertyId),
     queryFn: () => propertiesApi.getDetail(propertyId!), // NOSONAR
-    queryKey: adminQueryKeys.propertyDetail(propertyId!), // NOSONAR
+    queryKey: queryKeys.propertyDetail(propertyId!), // NOSONAR
   });
 
   if (!propertyId) {

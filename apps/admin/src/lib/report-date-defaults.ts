@@ -1,11 +1,7 @@
+import { DateRangePreset, resolveDateRangePreset } from "@/lib/date-range-presets";
+
 export function getDefaultReportDateRange(): { from: string; to: string } {
-  const now = new Date();
-  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-  return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
-  };
+  return resolveDateRangePreset(DateRangePreset.CURRENT_MONTH)!;
 }
 
 export function formatReportPercent(value: number): string {

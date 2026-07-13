@@ -11,7 +11,7 @@ import type {
   TPropertyIncomeEntriesListFilters,
 } from "@/packages/shared";
 
-export const adminQueryKeys = {
+export const queryKeys = {
   appConfig: () => ["app-config"] as const,
   auditLog: (filters: Omit<IAdminAuditEventsListQuery, "cursor" | "limit">) =>
     ["activity", filters] as const,

@@ -22,7 +22,7 @@ import { settingsApi, shortStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   getMinCheckOutDate,
   isValidStayDateRange,
@@ -48,7 +48,7 @@ export const EditReservationDialog = memo(
     const settingsQuery = useQuery({
       enabled: open,
       queryFn: () => settingsApi.get(propertyId),
-      queryKey: adminQueryKeys.propertySettings(propertyId),
+      queryKey: queryKeys.propertySettings(propertyId),
     });
     const channelOptions = useMemo(
       () => buildChannelOptions(settingsQuery.data?.settings.channelCommissions ?? []),

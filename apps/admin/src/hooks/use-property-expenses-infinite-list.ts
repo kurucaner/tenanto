@@ -2,7 +2,7 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { expensesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   EXPENSES_LIST_LIMIT,
   type IPropertyExpensesListResponse,
@@ -27,13 +27,13 @@ export function usePropertyExpensesInfiniteList(
     IPropertyExpensesListResponse,
     Error,
     InfiniteData<IPropertyExpensesListResponse>,
-    ReturnType<typeof adminQueryKeys.propertyExpenses>,
+    ReturnType<typeof queryKeys.propertyExpenses>,
     string | undefined
   >({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined,
     queryFn: ({ pageParam }) => expensesApi.list(propertyId, { ...listFilters, cursor: pageParam }),
-    queryKey: adminQueryKeys.propertyExpenses(propertyId, filters),
+    queryKey: queryKeys.propertyExpenses(propertyId, filters),
   });
 
   const expenses = useMemo(

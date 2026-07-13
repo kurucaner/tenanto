@@ -1,37 +1,45 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "@/components/data-table/data-table";
-import { DataTableCountFooter } from "@/components/data-table/data-table-count-footer";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
-import { FilterSelectField } from "@/components/filters/filter-select-field";
-import { LedgerFilterGrid } from "@/components/filters/ledger-filter-grid";
-import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
 } from "@/components/income/create-income-line-dialog";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
+import { type TLeaseFilterKey } from "@/components/leases/lease-filter-panel";
+import { PropertyLeaseToolbar } from "@/components/leases/property-lease-toolbar";
 import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import {
   type TPropertyLongStaysListFilters,
   usePropertyLongStaysInfiniteList,
 } from "@/hooks/use-property-long-stays-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
+import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
+import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { formatMoney } from "@/lib/format-money";
-import { adminQueryKeys } from "@/lib/query-keys";
+import {
+  buildLeaseToolbarClearAllPatch,
+  buildLeaseToolbarClearOnePatch,
+  buildLeaseToolbarFilterItems,
+  countLeaseSecondaryFilters,
+  type TLeaseToolbarFilterId,
+} from "@/lib/lease-toolbar-filters";
+import { queryKeys } from "@/lib/query-keys";
+import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
@@ -39,8 +47,6 @@ import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
-  type IPropertyLongStaysListMeta,
-  type IPropertyUnit,
   PropertyLongStayStatus,
   resolveRentIncomeLineTypeId,
   type TPropertyLongStayStatus,
@@ -64,25 +70,26 @@ const LEASE_COLUMNS: DataTableColumn[] = [
   { id: "actions", label: "Actions" },
 ];
 
-function buildLeasesFooterItems(meta: IPropertyLongStaysListMeta) {
-  return [
-    { label: "Total", value: String(meta.totalCount) },
-    { label: "Active", value: String(meta.activeCount) },
-    { label: "Ended", value: String(meta.endedCount) },
-  ];
-}
-
 function getLeaseKey(lease: IPropertyLongStay): string {
   return lease.id;
 }
 
-const LEASE_URL_FILTER_SCHEMA = defineUrlFilterSchema<{
-  status: string;
-  unitId: string;
-}>({
-  status: { defaultValue: "" },
-  unitId: { defaultValue: "" },
-});
+function buildLeaseListFilters(
+  effectiveFrom: string,
+  effectiveTo: string,
+  q: string,
+  status: string,
+  unitId: string
+): TPropertyLongStaysListFilters {
+  const next: TPropertyLongStaysListFilters = {};
+  if (effectiveFrom) next.from = effectiveFrom;
+  if (effectiveTo) next.to = effectiveTo;
+  if (status) next.status = status as TPropertyLongStayStatus;
+  if (unitId) next.unitId = unitId;
+  const qTrim = q.trim();
+  if (qTrim) next.q = qTrim;
+  return next;
+}
 
 function buildRentPrefill(
   lease: IPropertyLongStay,
@@ -118,26 +125,25 @@ const LeaseRow = memo(
     onRecordRent: (lease: IPropertyLongStay) => void;
     unitLabel: string;
   }) => {
+    const navigate = useNavigate();
     const endDate = lease.actualEndDate ?? lease.leaseEndDate;
     const tenantNames = getLeaseOccupancyNames(lease);
 
+    const handleRowClick = useCallback(() => {
+      navigate(leaseDetailPath);
+    }, [navigate, leaseDetailPath]);
+
     return (
-      <TableRow>
-        <TableCell className="font-medium">
-          <Link className="hover:underline" to={leaseDetailPath}>
-            {unitLabel}
-          </Link>
-        </TableCell>
+      <TableRow className="cursor-pointer" onClick={handleRowClick}>
+        <TableCell className="font-medium">{unitLabel}</TableCell>
         <TableCell>
-          <Link className="block" to={leaseDetailPath}>
-            <div className="flex flex-wrap gap-1">
-              {tenantNames.map((name, index) => (
-                <Badge key={`${name}-${index}`} variant="secondary">
-                  {name}
-                </Badge>
-              ))}
-            </div>
-          </Link>
+          <div className="flex flex-wrap gap-1">
+            {tenantNames.map((name, index) => (
+              <Badge key={`${name}-${index}`} variant="secondary">
+                {name}
+              </Badge>
+            ))}
+          </div>
         </TableCell>
         <TableCell>{lease.leaseStartDate}</TableCell>
         <TableCell>{endDate}</TableCell>
@@ -149,12 +155,15 @@ const LeaseRow = memo(
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
-            <TableIconButton ariaLabel="View lease" asChild tooltip="View lease">
-              <Button asChild size="icon-sm" type="button" variant="ghost">
-                <Link aria-label="View lease" to={leaseDetailPath}>
-                  <Eye className="size-3.5" />
-                </Link>
-              </Button>
+            <TableIconButton
+              ariaLabel="View lease"
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(leaseDetailPath);
+              }}
+              tooltip="View lease"
+            >
+              <Eye className="size-3.5" />
             </TableIconButton>
             {canManage && lease.status === PropertyLongStayStatus.ACTIVE ? (
               <>
@@ -188,51 +197,55 @@ const LeaseRow = memo(
 );
 LeaseRow.displayName = "LeaseRow";
 
-const PropertyLeaseFilters = memo(
-  ({
-    onStatusChange,
-    onUnitIdChange,
-    status,
-    unitId,
-    units,
-  }: {
-    onStatusChange: (value: string) => void;
-    onUnitIdChange: (value: string) => void;
-    status: string;
-    unitId: string;
-    units: IPropertyUnit[];
-  }) => (
-    <LedgerFiltersSection>
-      <LedgerFilterGrid filterCount={2}>
-        <FilterSelectField
-          id="lease-filter-status"
-          label="Status"
-          onChange={(e) => onStatusChange(e.target.value)}
-          options={LEASE_STATUS_FILTER_OPTIONS}
-          value={status}
-        />
-        <FilterSelectField
-          emptyOptionLabel="All units"
-          id="lease-filter-unit"
-          label="Unit"
-          onChange={(e) => onUnitIdChange(e.target.value)}
-          value={unitId}
-        >
-          <PropertyUnitSelectOptions units={units.filter((unit) => !unit.isDeleted)} />
-        </FilterSelectField>
-      </LedgerFilterGrid>
-    </LedgerFiltersSection>
-  )
-);
-PropertyLeaseFilters.displayName = "PropertyLeaseFilters";
-
 export const PropertyLeasesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
 
-  const { filters, setFilters } = useUrlFilterState(LEASE_URL_FILTER_SCHEMA);
-  const { status, unitId } = filters;
+  const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
+  const leaseFilterSchema = useMemo(
+    () =>
+      defineUrlFilterSchema<{
+        allTime: string;
+        from: string;
+        q: string;
+        status: string;
+        to: string;
+        unitId: string;
+      }>({
+        allTime: { defaultValue: "" },
+        from: { defaultValue: defaultDateRange.from },
+        q: { defaultValue: "" },
+        status: { defaultValue: "" },
+        to: { defaultValue: defaultDateRange.to },
+        unitId: { defaultValue: "" },
+      }),
+    [defaultDateRange.from, defaultDateRange.to]
+  );
+
+  const { filters, setFilter, setFilters } = useUrlFilterState(leaseFilterSchema);
+  const { allTime: allTimeParam, from, q, status, to, unitId } = filters;
+  const allTime = allTimeParam === "true";
+  const {
+    activePreset,
+    displayFrom,
+    displayTo,
+    effectiveFrom,
+    effectiveTo,
+    onFromChange,
+    onPresetChange,
+    onToChange,
+  } = useUrlDateRangeFilter({
+    allTime,
+    dateFilterSchema: leaseFilterSchema,
+    from,
+    to,
+  });
+  const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
+    q,
+    setFilter
+  );
+
   const [createOpen, setCreateOpen] = useState(false);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentLease, setRecordRentLease] = useState<IPropertyLongStay | null>(null);
@@ -240,16 +253,10 @@ export const PropertyLeasesPage = memo(() => {
     null
   );
 
-  const listQueryFilters = useMemo((): TPropertyLongStaysListFilters => {
-    const query: TPropertyLongStaysListFilters = {};
-    if (status) {
-      query.status = status as TPropertyLongStayStatus;
-    }
-    if (unitId) {
-      query.unitId = unitId;
-    }
-    return query;
-  }, [status, unitId]);
+  const listQueryFilters = useMemo(
+    () => buildLeaseListFilters(effectiveFrom, effectiveTo, q, status, unitId),
+    [effectiveFrom, effectiveTo, q, status, unitId]
+  );
 
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending, longStays, meta } =
     usePropertyLongStaysInfiniteList(propertyId, listQueryFilters);
@@ -262,15 +269,16 @@ export const PropertyLeasesPage = memo(() => {
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
-    queryKey: adminQueryKeys.propertyUnits(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
   });
 
   const settingsQuery = useQuery({
     queryFn: () => settingsApi.get(propertyId),
-    queryKey: adminQueryKeys.propertySettings(propertyId),
+    queryKey: queryKeys.propertySettings(propertyId),
   });
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
+  const activeUnits = useMemo(() => units.filter((unit) => !unit.isDeleted), [units]);
   const incomeLineTypes = useMemo(
     () => settingsQuery.data?.settings.incomeLineTypes ?? [],
     [settingsQuery.data?.settings.incomeLineTypes]
@@ -287,6 +295,76 @@ export const PropertyLeasesPage = memo(() => {
     }
     return map;
   }, [units]);
+
+  const unitFilterOptions = useMemo(
+    () =>
+      activeUnits.map((unit) => ({
+        label: formatPropertyUnitSelectLabel(unit),
+        value: unit.id,
+      })),
+    [activeUnits]
+  );
+
+  const activeSecondaryFilterCount = useMemo(
+    () => countLeaseSecondaryFilters({ status, unitId }),
+    [status, unitId]
+  );
+
+  const dateSummary = getDateRangeSummary(activePreset, displayFrom, displayTo);
+  const activeFilterItems = useMemo(
+    () =>
+      buildLeaseToolbarFilterItems({
+        activePreset,
+        dateSummary,
+        isDefaultDateRange:
+          !allTime && from === defaultDateRange.from && to === defaultDateRange.to,
+        q,
+        status,
+        statusOptions: LEASE_STATUS_FILTER_OPTIONS,
+        unitId,
+        unitOptions: unitFilterOptions,
+      }),
+    [
+      activePreset,
+      allTime,
+      dateSummary,
+      defaultDateRange.from,
+      defaultDateRange.to,
+      from,
+      q,
+      status,
+      to,
+      unitFilterOptions,
+      unitId,
+    ]
+  );
+
+  const handleLeaseFilterChange = useCallback(
+    (key: TLeaseFilterKey, value: string) => {
+      setFilter(key, value);
+    },
+    [setFilter]
+  );
+
+  const handleClearSecondaryFilters = useCallback(() => {
+    setFilters({ status: "", unitId: "" });
+  }, [setFilters]);
+
+  const handleRemoveToolbarFilter = useCallback(
+    (id: TLeaseToolbarFilterId) => {
+      if (id === "q") {
+        handleSearchInputChange("");
+        return;
+      }
+      setFilters(buildLeaseToolbarClearOnePatch(id, defaultDateRange));
+    },
+    [defaultDateRange, handleSearchInputChange, setFilters]
+  );
+
+  const handleClearAllToolbarFilters = useCallback(() => {
+    handleSearchInputChange("");
+    setFilters(buildLeaseToolbarClearAllPatch(defaultDateRange));
+  }, [defaultDateRange, handleSearchInputChange, setFilters]);
 
   const handleOpenCreate = useCallback(() => {
     setCreateOpen(true);
@@ -310,7 +388,7 @@ export const PropertyLeasesPage = memo(() => {
       let expectedAmount: number | undefined;
       if (month) {
         const detail = queryClient.getQueryData<IPropertyLongStayDetailResponse>(
-          adminQueryKeys.propertyLongStay(propertyId, lease.id)
+          queryKeys.propertyLongStay(propertyId, lease.id)
         );
         expectedAmount = detail?.rentSchedule.find((item) => item.month === month)?.expectedRent;
       }
@@ -335,36 +413,46 @@ export const PropertyLeasesPage = memo(() => {
     [canManage, handleRecordRent, propertyId, unitLabelById]
   );
 
+  const countLabel = meta
+    ? `${meta.totalCount} leases · ${meta.activeCount} active · ${meta.endedCount} ended`
+    : undefined;
+
   return (
     <>
-      <Card>
-        <CardContent className="space-y-4 p-0">
+      <Card className="gap-0 py-0">
+        <CardContent className="p-0">
           <DataTable
             columns={LEASE_COLUMNS}
             emptyMessage={`No leases yet.${canManage ? " Start a lease to get started." : ""}`}
-            filters={
-              <PropertyLeaseFilters
-                onStatusChange={(value) => setFilters({ status: value })}
-                onUnitIdChange={(value) => setFilters({ unitId: value })}
-                status={status}
-                unitId={unitId}
-                units={units}
-              />
-            }
-            footer={
-              meta ? (
-                <DataTableCountFooter
-                  colSpan={LEASE_COLUMNS.length}
-                  items={buildLeasesFooterItems(meta)}
-                />
-              ) : undefined
-            }
             getItemKey={getLeaseKey}
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}
             infiniteScrollSentinelRef={scrollSentinelRef}
             isPending={isPending}
             items={longStays}
             renderRow={renderLeaseRow}
+            toolbar={
+              <PropertyLeaseToolbar
+                activeFilterCount={activeSecondaryFilterCount}
+                activeFilterItems={activeFilterItems}
+                activePreset={activePreset}
+                countLabel={countLabel}
+                from={displayFrom}
+                onClearAll={handleClearAllToolbarFilters}
+                onClearSecondaryFilters={handleClearSecondaryFilters}
+                onFilterChange={handleLeaseFilterChange}
+                onFromChange={onFromChange}
+                onPresetChange={onPresetChange}
+                onRemoveFilter={handleRemoveToolbarFilter}
+                onSearchInputChange={handleSearchInputChange}
+                onToChange={onToChange}
+                searchInput={searchInput}
+                status={status}
+                statusOptions={LEASE_STATUS_FILTER_OPTIONS}
+                to={displayTo}
+                unitId={unitId}
+                units={units}
+              />
+            }
             virtualization={{ estimateRowHeight: LEASE_ROW_ESTIMATED_HEIGHT }}
           />
         </CardContent>

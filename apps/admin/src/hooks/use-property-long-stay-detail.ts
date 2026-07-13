@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { longStaysApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { getCurrentLeaseRent } from "@/packages/shared";
 
@@ -10,7 +10,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
   const detailQuery = useQuery({
     enabled: Boolean(propertyId && leaseId),
     queryFn: () => longStaysApi.get(propertyId, leaseId!),
-    queryKey: adminQueryKeys.propertyLongStay(propertyId, leaseId ?? ""),
+    queryKey: queryKeys.propertyLongStay(propertyId, leaseId ?? ""),
   });
 
   const detail = detailQuery.data;

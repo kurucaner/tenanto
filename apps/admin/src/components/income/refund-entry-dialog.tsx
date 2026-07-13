@@ -19,8 +19,7 @@ import { parseRefundAmountInput } from "@/lib/parse-refund-amount-input";
 export type TRefundEntryMode = "full" | "partial";
 
 export type TRefundEntryConfirmPayload =
-  | { amount?: undefined; mode: "full" }
-  | { amount: number; mode: "partial" };
+  { amount?: undefined; mode: "full" } | { amount: number; mode: "partial" };
 
 interface RefundEntryDialogProps {
   cap: number;
@@ -106,6 +105,7 @@ export const RefundEntryDialog = memo(
             legend="Refund type"
             onValueChange={handleModeChange}
             value={mode}
+            className="p-6"
           >
             <RadioOption label="Full refund" value="full" />
             <RadioOption label="Partial refund" value="partial">

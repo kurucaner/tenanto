@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { LayoutPicker } from "@/components/units/layout-picker";
 import { RentalTypePicker } from "@/components/units/rental-type-picker";
 import { unitsApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import type { IPropertyUnit, TUnitRentalType } from "@/packages/shared";
 
 interface EditUnitDialogProps {
@@ -45,7 +45,7 @@ export const EditUnitDialog = memo(
       },
       onSuccess: () => {
         toast.success("Unit updated");
-        queryClient.invalidateQueries({ queryKey: adminQueryKeys.propertyUnits(propertyId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.propertyUnits(propertyId) });
         onOpenChange(false);
       },
     });

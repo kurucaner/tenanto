@@ -14,7 +14,7 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { portfolioReportsApi } from "@/lib/api-client";
 import { downloadReportCsv } from "@/lib/download-report-csv";
 import { LEDGER_CARD_HORIZONTAL_INSET } from "@/lib/ledger-filter-grid";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { cn } from "@/lib/utils";
@@ -109,7 +109,7 @@ export const ReportsPage = memo(() => {
   const summaryQuery = useQuery({
     enabled: reportQuery !== null,
     queryFn: () => portfolioReportsApi.summary(reportQuery!),
-    queryKey: adminQueryKeys.portfolioReportSummary(reportQuery!),
+    queryKey: queryKeys.portfolioReportSummary(reportQuery!),
   });
 
   const summary = summaryQuery.data?.summary;

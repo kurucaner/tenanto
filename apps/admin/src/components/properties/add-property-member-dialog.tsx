@@ -15,7 +15,7 @@ import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { PropertyRole, type TPropertyRole } from "@/packages/shared";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
@@ -61,7 +61,7 @@ export const AddPropertyMemberDialog = memo(
           );
         }
         queryClient.invalidateQueries({
-          queryKey: adminQueryKeys.propertyDetail(propertyId),
+          queryKey: queryKeys.propertyDetail(propertyId),
         });
         handleClose();
       },

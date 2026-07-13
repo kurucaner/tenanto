@@ -1,7 +1,7 @@
 import { type InfiniteData, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { type IAdminPropertiesListQuery, propertiesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { type IAdminPropertiesListResponse, type IProperty } from "@/packages/shared";
 
 function updatePropertyFavoriteInListCache(
@@ -26,11 +26,9 @@ function updatePropertyFavoriteInListCache(
   };
 }
 
-export function useSetPropertyFavorite(
-  listFilters: Omit<IAdminPropertiesListQuery, "cursor">
-) {
+export function useSetPropertyFavorite(listFilters: Omit<IAdminPropertiesListQuery, "cursor">) {
   const queryClient = useQueryClient();
-  const queryKey = adminQueryKeys.propertiesList(listFilters);
+  const queryKey = queryKeys.propertiesList(listFilters);
 
   return useMutation<
     { property: IProperty },
@@ -58,7 +56,7 @@ export function useSetPropertyFavorite(
     },
     onSettled: (_data, _error, { propertyId }) => {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
-      queryClient.invalidateQueries({ queryKey: adminQueryKeys.propertyDetail(propertyId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyDetail(propertyId) });
     },
   });
 }

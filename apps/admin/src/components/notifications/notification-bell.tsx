@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useNotificationStreamContext } from "@/contexts/notification-stream-context";
 import { notificationsApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
@@ -33,7 +33,7 @@ export const NotificationBell = memo(() => {
     enabled: userType === UserType.USER,
     notifyOnChangeProps: ["data", "error"],
     queryFn: () => notificationsApi.getUnreadCount(),
-    queryKey: adminQueryKeys.notificationsUnreadCount(),
+    queryKey: queryKeys.notificationsUnreadCount(),
     refetchInterval: streamStatus === "degraded" ? 30_000 : false,
     refetchOnWindowFocus: !open,
   });

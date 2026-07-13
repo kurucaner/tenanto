@@ -2,7 +2,7 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { incomeLinesApi } from "@/lib/api-client";
-import { adminQueryKeys } from "@/lib/query-keys";
+import { queryKeys } from "@/lib/query-keys";
 import {
   INCOME_ENTRIES_LIST_LIMIT,
   type IPropertyIncomeLinesListQuery,
@@ -31,7 +31,7 @@ export function usePropertyIncomeLinesInfiniteList(
     IPropertyIncomeLinesListResponse,
     Error,
     InfiniteData<IPropertyIncomeLinesListResponse>,
-    ReturnType<typeof adminQueryKeys.propertyIncomeLines>,
+    ReturnType<typeof queryKeys.propertyIncomeLines>,
     string | undefined
   >({
     enabled: options.enabled ?? true,
@@ -39,7 +39,7 @@ export function usePropertyIncomeLinesInfiniteList(
     initialPageParam: undefined,
     queryFn: ({ pageParam }) =>
       incomeLinesApi.list(propertyId, { ...listFilters, cursor: pageParam }),
-    queryKey: adminQueryKeys.propertyIncomeLines(propertyId, filters),
+    queryKey: queryKeys.propertyIncomeLines(propertyId, filters),
   });
 
   const incomeLines = useMemo(
