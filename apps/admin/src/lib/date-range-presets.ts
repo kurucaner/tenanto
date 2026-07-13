@@ -1,15 +1,21 @@
+import { addDaysToLocalIsoDate } from "@/lib/reservation-date-utils";
+
 export const DateRangePreset = {
   ALL: "all",
+  CURRENT_MONTH: "cm",
   DAY: "1d",
   MONTH: "1m",
   SIX_MONTHS: "6m",
   WEEK: "1w",
   YEAR: "1y",
+  YEAR_TO_DATE: "ytd",
 } as const;
 
 export type TDateRangePresetId = (typeof DateRangePreset)[keyof typeof DateRangePreset];
 
 export const DATE_RANGE_PRESET_OPTIONS: { id: TDateRangePresetId; label: string }[] = [
+  { id: DateRangePreset.CURRENT_MONTH, label: "Current month" },
+  { id: DateRangePreset.YEAR_TO_DATE, label: "Year to date" },
   { id: DateRangePreset.DAY, label: "1 day" },
   { id: DateRangePreset.WEEK, label: "1 week" },
   { id: DateRangePreset.MONTH, label: "1 month" },
@@ -33,56 +39,45 @@ export function getDateRangeSummary(
   return from || to || "Custom";
 }
 
-export function formatUtcDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+function formatLocalIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function startOfUtcMonth(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+function startOfLocalMonth(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-function endOfUtcMonth(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
+function startOfLocalYear(date: Date): string {
+  return `${date.getFullYear()}-01-01`;
 }
 
-function addUtcMonths(date: Date, months: number): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
-}
-
-function addUtcDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
+function rollingRangeEndingToday(today: string, dayCount: number): { from: string; to: string } {
+  return { from: addDaysToLocalIsoDate(today, -(dayCount - 1)), to: today };
 }
 
 export function resolveDateRangePreset(
   id: TDateRangePresetId,
   now: Date = new Date()
 ): { from: string; to: string } | null {
-  const today = formatUtcDate(now);
+  const today = formatLocalIsoDate(now);
 
   switch (id) {
     case DateRangePreset.ALL:
       return null;
+    case DateRangePreset.CURRENT_MONTH:
+      return { from: startOfLocalMonth(now), to: today };
+    case DateRangePreset.YEAR_TO_DATE:
+      return { from: startOfLocalYear(now), to: today };
     case DateRangePreset.DAY:
       return { from: today, to: today };
     case DateRangePreset.WEEK:
-      return { from: formatUtcDate(addUtcDays(now, -6)), to: today };
+      return rollingRangeEndingToday(today, 7);
     case DateRangePreset.MONTH:
-      return {
-        from: formatUtcDate(startOfUtcMonth(now)),
-        to: formatUtcDate(endOfUtcMonth(now)),
-      };
+      return rollingRangeEndingToday(today, 30);
     case DateRangePreset.SIX_MONTHS:
-      return {
-        from: formatUtcDate(startOfUtcMonth(addUtcMonths(now, -5))),
-        to: formatUtcDate(endOfUtcMonth(now)),
-      };
+      return rollingRangeEndingToday(today, 180);
     case DateRangePreset.YEAR:
-      return {
-        from: formatUtcDate(startOfUtcMonth(addUtcMonths(now, -11))),
-        to: formatUtcDate(endOfUtcMonth(now)),
-      };
+      return rollingRangeEndingToday(today, 365);
   }
 }
 

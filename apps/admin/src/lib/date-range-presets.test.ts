@@ -10,6 +10,14 @@ const NOW = new Date("2026-07-15T12:00:00.000Z");
 
 describe("resolveDateRangePreset", () => {
   test("resolves each preset", () => {
+    expect(resolveDateRangePreset(DateRangePreset.CURRENT_MONTH, NOW)).toEqual({
+      from: "2026-07-01",
+      to: "2026-07-15",
+    });
+    expect(resolveDateRangePreset(DateRangePreset.YEAR_TO_DATE, NOW)).toEqual({
+      from: "2026-01-01",
+      to: "2026-07-15",
+    });
     expect(resolveDateRangePreset(DateRangePreset.DAY, NOW)).toEqual({
       from: "2026-07-15",
       to: "2026-07-15",
@@ -19,16 +27,16 @@ describe("resolveDateRangePreset", () => {
       to: "2026-07-15",
     });
     expect(resolveDateRangePreset(DateRangePreset.MONTH, NOW)).toEqual({
-      from: "2026-07-01",
-      to: "2026-07-31",
+      from: "2026-06-16",
+      to: "2026-07-15",
     });
     expect(resolveDateRangePreset(DateRangePreset.SIX_MONTHS, NOW)).toEqual({
-      from: "2026-02-01",
-      to: "2026-07-31",
+      from: "2026-01-17",
+      to: "2026-07-15",
     });
     expect(resolveDateRangePreset(DateRangePreset.YEAR, NOW)).toEqual({
-      from: "2025-08-01",
-      to: "2026-07-31",
+      from: "2025-07-16",
+      to: "2026-07-15",
     });
     expect(resolveDateRangePreset(DateRangePreset.ALL, NOW)).toBeNull();
   });
@@ -37,6 +45,8 @@ describe("resolveDateRangePreset", () => {
 describe("matchDateRangePreset", () => {
   test("matches resolved presets", () => {
     for (const id of [
+      DateRangePreset.CURRENT_MONTH,
+      DateRangePreset.YEAR_TO_DATE,
       DateRangePreset.DAY,
       DateRangePreset.WEEK,
       DateRangePreset.MONTH,

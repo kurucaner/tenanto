@@ -24,9 +24,9 @@ describe("buildExpenseToolbarFilterItems", () => {
   test("omits the default month and resolves category label", () => {
     expect(
       buildExpenseToolbarFilterItems({
-        activePreset: DateRangePreset.MONTH,
+        activePreset: DateRangePreset.CURRENT_MONTH,
         categoryId: "category-1",
-        dateSummary: "1 month",
+        dateSummary: "Current month",
         isDefaultDateRange: true,
         ...OPTIONS,
       })
@@ -59,7 +59,7 @@ describe("buildExpenseToolbarFilterItems", () => {
 });
 
 describe("expense toolbar clear patches", () => {
-  const defaultDateRange = { from: "2026-07-01", to: "2026-07-31" };
+  const defaultDateRange = { from: "2026-07-01", to: "2026-07-15" };
 
   test("clears one filter and restores the default date range", () => {
     expect(buildExpenseToolbarClearOnePatch("categoryId", defaultDateRange)).toEqual({
@@ -77,7 +77,7 @@ describe("expense toolbar clear patches", () => {
       categoryId: "",
       from: "2026-07-01",
       q: "",
-      to: "2026-07-31",
+      to: "2026-07-15",
     });
   });
 });

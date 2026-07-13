@@ -35,9 +35,9 @@ describe("buildIncomeToolbarFilterItems", () => {
   test("omits the default month and resolves option labels", () => {
     expect(
       buildIncomeToolbarFilterItems({
-        activePreset: DateRangePreset.MONTH,
+        activePreset: DateRangePreset.CURRENT_MONTH,
         channelCommissionId: "channel-1",
-        dateSummary: "1 month",
+        dateSummary: "Current month",
         incomeType: "",
         isDefaultDateRange: true,
         refundStatus: "",
@@ -82,7 +82,7 @@ describe("buildIncomeToolbarFilterItems", () => {
 });
 
 describe("income toolbar clear patches", () => {
-  const defaultDateRange = { from: "2026-07-01", to: "2026-07-31" };
+  const defaultDateRange = { from: "2026-07-01", to: "2026-07-15" };
 
   test("clears one filter and restores the default date range", () => {
     expect(buildIncomeToolbarClearOnePatch("unitId", defaultDateRange)).toEqual({ unitId: "" });
@@ -101,7 +101,7 @@ describe("income toolbar clear patches", () => {
       q: "",
       refundStatus: "",
       status: "",
-      to: "2026-07-31",
+      to: "2026-07-15",
       unitId: "",
     });
   });

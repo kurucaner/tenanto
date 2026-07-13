@@ -32,8 +32,8 @@ describe("buildLeaseToolbarFilterItems", () => {
   test("omits the default month and resolves unit and status labels", () => {
     expect(
       buildLeaseToolbarFilterItems({
-        activePreset: DateRangePreset.MONTH,
-        dateSummary: "1 month",
+        activePreset: DateRangePreset.CURRENT_MONTH,
+        dateSummary: "Current month",
         isDefaultDateRange: true,
         q: "",
         status: PropertyLongStayStatus.ACTIVE,
@@ -86,7 +86,7 @@ describe("buildLeaseToolbarFilterItems", () => {
 });
 
 describe("lease toolbar clear patches", () => {
-  const defaultDateRange = { from: "2026-07-01", to: "2026-07-31" };
+  const defaultDateRange = { from: "2026-07-01", to: "2026-07-15" };
 
   test("clears one filter and restores the default date range", () => {
     expect(buildLeaseToolbarClearOnePatch("unitId", defaultDateRange)).toEqual({ unitId: "" });
@@ -104,7 +104,7 @@ describe("lease toolbar clear patches", () => {
       from: "2026-07-01",
       q: "",
       status: "",
-      to: "2026-07-31",
+      to: "2026-07-15",
       unitId: "",
     });
   });

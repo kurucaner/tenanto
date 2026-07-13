@@ -1,7 +1,7 @@
 import { DateRangePreset, resolveDateRangePreset } from "@/lib/date-range-presets";
 
 export function getDefaultReportDateRange(): { from: string; to: string } {
-  return resolveDateRangePreset(DateRangePreset.MONTH)!;
+  return resolveDateRangePreset(DateRangePreset.CURRENT_MONTH)!;
 }
 
 export function formatReportPercent(value: number): string {

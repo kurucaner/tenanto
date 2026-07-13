@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
@@ -125,26 +125,25 @@ const LeaseRow = memo(
     onRecordRent: (lease: IPropertyLongStay) => void;
     unitLabel: string;
   }) => {
+    const navigate = useNavigate();
     const endDate = lease.actualEndDate ?? lease.leaseEndDate;
     const tenantNames = getLeaseOccupancyNames(lease);
 
+    const handleRowClick = useCallback(() => {
+      navigate(leaseDetailPath);
+    }, [navigate, leaseDetailPath]);
+
     return (
-      <TableRow>
-        <TableCell className="font-medium">
-          <Link className="hover:underline" to={leaseDetailPath}>
-            {unitLabel}
-          </Link>
-        </TableCell>
+      <TableRow className="cursor-pointer" onClick={handleRowClick}>
+        <TableCell className="font-medium">{unitLabel}</TableCell>
         <TableCell>
-          <Link className="block" to={leaseDetailPath}>
-            <div className="flex flex-wrap gap-1">
-              {tenantNames.map((name, index) => (
-                <Badge key={`${name}-${index}`} variant="secondary">
-                  {name}
-                </Badge>
-              ))}
-            </div>
-          </Link>
+          <div className="flex flex-wrap gap-1">
+            {tenantNames.map((name, index) => (
+              <Badge key={`${name}-${index}`} variant="secondary">
+                {name}
+              </Badge>
+            ))}
+          </div>
         </TableCell>
         <TableCell>{lease.leaseStartDate}</TableCell>
         <TableCell>{endDate}</TableCell>
@@ -156,12 +155,15 @@ const LeaseRow = memo(
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
-            <TableIconButton ariaLabel="View lease" asChild tooltip="View lease">
-              <Button asChild size="icon-sm" type="button" variant="ghost">
-                <Link aria-label="View lease" to={leaseDetailPath}>
-                  <Eye className="size-3.5" />
-                </Link>
-              </Button>
+            <TableIconButton
+              ariaLabel="View lease"
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(leaseDetailPath);
+              }}
+              tooltip="View lease"
+            >
+              <Eye className="size-3.5" />
             </TableIconButton>
             {canManage && lease.status === PropertyLongStayStatus.ACTIVE ? (
               <>
