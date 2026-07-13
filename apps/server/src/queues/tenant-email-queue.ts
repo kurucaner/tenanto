@@ -12,6 +12,11 @@ export interface ITenantEmailSendJobData {
   recipientId: string;
 }
 
+export function buildTenantEmailSendJobId(campaignId: string, recipientId: string): string {
+  // BullMQ custom job IDs cannot contain ":".
+  return `${campaignId}__${recipientId}`;
+}
+
 let queue: Queue<ITenantEmailSendJobData> | null = null;
 
 export function getTenantEmailQueue(): Queue<ITenantEmailSendJobData> {
@@ -44,7 +49,7 @@ export async function enqueueTenantEmailSendJobs(
       data: { campaignId, recipientId },
       name: "send-recipient",
       opts: {
-        jobId: `${campaignId}:${recipientId}`,
+        jobId: buildTenantEmailSendJobId(campaignId, recipientId),
       },
     }))
   );
