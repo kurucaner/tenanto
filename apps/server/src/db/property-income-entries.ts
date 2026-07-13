@@ -335,7 +335,7 @@ export const propertyIncomeEntriesDb = {
     }
 
     if (branchPlan.includeLines) {
-      const { conditions, joinUnits, values } = buildIncomeLineListParts(
+      const { conditions, joinLineTypes, joinUnits, values } = buildIncomeLineListParts(
         propertyId,
         toLineListFilters(filters, branchPlan.lineTypeId),
         includeDeleted
@@ -345,6 +345,7 @@ export const propertyIncomeEntriesDb = {
           .query<{ total_count: number }>(
             `SELECT COUNT(*)::int AS total_count
              FROM property_income_lines pil
+             ${joinLineTypes}
              ${joinUnits}
              WHERE ${conditions.join(" AND ")}`,
             values
