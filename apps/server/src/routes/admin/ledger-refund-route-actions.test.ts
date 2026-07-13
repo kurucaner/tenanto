@@ -6,6 +6,7 @@ import {
   executeLedgerRefund,
   executeLedgerUnrefund,
   type ILedgerRefundableRecord,
+  parseRefundLedgerEntryBody,
 } from "./ledger-refund-route-actions";
 
 function makeReply() {
@@ -32,6 +33,34 @@ const baseRefundOptions = {
   refundableCap: 500,
   userId: "user-1",
 };
+
+describe("parseRefundLedgerEntryBody", () => {
+  test("accepts omitted body as full refund", () => {
+    expect(parseRefundLedgerEntryBody(undefined)).toEqual({ body: {}, ok: true });
+    expect(parseRefundLedgerEntryBody(null)).toEqual({ body: {}, ok: true });
+  });
+
+  test("accepts valid partial refund amount", () => {
+    expect(parseRefundLedgerEntryBody({ amount: 2000 })).toEqual({
+      body: { amount: 2000 },
+      ok: true,
+    });
+  });
+
+  test("rejects non-object body", () => {
+    expect(parseRefundLedgerEntryBody("invalid")).toEqual({
+      error: "Request body must be a JSON object",
+      ok: false,
+    });
+  });
+
+  test("rejects invalid amount", () => {
+    expect(parseRefundLedgerEntryBody({ amount: "2000" })).toEqual({
+      error: "amount must be a non-negative number",
+      ok: false,
+    });
+  });
+});
 
 describe("executeLedgerRefund", () => {
   test("returns 404 when entity is missing", async () => {

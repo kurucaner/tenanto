@@ -18,8 +18,7 @@ import { parseRefundAmountInput } from "@/lib/parse-refund-amount-input";
 export type TRefundEntryMode = "full" | "partial";
 
 export type TRefundEntryConfirmPayload =
-  | { amount?: undefined; mode: "full" }
-  | { amount: number; mode: "partial" };
+  { amount?: undefined; mode: "full" } | { amount: number; mode: "partial" };
 
 interface RefundEntryDialogProps {
   cap: number;
@@ -99,7 +98,7 @@ export const RefundEntryDialog = memo(
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
-          <fieldset className="space-y-3">
+          <fieldset className="space-y-3 p-6">
             <legend className="sr-only">Refund type</legend>
             <div className="flex items-center gap-2">
               <input

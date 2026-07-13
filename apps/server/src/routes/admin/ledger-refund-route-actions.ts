@@ -22,16 +22,16 @@ export function parseRefundLedgerEntryBody(
     return { body: {}, ok: true };
   }
 
-  const parsed = parseJsonObject(raw);
-  if (!parsed.ok) {
-    return parsed;
+  const record = parseJsonObject(raw);
+  if (record === null) {
+    return { error: "Request body must be a JSON object", ok: false };
   }
 
-  if (!("amount" in parsed.value)) {
+  if (!("amount" in record)) {
     return { body: {}, ok: true };
   }
 
-  const amount = parseMoney(parsed.value["amount"]);
+  const amount = parseMoney(record["amount"]);
   if (amount === null) {
     return { error: "amount must be a non-negative number", ok: false };
   }

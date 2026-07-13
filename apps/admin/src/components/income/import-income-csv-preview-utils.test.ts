@@ -1,22 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
-import { ReservationStatus, type IIncomeImportParsedRow } from "@/packages/shared";
+import { type IIncomeImportParsedRow, ReservationStatus } from "@/packages/shared";
 
 import { sortIncomeImportPreviewRowsByAttention } from "./import-income-csv-preview-utils";
 
 function buildPreviewRow(
-  overrides: Partial<IIncomeImportParsedRow> & Pick<IIncomeImportParsedRow, "guestName" | "rowIndex">
+  overrides: Partial<IIncomeImportParsedRow> &
+    Pick<IIncomeImportParsedRow, "guestName" | "rowIndex">
 ): IIncomeImportParsedRow {
   return {
     channelCommissionId: "channel-1",
     checkIn: "2026-02-07",
     checkOut: "2026-02-08",
     cleaningFee: 0,
-    guestName: overrides.guestName,
     nights: 1,
     refunded: false,
     roomTotal: 100,
-    rowIndex: overrides.rowIndex,
     sourceFileName: "import.csv",
     status: ReservationStatus.STAYED,
     unitId: "unit-1",
