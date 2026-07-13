@@ -10,8 +10,8 @@ describe("buildIncomeImportDuplicateCheckFilters", () => {
   test("bounds the query to the import row date span with padding", () => {
     expect(
       buildIncomeImportDuplicateCheckFilters([
-        { checkIn: "2026-03-10", checkOut: "2026-03-12", guestName: "A", unitId: "u1" },
-        { checkIn: "2026-03-05", checkOut: "2026-03-20", guestName: "B", unitId: "u2" },
+        { checkIn: "2026-03-10", checkOut: "2026-03-12" },
+        { checkIn: "2026-03-05", checkOut: "2026-03-20" },
       ])
     ).toEqual({
       from: "2026-03-02",

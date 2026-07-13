@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildDateRangeUrlUpdates,
   buildFilterSearchPatch,
+  defineUrlFilterSchema,
   parseSortParam,
   patchSearchParams,
   readBooleanParam,
@@ -89,29 +90,31 @@ describe("serializeBooleanParam", () => {
 
 describe("readFiltersFromUrl", () => {
   test("reads multiple filters from schema", () => {
-    const filters = readFiltersFromUrl(new URLSearchParams("channel=airbnb"), {
+    const schema = defineUrlFilterSchema<{ channel: string; from: string }>({
       channel: { defaultValue: "" },
       from: { defaultValue: "2026-01-01" },
     });
+    const filters = readFiltersFromUrl(new URLSearchParams("channel=airbnb"), schema);
     expect(filters).toEqual({ channel: "airbnb", from: "2026-01-01" });
   });
 });
 
 describe("buildFilterSearchPatch", () => {
   test("builds omit patch for default values", () => {
-    const patch = buildFilterSearchPatch(
-      { channel: { defaultValue: "" }, from: { defaultValue: "2026-01-01" } },
-      { channel: "airbnb", from: "2026-01-01" }
-    );
+    const schema = defineUrlFilterSchema<{ channel: string; from: string }>({
+      channel: { defaultValue: "" },
+      from: { defaultValue: "2026-01-01" },
+    });
+    const patch = buildFilterSearchPatch(schema, { channel: "airbnb", from: "2026-01-01" });
     expect(patch).toEqual({ channel: "airbnb", from: null });
   });
 });
 
 describe("buildDateRangeUrlUpdates", () => {
-  const dateSchema = {
+  const dateSchema = defineUrlFilterSchema<{ from: string; to: string }>({
     from: { defaultValue: "2026-07-01" },
     to: { defaultValue: "2026-07-31" },
-  };
+  });
 
   test("clears allTime and omits default month dates in one patch", () => {
     const patch = buildDateRangeUrlUpdates(dateSchema, {

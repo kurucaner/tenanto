@@ -33,7 +33,7 @@ beforeEach(() => {
     },
   };
   globalThis.localStorage = localStorageMock;
-  globalThis.window = { localStorage: localStorageMock } as Window & typeof globalThis.window;
+  globalThis.window = { localStorage: localStorageMock } as unknown as Window & typeof globalThis;
 });
 
 afterEach(() => {
