@@ -7,10 +7,37 @@ import {
   type TTenantEmailTenantRole,
 } from "./tenant-email-campaign-types";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function normalizeTenantEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function hasEmailWhitespace(email: string): boolean {
+  for (const char of email) {
+    if (char === " " || char === "\t" || char === "\n" || char === "\r") {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isStructuredEmailAddress(email: string): boolean {
+  const atIndex = email.indexOf("@");
+  if (atIndex <= 0 || atIndex !== email.lastIndexOf("@")) {
+    return false;
+  }
+
+  const localPart = email.slice(0, atIndex);
+  const domainPart = email.slice(atIndex + 1);
+  if (localPart.length === 0 || domainPart.length === 0) {
+    return false;
+  }
+
+  const dotIndex = domainPart.indexOf(".");
+  if (dotIndex <= 0 || dotIndex >= domainPart.length - 1) {
+    return false;
+  }
+
+  return !hasEmailWhitespace(email);
 }
 
 export function isValidTenantEmail(email: string): boolean {
@@ -18,7 +45,7 @@ export function isValidTenantEmail(email: string): boolean {
   if (normalized.length === 0 || normalized.length > 320) {
     return false;
   }
-  return EMAIL_RE.test(normalized);
+  return isStructuredEmailAddress(normalized);
 }
 
 function pushSkipped(

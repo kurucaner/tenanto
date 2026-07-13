@@ -63,7 +63,7 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
   const authPre = [server.authenticate];
 
   server.get<{ Params: { propertyId: string } }>(
-    "/admin/properties/:propertyId/tenant-email-campaigns/preview",
+    "/properties/:propertyId/tenant-email-campaigns/preview",
     { preHandler: authPre },
     async (request, reply) => {
       if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
@@ -94,7 +94,7 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
   );
 
   server.get<{ Params: { propertyId: string } }>(
-    "/admin/properties/:propertyId/tenant-email-campaigns",
+    "/properties/:propertyId/tenant-email-campaigns",
     { preHandler: authPre },
     async (request, reply) => {
       if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
@@ -125,7 +125,7 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
   );
 
   server.get<{ Params: { campaignId: string; propertyId: string } }>(
-    "/admin/properties/:propertyId/tenant-email-campaigns/:campaignId",
+    "/properties/:propertyId/tenant-email-campaigns/:campaignId",
     { preHandler: authPre },
     async (request, reply) => {
       if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
@@ -162,7 +162,7 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
   );
 
   server.post<{ Params: { propertyId: string } }>(
-    "/admin/properties/:propertyId/tenant-email-campaigns",
+    "/properties/:propertyId/tenant-email-campaigns",
     { preHandler: authPre },
     async (request: FastifyRequest<{ Params: { propertyId: string } }>, reply: FastifyReply) => {
       if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {

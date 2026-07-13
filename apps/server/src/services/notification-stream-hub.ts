@@ -11,6 +11,7 @@ import {
   type INotificationStreamEvent,
   type IUserNotification,
   type TSupportStagedUploadStatus,
+  type TTenantEmailCampaignStatus,
   UserType,
 } from "@/packages/shared";
 
@@ -39,7 +40,23 @@ interface NotifyPayloadSupportAttachment {
   userId: string;
 }
 
-type NotifyPayload = NotifyPayloadUser | NotifyPayloadSupport | NotifyPayloadSupportAttachment;
+interface NotifyPayloadTenantEmailCampaign {
+  campaignId: string;
+  failedCount: number;
+  kind: "tenant_email_campaign";
+  propertyId: string;
+  sentCount: number;
+  skippedCount: number;
+  status: TTenantEmailCampaignStatus;
+  totalCount: number;
+  userId: string;
+}
+
+type NotifyPayload =
+  | NotifyPayloadUser
+  | NotifyPayloadSupport
+  | NotifyPayloadSupportAttachment
+  | NotifyPayloadTenantEmailCampaign;
 
 interface SseConnection {
   clientId: string | null;
@@ -120,6 +137,44 @@ function parseUserNotifyPayload(payload: Record<string, unknown>): NotifyPayload
   return { userId };
 }
 
+function parseTenantEmailCampaignPayload(
+  payload: Record<string, unknown>
+): NotifyPayloadTenantEmailCampaign | null {
+  const userId = payload.userId;
+  const campaignId = payload.campaignId;
+  const propertyId = payload.propertyId;
+  const status = payload.status;
+  const sentCount = payload.sentCount;
+  const failedCount = payload.failedCount;
+  const skippedCount = payload.skippedCount;
+  const totalCount = payload.totalCount;
+
+  if (
+    typeof userId !== "string" ||
+    typeof campaignId !== "string" ||
+    typeof propertyId !== "string" ||
+    typeof status !== "string" ||
+    typeof sentCount !== "number" ||
+    typeof failedCount !== "number" ||
+    typeof skippedCount !== "number" ||
+    typeof totalCount !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    campaignId,
+    failedCount,
+    kind: "tenant_email_campaign",
+    propertyId,
+    sentCount,
+    skippedCount,
+    status: status as TTenantEmailCampaignStatus,
+    totalCount,
+    userId,
+  };
+}
+
 function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
   try {
     const payload = JSON.parse(raw ?? "{}") as Record<string, unknown>;
@@ -128,6 +183,9 @@ function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
     }
     if (payload.kind === "support_attachment") {
       return parseSupportAttachmentPayload(payload);
+    }
+    if (payload.kind === "tenant_email_campaign") {
+      return parseTenantEmailCampaignPayload(payload);
     }
     return parseUserNotifyPayload(payload);
   } catch {
@@ -155,6 +213,10 @@ class NotificationStreamHub {
       }
       if (payload.kind === "support_attachment") {
         this.pushSupportAttachmentUpdated(payload);
+        return;
+      }
+      if (payload.kind === "tenant_email_campaign") {
+        this.pushTenantEmailCampaignUpdated(payload);
         return;
       }
       void this.pushToUser(payload.userId, payload.notification);
@@ -225,6 +287,32 @@ class NotificationStreamHub {
     ]);
   }
 
+  async publishTenantEmailCampaignUpdated(params: {
+    campaignId: string;
+    failedCount: number;
+    propertyId: string;
+    sentCount: number;
+    skippedCount: number;
+    status: TTenantEmailCampaignStatus;
+    totalCount: number;
+    userId: string;
+  }): Promise<void> {
+    await pool.query(`SELECT pg_notify($1, $2)`, [
+      NOTIFY_CHANNEL,
+      JSON.stringify({
+        campaignId: params.campaignId,
+        failedCount: params.failedCount,
+        kind: "tenant_email_campaign",
+        propertyId: params.propertyId,
+        sentCount: params.sentCount,
+        skippedCount: params.skippedCount,
+        status: params.status,
+        totalCount: params.totalCount,
+        userId: params.userId,
+      }),
+    ]);
+  }
+
   async pushToUser(userId: string, notification?: IUserNotification): Promise<void> {
     if (notification != null) {
       this.broadcastToUser(userId, {
@@ -289,6 +377,24 @@ class NotificationStreamHub {
         }
       }
     }
+  }
+
+  pushTenantEmailCampaignUpdated(payload: NotifyPayloadTenantEmailCampaign): void {
+    const event: INotificationStreamEvent = {
+      data: {
+        campaignId: payload.campaignId,
+        failedCount: payload.failedCount,
+        propertyId: payload.propertyId,
+        sentCount: payload.sentCount,
+        skippedCount: payload.skippedCount,
+        status: payload.status,
+        totalCount: payload.totalCount,
+      },
+      type: "tenant_email_campaign.updated",
+      v: 1,
+    };
+
+    this.broadcastToUser(payload.userId, event);
   }
 
   register(

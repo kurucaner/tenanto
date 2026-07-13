@@ -43,6 +43,9 @@ describe("isValidTenantEmail", () => {
   test("rejects malformed addresses", () => {
     expect(isValidTenantEmail("not-an-email")).toBe(false);
     expect(isValidTenantEmail("")).toBe(false);
+    expect(isValidTenantEmail("user@domain")).toBe(false);
+    expect(isValidTenantEmail("@example.com")).toBe(false);
+    expect(isValidTenantEmail("user@.com")).toBe(false);
   });
 });
 

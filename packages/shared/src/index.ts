@@ -24,6 +24,7 @@ export type {
   INotificationStreamNewData,
   INotificationStreamSupportAttachmentUpdatedData,
   INotificationStreamSupportRequestUpdatedData,
+  INotificationStreamTenantEmailCampaignUpdatedData,
   INotificationStreamUnreadCountData,
   NotificationStreamEventType,
 } from "./notification-stream-types";

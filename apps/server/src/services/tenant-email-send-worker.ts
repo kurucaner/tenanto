@@ -10,6 +10,7 @@ import {
 import { TenantEmailRecipientStatus } from "@/packages/shared";
 import { getRedisConnectionOptions } from "@/queues/redis-connection";
 import { closeTenantEmailQueue, type ITenantEmailSendJobData } from "@/queues/tenant-email-queue";
+import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
 import {
   getSesErrorMessage,
   isPermanentSesError,
@@ -47,6 +48,7 @@ async function processTenantEmailSendJob(job: Job<ITenantEmailSendJobData>): Pro
     await propertyTenantEmailCampaignsDb.markRecipientFailed(recipientId, message);
   } finally {
     await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
+    await maybePublishTenantEmailCampaignUpdated(campaignId);
   }
 }
 
@@ -91,6 +93,7 @@ export function startTenantEmailSendWorker(): Worker<ITenantEmailSendJobData> {
         getSesErrorMessage(error)
       );
       await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
+      await maybePublishTenantEmailCampaignUpdated(campaignId);
     })().catch((handlerError) => {
       console.error("[tenant-email-worker] failed-handler error", handlerError);
     });

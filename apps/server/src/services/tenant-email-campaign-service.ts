@@ -18,6 +18,7 @@ import {
   TenantEmailCampaignStatus,
 } from "@/packages/shared";
 import { enqueueTenantEmailSendJobs } from "@/queues/tenant-email-queue";
+import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
 import { sanitizeTenantEmailHtml, tenantEmailHtmlToPlainText } from "@/ses/tenant-email-html";
 
 export class TenantEmailCampaignValidationError extends Error {
@@ -124,6 +125,7 @@ export async function createTenantEmailCampaign(params: {
       await enqueueTenantEmailSendJobs(campaign.id, queuedRecipientIds);
     } else {
       await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaign.id);
+      await maybePublishTenantEmailCampaignUpdated(campaign.id);
     }
 
     const refreshed = (await propertyTenantEmailCampaignsDb.findById(campaign.id)) ?? campaign;
