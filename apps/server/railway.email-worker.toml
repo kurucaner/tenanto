@@ -2,8 +2,8 @@
 # "Config file path" to apps/server/railway.email-worker.toml
 #
 # Uses the same image as the API (docker/Dockerfile.server) with a worker start command.
-# Copy env vars from the server service (DB, AWS, JWT not required for sends but harmless).
-# Required: TENANT_EMAIL_CAMPAIGNS_ENABLED=true, REDIS_URL (Railway Redis reference).
+# Copy env vars from the server service (DB, AWS, JWT not required for sends but harmless)
+# Required: TENANT_EMAIL_CAMPAIGNS_ENABLED=true, REDIS_URL (Railway Redis reference)
 
 [build]
 builder = "DOCKERFILE"
