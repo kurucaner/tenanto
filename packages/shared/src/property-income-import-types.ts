@@ -1,4 +1,5 @@
 import type { IPropertyReservation, TReservationStatus } from "./property-reservation-types";
+import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 
 export const INCOME_CSV_IMPORT_MAX_FILES = 5;
 export const INCOME_CSV_IMPORT_MAX_BYTES_PER_FILE = 1_048_576;
@@ -25,12 +26,17 @@ export interface IIncomeCsvExtractedRow {
 
 /** Row after unit/channel resolution and validation (Phase 2+). */
 export interface IIncomeImportParsedRow {
+  channelCommission?: number;
   channelCommissionId: string;
+  channelCommissionRate?: number;
   channelName?: string;
   checkIn: string;
   checkOut: string;
   cleaningFee: number;
+  computedNights?: number;
+  grossIncome?: number;
   guestName: string;
+  netIncome?: number;
   nights: number;
   refunded: boolean;
   roomNo?: string;
@@ -38,6 +44,7 @@ export interface IIncomeImportParsedRow {
   rowIndex: number;
   sourceFileName: string;
   status: TReservationStatus;
+  taxBreakdown?: IPropertyTaxBreakdownItem[];
   unitId: string;
   validationError?: string;
 }

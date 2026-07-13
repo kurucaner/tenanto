@@ -23,6 +23,7 @@ import {
   type IExpenseImportParseResponse,
   type IExtendPropertyLongStayBody,
   type IHomeFinancialOverview,
+  type IIncomeImportParseResponse,
   type IPortfolioReportSummary,
   type IProperty,
   type IPropertyDetail,
@@ -906,6 +907,14 @@ export const expensesApi = {
     authenticatedRequest<{ expense: IPropertyExpense }>(
       `/properties/${encodeURIComponent(propertyId)}/expenses/${encodeURIComponent(expenseId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const incomeImportApi = {
+  importParse: (propertyId: string, formData: FormData) =>
+    authenticatedMultipartRequest<IIncomeImportParseResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/income/import/parse`,
+      formData
     ),
 };
 

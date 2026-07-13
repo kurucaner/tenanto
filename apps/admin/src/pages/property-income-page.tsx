@@ -521,7 +521,11 @@ const PropertyIncomePageDialogs = memo(
         propertyId={propertyId}
         units={units}
       />
-      <ImportIncomeCsvDialog onOpenChange={onImportCsvOpenChange} open={importCsvOpen} />
+      <ImportIncomeCsvDialog
+        onOpenChange={onImportCsvOpenChange}
+        open={importCsvOpen}
+        propertyId={propertyId}
+      />
       {editReservation ? (
         <EditReservationDialog
           key={editReservation.id}
