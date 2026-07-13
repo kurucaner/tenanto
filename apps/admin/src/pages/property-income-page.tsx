@@ -65,7 +65,7 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { usePropertyShortStaysInfiniteList } from "@/hooks/use-property-short-stays-infinite-list";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
-import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlFilterBoolean, useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { type TDateRangePresetId } from "@/lib/date-range-presets";
@@ -1099,16 +1099,24 @@ const PropertyIncomePage = memo(() => {
       }),
     [defaultDateRange.from, defaultDateRange.to]
   );
-  const { filters, setFilter, setFilters } = useUrlFilterState(incomeFilterSchema);
+  const { filters, setFilter } = useUrlFilterState(incomeFilterSchema);
+  const [allTime] = useUrlFilterBoolean("allTime", false);
   const { channelCommissionId, from, incomeType, q, refundStatus, status, to, unitId } = filters;
   const {
     activePreset,
+    displayFrom,
+    displayTo,
     effectiveFrom,
     effectiveTo,
     onFromChange,
     onPresetChange,
     onToChange,
-  } = useUrlDateRangeFilter({ from, setFilters, to });
+  } = useUrlDateRangeFilter({
+    allTime,
+    dateFilterSchema: incomeFilterSchema,
+    from,
+    to,
+  });
   const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
     q,
     setFilter
@@ -1496,7 +1504,7 @@ const PropertyIncomePage = memo(() => {
                 activePreset={activePreset}
                 channelCommissionId={channelCommissionId}
                 channelFilterOptions={channelFilterOptions}
-                from={from}
+                from={displayFrom}
                 incomeType={incomeType}
                 incomeTypeFilterOptions={incomeTypeFilterOptions}
                 onFilterChange={handleIncomeFilterChange}
@@ -1508,7 +1516,7 @@ const PropertyIncomePage = memo(() => {
                 searchInput={searchInput}
                 showStays={showStays}
                 status={status}
-                to={to}
+                to={displayTo}
                 unitId={unitId}
                 units={units}
               />

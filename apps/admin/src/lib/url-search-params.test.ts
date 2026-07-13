@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildDateRangeUrlUpdates,
   buildFilterSearchPatch,
   parseSortParam,
   patchSearchParams,
@@ -103,5 +104,42 @@ describe("buildFilterSearchPatch", () => {
       { channel: "airbnb", from: "2026-01-01" }
     );
     expect(patch).toEqual({ channel: "airbnb", from: null });
+  });
+});
+
+describe("buildDateRangeUrlUpdates", () => {
+  const dateSchema = {
+    from: { defaultValue: "2026-07-01" },
+    to: { defaultValue: "2026-07-31" },
+  };
+
+  test("clears allTime and omits default month dates in one patch", () => {
+    const patch = buildDateRangeUrlUpdates(dateSchema, {
+      allTime: false,
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+
+    expect(patch).toEqual({ allTime: null, from: null, to: null });
+  });
+
+  test("sets allTime and bounded dates atomically", () => {
+    const patch = buildDateRangeUrlUpdates(dateSchema, {
+      allTime: false,
+      from: "2026-07-09",
+      to: "2026-07-15",
+    });
+
+    expect(patch).toEqual({
+      allTime: null,
+      from: "2026-07-09",
+      to: "2026-07-15",
+    });
+  });
+
+  test("sets allTime without changing dates", () => {
+    const patch = buildDateRangeUrlUpdates(dateSchema, { allTime: true });
+
+    expect(patch).toEqual({ allTime: "true" });
   });
 });

@@ -129,3 +129,26 @@ export function buildFilterSearchPatch<T extends Record<string, string>>(
   }
   return updates;
 }
+
+export function buildDateRangeUrlUpdates<T extends { from: string; to: string }>(
+  dateFilterSchema: DefinedUrlFilterSchema<T>,
+  patch: { allTime?: boolean; from?: string; to?: string },
+  options: { allTimeDefault?: boolean; allTimeParam?: string } = {}
+): Record<string, string | null> {
+  const { allTimeDefault = false, allTimeParam = "allTime" } = options;
+  const updates: Record<string, string | null> = {};
+
+  if (patch.allTime !== undefined) {
+    updates[allTimeParam] = serializeBooleanParam(patch.allTime, allTimeDefault);
+  }
+
+  const datePatch: Partial<UrlFilterValues<T>> = {};
+  if (patch.from !== undefined) {
+    datePatch.from = patch.from;
+  }
+  if (patch.to !== undefined) {
+    datePatch.to = patch.to;
+  }
+
+  return { ...updates, ...buildFilterSearchPatch(dateFilterSchema, datePatch) };
+}
