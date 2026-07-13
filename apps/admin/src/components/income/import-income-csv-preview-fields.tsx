@@ -8,10 +8,7 @@ import {
   TABLE_AMOUNT_INPUT_CLASS_NAME,
   TABLE_SELECT_CLASS_NAME,
 } from "@/components/income/import-income-csv-preview-utils";
-import {
-  buildChannelOptions,
-  STATUS_OPTIONS,
-} from "@/components/income/reservation-form-options";
+import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field-label";
@@ -155,9 +152,7 @@ function renderRefundedInput(
   }
 
   return (
-    <label className={cn("flex items-center gap-2", labelClassName)}>
-      {checkbox} Refunded
-    </label>
+    <label className={cn("flex items-center gap-2", labelClassName)}>{checkbox} Refunded</label>
   );
 }
 

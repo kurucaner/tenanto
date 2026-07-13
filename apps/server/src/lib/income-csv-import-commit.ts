@@ -143,7 +143,11 @@ export function validateIncomeImportCommitRows(
     const channel = context.channels.find(
       (candidate) => candidate.id === parsed.row.channelCommissionId
     );
-    if (!channel || channel.propertyId !== propertyId || !channelIds.has(parsed.row.channelCommissionId)) {
+    if (
+      !channel ||
+      channel.propertyId !== propertyId ||
+      !channelIds.has(parsed.row.channelCommissionId)
+    ) {
       return { error: `Row ${index + 1}: channel not found for this property` };
     }
 
