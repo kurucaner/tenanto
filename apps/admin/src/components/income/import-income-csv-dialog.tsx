@@ -15,7 +15,6 @@ import {
   getImportIncomePreviewRowValidationError,
   IMPORT_INCOME_CSV_PREVIEW_TABLE_CLASS_NAME,
   STICKY_ACTIONS_CELL_CLASS_NAME,
-  STICKY_NET_CELL_CLASS_NAME,
 } from "@/components/income/import-income-csv-preview-utils";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
@@ -34,7 +33,6 @@ import {
 } from "@/lib/income-import-preview-row";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { adminQueryKeys } from "@/lib/query-keys";
-import { cn } from "@/lib/utils";
 import {
   buildIncomeImportDuplicateWarningsByIndex,
   countIncomeImportDuplicateWarnings,
@@ -508,11 +506,11 @@ export const ImportIncomeCsvDialog = memo(
               <col style={{ minWidth: 160, width: 160 }} />
               <col style={{ minWidth: 140, width: 140 }} />
               <col style={{ minWidth: 140, width: 140 }} />
-              <col style={{ minWidth: 130, width: 130 }} />
-              <col style={{ minWidth: 90, width: 90 }} />
+              <col style={{ minWidth: 152, width: 152 }} />
+              <col style={{ minWidth: 72, width: 72 }} />
               <col style={{ minWidth: 160, width: 160 }} />
-              <col style={{ minWidth: 120, width: 120 }} />
-              <col style={{ minWidth: 120, width: 120 }} />
+              <col style={{ minWidth: 128, width: 128 }} />
+              <col style={{ minWidth: 128, width: 128 }} />
               <col style={{ minWidth: 72, width: 72 }} />
               <col style={{ minWidth: 100, width: 100 }} />
               <col style={{ minWidth: 90, width: 90 }} />
@@ -528,7 +526,7 @@ export const ImportIncomeCsvDialog = memo(
                 <TableHead>Check-in</TableHead>
                 <TableHead>Check-out</TableHead>
                 <TableHead className="whitespace-normal">Status</TableHead>
-                <TableHead>Refund</TableHead>
+                <TableHead className="text-center">Refund</TableHead>
                 <TableHead className="whitespace-normal">Channel</TableHead>
                 <TableHead className="text-right">Room total</TableHead>
                 <TableHead className="text-right">Cleaning</TableHead>

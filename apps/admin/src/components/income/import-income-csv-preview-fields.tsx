@@ -5,8 +5,8 @@ import {
   AMOUNT_INPUT_CLASS_NAME,
   getImportIncomePreviewRowValidationError,
   STICKY_ACTIONS_CELL_CLASS_NAME,
-  STICKY_NET_CELL_CLASS_NAME,
   TABLE_AMOUNT_INPUT_CLASS_NAME,
+  TABLE_SELECT_CLASS_NAME,
 } from "@/components/income/import-income-csv-preview-utils";
 import {
   buildChannelOptions,
@@ -74,10 +74,13 @@ function renderGuestInput({ idPrefix, onChange, row }: PreviewFieldContext) {
   );
 }
 
-function renderUnitSelect({ idPrefix, onChange, row, units }: PreviewFieldContext) {
+function renderUnitSelect(
+  { idPrefix, onChange, row, units }: PreviewFieldContext,
+  variant: "card" | "table" = "card"
+) {
   return (
     <NativeSelect
-      className={SELECT_CLASS_NAME}
+      className={variant === "table" ? TABLE_SELECT_CLASS_NAME : SELECT_CLASS_NAME}
       id={`${idPrefix}-unit`}
       onChange={(e) => onChange({ ...row, unitId: e.target.value })}
       value={row.unitId}
@@ -109,10 +112,13 @@ function renderCheckOutInput({ idPrefix, onChange, row }: PreviewFieldContext) {
   );
 }
 
-function renderStatusSelect({ idPrefix, onChange, row }: PreviewFieldContext) {
+function renderStatusSelect(
+  { idPrefix, onChange, row }: PreviewFieldContext,
+  variant: "card" | "table" = "card"
+) {
   return (
     <NativeSelect
-      className={SELECT_CLASS_NAME}
+      className={variant === "table" ? TABLE_SELECT_CLASS_NAME : SELECT_CLASS_NAME}
       disabled={row.refunded}
       id={`${idPrefix}-status`}
       onChange={(e) => onChange({ ...row, status: e.target.value as TReservationStatus })}
@@ -124,32 +130,44 @@ function renderStatusSelect({ idPrefix, onChange, row }: PreviewFieldContext) {
 
 function renderRefundedInput(
   { idPrefix, onChange, row }: PreviewFieldContext,
+  variant: "card" | "table" = "card",
   labelClassName = "text-sm"
 ) {
+  const checkbox = (
+    <input
+      aria-label="Refunded"
+      checked={row.refunded}
+      id={`${idPrefix}-refunded`}
+      onChange={(e) => {
+        const refunded = e.target.checked;
+        onChange(
+          refunded
+            ? { ...row, refunded: true, status: ReservationStatus.STAYED }
+            : { ...row, refunded: false }
+        );
+      }}
+      type="checkbox"
+    />
+  );
+
+  if (variant === "table") {
+    return <div className="flex justify-center">{checkbox}</div>;
+  }
+
   return (
     <label className={cn("flex items-center gap-2", labelClassName)}>
-      <input
-        checked={row.refunded}
-        id={`${idPrefix}-refunded`}
-        onChange={(e) => {
-          const refunded = e.target.checked;
-          onChange(
-            refunded
-              ? { ...row, refunded: true, status: ReservationStatus.STAYED }
-              : { ...row, refunded: false }
-          );
-        }}
-        type="checkbox"
-      />{" "}
-      Refunded
+      {checkbox} Refunded
     </label>
   );
 }
 
-function renderChannelSelect({ channelCommissions, idPrefix, onChange, row }: PreviewFieldContext) {
+function renderChannelSelect(
+  { channelCommissions, idPrefix, onChange, row }: PreviewFieldContext,
+  variant: "card" | "table" = "card"
+) {
   return (
     <NativeSelect
-      className={SELECT_CLASS_NAME}
+      className={variant === "table" ? TABLE_SELECT_CLASS_NAME : SELECT_CLASS_NAME}
       id={`${idPrefix}-channel`}
       onChange={(e) => onChange({ ...row, channelCommissionId: e.target.value })}
       options={buildChannelOptions(channelCommissions)}
@@ -393,12 +411,18 @@ export const ImportIncomeCsvPreviewTableRow = memo(
           {row.sourceFileName}
         </TableCell>
         <TableCell className="whitespace-normal">{renderGuestInput(context)}</TableCell>
-        <TableCell className="whitespace-normal">{renderUnitSelect(context)}</TableCell>
+        <TableCell className="whitespace-normal">
+          <div className="min-w-0">{renderUnitSelect(context, "table")}</div>
+        </TableCell>
         <TableCell>{renderCheckInInput(context)}</TableCell>
         <TableCell>{renderCheckOutInput(context)}</TableCell>
-        <TableCell className="whitespace-normal">{renderStatusSelect(context)}</TableCell>
-        <TableCell>{renderRefundedInput(context, "text-xs")}</TableCell>
-        <TableCell className="whitespace-normal">{renderChannelSelect(context)}</TableCell>
+        <TableCell className="whitespace-normal">
+          <div className="min-w-0">{renderStatusSelect(context, "table")}</div>
+        </TableCell>
+        <TableCell>{renderRefundedInput(context, "table")}</TableCell>
+        <TableCell className="whitespace-normal">
+          <div className="min-w-0">{renderChannelSelect(context, "table")}</div>
+        </TableCell>
         <TableCell>
           <div className="min-w-0">{renderAmountInput(context, "roomTotal", "table")}</div>
         </TableCell>
@@ -417,7 +441,7 @@ export const ImportIncomeCsvPreviewTableRow = memo(
         <TableCell className="text-right text-sm tabular-nums">
           {formatReadOnlyMoney(row.grossIncome)}
         </TableCell>
-        <TableCell className={cn(STICKY_NET_CELL_CLASS_NAME, "text-right text-sm tabular-nums")}>
+        <TableCell className="text-right text-sm tabular-nums">
           {formatReadOnlyMoney(row.netIncome)}
         </TableCell>
         <TableCell className={STICKY_ACTIONS_CELL_CLASS_NAME}>
