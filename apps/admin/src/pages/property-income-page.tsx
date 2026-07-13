@@ -282,6 +282,20 @@ type TRefundEntryRequest =
       title: string;
     };
 
+function isRefundEntryPending(
+  request: TRefundEntryRequest | null,
+  isRefundStayPending: boolean,
+  isRefundLinePending: boolean
+): boolean {
+  if (request?.kind === "stay") {
+    return isRefundStayPending;
+  }
+  if (request?.kind === "line") {
+    return isRefundLinePending;
+  }
+  return false;
+}
+
 function buildStayRefundEntryRequest(stay: IPropertyReservation): TRefundEntryRequest {
   return {
     cap: getStayRefundableCap(stay),
@@ -1583,13 +1597,11 @@ const PropertyIncomePage = memo(() => {
       <RefundEntryDialog
         cap={refundEntryRequest?.cap ?? 0}
         description={refundEntryRequest?.description ?? ""}
-        isPending={
-          refundEntryRequest?.kind === "stay"
-            ? isRefundStayPending
-            : refundEntryRequest?.kind === "line"
-              ? isRefundLinePending
-              : false
-        }
+        isPending={isRefundEntryPending(
+          refundEntryRequest,
+          isRefundStayPending,
+          isRefundLinePending
+        )}
         onConfirm={handleRefundEntryConfirm}
         onOpenChange={(open) => {
           if (!open && !isRefundStayPending && !isRefundLinePending) {
