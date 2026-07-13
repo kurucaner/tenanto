@@ -6,6 +6,7 @@ import {
   executeLedgerRefund,
   executeLedgerUnrefund,
   type ILedgerRefundableRecord,
+  parseRefundLedgerEntryBody,
 } from "./ledger-refund-route-actions";
 
 function makeReply() {
@@ -23,6 +24,44 @@ function makeEntity(overrides: Partial<ILedgerRefundableRecord> = {}): ILedgerRe
   };
 }
 
+const baseRefundOptions = {
+  entityId: "entry-1",
+  entityName: "Reservation",
+  label: "reservation",
+  notFoundError: "Reservation not found",
+  propertyId: "prop-1",
+  refundableCap: 500,
+  userId: "user-1",
+};
+
+describe("parseRefundLedgerEntryBody", () => {
+  test("accepts omitted body as full refund", () => {
+    expect(parseRefundLedgerEntryBody(undefined)).toEqual({ body: {}, ok: true });
+    expect(parseRefundLedgerEntryBody(null)).toEqual({ body: {}, ok: true });
+  });
+
+  test("accepts valid partial refund amount", () => {
+    expect(parseRefundLedgerEntryBody({ amount: 2000 })).toEqual({
+      body: { amount: 2000 },
+      ok: true,
+    });
+  });
+
+  test("rejects non-object body", () => {
+    expect(parseRefundLedgerEntryBody("invalid")).toEqual({
+      error: "Request body must be a JSON object",
+      ok: false,
+    });
+  });
+
+  test("rejects invalid amount", () => {
+    expect(parseRefundLedgerEntryBody({ amount: "2000" })).toEqual({
+      error: "amount must be a non-negative number",
+      ok: false,
+    });
+  });
+});
+
 describe("executeLedgerRefund", () => {
   test("returns 404 when entity is missing", async () => {
     const { reply, send, status } = makeReply();
@@ -31,12 +70,7 @@ describe("executeLedgerRefund", () => {
     await executeLedgerRefund(reply, {
       db: { refund, unrefund: mock(() => Promise.resolve(true)) },
       entity: null,
-      entityId: "entry-1",
-      entityName: "Reservation",
-      label: "reservation",
-      notFoundError: "Reservation not found",
-      propertyId: "prop-1",
-      userId: "user-1",
+      ...baseRefundOptions,
     });
 
     expect(status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
@@ -51,12 +85,7 @@ describe("executeLedgerRefund", () => {
     await executeLedgerRefund(reply, {
       db: { refund, unrefund: mock(() => Promise.resolve(true)) },
       entity: makeEntity({ isDeleted: true }),
-      entityId: "entry-1",
-      entityName: "Reservation",
-      label: "reservation",
-      notFoundError: "Reservation not found",
-      propertyId: "prop-1",
-      userId: "user-1",
+      ...baseRefundOptions,
     });
 
     expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
@@ -71,12 +100,7 @@ describe("executeLedgerRefund", () => {
     await executeLedgerRefund(reply, {
       db: { refund, unrefund: mock(() => Promise.resolve(true)) },
       entity: makeEntity({ refundedAt: "2026-03-01T00:00:00.000Z" }),
-      entityId: "entry-1",
-      entityName: "Reservation",
-      label: "reservation",
-      notFoundError: "Reservation not found",
-      propertyId: "prop-1",
-      userId: "user-1",
+      ...baseRefundOptions,
     });
 
     expect(status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
@@ -84,22 +108,65 @@ describe("executeLedgerRefund", () => {
     expect(refund).not.toHaveBeenCalled();
   });
 
-  test("refunds and returns 204 on success", async () => {
+  test("returns 400 when partial amount exceeds cap", async () => {
+    const { reply, send, status } = makeReply();
+    const refund = mock(() => Promise.resolve(true));
+
+    await executeLedgerRefund(reply, {
+      body: { amount: 500.01 },
+      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      entity: makeEntity(),
+      ...baseRefundOptions,
+    });
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(send).toHaveBeenCalledWith({ error: "amount cannot exceed 500" });
+    expect(refund).not.toHaveBeenCalled();
+  });
+
+  test("returns 400 when partial amount is zero", async () => {
+    const { reply, send, status } = makeReply();
+    const refund = mock(() => Promise.resolve(true));
+
+    await executeLedgerRefund(reply, {
+      body: { amount: 0 },
+      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      entity: makeEntity(),
+      ...baseRefundOptions,
+    });
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(send).toHaveBeenCalledWith({ error: "amount must be greater than zero" });
+    expect(refund).not.toHaveBeenCalled();
+  });
+
+  test("refunds full amount and returns 204 when body is omitted", async () => {
     const { reply, send, status } = makeReply();
     const refund = mock(() => Promise.resolve(true));
 
     await executeLedgerRefund(reply, {
       db: { refund, unrefund: mock(() => Promise.resolve(true)) },
       entity: makeEntity(),
-      entityId: "entry-1",
-      entityName: "Reservation",
-      label: "reservation",
-      notFoundError: "Reservation not found",
-      propertyId: "prop-1",
-      userId: "user-1",
+      ...baseRefundOptions,
     });
 
-    expect(refund).toHaveBeenCalledWith("entry-1", "user-1");
+    expect(refund).toHaveBeenCalledWith("entry-1", "user-1", 500);
+    expect(status).toHaveBeenCalledWith(HttpStatus.NO_CONTENT);
+    expect(send).toHaveBeenCalledWith();
+  });
+
+  test("refunds partial amount and returns 204", async () => {
+    const { reply, send, status } = makeReply();
+    const refund = mock(() => Promise.resolve(true));
+
+    await executeLedgerRefund(reply, {
+      body: { amount: 125 },
+      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      entity: makeEntity(),
+      ...baseRefundOptions,
+    });
+
+    expect(refund).toHaveBeenCalledWith("entry-1", "user-1", 125);
     expect(status).toHaveBeenCalledWith(HttpStatus.NO_CONTENT);
     expect(send).toHaveBeenCalledWith();
   });

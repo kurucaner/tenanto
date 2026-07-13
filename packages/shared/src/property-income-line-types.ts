@@ -21,6 +21,7 @@ export interface IPropertyIncomeLine {
   longStayId: string | null;
   netIncome: number;
   propertyId: string;
+  refundedAmount: number | null;
   refundedAt: string | null;
   refundedBy: string | null;
   reservationId: string | null;

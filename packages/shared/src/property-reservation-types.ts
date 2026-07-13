@@ -31,6 +31,7 @@ export interface IPropertyReservation {
   netIncome: number;
   nights: number;
   propertyId: string;
+  refundedAmount: number | null;
   refundedAt: string | null;
   refundedBy: string | null;
   reservationNumber: string | null;

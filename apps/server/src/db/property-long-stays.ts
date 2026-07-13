@@ -13,6 +13,7 @@ import {
   enumerateLeaseMonths,
   getCurrentLeaseRent,
   getLeaseRentForMonth,
+  isIncomeLinePaidForRentSchedule,
   PropertyLongStayStatus,
   transactionDateToMonth,
   validateExtendLease,
@@ -21,7 +22,11 @@ import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/k
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
-import { mapPropertyLongStayRentPeriodRow, mapPropertyLongStayRow } from "./mappers";
+import {
+  mapPropertyIncomeLineRow,
+  mapPropertyLongStayRentPeriodRow,
+  mapPropertyLongStayRow,
+} from "./mappers";
 import { pool } from "./pool";
 
 function buildPropertyLongStayListConditions(
@@ -283,25 +288,25 @@ export const propertyLongStaysDb = {
     const effectiveEndDate = longStay.actualEndDate ?? longStay.leaseEndDate;
     const months = enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
 
-    const incomeResult = await pool.query<{ id: string; transaction_date: Date }>(
-      `SELECT id, transaction_date
+    const incomeResult = await pool.query(
+      `SELECT *
        FROM property_income_lines
        WHERE long_stay_id = $1
          AND is_deleted = false
-         AND refunded_at IS NULL
        ORDER BY transaction_date ASC`,
       [longStayId]
     );
 
     const paidByMonth = new Map<string, string>();
     for (const row of incomeResult.rows) {
-      const month = transactionDateToMonth(
-        row.transaction_date instanceof Date
-          ? row.transaction_date.toISOString().slice(0, 10)
-          : String(row.transaction_date)
-      );
+      const line = mapPropertyIncomeLineRow(row as Record<string, unknown>);
+      if (!isIncomeLinePaidForRentSchedule(line)) {
+        continue;
+      }
+
+      const month = transactionDateToMonth(line.transactionDate);
       if (!paidByMonth.has(month)) {
-        paidByMonth.set(month, row.id);
+        paidByMonth.set(month, line.id);
       }
     }
 

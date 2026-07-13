@@ -51,6 +51,7 @@ function makeStay(overrides: Partial<IPropertyReservation> = {}): IPropertyReser
     netIncome: 400,
     nights: 3,
     propertyId: "prop-1",
+    refundedAmount: null,
     refundedAt: null,
     refundedBy: null,
     reservationNumber: null,
@@ -79,6 +80,7 @@ function makeIncomeLine(overrides: Partial<IPropertyIncomeLine> = {}): IProperty
     longStayId: null,
     netIncome: 75,
     propertyId: "prop-1",
+    refundedAmount: null,
     refundedAt: null,
     refundedBy: null,
     reservationId: null,
@@ -163,6 +165,7 @@ describe("buildPropertyReportSummary refunds", () => {
             grossIncome: 300,
             id: "stay-refunded",
             netIncome: 250,
+            refundedAmount: 300,
             refundedAt: "2026-03-01T00:00:00.000Z",
           }),
         ],
@@ -186,6 +189,7 @@ describe("buildPropertyReportSummary refunds", () => {
             grossIncome: 50,
             id: "line-refunded",
             netIncome: 50,
+            refundedAmount: 50,
             refundedAt: "2026-03-01T00:00:00.000Z",
           }),
         ],
@@ -196,6 +200,53 @@ describe("buildPropertyReportSummary refunds", () => {
     expect(summary.totals).toMatchObject({
       grossIncome: 75,
       netIncome: 75,
+    });
+  });
+
+  test("includes remaining amounts for partially refunded stays", () => {
+    const summary = buildPropertyReportSummary(
+      makeReportData({
+        reservations: [
+          makeStay({ grossIncome: 500, netIncome: 400 }),
+          makeStay({
+            grossIncome: 400,
+            id: "stay-partial",
+            netIncome: 300,
+            refundedAmount: 100,
+            refundedAt: "2026-03-01T00:00:00.000Z",
+          }),
+        ],
+      }),
+      QUERY
+    );
+
+    expect(summary.totals).toMatchObject({
+      grossIncome: 800,
+      netIncome: 625,
+    });
+  });
+
+  test("includes remaining amounts for partially refunded income lines", () => {
+    const summary = buildPropertyReportSummary(
+      makeReportData({
+        incomeLines: [
+          makeIncomeLine({ amount: 100, grossIncome: 100, netIncome: 100 }),
+          makeIncomeLine({
+            amount: 80,
+            grossIncome: 80,
+            id: "line-partial",
+            netIncome: 80,
+            refundedAmount: 20,
+            refundedAt: "2026-03-01T00:00:00.000Z",
+          }),
+        ],
+      }),
+      QUERY
+    );
+
+    expect(summary.totals).toMatchObject({
+      grossIncome: 160,
+      netIncome: 160,
     });
   });
 });
