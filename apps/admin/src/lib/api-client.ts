@@ -52,6 +52,7 @@ import {
   type IPropertyUnit,
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
+  type IRefundLedgerEntryBody,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
   type ISupportCloseResponse,
@@ -791,10 +792,12 @@ export const shortStaysApi = {
       `/properties/${encodeURIComponent(propertyId)}/short-stays${buildShortStaysSearchParams(query)}`
     ),
 
-  refund: (propertyId: string, shortStayId: string) =>
+  refund: (propertyId: string, shortStayId: string, body?: IRefundLedgerEntryBody) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/short-stays/${encodeURIComponent(shortStayId)}/refund`,
-      { method: "POST", omitDefaultContentType: true }
+      body?.amount !== undefined
+        ? { body: JSON.stringify(body), method: "POST" }
+        : { method: "POST", omitDefaultContentType: true }
     ),
 
   restore: (propertyId: string, shortStayId: string) =>
@@ -872,10 +875,12 @@ export const incomeLinesApi = {
       `/properties/${encodeURIComponent(propertyId)}/income-lines${buildIncomeLinesSearchParams(query)}`
     ),
 
-  refund: (propertyId: string, lineId: string) =>
+  refund: (propertyId: string, lineId: string, body?: IRefundLedgerEntryBody) =>
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/income-lines/${encodeURIComponent(lineId)}/refund`,
-      { method: "POST", omitDefaultContentType: true }
+      body?.amount !== undefined
+        ? { body: JSON.stringify(body), method: "POST" }
+        : { method: "POST", omitDefaultContentType: true }
     ),
 
   restore: (propertyId: string, lineId: string) =>

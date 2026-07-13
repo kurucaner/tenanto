@@ -20,7 +20,7 @@ import {
 } from "@/components/data-table/data-table-types";
 import {
   DeletedBadge,
-  RefundedBadge,
+  IncomeRefundBadge,
   RefundEntityButton,
   RestoreEntityButton,
 } from "@/components/deleted-badge";
@@ -38,6 +38,10 @@ import { EditReservationDialog } from "@/components/income/edit-reservation-dial
 import { ImportIncomeCsvDialog } from "@/components/income/import-income-csv-dialog";
 import { IncomeEntryTypeBadge } from "@/components/income/income-entry-type-badge";
 import { buildIncomeTypeFilterOptions } from "@/components/income/income-line-form-options";
+import {
+  RefundEntryDialog,
+  type TRefundEntryConfirmPayload,
+} from "@/components/income/refund-entry-dialog";
 import { ReservationChannelBadge } from "@/components/income/reservation-channel-badge";
 import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
 import { ReservationStatusBadge } from "@/components/income/reservation-status-badge";
@@ -75,8 +79,10 @@ import { adminQueryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  getIncomeLineRefundableCap,
   getStayAverageDailyRate,
   getStayNetPayout,
+  getStayRefundableCap,
   getStayTaxesTotal,
   IncomeEntryKind,
   type IPropertyIncomeLine,
@@ -203,43 +209,63 @@ function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
     : `line-${entry.line.id}`;
 }
 
-function buildStayRefundConfirmationOptions(
+function buildStayUnrefundConfirmationOptions(
   stay: IPropertyReservation
 ): TDeleteConfirmationOptions<IPropertyReservation> {
-  if (stay.refundedAt) {
-    return {
-      confirmLabel: "Undo refund",
-      description: `Restore ${stay.guestName}'s stay to financial reports?`,
-      target: stay,
-      title: "Undo stay refund",
-    };
-  }
+  return {
+    confirmLabel: "Undo refund",
+    description: `Restore ${stay.guestName}'s stay to financial reports?`,
+    target: stay,
+    title: "Undo stay refund",
+  };
+}
+
+function buildLineUnrefundConfirmationOptions(
+  line: IPropertyIncomeLine
+): TDeleteConfirmationOptions<IPropertyIncomeLine> {
+  const label = line.incomeLineTypeName ?? line.incomeLineTypeId;
 
   return {
-    confirmLabel: "Refund",
-    description: `Refund stay for ${stay.guestName}? It will be excluded from reports but remain visible here.`,
+    confirmLabel: "Undo refund",
+    description: `Restore this ${label} entry to financial reports?`,
+    target: line,
+    title: "Undo income refund",
+  };
+}
+
+type TRefundEntryRequest =
+  | {
+      cap: number;
+      description: string;
+      kind: "stay";
+      target: IPropertyReservation;
+      title: string;
+    }
+  | {
+      cap: number;
+      description: string;
+      kind: "line";
+      target: IPropertyIncomeLine;
+      title: string;
+    };
+
+function buildStayRefundEntryRequest(stay: IPropertyReservation): TRefundEntryRequest {
+  return {
+    cap: getStayRefundableCap(stay),
+    description: `Refund stay for ${stay.guestName}? Refunded amounts are excluded from reports but remain visible here.`,
+    kind: "stay",
     target: stay,
     title: "Refund stay",
   };
 }
 
-function buildLineRefundConfirmationOptions(
-  line: IPropertyIncomeLine
-): TDeleteConfirmationOptions<IPropertyIncomeLine> {
+function buildLineRefundEntryRequest(line: IPropertyIncomeLine): TRefundEntryRequest {
   const label = line.incomeLineTypeName ?? line.incomeLineTypeId;
 
-  if (line.refundedAt) {
-    return {
-      confirmLabel: "Undo refund",
-      description: `Restore this ${label} entry to financial reports?`,
-      target: line,
-      title: "Undo income refund",
-    };
-  }
-
   return {
-    confirmLabel: "Refund",
-    description: `Refund this ${label} entry? It will be excluded from reports but remain visible here.`,
+    cap: getIncomeLineRefundableCap(line),
+    description: `Refund this ${label} entry? Refunded amounts are excluded from reports but remain visible here.`,
+    kind: "line",
     target: line,
     title: "Refund income",
   };
@@ -686,7 +712,13 @@ const IncomeStayEntryRow = memo(
           <div className="flex items-center gap-2">
             <IncomeEntryTypeBadge entryKind={IncomeEntryKind.STAY} />
             {stay.isDeleted ? <DeletedBadge /> : null}
-            {!stay.isDeleted && isRefunded ? <RefundedBadge /> : null}
+            {!stay.isDeleted ? (
+              <IncomeRefundBadge
+                cap={getStayRefundableCap(stay)}
+                refundedAmount={stay.refundedAmount}
+                refundedAt={stay.refundedAt}
+              />
+            ) : null}
           </div>
         </TableCell>
         <TableCell className="font-medium">{unitLabel}</TableCell>
@@ -825,7 +857,13 @@ const IncomeLineEntryRow = memo(
               label={line.incomeLineTypeName ?? line.incomeLineTypeId}
             />
             {line.isDeleted ? <DeletedBadge /> : null}
-            {!line.isDeleted && isRefunded ? <RefundedBadge /> : null}
+            {!line.isDeleted ? (
+              <IncomeRefundBadge
+                cap={getIncomeLineRefundableCap(line)}
+                refundedAmount={line.refundedAmount}
+                refundedAt={line.refundedAt}
+              />
+            ) : null}
           </div>
         </TableCell>
         <TableCell className="font-medium">{unitLabel}</TableCell>
@@ -1000,6 +1038,7 @@ const PropertyIncomePage = memo(() => {
     metric: TStayCalculationMetric;
     stay: IPropertyReservation;
   } | null>(null);
+  const [refundEntryRequest, setRefundEntryRequest] = useState<TRefundEntryRequest | null>(null);
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
   const incomeFilterSchema = useMemo(
     () =>
@@ -1228,12 +1267,17 @@ const PropertyIncomePage = memo(() => {
   });
 
   const refundStayMutation = useMutation({
-    mutationFn: (stay: IPropertyReservation) => shortStaysApi.refund(propertyId, stay.id),
+    mutationFn: ({ amount, stay }: { amount?: number; stay: IPropertyReservation }) =>
+      shortStaysApi.refund(
+        propertyId,
+        stay.id,
+        amount !== undefined ? { amount } : undefined
+      ),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to refund stay");
     },
-    onSuccess: () => {
-      toast.success("Stay refunded");
+    onSuccess: (_, { amount }) => {
+      toast.success(amount !== undefined ? "Stay partially refunded" : "Stay refunded");
       invalidatePropertyIncomeCaches(queryClient, propertyId);
     },
   });
@@ -1250,12 +1294,17 @@ const PropertyIncomePage = memo(() => {
   });
 
   const refundLineMutation = useMutation({
-    mutationFn: (line: IPropertyIncomeLine) => incomeLinesApi.refund(propertyId, line.id),
+    mutationFn: ({ amount, line }: { amount?: number; line: IPropertyIncomeLine }) =>
+      incomeLinesApi.refund(
+        propertyId,
+        line.id,
+        amount !== undefined ? { amount } : undefined
+      ),
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Failed to refund income");
     },
-    onSuccess: (_, line) => {
-      toast.success("Income refunded");
+    onSuccess: (_, { amount, line }) => {
+      toast.success(amount !== undefined ? "Income partially refunded" : "Income refunded");
       invalidatePropertyIncomeCaches(queryClient, propertyId, { longStayId: line.longStayId });
     },
   });
@@ -1274,40 +1323,70 @@ const PropertyIncomePage = memo(() => {
   const isRefundStayPending = refundStayMutation.isPending || unrefundStayMutation.isPending;
   const isRefundLinePending = refundLineMutation.isPending || unrefundLineMutation.isPending;
 
+  const closeRefundEntry = useCallback(() => {
+    setRefundEntryRequest(null);
+  }, []);
+
   const {
-    deleteConfirmationDialog: stayRefundConfirmationDialog,
-    requestDelete: requestStayRefund,
+    deleteConfirmationDialog: stayUnrefundConfirmationDialog,
+    requestDelete: requestStayUnrefund,
   } = useDeleteConfirmation<IPropertyReservation>(isRefundStayPending, (stay, onDone) => {
-    if (stay.refundedAt) {
-      unrefundStayMutation.mutate(stay, { onSuccess: onDone });
-      return;
-    }
-    refundStayMutation.mutate(stay, { onSuccess: onDone });
+    unrefundStayMutation.mutate(stay, { onSuccess: onDone });
   });
 
   const {
-    deleteConfirmationDialog: lineRefundConfirmationDialog,
-    requestDelete: requestLineRefund,
+    deleteConfirmationDialog: lineUnrefundConfirmationDialog,
+    requestDelete: requestLineUnrefund,
   } = useDeleteConfirmation<IPropertyIncomeLine>(isRefundLinePending, (line, onDone) => {
-    if (line.refundedAt) {
-      unrefundLineMutation.mutate(line, { onSuccess: onDone });
-      return;
-    }
-    refundLineMutation.mutate(line, { onSuccess: onDone });
+    unrefundLineMutation.mutate(line, { onSuccess: onDone });
   });
+
+  const handleRefundEntryConfirm = useCallback(
+    (payload: TRefundEntryConfirmPayload) => {
+      if (!refundEntryRequest) {
+        return;
+      }
+
+      const amount = payload.mode === "partial" ? payload.amount : undefined;
+
+      if (refundEntryRequest.kind === "stay") {
+        refundStayMutation.mutate(
+          { amount, stay: refundEntryRequest.target },
+          { onSuccess: closeRefundEntry }
+        );
+        return;
+      }
+
+      refundLineMutation.mutate(
+        { amount, line: refundEntryRequest.target },
+        { onSuccess: closeRefundEntry }
+      );
+    },
+    [closeRefundEntry, refundEntryRequest, refundLineMutation, refundStayMutation]
+  );
 
   const handleRefundStay = useCallback(
     (stay: IPropertyReservation) => {
-      requestStayRefund(buildStayRefundConfirmationOptions(stay));
+      if (stay.refundedAt) {
+        requestStayUnrefund(buildStayUnrefundConfirmationOptions(stay));
+        return;
+      }
+
+      setRefundEntryRequest(buildStayRefundEntryRequest(stay));
     },
-    [requestStayRefund]
+    [requestStayUnrefund]
   );
 
   const handleRefundLine = useCallback(
     (line: IPropertyIncomeLine) => {
-      requestLineRefund(buildLineRefundConfirmationOptions(line));
+      if (line.refundedAt) {
+        requestLineUnrefund(buildLineUnrefundConfirmationOptions(line));
+        return;
+      }
+
+      setRefundEntryRequest(buildLineRefundEntryRequest(line));
     },
-    [requestLineRefund]
+    [requestLineUnrefund]
   );
 
   const displayEntries = useMemo(() => {
@@ -1439,8 +1518,28 @@ const PropertyIncomePage = memo(() => {
 
       {lineDeleteConfirmationDialog}
       {stayDeleteConfirmationDialog}
-      {lineRefundConfirmationDialog}
-      {stayRefundConfirmationDialog}
+      {lineUnrefundConfirmationDialog}
+      {stayUnrefundConfirmationDialog}
+
+      <RefundEntryDialog
+        cap={refundEntryRequest?.cap ?? 0}
+        description={refundEntryRequest?.description ?? ""}
+        isPending={
+          refundEntryRequest?.kind === "stay"
+            ? isRefundStayPending
+            : refundEntryRequest?.kind === "line"
+              ? isRefundLinePending
+              : false
+        }
+        onConfirm={handleRefundEntryConfirm}
+        onOpenChange={(open) => {
+          if (!open && !isRefundStayPending && !isRefundLinePending) {
+            closeRefundEntry();
+          }
+        }}
+        open={refundEntryRequest !== null}
+        title={refundEntryRequest?.title ?? ""}
+      />
 
       <PropertyIncomePageDialogs
         createLineLockedStay={createLineLockedStay}
