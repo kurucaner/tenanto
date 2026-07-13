@@ -408,10 +408,14 @@ class NotificationStreamHub {
     const normalizedClientId = clientId?.trim() || null;
 
     if (normalizedClientId != null) {
-      for (const conn of [...existing]) {
+      const duplicateConnectionIds: string[] = [];
+      for (const conn of existing) {
         if (conn.clientId === normalizedClientId) {
-          this.unregister(userId, conn.id);
+          duplicateConnectionIds.push(conn.id);
         }
+      }
+      for (const connectionId of duplicateConnectionIds) {
+        this.unregister(userId, connectionId);
       }
     }
 

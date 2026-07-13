@@ -56,26 +56,28 @@ export const TenantEmailActiveSendBanner = memo(
       campaign.status === TenantEmailCampaignStatus.COMPLETED_WITH_ERRORS ||
       campaign.failedCount > 0;
 
+    let statusIcon;
+    let statusTitle: string;
+
+    if (inProgress) {
+      statusIcon = <Loader2 className="size-4 animate-spin text-primary" />;
+      statusTitle = "Sending tenant notification";
+    } else if (hasErrors) {
+      statusIcon = <MailWarning className="size-4 text-destructive" />;
+      statusTitle = "Notification finished with errors";
+    } else {
+      statusIcon = <MailCheck className="size-4 text-primary" />;
+      statusTitle = "Notification sent";
+    }
+
     return (
       <Card>
         <CardContent className="space-y-3 py-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                {inProgress ? (
-                  <Loader2 className="size-4 animate-spin text-primary" />
-                ) : hasErrors ? (
-                  <MailWarning className="size-4 text-destructive" />
-                ) : (
-                  <MailCheck className="size-4 text-primary" />
-                )}
-                <p className="font-medium text-sm">
-                  {inProgress
-                    ? "Sending tenant notification"
-                    : hasErrors
-                      ? "Notification finished with errors"
-                      : "Notification sent"}
-                </p>
+                {statusIcon}
+                <p className="font-medium text-sm">{statusTitle}</p>
                 <TenantEmailCampaignStatusBadge status={campaign.status} />
               </div>
               <p className="text-muted-foreground text-sm">{campaign.subject}</p>
