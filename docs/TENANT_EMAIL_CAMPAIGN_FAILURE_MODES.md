@@ -10,6 +10,8 @@ Operational reference for property tenant email campaigns (Communications tab).
 
 If the API or worker restarts, queued DB rows remain the source of truth; jobs can be re-enqueued from `queued` recipients.
 
+Production on Railway: separate worker service — see [RAILWAY_TENANT_EMAIL_WORKER.md](./RAILWAY_TENANT_EMAIL_WORKER.md).
+
 ## Failure modes
 
 ### API returns 429 (Too Many Requests)
