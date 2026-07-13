@@ -37,6 +37,56 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "Star properties on the Properties list to mark favorites — they stay at the top so you can jump back to them quickly.",
+      },
+      {
+        // This item will be hidden when the income import CSV dialog is hidden
+        category: "new",
+        description:
+          "You can import stays from a CSV export (such as Hotel Tax Calculator) — upload your file, review and edit each row, then save them in one step.",
+      },
+      {
+        category: "new",
+        description:
+          "You can mark a stay or other income line as refunded from the Income table; refunded items are excluded from your reports.",
+      },
+      {
+        category: "new",
+        description:
+          "Property Reports include a profit trend chart so you can see how net income changes month to month.",
+      },
+      {
+        category: "improved",
+        description:
+          "You can sort the Income table by date, guest, unit, channel, amounts, and other columns.",
+      },
+      {
+        category: "improved",
+        description:
+          "Search the Expenses table by description or category, and the Properties list by name or address.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Units table loads more rows as you scroll and can be sorted by rental type.",
+      },
+      {
+        category: "improved",
+        description:
+          "Filter bars on Expenses, Income, and Properties share a consistent layout; table action buttons show helpful tooltips on hover.",
+      },
+    ],
+    id: "2026.11.0",
+    publishedAt: "2026-07-13",
+    summary:
+      "Favorite properties, import income from CSV, refund stays and lines, and a faster sortable Income table.",
+    version: "2026.11.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "Hold Shift and click the trash icon to delete expenses, stays, other income, units, or property settings rows without a confirmation step.",
       },
       {
