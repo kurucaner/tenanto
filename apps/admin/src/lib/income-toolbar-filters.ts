@@ -1,4 +1,9 @@
-import { DateRangePreset, type TDateRangePresetId } from "@/lib/date-range-presets";
+import { type TDateRangePresetId } from "@/lib/date-range-presets";
+import {
+  buildLedgerToolbarDateClearOnePatch,
+  buildLedgerToolbarDateFilterItem,
+  type ILedgerToolbarDefaultDateRange,
+} from "@/lib/ledger-toolbar-date-filters";
 import { type TSelectOption } from "@/lib/select-option-types";
 
 export type TIncomeToolbarFilterId =
@@ -16,11 +21,6 @@ export interface IIncomeToolbarFilterItem {
 
 type TIncomeToolbarUrlKey = Exclude<TIncomeToolbarFilterId, "date"> | "allTime" | "from" | "q" | "to";
 
-interface IIncomeToolbarDefaultDateRange {
-  from: string;
-  to: string;
-}
-
 function findOptionLabel(options: readonly TSelectOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;
 }
@@ -37,16 +37,16 @@ export function countIncomeSecondaryFilters(values: {
 
 export function buildIncomeToolbarClearOnePatch(
   id: TIncomeToolbarFilterId,
-  defaultDateRange: IIncomeToolbarDefaultDateRange
+  defaultDateRange: ILedgerToolbarDefaultDateRange
 ): Partial<Record<TIncomeToolbarUrlKey, string>> {
   if (id === "date") {
-    return { allTime: "", from: defaultDateRange.from, to: defaultDateRange.to };
+    return buildLedgerToolbarDateClearOnePatch(defaultDateRange);
   }
   return { [id]: "" };
 }
 
 export function buildIncomeToolbarClearAllPatch(
-  defaultDateRange: IIncomeToolbarDefaultDateRange
+  defaultDateRange: ILedgerToolbarDefaultDateRange
 ): Record<TIncomeToolbarUrlKey, string> {
   return {
     allTime: "",
@@ -78,8 +78,13 @@ export function buildIncomeToolbarFilterItems(input: {
 }): IIncomeToolbarFilterItem[] {
   const items: IIncomeToolbarFilterItem[] = [];
 
-  if (!input.isDefaultDateRange || input.activePreset === DateRangePreset.ALL) {
-    items.push({ id: "date", label: `Date: ${input.dateSummary}` });
+  const dateItem = buildLedgerToolbarDateFilterItem({
+    activePreset: input.activePreset,
+    dateSummary: input.dateSummary,
+    isDefaultDateRange: input.isDefaultDateRange,
+  });
+  if (dateItem) {
+    items.push(dateItem);
   }
   if (input.unitId) {
     items.push({
