@@ -54,6 +54,7 @@ export function usePropertiesInfiniteList({
     isFetching: query.isFetching,
     isFetchingNextPage: query.isFetchingNextPage,
     isPending: query.isPending,
+    listFilters,
     properties,
   };
 }

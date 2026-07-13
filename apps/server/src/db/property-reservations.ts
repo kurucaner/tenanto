@@ -115,6 +115,20 @@ export function buildReservationListParts(
       filters.rentalType
     );
   }
+
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    if (!filters.rentalType) {
+      parts.joinUnits = "LEFT JOIN property_units pu ON pu.id = pr.unit_id";
+    }
+    const pattern = `%${qTrim}%`;
+    parts.conditions.push(
+      `(pr.guest_name ILIKE $${parts.paramIndex} OR pcc.name ILIKE $${parts.paramIndex + 1} OR pu.unit_number ILIKE $${parts.paramIndex + 2})`
+    );
+    parts.values.push(pattern, pattern, pattern);
+    parts.paramIndex += 3;
+  }
+
   if (!includeDeleted) {
     parts.conditions.push("pr.is_deleted = false");
   }

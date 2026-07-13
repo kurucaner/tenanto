@@ -94,7 +94,11 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
   test("returns a page and nextCursor when more rows exist", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyIncomeLinesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyIncomeLinesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
 
     expect(firstPage.incomeLines).toHaveLength(2);
     expect(firstPage.incomeLines[0]?.transactionDate).toBe("2026-07-09");
@@ -106,16 +110,18 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
     const sql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
-    expect(sql).toContain(
-      "ORDER BY pil.transaction_date DESC, pil.created_at DESC, pil.id DESC"
-    );
+    expect(sql).toContain("ORDER BY pil.transaction_date DESC, pil.created_at DESC, pil.id DESC");
     expect(sql).toContain("LIMIT $");
   });
 
   test("passes cursor predicate on subsequent pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyIncomeLinesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyIncomeLinesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
@@ -133,7 +139,11 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
   test("omits meta on cursor pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyIncomeLinesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyIncomeLinesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
     expect(firstPage.meta).toBeDefined();
 
     mockQuery.mockClear();
@@ -160,5 +170,23 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
     expect(sql).toContain("pil.income_line_type_id = $");
+  });
+
+  test("applies search filter on guest, description, and type name", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeLinesDb.listPaginatedByProperty("prop-1", { q: "parking" }, { limit: 2 });
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(listSql).toContain("pil.guest_name");
+    expect(listSql).toContain("pil.description");
+    expect(listSql).toContain("ilt.name ILIKE");
+
+    const metaSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(metaSql).toContain("property_income_line_types ilt");
   });
 });

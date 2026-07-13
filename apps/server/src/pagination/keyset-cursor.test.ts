@@ -6,12 +6,14 @@ import {
   decodeIncomeLineKeysetCursor,
   decodeKeysetCursor,
   decodeLeaseKeysetCursor,
+  decodePropertyFavoriteKeysetCursor,
   decodeReservationKeysetCursor,
   encodeExpenseKeysetCursor,
   encodeIncomeEntryKeysetCursor,
   encodeIncomeLineKeysetCursor,
   encodeKeysetCursor,
   encodeLeaseKeysetCursor,
+  encodePropertyFavoriteKeysetCursor,
   encodeReservationKeysetCursor,
 } from "./keyset-cursor";
 
@@ -177,5 +179,33 @@ describe("encodeIncomeEntryKeysetCursor / decodeIncomeEntryKeysetCursor", () => 
 
   test("throws on invalid cursor", () => {
     expect(() => decodeIncomeEntryKeysetCursor("bad")).toThrow("Invalid cursor");
+  });
+});
+
+describe("encodePropertyFavoriteKeysetCursor / decodePropertyFavoriteKeysetCursor", () => {
+  test("round-trips favoritedAt, createdAt, and id", () => {
+    const encoded = encodePropertyFavoriteKeysetCursor(
+      "2026-07-01T12:00:00.000Z",
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    const decoded = decodePropertyFavoriteKeysetCursor(encoded);
+    expect(decoded.favoritedAt).toBe("2026-07-01T12:00:00.000Z");
+    expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
+    expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  test("round-trips null favoritedAt for non-favorites", () => {
+    const encoded = encodePropertyFavoriteKeysetCursor(
+      null,
+      "2026-07-09T12:00:00.000Z",
+      "550e8400-e29b-41d4-a716-446655440000"
+    );
+    const decoded = decodePropertyFavoriteKeysetCursor(encoded);
+    expect(decoded.favoritedAt).toBeNull();
+  });
+
+  test("throws on invalid cursor", () => {
+    expect(() => decodePropertyFavoriteKeysetCursor("bad")).toThrow("Invalid cursor");
   });
 });

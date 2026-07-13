@@ -24,6 +24,7 @@ import { executeLedgerRefund, executeLedgerUnrefund } from "./ledger-refund-rout
 import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
   applyOptionalQueryDateFilter,
+  applyOptionalQuerySearchFilter,
   applyOptionalQueryUuidFilter,
 } from "./parse-list-query-filters";
 import {
@@ -336,6 +337,7 @@ function parseReservationsListQuery(
         "includeReservationId must be a valid UUID"
       ),
     () => parseReservationRentalTypeFilter(query, filters),
+    () => applyOptionalQuerySearchFilter(query, filters),
   ];
 
   for (const applyFilter of filterSteps) {

@@ -346,3 +346,48 @@ export function encodeIncomeEntryKeysetCursor(input: {
     "utf8"
   ).toString("base64url");
 }
+
+/**
+ * Property list keyset cursor (v1): favoritedAt (ISO or null) + createdAt + id.
+ * Matches ORDER BY COALESCE(favorited_at, infinity) ASC, created_at DESC, id DESC.
+ */
+export type PropertyFavoriteKeysetCursorV1 = {
+  createdAt: string;
+  favoritedAt: string | null;
+  id: string;
+};
+
+export function decodePropertyFavoriteKeysetCursor(raw: string): PropertyFavoriteKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      createdAt?: unknown;
+      favoritedAt?: unknown;
+      id?: unknown;
+    };
+    if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") {
+      throw new TypeError("invalid shape");
+    }
+    if (parsed.favoritedAt !== null && typeof parsed.favoritedAt !== "string") {
+      throw new TypeError("invalid favoritedAt");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      favoritedAt: parsed.favoritedAt ?? null,
+      id: parsed.id,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodePropertyFavoriteKeysetCursor(
+  favoritedAt: string | null,
+  createdAt: Date | string,
+  id: string
+): string {
+  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
+  return Buffer.from(JSON.stringify({ createdAt: iso, favoritedAt, id }), "utf8").toString(
+    "base64url"
+  );
+}

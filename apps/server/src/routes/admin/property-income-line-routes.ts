@@ -30,6 +30,7 @@ import {
 } from "./parse-body-utils";
 import {
   applyOptionalQueryDateFilter,
+  applyOptionalQuerySearchFilter,
   applyOptionalQueryUuidFilter,
 } from "./parse-list-query-filters";
 import {
@@ -223,6 +224,7 @@ function parseIncomeLinesListQuery(
       ),
     () =>
       applyOptionalQueryUuidFilter(query, "longStayId", filters, "longStayId must be a valid UUID"),
+    () => applyOptionalQuerySearchFilter(query, filters),
   ];
 
   for (const applyFilter of filterSteps) {

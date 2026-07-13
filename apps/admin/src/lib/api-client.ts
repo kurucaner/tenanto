@@ -7,6 +7,7 @@ import {
   type IAdminPatchAppConfigBody,
   type IAdminPlatformStats,
   type IAdminPropertiesListResponse,
+  type IAdminSetPropertyFavoriteBody,
   type IAdminSupportRequestPatchBody,
   type IAdminSupportRequestPatchResponse,
   type IAdminUpdatePropertyBody,
@@ -637,6 +638,12 @@ export const propertiesApi = {
       { method: "DELETE", omitDefaultContentType: true }
     ),
 
+  setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>
+    authenticatedRequest<{ property: IProperty }>(
+      `/properties/${encodeURIComponent(propertyId)}/favorite`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
   update: (propertyId: string, body: IAdminUpdatePropertyBody) =>
     authenticatedRequest<{ property: IProperty }>(`/properties/${encodeURIComponent(propertyId)}`, {
       body: JSON.stringify(body),
@@ -759,6 +766,7 @@ function buildShortStaysSearchParams(query: IPropertyReservationsListQuery = {})
   if (query.status) params.set("status", query.status);
   if (query.rentalType) params.set("rentalType", query.rentalType);
   if (query.includeReservationId) params.set("includeReservationId", query.includeReservationId);
+  if (query.q != null && query.q !== "") params.set("q", query.q);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
@@ -818,6 +826,7 @@ function buildIncomeEntriesSearchParams(query: IPropertyIncomeEntriesListQuery =
   if (query.incomeType) params.set("incomeType", query.incomeType);
   if (query.sortBy) params.set("sortBy", query.sortBy);
   if (query.sortDir) params.set("sortDir", query.sortDir);
+  if (query.q != null && query.q !== "") params.set("q", query.q);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();
@@ -838,6 +847,7 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
   if (query.unitId) params.set("unitId", query.unitId);
   if (query.incomeLineTypeId) params.set("incomeLineTypeId", query.incomeLineTypeId);
   if (query.reservationId) params.set("reservationId", query.reservationId);
+  if (query.q != null && query.q !== "") params.set("q", query.q);
   if (query.cursor) params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();

@@ -5,19 +5,21 @@ import { pool } from "@/db/pool";
 import { propertiesDb } from "@/db/properties";
 import { propertyInvitesDb } from "@/db/property-invites";
 import { propertyMembersDb } from "@/db/property-members";
+import { propertyUserFavoritesDb } from "@/db/property-user-favorites";
 import { userDb } from "@/db/users";
 import {
   AdminAuditAction,
   HttpStatus,
   type IAdminAddPropertyMemberBody,
   type IAdminCreatePropertyBody,
+  type IAdminSetPropertyFavoriteBody,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   PropertyRole,
   type TPropertyRole,
   UserType,
 } from "@/packages/shared";
-import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { decodePropertyFavoriteKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyUser } from "@/services/user-notifications";
 import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
 
@@ -200,6 +202,19 @@ function parseUpdateMemberBody(
   return { body: { role }, ok: true };
 }
 
+function parseSetPropertyFavoriteBody(
+  raw: unknown
+): { body: IAdminSetPropertyFavoriteBody; ok: true } | { error: string; ok: false } {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { error: "Body must be a JSON object", ok: false };
+  }
+  const favorite = (raw as Record<string, unknown>)["favorite"];
+  if (typeof favorite !== "boolean") {
+    return { error: "favorite must be a boolean", ok: false };
+  }
+  return { body: { favorite }, ok: true };
+}
+
 async function assertPropertyAccess(
   propertyId: string,
   userId: string,
@@ -329,7 +344,7 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
 
       if (qs.cursor != null && qs.cursor !== "") {
         try {
-          decodeKeysetCursor(qs.cursor);
+          decodePropertyFavoriteKeysetCursor(qs.cursor);
         } catch {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
         }
@@ -338,7 +353,12 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       const q = typeof qs.q === "string" && qs.q.trim() !== "" ? qs.q.trim() : undefined;
       const isAdmin = request.user.userType === UserType.ADMIN;
       const { items, nextCursor } = isAdmin
-        ? await propertiesDb.listPaginatedForAdmin({ cursor: qs.cursor, limit, q })
+        ? await propertiesDb.listPaginatedForAdmin({
+            cursor: qs.cursor,
+            limit,
+            q,
+            userId: request.user.userId,
+          })
         : await propertiesDb.listPaginatedForUser({
             cursor: qs.cursor,
             limit,
@@ -400,7 +420,40 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
       );
       if (!access) return;
 
-      const property = await propertiesDb.findDetailById(propertyId);
+      const property = await propertiesDb.findDetailById(propertyId, request.user.userId);
+      return reply.send({ property });
+    }
+  );
+
+  server.patch<{ Params: IPropertyParams }>(
+    "/properties/:propertyId/favorite",
+    { preHandler: authPre },
+    async (request: FastifyRequest<{ Params: IPropertyParams }>, reply: FastifyReply) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+
+      const access = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!access) return;
+
+      const parsed = parseSetPropertyFavoriteBody(request.body);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
+      }
+
+      await propertyUserFavoritesDb.setFavorite({
+        favorite: parsed.body.favorite,
+        propertyId,
+        userId: request.user.userId,
+      });
+
+      const property = await propertiesDb.findById(propertyId, request.user.userId);
       return reply.send({ property });
     }
   );

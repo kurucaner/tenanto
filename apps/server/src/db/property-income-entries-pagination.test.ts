@@ -156,7 +156,8 @@ const mockQuery = mock((sql: string, values?: unknown[]) => {
     rows = rows.filter((row) => rowIsBeforeDateCursor(row, sortKey, createdAt, id, entryKind));
   }
 
-  const limitPlusOne = (values?.[values.length - 1] as number | undefined) ?? mergedRowsCanonical.length;
+  const limitPlusOne =
+    (values?.[values.length - 1] as number | undefined) ?? mergedRowsCanonical.length;
 
   return Promise.resolve({ rows: rows.slice(0, limitPlusOne) });
 });
@@ -219,14 +220,20 @@ function referenceSortDateDesc(entries: TPropertyIncomeEntry[]): TPropertyIncome
 }
 
 function getEntryKey(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY ? `stay:${entry.stay.id}` : `line:${entry.line.id}`;
+  return entry.entryKind === IncomeEntryKind.STAY
+    ? `stay:${entry.stay.id}`
+    : `line:${entry.line.id}`;
 }
 
 describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
   test("returns a merged page and nextCursor when more rows exist", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
 
     expect(firstPage.entries).toHaveLength(2);
     expect(firstPage.entries[0]?.entryKind).toBe(IncomeEntryKind.STAY);
@@ -267,7 +274,11 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
   test("passes cursor predicate on subsequent pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
@@ -278,14 +289,20 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     );
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
-    expect(sql).toContain("merged.sort_key_date, merged.created_at, merged.id, merged.entry_kind) <");
+    expect(sql).toContain(
+      "merged.sort_key_date, merged.created_at, merged.id, merged.entry_kind) <"
+    );
     expect(mockQuery.mock.calls).toHaveLength(1);
   });
 
   test("omits meta on cursor pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
     expect(firstPage.meta).toBeDefined();
 
     mockQuery.mockClear();
@@ -368,5 +385,17 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     );
 
     expect(page.entries.map(getEntryKey)).toEqual(expected.map(getEntryKey));
+  });
+
+  test("applies search filter across stay and line branches", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", { q: "alex" }, { limit: 10 });
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("pr.guest_name ILIKE");
+    expect(sql).toContain("ilt.name ILIKE");
   });
 });

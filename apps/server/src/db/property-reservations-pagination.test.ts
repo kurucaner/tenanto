@@ -109,7 +109,11 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
   test("returns a page and nextCursor when more rows exist", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyReservationsDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyReservationsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
 
     expect(firstPage.shortStays).toHaveLength(2);
     expect(firstPage.shortStays[0]?.checkIn).toBe("2026-07-09");
@@ -128,7 +132,11 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
   test("passes cursor predicate on subsequent pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyReservationsDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyReservationsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
@@ -146,7 +154,11 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
   test("omits meta on cursor pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyReservationsDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
+    const firstPage = await propertyReservationsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      { limit: 2 }
+    );
     expect(firstPage.meta).toBeDefined();
 
     mockQuery.mockClear();
@@ -173,5 +185,18 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
     expect(sql).toContain("pr.status = $");
+  });
+
+  test("applies search filter on guest, channel, and unit", async () => {
+    mockQuery.mockClear();
+
+    await propertyReservationsDb.listPaginatedByProperty("prop-1", { q: "alex" }, { limit: 2 });
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("pr.guest_name ILIKE");
+    expect(sql).toContain("pcc.name ILIKE");
+    expect(sql).toContain("pu.unit_number ILIKE");
   });
 });

@@ -2227,4 +2227,25 @@ export const migrations: IMigration[] = [
     },
     version: 50,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS property_user_favorites;`);
+    },
+    name: "property_user_favorites",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TABLE property_user_favorites (
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          favorited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (user_id, property_id)
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_user_favorites_user_favorited_at
+          ON property_user_favorites (user_id, favorited_at ASC);
+      `);
+    },
+    version: 51,
+  },
 ];
