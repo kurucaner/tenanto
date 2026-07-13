@@ -1,12 +1,12 @@
 import { Building2, Plus } from "lucide-react";
-import { memo, type RefObject, useCallback, useState } from "react";
+import { memo, type RefObject, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
 import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
-import { LedgerFiltersSection } from "@/components/filters/ledger-filters-section";
 import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
+import { PropertiesListToolbar } from "@/components/properties/properties-list-toolbar";
 import { PropertyFavoriteButton } from "@/components/properties/property-favorite-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,13 @@ import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
 import { useSetPropertyFavorite } from "@/hooks/use-set-property-favorite";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import {
+  buildPropertiesListToolbarClearAllPatch,
+  buildPropertiesListToolbarClearOnePatch,
+  buildPropertiesListToolbarFilterItems,
+  formatPropertiesListCountLabel,
+  type TPropertiesListToolbarFilterId,
+} from "@/lib/properties-list-toolbar-filters";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { formatPhoneDisplay, type IProperty } from "@/packages/shared";
 
@@ -80,32 +87,20 @@ const PropertiesListTable = memo(
     infiniteScrollSentinelRef,
     isFetchingNextPage,
     isPending,
-    onSearchInputChange,
     properties,
-    searchInput,
+    toolbar,
   }: {
     favoriteMutation: ReturnType<typeof useSetPropertyFavorite>;
     hasNextPage: boolean;
     infiniteScrollSentinelRef: RefObject<HTMLDivElement | null>;
     isFetchingNextPage: boolean;
     isPending: boolean;
-    onSearchInputChange: (value: string) => void;
     properties: IProperty[];
-    searchInput: string;
+    toolbar: React.ReactNode;
   }) => (
     <DataTable
       columns={PROPERTY_COLUMNS}
       emptyMessage={PROPERTIES_EMPTY_MESSAGE}
-      filters={
-        <LedgerFiltersSection
-          search={{
-            id: "properties-list-search",
-            onChange: onSearchInputChange,
-            placeholder: "Search by name or address…",
-            value: searchInput,
-          }}
-        />
-      }
       getItemKey={(property) => property.id}
       infiniteScroll={{ hasNextPage, isFetchingNextPage }}
       infiniteScrollSentinelRef={infiniteScrollSentinelRef}
@@ -122,13 +117,14 @@ const PropertiesListTable = memo(
           property={property}
         />
       )}
+      toolbar={toolbar}
     />
   )
 );
 PropertiesListTable.displayName = "PropertiesListTable";
 
 const PropertiesListPageInner = memo(() => {
-  const { filters, setFilter } = useUrlFilterState(PROPERTIES_URL_FILTER_SCHEMA);
+  const { filters, setFilter, setFilters } = useUrlFilterState(PROPERTIES_URL_FILTER_SCHEMA);
   const { q } = filters;
   const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
     q,
@@ -154,6 +150,31 @@ const PropertiesListPageInner = memo(() => {
     isFetchingNextPage,
   });
 
+  const activeFilterItems = useMemo(() => buildPropertiesListToolbarFilterItems(q), [q]);
+
+  const countLabel = useMemo(
+    () =>
+      properties.length > 0
+        ? formatPropertiesListCountLabel(properties.length, Boolean(hasNextPage))
+        : undefined,
+    [hasNextPage, properties.length]
+  );
+
+  const handleRemoveToolbarFilter = useCallback(
+    (id: TPropertiesListToolbarFilterId) => {
+      if (id === "q") {
+        handleSearchInputChange("");
+      }
+      setFilters(buildPropertiesListToolbarClearOnePatch(id));
+    },
+    [handleSearchInputChange, setFilters]
+  );
+
+  const handleClearAllToolbarFilters = useCallback(() => {
+    handleSearchInputChange("");
+    setFilters(buildPropertiesListToolbarClearAllPatch());
+  }, [handleSearchInputChange, setFilters]);
+
   const handleNewPropertyClick = useCallback(() => {
     setCreateOpen(true);
   }, []);
@@ -173,17 +194,25 @@ const PropertiesListPageInner = memo(() => {
         </p>
       ) : null}
 
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardContent className="space-y-4 p-0">
+      <Card className="gap-0 py-0">
+        <CardContent className="p-0">
           <PropertiesListTable
             favoriteMutation={favoriteMutation}
             hasNextPage={hasNextPage ?? false}
             infiniteScrollSentinelRef={scrollSentinelRef}
             isFetchingNextPage={isFetchingNextPage}
             isPending={isPending}
-            onSearchInputChange={handleSearchInputChange}
             properties={properties}
-            searchInput={searchInput}
+            toolbar={
+              <PropertiesListToolbar
+                activeFilterItems={activeFilterItems}
+                countLabel={countLabel}
+                onClearAll={handleClearAllToolbarFilters}
+                onRemoveFilter={handleRemoveToolbarFilter}
+                onSearchInputChange={handleSearchInputChange}
+                searchInput={searchInput}
+              />
+            }
           />
         </CardContent>
       </Card>
