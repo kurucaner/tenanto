@@ -727,6 +727,9 @@ export const longStaysApi = {
     const params = new URLSearchParams();
     if (query.status) params.set("status", query.status);
     if (query.unitId) params.set("unitId", query.unitId);
+    if (query.from) params.set("from", query.from);
+    if (query.to) params.set("to", query.to);
+    if (query.q) params.set("q", query.q);
     if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
     if (query.limit != null) params.set("limit", String(query.limit));
     const search = params.toString();

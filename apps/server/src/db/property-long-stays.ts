@@ -5,8 +5,8 @@ import type {
   IPropertyLongStayRentMonth,
   IPropertyLongStayRentPeriod,
   IPropertyLongStaysListMeta,
-  IPropertyLongStaysListQuery,
   IUpdatePropertyLongStayBody,
+  TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import {
   calculateLeaseEndDate,
@@ -29,24 +29,52 @@ import {
 } from "./mappers";
 import { pool } from "./pool";
 
-function buildPropertyLongStayListConditions(
+const LEASE_EFFECTIVE_END = "COALESCE(pls.actual_end_date, pls.lease_end_date)";
+
+function buildPropertyLongStayListParts(
   propertyId: string,
-  filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">
-): { conditions: string[]; values: unknown[] } {
-  const conditions = ["property_id = $1"];
+  filters: TPropertyLongStaysListFilters
+): { conditions: string[]; joinUnits: string; values: unknown[] } {
+  const conditions = ["pls.property_id = $1"];
   const values: unknown[] = [propertyId];
   let p = 2;
+  let joinUnits = "";
 
   if (filters.status) {
-    conditions.push(`status = $${p++}::property_long_stay_status`);
+    conditions.push(`pls.status = $${p++}::property_long_stay_status`);
     values.push(filters.status);
   }
   if (filters.unitId) {
-    conditions.push(`unit_id = $${p++}`);
+    conditions.push(`pls.unit_id = $${p++}`);
     values.push(filters.unitId);
   }
+  if (filters.from) {
+    conditions.push(`${LEASE_EFFECTIVE_END} >= $${p++}`);
+    values.push(filters.from);
+  }
+  if (filters.to) {
+    conditions.push(`pls.lease_start_date <= $${p++}`);
+    values.push(filters.to);
+  }
 
-  return { conditions, values };
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    joinUnits = "LEFT JOIN property_units pu ON pu.id = pls.unit_id";
+    const pattern = `%${qTrim}%`;
+    conditions.push(`(
+      pls.guest_name ILIKE $${p}
+      OR pls.tenant_email ILIKE $${p + 1}
+      OR pu.unit_number ILIKE $${p + 2}
+      OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(pls.secondary_tenants) AS st
+        WHERE st->>'name' ILIKE $${p + 3}
+           OR COALESCE(st->>'email', '') ILIKE $${p + 4}
+      )
+    )`);
+    values.push(pattern, pattern, pattern, pattern, pattern);
+  }
+
+  return { conditions, joinUnits, values };
 }
 
 function formatLeaseStartDateForCursor(leaseStartDate: unknown): string {
@@ -252,9 +280,9 @@ export const propertyLongStaysDb = {
 
   async getListMetaByProperty(
     propertyId: string,
-    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">
+    filters: TPropertyLongStaysListFilters
   ): Promise<IPropertyLongStaysListMeta> {
-    const { conditions, values } = buildPropertyLongStayListConditions(propertyId, filters);
+    const { conditions, joinUnits, values } = buildPropertyLongStayListParts(propertyId, filters);
 
     const result = await pool.query<{
       active_count: number;
@@ -263,9 +291,10 @@ export const propertyLongStaysDb = {
     }>(
       `SELECT
          COUNT(*)::int AS total_count,
-         COUNT(*) FILTER (WHERE status = 'active')::int AS active_count,
-         COUNT(*) FILTER (WHERE status = 'ended')::int AS ended_count
-       FROM property_long_stays
+         COUNT(*) FILTER (WHERE pls.status = 'active')::int AS active_count,
+         COUNT(*) FILTER (WHERE pls.status = 'ended')::int AS ended_count
+       FROM property_long_stays pls
+       ${joinUnits}
        WHERE ${conditions.join(" AND ")}`,
       values
     );
@@ -323,14 +352,15 @@ export const propertyLongStaysDb = {
 
   async listByProperty(
     propertyId: string,
-    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId"> = {}
+    filters: TPropertyLongStaysListFilters = {}
   ): Promise<IPropertyLongStay[]> {
-    const { conditions, values } = buildPropertyLongStayListConditions(propertyId, filters);
+    const { conditions, joinUnits, values } = buildPropertyLongStayListParts(propertyId, filters);
 
     const result = await pool.query(
-      `SELECT * FROM property_long_stays
+      `SELECT pls.* FROM property_long_stays pls
+       ${joinUnits}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY lease_start_date DESC, created_at DESC`,
+       ORDER BY pls.lease_start_date DESC, pls.created_at DESC`,
       values
     );
     return result.rows.map((row) => mapPropertyLongStayRow(row as Record<string, unknown>));
@@ -338,7 +368,7 @@ export const propertyLongStaysDb = {
 
   async listPaginatedByProperty(
     propertyId: string,
-    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">,
+    filters: TPropertyLongStaysListFilters,
     options: { cursor?: string; limit: number }
   ): Promise<{
     longStays: IPropertyLongStay[];
@@ -358,16 +388,16 @@ export const propertyLongStaysDb = {
 
   async listPaginatedPage(
     propertyId: string,
-    filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">,
+    filters: TPropertyLongStaysListFilters,
     options: { cursor?: string; limit: number }
   ): Promise<{ longStays: IPropertyLongStay[]; nextCursor: string | null }> {
-    const { conditions, values } = buildPropertyLongStayListConditions(propertyId, filters);
+    const { conditions, joinUnits, values } = buildPropertyLongStayListParts(propertyId, filters);
     let p = values.length + 1;
 
     if (options.cursor != null && options.cursor !== "") {
       const decoded = decodeLeaseKeysetCursor(options.cursor);
       conditions.push(
-        `(lease_start_date, created_at, id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
+        `(pls.lease_start_date, pls.created_at, pls.id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
       );
       values.push(decoded.leaseStartDate, decoded.createdAt, decoded.id);
     }
@@ -376,9 +406,10 @@ export const propertyLongStaysDb = {
     values.push(options.limit + 1);
 
     const result = await pool.query(
-      `SELECT * FROM property_long_stays
+      `SELECT pls.* FROM property_long_stays pls
+       ${joinUnits}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY lease_start_date DESC, created_at DESC, id DESC
+       ORDER BY pls.lease_start_date DESC, pls.created_at DESC, pls.id DESC
        LIMIT $${limitParam}`,
       values
     );

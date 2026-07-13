@@ -14,20 +14,25 @@ import {
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
   type IPropertyLongStaySecondaryTenant,
-  type IPropertyLongStaysListQuery,
   type IUpdatePropertyLongStayBody,
   LEASES_LIST_LIMIT,
   LEASES_LIST_MAX_LIMIT,
   MAX_ADDITIONAL_TERM_MONTHS,
   PropertyLongStayStatus,
+  type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 
-import { parseOptionalUuid, parseUuidParam } from "./admin-query-utils";
+import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
+import {
+  applyOptionalQueryDateFilter,
+  applyOptionalQuerySearchFilter,
+  applyOptionalQueryUuidFilter,
+} from "./parse-list-query-filters";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
 import {
   assertPropertyLedgerWriteAccess,
@@ -334,12 +339,24 @@ function parseLongStaysListLimit(raw: unknown): number {
 function parseLongStaysListQuery(query: Record<string, unknown>):
   | {
       cursor?: string;
-      filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId">;
+      filters: TPropertyLongStaysListFilters;
       limit: number;
       ok: true;
     }
   | { error: string; ok: false } {
-  const filters: Pick<IPropertyLongStaysListQuery, "status" | "unitId"> = {};
+  const filters: TPropertyLongStaysListFilters = {};
+
+  const filterSteps = [
+    () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
+    () => applyOptionalQueryDateFilter(query, "to", filters, "to must be a YYYY-MM-DD date"),
+    () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
+    () => applyOptionalQuerySearchFilter(query, filters),
+  ];
+
+  for (const applyFilter of filterSteps) {
+    const result = applyFilter();
+    if (!result.ok) return result;
+  }
 
   if (query["status"] !== undefined && query["status"] !== "") {
     const status = query["status"];
@@ -347,12 +364,6 @@ function parseLongStaysListQuery(query: Record<string, unknown>):
       return { error: "status must be active or ended", ok: false };
     }
     filters.status = status as TPropertyLongStayStatus;
-  }
-
-  if (query["unitId"] !== undefined && query["unitId"] !== "") {
-    const unitId = parseOptionalUuid(query["unitId"]);
-    if (unitId === null) return { error: "unitId must be a valid UUID", ok: false };
-    if (unitId) filters.unitId = unitId;
   }
 
   const limit = parseLongStaysListLimit(query["limit"]);

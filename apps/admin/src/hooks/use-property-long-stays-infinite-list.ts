@@ -4,12 +4,12 @@ import { useMemo } from "react";
 import { longStaysApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   LEASES_LIST_LIMIT,
+  type TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 
-export type TPropertyLongStaysListFilters = Pick<IPropertyLongStaysListQuery, "status" | "unitId">;
+export type { TPropertyLongStaysListFilters };
 
 export function usePropertyLongStaysInfiniteList(
   propertyId: string,

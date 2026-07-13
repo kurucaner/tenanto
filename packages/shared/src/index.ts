@@ -189,6 +189,7 @@ export {
   type IPropertyLongStaysListResponse,
   type IUpdatePropertyLongStayBody,
   PropertyLongStayStatus,
+  type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
 

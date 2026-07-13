@@ -43,10 +43,18 @@ export interface ICreatePropertyLongStayBody {
 
 export interface IPropertyLongStaysListQuery {
   cursor?: string;
+  from?: string;
   limit?: number;
+  q?: string;
   status?: TPropertyLongStayStatus;
+  to?: string;
   unitId?: string;
 }
+
+export type TPropertyLongStaysListFilters = Pick<
+  IPropertyLongStaysListQuery,
+  "from" | "q" | "status" | "to" | "unitId"
+>;
 
 export interface IPropertyLongStaysListResponse {
   longStays: IPropertyLongStay[];

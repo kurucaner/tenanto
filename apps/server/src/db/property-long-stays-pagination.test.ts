@@ -88,8 +88,48 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
     const sql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
-    expect(sql).toContain("lease_start_date DESC");
+    expect(sql).toContain("pls.lease_start_date DESC");
     expect(sql).toContain("LIMIT $");
+  });
+
+  test("applies search filter with unit join in list and count queries", async () => {
+    mockQuery.mockClear();
+
+    await propertyLongStaysDb.listPaginatedByProperty("prop-1", { q: "Tenant" }, { limit: 2 });
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+
+    expect(listSql).toContain("property_units pu");
+    expect(listSql).toContain("pls.guest_name ILIKE");
+    expect(countSql).toContain("property_units pu");
+    expect(countSql).toContain("pls.guest_name ILIKE");
+  });
+
+  test("applies overlap date filters in list and count queries", async () => {
+    mockQuery.mockClear();
+
+    await propertyLongStaysDb.listPaginatedByProperty(
+      "prop-1",
+      { from: "2026-07-01", to: "2026-07-31" },
+      { limit: 2 }
+    );
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+
+    expect(listSql).toContain("COALESCE(pls.actual_end_date, pls.lease_end_date) >=");
+    expect(listSql).toContain("pls.lease_start_date <=");
+    expect(countSql).toContain("COALESCE(pls.actual_end_date, pls.lease_end_date) >=");
+    expect(countSql).toContain("pls.lease_start_date <=");
   });
 
   test("passes cursor predicate on subsequent pages", async () => {
@@ -106,7 +146,7 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
     );
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
-    expect(sql).toContain("(lease_start_date, created_at, id) <");
+    expect(sql).toContain("(pls.lease_start_date, pls.created_at, pls.id) <");
     expect(mockQuery.mock.calls).toHaveLength(1);
   });
 
