@@ -33,7 +33,9 @@ describe("propertyReservationsDb partial refund", () => {
     const updated = await propertyReservationsDb.refund(stayId, userId);
 
     expect(updated).toBe(true);
-    expect(capturedQueries[0]?.sql).toContain("refunded_amount = COALESCE($3::numeric, gross_income)");
+    expect(capturedQueries[0]?.sql).toContain(
+      "refunded_amount = COALESCE($3::numeric, gross_income)"
+    );
     expect(capturedQueries[0]?.values).toEqual([stayId, userId, null]);
   });
 

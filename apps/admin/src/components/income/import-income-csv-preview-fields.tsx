@@ -314,12 +314,7 @@ const ImportIncomeCsvPreviewWarningBadge = memo(
   ({ ariaLabel, icon, message, variant }: ImportIncomeCsvPreviewWarningBadgeProps) => (
     <Tooltip delayDuration={0}>
       <TooltipTrigger asChild>
-        <Badge
-          aria-label={ariaLabel}
-          className="cursor-default"
-          tabIndex={0}
-          variant={variant}
-        >
+        <Badge aria-label={ariaLabel} className="cursor-default" tabIndex={0} variant={variant}>
           {icon}
         </Badge>
       </TooltipTrigger>

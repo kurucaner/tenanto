@@ -26,9 +26,7 @@ function updatePropertyFavoriteInListCache(
   };
 }
 
-export function useSetPropertyFavorite(
-  listFilters: Omit<IAdminPropertiesListQuery, "cursor">
-) {
+export function useSetPropertyFavorite(listFilters: Omit<IAdminPropertiesListQuery, "cursor">) {
   const queryClient = useQueryClient();
   const queryKey = adminQueryKeys.propertiesList(listFilters);
 

@@ -330,8 +330,7 @@ export function encodeIncomeEntryKeysetCursor(input: {
   sortKeyNum: number | null;
   sortKeyText: string | null;
 }): string {
-  const iso =
-    typeof input.createdAt === "string" ? input.createdAt : input.createdAt.toISOString();
+  const iso = typeof input.createdAt === "string" ? input.createdAt : input.createdAt.toISOString();
   return Buffer.from(
     JSON.stringify({
       createdAt: iso,

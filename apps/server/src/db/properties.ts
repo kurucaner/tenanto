@@ -39,13 +39,10 @@ function propertyFavoriteJoin(userIdParamIndex: number): string {
 
 function propertyByIdSelectSql(viewerUserIdParamIndex: number | null): string {
   const favoritedAtSelect =
-    viewerUserIdParamIndex == null
-      ? "NULL::timestamptz AS favorited_at"
-      : "puf.favorited_at";
+    viewerUserIdParamIndex == null ? "NULL::timestamptz AS favorited_at" : "puf.favorited_at";
   const favoriteJoin =
     viewerUserIdParamIndex == null ? "" : propertyFavoriteJoin(viewerUserIdParamIndex);
-  const groupByFavorite =
-    viewerUserIdParamIndex == null ? "" : ", puf.favorited_at";
+  const groupByFavorite = viewerUserIdParamIndex == null ? "" : ", puf.favorited_at";
 
   return `
       SELECT p.*, COUNT(pm.id)::int AS member_count,
@@ -61,13 +58,10 @@ function propertyByIdSelectSql(viewerUserIdParamIndex: number | null): string {
 
 function propertyDetailByIdSelectSql(viewerUserIdParamIndex: number | null): string {
   const favoritedAtSelect =
-    viewerUserIdParamIndex == null
-      ? "NULL::timestamptz AS favorited_at"
-      : "puf.favorited_at";
+    viewerUserIdParamIndex == null ? "NULL::timestamptz AS favorited_at" : "puf.favorited_at";
   const favoriteJoin =
     viewerUserIdParamIndex == null ? "" : propertyFavoriteJoin(viewerUserIdParamIndex);
-  const groupByFavorite =
-    viewerUserIdParamIndex == null ? "" : ", puf.favorited_at";
+  const groupByFavorite = viewerUserIdParamIndex == null ? "" : ", puf.favorited_at";
 
   return `
       SELECT p.*, COUNT(pm.id)::int AS member_count,
@@ -137,10 +131,8 @@ async function listPaginatedProperties(
     p += 3;
   }
 
-  const whereClause =
-    whereFragments.length > 0 ? `WHERE ${whereFragments.join(" AND ")}` : "";
-  const havingClause =
-    havingFragments.length > 0 ? `HAVING ${havingFragments.join(" AND ")}` : "";
+  const whereClause = whereFragments.length > 0 ? `WHERE ${whereFragments.join(" AND ")}` : "";
+  const havingClause = havingFragments.length > 0 ? `HAVING ${havingFragments.join(" AND ")}` : "";
   const limitParam = p;
   values.push(params.limit + 1);
 
@@ -206,10 +198,7 @@ export const propertiesDb = {
       values.push(viewerUserId);
     }
 
-    const result = await pool.query(
-      propertyByIdSelectSql(viewerUserId != null ? 2 : null),
-      values
-    );
+    const result = await pool.query(propertyByIdSelectSql(viewerUserId != null ? 2 : null), values);
     if (result.rows.length === 0) return null;
     return mapPropertyRow(result.rows[0] as Record<string, unknown>);
   },
