@@ -94,7 +94,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
           "Star properties on the Properties list to mark favorites — they stay at the top so you can jump back to them quickly.",
       },
       {
-        // This item will be hidden when the income import CSV dialog is hidden
         category: "new",
         description:
           "You can import stays from a CSV export (such as Hotel Tax Calculator) — upload your file, review and edit each row, then save them in one step.",
