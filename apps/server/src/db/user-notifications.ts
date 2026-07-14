@@ -1,3 +1,4 @@
+import { getUserNotificationsRetentionCutoff } from "@/lib/user-notifications-retention";
 import type {
   IUserNotification,
   UserNotificationResourceType,
@@ -36,9 +37,14 @@ function mapUserNotificationRow(row: Record<string, unknown>): IUserNotification
 
 export const userNotificationsDb = {
   async countUnread(userId: string): Promise<number> {
+    const retentionCutoff = getUserNotificationsRetentionCutoff();
     const result = await pool.query(
-      `SELECT COUNT(*)::int AS c FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`,
-      [userId]
+      `SELECT COUNT(*)::int AS c
+       FROM user_notifications
+       WHERE user_id = $1
+         AND read_at IS NULL
+         AND created_at >= $2::timestamptz`,
+      [userId, retentionCutoff]
     );
     return Number(result.rows[0]?.c ?? 0);
   },
@@ -66,9 +72,10 @@ export const userNotificationsDb = {
     limit: number;
     userId: string;
   }): Promise<{ items: IUserNotification[]; nextCursor: string | null }> {
-    const fragments: string[] = [`user_id = $1`];
-    const values: unknown[] = [params.userId];
-    let p = 2;
+    const retentionCutoff = getUserNotificationsRetentionCutoff();
+    const fragments: string[] = [`user_id = $1`, `created_at >= $2::timestamptz`];
+    const values: unknown[] = [params.userId, retentionCutoff];
+    let p = 3;
 
     if (params.cursor != null && params.cursor !== "") {
       const decoded = decodeKeysetCursor(params.cursor);
