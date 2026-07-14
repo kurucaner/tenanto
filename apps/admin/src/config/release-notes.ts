@@ -67,11 +67,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "improved",
         description:
-          "The notifications bell loads older items as you scroll (last 30 days) and shows a friendly “all caught up” message when you reach the end.",
-      },
-      {
-        category: "improved",
-        description:
           "Income, Expenses, and Units tables keep showing your rows while filters update instead of flashing empty.",
       },
       {
@@ -83,11 +78,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
         category: "fixed",
         description:
           "Search boxes accept spaces, stop flickering while the page catches up, and unit filter menus no longer list “All” twice.",
-      },
-      {
-        category: "fixed",
-        description:
-          "Fixed an issue where adding an expense could fail to appear, email compose did not reset after “send another,” and export highlights could stick around after you navigated away.",
       },
     ],
     id: "2026.12.0",
