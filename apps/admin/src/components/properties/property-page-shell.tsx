@@ -1,18 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { createContext, memo, type ReactNode, useContext, useEffect } from "react";
-import { Link, NavLink, Outlet, useLocation, useParams } from "react-router-dom";
+import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 
 import {
   PropertyShellActionsProvider,
   PropertyShellHeaderActions,
 } from "@/components/properties/property-shell-actions-context";
+import { PropertyShellTabs } from "@/components/properties/property-shell-tabs";
 import { PropertySwitcher } from "@/components/properties/property-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePropertyShell } from "@/hooks/use-property-shell";
 import { propertiesApi } from "@/lib/api-client";
 import { isPropertyLeaseDetailPath } from "@/lib/property-shell-routes";
-import { getVisiblePropertyShellTabs } from "@/lib/property-shell-tab-visibility";
 import { queryKeys } from "@/lib/query-keys";
 import { recordRecentProperty } from "@/lib/recent-properties-storage";
 import { type IPropertyDetail } from "@/packages/shared";
@@ -26,36 +25,6 @@ interface PropertyPageShellProps {
   propertyId: string;
   propertyName: string;
 }
-
-const tabClass = ({ isActive }: { isActive: boolean }) =>
-  `shrink-0 px-3 pb-2 text-sm font-medium transition-colors ${
-    isActive
-      ? "border-b-2 border-foreground text-foreground"
-      : "text-muted-foreground hover:text-foreground"
-  }`;
-
-export const PropertyShellTabs = memo(({ propertyId }: { propertyId: string }) => {
-  const { permissions } = usePropertyShell();
-  const tabs = getVisiblePropertyShellTabs(permissions);
-
-  return (
-    <div className="-mx-1 px-1">
-      <div className="flex flex-wrap items-center gap-1 border-b">
-        {tabs.map((tab) => (
-          <NavLink
-            className={tabClass}
-            end={tab.end}
-            key={tab.path || "overview"}
-            to={tab.path ? `/properties/${propertyId}/${tab.path}` : `/properties/${propertyId}`}
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
-    </div>
-  );
-});
-PropertyShellTabs.displayName = "PropertyShellTabs";
 
 const LeaseDetailShellLoadingSkeleton = memo(() => (
   <div className="space-y-4">
