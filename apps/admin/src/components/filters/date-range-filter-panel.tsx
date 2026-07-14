@@ -13,6 +13,7 @@ interface DateRangeFilterPanelProps {
   onFromChange: (value: string) => void;
   onPresetChange: (presetId: TDateRangePresetId) => void;
   onToChange: (value: string) => void;
+  presets?: readonly { id: TDateRangePresetId; label: string }[];
   to: string;
 }
 
@@ -24,6 +25,7 @@ export const DateRangeFilterPanel = memo(
     onFromChange,
     onPresetChange,
     onToChange,
+    presets,
     to,
   }: DateRangeFilterPanelProps) => {
     const summary = getDateRangeSummary(activePreset, from, to);
@@ -47,6 +49,7 @@ export const DateRangeFilterPanel = memo(
           onFromChange={onFromChange}
           onPresetChange={onPresetChange}
           onToChange={onToChange}
+          presets={presets}
           to={to}
         />
       </ResponsiveFilterPanel>

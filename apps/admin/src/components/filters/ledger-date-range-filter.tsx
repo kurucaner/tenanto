@@ -11,6 +11,7 @@ interface LedgerDateRangeFilterProps {
   onFromChange: (value: string) => void;
   onPresetChange: (presetId: TDateRangePresetId) => void;
   onToChange: (value: string) => void;
+  presets?: readonly { id: TDateRangePresetId; label: string }[];
   to: string;
 }
 
@@ -22,6 +23,7 @@ export const LedgerDateRangeFilter = memo(
     onFromChange,
     onPresetChange,
     onToChange,
+    presets,
     to,
   }: LedgerDateRangeFilterProps) => (
     <div className="space-y-3">
@@ -29,6 +31,7 @@ export const LedgerDateRangeFilter = memo(
         activePreset={activePreset}
         idPrefix={idPrefix}
         onPresetChange={onPresetChange}
+        presets={presets}
       />
       <div className="grid min-w-0 gap-3 sm:grid-cols-2">
         <DateFilterField
