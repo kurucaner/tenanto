@@ -299,10 +299,17 @@ export {
   type IPropertyExportDetailResponse,
   type IPropertyExportsListQuery,
   type IPropertyExportsListResponse,
+  PROPERTY_EXPORTS_DEFAULT_SORT_BY,
+  PROPERTY_EXPORTS_DEFAULT_SORT_DIR,
+  PROPERTY_EXPORTS_SORT_BY_VALUES,
+  PROPERTY_EXPORTS_SORT_DIR_VALUES,
   type TExportFormat,
   type TExportJobFilters,
   type TExportJobStatus,
   type TExportResourceType,
+  type TPropertyExportsListFilters,
+  type TPropertyExportsListSortBy,
+  type TPropertyExportsListSortDir,
 } from "./property-export-types";
 export {
   type IIncomeCsvExtractedRow,

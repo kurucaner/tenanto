@@ -6,10 +6,7 @@ import {
   type IExportJobDownloadResponse,
   type IPropertyExportDetailResponse,
   type IPropertyExportsListResponse,
-  PROPERTY_EXPORTS_LIST_LIMIT,
-  PROPERTY_EXPORTS_LIST_MAX_LIMIT,
 } from "@/packages/shared";
-import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { generateDownloadUrl } from "@/s3/s3-commands";
 import {
   createPropertyExport,
@@ -20,13 +17,8 @@ import {
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseCreateExportBody } from "./parse-property-export-body";
+import { parsePropertyExportsListQuery } from "./parse-property-exports-list-query";
 import { assertPropertyMemberAccess } from "./property-route-access";
-
-function parseExportsListLimit(raw: unknown): number {
-  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
-  if (!Number.isFinite(n) || n < 1) return PROPERTY_EXPORTS_LIST_LIMIT;
-  return Math.min(PROPERTY_EXPORTS_LIST_MAX_LIMIT, Math.floor(n));
-}
 
 export const propertyExportRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
@@ -90,24 +82,27 @@ export const propertyExportRoutes = async (server: FastifyInstance): Promise<voi
       }
 
       const query = request.query as Record<string, unknown>;
-      const limit = parseExportsListLimit(query["limit"]);
-      const cursor =
-        typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
-
-      if (cursor != null) {
-        try {
-          decodeKeysetCursor(cursor);
-        } catch {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-        }
+      const parsed = parsePropertyExportsListQuery(query);
+      if (!parsed.ok) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const result: IPropertyExportsListResponse = await exportJobsDb.listPaginatedByProperty(
-        propertyId,
-        { cursor, limit }
-      );
-
-      return reply.send(result);
+      try {
+        const result: IPropertyExportsListResponse = await exportJobsDb.listPaginatedByProperty(
+          propertyId,
+          {
+            cursor: parsed.cursor,
+            filters: parsed.filters,
+            limit: parsed.limit,
+          }
+        );
+        return reply.send(result);
+      } catch (error) {
+        if (error instanceof Error && error.message === "Invalid cursor") {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+        }
+        throw error;
+      }
     }
   );
 

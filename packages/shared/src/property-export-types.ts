@@ -73,7 +73,37 @@ export interface IPropertyExportDetailResponse {
   job: IExportJob;
 }
 
-export interface IPropertyExportsListQuery {
+export type TPropertyExportsListSortBy =
+  "format" | "requestedAt" | "resourceType" | "rowCount" | "status";
+
+export type TPropertyExportsListSortDir = "asc" | "desc";
+
+export const PROPERTY_EXPORTS_DEFAULT_SORT_BY: TPropertyExportsListSortBy = "requestedAt";
+export const PROPERTY_EXPORTS_DEFAULT_SORT_DIR: TPropertyExportsListSortDir = "desc";
+
+export const PROPERTY_EXPORTS_SORT_BY_VALUES = [
+  "requestedAt",
+  "resourceType",
+  "format",
+  "status",
+  "rowCount",
+] as const satisfies readonly TPropertyExportsListSortBy[];
+
+export const PROPERTY_EXPORTS_SORT_DIR_VALUES = [
+  "asc",
+  "desc",
+] as const satisfies readonly TPropertyExportsListSortDir[];
+
+export type TPropertyExportsListFilters = {
+  from?: string;
+  q?: string;
+  resourceType?: TExportResourceType;
+  sortBy?: TPropertyExportsListSortBy;
+  sortDir?: TPropertyExportsListSortDir;
+  to?: string;
+};
+
+export interface IPropertyExportsListQuery extends TPropertyExportsListFilters {
   cursor?: string;
   limit?: number;
 }

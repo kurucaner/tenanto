@@ -56,7 +56,7 @@ export const PropertyTableExportDialog = memo(
         onOpenChange(false);
         showPropertyExportQueuedToast(propertyId, response.jobId);
         queryClient.invalidateQueries({
-          queryKey: queryKeys.propertyExports(propertyId),
+          queryKey: queryKeys.propertyExportsPrefix(propertyId),
         });
         queryClient.prefetchQuery({
           queryFn: () => propertyExportsApi.get(propertyId, response.jobId),

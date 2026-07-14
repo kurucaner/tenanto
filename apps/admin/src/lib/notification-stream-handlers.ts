@@ -255,7 +255,7 @@ export function handleExportJobUpdated(
   );
 
   queryClient.invalidateQueries({
-    queryKey: queryKeys.propertyExports(data.propertyId),
+    queryKey: queryKeys.propertyExportsPrefix(data.propertyId),
   });
 
   const exportsPath = `/properties/${data.propertyId}/exports`;

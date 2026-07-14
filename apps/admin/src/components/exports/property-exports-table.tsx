@@ -1,10 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
-import { memo, type RefObject, useCallback } from "react";
+import { memo, type ReactNode, type RefObject, useCallback } from "react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
-import { type DataTableColumn } from "@/components/data-table/data-table-types";
+import { type DataTableColumn, type DataTableSortController } from "@/components/data-table/data-table-types";
 import { ExportJobStatusBadge } from "@/components/exports/export-job-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,12 +22,12 @@ import { cn } from "@/lib/utils";
 import { ExportJobStatus, type IExportJob } from "@/packages/shared";
 
 const EXPORT_COLUMNS: DataTableColumn[] = [
-  { id: "requestedAt", label: "Requested" },
-  { id: "resourceType", label: "Resource" },
-  { id: "format", label: "Format" },
+  { id: "requestedAt", label: "Requested", sortable: true },
+  { id: "resourceType", label: "Resource", sortable: true },
+  { id: "format", label: "Format", sortable: true },
   { id: "filters", label: "Filters" },
-  { id: "status", label: "Status" },
-  { id: "rowCount", label: "Rows" },
+  { id: "status", label: "Status", sortable: true },
+  { id: "rowCount", label: "Rows", sortable: true },
   { id: "actions", label: "Actions" },
 ];
 
@@ -127,7 +127,6 @@ const ExportJobRow = memo(
 ExportJobRow.displayName = "ExportJobRow";
 
 interface IPropertyExportsTableProps {
-  countLabel?: string;
   exports: IExportJob[];
   filterSummaryOptions: IExportFilterSummaryOptions;
   hasNextPage: boolean;
@@ -136,11 +135,12 @@ interface IPropertyExportsTableProps {
   isPending: boolean;
   propertyId: string;
   scrollSentinelRef: RefObject<HTMLDivElement | null>;
+  sort: DataTableSortController;
+  toolbar: ReactNode;
 }
 
 export const PropertyExportsTable = memo(
   ({
-    countLabel,
     exports,
     filterSummaryOptions,
     hasNextPage,
@@ -149,6 +149,8 @@ export const PropertyExportsTable = memo(
     isPending,
     propertyId,
     scrollSentinelRef,
+    sort,
+    toolbar,
   }: IPropertyExportsTableProps) => {
     const downloadMutation = useMutation({
       mutationFn: (jobId: string) => downloadExportFile(propertyId, jobId),
@@ -184,10 +186,7 @@ export const PropertyExportsTable = memo(
       ]
     );
 
-    const toolbar =
-      countLabel != null ? (
-        <p className="text-muted-foreground px-4 pt-4 text-sm">{countLabel}</p>
-      ) : null;
+    const toolbarNode = toolbar;
 
     return (
       <Card className="gap-0 py-0">
@@ -201,7 +200,8 @@ export const PropertyExportsTable = memo(
             isPending={isPending}
             items={exports}
             renderRow={renderExportRow}
-            toolbar={toolbar}
+            sort={sort}
+            toolbar={toolbarNode}
             virtualization={{ estimateRowHeight: EXPORT_ROW_ESTIMATED_HEIGHT }}
           />
         </CardContent>

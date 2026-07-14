@@ -784,6 +784,12 @@ export const propertyExportsApi = {
 
 function buildPropertyExportsSearchParams(query: IPropertyExportsListQuery = {}): string {
   const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.resourceType) params.set("resourceType", query.resourceType);
+  if (query.sortBy) params.set("sortBy", query.sortBy);
+  if (query.sortDir) params.set("sortDir", query.sortDir);
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   const search = params.toString();

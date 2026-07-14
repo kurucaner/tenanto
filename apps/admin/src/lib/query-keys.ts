@@ -36,6 +36,7 @@ export const queryKeys = {
     propertyId: string,
     filters: Omit<IPropertyExportsListQuery, "cursor" | "limit"> = {}
   ) => ["property", propertyId, "exports", filters] as const,
+  propertyExportsPrefix: (propertyId: string) => ["property", propertyId, "exports"] as const,
   propertyIncomeEntries: (propertyId: string, filters: TPropertyIncomeEntriesListFilters = {}) =>
     ["property", propertyId, "income-entries", filters] as const,
   propertyIncomeEntriesPrefix: (propertyId: string) =>

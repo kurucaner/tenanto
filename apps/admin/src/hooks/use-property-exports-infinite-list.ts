@@ -3,10 +3,20 @@ import { useMemo } from "react";
 
 import { propertyExportsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { type IPropertyExportsListResponse, PROPERTY_EXPORTS_LIST_LIMIT } from "@/packages/shared";
+import {
+  type IPropertyExportsListResponse,
+  PROPERTY_EXPORTS_LIST_LIMIT,
+  type TPropertyExportsListFilters,
+} from "@/packages/shared";
 
-export function usePropertyExportsInfiniteList(propertyId: string) {
-  const listFilters = useMemo(() => ({ limit: PROPERTY_EXPORTS_LIST_LIMIT }), []);
+export function usePropertyExportsInfiniteList(
+  propertyId: string,
+  filters: TPropertyExportsListFilters = {}
+) {
+  const listFilters = useMemo(
+    () => ({ ...filters, limit: PROPERTY_EXPORTS_LIST_LIMIT }),
+    [filters]
+  );
 
   const query = useInfiniteQuery<
     IPropertyExportsListResponse,
@@ -19,7 +29,7 @@ export function usePropertyExportsInfiniteList(propertyId: string) {
     initialPageParam: undefined,
     queryFn: ({ pageParam }) =>
       propertyExportsApi.list(propertyId, { ...listFilters, cursor: pageParam }),
-    queryKey: queryKeys.propertyExports(propertyId),
+    queryKey: queryKeys.propertyExports(propertyId, filters),
   });
 
   const exports = useMemo(

@@ -1,3 +1,9 @@
+import {
+  buildExportJobsCursorPredicate,
+  buildExportJobsOrderByClause,
+  readExportJobSortKeyFromRow,
+  resolveExportJobsListSort,
+} from "@/db/export-jobs-list-sort";
 import { serializeExportJobFilters } from "@/lib/property-export-filters";
 import type {
   IExportJob,
@@ -8,11 +14,15 @@ import type {
   TExportJobStatus,
   TExportResourceType,
   TPropertyExpensesListFilters,
+  TPropertyExportsListFilters,
   TPropertyIncomeEntriesListFilters,
   TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import { ExportResourceType, toIso } from "@/packages/shared";
-import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
+import {
+  decodeExportJobKeysetCursor,
+  encodeExportJobKeysetCursor,
+} from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
@@ -137,6 +147,38 @@ function mapExportJobRow(row: Record<string, unknown>): IExportJob {
   };
 }
 
+function buildExportJobsListConditions(
+  propertyId: string,
+  filters: TPropertyExportsListFilters = {}
+): { conditions: string[]; values: unknown[] } {
+  const conditions = ["property_id = $1"];
+  const values: unknown[] = [propertyId];
+  let p = 2;
+
+  if (filters.from != null && filters.from !== "") {
+    conditions.push(`created_at >= $${p++}::date`);
+    values.push(filters.from);
+  }
+
+  if (filters.to != null && filters.to !== "") {
+    conditions.push(`created_at < ($${p++}::date + interval '1 day')`);
+    values.push(filters.to);
+  }
+
+  if (filters.resourceType != null) {
+    conditions.push(`resource_type = $${p++}`);
+    values.push(filters.resourceType);
+  }
+
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    conditions.push(`(file_name ILIKE $${p} OR id::text ILIKE $${p})`);
+    values.push(`%${qTrim}%`);
+  }
+
+  return { conditions, values };
+}
+
 export const exportJobsDb = {
   async create(input: ICreateExportJobInput): Promise<IExportJob> {
     const filtersJson = serializeExportJobFilters(input.resourceType, input.filters);
@@ -213,10 +255,14 @@ export const exportJobsDb = {
     };
   },
 
-  async getListMetaByProperty(propertyId: string): Promise<IPropertyExportsListMeta> {
+  async getListMetaByProperty(
+    propertyId: string,
+    filters: TPropertyExportsListFilters = {}
+  ): Promise<IPropertyExportsListMeta> {
+    const { conditions, values } = buildExportJobsListConditions(propertyId, filters);
     const result = await pool.query(
-      `SELECT COUNT(*)::int AS total_count FROM export_jobs WHERE property_id = $1`,
-      [propertyId]
+      `SELECT COUNT(*)::int AS total_count FROM export_jobs WHERE ${conditions.join(" AND ")}`,
+      values
     );
     const row = result.rows[0] as { total_count: number } | undefined;
     return { totalCount: row?.total_count ?? 0 };
@@ -224,12 +270,13 @@ export const exportJobsDb = {
 
   async listPaginatedByProperty(
     propertyId: string,
-    options: { cursor?: string; limit: number }
+    options: { cursor?: string; filters?: TPropertyExportsListFilters; limit: number }
   ): Promise<IPropertyExportsListResponse> {
+    const filters = options.filters ?? {};
     const includeMeta = shouldIncludeListMeta(options.cursor);
     const listPromise = exportJobsDb.listPaginatedPage(propertyId, options);
     const metaPromise = includeMeta
-      ? exportJobsDb.getListMetaByProperty(propertyId)
+      ? exportJobsDb.getListMetaByProperty(propertyId, filters)
       : Promise.resolve(undefined);
 
     const [{ exports: jobs, nextCursor }, meta] = await Promise.all([listPromise, metaPromise]);
@@ -239,32 +286,46 @@ export const exportJobsDb = {
 
   async listPaginatedPage(
     propertyId: string,
-    options: { cursor?: string; limit: number }
+    options: { cursor?: string; filters?: TPropertyExportsListFilters; limit: number }
   ): Promise<{ exports: IExportJob[]; nextCursor: string | null }> {
-    const conditions = ["property_id = $1"];
-    const values: unknown[] = [propertyId];
-    let p = 2;
+    const filters = options.filters ?? {};
+    const sort = resolveExportJobsListSort(filters.sortBy, filters.sortDir);
+    const { conditions, values } = buildExportJobsListConditions(propertyId, filters);
+    let p = values.length + 1;
 
     if (options.cursor != null && options.cursor !== "") {
-      const decoded = decodeKeysetCursor(options.cursor);
-      conditions.push(`(created_at, id) < ($${p++}::timestamptz, $${p++}::uuid)`);
-      values.push(decoded.createdAt, decoded.id);
+      const decoded = decodeExportJobKeysetCursor(options.cursor);
+      if (decoded.sortBy !== sort.sortBy || decoded.sortDir !== sort.sortDir) {
+        throw new Error("Invalid cursor");
+      }
+
+      const { nextParamIndex, predicate } = buildExportJobsCursorPredicate(sort, p);
+      conditions.push(predicate);
+      values.push(decoded.sortKey, decoded.createdAt, decoded.id);
+      p = nextParamIndex;
     }
 
     const limitParam = p;
     values.push(options.limit + 1);
+    const orderByClause = buildExportJobsOrderByClause(sort);
 
     const result = await pool.query(
       `SELECT * FROM export_jobs
        WHERE ${conditions.join(" AND ")}
-       ORDER BY created_at DESC, id DESC
+       ${orderByClause}
        LIMIT $${limitParam}`,
       values
     );
 
     const rows = result.rows as Record<string, unknown>[];
     const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
-      encodeKeysetCursor(last.created_at as Date | string, last.id as string)
+      encodeExportJobKeysetCursor({
+        createdAt: last.created_at as Date | string,
+        id: last.id as string,
+        sortBy: sort.sortBy,
+        sortDir: sort.sortDir,
+        sortKey: readExportJobSortKeyFromRow(sort, last),
+      })
     );
 
     return {
