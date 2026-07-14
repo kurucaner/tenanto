@@ -71,6 +71,11 @@ describe("tenant-email-campaign-utils", () => {
 
     const sorted = [sentB, failed, sentA, skipped].sort(compareTenantEmailCampaignRecipients);
 
-    expect(sorted.map((recipient) => recipient.id)).toEqual(["failed", "skipped", "sent-b", "sent-a"]);
+    expect(sorted.map((recipient) => recipient.id)).toEqual([
+      "failed",
+      "skipped",
+      "sent-b",
+      "sent-a",
+    ]);
   });
 });

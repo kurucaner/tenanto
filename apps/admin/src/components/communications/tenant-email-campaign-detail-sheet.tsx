@@ -234,10 +234,7 @@ export const TenantEmailCampaignDetailSheet = memo(
             </SheetDescription>
           </SheetHeader>
 
-          <div
-            className="min-h-0 flex-1 overflow-y-auto"
-            ref={handleRecipientsScrollElement}
-          >
+          <div className="min-h-0 flex-1 overflow-y-auto" ref={handleRecipientsScrollElement}>
             {renderSheetBody(detailQuery, sheetBodyOptions)}
           </div>
         </SheetContent>

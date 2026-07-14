@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  sanitizeTenantEmailHtml,
-  tenantEmailHtmlToPlainText,
-} from "./tenant-email-html";
+import { sanitizeTenantEmailHtml, tenantEmailHtmlToPlainText } from "./tenant-email-html";
 
 describe("sanitizeTenantEmailHtml", () => {
   test("strips script tags and unsafe attributes", () => {

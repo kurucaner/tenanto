@@ -35,33 +35,31 @@ function getPostmarkIcon(inProgress: boolean, hasErrors: boolean): ReactNode {
   return <Check className="size-4 text-primary" strokeWidth={2.5} />;
 }
 
-const CampaignPostmark = memo(
-  ({ hasErrors, inProgress, progress }: ICampaignPostmarkProps) => {
-    const ringColor = hasErrors ? "var(--destructive)" : "var(--primary)";
+const CampaignPostmark = memo(({ hasErrors, inProgress, progress }: ICampaignPostmarkProps) => {
+  const ringColor = hasErrors ? "var(--destructive)" : "var(--primary)";
 
-    return (
-      <div
-        aria-hidden
-        className="relative grid size-10 shrink-0 place-items-center rounded-full motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-75 motion-safe:duration-500"
-        style={{
-          background: `conic-gradient(${ringColor} ${progress}%, color-mix(in oklab, var(--muted) 82%, transparent) 0)`,
-        }}
-      >
-        <div className="grid size-8 place-items-center rounded-full bg-card shadow-sm">
-          {getPostmarkIcon(inProgress, hasErrors)}
-        </div>
-
-        {inProgress ? (
-          <div className="absolute inset-0 motion-safe:animate-spin motion-reduce:hidden [animation-duration:2.4s]">
-            <span className="absolute left-1/2 top-[-2px] size-1.5 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
-          </div>
-        ) : (
-          <span className="absolute inset-[-4px] rounded-full border border-primary/25 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:duration-700" />
-        )}
+  return (
+    <div
+      aria-hidden
+      className="relative grid size-10 shrink-0 place-items-center rounded-full motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-75 motion-safe:duration-500"
+      style={{
+        background: `conic-gradient(${ringColor} ${progress}%, color-mix(in oklab, var(--muted) 82%, transparent) 0)`,
+      }}
+    >
+      <div className="grid size-8 place-items-center rounded-full bg-card shadow-sm">
+        {getPostmarkIcon(inProgress, hasErrors)}
       </div>
-    );
-  }
-);
+
+      {inProgress ? (
+        <div className="absolute inset-0 motion-safe:animate-spin motion-reduce:hidden [animation-duration:2.4s]">
+          <span className="absolute left-1/2 top-[-2px] size-1.5 -translate-x-1/2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
+        </div>
+      ) : (
+        <span className="absolute inset-[-4px] rounded-full border border-primary/25 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:duration-700" />
+      )}
+    </div>
+  );
+});
 CampaignPostmark.displayName = "CampaignPostmark";
 
 function getPostmarkTitle(
@@ -95,9 +93,7 @@ export const TenantEmailActiveSendBanner = memo(
       }
       return Math.min(
         100,
-        Math.round(
-          (getTenantEmailCampaignProcessedCount(campaign) / campaign.recipientCount) * 100
-        )
+        Math.round((getTenantEmailCampaignProcessedCount(campaign) / campaign.recipientCount) * 100)
       );
     }, [campaign]);
 
@@ -144,7 +140,10 @@ export const TenantEmailActiveSendBanner = memo(
           <div className="shrink-0 text-right">
             <p className="font-mono text-sm font-semibold tabular-nums">
               {processedCount}
-              <span className="text-muted-foreground font-normal"> / {campaign.recipientCount}</span>
+              <span className="text-muted-foreground font-normal">
+                {" "}
+                / {campaign.recipientCount}
+              </span>
             </p>
             <p className="hidden text-[10px] text-muted-foreground sm:block">
               {campaign.sentCount} sent
@@ -172,10 +171,7 @@ export const TenantEmailActiveSendBanner = memo(
           max={100}
           value={progress}
         />
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-1 bg-muted"
-        >
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-1 bg-muted">
           <div
             className={cn(
               "relative h-full transition-[width] duration-500 ease-out motion-reduce:transition-none",

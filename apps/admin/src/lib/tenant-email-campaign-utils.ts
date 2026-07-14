@@ -38,10 +38,9 @@ export function getTenantEmailCampaignStatusLabel(status: TTenantEmailCampaignSt
   }
 }
 
-export function getTenantEmailCampaignProcessedCount(campaign: Pick<
-  ITenantEmailCampaign,
-  "failedCount" | "sentCount" | "skippedCount"
->): number {
+export function getTenantEmailCampaignProcessedCount(
+  campaign: Pick<ITenantEmailCampaign, "failedCount" | "sentCount" | "skippedCount">
+): number {
   return campaign.sentCount + campaign.failedCount + campaign.skippedCount;
 }
 
