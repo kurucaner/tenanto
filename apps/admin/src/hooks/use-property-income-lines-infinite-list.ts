@@ -1,4 +1,4 @@
-import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
+import { type InfiniteData, keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { incomeLinesApi } from "@/lib/api-client";
@@ -37,6 +37,7 @@ export function usePropertyIncomeLinesInfiniteList(
     enabled: options.enabled ?? true,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined,
+    placeholderData: keepPreviousData,
     queryFn: ({ pageParam }) =>
       incomeLinesApi.list(propertyId, { ...listFilters, cursor: pageParam }),
     queryKey: queryKeys.propertyIncomeLines(propertyId, filters),

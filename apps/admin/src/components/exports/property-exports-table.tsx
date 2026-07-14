@@ -136,6 +136,7 @@ interface IPropertyExportsTableProps {
   highlightJobId: string | null;
   isFetchingNextPage: boolean;
   isPending: boolean;
+  isRefreshing: boolean;
   propertyId: string;
   scrollSentinelRef: RefObject<HTMLDivElement | null>;
   sort: DataTableSortController;
@@ -150,6 +151,7 @@ export const PropertyExportsTable = memo(
     highlightJobId,
     isFetchingNextPage,
     isPending,
+    isRefreshing,
     propertyId,
     scrollSentinelRef,
     sort,
@@ -201,6 +203,7 @@ export const PropertyExportsTable = memo(
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}
             infiniteScrollSentinelRef={scrollSentinelRef}
             isPending={isPending}
+            isRefreshing={isRefreshing}
             items={exports}
             renderRow={renderExportRow}
             sort={sort}

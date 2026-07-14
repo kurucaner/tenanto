@@ -20,6 +20,7 @@ import {
   countExportSecondaryFilters,
   type TExportToolbarFilterId,
 } from "@/lib/export-toolbar-filters";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { buildExportFilterSummaryOptions } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
@@ -122,8 +123,15 @@ export const PropertyExportsPage = memo(() => {
     [effectiveFrom, effectiveTo, q, resourceType, sortState.columnId, sortState.direction]
   );
 
-  const { error, exports, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
+  const { error, exports, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, meta } =
     usePropertyExportsInfiniteList(propertyId, listFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: exports.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -156,7 +164,7 @@ export const PropertyExportsPage = memo(() => {
   }, [highlightJobIdParam]);
 
   useEffect(() => {
-    if (highlightedJobId == null || isPending) {
+    if (highlightedJobId == null || isTableInitialPending) {
       return;
     }
 
@@ -185,7 +193,7 @@ export const PropertyExportsPage = memo(() => {
     return () => {
       globalThis.clearTimeout(timeoutId);
     };
-  }, [exports, highlightedJobId, isPending, setSearchParams]);
+  }, [exports, highlightedJobId, isTableInitialPending, setSearchParams]);
 
   const dateSummary = useMemo(
     () => getDateRangeSummary(activePreset, displayFrom, displayTo),
@@ -286,7 +294,8 @@ export const PropertyExportsPage = memo(() => {
       hasNextPage={Boolean(hasNextPage)}
       highlightJobId={highlightedJobId}
       isFetchingNextPage={isFetchingNextPage}
-      isPending={isPending}
+      isPending={isTableInitialPending}
+      isRefreshing={isFilterRefetching}
       propertyId={propertyId}
       scrollSentinelRef={scrollSentinelRef}
       sort={sortController}

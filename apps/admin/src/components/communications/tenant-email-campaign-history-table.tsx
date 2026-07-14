@@ -53,6 +53,7 @@ interface ITenantEmailCampaignHistoryTableProps {
   hasSearchQuery: boolean;
   isFetchingNextPage: boolean;
   isPending: boolean;
+  isRefreshing: boolean;
   onSelectCampaign: (campaignId: string) => void;
   scrollSentinelRef: RefObject<HTMLDivElement | null>;
   toolbar: ReactNode;
@@ -65,6 +66,7 @@ export const TenantEmailCampaignHistoryTable = memo(
     hasSearchQuery,
     isFetchingNextPage,
     isPending,
+    isRefreshing,
     onSelectCampaign,
     scrollSentinelRef,
     toolbar,
@@ -99,6 +101,7 @@ export const TenantEmailCampaignHistoryTable = memo(
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}
             infiniteScrollSentinelRef={scrollSentinelRef}
             isPending={isPending}
+            isRefreshing={isRefreshing}
             items={campaigns}
             renderRow={renderCampaignRow}
             toolbar={toolbar}

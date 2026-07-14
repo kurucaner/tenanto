@@ -1,4 +1,4 @@
-import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
+import { type InfiniteData, keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { propertyExportsApi } from "@/lib/api-client";
@@ -27,6 +27,7 @@ export function usePropertyExportsInfiniteList(
   >({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined,
+    placeholderData: keepPreviousData,
     queryFn: ({ pageParam }) =>
       propertyExportsApi.list(propertyId, { ...listFilters, cursor: pageParam }),
     queryKey: queryKeys.propertyExports(propertyId, filters),

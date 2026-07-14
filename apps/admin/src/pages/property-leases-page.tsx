@@ -37,6 +37,7 @@ import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
 import {
   buildLeaseToolbarClearAllPatch,
@@ -271,8 +272,15 @@ export const PropertyLeasesPage = memo(() => {
     [effectiveFrom, effectiveTo, q, status, unitId]
   );
 
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending, longStays, meta } =
+  const { fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, longStays, meta } =
     usePropertyLongStaysInfiniteList(propertyId, listQueryFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: longStays.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -480,7 +488,8 @@ export const PropertyLeasesPage = memo(() => {
             getItemKey={getLeaseKey}
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}
             infiniteScrollSentinelRef={scrollSentinelRef}
-            isPending={isPending}
+            isPending={isTableInitialPending}
+            isRefreshing={isFilterRefetching}
             items={longStays}
             renderRow={renderLeaseRow}
             toolbar={

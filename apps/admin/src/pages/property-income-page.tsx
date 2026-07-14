@@ -71,6 +71,7 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
 import {
   getEntryUnitId,
@@ -243,6 +244,7 @@ function buildIncomeEntriesFilters(
 interface IIncomeInfiniteListPagination {
   fetchNextPage: () => Promise<unknown>;
   hasNextPage: boolean | undefined;
+  isFetching: boolean;
   isFetchingNextPage: boolean;
   isPending: boolean;
   meta: { totalCount: number } | undefined;
@@ -394,6 +396,7 @@ const PropertyIncomeEntriesTable = memo(
     isFetchingNextPage,
     isLoading,
     isQuickDeleteActive,
+    isRefreshing,
     isRefundLinePending,
     isRefundStayPending,
     onAddOtherIncomeFromStay,
@@ -419,6 +422,7 @@ const PropertyIncomeEntriesTable = memo(
     isFetchingNextPage: boolean;
     isLoading: boolean;
     isQuickDeleteActive: boolean;
+    isRefreshing: boolean;
     isRefundLinePending: boolean;
     isRefundStayPending: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
@@ -490,6 +494,7 @@ const PropertyIncomeEntriesTable = memo(
         infiniteScroll={{ hasNextPage, isFetchingNextPage }}
         infiniteScrollSentinelRef={scrollSentinelRef}
         isPending={isLoading}
+        isRefreshing={isRefreshing}
         items={entries}
         renderRow={renderIncomeEntryRow}
         sort={sort}
@@ -1518,7 +1523,12 @@ const PropertyIncomePage = memo(() => {
     unitLabelById,
   ]);
 
-  const isLoading = activeIncomeListPagination.isPending;
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching: activeIncomeListPagination.isFetching,
+    isFetchingNextPage: activeIncomeListPagination.isFetchingNextPage,
+    isPending: activeIncomeListPagination.isPending,
+    itemCount: displayEntries.length,
+  });
   const listMeta = activeIncomeListPagination.meta;
   const hasNextPage = Boolean(activeIncomeListPagination.hasNextPage);
   const isFetchingNextPage = activeIncomeListPagination.isFetchingNextPage;
@@ -1574,8 +1584,9 @@ const PropertyIncomePage = memo(() => {
             isDeleteLinePending={deleteLineMutation.isPending}
             isDeleteStayPending={deleteStayMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
-            isLoading={isLoading}
+            isLoading={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
+            isRefreshing={isFilterRefetching}
             isRefundLinePending={isRefundLinePending}
             isRefundStayPending={isRefundStayPending}
             onAddOtherIncomeFromStay={(stay) =>

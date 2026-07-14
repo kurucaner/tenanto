@@ -52,6 +52,7 @@ import {
   countExpenseSecondaryFilters,
   type TExpenseToolbarFilterId,
 } from "@/lib/expense-toolbar-filters";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
@@ -171,6 +172,7 @@ const PropertyExpensesTable = memo(
     isFetchingNextPage,
     isPending,
     isQuickDeleteActive,
+    isRefreshing,
     onDelete,
     onEdit,
     onRestore,
@@ -184,6 +186,7 @@ const PropertyExpensesTable = memo(
     isFetchingNextPage: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
+    isRefreshing: boolean;
     onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (expense: IPropertyExpense) => void;
     onRestore: (expense: IPropertyExpense) => void;
@@ -216,6 +219,7 @@ const PropertyExpensesTable = memo(
         infiniteScroll={{ hasNextPage, isFetchingNextPage }}
         infiniteScrollSentinelRef={scrollSentinelRef}
         isPending={isPending}
+        isRefreshing={isRefreshing}
         items={expenses}
         renderRow={renderExpenseRow}
         toolbar={toolbar}
@@ -247,12 +251,7 @@ const PropertyExpensesPageActions = memo(
       ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            aria-label="More expense actions"
-            size="icon-sm"
-            type="button"
-            variant="outline"
-          >
+          <Button aria-label="More expense actions" size="icon-sm" type="button" variant="outline">
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
@@ -466,8 +465,15 @@ export const PropertyExpensesPage = memo(() => {
     [categoryId, effectiveFrom, effectiveTo, q]
   );
 
-  const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
+  const { expenses, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, meta } =
     usePropertyExpensesInfiniteList(propertyId, expenseListFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: expenses.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -544,8 +550,9 @@ export const PropertyExpensesPage = memo(() => {
             hasNextPage={hasNextPage}
             isDeletePending={deleteMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
-            isPending={isPending}
+            isPending={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
+            isRefreshing={isFilterRefetching}
             onDelete={handleDelete}
             onEdit={setEditExpense}
             onRestore={handleRestoreExpense}

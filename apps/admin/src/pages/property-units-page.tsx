@@ -41,6 +41,7 @@ import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
 import { queryKeys } from "@/lib/query-keys";
@@ -467,8 +468,12 @@ export const PropertyUnitsPage = memo(() => {
     units,
   } = usePropertyUnitsInfiniteList(propertyId, listQueryFilters);
 
-  const isTableInitialPending = isPending && units.length === 0;
-  const isFilterRefetching = isFetching && !isFetchingNextPage && units.length > 0;
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: units.length,
+  });
 
   const activeSecondaryFilterCount = useMemo(
     () => countUnitSecondaryFilters({ occupancy, rentalType }),

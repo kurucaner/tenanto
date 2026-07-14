@@ -11,6 +11,7 @@ import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { useTenantEmailCampaignsInfiniteList } from "@/hooks/use-tenant-email-campaigns-infinite-list";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { isTenantEmailCampaignInProgress } from "@/lib/tenant-email-campaign-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { type TTenantEmailCampaignsListFilters } from "@/packages/shared";
@@ -40,8 +41,23 @@ export const PropertyCommunicationsPage = memo(() => {
 
   const listFilters = useMemo(() => buildCampaignListFilters(q), [q]);
 
-  const { campaigns, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
-    useTenantEmailCampaignsInfiniteList(propertyId, listFilters);
+  const {
+    campaigns,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    meta,
+  } = useTenantEmailCampaignsInfiniteList(propertyId, listFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: campaigns.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -121,7 +137,8 @@ export const PropertyCommunicationsPage = memo(() => {
           hasNextPage={Boolean(hasNextPage)}
           hasSearchQuery={qTrim.length > 0}
           isFetchingNextPage={isFetchingNextPage}
-          isPending={isPending}
+          isPending={isTableInitialPending}
+          isRefreshing={isFilterRefetching}
           onSelectCampaign={handleSelectCampaign}
           scrollSentinelRef={scrollSentinelRef}
           toolbar={toolbar}
