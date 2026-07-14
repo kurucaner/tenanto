@@ -25,10 +25,12 @@ Split **what we ship** from **what we defer**. Non-goals prevent "while we're he
 
 ```markdown
 ## Goals
+
 - Submit returns immediately (**202 Accepted**); never block HTTP until all emails send.
 - Live progress via **SSE** to the sender's admin session.
 
 ## Non-goals (initial release)
+
 - Scheduled sends
 - Saved templates / drafts
 - Manager or accountant send access
@@ -39,7 +41,6 @@ Split **what we ship** from **what we defer**. Non-goals prevent "while we're he
 ```markdown
 1. **Postgres is source of truth** — campaigns survive Redis restarts; jobs rebuild from `queued` rows.
 2. **Worker before UI** — prove the send pipeline via API/script before exposing the tab.
-3. **Feature flag until production-ready** — `TENANT_EMAIL_CAMPAIGNS_ENABLED` gates API, worker, and UI.
 ```
 
 ## Phase block (repeat per phase)
@@ -60,21 +61,23 @@ DB + SES (sandbox) correct.
 ## Hardening as concern → action table
 
 ```markdown
-| Concern | Action |
-| --- | --- |
-| Idempotency | `Idempotency-Key` header + DB unique on `(property_id, idempotency_key)` |
-| HTML safety | Server-side sanitize; max body size |
-| Observability | Structured logs per campaign/job; alert on high failure rate |
+| Concern       | Action                                                                   |
+| ------------- | ------------------------------------------------------------------------ |
+| Idempotency   | `Idempotency-Key` header + DB unique on `(property_id, idempotency_key)` |
+| HTML safety   | Server-side sanitize; max body size                                      |
+| Observability | Structured logs per campaign/job; alert on high failure rate             |
 ```
 
 ## What not to do + sequencing summary
 
 ```markdown
 ## What not to do
+
 - Do **not** loop `await sendEmail()` for all tenants in the HTTP handler
 - Do **not** use fire-and-forget without DB persistence (restarts lose jobs)
 
 ## Safest sequencing summary
+
 1. **DB + resolver before Redis jobs** — re-enqueue from `queued` rows if needed
 2. **Worker before UI** — prove send path without exposing compose
 3. **Feature flag** — ship code dark; enable per environment

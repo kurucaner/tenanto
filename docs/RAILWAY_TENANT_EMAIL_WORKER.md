@@ -13,18 +13,13 @@ The tenant email **API** runs on the existing `server` Railway service. **Sendin
 
 3. **Environment variables** (worker service):
    - Copy from the `server` service: `DATABASE_URL`, AWS/SES vars, `API_PUBLIC_URL`, `AWS_INTERNAL_SECRET`, etc.
-   - `TENANT_EMAIL_CAMPAIGNS_ENABLED=true`
    - `REDIS_URL=${{Redis.REDIS_URL}}` (adjust service name if your Redis resource differs)
    - `NODE_ENV=production` (set by Dockerfile; optional explicit)
 
 4. **Server service** — ensure the API also has:
-   - `TENANT_EMAIL_CAMPAIGNS_ENABLED=true`
    - `REDIS_URL` (create rate limit + enqueue)
 
-5. **Admin** — build-time flag:
-   - `VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED=true`
-
-6. **Deploy** both `server` and `server-email-worker`.
+5. **Deploy** both `server` and `server-email-worker`.
 
 ## Verify
 

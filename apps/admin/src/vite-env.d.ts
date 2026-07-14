@@ -8,7 +8,6 @@ interface ImportMetaEnv {
   readonly VITE_DD_RUM_PROXY_URL?: string;
   readonly VITE_DD_SITE?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
-  readonly VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED?: string;
 }
 
 interface ImportMeta {
