@@ -239,36 +239,36 @@ const PropertyExpensesPageActions = memo(
     onOpenCreate: () => void;
   }) => (
     <div className="flex items-center gap-2">
-      <Button className="gap-1.5" onClick={onExportTable} size="sm" type="button" variant="outline">
-        <Download className="size-3.5" />
-        Export table
-      </Button>
       {canManage ? (
-        <>
-          <Button className="gap-1.5" onClick={onOpenCreate} size="sm" type="button">
-            <Plus className="size-3.5" />
-            Add Expense
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="More expense actions"
-                size="icon-sm"
-                type="button"
-                variant="outline"
-              >
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={onImportCsv}>
-                <Sparkles />
-                Import CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
+        <Button className="gap-1.5" onClick={onOpenCreate} size="sm" type="button">
+          <Plus className="size-3.5" />
+          Add Expense
+        </Button>
       ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label="More expense actions"
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={onExportTable}>
+            <Download />
+            Export table
+          </DropdownMenuItem>
+          {canManage ? (
+            <DropdownMenuItem onSelect={onImportCsv}>
+              <Sparkles />
+              Import CSV
+            </DropdownMenuItem>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 );
