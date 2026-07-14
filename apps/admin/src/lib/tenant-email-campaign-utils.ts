@@ -1,7 +1,10 @@
 import {
   type ITenantEmailCampaign,
+  type ITenantEmailCampaignRecipient,
   TenantEmailCampaignStatus,
+  TenantEmailRecipientStatus,
   type TTenantEmailCampaignStatus,
+  type TTenantEmailRecipientStatus,
 } from "@/packages/shared";
 
 export function isTenantEmailCampaignInProgress(status: TTenantEmailCampaignStatus): boolean {
@@ -50,4 +53,27 @@ export function formatTenantEmailCampaignDate(isoDate: string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function getRecipientSortPriority(status: TTenantEmailRecipientStatus): number {
+  if (status === TenantEmailRecipientStatus.FAILED) {
+    return 0;
+  }
+  if (status === TenantEmailRecipientStatus.SKIPPED) {
+    return 1;
+  }
+  return 2;
+}
+
+export function compareTenantEmailCampaignRecipients(
+  left: ITenantEmailCampaignRecipient,
+  right: ITenantEmailCampaignRecipient
+): number {
+  const leftPriority = getRecipientSortPriority(left.status);
+  const rightPriority = getRecipientSortPriority(right.status);
+  if (leftPriority !== rightPriority) {
+    return leftPriority - rightPriority;
+  }
+
+  return left.tenantName.localeCompare(right.tenantName);
 }

@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type VariantProps } from "class-variance-authority";
 import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
-import { memo, type ReactNode } from "react";
+import { memo, type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { TenantEmailCampaignRecipientRow } from "@/components/communications/tenant-email-campaign-recipient-row";
 import { TenantEmailCampaignStatusBadge } from "@/components/communications/tenant-email-campaign-status-badge";
-import { Badge, type badgeVariants } from "@/components/ui/badge";
+import { DataTable } from "@/components/data-table/data-table";
+import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,35 +15,28 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { tenantEmailCampaignsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { formatTenantEmailCampaignDate } from "@/lib/tenant-email-campaign-utils";
+import {
+  compareTenantEmailCampaignRecipients,
+  formatTenantEmailCampaignDate,
+} from "@/lib/tenant-email-campaign-utils";
 import {
   type ITenantEmailCampaignDetailResponse,
+  type ITenantEmailCampaignRecipient,
   TenantEmailRecipientStatus,
-  type TTenantEmailRecipientStatus,
 } from "@/packages/shared";
 
-type TRecipientStatusBadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
+const RECIPIENT_COLUMNS: DataTableColumn[] = [
+  { id: "tenant", label: "Tenant" },
+  { id: "email", label: "Email" },
+  { id: "status", label: "Status" },
+];
 
-function getRecipientStatusBadgeVariant(
-  status: TTenantEmailRecipientStatus
-): TRecipientStatusBadgeVariant {
-  if (status === TenantEmailRecipientStatus.FAILED) {
-    return "destructive";
-  }
-  if (status === TenantEmailRecipientStatus.SENT) {
-    return "secondary";
-  }
-  return "outline";
+const RECIPIENT_ROW_ESTIMATED_HEIGHT = 72;
+
+function getRecipientKey(recipient: ITenantEmailCampaignRecipient): string {
+  return recipient.id;
 }
 
 function getCampaignDetailErrorMessage(error: unknown): string {
@@ -62,44 +56,22 @@ interface ITenantEmailCampaignDetailSheetProps {
   propertyId: string;
 }
 
-function compareRecipientRows(
-  left: ITenantEmailCampaignDetailResponse["recipients"][number],
-  right: ITenantEmailCampaignDetailResponse["recipients"][number]
-): number {
-  const priority = (status: TTenantEmailRecipientStatus): number => {
-    if (status === TenantEmailRecipientStatus.FAILED) {
-      return 0;
-    }
-    if (status === TenantEmailRecipientStatus.SKIPPED) {
-      return 1;
-    }
-    return 2;
-  };
-
-  const leftPriority = priority(left.status);
-  const rightPriority = priority(right.status);
-  if (leftPriority !== rightPriority) {
-    return leftPriority - rightPriority;
-  }
-
-  return left.tenantName.localeCompare(right.tenantName);
-}
-
 function renderCampaignDetailContent(
   detail: ITenantEmailCampaignDetailResponse,
   options: {
     isReenqueuePending: boolean;
     onReenqueue: () => void;
+    recipientsScrollElement: HTMLDivElement | null;
   }
 ) {
   const failedRecipients = detail.recipients.filter(
     (recipient) => recipient.status === TenantEmailRecipientStatus.FAILED
   );
-  const sortedRecipients = [...detail.recipients].sort(compareRecipientRows);
+  const sortedRecipients = [...detail.recipients].sort(compareTenantEmailCampaignRecipients);
   const showReenqueue = hasQueuedRecipients(detail);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-4">
       {showReenqueue ? (
         <div className="mx-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
           <div className="space-y-1">
@@ -149,38 +121,17 @@ function renderCampaignDetailContent(
         </p>
       </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Tenant</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedRecipients.map((recipient) => (
-            <TableRow key={recipient.id}>
-              <TableCell>
-                <div className="space-y-1">
-                  <p className="font-medium">{recipient.tenantName}</p>
-                  <p className="text-muted-foreground text-xs capitalize">{recipient.tenantRole}</p>
-                </div>
-              </TableCell>
-              <TableCell className="text-sm">{recipient.email || "—"}</TableCell>
-              <TableCell>
-                <div className="space-y-1">
-                  <Badge variant={getRecipientStatusBadgeVariant(recipient.status)}>
-                    {recipient.status}
-                  </Badge>
-                  {recipient.lastError ? (
-                    <p className="text-destructive text-xs">{recipient.lastError}</p>
-                  ) : null}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={RECIPIENT_COLUMNS}
+        emptyMessage="No recipients."
+        getItemKey={getRecipientKey}
+        items={sortedRecipients}
+        renderRow={(recipient) => <TenantEmailCampaignRecipientRow recipient={recipient} />}
+        virtualization={{
+          estimateRowHeight: RECIPIENT_ROW_ESTIMATED_HEIGHT,
+          scrollElement: options.recipientsScrollElement,
+        }}
+      />
     </div>
   );
 }
@@ -195,11 +146,12 @@ function renderSheetBody(
   options: {
     isReenqueuePending: boolean;
     onReenqueue: () => void;
+    recipientsScrollElement: HTMLDivElement | null;
   }
 ): ReactNode {
   if (detailQuery.isPending) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm">
+      <div className="flex items-center gap-2 px-4 py-8 text-sm">
         <Loader2 className="size-4 animate-spin" />
         Loading campaign…
       </div>
@@ -208,7 +160,7 @@ function renderSheetBody(
 
   if (detailQuery.isError || detailQuery.data == null) {
     return (
-      <p className="text-destructive py-8 text-sm">
+      <p className="text-destructive px-4 py-8 text-sm">
         {getCampaignDetailErrorMessage(detailQuery.error)}
       </p>
     );
@@ -220,6 +172,13 @@ function renderSheetBody(
 export const TenantEmailCampaignDetailSheet = memo(
   ({ campaignId, onOpenChange, open, propertyId }: ITenantEmailCampaignDetailSheetProps) => {
     const queryClient = useQueryClient();
+    const [recipientsScrollElement, setRecipientsScrollElement] = useState<HTMLDivElement | null>(
+      null
+    );
+
+    const handleRecipientsScrollElement = useCallback((element: HTMLDivElement | null) => {
+      setRecipientsScrollElement(element);
+    }, []);
 
     const detailQuery = useQuery({
       enabled: open && campaignId != null,
@@ -252,20 +211,35 @@ export const TenantEmailCampaignDetailSheet = memo(
       },
     });
 
+    const handleReenqueue = useCallback(() => {
+      reenqueueMutation.mutate();
+    }, [reenqueueMutation]);
+
+    const sheetBodyOptions = useMemo(
+      () => ({
+        isReenqueuePending: reenqueueMutation.isPending,
+        onReenqueue: handleReenqueue,
+        recipientsScrollElement,
+      }),
+      [handleReenqueue, recipientsScrollElement, reenqueueMutation.isPending]
+    );
+
     return (
       <Sheet onOpenChange={onOpenChange} open={open}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl md:max-w-2xl lg:max-w-4xl gap-0">
-          <SheetHeader>
+        <SheetContent className="flex w-full flex-col gap-0 overflow-hidden sm:max-w-xl md:max-w-2xl lg:max-w-4xl">
+          <SheetHeader className="shrink-0">
             <SheetTitle>Campaign details</SheetTitle>
             <SheetDescription>
               Delivery status for each tenant included in this notification.
             </SheetDescription>
           </SheetHeader>
 
-          {renderSheetBody(detailQuery, {
-            isReenqueuePending: reenqueueMutation.isPending,
-            onReenqueue: () => reenqueueMutation.mutate(),
-          })}
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            ref={handleRecipientsScrollElement}
+          >
+            {renderSheetBody(detailQuery, sheetBodyOptions)}
+          </div>
         </SheetContent>
       </Sheet>
     );
