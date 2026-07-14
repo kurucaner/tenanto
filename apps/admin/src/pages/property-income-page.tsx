@@ -602,10 +602,6 @@ const PropertyIncomePageActions = memo(
     onImportCsv: () => void;
   }) => (
     <div className="flex items-center gap-2">
-      <Button className="gap-1.5" onClick={onExportTable} size="sm" type="button" variant="outline">
-        <Download className="size-3.5" />
-        Export table
-      </Button>
       {canManage ? (
         <>
           <Button
@@ -622,18 +618,26 @@ const PropertyIncomePageActions = memo(
             <Plus className="size-3.5" />
             Add Other Income
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="More income actions"
-                size="icon-sm"
-                type="button"
-                variant="outline"
-              >
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+        </>
+      ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label="More income actions"
+            size="icon-sm"
+            type="button"
+            variant="outline"
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={onExportTable}>
+            <Download />
+            Export table
+          </DropdownMenuItem>
+          {canManage ? (
+            <>
               <DropdownMenuItem className="sm:hidden" onSelect={onAddStay}>
                 <Plus />
                 Add Short Stay
@@ -642,10 +646,10 @@ const PropertyIncomePageActions = memo(
                 <Sparkles />
                 Import CSV
               </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </>
-      ) : null}
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 );

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleDollarSign, Download, Eye, Plus, SquarePen } from "lucide-react";
+import { CircleDollarSign, Download, Eye, MoreHorizontal, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -18,6 +18,12 @@ import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
@@ -399,22 +405,30 @@ export const PropertyLeasesPage = memo(() => {
   const pageActions = useMemo(
     () => (
       <div className="flex items-center gap-2">
-        <Button
-          className="gap-1.5"
-          onClick={handleOpenExportTable}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <Download className="size-3.5" />
-          Export table
-        </Button>
         {canManage ? (
           <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
             <Plus className="size-3.5" />
             Start Lease
           </Button>
         ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              aria-label="More lease actions"
+              size="icon-sm"
+              type="button"
+              variant="outline"
+            >
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onSelect={handleOpenExportTable}>
+              <Download />
+              Export table
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     ),
     [canManage, handleOpenCreate, handleOpenExportTable]
