@@ -15,6 +15,7 @@ import {
   ExportJobPermanentError,
   processPropertyExportJob,
 } from "@/services/property-export/process-export-job";
+import { maybePublishExportJobUpdated } from "@/services/property-export/property-export-stream";
 
 import { WinstonLogger } from "./winston";
 
@@ -57,6 +58,7 @@ export function startPropertyExportWorker(): Worker<IPropertyExportJobData> {
 
       const message = error instanceof Error ? error.message : "Export failed";
       await exportJobsDb.markFailed(job.data.jobId, message);
+      await maybePublishExportJobUpdated(job.data.jobId);
       WinstonLogger.error("property_export.worker_job_failed", {
         errorMessage: message,
         jobId: job.data.jobId,

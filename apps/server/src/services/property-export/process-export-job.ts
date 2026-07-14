@@ -13,6 +13,7 @@ import {
   createExpensesCsvReadable,
   ExportRowLimitExceededError,
 } from "@/services/property-export/expenses-csv-export";
+import { maybePublishExportJobUpdated } from "@/services/property-export/property-export-stream";
 
 import { WinstonLogger } from "../winston";
 
@@ -60,6 +61,8 @@ async function processExpensesCsvExport(job: IExportJob): Promise<void> {
     propertyId: job.propertyId,
     rowCount,
   });
+
+  await maybePublishExportJobUpdated(job.id);
 }
 
 export async function processPropertyExportJob(jobId: string): Promise<void> {
@@ -80,6 +83,8 @@ export async function processPropertyExportJob(jobId: string): Promise<void> {
 
   const job = claimed;
 
+  await maybePublishExportJobUpdated(jobId);
+
   try {
     if (job.resourceType === ExportResourceType.EXPENSES && job.format === ExportFormat.CSV) {
       await processExpensesCsvExport(job);
@@ -90,6 +95,7 @@ export async function processPropertyExportJob(jobId: string): Promise<void> {
   } catch (error) {
     if (error instanceof ExportRowLimitExceededError || error instanceof ExportJobPermanentError) {
       await exportJobsDb.markFailed(jobId, error.message);
+      await maybePublishExportJobUpdated(jobId);
       WinstonLogger.warn("property_export.failed", {
         errorMessage: error.message,
         jobId,

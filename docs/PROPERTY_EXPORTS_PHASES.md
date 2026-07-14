@@ -312,11 +312,11 @@ toast.success("Export queued", {
 
 **Goal:** Live updates before full UI.
 
-- [ ] Add `export_job.updated` to shared stream types
-- [ ] Extend `notificationStreamHub` publish path for export job events
-- [ ] Worker emits on status transitions (always terminal; optional throttle on `processing`)
-- [ ] Admin stream handler invalidates exports list query
-- [ ] GET list/detail as reconnect fallback
+- [x] Add `export_job.updated` to shared stream types
+- [x] Extend `notificationStreamHub` publish path for export job events
+- [x] Worker emits on status transitions (always terminal; optional throttle on `processing`)
+- [x] Admin stream handler invalidates exports list query
+- [x] GET list/detail as reconnect fallback
 
 **Exit criteria:** Script-triggered export emits SSE on connected admin session; GET restores state after page refresh.
 
