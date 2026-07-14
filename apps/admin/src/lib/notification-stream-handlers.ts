@@ -3,8 +3,10 @@ import { type QueryClient } from "@tanstack/react-query";
 import { propertyExportsApi, supportApi, tenantEmailCampaignsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { showPropertyExportCompletedToast } from "@/lib/show-property-export-queued-toast";
+import { showTenantEmailCampaignCompletedToast } from "@/lib/show-tenant-email-campaign-completed-toast";
 import { notifySupportAttachmentStatus } from "@/lib/support-attachment-status-registry";
 import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
+import { isTenantEmailCampaignTerminal } from "@/lib/tenant-email-campaign-utils";
 import {
   ExportFormat,
   ExportJobStatus,
@@ -168,7 +170,17 @@ export function handleTenantEmailCampaignUpdated(
   });
 
   const communicationsPath = `/properties/${data.propertyId}/communications`;
-  if (pathname !== communicationsPath || document.visibilityState !== "visible") {
+  const isOnCommunicationsTab = pathname === communicationsPath;
+
+  if (
+    isTenantEmailCampaignTerminal(data.status) &&
+    !isOnCommunicationsTab &&
+    document.visibilityState === "visible"
+  ) {
+    showTenantEmailCampaignCompletedToast(data);
+  }
+
+  if (!isOnCommunicationsTab || document.visibilityState !== "visible") {
     return;
   }
 

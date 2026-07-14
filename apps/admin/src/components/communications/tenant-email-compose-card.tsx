@@ -23,6 +23,12 @@ function createTenantEmailIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 export const TenantEmailComposeCard = memo(
   ({ disabled = false, onQueued, propertyId }: ITenantEmailComposeCardProps) => {
     const queryClient = useQueryClient();
@@ -40,12 +46,15 @@ export const TenantEmailComposeCard = memo(
     }, []);
 
     const createMutation = useMutation({
-      mutationFn: (input: { htmlBody: string; idempotencyKey: string; subject: string }) =>
-        tenantEmailCampaignsApi.create(
+      mutationFn: async (input: { htmlBody: string; idempotencyKey: string; subject: string }) => {
+        console.log("sleeping");
+        await sleep(5_000);
+        return tenantEmailCampaignsApi.create(
           propertyId,
           { htmlBody: input.htmlBody, subject: input.subject },
           input.idempotencyKey
-        ),
+        );
+      },
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to queue notification");
       },

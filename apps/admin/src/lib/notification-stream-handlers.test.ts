@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
 
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -7,10 +7,53 @@ import {
   TenantEmailCampaignStatus,
 } from "@/packages/shared";
 
-import {
+const showTenantEmailCampaignCompletedToastMock = mock(() => undefined);
+
+mock.module("./show-tenant-email-campaign-completed-toast", () => ({
+  showTenantEmailCampaignCompletedToast: showTenantEmailCampaignCompletedToastMock,
+}));
+
+mock.module("./show-property-export-queued-toast", () => ({
+  showPropertyExportCompletedToast: mock(() => undefined),
+  showPropertyExportQueuedToast: mock(() => undefined),
+}));
+
+const {
   handleTenantEmailCampaignUpdated,
   parseTenantEmailCampaignUpdatedData,
-} from "./notification-stream-handlers";
+} = await import("./notification-stream-handlers");
+
+const terminalUpdate = {
+  campaignId: "campaign-1",
+  failedCount: 0,
+  propertyId: "property-1",
+  sentCount: 3,
+  skippedCount: 0,
+  status: TenantEmailCampaignStatus.COMPLETED,
+  totalCount: 3,
+};
+
+const originalDocument = globalThis.document;
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { visibilityState: "visible" },
+    writable: true,
+  });
+});
+
+afterAll(() => {
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: originalDocument,
+    writable: true,
+  });
+});
+
+afterEach(() => {
+  showTenantEmailCampaignCompletedToastMock.mockClear();
+});
 
 describe("parseTenantEmailCampaignUpdatedData", () => {
   test("parses valid campaign update payloads", () => {
@@ -93,5 +136,51 @@ describe("handleTenantEmailCampaignUpdated", () => {
         queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
       )?.campaign.status
     ).toBe(TenantEmailCampaignStatus.SENDING);
+  });
+
+  test("shows completion toast when terminal update arrives off Communications tab", () => {
+    const queryClient = new QueryClient();
+
+    handleTenantEmailCampaignUpdated(
+      queryClient,
+      terminalUpdate,
+      "/properties/property-1/income"
+    );
+
+    expect(showTenantEmailCampaignCompletedToastMock).toHaveBeenCalledTimes(1);
+    expect(showTenantEmailCampaignCompletedToastMock).toHaveBeenCalledWith(terminalUpdate);
+  });
+
+  test("does not show completion toast when already on Communications tab", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    queryClient.fetchQuery = mock(async () => undefined) as typeof queryClient.fetchQuery;
+
+    handleTenantEmailCampaignUpdated(
+      queryClient,
+      terminalUpdate,
+      "/properties/property-1/communications"
+    );
+
+    expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
+  });
+
+  test("does not show completion toast for in-progress updates", () => {
+    const queryClient = new QueryClient();
+
+    handleTenantEmailCampaignUpdated(
+      queryClient,
+      {
+        ...terminalUpdate,
+        sentCount: 1,
+        status: TenantEmailCampaignStatus.SENDING,
+      },
+      "/properties/property-1/income"
+    );
+
+    expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
   });
 });
