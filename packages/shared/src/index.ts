@@ -300,6 +300,7 @@ export {
   type IPropertyExportsListQuery,
   type IPropertyExportsListResponse,
   type TExportFormat,
+  type TExportJobFilters,
   type TExportJobStatus,
   type TExportResourceType,
 } from "./property-export-types";

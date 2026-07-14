@@ -240,6 +240,30 @@ function buildIncomeEntriesFilters(
   return next;
 }
 
+interface IIncomeInfiniteListPagination {
+  fetchNextPage: () => Promise<unknown>;
+  hasNextPage: boolean | undefined;
+  isFetchingNextPage: boolean;
+  isPending: boolean;
+  meta: { totalCount: number } | undefined;
+}
+
+function getActiveIncomeInfiniteListPagination(
+  isAllView: boolean,
+  isStayOnlyView: boolean,
+  allViewList: IIncomeInfiniteListPagination,
+  stayOnlyViewList: IIncomeInfiniteListPagination,
+  lineTypeOnlyViewList: IIncomeInfiniteListPagination
+): IIncomeInfiniteListPagination {
+  if (isAllView) {
+    return allViewList;
+  }
+  if (isStayOnlyView) {
+    return stayOnlyViewList;
+  }
+  return lineTypeOnlyViewList;
+}
+
 function getIncomeEntryKey(entry: TPropertyIncomeEntry): string {
   return entry.entryKind === IncomeEntryKind.STAY
     ? `stay-${entry.stay.id}`
@@ -1146,23 +1170,19 @@ const PropertyIncomePage = memo(() => {
     enabled: isLineTypeOnlyView,
   });
 
+  const activeIncomeListPagination = getActiveIncomeInfiniteListPagination(
+    isAllView,
+    isStayOnlyView,
+    incomeEntriesInfinite,
+    shortStaysInfinite,
+    incomeLinesInfinite
+  );
+
   const scrollSentinelRef = useInfiniteScrollTrigger({
     enabled: isAllView || isStayOnlyView || isLineTypeOnlyView,
-    fetchNextPage: isAllView
-      ? incomeEntriesInfinite.fetchNextPage
-      : isStayOnlyView
-        ? shortStaysInfinite.fetchNextPage
-        : incomeLinesInfinite.fetchNextPage,
-    hasNextPage: isAllView
-      ? incomeEntriesInfinite.hasNextPage
-      : isStayOnlyView
-        ? shortStaysInfinite.hasNextPage
-        : incomeLinesInfinite.hasNextPage,
-    isFetchingNextPage: isAllView
-      ? incomeEntriesInfinite.isFetchingNextPage
-      : isStayOnlyView
-        ? shortStaysInfinite.isFetchingNextPage
-        : incomeLinesInfinite.isFetchingNextPage,
+    fetchNextPage: activeIncomeListPagination.fetchNextPage,
+    hasNextPage: activeIncomeListPagination.hasNextPage,
+    isFetchingNextPage: activeIncomeListPagination.isFetchingNextPage,
   });
 
   const unitsQuery = useQuery({
@@ -1489,29 +1509,10 @@ const PropertyIncomePage = memo(() => {
     unitLabelById,
   ]);
 
-  const isLoading = isAllView
-    ? incomeEntriesInfinite.isPending
-    : isStayOnlyView
-      ? shortStaysInfinite.isPending
-      : incomeLinesInfinite.isPending;
-
-  const listMeta = isAllView
-    ? incomeEntriesInfinite.meta
-    : isStayOnlyView
-      ? shortStaysInfinite.meta
-      : incomeLinesInfinite.meta;
-
-  const hasNextPage = isAllView
-    ? Boolean(incomeEntriesInfinite.hasNextPage)
-    : isStayOnlyView
-      ? Boolean(shortStaysInfinite.hasNextPage)
-      : Boolean(incomeLinesInfinite.hasNextPage);
-
-  const isFetchingNextPage = isAllView
-    ? incomeEntriesInfinite.isFetchingNextPage
-    : isStayOnlyView
-      ? shortStaysInfinite.isFetchingNextPage
-      : incomeLinesInfinite.isFetchingNextPage;
+  const isLoading = activeIncomeListPagination.isPending;
+  const listMeta = activeIncomeListPagination.meta;
+  const hasNextPage = Boolean(activeIncomeListPagination.hasNextPage);
+  const isFetchingNextPage = activeIncomeListPagination.isFetchingNextPage;
 
   const handleAddOtherIncome = useCallback(() => {
     setCreateLinePrefill(null);
