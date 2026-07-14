@@ -24,8 +24,8 @@ export function getRedisConnectionOptions(): RedisOptions {
     };
   }
 
-  const password = process.env.REDIS_PASSWORD ?? process.env.REDISPASSWORD;
-  const username = process.env.REDISUSER ?? process.env.REDIS_USER;
+  const password = process.env.REDISPASSWORD;
+  const username = process.env.REDISUSER;
 
   return {
     host: process.env.REDISHOST ?? process.env.REDIS_HOST ?? "127.0.0.1",

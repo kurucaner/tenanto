@@ -254,7 +254,7 @@ export const TenantEmailCampaignDetailSheet = memo(
 
     return (
       <Sheet onOpenChange={onOpenChange} open={open}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl md:max-w-2xl lg:max-w-4xl">
           <SheetHeader>
             <SheetTitle>Campaign details</SheetTitle>
             <SheetDescription>
