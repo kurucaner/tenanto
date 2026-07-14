@@ -21,6 +21,7 @@ import {
   type INotificationStreamEvent,
   type IUserNotification,
   type IUserNotificationsUnreadCountResponse,
+  type NotificationStreamEventType,
   UserType,
 } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
@@ -148,72 +149,111 @@ interface INotificationStreamEventContext {
   userType: UserType | undefined;
 }
 
+type TNotificationStreamEventHandler = (
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+) => void;
+
+function handleStreamUnreadCountEvent(
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  if (context.userType !== UserType.USER) return;
+  applyStreamUnreadCount(context.queryClient, event.data.count);
+}
+
+function handleStreamInboxUpdatedEvent(
+  _event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  if (context.userType !== UserType.USER) return;
+  context.queryClient.invalidateQueries({ queryKey: queryKeys.notificationsList() });
+}
+
+function handleStreamNewNotificationEvent(
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  const notification = parseStreamNotification(event.data.notification);
+  if (notification == null || context.userType !== UserType.USER) return;
+
+  handlePropertyMembershipNotification(context.queryClient, notification);
+  if (!context.suppressToasts) {
+    showNotificationToast(notification);
+  }
+}
+
+function handleStreamSupportRequestUpdatedEvent(
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  const supportRequestId = event.data.supportRequestId;
+  if (typeof supportRequestId !== "string" || context.userType == null) return;
+
+  handleSupportRequestUpdated(
+    context.queryClient,
+    supportRequestId,
+    context.pathname,
+    context.userType
+  );
+}
+
+function handleStreamSupportAttachmentUpdatedEvent(
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  const parsed = parseSupportAttachmentUpdatedData(event.data);
+  if (parsed == null || context.userType == null) return;
+
+  handleSupportAttachmentUpdated(
+    context.queryClient,
+    parsed,
+    context.pathname,
+    context.userType
+  );
+}
+
+function handleStreamTenantEmailCampaignUpdatedEvent(
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  const parsed = parseTenantEmailCampaignUpdatedData(event.data);
+  if (parsed == null) return;
+
+  handleTenantEmailCampaignUpdated(context.queryClient, parsed, context.pathname);
+}
+
+function handleStreamExportJobUpdatedEvent(
+  event: INotificationStreamEvent,
+  context: INotificationStreamEventContext
+): void {
+  const parsed = parseExportJobUpdatedData(event.data);
+  if (parsed == null) return;
+
+  handleExportJobUpdated(context.queryClient, parsed, context.pathname);
+}
+
+const NOTIFICATION_STREAM_EVENT_HANDLERS: Partial<
+  Record<NotificationStreamEventType, TNotificationStreamEventHandler>
+> = {
+  connected: handleStreamUnreadCountEvent,
+  "export_job.updated": handleStreamExportJobUpdatedEvent,
+  "notifications.inbox_updated": handleStreamInboxUpdatedEvent,
+  "notifications.new": handleStreamNewNotificationEvent,
+  "notifications.unread_count": handleStreamUnreadCountEvent,
+  "support_attachment.updated": handleStreamSupportAttachmentUpdatedEvent,
+  "support_request.updated": handleStreamSupportRequestUpdatedEvent,
+  "tenant_email_campaign.updated": handleStreamTenantEmailCampaignUpdatedEvent,
+};
+
 function handleNotificationStreamEvent(
   event: INotificationStreamEvent,
   context: INotificationStreamEventContext
 ): void {
   if (event.type === "ping") return;
 
-  if (event.type === "connected" || event.type === "notifications.unread_count") {
-    if (context.userType === UserType.USER) {
-      applyStreamUnreadCount(context.queryClient, event.data.count);
-    }
-  }
-
-  if (event.type === "notifications.inbox_updated") {
-    if (context.userType === UserType.USER) {
-      context.queryClient.invalidateQueries({ queryKey: queryKeys.notificationsList() });
-    }
-  }
-
-  if (event.type === "notifications.new") {
-    const notification = parseStreamNotification(event.data.notification);
-    if (notification != null && context.userType === UserType.USER) {
-      handlePropertyMembershipNotification(context.queryClient, notification);
-
-      if (!context.suppressToasts) {
-        showNotificationToast(notification);
-      }
-    }
-  }
-
-  if (event.type === "support_request.updated") {
-    const supportRequestId = event.data.supportRequestId;
-    if (typeof supportRequestId === "string" && context.userType != null) {
-      handleSupportRequestUpdated(
-        context.queryClient,
-        supportRequestId,
-        context.pathname,
-        context.userType
-      );
-    }
-  }
-
-  if (event.type === "support_attachment.updated") {
-    const parsed = parseSupportAttachmentUpdatedData(event.data);
-    if (parsed != null && context.userType != null) {
-      handleSupportAttachmentUpdated(
-        context.queryClient,
-        parsed,
-        context.pathname,
-        context.userType
-      );
-    }
-  }
-
-  if (event.type === "tenant_email_campaign.updated") {
-    const parsed = parseTenantEmailCampaignUpdatedData(event.data);
-    if (parsed != null) {
-      handleTenantEmailCampaignUpdated(context.queryClient, parsed, context.pathname);
-    }
-  }
-
-  if (event.type === "export_job.updated") {
-    const parsed = parseExportJobUpdatedData(event.data);
-    if (parsed != null) {
-      handleExportJobUpdated(context.queryClient, parsed, context.pathname);
-    }
-  }
+  const handler = NOTIFICATION_STREAM_EVENT_HANDLERS[event.type];
+  handler?.(event, context);
 }
 
 function handleStreamMessage(
@@ -317,12 +357,30 @@ interface INotificationStreamRunParams {
   streamClientId: string;
 }
 
-async function runNotificationStream(params: INotificationStreamRunParams): Promise<void> {
-  params.setStatus((current) => (current === "connected" ? current : "connecting"));
+type TStreamRunLoopAction = "break" | "continue";
 
-  let token = params.accessToken;
-  let backoffMs = BASE_BACKOFF_MS;
-  let consecutiveFailures = 0;
+interface IStreamRunState {
+  backoffMs: number;
+  consecutiveFailures: number;
+  token: string;
+}
+
+interface IStreamConnectionErrorContext {
+  abortController: AbortController;
+  isCancelled: () => boolean;
+  setStatus: Dispatch<SetStateAction<NotificationStreamStatus>>;
+  state: IStreamRunState;
+}
+
+function resetStreamRunBackoff(state: IStreamRunState): void {
+  state.consecutiveFailures = 0;
+  state.backoffMs = BASE_BACKOFF_MS;
+}
+
+function createProactiveReconnectScheduler(abortController: AbortController): {
+  clearProactiveReconnect: () => void;
+  scheduleProactiveReconnect: () => void;
+} {
   let proactiveReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clearProactiveReconnect = (): void => {
@@ -335,15 +393,98 @@ async function runNotificationStream(params: INotificationStreamRunParams): Prom
   const scheduleProactiveReconnect = (): void => {
     clearProactiveReconnect();
     proactiveReconnectTimer = setTimeout(() => {
-      params.abortController.abort();
+      abortController.abort();
     }, PROACTIVE_RECONNECT_MS);
   };
 
+  return { clearProactiveReconnect, scheduleProactiveReconnect };
+}
+
+async function recoverFromProactiveAbort(context: IStreamConnectionErrorContext): Promise<void> {
+  await sleep(withJitter(BASE_BACKOFF_MS));
+  context.state.token = useAuthStore.getState().accessToken ?? context.state.token;
+  const refreshed = await refreshAccessTokenForStream();
+  if (refreshed != null) {
+    context.state.token = refreshed;
+  }
+  resetStreamRunBackoff(context.state);
+  context.setStatus("connecting");
+}
+
+async function handleStreamReconnectErrorRecovery(
+  err: StreamReconnectError,
+  context: IStreamConnectionErrorContext
+): Promise<void> {
+  context.state.token = useAuthStore.getState().accessToken ?? context.state.token;
+  resetStreamRunBackoff(context.state);
+  context.setStatus("connecting");
+  if (err.retryDelayMs != null) {
+    await sleep(withJitter(err.retryDelayMs));
+  }
+}
+
+async function handleStreamTransientError(context: IStreamConnectionErrorContext): Promise<void> {
+  context.state.consecutiveFailures++;
+  if (context.state.consecutiveFailures >= MAX_FAILURES_BEFORE_DEGRADED) {
+    context.setStatus("degraded");
+  } else {
+    context.setStatus("connecting");
+  }
+
+  const delay = withJitter(Math.min(context.state.backoffMs, MAX_BACKOFF_MS));
+  context.state.backoffMs = Math.min(context.state.backoffMs * 2, MAX_BACKOFF_MS);
+  await sleep(delay);
+}
+
+async function handleStreamConnectionError(
+  err: unknown,
+  context: IStreamConnectionErrorContext
+): Promise<TStreamRunLoopAction> {
+  if (context.isCancelled() || context.abortController.signal.aborted) {
+    if (!context.isCancelled()) {
+      await recoverFromProactiveAbort(context);
+      return "continue";
+    }
+    return "break";
+  }
+
+  if (err instanceof StreamFatalError) {
+    context.setStatus("degraded");
+    return "break";
+  }
+
+  if (err instanceof StreamReconnectError) {
+    await handleStreamReconnectErrorRecovery(err, context);
+    return "continue";
+  }
+
+  await handleStreamTransientError(context);
+  return "continue";
+}
+
+async function runNotificationStream(params: INotificationStreamRunParams): Promise<void> {
+  params.setStatus((current) => (current === "connected" ? current : "connecting"));
+
+  const state: IStreamRunState = {
+    backoffMs: BASE_BACKOFF_MS,
+    consecutiveFailures: 0,
+    token: params.accessToken,
+  };
+
+  const { clearProactiveReconnect, scheduleProactiveReconnect } =
+    createProactiveReconnectScheduler(params.abortController);
+
   const dispatchEvent = createStreamEventDispatcher(params.onEvent, () => {
-    consecutiveFailures = 0;
-    backoffMs = BASE_BACKOFF_MS;
+    resetStreamRunBackoff(state);
     params.setStatus("connected");
   });
+
+  const errorContext: IStreamConnectionErrorContext = {
+    abortController: params.abortController,
+    isCancelled: params.isCancelled,
+    setStatus: params.setStatus,
+    state,
+  };
 
   while (!params.isCancelled()) {
     try {
@@ -353,52 +494,12 @@ async function runNotificationStream(params: INotificationStreamRunParams): Prom
         onEvent: dispatchEvent,
         scheduleProactiveReconnect,
         streamClientId: params.streamClientId,
-        token,
+        token: state.token,
       });
       if (params.isCancelled()) break;
     } catch (err) {
-      if (params.isCancelled() || params.abortController.signal.aborted) {
-        if (!params.isCancelled()) {
-          await sleep(withJitter(BASE_BACKOFF_MS));
-          token = useAuthStore.getState().accessToken ?? token;
-          const refreshed = await refreshAccessTokenForStream();
-          if (refreshed != null) {
-            token = refreshed;
-          }
-          consecutiveFailures = 0;
-          backoffMs = BASE_BACKOFF_MS;
-          params.setStatus("connecting");
-          continue;
-        }
-        break;
-      }
-
-      if (err instanceof StreamFatalError) {
-        params.setStatus("degraded");
-        break;
-      }
-
-      if (err instanceof StreamReconnectError) {
-        token = useAuthStore.getState().accessToken ?? token;
-        consecutiveFailures = 0;
-        backoffMs = BASE_BACKOFF_MS;
-        params.setStatus("connecting");
-        if (err.retryDelayMs != null) {
-          await sleep(withJitter(err.retryDelayMs));
-        }
-        continue;
-      }
-
-      consecutiveFailures++;
-      if (consecutiveFailures >= MAX_FAILURES_BEFORE_DEGRADED) {
-        params.setStatus("degraded");
-      } else {
-        params.setStatus("connecting");
-      }
-
-      const delay = withJitter(Math.min(backoffMs, MAX_BACKOFF_MS));
-      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
-      await sleep(delay);
+      const action = await handleStreamConnectionError(err, errorContext);
+      if (action === "break") break;
     }
   }
 
