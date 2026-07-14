@@ -91,6 +91,7 @@ export const PropertyReportToolbar = memo(
               />
             </>
           }
+          controlsClassName="ml-auto"
         />
         {rentalTypeNote ? (
           <p className="px-3 text-muted-foreground text-xs">{rentalTypeNote}</p>
