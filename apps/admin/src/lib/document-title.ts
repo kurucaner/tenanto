@@ -15,8 +15,24 @@ export function isLocalEnvironment(): boolean {
   return LOCAL_HOSTNAMES.has(hostname);
 }
 
+export function isQaEnvironment(): boolean {
+  const hostEnv = import.meta.env.VITE_HOST_ENV?.trim().toLowerCase();
+  return hostEnv === "qa";
+}
+
+function getEnvironmentTitleSuffix(): string | null {
+  if (isLocalEnvironment()) {
+    return "local";
+  }
+  if (isQaEnvironment()) {
+    return "qa";
+  }
+  return null;
+}
+
 export function formatDocumentTitle(title = APP_NAME): string {
-  return isLocalEnvironment() ? `${title} (local)` : title;
+  const suffix = getEnvironmentTitleSuffix();
+  return suffix ? `${title} (${suffix})` : title;
 }
 
 export function syncDocumentTitle(title = APP_NAME): void {
