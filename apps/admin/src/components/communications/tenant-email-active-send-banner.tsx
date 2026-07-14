@@ -64,18 +64,18 @@ const CampaignPostmark = memo(
 );
 CampaignPostmark.displayName = "CampaignPostmark";
 
-function getPostmarkCopy(
+function getPostmarkTitle(
   status: TTenantEmailCampaignStatus,
   hasErrors: boolean,
   sentCount: number
-): { eyebrow: string; title: string } {
+): string {
   if (isTenantEmailCampaignInProgress(status)) {
-    return { eyebrow: "Live dispatch", title: "Sending" };
+    return "Sending";
   }
   if (hasErrors) {
-    return { eyebrow: "Dispatch closed", title: "Delivered with exceptions" };
+    return "Delivered with exceptions";
   }
-  return { eyebrow: "Postmarked", title: `Delivered to ${sentCount}` };
+  return `Delivered to ${sentCount}`;
 }
 
 export const TenantEmailActiveSendBanner = memo(
@@ -119,7 +119,7 @@ export const TenantEmailActiveSendBanner = memo(
       campaign.status === TenantEmailCampaignStatus.FAILED ||
       campaign.failedCount > 0;
     const processedCount = getTenantEmailCampaignProcessedCount(campaign);
-    const copy = getPostmarkCopy(campaign.status, hasErrors, campaign.sentCount);
+    const title = getPostmarkTitle(campaign.status, hasErrors, campaign.sentCount);
 
     return (
       <output className="relative isolate block h-16 overflow-hidden rounded-xl border bg-card shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-500">
@@ -130,10 +130,7 @@ export const TenantEmailActiveSendBanner = memo(
 
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
-              <p className="font-medium text-sm">{copy.title}</p>
-              <span className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:inline">
-                {copy.eyebrow}
-              </span>
+              <p className="font-medium text-sm">{title}</p>
               {inProgress ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
                   <span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
