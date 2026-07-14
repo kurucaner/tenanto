@@ -421,12 +421,7 @@ export const PropertyLeasesPage = memo(() => {
         ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              aria-label="More lease actions"
-              size="icon-sm"
-              type="button"
-              variant="outline"
-            >
+            <Button aria-label="More lease actions" size="icon-sm" type="button" variant="outline">
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>

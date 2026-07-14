@@ -13,8 +13,7 @@ export interface IUnitToolbarFilterItem {
   label: string;
 }
 
-type TUnitToolbarUrlKey =
-  Exclude<TUnitToolbarFilterId, "date"> | "allTime" | "from" | "to";
+type TUnitToolbarUrlKey = Exclude<TUnitToolbarFilterId, "date"> | "allTime" | "from" | "to";
 
 function findOptionLabel(options: readonly TSelectOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;

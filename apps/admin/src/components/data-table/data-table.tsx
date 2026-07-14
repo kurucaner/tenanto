@@ -157,44 +157,39 @@ export const DataTable = <TItem,>({
     <>
       {toolbar}
       {filters}
-      <div
-        className={cn(
-          "transition-opacity",
-          isRefreshing && "pointer-events-none opacity-60"
-        )}
-      >
+      <div className={cn("transition-opacity", isRefreshing && "pointer-events-none opacity-60")}>
         <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {visibleColumns.map((column) => (
-                <DataTableHeadCell column={column} key={column.id} sort={sort} />
-              ))}
-            </TableRow>
-          </TableHeader>
-          {body}
-          {infiniteScroll?.isFetchingNextPage ? (
-            <TableBody>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={colSpan}>
-                  <Skeleton className="h-8 w-full" />
-                </TableCell>
+                {visibleColumns.map((column) => (
+                  <DataTableHeadCell column={column} key={column.id} sort={sort} />
+                ))}
               </TableRow>
-            </TableBody>
+            </TableHeader>
+            {body}
+            {infiniteScroll?.isFetchingNextPage ? (
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={colSpan}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            ) : null}
+            {footer && items.length > 0 ? <TableFooter>{footer}</TableFooter> : null}
+          </Table>
+          {infiniteScrollSentinelRef ? (
+            <div aria-hidden className="h-px w-full" ref={infiniteScrollSentinelRef} />
           ) : null}
-          {footer && items.length > 0 ? <TableFooter>{footer}</TableFooter> : null}
-        </Table>
-        {infiniteScrollSentinelRef ? (
-          <div aria-hidden className="h-px w-full" ref={infiniteScrollSentinelRef} />
-        ) : null}
-        {showEndOfListCaption ? (
-          <p className="text-muted-foreground text-center text-sm">
-            {getInfiniteListLoadMoreLabel({
-              hasNextPage: false,
-              isFetchingNextPage: false,
-            })}
-          </p>
-        ) : null}
+          {showEndOfListCaption ? (
+            <p className="text-muted-foreground text-center text-sm">
+              {getInfiniteListLoadMoreLabel({
+                hasNextPage: false,
+                isFetchingNextPage: false,
+              })}
+            </p>
+          ) : null}
         </div>
       </div>
     </>

@@ -59,15 +59,8 @@ export const NotificationList = memo(
     const queryClient = useQueryClient();
     const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
 
-    const {
-      error,
-      fetchNextPage,
-      hasNextPage,
-      isError,
-      isFetchingNextPage,
-      isPending,
-      items,
-    } = useNotificationsInfiniteList();
+    const { error, fetchNextPage, hasNextPage, isError, isFetchingNextPage, isPending, items } =
+      useNotificationsInfiniteList();
 
     const unreadQuery = useQuery({
       queryFn: () => notificationsApi.getUnreadCount(),

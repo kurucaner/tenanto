@@ -8,7 +8,8 @@ mock.module("@/services/user-notifications", () => ({
   notifyUser: notifyUserMock,
 }));
 
-const { notifyTenantEmailCampaignCompleted } = await import("./tenant-email-campaign-notifications");
+const { notifyTenantEmailCampaignCompleted } =
+  await import("./tenant-email-campaign-notifications");
 
 const completedCampaign = {
   completedAt: "2026-01-01T00:00:00.000Z",

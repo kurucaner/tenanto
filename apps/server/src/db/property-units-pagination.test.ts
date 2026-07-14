@@ -79,10 +79,14 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
-    await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, {
-      cursor: firstPage.nextCursor!,
-      limit: 2,
-    });
+    await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        cursor: firstPage.nextCursor!,
+        limit: 2,
+      }
+    );
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
     expect(sql).toContain("(rental_type, unit_number, id) >");
@@ -96,10 +100,14 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
     expect(firstPage.meta).toBeDefined();
 
     mockQuery.mockClear();
-    const secondPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, {
-      cursor: firstPage.nextCursor!,
-      limit: 2,
-    });
+    const secondPage = await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        cursor: firstPage.nextCursor!,
+        limit: 2,
+      }
+    );
 
     expect(secondPage.meta).toBeUndefined();
     expect(mockQuery.mock.calls).toHaveLength(1);
@@ -116,18 +124,26 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
     expect(sql).toContain("ORDER BY rental_type DESC, unit_number DESC, id DESC");
 
     mockQuery.mockClear();
-    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, {
-      limit: 2,
-      sortDir: "desc",
-    });
+    const firstPage = await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        limit: 2,
+        sortDir: "desc",
+      }
+    );
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
-    await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, {
-      cursor: firstPage.nextCursor!,
-      limit: 2,
-      sortDir: "desc",
-    });
+    await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        cursor: firstPage.nextCursor!,
+        limit: 2,
+        sortDir: "desc",
+      }
+    );
 
     const cursorSql = mockQuery.mock.calls[0]?.[0] as string;
     expect(cursorSql).toContain("(rental_type, unit_number, id) <");

@@ -627,12 +627,7 @@ const PropertyIncomePageActions = memo(
       ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            aria-label="More income actions"
-            size="icon-sm"
-            type="button"
-            variant="outline"
-          >
+          <Button aria-label="More income actions" size="icon-sm" type="button" variant="outline">
             <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>

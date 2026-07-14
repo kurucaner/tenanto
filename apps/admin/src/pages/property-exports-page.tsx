@@ -123,8 +123,16 @@ export const PropertyExportsPage = memo(() => {
     [effectiveFrom, effectiveTo, q, resourceType, sortState.columnId, sortState.direction]
   );
 
-  const { error, exports, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, meta } =
-    usePropertyExportsInfiniteList(propertyId, listFilters);
+  const {
+    error,
+    exports,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    meta,
+  } = usePropertyExportsInfiniteList(propertyId, listFilters);
 
   const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
     isFetching,
