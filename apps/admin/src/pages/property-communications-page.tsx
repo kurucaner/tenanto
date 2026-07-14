@@ -11,7 +11,6 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { tenantEmailCampaignsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { isTenantEmailCampaignInProgress } from "@/lib/tenant-email-campaign-utils";
-import { isTenantEmailCampaignsUiEnabled } from "@/lib/tenant-email-campaigns-feature";
 
 export const PropertyCommunicationsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
@@ -21,7 +20,7 @@ export const PropertyCommunicationsPage = memo(() => {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const campaignsQuery = useQuery({
-    enabled: permissions.canSendTenantNotifications && isTenantEmailCampaignsUiEnabled(),
+    enabled: permissions.canSendTenantNotifications,
     queryFn: () => tenantEmailCampaignsApi.list(propertyId),
     queryKey: queryKeys.propertyTenantEmailCampaigns(propertyId),
   });
@@ -50,12 +49,6 @@ export const PropertyCommunicationsPage = memo(() => {
     setDetailCampaignId(campaignId);
     setDetailOpen(true);
   }, []);
-
-  if (!isTenantEmailCampaignsUiEnabled()) {
-    return (
-      <p className="text-muted-foreground text-sm">Tenant notifications are not enabled.</p>
-    );
-  }
 
   if (!permissions.canSendTenantNotifications) {
     return <Navigate replace to={`/properties/${propertyId}`} />;

@@ -10,9 +10,9 @@ export function getRedisConnectionOptions(): RedisOptions {
   }
 
   return {
-    host: process.env.REDIS_HOST ?? "127.0.0.1",
+    host: process.env.REDISHOST ?? "127.0.0.1",
     maxRetriesPerRequest: null,
-    port: Number.parseInt(process.env.REDIS_PORT ?? "6379", 10),
+    port: Number.parseInt(process.env.REDISPORT ?? "6379", 10),
   };
 }
 

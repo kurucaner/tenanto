@@ -32,7 +32,7 @@ Production on Railway: separate worker service — see [RAILWAY_TENANT_EMAIL_WOR
 
 **Checks:**
 
-- Redis reachable (`REDIS_HOST` / `REDIS_PORT` or `REDIS_URL`)
+- Redis reachable (`REDISHOST` / `REDISPORT` or `REDIS_URL`)
 - Worker process running: `cd apps/server && bun run worker:email`
 - BullMQ queue has pending jobs
 
@@ -74,13 +74,13 @@ Production on Railway: separate worker service — see [RAILWAY_TENANT_EMAIL_WOR
 
 ## Required env (send path)
 
-| Variable | Purpose |
-| --- | --- |
-| `TENANT_EMAIL_CAMPAIGNS_ENABLED` | Feature flag |
-| `REDIS_HOST` / `REDIS_PORT` or `REDIS_URL` | Queue + create rate limit |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | SES |
-| `API_PUBLIC_URL` | List-Unsubscribe links |
-| `AWS_INTERNAL_SECRET` | Unsubscribe token signing |
+| Variable                                      | Purpose                   |
+| --------------------------------------------- | ------------------------- |
+| `TENANT_EMAIL_CAMPAIGNS_ENABLED`              | Feature flag              |
+| `REDISHOST` / `REDISPORT` or `REDIS_URL`      | Queue + create rate limit |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | SES                       |
+| `API_PUBLIC_URL`                              | List-Unsubscribe links    |
+| `AWS_INTERNAL_SECRET`                         | Unsubscribe token signing |
 
 ## Load testing (~500 recipients)
 
