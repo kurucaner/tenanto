@@ -16,8 +16,8 @@ export function isLocalEnvironment(): boolean {
 }
 
 export function isQaEnvironment(): boolean {
-  const hostEnv = import.meta.env.VITE_HOST_ENV?.trim().toLowerCase();
-  return hostEnv === "qa";
+  const ddEnv = import.meta.env.VITE_DD_ENV?.trim().toLowerCase();
+  return ddEnv === "qa";
 }
 
 function getEnvironmentTitleSuffix(): string | null {
