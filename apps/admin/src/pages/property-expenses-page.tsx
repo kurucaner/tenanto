@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
+import { Download, MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
 import {
   memo,
   type MouseEvent,
@@ -19,6 +19,7 @@ import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import { type TExpenseFilterKey } from "@/components/expenses/expense-filter-panel";
 import { ImportExpenseCsvDialog } from "@/components/expenses/import-expense-csv-dialog";
 import { PropertyExpenseToolbar } from "@/components/expenses/property-expense-toolbar";
+import { PropertyTableExportDialog } from "@/components/exports/property-table-export-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
@@ -51,13 +52,19 @@ import {
   countExpenseSecondaryFilters,
   type TExpenseToolbarFilterId,
 } from "@/lib/expense-toolbar-filters";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
+import { formatExpenseExportFilterSummary } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import { type IPropertyExpense, type IPropertyExpenseCategoryType } from "@/packages/shared";
+import {
+  ExportResourceType,
+  type IPropertyExpense,
+  type IPropertyExpenseCategoryType,
+} from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -165,6 +172,7 @@ const PropertyExpensesTable = memo(
     isFetchingNextPage,
     isPending,
     isQuickDeleteActive,
+    isRefreshing,
     onDelete,
     onEdit,
     onRestore,
@@ -178,6 +186,7 @@ const PropertyExpensesTable = memo(
     isFetchingNextPage: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
+    isRefreshing: boolean;
     onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (expense: IPropertyExpense) => void;
     onRestore: (expense: IPropertyExpense) => void;
@@ -210,6 +219,7 @@ const PropertyExpensesTable = memo(
         infiniteScroll={{ hasNextPage, isFetchingNextPage }}
         infiniteScrollSentinelRef={scrollSentinelRef}
         isPending={isPending}
+        isRefreshing={isRefreshing}
         items={expenses}
         renderRow={renderExpenseRow}
         toolbar={toolbar}
@@ -221,12 +231,24 @@ const PropertyExpensesTable = memo(
 PropertyExpensesTable.displayName = "PropertyExpensesTable";
 
 const PropertyExpensesPageActions = memo(
-  ({ onImportCsv, onOpenCreate }: { onImportCsv: () => void; onOpenCreate: () => void }) => (
+  ({
+    canManage,
+    onExportTable,
+    onImportCsv,
+    onOpenCreate,
+  }: {
+    canManage: boolean;
+    onExportTable: () => void;
+    onImportCsv: () => void;
+    onOpenCreate: () => void;
+  }) => (
     <div className="flex items-center gap-2">
-      <Button className="gap-1.5" onClick={onOpenCreate} size="sm" type="button">
-        <Plus className="size-3.5" />
-        Add Expense
-      </Button>
+      {canManage ? (
+        <Button className="gap-1.5" onClick={onOpenCreate} size="sm" type="button">
+          <Plus className="size-3.5" />
+          Add Expense
+        </Button>
+      ) : null}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button aria-label="More expense actions" size="icon-sm" type="button" variant="outline">
@@ -234,10 +256,16 @@ const PropertyExpensesPageActions = memo(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem onSelect={onImportCsv}>
-            <Sparkles />
-            Import CSV
+          <DropdownMenuItem onSelect={onExportTable}>
+            <Download />
+            Export table
           </DropdownMenuItem>
+          {canManage ? (
+            <DropdownMenuItem onSelect={onImportCsv}>
+              <Sparkles />
+              Import CSV
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -295,15 +323,20 @@ PropertyExpensesPageDialogs.displayName = "PropertyExpensesPageDialogs";
 
 function useRegisterExpensePageActions(
   canManage: boolean,
+  onExportTable: () => void,
   onImportCsv: () => void,
   onOpenCreate: () => void
 ) {
   const pageActions = useMemo(
-    () =>
-      canManage ? (
-        <PropertyExpensesPageActions onImportCsv={onImportCsv} onOpenCreate={onOpenCreate} />
-      ) : null,
-    [canManage, onImportCsv, onOpenCreate]
+    () => (
+      <PropertyExpensesPageActions
+        canManage={canManage}
+        onExportTable={onExportTable}
+        onImportCsv={onImportCsv}
+        onOpenCreate={onOpenCreate}
+      />
+    ),
+    [canManage, onExportTable, onImportCsv, onOpenCreate]
   );
 
   usePropertyShellActions(pageActions);
@@ -314,6 +347,7 @@ export const PropertyExpensesPage = memo(() => {
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [exportTableOpen, setExportTableOpen] = useState(false);
   const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
 
@@ -431,8 +465,15 @@ export const PropertyExpensesPage = memo(() => {
     [categoryId, effectiveFrom, effectiveTo, q]
   );
 
-  const { expenses, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
+  const { expenses, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, meta } =
     usePropertyExpensesInfiniteList(propertyId, expenseListFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: expenses.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -477,6 +518,10 @@ export const PropertyExpensesPage = memo(() => {
     setCreateOpen(true);
   }, []);
 
+  const handleOpenExportTable = useCallback(() => {
+    setExportTableOpen(true);
+  }, []);
+
   const handleOpenImportCsv = useCallback(() => {
     setImportCsvOpen(true);
   }, []);
@@ -488,7 +533,12 @@ export const PropertyExpensesPage = memo(() => {
     [restoreMutation]
   );
 
-  useRegisterExpensePageActions(canManage, handleOpenImportCsv, handleOpenCreate);
+  useRegisterExpensePageActions(
+    canManage,
+    handleOpenExportTable,
+    handleOpenImportCsv,
+    handleOpenCreate
+  );
 
   return (
     <>
@@ -500,8 +550,9 @@ export const PropertyExpensesPage = memo(() => {
             hasNextPage={hasNextPage}
             isDeletePending={deleteMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
-            isPending={isPending}
+            isPending={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
+            isRefreshing={isFilterRefetching}
             onDelete={handleDelete}
             onEdit={setEditExpense}
             onRestore={handleRestoreExpense}
@@ -541,6 +592,14 @@ export const PropertyExpensesPage = memo(() => {
         onCreateOpenChange={setCreateOpen}
         onEditOpenChange={(open) => handleEditDialogOpenChange(open, () => setEditExpense(null))}
         onImportCsvOpenChange={setImportCsvOpen}
+        propertyId={propertyId}
+      />
+
+      <PropertyTableExportDialog
+        config={{ filters: expenseListFilters, resourceType: ExportResourceType.EXPENSES }}
+        filterSummary={formatExpenseExportFilterSummary(expenseListFilters, categoryFilterOptions)}
+        onOpenChange={setExportTableOpen}
+        open={exportTableOpen}
         propertyId={propertyId}
       />
     </>

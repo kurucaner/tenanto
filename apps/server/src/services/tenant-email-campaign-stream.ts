@@ -2,6 +2,7 @@ import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campa
 import { TenantEmailCampaignStatus, type TTenantEmailCampaignStatus } from "@/packages/shared";
 
 import { notificationStreamHub } from "./notification-stream-hub";
+import { notifyTenantEmailCampaignCompleted } from "./tenant-email-campaign-notifications";
 import { maybeLogTenantEmailCampaignCompletion } from "./tenant-email-campaign-observability";
 
 const PROGRESS_EMIT_INTERVAL_MS = 2_000;
@@ -57,7 +58,10 @@ export function resetTenantEmailCampaignStreamThrottle(campaignId?: string): voi
   throttleByCampaign.delete(campaignId);
 }
 
-export async function maybePublishTenantEmailCampaignUpdated(campaignId: string): Promise<void> {
+export async function maybePublishTenantEmailCampaignUpdated(
+  campaignId: string,
+  options?: { transitionedToTerminal?: boolean }
+): Promise<void> {
   const campaign = await propertyTenantEmailCampaignsDb.findById(campaignId);
   if (campaign == null) {
     return;
@@ -79,4 +83,8 @@ export async function maybePublishTenantEmailCampaignUpdated(campaignId: string)
     totalCount: campaign.recipientCount,
     userId: campaign.createdBy,
   });
+
+  if (options?.transitionedToTerminal === true && isTerminalCampaignStatus(campaign.status)) {
+    await notifyTenantEmailCampaignCompleted(campaign);
+  }
 }

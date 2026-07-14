@@ -2,6 +2,7 @@ import { propertyExpensesDb } from "@/db/property-expenses";
 import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertyUnitsDb } from "@/db/property-units";
+import { csvRow } from "@/lib/csv-utils";
 import {
   getReportableIncomeLineAmounts,
   getReportableStayAmounts,
@@ -609,18 +610,6 @@ export function buildPropertyReportSummary(
       totalExpenses,
     },
   };
-}
-
-function csvEscape(value: string | number): string {
-  const text = String(value);
-  if (text.includes(",") || text.includes('"') || text.includes("\n")) {
-    return `"${text.replaceAll('"', '""')}"`;
-  }
-  return text;
-}
-
-function csvRow(values: Array<string | number>): string {
-  return `${values.map(csvEscape).join(",")}\n`;
 }
 
 const PORTFOLIO_BATCH_SIZE = 8;

@@ -37,6 +37,60 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "Each property has an Exports tab — download income, expenses, or leases as CSV or Excel, track past exports, and get a notification when a large export is ready.",
+      },
+      {
+        category: "new",
+        description:
+          "Send email updates to tenants from a property's Communications tab — watch live send progress, review past campaigns, and open a finished send from your notifications.",
+      },
+      {
+        category: "new",
+        description:
+          "You can refund part of a stay or other income line, not only the full amount — partial refunds show clearly in the Income table and stay out of your reports.",
+      },
+      {
+        category: "new",
+        description:
+          "Filter the Units table by rental type, occupancy, move-in dates, and search — same compact toolbar style as Income and Expenses.",
+      },
+      {
+        category: "new",
+        description:
+          "Search the Income table by guest, unit, channel, and other fields; filter by refund status and use quick date presets such as this month or year to date.",
+      },
+      {
+        category: "improved",
+        description:
+          "Income, Expenses, and Properties use a tighter filter bar so you can scan and clear filters faster.",
+      },
+      {
+        category: "improved",
+        description:
+          "Income, Expenses, and Units tables keep showing your rows while filters update instead of flashing empty.",
+      },
+      {
+        category: "improved",
+        description:
+          "Export actions on Income, Expenses, and Leases live in the More menu; the Exports tab supports sorting, search, and date filters.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Search boxes accept spaces, stop flickering while the page catches up, and unit filter menus no longer list “All” twice.",
+      },
+    ],
+    id: "2026.12.0",
+    publishedAt: "2026-07-14",
+    summary:
+      "Property exports, tenant email campaigns, partial refunds, and a smoother notifications inbox.",
+    version: "2026.12.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "Star properties on the Properties list to mark favorites — they stay at the top so you can jump back to them quickly.",
       },
       {

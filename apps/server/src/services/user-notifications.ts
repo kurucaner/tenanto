@@ -10,6 +10,7 @@ import { notificationStreamHub } from "@/services/notification-stream-hub";
 
 export interface NotifyUserInput {
   body: string;
+  contextResourceId?: string;
   resourceId?: string;
   resourceType?: UserNotificationResourceType;
   title: string;

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 
 import { TenantEmailActiveSendBanner } from "@/components/communications/tenant-email-active-send-banner";
 import { TenantEmailCampaignDetailSheet } from "@/components/communications/tenant-email-campaign-detail-sheet";
@@ -11,6 +11,7 @@ import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { useTenantEmailCampaignsInfiniteList } from "@/hooks/use-tenant-email-campaigns-infinite-list";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { isTenantEmailCampaignInProgress } from "@/lib/tenant-email-campaign-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { type TTenantEmailCampaignsListFilters } from "@/packages/shared";
@@ -26,6 +27,8 @@ function buildCampaignListFilters(q: string): TTenantEmailCampaignsListFilters {
 
 export const PropertyCommunicationsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const campaignIdParam = searchParams.get("campaignId");
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [detailCampaignId, setDetailCampaignId] = useState<string | null>(null);
@@ -40,8 +43,23 @@ export const PropertyCommunicationsPage = memo(() => {
 
   const listFilters = useMemo(() => buildCampaignListFilters(q), [q]);
 
-  const { campaigns, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
-    useTenantEmailCampaignsInfiniteList(propertyId, listFilters);
+  const {
+    campaigns,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    meta,
+  } = useTenantEmailCampaignsInfiniteList(propertyId, listFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: campaigns.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -61,6 +79,26 @@ export const PropertyCommunicationsPage = memo(() => {
       setBannerDismissed(false);
     }
   }, [activeCampaignId, inProgressCampaignId]);
+
+  useEffect(() => {
+    if (campaignIdParam == null || campaignIdParam === "") {
+      return;
+    }
+
+    setDetailCampaignId(campaignIdParam);
+    setDetailOpen(true);
+    setSearchParams(
+      (current) => {
+        if (!current.has("campaignId")) {
+          return current;
+        }
+        const nextParams = new URLSearchParams(current);
+        nextParams.delete("campaignId");
+        return nextParams;
+      },
+      { replace: true }
+    );
+  }, [campaignIdParam, setSearchParams]);
 
   const handleQueued = useCallback((campaignId: string) => {
     setActiveCampaignId(campaignId);
@@ -121,7 +159,8 @@ export const PropertyCommunicationsPage = memo(() => {
           hasNextPage={Boolean(hasNextPage)}
           hasSearchQuery={qTrim.length > 0}
           isFetchingNextPage={isFetchingNextPage}
-          isPending={isPending}
+          isPending={isTableInitialPending}
+          isRefreshing={isFilterRefetching}
           onSelectCampaign={handleSelectCampaign}
           scrollSentinelRef={scrollSentinelRef}
           toolbar={toolbar}

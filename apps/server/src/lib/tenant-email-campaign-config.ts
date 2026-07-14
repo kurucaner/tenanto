@@ -1,5 +1,3 @@
-export const TENANT_EMAIL_CAMPAIGNS_ENABLED = process.env.TENANT_EMAIL_CAMPAIGNS_ENABLED === "true";
-
 export const TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS = Number.parseInt(
   process.env.TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS ?? "500",
   10

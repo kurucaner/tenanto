@@ -1,3 +1,4 @@
+import { getUserNotificationsRetentionCutoff } from "@/lib/user-notifications-retention";
 import type {
   IUserNotification,
   UserNotificationResourceType,
@@ -10,6 +11,7 @@ import { pool } from "./pool";
 
 export interface CreateUserNotificationInput {
   body: string;
+  contextResourceId?: string;
   resourceId?: string;
   resourceType?: UserNotificationResourceType;
   title: string;
@@ -21,6 +23,7 @@ function mapUserNotificationRow(row: Record<string, unknown>): IUserNotification
   const resourceType = row.resource_type;
   return {
     body: row.body as string,
+    contextResourceId: (row.context_resource_id as string) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     id: row.id as string,
     readAt: row.read_at != null ? (row.read_at as Date).toISOString() : null,
@@ -34,17 +37,22 @@ function mapUserNotificationRow(row: Record<string, unknown>): IUserNotification
 
 export const userNotificationsDb = {
   async countUnread(userId: string): Promise<number> {
+    const retentionCutoff = getUserNotificationsRetentionCutoff();
     const result = await pool.query(
-      `SELECT COUNT(*)::int AS c FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`,
-      [userId]
+      `SELECT COUNT(*)::int AS c
+       FROM user_notifications
+       WHERE user_id = $1
+         AND read_at IS NULL
+         AND created_at >= $2::timestamptz`,
+      [userId, retentionCutoff]
     );
     return Number(result.rows[0]?.c ?? 0);
   },
 
   async create(input: CreateUserNotificationInput): Promise<IUserNotification> {
     const result = await pool.query(
-      `INSERT INTO user_notifications (user_id, type, title, body, resource_type, resource_id)
-       VALUES ($1, $2::user_notification_type, $3, $4, $5, $6)
+      `INSERT INTO user_notifications (user_id, type, title, body, resource_type, resource_id, context_resource_id)
+       VALUES ($1, $2::user_notification_type, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         input.userId,
@@ -53,6 +61,7 @@ export const userNotificationsDb = {
         input.body,
         input.resourceType ?? null,
         input.resourceId ?? null,
+        input.contextResourceId ?? null,
       ]
     );
     return mapUserNotificationRow(result.rows[0] as Record<string, unknown>);
@@ -63,9 +72,10 @@ export const userNotificationsDb = {
     limit: number;
     userId: string;
   }): Promise<{ items: IUserNotification[]; nextCursor: string | null }> {
-    const fragments: string[] = [`user_id = $1`];
-    const values: unknown[] = [params.userId];
-    let p = 2;
+    const retentionCutoff = getUserNotificationsRetentionCutoff();
+    const fragments: string[] = [`user_id = $1`, `created_at >= $2::timestamptz`];
+    const values: unknown[] = [params.userId, retentionCutoff];
+    let p = 3;
 
     if (params.cursor != null && params.cursor !== "") {
       const decoded = decodeKeysetCursor(params.cursor);

@@ -6,12 +6,8 @@ import {
   INCOME_ENTRIES_SLOW_QUERY_MS,
   INCOME_ENTRIES_SORT_BY_VALUES,
   INCOME_ENTRIES_SORT_DIR_VALUES,
-  IncomeEntryKind,
   type IPropertyIncomeEntriesListQuery,
   ReservationStatus,
-  type TPropertyIncomeEntriesListSortBy,
-  type TPropertyIncomeEntriesListSortDir,
-  type TReservationStatus,
   UserType,
 } from "@/packages/shared";
 import { decodeIncomeEntryKeysetCursor } from "@/pagination/keyset-cursor";
@@ -22,48 +18,18 @@ import {
   parseUuidParam,
 } from "./admin-query-utils";
 import {
+  parseIncomeEntriesSortBy,
+  parseIncomeEntriesSortDir,
+  parseIncomeReservationStatus,
+  parseIncomeTypeFilter,
+} from "./parse-income-entries-filter-fields";
+import {
   applyOptionalQueryDateFilter,
   applyOptionalQueryRefundStatusFilter,
   applyOptionalQuerySearchFilter,
   applyOptionalQueryUuidFilter,
 } from "./parse-list-query-filters";
 import { assertPropertyMemberAccess } from "./property-route-access";
-
-const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
-
-function parseReservationStatus(raw: unknown): TReservationStatus | null {
-  if (typeof raw !== "string") return null;
-  return RESERVATION_STATUSES.has(raw as TReservationStatus) ? (raw as TReservationStatus) : null;
-}
-
-function parseIncomeType(raw: unknown): string | null | undefined {
-  if (raw === undefined || raw === "") return undefined;
-  if (typeof raw !== "string") return null;
-  const trimmed = raw.trim();
-  if (trimmed === "") return undefined;
-  if (trimmed === IncomeEntryKind.STAY) return IncomeEntryKind.STAY;
-  return parseOptionalUuid(trimmed) ?? null;
-}
-
-function parseIncomeEntriesSortBy(
-  raw: unknown
-): TPropertyIncomeEntriesListSortBy | null | undefined {
-  if (raw === undefined || raw === "") return undefined;
-  if (typeof raw !== "string") return null;
-  return (INCOME_ENTRIES_SORT_BY_VALUES as readonly string[]).includes(raw)
-    ? (raw as TPropertyIncomeEntriesListSortBy)
-    : null;
-}
-
-function parseIncomeEntriesSortDir(
-  raw: unknown
-): TPropertyIncomeEntriesListSortDir | null | undefined {
-  if (raw === undefined || raw === "") return undefined;
-  if (typeof raw !== "string") return null;
-  return (INCOME_ENTRIES_SORT_DIR_VALUES as readonly string[]).includes(raw)
-    ? (raw as TPropertyIncomeEntriesListSortDir)
-    : null;
-}
 
 function parseIncomeEntriesListQuery(query: Record<string, unknown>):
   | {
@@ -99,10 +65,10 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
   }
 
   if (query["status"] !== undefined && query["status"] !== "") {
-    const status = parseReservationStatus(query["status"]);
+    const status = parseIncomeReservationStatus(query["status"]);
     if (status === null) {
       return {
-        error: `status must be one of: ${[...RESERVATION_STATUSES].join(", ")}`,
+        error: `status must be one of: ${Object.values(ReservationStatus).join(", ")}`,
         ok: false,
       };
     }
@@ -110,7 +76,7 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
   }
 
   if (query["incomeType"] !== undefined && query["incomeType"] !== "") {
-    const incomeType = parseIncomeType(query["incomeType"]);
+    const incomeType = parseIncomeTypeFilter(query["incomeType"]);
     if (incomeType === null) {
       return {
         error: "incomeType must be 'stay' or a valid income line type id",

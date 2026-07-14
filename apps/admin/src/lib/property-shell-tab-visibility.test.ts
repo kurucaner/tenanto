@@ -22,9 +22,6 @@ describe("getVisiblePropertyShellTabs", () => {
   });
 
   test("shows communications tab for owners when feature flag enabled", () => {
-    const previous = import.meta.env.VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED;
-    import.meta.env.VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED = "true";
-
     const permissions = derivePropertyPermissions(undefined, {
       appleId: null,
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -52,7 +49,6 @@ describe("getVisiblePropertyShellTabs", () => {
       canSendTenantNotifications: true,
     });
 
-    import.meta.env.VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED = previous;
     expect(tabs.some((tab) => tab.path === "communications")).toBe(true);
   });
 });

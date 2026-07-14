@@ -56,7 +56,7 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
   test("returns a page and nextCursor when more rows exist", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", { limit: 2 });
+    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
 
     expect(firstPage.units).toHaveLength(2);
     expect(firstPage.units[0]?.unitNumber).toBe("101");
@@ -75,14 +75,18 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
   test("passes cursor predicate on subsequent pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", { limit: 2 });
+    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
-    await propertyUnitsDb.listPaginatedByProperty("prop-1", {
-      cursor: firstPage.nextCursor!,
-      limit: 2,
-    });
+    await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        cursor: firstPage.nextCursor!,
+        limit: 2,
+      }
+    );
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
     expect(sql).toContain("(rental_type, unit_number, id) >");
@@ -92,14 +96,18 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
   test("omits meta on cursor pages", async () => {
     mockQuery.mockClear();
 
-    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", { limit: 2 });
+    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, { limit: 2 });
     expect(firstPage.meta).toBeDefined();
 
     mockQuery.mockClear();
-    const secondPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {
-      cursor: firstPage.nextCursor!,
-      limit: 2,
-    });
+    const secondPage = await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        cursor: firstPage.nextCursor!,
+        limit: 2,
+      }
+    );
 
     expect(secondPage.meta).toBeUndefined();
     expect(mockQuery.mock.calls).toHaveLength(1);
@@ -108,7 +116,7 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
   test("uses desc order and less-than cursor predicate when sortDir is desc", async () => {
     mockQuery.mockClear();
 
-    await propertyUnitsDb.listPaginatedByProperty("prop-1", { limit: 2, sortDir: "desc" });
+    await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, { limit: 2, sortDir: "desc" });
 
     const sql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
@@ -116,20 +124,106 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
     expect(sql).toContain("ORDER BY rental_type DESC, unit_number DESC, id DESC");
 
     mockQuery.mockClear();
-    const firstPage = await propertyUnitsDb.listPaginatedByProperty("prop-1", {
-      limit: 2,
-      sortDir: "desc",
-    });
+    const firstPage = await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        limit: 2,
+        sortDir: "desc",
+      }
+    );
     expect(firstPage.nextCursor).toBeString();
 
     mockQuery.mockClear();
-    await propertyUnitsDb.listPaginatedByProperty("prop-1", {
-      cursor: firstPage.nextCursor!,
-      limit: 2,
-      sortDir: "desc",
-    });
+    await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      {},
+      {
+        cursor: firstPage.nextCursor!,
+        limit: 2,
+        sortDir: "desc",
+      }
+    );
 
     const cursorSql = mockQuery.mock.calls[0]?.[0] as string;
     expect(cursorSql).toContain("(rental_type, unit_number, id) <");
+  });
+
+  test("applies rental type filter in list and count queries", async () => {
+    mockQuery.mockClear();
+
+    await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      { rentalType: "long_term" },
+      { limit: 2 }
+    );
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+
+    expect(listSql).toContain("rental_type = $");
+    expect(countSql).toContain("rental_type = $");
+  });
+
+  test("applies occupancy vacant filter in list and count queries", async () => {
+    mockQuery.mockClear();
+
+    await propertyUnitsDb.listPaginatedByProperty("prop-1", { occupancy: "vacant" }, { limit: 2 });
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+
+    expect(listSql).toContain("NOT EXISTS");
+    expect(listSql).toContain("property_long_stays");
+    expect(countSql).toContain("NOT EXISTS");
+    expect(countSql).toContain("property_long_stays");
+  });
+
+  test("applies search filter with tenant lookup in list and count queries", async () => {
+    mockQuery.mockClear();
+
+    await propertyUnitsDb.listPaginatedByProperty("prop-1", { q: "Tenant" }, { limit: 2 });
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+
+    expect(listSql).toContain("unit_number ILIKE");
+    expect(listSql).toContain("pls.guest_name ILIKE");
+    expect(countSql).toContain("unit_number ILIKE");
+    expect(countSql).toContain("pls.guest_name ILIKE");
+  });
+
+  test("applies added date filters in list and count queries", async () => {
+    mockQuery.mockClear();
+
+    await propertyUnitsDb.listPaginatedByProperty(
+      "prop-1",
+      { from: "2026-07-01", to: "2026-07-31" },
+      { limit: 2 }
+    );
+
+    const listSql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    const countSql = mockQuery.mock.calls.find(([query]) =>
+      (query as string).includes("COUNT(*)")
+    )?.[0] as string;
+
+    expect(listSql).toContain("DATE(created_at) >=");
+    expect(listSql).toContain("DATE(created_at) <=");
+    expect(countSql).toContain("DATE(created_at) >=");
+    expect(countSql).toContain("DATE(created_at) <=");
   });
 });

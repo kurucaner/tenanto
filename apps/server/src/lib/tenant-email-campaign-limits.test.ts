@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {
+  didTenantEmailCampaignTransitionToTerminal,
+  formatTenantEmailCampaignRateLimitWindow,
+  formatTenantEmailCampaignRetryAfter,
+  getTenantEmailCampaignCreateRateLimitErrorMessage,
   isTenantEmailCampaignCreateRateLimitExceeded,
   resolveTenantEmailCampaignMaxRecipients,
   shouldAlertTenantEmailCampaignFailureRate,
@@ -42,6 +46,56 @@ describe("isTenantEmailCampaignCreateRateLimitExceeded", () => {
   test("allows requests up to the limit", () => {
     expect(isTenantEmailCampaignCreateRateLimitExceeded(5, 5)).toBe(false);
     expect(isTenantEmailCampaignCreateRateLimitExceeded(6, 5)).toBe(true);
+  });
+});
+
+describe("getTenantEmailCampaignCreateRateLimitErrorMessage", () => {
+  test("includes the configured limit, window, and retry time", () => {
+    expect(
+      getTenantEmailCampaignCreateRateLimitErrorMessage({
+        limit: 5,
+        retryAfterSec: 847,
+        windowMs: 900_000,
+      })
+    ).toBe(
+      "You can send at most 5 tenant email campaigns per property every 15 minutes. Try again in 15 minutes."
+    );
+  });
+
+  test("uses singular campaign wording for a limit of one", () => {
+    expect(
+      getTenantEmailCampaignCreateRateLimitErrorMessage({
+        limit: 1,
+        retryAfterSec: 45,
+        windowMs: 60_000,
+      })
+    ).toBe(
+      "You can send at most 1 tenant email campaign per property every 1 minute. Try again in 45 seconds."
+    );
+  });
+});
+
+describe("didTenantEmailCampaignTransitionToTerminal", () => {
+  test("detects the first transition into a terminal status", () => {
+    expect(didTenantEmailCampaignTransitionToTerminal("sending", "completed")).toBe(true);
+    expect(didTenantEmailCampaignTransitionToTerminal("completed", "completed")).toBe(false);
+    expect(didTenantEmailCampaignTransitionToTerminal("sending", "sending")).toBe(false);
+  });
+});
+
+describe("formatTenantEmailCampaignRateLimitWindow", () => {
+  test("formats common windows", () => {
+    expect(formatTenantEmailCampaignRateLimitWindow(60_000)).toBe("1 minute");
+    expect(formatTenantEmailCampaignRateLimitWindow(900_000)).toBe("15 minutes");
+    expect(formatTenantEmailCampaignRateLimitWindow(3_600_000)).toBe("1 hour");
+  });
+});
+
+describe("formatTenantEmailCampaignRetryAfter", () => {
+  test("formats retry delays", () => {
+    expect(formatTenantEmailCampaignRetryAfter(30)).toBe("30 seconds");
+    expect(formatTenantEmailCampaignRetryAfter(130)).toBe("3 minutes");
+    expect(formatTenantEmailCampaignRetryAfter(3600)).toBe("1 hour");
   });
 });
 

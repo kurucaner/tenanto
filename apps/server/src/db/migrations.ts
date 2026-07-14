@@ -2375,4 +2375,105 @@ export const migrations: IMigration[] = [
     },
     version: 53,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS export_jobs;`);
+      await client.query(`DROP TYPE IF EXISTS export_resource_type;`);
+      await client.query(`DROP TYPE IF EXISTS export_format;`);
+      await client.query(`DROP TYPE IF EXISTS export_job_status;`);
+    },
+    name: "export_jobs",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TYPE export_job_status AS ENUM (
+          'pending',
+          'processing',
+          'completed',
+          'failed',
+          'expired'
+        );
+      `);
+      await client.query(`
+        CREATE TYPE export_format AS ENUM ('csv', 'xlsx');
+      `);
+      await client.query(`
+        CREATE TYPE export_resource_type AS ENUM ('expenses');
+      `);
+      await client.query(`
+        CREATE TABLE export_jobs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          created_by UUID NOT NULL REFERENCES users(id),
+          resource_type export_resource_type NOT NULL,
+          format export_format NOT NULL,
+          filters JSONB NOT NULL DEFAULT '{}',
+          status export_job_status NOT NULL DEFAULT 'pending',
+          row_count INT,
+          file_name VARCHAR(500),
+          s3_key VARCHAR(1024),
+          error_message TEXT,
+          expires_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          completed_at TIMESTAMPTZ
+        );
+      `);
+      await client.query(`
+        CREATE INDEX idx_export_jobs_property_created
+          ON export_jobs (property_id, created_at DESC);
+      `);
+      await client.query(`
+        CREATE INDEX idx_export_jobs_created_by_active
+          ON export_jobs (created_by, property_id, resource_type, status);
+      `);
+      await client.query(`
+        CREATE TRIGGER update_export_jobs_updated_at
+          BEFORE UPDATE ON export_jobs
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+    },
+    version: 54,
+  },
+  {
+    down: async () => {
+      // PostgreSQL does not support removing enum values; no-op.
+    },
+    name: "property_export_phase5_resource_types_and_export_ready",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE export_resource_type ADD VALUE IF NOT EXISTS 'income';
+      `);
+      await client.query(`
+        ALTER TYPE export_resource_type ADD VALUE IF NOT EXISTS 'leases';
+      `);
+      await client.query(`
+        ALTER TYPE user_notification_type ADD VALUE IF NOT EXISTS 'export_ready';
+      `);
+    },
+    version: 55,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS user_notifications_campaign_completion_dedup;
+      `);
+      await client.query(`
+        ALTER TABLE user_notifications DROP COLUMN IF EXISTS context_resource_id;
+      `);
+    },
+    name: "tenant_email_campaign_completed_notification",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE user_notification_type ADD VALUE IF NOT EXISTS 'tenant_email_campaign_completed';
+      `);
+      await client.query(`
+        ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS context_resource_id UUID;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS user_notifications_campaign_completion_dedup
+          ON user_notifications (type, context_resource_id);
+      `);
+    },
+    version: 56,
+  },
 ];

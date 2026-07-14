@@ -1,15 +1,25 @@
 import { type QueryClient } from "@tanstack/react-query";
 
-import { supportApi, tenantEmailCampaignsApi } from "@/lib/api-client";
+import { propertyExportsApi, supportApi, tenantEmailCampaignsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { showPropertyExportCompletedToast } from "@/lib/show-property-export-queued-toast";
 import { notifySupportAttachmentStatus } from "@/lib/support-attachment-status-registry";
 import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
+import { isTenantEmailCampaignTerminal } from "@/lib/tenant-email-campaign-utils";
 import {
+  ExportFormat,
+  ExportJobStatus,
+  ExportResourceType,
+  type INotificationStreamExportJobUpdatedData,
   type INotificationStreamSupportAttachmentUpdatedData,
   type INotificationStreamTenantEmailCampaignUpdatedData,
+  type IPropertyExportDetailResponse,
   type ITenantEmailCampaignDetailResponse,
   type IUserNotification,
   TenantEmailCampaignStatus,
+  type TExportFormat,
+  type TExportJobStatus,
+  type TExportResourceType,
   type TSupportStagedUploadStatus,
   type TTenantEmailCampaignStatus,
   UserType,
@@ -158,14 +168,126 @@ export function handleTenantEmailCampaignUpdated(
     queryKey: queryKeys.propertyTenantEmailCampaigns(data.propertyId),
   });
 
+  if (isTenantEmailCampaignTerminal(data.status)) {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
+    });
+  }
+
   const communicationsPath = `/properties/${data.propertyId}/communications`;
-  if (pathname !== communicationsPath || document.visibilityState !== "visible") {
+  const isOnCommunicationsTab = pathname === communicationsPath;
+
+  const shouldRefetchDetailOnCommunicationsTab =
+    isOnCommunicationsTab &&
+    document.visibilityState === "visible" &&
+    !isTenantEmailCampaignTerminal(data.status);
+
+  if (shouldRefetchDetailOnCommunicationsTab) {
+    queryClient.fetchQuery({
+      queryFn: () => tenantEmailCampaignsApi.get(data.propertyId, data.campaignId),
+      queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
+      staleTime: 0,
+    });
+  }
+}
+
+function isExportJobStatus(value: unknown): value is TExportJobStatus {
+  return (
+    value === ExportJobStatus.COMPLETED ||
+    value === ExportJobStatus.EXPIRED ||
+    value === ExportJobStatus.FAILED ||
+    value === ExportJobStatus.PENDING ||
+    value === ExportJobStatus.PROCESSING
+  );
+}
+
+function isExportFormat(value: unknown): value is TExportFormat {
+  return value === ExportFormat.CSV || value === ExportFormat.XLSX;
+}
+
+function isExportResourceType(value: unknown): value is TExportResourceType {
+  return (
+    value === ExportResourceType.EXPENSES ||
+    value === ExportResourceType.INCOME ||
+    value === ExportResourceType.LEASES
+  );
+}
+
+export function parseExportJobUpdatedData(
+  data: Record<string, unknown>
+): INotificationStreamExportJobUpdatedData | null {
+  const jobId = data.jobId;
+  const propertyId = data.propertyId;
+  const status = data.status;
+  const format = data.format;
+  const resourceType = data.resourceType;
+  const rowCount = data.rowCount;
+
+  if (
+    typeof jobId !== "string" ||
+    typeof propertyId !== "string" ||
+    !isExportJobStatus(status) ||
+    !isExportFormat(format) ||
+    !isExportResourceType(resourceType)
+  ) {
+    return null;
+  }
+
+  return {
+    format,
+    jobId,
+    propertyId,
+    resourceType,
+    status,
+    ...(typeof rowCount === "number" ? { rowCount } : {}),
+  };
+}
+
+function patchExportJobDetail(
+  existing: IPropertyExportDetailResponse,
+  update: INotificationStreamExportJobUpdatedData
+): IPropertyExportDetailResponse {
+  return {
+    job: {
+      ...existing.job,
+      rowCount: update.rowCount ?? existing.job.rowCount,
+      status: update.status,
+    },
+  };
+}
+
+export function handleExportJobUpdated(
+  queryClient: QueryClient,
+  data: INotificationStreamExportJobUpdatedData,
+  pathname: string
+): void {
+  queryClient.setQueryData<IPropertyExportDetailResponse>(
+    queryKeys.propertyExport(data.propertyId, data.jobId),
+    (existing) => (existing == null ? existing : patchExportJobDetail(existing, data))
+  );
+
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.propertyExportsPrefix(data.propertyId),
+  });
+
+  const exportsPath = `/properties/${data.propertyId}/exports`;
+  const isOnExportsTab = pathname === exportsPath;
+
+  if (
+    data.status === ExportJobStatus.COMPLETED &&
+    !isOnExportsTab &&
+    document.visibilityState === "visible"
+  ) {
+    showPropertyExportCompletedToast(data.propertyId, data.jobId);
+  }
+
+  if (!isOnExportsTab || document.visibilityState !== "visible") {
     return;
   }
 
   queryClient.fetchQuery({
-    queryFn: () => tenantEmailCampaignsApi.get(data.propertyId, data.campaignId),
-    queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
+    queryFn: () => propertyExportsApi.get(data.propertyId, data.jobId),
+    queryKey: queryKeys.propertyExport(data.propertyId, data.jobId),
     staleTime: 0,
   });
 }

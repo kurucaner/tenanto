@@ -1,3 +1,4 @@
+import { didTenantEmailCampaignTransitionToTerminal } from "@/lib/tenant-email-campaign-limits";
 import type {
   ITenantEmailCampaign,
   ITenantEmailCampaignListItem,
@@ -450,33 +451,51 @@ export const propertyTenantEmailCampaignsDb = {
     );
   },
 
-  async refreshCampaignCompletion(campaignId: string): Promise<void> {
-    await pool.query(
-      `UPDATE property_tenant_email_campaigns c
-       SET
-         sent_count = counts.sent_count,
-         failed_count = counts.failed_count,
-         skipped_count = counts.skipped_count,
-         status = CASE
-           WHEN counts.pending_count > 0 THEN c.status
-           WHEN counts.failed_count > 0 THEN 'completed_with_errors'::property_tenant_email_campaign_status
-           ELSE 'completed'::property_tenant_email_campaign_status
-         END,
-         completed_at = CASE
-           WHEN counts.pending_count > 0 THEN c.completed_at
-           ELSE COALESCE(c.completed_at, NOW())
-         END
-       FROM (
-         SELECT
-           COUNT(*) FILTER (WHERE status = 'sent') AS sent_count,
-           COUNT(*) FILTER (WHERE status = 'failed') AS failed_count,
-           COUNT(*) FILTER (WHERE status = 'skipped') AS skipped_count,
-           COUNT(*) FILTER (WHERE status = 'queued') AS pending_count
-         FROM property_tenant_email_recipients
-         WHERE campaign_id = $1
-       ) counts
-       WHERE c.id = $1`,
+  async refreshCampaignCompletion(campaignId: string): Promise<boolean> {
+    const result = await pool.query<{
+      previous_status: string;
+      status: string;
+    }>(
+      `WITH previous AS (
+         SELECT status FROM property_tenant_email_campaigns WHERE id = $1
+       ),
+       updated AS (
+         UPDATE property_tenant_email_campaigns c
+         SET
+           sent_count = counts.sent_count,
+           failed_count = counts.failed_count,
+           skipped_count = counts.skipped_count,
+           status = CASE
+             WHEN counts.pending_count > 0 THEN c.status
+             WHEN counts.failed_count > 0 THEN 'completed_with_errors'::property_tenant_email_campaign_status
+             ELSE 'completed'::property_tenant_email_campaign_status
+           END,
+           completed_at = CASE
+             WHEN counts.pending_count > 0 THEN c.completed_at
+             ELSE COALESCE(c.completed_at, NOW())
+           END
+         FROM (
+           SELECT
+             COUNT(*) FILTER (WHERE status = 'sent') AS sent_count,
+             COUNT(*) FILTER (WHERE status = 'failed') AS failed_count,
+             COUNT(*) FILTER (WHERE status = 'skipped') AS skipped_count,
+             COUNT(*) FILTER (WHERE status = 'queued') AS pending_count
+           FROM property_tenant_email_recipients
+           WHERE campaign_id = $1
+         ) counts,
+         previous
+         WHERE c.id = $1
+         RETURNING c.status, previous.status AS previous_status
+       )
+       SELECT status, previous_status FROM updated`,
       [campaignId]
     );
+
+    const row = result.rows[0];
+    if (row == null) {
+      return false;
+    }
+
+    return didTenantEmailCampaignTransitionToTerminal(row.previous_status, row.status);
   },
 };

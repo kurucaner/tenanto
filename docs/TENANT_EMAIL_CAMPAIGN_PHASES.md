@@ -40,8 +40,7 @@ Roadmap for async mass email notifications from property owners and platform adm
 2. **BullMQ executes, API accepts** — HTTP handler creates rows and enqueues; worker sends via SES.
 3. **Worker before UI** — prove the send pipeline via API/script before exposing the Communications tab.
 4. **SSE for UX, GET for fallback** — push progress on the existing notification stream; poll campaign detail on reconnect.
-5. **Feature flag until production-ready** — `TENANT_EMAIL_CAMPAIGNS_ENABLED` gates API, worker, and UI.
-6. **No client-side send loop** — never await all SES calls in the request handler.
+5. **No client-side send loop** — never await all SES calls in the request handler.
 
 ---
 
@@ -74,42 +73,40 @@ Not managers or accountants in v1. Mirror on server route access and hide the Co
 
 ### Feature flag
 
-`TENANT_EMAIL_CAMPAIGNS_ENABLED` (env) — gate API routes, worker startup, and UI until ready.
-
 ---
 
 ## Data model (sketch)
 
 ### `property_tenant_email_campaigns`
 
-| Column | Notes |
-| --- | --- |
-| `id` | UUID |
-| `property_id` | FK |
-| `created_by` | User who sent |
-| `subject` | |
-| `html_body` | Sanitized snapshot (immutable after submit) |
-| `text_body` | Plain-text fallback |
-| `status` | `queued` \| `sending` \| `completed` \| `completed_with_errors` \| `failed` |
-| `recipient_count` | Total intended |
-| `sent_count` / `failed_count` / `skipped_count` | Aggregates |
-| `idempotency_key` | Unique per `(property_id, idempotency_key)` |
-| `created_at` / `updated_at` / `completed_at` | Audit |
+| Column                                          | Notes                                                                       |
+| ----------------------------------------------- | --------------------------------------------------------------------------- |
+| `id`                                            | UUID                                                                        |
+| `property_id`                                   | FK                                                                          |
+| `created_by`                                    | User who sent                                                               |
+| `subject`                                       |                                                                             |
+| `html_body`                                     | Sanitized snapshot (immutable after submit)                                 |
+| `text_body`                                     | Plain-text fallback                                                         |
+| `status`                                        | `queued` \| `sending` \| `completed` \| `completed_with_errors` \| `failed` |
+| `recipient_count`                               | Total intended                                                              |
+| `sent_count` / `failed_count` / `skipped_count` | Aggregates                                                                  |
+| `idempotency_key`                               | Unique per `(property_id, idempotency_key)`                                 |
+| `created_at` / `updated_at` / `completed_at`    | Audit                                                                       |
 
 ### `property_tenant_email_recipients`
 
-| Column | Notes |
-| --- | --- |
-| `id` | UUID |
-| `campaign_id` | FK |
-| `lease_id` | FK |
-| `tenant_role` | `primary` \| `secondary` |
-| `tenant_name` | Snapshot |
-| `email` | Normalized |
-| `status` | `queued` \| `sent` \| `failed` \| `skipped` |
-| `attempts` | Retry count |
-| `last_error` | Failure message |
-| `sent_at` | |
+| Column        | Notes                                       |
+| ------------- | ------------------------------------------- |
+| `id`          | UUID                                        |
+| `campaign_id` | FK                                          |
+| `lease_id`    | FK                                          |
+| `tenant_role` | `primary` \| `secondary`                    |
+| `tenant_name` | Snapshot                                    |
+| `email`       | Normalized                                  |
+| `status`      | `queued` \| `sent` \| `failed` \| `skipped` |
+| `attempts`    | Retry count                                 |
+| `last_error`  | Failure message                             |
+| `sent_at`     |                                             |
 
 **Recipient resolution:** Active leases for property → primary `tenantEmail` + secondary emails from `secondaryTenants` → dedupe by normalized email → skip blank/invalid with `skipped` + reason.
 
@@ -117,26 +114,26 @@ Not managers or accountants in v1. Mirror on server route access and hide the Co
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `TTenantEmailCampaignStatus` | Campaign lifecycle enum |
-| `TTenantEmailRecipientStatus` | Per-recipient status |
-| `ICreateTenantEmailCampaignBody` | `subject`, `htmlBody` (+ optional audience filters later) |
-| `ITenantEmailCampaign` | Campaign summary for list/detail |
-| `ITenantEmailCampaignCreateResponse` | `{ campaignId, status, recipientCount, skippedCount }` — **202** |
-| `ITenantEmailCampaignPreviewResponse` | Recipient/skipped counts before send |
-| `INotificationStreamTenantEmailCampaignUpdatedData` | SSE payload |
+| Type                                                | Purpose                                                          |
+| --------------------------------------------------- | ---------------------------------------------------------------- |
+| `TTenantEmailCampaignStatus`                        | Campaign lifecycle enum                                          |
+| `TTenantEmailRecipientStatus`                       | Per-recipient status                                             |
+| `ICreateTenantEmailCampaignBody`                    | `subject`, `htmlBody` (+ optional audience filters later)        |
+| `ITenantEmailCampaign`                              | Campaign summary for list/detail                                 |
+| `ITenantEmailCampaignCreateResponse`                | `{ campaignId, status, recipientCount, skippedCount }` — **202** |
+| `ITenantEmailCampaignPreviewResponse`               | Recipient/skipped counts before send                             |
+| `INotificationStreamTenantEmailCampaignUpdatedData` | SSE payload                                                      |
 
 ---
 
 ## API (sketch)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `POST` | `/admin/properties/:propertyId/tenant-email-campaigns` | 202; requires `Idempotency-Key` header |
-| `GET` | `/admin/properties/:propertyId/tenant-email-campaigns` | History list |
-| `GET` | `/admin/properties/:propertyId/tenant-email-campaigns/:id` | Detail + counts (polling fallback) |
-| `GET` | `/admin/properties/:propertyId/tenant-email-campaigns/preview` | Optional: recipient count before send |
+| Method | Path                                                           | Notes                                  |
+| ------ | -------------------------------------------------------------- | -------------------------------------- |
+| `POST` | `/admin/properties/:propertyId/tenant-email-campaigns`         | 202; requires `Idempotency-Key` header |
+| `GET`  | `/admin/properties/:propertyId/tenant-email-campaigns`         | History list                           |
+| `GET`  | `/admin/properties/:propertyId/tenant-email-campaigns/:id`     | Detail + counts (polling fallback)     |
+| `GET`  | `/admin/properties/:propertyId/tenant-email-campaigns/preview` | Optional: recipient count before send  |
 
 ---
 
@@ -186,7 +183,6 @@ Add tab to `apps/admin/src/config/property-shell-tabs.ts`. Gate on `canSendTenan
 - [ ] Shared types in `packages/shared`
 - [ ] Recipient resolver (pure function + colocated tests)
 - [ ] HTML sanitizer + plain-text fallback generator (server-side)
-- [ ] Feature flag `TENANT_EMAIL_CAMPAIGNS_ENABLED`
 
 **Exit criteria:** Migrations run; resolver tests pass; Redis connects; no UI, no sends.
 
@@ -242,17 +238,17 @@ Add tab to `apps/admin/src/config/property-shell-tabs.ts`. Gate on `canSendTenan
 
 **Goal:** Production-safe.
 
-| Concern | Action |
-| --- | --- |
-| Rate limits | BullMQ limiter + max recipients per campaign (config) |
-| Idempotency | `Idempotency-Key` header + DB unique on `(property_id, idempotency_key)` |
-| Dedupe | One send per normalized email per campaign |
-| Skipped tenants | No email → `skipped`, visible in preview + final summary |
-| Dead letters | Failed recipients listed in campaign detail drawer |
-| HTML safety | Server-side sanitize (e.g. DOMPurify); max body size |
-| Compliance | Transactional vs marketing classification; reuse unsubscribe infra in `ses.ts` |
-| API abuse | Rate limit POST per user/property |
-| Observability | Structured logs per campaign/job; alert on high failure rate |
+| Concern         | Action                                                                         |
+| --------------- | ------------------------------------------------------------------------------ |
+| Rate limits     | BullMQ limiter + max recipients per campaign (config)                          |
+| Idempotency     | `Idempotency-Key` header + DB unique on `(property_id, idempotency_key)`       |
+| Dedupe          | One send per normalized email per campaign                                     |
+| Skipped tenants | No email → `skipped`, visible in preview + final summary                       |
+| Dead letters    | Failed recipients listed in campaign detail drawer                             |
+| HTML safety     | Server-side sanitize (e.g. DOMPurify); max body size                           |
+| Compliance      | Transactional vs marketing classification; reuse unsubscribe infra in `ses.ts` |
+| API abuse       | Rate limit POST per user/property                                              |
+| Observability   | Structured logs per campaign/job; alert on high failure rate                   |
 
 **Exit criteria:** Load test ~500 recipients; worker stable; failure modes documented.
 

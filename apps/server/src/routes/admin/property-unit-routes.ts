@@ -5,17 +5,13 @@ import {
   HttpStatus,
   type ICreatePropertyUnitBody,
   type IUpdatePropertyUnitBody,
-  type TPropertyUnitsListSortBy,
-  type TPropertyUnitsListSortDir,
   type TUnitRentalType,
   UnitRentalType,
-  UNITS_LIST_LIMIT,
-  UNITS_LIST_MAX_LIMIT,
   UserType,
 } from "@/packages/shared";
-import { decodeUnitKeysetCursor } from "@/pagination/keyset-cursor";
 
 import { parseUuidParam } from "./admin-query-utils";
+import { parsePropertyUnitsListQuery } from "./parse-property-units-list-query";
 import {
   assertPropertyMemberAccess,
   assertPropertyUnitManageAccess,
@@ -30,62 +26,6 @@ import { rejectIfDeleted } from "./reject-if-deleted";
 import { replyFromDatabaseError } from "./reply-from-database-error";
 
 const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
-
-function parseUnitsListLimit(raw: unknown): number {
-  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
-  if (!Number.isFinite(n) || n < 1) return UNITS_LIST_LIMIT;
-  return Math.min(UNITS_LIST_MAX_LIMIT, Math.floor(n));
-}
-
-function parseUnitsListSortBy(raw: unknown): TPropertyUnitsListSortBy | null | undefined {
-  if (raw === undefined || raw === "") return undefined;
-  if (raw === "type") return "type";
-  return null;
-}
-
-function parseUnitsListSortDir(raw: unknown): TPropertyUnitsListSortDir | null | undefined {
-  if (raw === undefined || raw === "") return undefined;
-  if (raw === "asc" || raw === "desc") return raw;
-  return null;
-}
-
-function parseUnitsListQuery(query: Record<string, unknown>):
-  | {
-      cursor?: string;
-      isPaginated: boolean;
-      limit: number;
-      ok: true;
-      sortBy: TPropertyUnitsListSortBy;
-      sortDir: TPropertyUnitsListSortDir;
-    }
-  | { error: string; ok: false } {
-  const isPaginated =
-    (query["limit"] !== undefined && query["limit"] !== "") ||
-    (typeof query["cursor"] === "string" && query["cursor"] !== "");
-
-  const limit = parseUnitsListLimit(query["limit"]);
-  const cursor =
-    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
-
-  const sortByRaw = parseUnitsListSortBy(query["sortBy"]);
-  if (sortByRaw === null) {
-    return { error: 'sortBy must be "type"', ok: false };
-  }
-
-  const sortDirRaw = parseUnitsListSortDir(query["sortDir"]);
-  if (sortDirRaw === null) {
-    return { error: 'sortDir must be "asc" or "desc"', ok: false };
-  }
-
-  return {
-    cursor,
-    isPaginated,
-    limit,
-    ok: true,
-    sortBy: sortByRaw ?? "type",
-    sortDir: sortDirRaw ?? "asc",
-  };
-}
 
 function parseRentalType(raw: unknown): TUnitRentalType | null {
   if (typeof raw !== "string") return null;
@@ -194,17 +134,9 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       );
       if (!hasAccess) return;
 
-      const parsed = parseUnitsListQuery(request.query);
+      const parsed = parsePropertyUnitsListQuery(request.query);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-
-      if (parsed.cursor != null) {
-        try {
-          decodeUnitKeysetCursor(parsed.cursor);
-        } catch {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-        }
       }
 
       const includeDeleted = request.user.userType === UserType.ADMIN;
@@ -212,12 +144,13 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
       if (parsed.isPaginated) {
         const { meta, nextCursor, units } = await propertyUnitsDb.listPaginatedByProperty(
           propertyId,
+          parsed.filters,
           {
             cursor: parsed.cursor,
             includeDeleted,
             limit: parsed.limit,
-            sortBy: parsed.sortBy,
-            sortDir: parsed.sortDir,
+            sortBy: parsed.filters.sortBy ?? "type",
+            sortDir: parsed.filters.sortDir ?? "asc",
           }
         );
         return reply.send(meta ? { meta, nextCursor, units } : { nextCursor, units });
@@ -225,7 +158,7 @@ export const propertyUnitRoutes = async (server: FastifyInstance): Promise<void>
 
       const [units, meta] = await Promise.all([
         propertyUnitsDb.findByProperty(propertyId, includeDeleted),
-        propertyUnitsDb.getListMetaByProperty(propertyId, includeDeleted),
+        propertyUnitsDb.getListMetaByProperty(propertyId, {}, includeDeleted),
       ]);
       return reply.send({ meta, nextCursor: null, units });
     }

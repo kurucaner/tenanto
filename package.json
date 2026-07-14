@@ -1,6 +1,6 @@
 {
   "name": "propertyos",
-  "version": "2026.11.0",
+  "version": "2026.12.0",
   "main": "index.js",
   "engines": {
     "node": ">=24.14.0"
@@ -35,6 +35,8 @@
     "prettier:admin": "npm run --filter admin prettier",
     "worker:email": "bun run --filter server worker:email",
     "worker:email:prod": "bun run --filter server worker:email:prod",
+    "worker:export": "bun run --filter server worker:export",
+    "worker:export:prod": "bun run --filter server worker:export:prod",
     "reset:node_modules": "rm -rf node_modules && rm bun.lock && cd apps/mobile && rm -rf node_modules && cd ../web && rm -rf node_modules && cd ../server && rm -rf node_modules && cd ../admin && rm -rf node_modules"
   },
   "workspaces": [

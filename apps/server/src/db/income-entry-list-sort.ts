@@ -98,6 +98,40 @@ const SORT_KEY_CONFIG: Record<
   },
 };
 
+function resolveSortKeyKind(branch: {
+  date?: string;
+  num?: string;
+  text?: string;
+}): TIncomeEntrySortKeyKind {
+  if (branch.date) {
+    return "date";
+  }
+  if (branch.num) {
+    return "num";
+  }
+  return "text";
+}
+
+function getMergedSortColumn(sortKeyKind: TIncomeEntrySortKeyKind): string {
+  if (sortKeyKind === "date") {
+    return "merged.sort_key_date";
+  }
+  if (sortKeyKind === "num") {
+    return "merged.sort_key_num";
+  }
+  return "merged.sort_key_text";
+}
+
+function getSortKeyTypeCast(sortKeyKind: TIncomeEntrySortKeyKind): string {
+  if (sortKeyKind === "date") {
+    return "::date";
+  }
+  if (sortKeyKind === "num") {
+    return "::numeric";
+  }
+  return "::text";
+}
+
 export function resolveIncomeEntryListSort(
   sortBy?: TPropertyIncomeEntriesListSortBy,
   sortDir?: TPropertyIncomeEntriesListSortDir
@@ -105,7 +139,7 @@ export function resolveIncomeEntryListSort(
   const resolvedSortBy = sortBy ?? INCOME_ENTRIES_DEFAULT_SORT_BY;
   const config = SORT_KEY_CONFIG[resolvedSortBy];
   const branch = config.stay;
-  const sortKeyKind: TIncomeEntrySortKeyKind = branch.date ? "date" : branch.num ? "num" : "text";
+  const sortKeyKind = resolveSortKeyKind(branch);
 
   return {
     sortBy: resolvedSortBy,
@@ -147,12 +181,7 @@ export function needsUnitJoinForSort(sortBy: TPropertyIncomeEntriesListSortBy): 
 export function buildIncomeEntryOrderByClause(sort: IIncomeEntryListSortOptions): string {
   const direction = sort.sortDir === "asc" ? "ASC" : "DESC";
   const nulls = sort.sortDir === "asc" ? "NULLS FIRST" : "NULLS LAST";
-  const sortColumn =
-    sort.sortKeyKind === "date"
-      ? "merged.sort_key_date"
-      : sort.sortKeyKind === "num"
-        ? "merged.sort_key_num"
-        : "merged.sort_key_text";
+  const sortColumn = getMergedSortColumn(sort.sortKeyKind);
   const tiebreakerDirection = sort.sortDir === "asc" ? "ASC" : "DESC";
 
   return `ORDER BY ${sortColumn} ${direction} ${nulls}, merged.created_at ${tiebreakerDirection}, merged.id ${tiebreakerDirection}, merged.entry_kind ${tiebreakerDirection}`;
@@ -163,16 +192,10 @@ export function buildIncomeEntryCursorPredicate(
   startParamIndex: number
 ): { params: unknown[]; predicate: string; nextParamIndex: number } {
   const operator = sort.sortDir === "asc" ? ">" : "<";
-  const sortColumn =
-    sort.sortKeyKind === "date"
-      ? "merged.sort_key_date"
-      : sort.sortKeyKind === "num"
-        ? "merged.sort_key_num"
-        : "merged.sort_key_text";
+  const sortColumn = getMergedSortColumn(sort.sortKeyKind);
 
   let p = startParamIndex;
-  const typeCast =
-    sort.sortKeyKind === "date" ? "::date" : sort.sortKeyKind === "num" ? "::numeric" : "::text";
+  const typeCast = getSortKeyTypeCast(sort.sortKeyKind);
   const predicate = `(${sortColumn}, merged.created_at, merged.id, merged.entry_kind) ${operator} ($${p++}${typeCast}, $${p++}::timestamptz, $${p++}::uuid, $${p++}::text)`;
 
   return {

@@ -284,26 +284,25 @@ export function decodeIncomeEntryKeysetCursor(raw: string): IncomeEntryKeysetCur
 
     const sortBy = typeof parsed.sortBy === "string" ? parsed.sortBy : "date";
     const sortDir = typeof parsed.sortDir === "string" ? parsed.sortDir : "desc";
-    const sortKeyDate =
-      parsed.sortKeyDate === null
-        ? null
-        : typeof parsed.sortKeyDate === "string"
-          ? parsed.sortKeyDate
-          : typeof parsed.sortDate === "string"
-            ? parsed.sortDate
-            : null;
-    const sortKeyNum =
-      parsed.sortKeyNum === null
-        ? null
-        : typeof parsed.sortKeyNum === "number"
-          ? parsed.sortKeyNum
-          : null;
-    const sortKeyText =
-      parsed.sortKeyText === null
-        ? null
-        : typeof parsed.sortKeyText === "string"
-          ? parsed.sortKeyText
-          : null;
+
+    let sortKeyDate: string | null = null;
+    if (parsed.sortKeyDate !== null) {
+      if (typeof parsed.sortKeyDate === "string") {
+        sortKeyDate = parsed.sortKeyDate;
+      } else if (typeof parsed.sortDate === "string") {
+        sortKeyDate = parsed.sortDate;
+      }
+    }
+
+    let sortKeyNum: number | null = null;
+    if (parsed.sortKeyNum !== null && typeof parsed.sortKeyNum === "number") {
+      sortKeyNum = parsed.sortKeyNum;
+    }
+
+    let sortKeyText: string | null = null;
+    if (parsed.sortKeyText !== null && typeof parsed.sortKeyText === "string") {
+      sortKeyText = parsed.sortKeyText;
+    }
 
     return {
       createdAt: parsed.createdAt,
@@ -389,4 +388,72 @@ export function encodePropertyFavoriteKeysetCursor(
   return Buffer.from(JSON.stringify({ createdAt: iso, favoritedAt, id }), "utf8").toString(
     "base64url"
   );
+}
+
+/**
+ * Export jobs list keyset cursor (v1): sort dimensions + createdAt + id tiebreakers.
+ */
+export type ExportJobKeysetCursorV1 = {
+  createdAt: string;
+  id: string;
+  sortBy: string;
+  sortDir: string;
+  sortKey: string | number | null;
+};
+
+export function decodeExportJobKeysetCursor(raw: string): ExportJobKeysetCursorV1 {
+  try {
+    const json = Buffer.from(raw, "base64url").toString("utf8");
+    const parsed = JSON.parse(json) as {
+      createdAt?: unknown;
+      id?: unknown;
+      sortBy?: unknown;
+      sortDir?: unknown;
+      sortKey?: unknown;
+    };
+    if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") {
+      throw new TypeError("invalid shape");
+    }
+
+    const sortBy = typeof parsed.sortBy === "string" ? parsed.sortBy : "requestedAt";
+    const sortDir = typeof parsed.sortDir === "string" ? parsed.sortDir : "desc";
+
+    let sortKey: string | number | null = null;
+    if (
+      parsed.sortKey !== null &&
+      (typeof parsed.sortKey === "number" || typeof parsed.sortKey === "string")
+    ) {
+      sortKey = parsed.sortKey;
+    }
+
+    return {
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+      sortBy,
+      sortDir,
+      sortKey,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeExportJobKeysetCursor(input: {
+  createdAt: Date | string;
+  id: string;
+  sortBy: string;
+  sortDir: string;
+  sortKey: string | number | null;
+}): string {
+  const iso = typeof input.createdAt === "string" ? input.createdAt : input.createdAt.toISOString();
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: iso,
+      id: input.id,
+      sortBy: input.sortBy,
+      sortDir: input.sortDir,
+      sortKey: input.sortKey,
+    }),
+    "utf8"
+  ).toString("base64url");
 }

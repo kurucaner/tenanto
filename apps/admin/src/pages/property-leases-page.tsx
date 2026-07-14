@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
+import { CircleDollarSign, Download, Eye, MoreHorizontal, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
+import { PropertyTableExportDialog } from "@/components/exports/property-table-export-dialog";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -17,6 +18,12 @@ import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
@@ -30,6 +37,7 @@ import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
 import {
   buildLeaseToolbarClearAllPatch,
@@ -38,11 +46,16 @@ import {
   countLeaseSecondaryFilters,
   type TLeaseToolbarFilterId,
 } from "@/lib/lease-toolbar-filters";
+import {
+  buildExportFilterSummaryOptions,
+  formatPropertyTableExportFilterSummary,
+} from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  ExportResourceType,
   formatPropertyUnitSelectLabel,
   getLeaseOccupancyNames,
   type IPropertyLongStay,
@@ -247,6 +260,7 @@ export const PropertyLeasesPage = memo(() => {
   );
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [exportTableOpen, setExportTableOpen] = useState(false);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentLease, setRecordRentLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentPrefill, setRecordRentPrefill] = useState<CreateIncomeLineDialogPrefill | null>(
@@ -258,8 +272,15 @@ export const PropertyLeasesPage = memo(() => {
     [effectiveFrom, effectiveTo, q, status, unitId]
   );
 
-  const { fetchNextPage, hasNextPage, isFetchingNextPage, isPending, longStays, meta } =
+  const { fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, longStays, meta } =
     usePropertyLongStaysInfiniteList(propertyId, listQueryFilters);
+
+  const { isFilterRefetching, isTableInitialPending } = getFilteredTableFetchState({
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    itemCount: longStays.length,
+  });
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
     fetchNextPage,
@@ -370,15 +391,50 @@ export const PropertyLeasesPage = memo(() => {
     setCreateOpen(true);
   }, []);
 
-  const pageActions = useMemo(
+  const handleOpenExportTable = useCallback(() => {
+    setExportTableOpen(true);
+  }, []);
+
+  const exportFilterSummaryOptions = useMemo(
     () =>
-      canManage ? (
-        <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
-          <Plus className="size-3.5" />
-          Start Lease
-        </Button>
-      ) : null,
-    [canManage, handleOpenCreate]
+      buildExportFilterSummaryOptions(settingsQuery.data?.settings, unitsQuery.data?.units ?? []),
+    [settingsQuery.data?.settings, unitsQuery.data?.units]
+  );
+
+  const leaseExportFilterSummary = useMemo(
+    () =>
+      formatPropertyTableExportFilterSummary(
+        { filters: listQueryFilters, resourceType: ExportResourceType.LEASES },
+        exportFilterSummaryOptions
+      ),
+    [exportFilterSummaryOptions, listQueryFilters]
+  );
+
+  const pageActions = useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        {canManage ? (
+          <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
+            <Plus className="size-3.5" />
+            Start Lease
+          </Button>
+        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button aria-label="More lease actions" size="icon-sm" type="button" variant="outline">
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onSelect={handleOpenExportTable}>
+              <Download />
+              Export table
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ),
+    [canManage, handleOpenCreate, handleOpenExportTable]
   );
 
   usePropertyShellActions(pageActions);
@@ -427,7 +483,8 @@ export const PropertyLeasesPage = memo(() => {
             getItemKey={getLeaseKey}
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}
             infiniteScrollSentinelRef={scrollSentinelRef}
-            isPending={isPending}
+            isPending={isTableInitialPending}
+            isRefreshing={isFilterRefetching}
             items={longStays}
             renderRow={renderLeaseRow}
             toolbar={
@@ -494,6 +551,14 @@ export const PropertyLeasesPage = memo(() => {
           units={units}
         />
       ) : null}
+
+      <PropertyTableExportDialog
+        config={{ filters: listQueryFilters, resourceType: ExportResourceType.LEASES }}
+        filterSummary={leaseExportFilterSummary}
+        onOpenChange={setExportTableOpen}
+        open={exportTableOpen}
+        propertyId={propertyId}
+      />
     </>
   );
 });

@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCheck } from "lucide-react";
-import { memo, useCallback } from "react";
+import { CheckCheck, Loader2, PartyPopper } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { useNotificationsInfiniteList } from "@/hooks/use-notifications-infinite-list";
 import { notificationsApi } from "@/lib/api-client";
 import { getNotificationHref } from "@/lib/notification-routing";
 import { queryKeys } from "@/lib/query-keys";
@@ -55,10 +57,21 @@ export const NotificationList = memo(
   }>) => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
 
-    const listQuery = useQuery({
-      queryFn: () => notificationsApi.list({ limit: 20 }),
-      queryKey: queryKeys.notificationsList(),
+    const { error, fetchNextPage, hasNextPage, isError, isFetchingNextPage, isPending, items } =
+      useNotificationsInfiniteList();
+
+    const unreadQuery = useQuery({
+      queryFn: () => notificationsApi.getUnreadCount(),
+      queryKey: queryKeys.notificationsUnreadCount(),
+    });
+
+    const scrollSentinelRef = useInfiniteScrollTrigger({
+      fetchNextPage,
+      hasNextPage,
+      isFetchingNextPage,
+      scrollRoot: scrollElement,
     });
 
     const markAllMutation = useMutation({
@@ -89,8 +102,8 @@ export const NotificationList = memo(
       [navigate, onClose, queryClient]
     );
 
-    const items = listQuery.data?.items ?? [];
-    const hasUnread = items.some((item) => item.readAt == null);
+    const hasUnread = (unreadQuery.data?.count ?? 0) > 0;
+    const isTableInitialPending = isPending && items.length === 0;
 
     return (
       <div className="flex max-h-[min(24rem,70vh)] flex-col">
@@ -110,17 +123,19 @@ export const NotificationList = memo(
             </Button>
           ) : null}
         </div>
-        <div className="flex-1 overflow-y-auto p-1">
-          {listQuery.isPending ? (
+        <div className="flex-1 overflow-y-auto p-1" ref={setScrollElement}>
+          {isTableInitialPending ? (
             <div className="space-y-2 p-2">
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
             </div>
           ) : null}
-          {listQuery.isError ? (
-            <p className="text-destructive p-3 text-sm">Could not load notifications.</p>
+          {isError ? (
+            <p className="text-destructive p-3 text-sm">
+              {error instanceof Error ? error.message : "Could not load notifications."}
+            </p>
           ) : null}
-          {!listQuery.isPending && items.length === 0 ? (
+          {!isTableInitialPending && !isError && items.length === 0 ? (
             <p className="text-muted-foreground p-3 text-sm">No notifications yet.</p>
           ) : null}
           {items.map((notification) => (
@@ -130,6 +145,18 @@ export const NotificationList = memo(
               onNavigate={handleNavigate}
             />
           ))}
+          {isFetchingNextPage ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="text-muted-foreground size-4 animate-spin" />
+            </div>
+          ) : null}
+          {!hasNextPage && items.length > 0 ? (
+            <div className="text-muted-foreground flex items-center justify-center gap-1.5 py-2 text-[0.65rem]">
+              <PartyPopper aria-hidden className="size-3.5 shrink-0 opacity-80" />
+              <span>You&apos;re all caught up</span>
+            </div>
+          ) : null}
+          <div className="h-1" ref={scrollSentinelRef} />
         </div>
       </div>
     );

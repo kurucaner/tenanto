@@ -12,13 +12,16 @@ describe("useDebouncedUrlFilter utils", () => {
     expect(resolveDebouncedUrlInputValue("typing", "ready")).toBe("typing");
   });
 
-  test("getDebouncedUrlCommitValue trims whitespace", () => {
-    expect(getDebouncedUrlCommitValue("  guest  ")).toBe("guest");
+  test("getDebouncedUrlCommitValue preserves spaces while typing multi-word queries", () => {
+    expect(getDebouncedUrlCommitValue("John ")).toBe("John ");
+    expect(getDebouncedUrlCommitValue("John Doe")).toBe("John Doe");
+    expect(getDebouncedUrlCommitValue("  guest  ")).toBe("  guest  ");
   });
 
-  test("shouldCommitDebouncedUrlValue skips unchanged trimmed values", () => {
-    expect(shouldCommitDebouncedUrlValue(" guest ", "guest")).toBe(false);
+  test("shouldCommitDebouncedUrlValue compares raw draft and committed values", () => {
+    expect(shouldCommitDebouncedUrlValue("John ", "John")).toBe(true);
+    expect(shouldCommitDebouncedUrlValue(" guest ", "guest")).toBe(true);
     expect(shouldCommitDebouncedUrlValue("alex", "")).toBe(true);
-    expect(shouldCommitDebouncedUrlValue(" guest ", "other")).toBe(true);
+    expect(shouldCommitDebouncedUrlValue("guest", "guest")).toBe(false);
   });
 });

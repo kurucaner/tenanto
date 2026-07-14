@@ -23,6 +23,7 @@ import {
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
   type IExpenseImportParseResponse,
+  type IExportJobDownloadResponse,
   type IExtendPropertyLongStayBody,
   type IHomeFinancialOverview,
   type IIncomeImportCommitBody,
@@ -34,6 +35,11 @@ import {
   type IPropertyExpense,
   type IPropertyExpensesListQuery,
   type IPropertyExpensesListResponse,
+  type IPropertyExportCreateRequest,
+  type IPropertyExportCreateResponse,
+  type IPropertyExportDetailResponse,
+  type IPropertyExportsListQuery,
+  type IPropertyExportsListResponse,
   type IPropertyIncomeEntriesListQuery,
   type IPropertyIncomeEntriesListResponse,
   type IPropertyIncomeLine,
@@ -698,6 +704,11 @@ export const unitsApi = {
 
 function buildUnitsSearchParams(query: IPropertyUnitsListQuery = {}): string {
   const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.q) params.set("q", query.q);
+  if (query.rentalType) params.set("rentalType", query.rentalType);
+  if (query.occupancy) params.set("occupancy", query.occupancy);
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   if (query.sortBy != null) params.set("sortBy", query.sortBy);
@@ -752,6 +763,43 @@ export const longStaysApi = {
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
+
+export const propertyExportsApi = {
+  create: (propertyId: string, body: IPropertyExportCreateRequest) =>
+    authenticatedRequest<IPropertyExportCreateResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/exports`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  get: (propertyId: string, jobId: string) =>
+    authenticatedRequest<IPropertyExportDetailResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/exports/${encodeURIComponent(jobId)}`
+    ),
+
+  getDownloadUrl: (propertyId: string, jobId: string) =>
+    authenticatedRequest<IExportJobDownloadResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/exports/${encodeURIComponent(jobId)}/download`
+    ),
+
+  list: (propertyId: string, query?: IPropertyExportsListQuery) =>
+    authenticatedRequest<IPropertyExportsListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/exports${buildPropertyExportsSearchParams(query)}`
+    ),
+};
+
+function buildPropertyExportsSearchParams(query: IPropertyExportsListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.resourceType) params.set("resourceType", query.resourceType);
+  if (query.sortBy) params.set("sortBy", query.sortBy);
+  if (query.sortDir) params.set("sortDir", query.sortDir);
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
 
 export const tenantEmailCampaignsApi = {
   create: (propertyId: string, body: ICreateTenantEmailCampaignBody, idempotencyKey: string) =>
