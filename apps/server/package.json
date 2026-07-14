@@ -12,6 +12,8 @@
     "worker:vault-streaming:prod": "NODE_ENV=production node dist/apps/server/src/workers/vault-streaming-worker.cli.js",
     "worker:email": "bun src/workers/tenant-email-worker.cli.ts",
     "worker:email:prod": "NODE_ENV=production node dist/apps/server/src/workers/tenant-email-worker.cli.js",
+    "worker:export": "bun src/workers/property-export-worker.cli.ts",
+    "worker:export:prod": "NODE_ENV=production node dist/apps/server/src/workers/property-export-worker.cli.js",
     "test": "bun test",
     "lint": "eslint .",
     "prettier": "prettier --write .",

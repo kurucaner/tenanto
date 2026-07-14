@@ -1,3 +1,5 @@
+import type { Readable } from "node:stream";
+
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -57,6 +59,20 @@ export const generateDownloadUrl = async (fileRoute: string): Promise<string> =>
   return getSignedUrl(s3Client, command, {
     expiresIn: DOWNLOAD_URL_EXPIRATION_SECONDS,
   });
+};
+
+export const putObjectStream = async (
+  fileRoute: string,
+  body: Readable,
+  contentType: string
+): Promise<void> => {
+  const command = new PutObjectCommand({
+    Body: body,
+    Bucket: bucketName,
+    ContentType: contentType,
+    Key: fileRoute,
+  });
+  await s3Client.send(command);
 };
 
 export const initiateMultipartUpload = async (

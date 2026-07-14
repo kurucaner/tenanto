@@ -295,12 +295,12 @@ toast.success("Export queued", {
 
 **Goal:** End-to-end export via API/script, not the Exports tab.
 
-- [ ] `db/export-jobs.ts` — create, getById, listByProperty, markProcessing, markCompleted, markFailed, markExpired
-- [ ] Routes: POST create, GET list, GET detail, GET download (403 until `completed`)
-- [ ] CSV generator + unit tests (`expenses-csv-export.ts`)
-- [ ] Extract shared `csvRow()` util from report service
-- [ ] BullMQ queue + export worker + S3 upload
-- [ ] `process-export-job.ts` — claim job → stream rows → CSV → S3 → mark completed
+- [x] `db/export-jobs.ts` — create, getById, listByProperty, markProcessing, markCompleted, markFailed, markExpired
+- [x] Routes: POST create, GET list, GET detail, GET download (403 until `completed`)
+- [x] CSV generator + unit tests (`expenses-csv-export.ts`)
+- [x] Extract shared `csvRow()` util from report service
+- [x] BullMQ queue + export worker + S3 upload
+- [x] `process-export-job.ts` — claim job → stream rows → CSV → S3 → mark completed
 
 **Exit criteria:** Queue expense export via script/Postman → worker completes → S3 object exists → download URL works.
 
