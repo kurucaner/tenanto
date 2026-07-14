@@ -14,12 +14,16 @@ export interface ISupportRequestsListSortOptions {
 
 const SORT_CONFIG: Record<
   TSupportRequestsListSortBy,
-  { cast: ISupportRequestsListSortOptions["sortKeyCast"]; column: string }
+  {
+    cast: ISupportRequestsListSortOptions["sortKeyCast"];
+    column: string;
+    rowKey: string;
+  }
 > = {
-  category: { cast: "::text", column: "sr.category::text" },
-  createdAt: { cast: "::timestamptz", column: "sr.created_at" },
-  status: { cast: "::text", column: "sr.status::text" },
-  updatedAt: { cast: "::timestamptz", column: "sr.updated_at" },
+  category: { cast: "::text", column: "sr.category::text", rowKey: "category" },
+  createdAt: { cast: "::timestamptz", column: "sr.created_at", rowKey: "created_at" },
+  status: { cast: "::text", column: "sr.status::text", rowKey: "status" },
+  updatedAt: { cast: "::timestamptz", column: "sr.updated_at", rowKey: "updated_at" },
 };
 
 export function resolveSupportRequestsListSort(
@@ -54,14 +58,7 @@ export function readSupportRequestSortKey(
   sort: ISupportRequestsListSortOptions,
   row: Record<string, unknown>
 ): string {
-  let key: string;
-  if (sort.sortBy === "createdAt") {
-    key = "created_at";
-  } else if (sort.sortBy === "updatedAt") {
-    key = "updated_at";
-  } else {
-    key = sort.sortBy;
-  }
+  const key = SORT_CONFIG[sort.sortBy].rowKey;
   const value = row[key];
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "string") return value;
