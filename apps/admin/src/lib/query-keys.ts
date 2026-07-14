@@ -2,6 +2,7 @@ import type { IAdminPropertiesListQuery, IAdminUsersListQuery } from "@/lib/api-
 import type {
   IAdminAuditEventsListQuery,
   IPropertyExpensesListQuery,
+  IPropertyExportsListQuery,
   IPropertyIncomeLinesListQuery,
   IPropertyLongStaysListQuery,
   IPropertyReportsQuery,
@@ -29,6 +30,12 @@ export const queryKeys = {
   propertyDetail: (propertyId: string) => ["property", propertyId] as const,
   propertyExpenses: (propertyId: string, filters: IPropertyExpensesListQuery = {}) =>
     ["property", propertyId, "expenses", filters] as const,
+  propertyExport: (propertyId: string, jobId: string) =>
+    ["property", propertyId, "exports", jobId] as const,
+  propertyExports: (
+    propertyId: string,
+    filters: Omit<IPropertyExportsListQuery, "cursor" | "limit"> = {}
+  ) => ["property", propertyId, "exports", filters] as const,
   propertyIncomeEntries: (propertyId: string, filters: TPropertyIncomeEntriesListFilters = {}) =>
     ["property", propertyId, "income-entries", filters] as const,
   propertyIncomeEntriesPrefix: (propertyId: string) =>

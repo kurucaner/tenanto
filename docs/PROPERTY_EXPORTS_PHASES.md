@@ -282,10 +282,10 @@ toast.success("Export queued", {
 
 **Goal:** Infrastructure and contracts without exposing the feature.
 
-- [ ] DB migration: `export_jobs` table + enums
-- [ ] Shared types in `packages/shared`
-- [ ] API client stubs in `apps/admin/src/lib/api-client.ts`
-- [ ] Query keys: `queryKeys.propertyExports(propertyId)`, `queryKeys.propertyExport(propertyId, jobId)`
+- [x] DB migration: `export_jobs` table + enums
+- [x] Shared types in `packages/shared`
+- [x] API client stubs in `apps/admin/src/lib/api-client.ts`
+- [x] Query keys: `queryKeys.propertyExports(propertyId)`, `queryKeys.propertyExport(propertyId, jobId)`
 
 **Exit criteria:** Types compile; migration runs; no user-facing UI until Phase 3.
 
