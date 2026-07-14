@@ -143,10 +143,7 @@ export const PropertyExportsPage = memo(() => {
 
   const filterSummaryOptions = useMemo(
     () =>
-      buildExportFilterSummaryOptions(
-        settingsQuery.data?.settings,
-        unitsQuery.data?.units ?? []
-      ),
+      buildExportFilterSummaryOptions(settingsQuery.data?.settings, unitsQuery.data?.units ?? []),
     [settingsQuery.data?.settings, unitsQuery.data?.units]
   );
 

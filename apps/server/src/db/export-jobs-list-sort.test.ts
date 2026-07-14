@@ -52,6 +52,8 @@ describe("buildExportJobsCursorPredicate", () => {
   test("asc rowCount sort uses greater-than with numeric cast", () => {
     const sort = resolveExportJobsListSort("rowCount", "asc");
     const { predicate } = buildExportJobsCursorPredicate(sort, 2);
-    expect(predicate).toBe("(row_count, created_at, id) > ($2::numeric, $3::timestamptz, $4::uuid)");
+    expect(predicate).toBe(
+      "(row_count, created_at, id) > ($2::numeric, $3::timestamptz, $4::uuid)"
+    );
   });
 });

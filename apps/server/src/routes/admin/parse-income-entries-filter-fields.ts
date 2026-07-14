@@ -12,9 +12,7 @@ import { parseOptionalUuid } from "./admin-query-utils";
 
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
 
-export function parseIncomeReservationStatus(
-  raw: unknown
-): TReservationStatus | null | undefined {
+export function parseIncomeReservationStatus(raw: unknown): TReservationStatus | null | undefined {
   if (raw === undefined || raw === "") return undefined;
   if (typeof raw !== "string") return null;
   return RESERVATION_STATUSES.has(raw as TReservationStatus) ? (raw as TReservationStatus) : null;

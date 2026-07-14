@@ -205,12 +205,7 @@ function handleStreamSupportAttachmentUpdatedEvent(
   const parsed = parseSupportAttachmentUpdatedData(event.data);
   if (parsed == null || context.userType == null) return;
 
-  handleSupportAttachmentUpdated(
-    context.queryClient,
-    parsed,
-    context.pathname,
-    context.userType
-  );
+  handleSupportAttachmentUpdated(context.queryClient, parsed, context.pathname, context.userType);
 }
 
 function handleStreamTenantEmailCampaignUpdatedEvent(
@@ -471,8 +466,9 @@ async function runNotificationStream(params: INotificationStreamRunParams): Prom
     token: params.accessToken,
   };
 
-  const { clearProactiveReconnect, scheduleProactiveReconnect } =
-    createProactiveReconnectScheduler(params.abortController);
+  const { clearProactiveReconnect, scheduleProactiveReconnect } = createProactiveReconnectScheduler(
+    params.abortController
+  );
 
   const dispatchEvent = createStreamEventDispatcher(params.onEvent, () => {
     resetStreamRunBackoff(state);

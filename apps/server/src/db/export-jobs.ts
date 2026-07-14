@@ -51,12 +51,7 @@ function applyStoredIncomeExportEnumFilters(
 ): void {
   const { refundStatus, sortBy, sortDir, status } = record;
 
-  if (
-    status === "active" ||
-    status === "canceled" ||
-    status === "no_show" ||
-    status === "stayed"
-  ) {
+  if (status === "active" || status === "canceled" || status === "no_show" || status === "stayed") {
     filters.status = status;
   }
 

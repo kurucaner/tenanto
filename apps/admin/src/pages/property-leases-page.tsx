@@ -383,10 +383,7 @@ export const PropertyLeasesPage = memo(() => {
 
   const exportFilterSummaryOptions = useMemo(
     () =>
-      buildExportFilterSummaryOptions(
-        settingsQuery.data?.settings,
-        unitsQuery.data?.units ?? []
-      ),
+      buildExportFilterSummaryOptions(settingsQuery.data?.settings, unitsQuery.data?.units ?? []),
     [settingsQuery.data?.settings, unitsQuery.data?.units]
   );
 
