@@ -93,10 +93,6 @@ function parseCreateCampaignBody(
   };
 }
 
-function featureDisabled(reply: FastifyReply): FastifyReply {
-  return reply.status(HttpStatus.NOT_FOUND).send({ error: "Not found" });
-}
-
 export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
