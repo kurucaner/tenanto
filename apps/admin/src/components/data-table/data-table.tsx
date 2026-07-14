@@ -17,6 +17,7 @@ import {
 import { VirtualizedTableBody } from "@/components/virtualized/virtualized-table-body";
 import { useLayoutScrollElement } from "@/contexts/layout-scroll-context";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
+import { cn } from "@/lib/utils";
 
 export interface DataTableInfiniteScroll {
   hasNextPage: boolean;
@@ -46,8 +47,10 @@ export interface DataTableProps<TItem> {
    * object as a ref (refs must not be read during render).
    */
   infiniteScrollSentinelRef?: RefObject<HTMLDivElement | null>;
-  /** Initial load: renders skeleton bars in place of the table. */
+  /** Initial load with no rows to show yet. Filter refetches keep prior rows visible. */
   isPending?: boolean;
+  /** Dims the table body while a filter/sort refetch is in flight. */
+  isRefreshing?: boolean;
   items: TItem[];
   renderRow: (item: TItem, index: number) => ReactNode;
   /** Enables SortableTableHead for columns marked sortable (pass useUrlTableSort's return). */
@@ -95,6 +98,7 @@ export const DataTable = <TItem,>({
   infiniteScroll,
   infiniteScrollSentinelRef,
   isPending = false,
+  isRefreshing = false,
   items,
   renderRow,
   sort,
@@ -153,7 +157,13 @@ export const DataTable = <TItem,>({
     <>
       {toolbar}
       {filters}
-      <div className="overflow-x-auto">
+      <div
+        className={cn(
+          "transition-opacity",
+          isRefreshing && "pointer-events-none opacity-60"
+        )}
+      >
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -185,6 +195,7 @@ export const DataTable = <TItem,>({
             })}
           </p>
         ) : null}
+        </div>
       </div>
     </>
   );

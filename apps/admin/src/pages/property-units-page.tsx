@@ -243,6 +243,7 @@ const PropertyUnitsTable = memo(
     isFetchingNextPage,
     isPending,
     isQuickDeleteActive,
+    isRefreshing,
     listMeta,
     onDelete,
     onEdit,
@@ -261,6 +262,7 @@ const PropertyUnitsTable = memo(
     isFetchingNextPage: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
+    isRefreshing: boolean;
     listMeta?: IPropertyUnitsListMeta;
     onDelete: (unit: IPropertyUnit, event?: MouseEvent<HTMLButtonElement>) => void;
     onEdit: (unit: IPropertyUnit) => void;
@@ -313,6 +315,7 @@ const PropertyUnitsTable = memo(
         infiniteScroll={{ hasNextPage, isFetchingNextPage }}
         infiniteScrollSentinelRef={infiniteScrollSentinelRef}
         isPending={isPending}
+        isRefreshing={isRefreshing}
         items={units}
         renderRow={renderUnitRow}
         sort={sort}
@@ -457,11 +460,15 @@ export const PropertyUnitsPage = memo(() => {
   const {
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isPending,
     meta: listMeta,
     units,
   } = usePropertyUnitsInfiniteList(propertyId, listQueryFilters);
+
+  const isTableInitialPending = isPending && units.length === 0;
+  const isFilterRefetching = isFetching && !isFetchingNextPage && units.length > 0;
 
   const activeSecondaryFilterCount = useMemo(
     () => countUnitSecondaryFilters({ occupancy, rentalType }),
@@ -622,8 +629,9 @@ export const PropertyUnitsPage = memo(() => {
             infiniteScrollSentinelRef={scrollSentinelRef}
             isDeletePending={deleteMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
-            isPending={isPending}
+            isPending={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
+            isRefreshing={isFilterRefetching}
             listMeta={listMeta}
             onDelete={handleDelete}
             onEdit={setEditUnit}
