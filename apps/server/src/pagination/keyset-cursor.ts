@@ -284,26 +284,25 @@ export function decodeIncomeEntryKeysetCursor(raw: string): IncomeEntryKeysetCur
 
     const sortBy = typeof parsed.sortBy === "string" ? parsed.sortBy : "date";
     const sortDir = typeof parsed.sortDir === "string" ? parsed.sortDir : "desc";
-    const sortKeyDate =
-      parsed.sortKeyDate === null
-        ? null
-        : typeof parsed.sortKeyDate === "string"
-          ? parsed.sortKeyDate
-          : typeof parsed.sortDate === "string"
-            ? parsed.sortDate
-            : null;
-    const sortKeyNum =
-      parsed.sortKeyNum === null
-        ? null
-        : typeof parsed.sortKeyNum === "number"
-          ? parsed.sortKeyNum
-          : null;
-    const sortKeyText =
-      parsed.sortKeyText === null
-        ? null
-        : typeof parsed.sortKeyText === "string"
-          ? parsed.sortKeyText
-          : null;
+
+    let sortKeyDate: string | null = null;
+    if (parsed.sortKeyDate !== null) {
+      if (typeof parsed.sortKeyDate === "string") {
+        sortKeyDate = parsed.sortKeyDate;
+      } else if (typeof parsed.sortDate === "string") {
+        sortKeyDate = parsed.sortDate;
+      }
+    }
+
+    let sortKeyNum: number | null = null;
+    if (parsed.sortKeyNum !== null && typeof parsed.sortKeyNum === "number") {
+      sortKeyNum = parsed.sortKeyNum;
+    }
+
+    let sortKeyText: string | null = null;
+    if (parsed.sortKeyText !== null && typeof parsed.sortKeyText === "string") {
+      sortKeyText = parsed.sortKeyText;
+    }
 
     return {
       createdAt: parsed.createdAt,
