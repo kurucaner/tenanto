@@ -226,7 +226,7 @@ export const PropertyReportsPage = memo(() => {
   usePropertyShellActions(pageActions);
 
   return (
-    <Card>
+    <Card className="gap-0 py-0">
       <CardContent className="space-y-4 p-0">
         <ReportFiltersBar
           channelCommissionId={channelCommissionId}

@@ -7,7 +7,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { ExportJobStatusBadge } from "@/components/exports/export-job-status-badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { downloadExportFile } from "@/lib/download-export-file";
 import {
@@ -190,10 +190,7 @@ export const PropertyExportsTable = memo(
       ) : null;
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Export history</CardTitle>
-        </CardHeader>
+      <Card className="gap-0 py-0">
         <CardContent className="p-0">
           <DataTable
             columns={EXPORT_COLUMNS}
