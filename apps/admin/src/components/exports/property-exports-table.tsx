@@ -1,0 +1,215 @@
+import { useMutation } from "@tanstack/react-query";
+import { Download, Loader2 } from "lucide-react";
+import { memo, type RefObject, useCallback } from "react";
+import { toast } from "sonner";
+
+import { DataTable } from "@/components/data-table/data-table";
+import { type DataTableColumn } from "@/components/data-table/data-table-types";
+import { ExportJobStatusBadge } from "@/components/exports/export-job-status-badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TableCell, TableRow } from "@/components/ui/table";
+import { downloadExportFile } from "@/lib/download-export-file";
+import {
+  formatExportJobDate,
+  formatExportJobFilterSummary,
+  getExportFormatLabel,
+  getExportResourceTypeLabel,
+  isExportJobDownloadable,
+} from "@/lib/property-export-utils";
+import { type TSelectOption } from "@/lib/select-option-types";
+import { cn } from "@/lib/utils";
+import { ExportJobStatus, type IExportJob } from "@/packages/shared";
+
+const EXPORT_COLUMNS: DataTableColumn[] = [
+  { id: "requestedAt", label: "Requested" },
+  { id: "resourceType", label: "Resource" },
+  { id: "format", label: "Format" },
+  { id: "filters", label: "Filters" },
+  { id: "status", label: "Status" },
+  { id: "rowCount", label: "Rows" },
+  { id: "actions", label: "Actions" },
+];
+
+const EXPORT_ROW_ESTIMATED_HEIGHT = 56;
+
+function getExportJobKey(job: IExportJob): string {
+  return job.id;
+}
+
+const ExportJobActions = memo(
+  ({
+    isDownloading,
+    job,
+    onDownload,
+  }: {
+    isDownloading: boolean;
+    job: IExportJob;
+    onDownload: (jobId: string) => void;
+  }) => {
+    if (isExportJobDownloadable(job.status)) {
+      return (
+        <Button
+          className="gap-1.5"
+          disabled={isDownloading}
+          onClick={() => onDownload(job.id)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {isDownloading ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Download className="size-3.5" />
+          )}
+          Download
+        </Button>
+      );
+    }
+
+    if (job.status === ExportJobStatus.FAILED) {
+      return (
+        <p className="text-destructive max-w-[220px] text-xs">
+          {job.errorMessage ?? "Export failed"}
+        </p>
+      );
+    }
+
+    if (job.status === ExportJobStatus.EXPIRED) {
+      return (
+        <p className="text-muted-foreground text-xs">File expired — export again to download</p>
+      );
+    }
+
+    return <p className="text-muted-foreground text-xs">Preparing your file…</p>;
+  }
+);
+ExportJobActions.displayName = "ExportJobActions";
+
+const ExportJobRow = memo(
+  ({
+    categoryOptions,
+    highlighted,
+    isDownloading,
+    job,
+    onDownload,
+  }: {
+    categoryOptions: readonly TSelectOption[];
+    highlighted: boolean;
+    isDownloading: boolean;
+    job: IExportJob;
+    onDownload: (jobId: string) => void;
+  }) => (
+    <TableRow
+      className={cn(
+        highlighted && "bg-primary/10 ring-primary/40 ring-2 ring-inset transition-colors"
+      )}
+      id={`export-job-${job.id}`}
+    >
+      <TableCell className="text-muted-foreground text-sm">
+        {formatExportJobDate(job.createdAt)}
+      </TableCell>
+      <TableCell>{getExportResourceTypeLabel(job.resourceType)}</TableCell>
+      <TableCell>{getExportFormatLabel(job.format)}</TableCell>
+      <TableCell className="max-w-[240px] truncate text-sm">
+        {formatExportJobFilterSummary(job, categoryOptions)}
+      </TableCell>
+      <TableCell>
+        <ExportJobStatusBadge status={job.status} />
+      </TableCell>
+      <TableCell>{job.rowCount ?? "—"}</TableCell>
+      <TableCell>
+        <ExportJobActions isDownloading={isDownloading} job={job} onDownload={onDownload} />
+      </TableCell>
+    </TableRow>
+  )
+);
+ExportJobRow.displayName = "ExportJobRow";
+
+interface IPropertyExportsTableProps {
+  categoryOptions: readonly TSelectOption[];
+  countLabel?: string;
+  exports: IExportJob[];
+  hasNextPage: boolean;
+  highlightJobId: string | null;
+  isFetchingNextPage: boolean;
+  isPending: boolean;
+  propertyId: string;
+  scrollSentinelRef: RefObject<HTMLDivElement | null>;
+}
+
+export const PropertyExportsTable = memo(
+  ({
+    categoryOptions,
+    countLabel,
+    exports,
+    hasNextPage,
+    highlightJobId,
+    isFetchingNextPage,
+    isPending,
+    propertyId,
+    scrollSentinelRef,
+  }: IPropertyExportsTableProps) => {
+    const downloadMutation = useMutation({
+      mutationFn: (jobId: string) => downloadExportFile(propertyId, jobId),
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to download export");
+      },
+    });
+
+    const handleDownload = useCallback(
+      (jobId: string) => {
+        downloadMutation.mutate(jobId);
+      },
+      [downloadMutation]
+    );
+
+    const renderExportRow = useCallback(
+      (job: IExportJob) => (
+        <ExportJobRow
+          categoryOptions={categoryOptions}
+          highlighted={highlightJobId === job.id}
+          isDownloading={downloadMutation.isPending && downloadMutation.variables === job.id}
+          job={job}
+          key={job.id}
+          onDownload={handleDownload}
+        />
+      ),
+      [
+        categoryOptions,
+        downloadMutation.isPending,
+        downloadMutation.variables,
+        handleDownload,
+        highlightJobId,
+      ]
+    );
+
+    const toolbar =
+      countLabel != null ? (
+        <p className="text-muted-foreground px-4 pt-4 text-sm">{countLabel}</p>
+      ) : null;
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Export history</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <DataTable
+            columns={EXPORT_COLUMNS}
+            emptyMessage="No exports yet. Queue one from Expenses using Export table."
+            getItemKey={getExportJobKey}
+            infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+            infiniteScrollSentinelRef={scrollSentinelRef}
+            isPending={isPending}
+            items={exports}
+            renderRow={renderExportRow}
+            toolbar={toolbar}
+            virtualization={{ estimateRowHeight: EXPORT_ROW_ESTIMATED_HEIGHT }}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+);
+PropertyExportsTable.displayName = "PropertyExportsTable";

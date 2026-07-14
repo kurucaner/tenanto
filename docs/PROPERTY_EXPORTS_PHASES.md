@@ -326,10 +326,10 @@ toast.success("Export queued", {
 
 **Goal:** First usable UI — **CSV export live**.
 
-- [ ] Exports tab + `property-exports-page.tsx`
-- [ ] Export table dialog on Expenses + **View export** toast
-- [ ] Wire TanStack Query; no polling loop on expenses page
-- [ ] `highlightJobId` scroll/highlight on Exports tab
+- [x] Exports tab + `property-exports-page.tsx`
+- [x] Export table dialog on Expenses + **View export** toast
+- [x] Wire TanStack Query; no polling loop on expenses page
+- [x] `highlightJobId` scroll/highlight on Exports tab
 
 **Exit criteria:** User queues from Expenses → clicks **View export** → sees job on Exports tab → downloads CSV.
 
