@@ -171,13 +171,11 @@ UnitRow.displayName = "UnitRow";
 const UNIT_ROW_ESTIMATED_HEIGHT = 44;
 
 const UNIT_RENTAL_TYPE_FILTER_OPTIONS = [
-  { label: "All types", value: "" },
   { label: formatUnitRentalTypeLabel(UnitRentalType.SHORT_TERM), value: UnitRentalType.SHORT_TERM },
   { label: formatUnitRentalTypeLabel(UnitRentalType.LONG_TERM), value: UnitRentalType.LONG_TERM },
 ] as const;
 
 const UNIT_OCCUPANCY_FILTER_OPTIONS = [
-  { label: "All occupancy", value: "" },
   { label: "Vacant", value: UnitOccupancyFilter.VACANT },
   { label: "Occupied", value: UnitOccupancyFilter.OCCUPIED },
 ] as const;
