@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
     <MarketingLayout>
       <LegalProse title="Terms of Service">
         <p>
-          Last updated: March 1, 2026. These Terms of Service (&quot;Terms&quot;) govern your access
+          Last updated: July 14, 2026. These Terms of Service (&quot;Terms&quot;) govern your access
           to and use of {APP_NAME}, including our website, admin application, APIs, and related
           services (collectively, the &quot;Service&quot;).
         </p>
@@ -50,6 +50,17 @@ export default function TermsOfServicePage() {
           You retain ownership of property and financial data you submit. You grant us a limited
           license to host, process, and display that data solely to provide the Service. You are
           responsible for ensuring you have the right to upload and process the data you enter.
+        </p>
+
+        <h2>SMS Messaging</h2>
+        <p>
+          By voluntarily enabling SMS messaging, you consent to receive recurring transactional text
+          messages from {APP_NAME}, operated by Edgium LLC, including verification codes and account
+          or property notifications. Message frequency varies. Message and data rates may apply.
+          Consent to SMS messaging is not required to use {APP_NAME}. Reply STOP at any time to opt
+          out or HELP for assistance. You may also disable SMS in your account settings or contact{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>. Mobile carriers are not liable
+          for delayed or undelivered messages.
         </p>
 
         <h2>Disclaimers</h2>
