@@ -417,12 +417,14 @@ export function decodeExportJobKeysetCursor(raw: string): ExportJobKeysetCursorV
 
     const sortBy = typeof parsed.sortBy === "string" ? parsed.sortBy : "requestedAt";
     const sortDir = typeof parsed.sortDir === "string" ? parsed.sortDir : "desc";
-    const sortKey =
-      parsed.sortKey === null
-        ? null
-        : typeof parsed.sortKey === "number" || typeof parsed.sortKey === "string"
-          ? parsed.sortKey
-          : null;
+
+    let sortKey: string | number | null = null;
+    if (
+      parsed.sortKey !== null &&
+      (typeof parsed.sortKey === "number" || typeof parsed.sortKey === "string")
+    ) {
+      sortKey = parsed.sortKey;
+    }
 
     return {
       createdAt: parsed.createdAt,

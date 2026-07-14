@@ -28,6 +28,51 @@ import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { pool } from "./pool";
 
+function isFilterRecord(raw: unknown): raw is Record<string, unknown> {
+  return raw != null && typeof raw === "object" && !Array.isArray(raw);
+}
+
+function assignOptionalNonEmptyStrings(
+  record: Record<string, unknown>,
+  filters: Record<string, unknown>,
+  keys: readonly string[]
+): void {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value !== "") {
+      filters[key] = value;
+    }
+  }
+}
+
+function applyStoredIncomeExportEnumFilters(
+  record: Record<string, unknown>,
+  filters: TPropertyIncomeEntriesListFilters
+): void {
+  const { refundStatus, sortBy, sortDir, status } = record;
+
+  if (
+    status === "active" ||
+    status === "canceled" ||
+    status === "no_show" ||
+    status === "stayed"
+  ) {
+    filters.status = status;
+  }
+
+  if (refundStatus === "refunded" || refundStatus === "not_refunded") {
+    filters.refundStatus = refundStatus;
+  }
+
+  if (typeof sortBy === "string" && sortBy !== "") {
+    filters.sortBy = sortBy as TPropertyIncomeEntriesListFilters["sortBy"];
+  }
+
+  if (sortDir === "asc" || sortDir === "desc") {
+    filters.sortDir = sortDir;
+  }
+}
+
 export interface ICreateExportJobInput {
   createdBy: string;
   filters: TExportJobFilters;
@@ -64,38 +109,20 @@ function parseExpenseFilters(raw: unknown): TPropertyExpensesListFilters {
 }
 
 function parseIncomeExportFilters(raw: unknown): TPropertyIncomeEntriesListFilters {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+  if (!isFilterRecord(raw)) {
     return {};
   }
-  const record = raw as Record<string, unknown>;
+
   const filters: TPropertyIncomeEntriesListFilters = {};
-  if (typeof record.from === "string" && record.from !== "") filters.from = record.from;
-  if (typeof record.to === "string" && record.to !== "") filters.to = record.to;
-  if (typeof record.unitId === "string" && record.unitId !== "") filters.unitId = record.unitId;
-  if (typeof record.channelCommissionId === "string" && record.channelCommissionId !== "") {
-    filters.channelCommissionId = record.channelCommissionId;
-  }
-  if (typeof record.incomeType === "string" && record.incomeType !== "") {
-    filters.incomeType = record.incomeType;
-  }
-  if (typeof record.q === "string" && record.q !== "") filters.q = record.q;
-  if (
-    record.status === "active" ||
-    record.status === "canceled" ||
-    record.status === "no_show" ||
-    record.status === "stayed"
-  ) {
-    filters.status = record.status;
-  }
-  if (record.refundStatus === "refunded" || record.refundStatus === "not_refunded") {
-    filters.refundStatus = record.refundStatus;
-  }
-  if (typeof record.sortBy === "string" && record.sortBy !== "") {
-    filters.sortBy = record.sortBy as TPropertyIncomeEntriesListFilters["sortBy"];
-  }
-  if (record.sortDir === "asc" || record.sortDir === "desc") {
-    filters.sortDir = record.sortDir;
-  }
+  assignOptionalNonEmptyStrings(raw, filters, [
+    "channelCommissionId",
+    "from",
+    "incomeType",
+    "q",
+    "to",
+    "unitId",
+  ]);
+  applyStoredIncomeExportEnumFilters(raw, filters);
   return filters;
 }
 
