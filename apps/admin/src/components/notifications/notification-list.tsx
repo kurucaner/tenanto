@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCheck, Loader2 } from "lucide-react";
+import { CheckCheck, Loader2, PartyPopper } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -158,9 +158,10 @@ export const NotificationList = memo(
             </div>
           ) : null}
           {!hasNextPage && items.length > 0 ? (
-            <p className="text-muted-foreground py-2 text-center text-[0.65rem]">
-              You&apos;re all caught up
-            </p>
+            <div className="text-muted-foreground flex items-center justify-center gap-1.5 py-2 text-[0.65rem]">
+              <PartyPopper aria-hidden className="size-3.5 shrink-0 opacity-80" />
+              <span>You&apos;re all caught up</span>
+            </div>
           ) : null}
           <div className="h-1" ref={scrollSentinelRef} />
         </div>
