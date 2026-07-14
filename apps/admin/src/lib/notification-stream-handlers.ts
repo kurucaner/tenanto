@@ -169,6 +169,12 @@ export function handleTenantEmailCampaignUpdated(
     queryKey: queryKeys.propertyTenantEmailCampaigns(data.propertyId),
   });
 
+  if (isTenantEmailCampaignTerminal(data.status)) {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
+    });
+  }
+
   const communicationsPath = `/properties/${data.propertyId}/communications`;
   const isOnCommunicationsTab = pathname === communicationsPath;
 
@@ -180,15 +186,18 @@ export function handleTenantEmailCampaignUpdated(
     showTenantEmailCampaignCompletedToast(data);
   }
 
-  if (!isOnCommunicationsTab || document.visibilityState !== "visible") {
-    return;
-  }
+  const shouldRefetchDetailOnCommunicationsTab =
+    isOnCommunicationsTab &&
+    document.visibilityState === "visible" &&
+    !isTenantEmailCampaignTerminal(data.status);
 
-  queryClient.fetchQuery({
-    queryFn: () => tenantEmailCampaignsApi.get(data.propertyId, data.campaignId),
-    queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
-    staleTime: 0,
-  });
+  if (shouldRefetchDetailOnCommunicationsTab) {
+    queryClient.fetchQuery({
+      queryFn: () => tenantEmailCampaignsApi.get(data.propertyId, data.campaignId),
+      queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
+      staleTime: 0,
+    });
+  }
 }
 
 function isExportJobStatus(value: unknown): value is TExportJobStatus {

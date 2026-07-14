@@ -2,6 +2,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
 import {
+  TENANT_EMAIL_CAMPAIGN_CREATE_RATE_LIMIT_MAX,
+  TENANT_EMAIL_CAMPAIGN_CREATE_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/tenant-email-campaign-config";
+import { getTenantEmailCampaignCreateRateLimitErrorMessage } from "@/lib/tenant-email-campaign-limits";
+import {
   HttpStatus,
   type ICreateTenantEmailCampaignBody,
   type ITenantEmailCampaignCreateResponse,
@@ -241,7 +246,13 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
         return reply
           .status(HttpStatus.TOO_MANY_REQUESTS)
           .header("Retry-After", String(rateLimit.retryAfterSec))
-          .send({ error: "Too many tenant email campaigns. Try again later." });
+          .send({
+            error: getTenantEmailCampaignCreateRateLimitErrorMessage({
+              limit: TENANT_EMAIL_CAMPAIGN_CREATE_RATE_LIMIT_MAX,
+              retryAfterSec: rateLimit.retryAfterSec,
+              windowMs: TENANT_EMAIL_CAMPAIGN_CREATE_RATE_LIMIT_WINDOW_MS,
+            }),
+          });
       }
 
       const parsedBody = parseCreateCampaignBody(request.body);

@@ -33,6 +33,28 @@ const terminalUpdate = {
   totalCount: 3,
 };
 
+const inProgressUpdate = {
+  campaignId: "campaign-1",
+  failedCount: 0,
+  propertyId: "property-1",
+  sentCount: 1,
+  skippedCount: 0,
+  status: TenantEmailCampaignStatus.SENDING,
+  totalCount: 3,
+};
+
+function trackInvalidateQueries(queryClient: QueryClient): unknown[][] {
+  const invalidatedKeys: unknown[][] = [];
+  const originalInvalidate = queryClient.invalidateQueries.bind(queryClient);
+  queryClient.invalidateQueries = ((options) => {
+    if (options?.queryKey != null) {
+      invalidatedKeys.push(options.queryKey as unknown[]);
+    }
+    return originalInvalidate(options);
+  }) as typeof queryClient.invalidateQueries;
+  return invalidatedKeys;
+}
+
 const originalDocument = globalThis.document;
 
 beforeAll(() => {
@@ -173,14 +195,61 @@ describe("handleTenantEmailCampaignUpdated", () => {
 
     handleTenantEmailCampaignUpdated(
       queryClient,
-      {
-        ...terminalUpdate,
-        sentCount: 1,
-        status: TenantEmailCampaignStatus.SENDING,
-      },
+      inProgressUpdate,
       "/properties/property-1/income"
     );
 
+    expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
+  });
+
+  test("invalidates campaign detail cache on terminal updates", () => {
+    const queryClient = new QueryClient();
+    const invalidatedKeys = trackInvalidateQueries(queryClient);
+
+    handleTenantEmailCampaignUpdated(queryClient, terminalUpdate, "/properties/property-1/income");
+
+    expect(invalidatedKeys).toContainEqual(
+      queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
+    );
+    expect(invalidatedKeys).toContainEqual(queryKeys.propertyTenantEmailCampaigns("property-1"));
+  });
+
+  test("does not invalidate campaign detail cache on in-progress updates", () => {
+    const queryClient = new QueryClient();
+    const invalidatedKeys = trackInvalidateQueries(queryClient);
+
+    handleTenantEmailCampaignUpdated(
+      queryClient,
+      inProgressUpdate,
+      "/properties/property-1/income"
+    );
+
+    expect(invalidatedKeys).toContainEqual(queryKeys.propertyTenantEmailCampaigns("property-1"));
+    expect(invalidatedKeys).not.toContainEqual(
+      queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
+    );
+  });
+
+  test("does not fetch detail on Communications tab when terminal update arrives", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    });
+    const fetchQueryMock = mock(async () => undefined);
+    queryClient.fetchQuery = fetchQueryMock as typeof queryClient.fetchQuery;
+    const invalidatedKeys = trackInvalidateQueries(queryClient);
+
+    handleTenantEmailCampaignUpdated(
+      queryClient,
+      terminalUpdate,
+      "/properties/property-1/communications"
+    );
+
+    expect(fetchQueryMock).not.toHaveBeenCalled();
+    expect(invalidatedKeys).toContainEqual(
+      queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
+    );
     expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
   });
 });
