@@ -25,3 +25,7 @@ export interface IPropertyIncomeLinesListMeta {
 export interface IPropertyShortStaysListMeta {
   totalCount: number;
 }
+
+export interface ITenantEmailCampaignsListMeta {
+  totalCount: number;
+}

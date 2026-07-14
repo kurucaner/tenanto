@@ -67,6 +67,7 @@ import {
   type ITenantEmailCampaignListResponse,
   type ITenantEmailCampaignPreviewResponse,
   type ITenantEmailCampaignReenqueueResponse,
+  type ITenantEmailCampaignsListQuery,
   type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
   type IUpdatePropertyLongStayBody,
@@ -768,9 +769,9 @@ export const tenantEmailCampaignsApi = {
       `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns/${encodeURIComponent(campaignId)}`
     ),
 
-  list: (propertyId: string) =>
+  list: (propertyId: string, query?: ITenantEmailCampaignsListQuery) =>
     authenticatedRequest<ITenantEmailCampaignListResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns`
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns${buildTenantEmailCampaignsSearchParams(query)}`
     ),
 
   preview: (propertyId: string) =>
@@ -784,6 +785,15 @@ export const tenantEmailCampaignsApi = {
       { method: "POST" }
     ),
 };
+
+function buildTenantEmailCampaignsSearchParams(query: ITenantEmailCampaignsListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
 
 export const settingsApi = {
   get: (propertyId: string) =>

@@ -99,7 +99,7 @@ function renderCampaignDetailContent(
   const showReenqueue = hasQueuedRecipients(detail);
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4">
       {showReenqueue ? (
         <div className="mx-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
           <div className="space-y-1">
@@ -254,7 +254,7 @@ export const TenantEmailCampaignDetailSheet = memo(
 
     return (
       <Sheet onOpenChange={onOpenChange} open={open}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-xl md:max-w-2xl lg:max-w-4xl">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-xl md:max-w-2xl lg:max-w-4xl gap-0">
           <SheetHeader>
             <SheetTitle>Campaign details</SheetTitle>
             <SheetDescription>

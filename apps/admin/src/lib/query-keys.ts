@@ -8,6 +8,7 @@ import type {
   IPropertyReservationsListQuery,
   IPropertyUnitsListQuery,
   ISupportRequestsListQuery,
+  ITenantEmailCampaignsListQuery,
   TPropertyIncomeEntriesListFilters,
 } from "@/packages/shared";
 
@@ -51,8 +52,10 @@ export const queryKeys = {
   ) => ["property", propertyId, "short-stays", filters] as const,
   propertyTenantEmailCampaign: (propertyId: string, campaignId: string) =>
     ["property", propertyId, "tenant-email-campaigns", campaignId] as const,
-  propertyTenantEmailCampaigns: (propertyId: string) =>
-    ["property", propertyId, "tenant-email-campaigns"] as const,
+  propertyTenantEmailCampaigns: (
+    propertyId: string,
+    filters: Omit<ITenantEmailCampaignsListQuery, "cursor" | "limit"> = {}
+  ) => ["property", propertyId, "tenant-email-campaigns", filters] as const,
   propertyUnits: (propertyId: string, filters: IPropertyUnitsListQuery = {}) =>
     ["property", propertyId, "units", filters] as const,
   propertyUnitsPicker: (propertyId: string) => ["property", propertyId, "units-picker"] as const,

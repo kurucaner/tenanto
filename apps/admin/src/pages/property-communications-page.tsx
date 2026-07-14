@@ -1,16 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { TenantEmailActiveSendBanner } from "@/components/communications/tenant-email-active-send-banner";
 import { TenantEmailCampaignDetailSheet } from "@/components/communications/tenant-email-campaign-detail-sheet";
 import { TenantEmailCampaignHistoryTable } from "@/components/communications/tenant-email-campaign-history-table";
+import { TenantEmailCampaignHistoryToolbar } from "@/components/communications/tenant-email-campaign-history-toolbar";
 import { TenantEmailComposeCard } from "@/components/communications/tenant-email-compose-card";
+import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
+import { useLedgerUrlSearch } from "@/hooks/use-ledger-url-search";
 import { usePropertyShell } from "@/hooks/use-property-shell";
-import { tenantEmailCampaignsApi } from "@/lib/api-client";
-import { queryKeys } from "@/lib/query-keys";
+import { useTenantEmailCampaignsInfiniteList } from "@/hooks/use-tenant-email-campaigns-infinite-list";
+import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { isTenantEmailCampaignInProgress } from "@/lib/tenant-email-campaign-utils";
+import { defineUrlFilterSchema } from "@/lib/url-search-params";
+import { type TTenantEmailCampaignsListFilters } from "@/packages/shared";
+
+const COMMUNICATIONS_URL_FILTER_SCHEMA = defineUrlFilterSchema<{ q: string }>({
+  q: { defaultValue: "" },
+});
+
+function buildCampaignListFilters(q: string): TTenantEmailCampaignsListFilters {
+  const qTrim = q.trim();
+  return qTrim ? { q: qTrim } : {};
+}
 
 export const PropertyCommunicationsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
@@ -19,19 +31,29 @@ export const PropertyCommunicationsPage = memo(() => {
   const [detailCampaignId, setDetailCampaignId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  const campaignsQuery = useQuery({
-    enabled: permissions.canSendTenantNotifications,
-    queryFn: () => tenantEmailCampaignsApi.list(propertyId),
-    queryKey: queryKeys.propertyTenantEmailCampaigns(propertyId),
+  const { filters, setFilter } = useUrlFilterState(COMMUNICATIONS_URL_FILTER_SCHEMA);
+  const { q } = filters;
+  const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
+    q,
+    setFilter
+  );
+
+  const listFilters = useMemo(() => buildCampaignListFilters(q), [q]);
+
+  const { campaigns, error, fetchNextPage, hasNextPage, isFetchingNextPage, isPending, meta } =
+    useTenantEmailCampaignsInfiniteList(propertyId, listFilters);
+
+  const scrollSentinelRef = useInfiniteScrollTrigger({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   });
 
   const inProgressCampaignId = useMemo(() => {
     return (
-      campaignsQuery.data?.campaigns.find((campaign) =>
-        isTenantEmailCampaignInProgress(campaign.status)
-      )?.id ?? null
+      campaigns.find((campaign) => isTenantEmailCampaignInProgress(campaign.status))?.id ?? null
     );
-  }, [campaignsQuery.data?.campaigns]);
+  }, [campaigns]);
 
   useEffect(() => {
     if (activeCampaignId == null && inProgressCampaignId != null) {
@@ -50,27 +72,29 @@ export const PropertyCommunicationsPage = memo(() => {
     setDetailOpen(true);
   }, []);
 
+  const handleClearSearch = useCallback(() => {
+    handleSearchInputChange("");
+  }, [handleSearchInputChange]);
+
+  const qTrim = q.trim();
+  const activeSearchLabel = qTrim ? `Subject: ${qTrim}` : undefined;
+  const countLabel = meta ? `${meta.totalCount} campaigns` : undefined;
+
+  const toolbar = useMemo(
+    () => (
+      <TenantEmailCampaignHistoryToolbar
+        activeSearchLabel={activeSearchLabel}
+        countLabel={countLabel}
+        onClearSearch={handleClearSearch}
+        onSearchInputChange={handleSearchInputChange}
+        searchInput={searchInput}
+      />
+    ),
+    [activeSearchLabel, countLabel, handleClearSearch, handleSearchInputChange, searchInput]
+  );
+
   if (!permissions.canSendTenantNotifications) {
     return <Navigate replace to={`/properties/${propertyId}`} />;
-  }
-
-  if (campaignsQuery.isPending) {
-    return (
-      <div className="flex items-center gap-2 py-8 text-sm">
-        <Loader2 className="size-4 animate-spin" />
-        Loading communications…
-      </div>
-    );
-  }
-
-  if (campaignsQuery.isError) {
-    return (
-      <p className="text-destructive text-sm">
-        {campaignsQuery.error instanceof Error
-          ? campaignsQuery.error.message
-          : "Failed to load communications"}
-      </p>
-    );
   }
 
   const showBanner = activeCampaignId != null && !bannerDismissed;
@@ -87,10 +111,22 @@ export const PropertyCommunicationsPage = memo(() => {
 
       <TenantEmailComposeCard onQueued={handleQueued} propertyId={propertyId} />
 
-      <TenantEmailCampaignHistoryTable
-        campaigns={campaignsQuery.data?.campaigns ?? []}
-        onSelectCampaign={handleSelectCampaign}
-      />
+      {error ? (
+        <p className="text-destructive text-sm">
+          {error instanceof Error ? error.message : "Failed to load campaign history"}
+        </p>
+      ) : (
+        <TenantEmailCampaignHistoryTable
+          campaigns={campaigns}
+          hasNextPage={Boolean(hasNextPage)}
+          hasSearchQuery={qTrim.length > 0}
+          isFetchingNextPage={isFetchingNextPage}
+          isPending={isPending}
+          onSelectCampaign={handleSelectCampaign}
+          scrollSentinelRef={scrollSentinelRef}
+          toolbar={toolbar}
+        />
+      )}
 
       <TenantEmailCampaignDetailSheet
         campaignId={detailCampaignId}

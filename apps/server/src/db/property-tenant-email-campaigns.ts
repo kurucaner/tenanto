@@ -1,13 +1,19 @@
 import type {
   ITenantEmailCampaign,
+  ITenantEmailCampaignListItem,
   ITenantEmailCampaignRecipient,
+  ITenantEmailCampaignsListMeta,
   ITenantEmailResolvedRecipient,
   ITenantEmailSkippedRecipient,
+  TTenantEmailCampaignsListFilters,
   TTenantEmailCampaignStatus,
   TTenantEmailRecipientStatus,
   TTenantEmailTenantRole,
 } from "@/packages/shared";
 import { toIso } from "@/packages/shared";
+import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
+import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
 
 import { isPostgresUniqueViolation } from "./pg-errors";
 import { pool } from "./pool";
@@ -53,6 +59,57 @@ function mapCampaignRow(row: Record<string, unknown>): ITenantEmailCampaign {
     textBody: row.text_body as string,
     updatedAt: (row.updated_at as Date).toISOString(),
   };
+}
+
+function mapCampaignListItemRow(row: Record<string, unknown>): ITenantEmailCampaignListItem {
+  return {
+    completedAt: toIso(row.completed_at),
+    createdAt: (row.created_at as Date).toISOString(),
+    createdBy: row.created_by as string,
+    failedCount: row.failed_count as number,
+    id: row.id as string,
+    idempotencyKey: row.idempotency_key as string,
+    propertyId: row.property_id as string,
+    recipientCount: row.recipient_count as number,
+    sentCount: row.sent_count as number,
+    skippedCount: row.skipped_count as number,
+    status: row.status as TTenantEmailCampaignStatus,
+    subject: row.subject as string,
+    updatedAt: (row.updated_at as Date).toISOString(),
+  };
+}
+
+const CAMPAIGN_LIST_SELECT = `SELECT
+  id,
+  property_id,
+  created_by,
+  subject,
+  status,
+  recipient_count,
+  sent_count,
+  failed_count,
+  skipped_count,
+  idempotency_key,
+  completed_at,
+  created_at,
+  updated_at
+FROM property_tenant_email_campaigns`;
+
+function buildCampaignListConditions(
+  propertyId: string,
+  filters: TTenantEmailCampaignsListFilters
+): { conditions: string[]; values: unknown[] } {
+  const conditions = ["property_id = $1"];
+  const values: unknown[] = [propertyId];
+  let p = 2;
+
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    conditions.push(`subject ILIKE $${p++}`);
+    values.push(`%${qTrim}%`);
+  }
+
+  return { conditions, values };
 }
 
 function mapRecipientRow(row: Record<string, unknown>): ITenantEmailCampaignRecipient {
@@ -197,6 +254,23 @@ export const propertyTenantEmailCampaignsDb = {
     return mapCampaignRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async getListMetaByProperty(
+    propertyId: string,
+    filters: TTenantEmailCampaignsListFilters
+  ): Promise<ITenantEmailCampaignsListMeta> {
+    const { conditions, values } = buildCampaignListConditions(propertyId, filters);
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS total_count
+       FROM property_tenant_email_campaigns
+       WHERE ${conditions.join(" AND ")}`,
+      values
+    );
+    const row = result.rows[0] as { total_count: number } | undefined;
+    return {
+      totalCount: row?.total_count ?? 0,
+    };
+  },
+
   async getSendRecipientRow(recipientId: string): Promise<ITenantEmailSendRecipientRow | null> {
     const result = await pool.query(
       `SELECT
@@ -244,17 +318,6 @@ export const propertyTenantEmailCampaignsDb = {
     );
   },
 
-  async listByProperty(propertyId: string, limit = 50): Promise<ITenantEmailCampaign[]> {
-    const result = await pool.query(
-      `SELECT * FROM property_tenant_email_campaigns
-       WHERE property_id = $1
-       ORDER BY created_at DESC
-       LIMIT $2`,
-      [propertyId, limit]
-    );
-    return result.rows.map((row) => mapCampaignRow(row as Record<string, unknown>));
-  },
-
   async listCampaignIdsWithQueuedRecipients(): Promise<string[]> {
     const result = await pool.query(
       `SELECT DISTINCT campaign_id
@@ -263,6 +326,66 @@ export const propertyTenantEmailCampaignsDb = {
        ORDER BY campaign_id`
     );
     return result.rows.map((row) => (row as { campaign_id: string }).campaign_id);
+  },
+
+  async listPaginatedByProperty(
+    propertyId: string,
+    filters: TTenantEmailCampaignsListFilters,
+    options: { cursor?: string; limit: number }
+  ): Promise<{
+    campaigns: ITenantEmailCampaignListItem[];
+    meta?: ITenantEmailCampaignsListMeta;
+    nextCursor: string | null;
+  }> {
+    const includeMeta = shouldIncludeListMeta(options.cursor);
+    const listPromise = propertyTenantEmailCampaignsDb.listPaginatedPage(
+      propertyId,
+      filters,
+      options
+    );
+    const metaPromise = includeMeta
+      ? propertyTenantEmailCampaignsDb.getListMetaByProperty(propertyId, filters)
+      : Promise.resolve(undefined);
+
+    const [{ campaigns, nextCursor }, meta] = await Promise.all([listPromise, metaPromise]);
+
+    return meta == null ? { campaigns, nextCursor } : { campaigns, meta, nextCursor };
+  },
+
+  async listPaginatedPage(
+    propertyId: string,
+    filters: TTenantEmailCampaignsListFilters,
+    options: { cursor?: string; limit: number }
+  ): Promise<{ campaigns: ITenantEmailCampaignListItem[]; nextCursor: string | null }> {
+    const { conditions, values } = buildCampaignListConditions(propertyId, filters);
+    let p = values.length + 1;
+
+    if (options.cursor != null && options.cursor !== "") {
+      const decoded = decodeKeysetCursor(options.cursor);
+      conditions.push(`(created_at, id) < ($${p++}::timestamptz, $${p++}::uuid)`);
+      values.push(decoded.createdAt, decoded.id);
+    }
+
+    const limitParam = p;
+    values.push(options.limit + 1);
+
+    const result = await pool.query(
+      `${CAMPAIGN_LIST_SELECT}
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY created_at DESC, id DESC
+       LIMIT $${limitParam}`,
+      values
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
+      encodeKeysetCursor(last.created_at as Date | string, last.id as string)
+    );
+
+    return {
+      campaigns: pageRows.map((row) => mapCampaignListItemRow(row)),
+      nextCursor,
+    };
   },
 
   async listQueuedRecipientIds(campaignId: string): Promise<string[]> {

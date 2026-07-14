@@ -175,6 +175,7 @@ export {
   type IPropertyLongStaysListMeta,
   type IPropertyShortStaysListMeta,
   type IPropertyUnitsListMeta,
+  type ITenantEmailCampaignsListMeta,
 } from "./list-meta-types";
 export { LEASES_LIST_LIMIT, LEASES_LIST_MAX_LIMIT } from "./property-long-stay-list-constants";
 export {
@@ -409,22 +410,29 @@ export {
 
 // Tenant email campaigns
 export {
+  TENANT_EMAIL_CAMPAIGNS_LIST_LIMIT,
+  TENANT_EMAIL_CAMPAIGNS_LIST_MAX_LIMIT,
+} from "./tenant-email-campaign-list-constants";
+export {
   type ICreateTenantEmailCampaignBody,
   type ITenantEmailCampaign,
   type ITenantEmailCampaignCreateResponse,
   type ITenantEmailCampaignDetailResponse,
+  type ITenantEmailCampaignListItem,
   type ITenantEmailCampaignListResponse,
   type ITenantEmailCampaignPreviewRecipient,
   type ITenantEmailCampaignPreviewResponse,
   type ITenantEmailCampaignPreviewSkipped,
-  type ITenantEmailCampaignReenqueueResponse,
   type ITenantEmailCampaignRecipient,
+  type ITenantEmailCampaignReenqueueResponse,
+  type ITenantEmailCampaignsListQuery,
   type ITenantEmailRecipientResolution,
   type ITenantEmailResolvedRecipient,
   type ITenantEmailSkippedRecipient,
   TenantEmailCampaignStatus,
   TenantEmailRecipientStatus,
   TenantEmailTenantRole,
+  type TTenantEmailCampaignsListFilters,
   type TTenantEmailCampaignStatus,
   type TTenantEmailRecipientStatus,
   type TTenantEmailTenantRole,

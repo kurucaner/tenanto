@@ -1,3 +1,5 @@
+import type { ITenantEmailCampaignsListMeta } from "./list-meta-types";
+
 export type TTenantEmailCampaignStatus =
   "queued" | "sending" | "completed" | "completed_with_errors" | "failed";
 
@@ -94,8 +96,20 @@ export interface ITenantEmailCampaignDetailResponse {
   recipients: ITenantEmailCampaignRecipient[];
 }
 
+export type ITenantEmailCampaignListItem = Omit<ITenantEmailCampaign, "htmlBody" | "textBody">;
+
+export interface ITenantEmailCampaignsListQuery {
+  cursor?: string;
+  limit?: number;
+  q?: string;
+}
+
+export type TTenantEmailCampaignsListFilters = Pick<ITenantEmailCampaignsListQuery, "q">;
+
 export interface ITenantEmailCampaignListResponse {
-  campaigns: ITenantEmailCampaign[];
+  campaigns: ITenantEmailCampaignListItem[];
+  meta?: ITenantEmailCampaignsListMeta;
+  nextCursor: string | null;
 }
 
 export interface ITenantEmailCampaignReenqueueResponse {
