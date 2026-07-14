@@ -1,3 +1,5 @@
 - refactor
   - property-export-list-constants
   - list-meta-types
+- remove .env.example from gitignore
+  - update Optional env tags.

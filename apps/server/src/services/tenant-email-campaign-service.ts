@@ -125,8 +125,9 @@ export async function createTenantEmailCampaign(params: {
     if (queuedRecipientIds.length > 0) {
       await enqueueTenantEmailSendJobs(campaign.id, queuedRecipientIds);
     } else {
-      await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaign.id);
-      await maybePublishTenantEmailCampaignUpdated(campaign.id);
+      const transitionedToTerminal =
+        await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaign.id);
+      await maybePublishTenantEmailCampaignUpdated(campaign.id, { transitionedToTerminal });
     }
 
     const refreshed = (await propertyTenantEmailCampaignsDb.findById(campaign.id)) ?? campaign;

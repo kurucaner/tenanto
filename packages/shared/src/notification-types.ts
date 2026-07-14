@@ -3,12 +3,14 @@ export type UserNotificationType =
   | "property_member_added"
   | "property_member_removed"
   | "support_request_reply"
-  | "support_request_status_changed";
+  | "support_request_status_changed"
+  | "tenant_email_campaign_completed";
 
 export type UserNotificationResourceType = "property" | "support_request";
 
 export interface IUserNotification {
   body: string;
+  contextResourceId: string | null;
   createdAt: string;
   id: string;
   readAt: string | null;

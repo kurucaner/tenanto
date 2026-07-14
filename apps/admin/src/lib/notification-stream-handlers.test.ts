@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -7,21 +7,13 @@ import {
   TenantEmailCampaignStatus,
 } from "@/packages/shared";
 
-const showTenantEmailCampaignCompletedToastMock = mock(() => undefined);
-
-mock.module("./show-tenant-email-campaign-completed-toast", () => ({
-  showTenantEmailCampaignCompletedToast: showTenantEmailCampaignCompletedToastMock,
-}));
-
 mock.module("./show-property-export-queued-toast", () => ({
   showPropertyExportCompletedToast: mock(() => undefined),
   showPropertyExportQueuedToast: mock(() => undefined),
 }));
 
-const {
-  handleTenantEmailCampaignUpdated,
-  parseTenantEmailCampaignUpdatedData,
-} = await import("./notification-stream-handlers");
+const { handleTenantEmailCampaignUpdated, parseTenantEmailCampaignUpdatedData } =
+  await import("./notification-stream-handlers");
 
 const terminalUpdate = {
   campaignId: "campaign-1",
@@ -71,10 +63,6 @@ afterAll(() => {
     value: originalDocument,
     writable: true,
   });
-});
-
-afterEach(() => {
-  showTenantEmailCampaignCompletedToastMock.mockClear();
 });
 
 describe("parseTenantEmailCampaignUpdatedData", () => {
@@ -160,58 +148,18 @@ describe("handleTenantEmailCampaignUpdated", () => {
     ).toBe(TenantEmailCampaignStatus.SENDING);
   });
 
-  test("shows completion toast when terminal update arrives off Communications tab", () => {
-    const queryClient = new QueryClient();
-
-    handleTenantEmailCampaignUpdated(
-      queryClient,
-      terminalUpdate,
-      "/properties/property-1/income"
-    );
-
-    expect(showTenantEmailCampaignCompletedToastMock).toHaveBeenCalledTimes(1);
-    expect(showTenantEmailCampaignCompletedToastMock).toHaveBeenCalledWith(terminalUpdate);
-  });
-
-  test("does not show completion toast when already on Communications tab", async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-      },
-    });
-    queryClient.fetchQuery = mock(async () => undefined) as typeof queryClient.fetchQuery;
-
-    handleTenantEmailCampaignUpdated(
-      queryClient,
-      terminalUpdate,
-      "/properties/property-1/communications"
-    );
-
-    expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
-  });
-
-  test("does not show completion toast for in-progress updates", () => {
-    const queryClient = new QueryClient();
-
-    handleTenantEmailCampaignUpdated(
-      queryClient,
-      inProgressUpdate,
-      "/properties/property-1/income"
-    );
-
-    expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
-  });
-
   test("invalidates campaign detail cache on terminal updates", () => {
     const queryClient = new QueryClient();
     const invalidatedKeys = trackInvalidateQueries(queryClient);
 
     handleTenantEmailCampaignUpdated(queryClient, terminalUpdate, "/properties/property-1/income");
 
-    expect(invalidatedKeys).toContainEqual(
-      queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
-    );
-    expect(invalidatedKeys).toContainEqual(queryKeys.propertyTenantEmailCampaigns("property-1"));
+    expect(invalidatedKeys).toContainEqual([
+      ...queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1"),
+    ]);
+    expect(invalidatedKeys).toContainEqual([
+      ...queryKeys.propertyTenantEmailCampaigns("property-1"),
+    ]);
   });
 
   test("does not invalidate campaign detail cache on in-progress updates", () => {
@@ -224,10 +172,12 @@ describe("handleTenantEmailCampaignUpdated", () => {
       "/properties/property-1/income"
     );
 
-    expect(invalidatedKeys).toContainEqual(queryKeys.propertyTenantEmailCampaigns("property-1"));
-    expect(invalidatedKeys).not.toContainEqual(
-      queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
-    );
+    expect(invalidatedKeys).toContainEqual([
+      ...queryKeys.propertyTenantEmailCampaigns("property-1"),
+    ]);
+    expect(invalidatedKeys).not.toContainEqual([
+      ...queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1"),
+    ]);
   });
 
   test("does not fetch detail on Communications tab when terminal update arrives", () => {
@@ -247,9 +197,8 @@ describe("handleTenantEmailCampaignUpdated", () => {
     );
 
     expect(fetchQueryMock).not.toHaveBeenCalled();
-    expect(invalidatedKeys).toContainEqual(
-      queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1")
-    );
-    expect(showTenantEmailCampaignCompletedToastMock).not.toHaveBeenCalled();
+    expect(invalidatedKeys).toContainEqual([
+      ...queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1"),
+    ]);
   });
 });

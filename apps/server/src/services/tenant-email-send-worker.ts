@@ -28,8 +28,9 @@ import { sendTenantCampaignEmail } from "@/ses/transactional-emails";
 const UNSUBSCRIBED_SKIP_REASON = "Recipient unsubscribed";
 
 async function finalizeRecipientAttempt(campaignId: string): Promise<void> {
-  await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
-  await maybePublishTenantEmailCampaignUpdated(campaignId);
+  const transitionedToTerminal =
+    await propertyTenantEmailCampaignsDb.refreshCampaignCompletion(campaignId);
+  await maybePublishTenantEmailCampaignUpdated(campaignId, { transitionedToTerminal });
 }
 
 async function processTenantEmailSendJob(job: Job<ITenantEmailSendJobData>): Promise<void> {

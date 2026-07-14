@@ -10,6 +10,7 @@ import { pool } from "./pool";
 
 export interface CreateUserNotificationInput {
   body: string;
+  contextResourceId?: string;
   resourceId?: string;
   resourceType?: UserNotificationResourceType;
   title: string;
@@ -21,6 +22,7 @@ function mapUserNotificationRow(row: Record<string, unknown>): IUserNotification
   const resourceType = row.resource_type;
   return {
     body: row.body as string,
+    contextResourceId: (row.context_resource_id as string) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     id: row.id as string,
     readAt: row.read_at != null ? (row.read_at as Date).toISOString() : null,
@@ -43,8 +45,8 @@ export const userNotificationsDb = {
 
   async create(input: CreateUserNotificationInput): Promise<IUserNotification> {
     const result = await pool.query(
-      `INSERT INTO user_notifications (user_id, type, title, body, resource_type, resource_id)
-       VALUES ($1, $2::user_notification_type, $3, $4, $5, $6)
+      `INSERT INTO user_notifications (user_id, type, title, body, resource_type, resource_id, context_resource_id)
+       VALUES ($1, $2::user_notification_type, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         input.userId,
@@ -53,6 +55,7 @@ export const userNotificationsDb = {
         input.body,
         input.resourceType ?? null,
         input.resourceId ?? null,
+        input.contextResourceId ?? null,
       ]
     );
     return mapUserNotificationRow(result.rows[0] as Record<string, unknown>);

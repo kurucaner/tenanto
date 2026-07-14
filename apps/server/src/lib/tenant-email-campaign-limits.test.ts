@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {
+  didTenantEmailCampaignTransitionToTerminal,
   formatTenantEmailCampaignRateLimitWindow,
   formatTenantEmailCampaignRetryAfter,
   getTenantEmailCampaignCreateRateLimitErrorMessage,
@@ -71,6 +72,14 @@ describe("getTenantEmailCampaignCreateRateLimitErrorMessage", () => {
     ).toBe(
       "You can send at most 1 tenant email campaign per property every 1 minute. Try again in 45 seconds."
     );
+  });
+});
+
+describe("didTenantEmailCampaignTransitionToTerminal", () => {
+  test("detects the first transition into a terminal status", () => {
+    expect(didTenantEmailCampaignTransitionToTerminal("sending", "completed")).toBe(true);
+    expect(didTenantEmailCampaignTransitionToTerminal("completed", "completed")).toBe(false);
+    expect(didTenantEmailCampaignTransitionToTerminal("sending", "sending")).toBe(false);
   });
 });
 

@@ -1,8 +1,28 @@
+import { TenantEmailCampaignStatus } from "@/packages/shared";
+
 import { isProduction } from "./environment";
 import {
   TENANT_EMAIL_CAMPAIGN_DEV_MAX_RECIPIENTS,
   TENANT_EMAIL_CAMPAIGN_MAX_RECIPIENTS,
 } from "./tenant-email-campaign-config";
+
+export function isTerminalTenantEmailCampaignStatus(status: string): boolean {
+  return (
+    status === TenantEmailCampaignStatus.COMPLETED ||
+    status === TenantEmailCampaignStatus.COMPLETED_WITH_ERRORS ||
+    status === TenantEmailCampaignStatus.FAILED
+  );
+}
+
+export function didTenantEmailCampaignTransitionToTerminal(
+  previousStatus: string,
+  nextStatus: string
+): boolean {
+  return (
+    isTerminalTenantEmailCampaignStatus(nextStatus) &&
+    !isTerminalTenantEmailCampaignStatus(previousStatus)
+  );
+}
 
 export function resolveTenantEmailCampaignMaxRecipients(input: {
   devMaxRecipients: number;

@@ -13,6 +13,12 @@ import { tenantEmailCampaignsApi } from "@/lib/api-client";
 import { hasRichTextContent } from "@/lib/html-plain-text";
 import { queryKeys } from "@/lib/query-keys";
 
+const sleep = (ms: number): Promise<void> => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};
+
 interface ITenantEmailComposeCardProps {
   disabled?: boolean;
   onQueued: (campaignId: string) => void;
@@ -40,12 +46,14 @@ export const TenantEmailComposeCard = memo(
     }, []);
 
     const createMutation = useMutation({
-      mutationFn: (input: { htmlBody: string; idempotencyKey: string; subject: string }) =>
-        tenantEmailCampaignsApi.create(
+      mutationFn: async (input: { htmlBody: string; idempotencyKey: string; subject: string }) => {
+        await sleep(5_000);
+        return tenantEmailCampaignsApi.create(
           propertyId,
           { htmlBody: input.htmlBody, subject: input.subject },
           input.idempotencyKey
-        ),
+        );
+      },
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to queue notification");
       },

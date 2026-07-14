@@ -2452,4 +2452,28 @@ export const migrations: IMigration[] = [
     },
     version: 55,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS user_notifications_campaign_completion_dedup;
+      `);
+      await client.query(`
+        ALTER TABLE user_notifications DROP COLUMN IF EXISTS context_resource_id;
+      `);
+    },
+    name: "tenant_email_campaign_completed_notification",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE user_notification_type ADD VALUE IF NOT EXISTS 'tenant_email_campaign_completed';
+      `);
+      await client.query(`
+        ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS context_resource_id UUID;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS user_notifications_campaign_completion_dedup
+          ON user_notifications (type, context_resource_id);
+      `);
+    },
+    version: 56,
+  },
 ];

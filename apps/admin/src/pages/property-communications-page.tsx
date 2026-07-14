@@ -12,11 +12,7 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { useTenantEmailCampaignsInfiniteList } from "@/hooks/use-tenant-email-campaigns-infinite-list";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
-import { showTenantEmailCampaignCompletedToast } from "@/lib/show-tenant-email-campaign-completed-toast";
-import {
-  isTenantEmailCampaignInProgress,
-  isTenantEmailCampaignTerminal,
-} from "@/lib/tenant-email-campaign-utils";
+import { isTenantEmailCampaignInProgress } from "@/lib/tenant-email-campaign-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import { type TTenantEmailCampaignsListFilters } from "@/packages/shared";
 
@@ -103,25 +99,6 @@ export const PropertyCommunicationsPage = memo(() => {
       { replace: true }
     );
   }, [campaignIdParam, setSearchParams]);
-
-  useEffect(() => {
-    if (activeCampaignId == null || !bannerDismissed) {
-      return;
-    }
-
-    const campaign = campaigns.find((item) => item.id === activeCampaignId);
-    if (campaign == null || !isTenantEmailCampaignTerminal(campaign.status)) {
-      return;
-    }
-
-    showTenantEmailCampaignCompletedToast({
-      campaignId: campaign.id,
-      failedCount: campaign.failedCount,
-      propertyId: campaign.propertyId,
-      sentCount: campaign.sentCount,
-      status: campaign.status,
-    });
-  }, [activeCampaignId, bannerDismissed, campaigns]);
 
   const handleQueued = useCallback((campaignId: string) => {
     setActiveCampaignId(campaignId);

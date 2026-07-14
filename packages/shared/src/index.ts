@@ -449,6 +449,10 @@ export {
   TENANT_EMAIL_CAMPAIGNS_LIST_MAX_LIMIT,
 } from "./tenant-email-campaign-list-constants";
 export {
+  buildTenantEmailCampaignCompletionBody,
+  buildTenantEmailCampaignCompletionTitle,
+} from "./tenant-email-campaign-notification-copy";
+export {
   type ICreateTenantEmailCampaignBody,
   type ITenantEmailCampaign,
   type ITenantEmailCampaignCreateResponse,
