@@ -105,7 +105,8 @@ const ExportJobRow = memo(
   }) => (
     <TableRow
       className={cn(
-        highlighted && "bg-primary/10 ring-primary/40 ring-2 ring-inset transition-colors"
+        highlighted &&
+          "bg-primary/8 hover:bg-primary/12 [&>td:first-child]:border-l-primary [&>td:first-child]:border-l-4"
       )}
       id={`export-job-${job.id}`}
     >
