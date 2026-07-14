@@ -1,6 +1,7 @@
 import "dotenv/config";
 
 import { verifyRedisConnection } from "@/queues/redis-connection";
+import { failTimedOutPropertyExports } from "@/services/property-export/property-export-maintenance";
 import { reenqueueAllStuckPropertyExports } from "@/services/property-export/property-export-reenqueue";
 import {
   startPropertyExportWorker,
@@ -15,8 +16,9 @@ async function main(): Promise<void> {
   }
 
   const worker = startPropertyExportWorker();
+  const timedOutCount = await failTimedOutPropertyExports();
   const reenqueuedCount = await reenqueueAllStuckPropertyExports();
-  console.info("[property-export-worker] started", { reenqueuedCount });
+  console.info("[property-export-worker] started", { reenqueuedCount, timedOutCount });
 
   const shutdown = async (signal: string) => {
     console.info(`[property-export-worker] received ${signal}, shutting down`);

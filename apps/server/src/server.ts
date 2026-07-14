@@ -38,6 +38,7 @@ import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
+import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
 import { notificationStreamHub } from "./services/notification-stream-hub";
@@ -169,6 +170,7 @@ const start = async () => {
 
     if (pm2Instance === undefined || pm2Instance === "0") {
       startRefreshTokenCleanupCron();
+      startPropertyExportExpiryCron();
     }
 
     await notificationStreamHub.start();

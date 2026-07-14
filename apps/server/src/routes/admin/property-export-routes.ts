@@ -18,6 +18,7 @@ import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { generateDownloadUrl } from "@/s3/s3-commands";
 import {
   createPropertyExport,
+  PropertyExportDuplicateError,
   PropertyExportRowLimitError,
   PropertyExportValidationError,
 } from "@/services/property-export/property-export-service";
@@ -130,6 +131,12 @@ export const propertyExportRoutes = async (server: FastifyInstance): Promise<voi
         const result = await createPropertyExport(propertyId, userId, parsedBody.body);
         return reply.status(HttpStatus.ACCEPTED).send(result);
       } catch (error) {
+        if (error instanceof PropertyExportDuplicateError) {
+          return reply.status(HttpStatus.CONFLICT).send({
+            error: error.message,
+            jobId: error.existingJobId,
+          });
+        }
         if (error instanceof PropertyExportRowLimitError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }

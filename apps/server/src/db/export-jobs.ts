@@ -1,3 +1,4 @@
+import { serializeExpenseExportFilters } from "@/lib/property-export-filters";
 import type {
   IExportJob,
   IPropertyExportsListMeta,
@@ -20,6 +21,20 @@ export interface ICreateExportJobInput {
   format: TExportFormat;
   propertyId: string;
   resourceType: TExportResourceType;
+}
+
+export interface IFindActiveExportDuplicateInput {
+  createdBy: string;
+  filters: TPropertyExpensesListFilters;
+  format: TExportFormat;
+  propertyId: string;
+  resourceType: TExportResourceType;
+}
+
+export interface IExpiredExportJobRow {
+  id: string;
+  propertyId: string;
+  s3Key: string | null;
 }
 
 function parseExpenseFilters(raw: unknown): TPropertyExpensesListFilters {
@@ -67,6 +82,7 @@ function mapExportJobRow(row: Record<string, unknown>): IExportJob {
 
 export const exportJobsDb = {
   async create(input: ICreateExportJobInput): Promise<IExportJob> {
+    const filtersJson = serializeExpenseExportFilters(input.filters);
     const result = await pool.query(
       `INSERT INTO export_jobs (
          property_id,
@@ -78,15 +94,27 @@ export const exportJobsDb = {
        )
        VALUES ($1, $2, $3, $4, $5::jsonb, 'pending')
        RETURNING *`,
-      [
-        input.propertyId,
-        input.createdBy,
-        input.resourceType,
-        input.format,
-        JSON.stringify(input.filters),
-      ]
+      [input.propertyId, input.createdBy, input.resourceType, input.format, filtersJson]
     );
     return mapExportJobRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async findActiveDuplicate(input: IFindActiveExportDuplicateInput): Promise<IExportJob | null> {
+    const filtersJson = serializeExpenseExportFilters(input.filters);
+    const result = await pool.query(
+      `SELECT * FROM export_jobs
+       WHERE property_id = $1
+         AND created_by = $2
+         AND resource_type = $3
+         AND format = $4
+         AND filters = $5::jsonb
+         AND status IN ('pending', 'processing')
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [input.propertyId, input.createdBy, input.resourceType, input.format, filtersJson]
+    );
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    return row == null ? null : mapExportJobRow(row);
   },
 
   async findById(id: string): Promise<IExportJob | null> {
@@ -188,11 +216,41 @@ export const exportJobsDb = {
     };
   },
 
+  async listPastExpiryCompletedJobs(): Promise<IExpiredExportJobRow[]> {
+    const result = await pool.query(
+      `SELECT id, property_id, s3_key
+       FROM export_jobs
+       WHERE status = 'completed'
+         AND expires_at IS NOT NULL
+         AND expires_at <= NOW()
+       ORDER BY expires_at ASC`
+    );
+    return result.rows.map((row) => {
+      const record = row as { id: string; property_id: string; s3_key: string | null };
+      return {
+        id: record.id,
+        propertyId: record.property_id,
+        s3Key: record.s3_key,
+      };
+    });
+  },
+
   async listStuckJobIds(): Promise<string[]> {
     const result = await pool.query(
       `SELECT id FROM export_jobs
        WHERE status IN ('pending', 'processing')
        ORDER BY created_at ASC`
+    );
+    return result.rows.map((row) => (row as { id: string }).id);
+  },
+
+  async listTimedOutProcessingJobIds(cutoff: Date): Promise<string[]> {
+    const result = await pool.query(
+      `SELECT id FROM export_jobs
+       WHERE status = 'processing'
+         AND updated_at < $1
+       ORDER BY updated_at ASC`,
+      [cutoff]
     );
     return result.rows.map((row) => (row as { id: string }).id);
   },

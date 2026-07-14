@@ -1,5 +1,7 @@
 import { exportJobsDb } from "@/db/export-jobs";
 import { propertyExpensesDb } from "@/db/property-expenses";
+import { PROPERTY_EXPORT_DUPLICATE_MESSAGE } from "@/lib/property-export-config";
+import { normalizeExpenseExportFilters } from "@/lib/property-export-filters";
 import {
   ExportFormat,
   ExportResourceType,
@@ -13,6 +15,16 @@ export class PropertyExportValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PropertyExportValidationError";
+  }
+}
+
+export class PropertyExportDuplicateError extends PropertyExportValidationError {
+  readonly existingJobId: string;
+
+  constructor(existingJobId: string) {
+    super(PROPERTY_EXPORT_DUPLICATE_MESSAGE);
+    this.name = "PropertyExportDuplicateError";
+    this.existingJobId = existingJobId;
   }
 }
 
@@ -41,14 +53,27 @@ export async function createPropertyExport(
     throw new PropertyExportValidationError("Unsupported export resource type");
   }
 
-  const meta = await propertyExpensesDb.getListMetaByProperty(propertyId, body.filters, false);
+  const filters = normalizeExpenseExportFilters(body.filters);
+
+  const duplicate = await exportJobsDb.findActiveDuplicate({
+    createdBy,
+    filters,
+    format: body.format,
+    propertyId,
+    resourceType: body.resourceType,
+  });
+  if (duplicate != null) {
+    throw new PropertyExportDuplicateError(duplicate.id);
+  }
+
+  const meta = await propertyExpensesDb.getListMetaByProperty(propertyId, filters, false);
   if (meta.totalCount > PROPERTY_EXPORT_MAX_ROWS) {
     throw new PropertyExportRowLimitError(meta.totalCount);
   }
 
   const job = await exportJobsDb.create({
     createdBy,
-    filters: body.filters,
+    filters,
     format: body.format,
     propertyId,
     resourceType: body.resourceType,

@@ -17,6 +17,15 @@ import { maybePublishExportJobUpdated } from "@/services/property-export/propert
 
 import { WinstonLogger } from "../winston";
 
+/**
+ * Failure modes handled here and in the worker/maintenance layer:
+ * - Permanent validation errors → `failed` (no Bull retry)
+ * - Row cap exceeded during stream → `failed`
+ * - Transient S3/DB errors → Bull retry; terminal attempt → `failed` in worker `failed` handler
+ * - Processing timeout (stale `updated_at`) → `failed` via maintenance sweep
+ * - Completed past `expires_at` → `expired` via expiry cron (download blocked)
+ */
+
 export class ExportJobPermanentError extends Error {
   constructor(message: string) {
     super(message);
@@ -32,7 +41,7 @@ function buildExpiresAt(): Date {
   return new Date(Date.now() + PROPERTY_EXPORT_FILE_TTL_HOURS * 60 * 60 * 1000);
 }
 
-async function processExpensesCsvExport(job: IExportJob): Promise<void> {
+async function processExpensesCsvExport(job: IExportJob, startedAtMs: number): Promise<void> {
   const filters = job.filters as TPropertyExpensesListFilters;
   const s3Key = buildExportS3Key(job.propertyId, job.id, ExportFormat.CSV);
   const fileName = buildExpensesExportFileName(filters);
@@ -56,9 +65,12 @@ async function processExpensesCsvExport(job: IExportJob): Promise<void> {
   }
 
   WinstonLogger.info("property_export.completed", {
+    durationMs: Date.now() - startedAtMs,
     fileName,
+    format: job.format,
     jobId: job.id,
     propertyId: job.propertyId,
+    resourceType: job.resourceType,
     rowCount,
   });
 
@@ -82,12 +94,13 @@ export async function processPropertyExportJob(jobId: string): Promise<void> {
   }
 
   const job = claimed;
+  const startedAtMs = Date.now();
 
   await maybePublishExportJobUpdated(jobId);
 
   try {
     if (job.resourceType === ExportResourceType.EXPENSES && job.format === ExportFormat.CSV) {
-      await processExpensesCsvExport(job);
+      await processExpensesCsvExport(job, startedAtMs);
       return;
     }
 
@@ -97,9 +110,12 @@ export async function processPropertyExportJob(jobId: string): Promise<void> {
       await exportJobsDb.markFailed(jobId, error.message);
       await maybePublishExportJobUpdated(jobId);
       WinstonLogger.warn("property_export.failed", {
+        durationMs: Date.now() - startedAtMs,
         errorMessage: error.message,
+        format: job.format,
         jobId,
         propertyId: job.propertyId,
+        resourceType: job.resourceType,
       });
       return;
     }

@@ -60,8 +60,10 @@ export function startPropertyExportWorker(): Worker<IPropertyExportJobData> {
       await exportJobsDb.markFailed(job.data.jobId, message);
       await maybePublishExportJobUpdated(job.data.jobId);
       WinstonLogger.error("property_export.worker_job_failed", {
+        attemptsMade: job.attemptsMade,
         errorMessage: message,
         jobId: job.data.jobId,
+        maxAttempts,
       });
     })();
   });

@@ -17,7 +17,7 @@ Stack: **Postgres** (source of truth) + **BullMQ** (job execution) + **S3** (fil
 - Permissions: `apps/admin/src/hooks/use-property-permissions.ts`
 - Radio dialog pattern: `apps/admin/src/components/ui/radio-option.tsx`, `apps/admin/src/components/income/refund-entry-dialog.tsx`
 - Toast action pattern: `apps/admin/src/lib/show-notification-toast.ts`
-- Expiry cleanup cron (reference): `apps/server/src/scheduler/refresh-token-cleanup-cron.ts`
+- Expiry cleanup cron (reference): `apps/server/src/scheduler/property-export-expiry-cron.ts`
 
 ---
 
@@ -339,16 +339,23 @@ toast.success("Export queued", {
 
 **Goal:** Production-safe.
 
-| Concern       | Action                                                                           |
-| ------------- | -------------------------------------------------------------------------------- |
-| Stuck jobs    | Worker startup re-enqueue; processing timeout → `failed`                         |
-| TTL           | Cron or S3 lifecycle rule on `exports/` prefix + mark jobs `expired`             |
-| Dedup         | Reject duplicate active job (same user + property + resource + filters + format) |
-| Row cap       | e.g. 100k; fail with clear message                                               |
-| Observability | Structured logs: jobId, duration, rowCount, format, resourceType                 |
-| Railway       | Deploy `server-export-worker` service (mirror email worker docs)                 |
+| Concern       | Action                                                                           | Status |
+| ------------- | -------------------------------------------------------------------------------- | ------ |
+| Stuck jobs    | Worker startup re-enqueue; processing timeout → `failed`                         | Done   |
+| TTL           | Cron or S3 lifecycle rule on `exports/` prefix + mark jobs `expired`             | Done   |
+| Dedup         | Reject duplicate active job (same user + property + resource + filters + format) | Done   |
+| Row cap       | e.g. 100k; fail with clear message                                               | Done   |
+| Observability | Structured logs: jobId, duration, rowCount, format, resourceType                 | Done   |
+| Railway       | Deploy `server-export-worker` service (mirror email worker docs)                 | Done   |
 
 **Exit criteria:** Load test large export; worker stable under restart; failure modes documented in code/comments.
+
+**Implementation notes:**
+- `apps/server/src/services/property-export/property-export-maintenance.ts` — timeout + expiry sweeps
+- `apps/server/src/scheduler/property-export-expiry-cron.ts` — hourly expiry on API (production)
+- `apps/server/src/lib/property-export-filters.ts` — canonical filter JSON for dedup
+- `docs/RAILWAY_PROPERTY_EXPORT_WORKER.md` — Railway deploy guide
+- Failure modes documented in `process-export-job.ts` header comment
 
 ---
 
