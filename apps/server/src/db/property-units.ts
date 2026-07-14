@@ -3,10 +3,11 @@ import type {
   IPropertyUnit,
   IPropertyUnitsListMeta,
   IUpdatePropertyUnitBody,
+  TPropertyUnitsListFilters,
   TPropertyUnitsListSortBy,
   TPropertyUnitsListSortDir,
 } from "@/packages/shared";
-import { UnitRentalType } from "@/packages/shared";
+import { PropertyLongStayStatus, UnitOccupancyFilter, UnitRentalType } from "@/packages/shared";
 import { decodeUnitKeysetCursor, encodeUnitKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
@@ -26,6 +27,76 @@ interface IUnitsListPaginatedOptions {
   limit: number;
   sortBy?: TPropertyUnitsListSortBy;
   sortDir?: TPropertyUnitsListSortDir;
+}
+
+const ACTIVE_LEASE_EXISTS = `EXISTS (
+  SELECT 1 FROM property_long_stays pls
+  WHERE pls.unit_id = property_units.id
+    AND pls.status = '${PropertyLongStayStatus.ACTIVE}'::property_long_stay_status
+)`;
+
+function buildUnitListParts(
+  propertyId: string,
+  filters: TPropertyUnitsListFilters = {},
+  includeDeleted = false
+): { conditions: string[]; values: unknown[] } {
+  const conditions = ["property_id = $1"];
+  const values: unknown[] = [propertyId];
+  let p = 2;
+
+  if (!includeDeleted) {
+    conditions.push("is_deleted = false");
+  }
+
+  if (filters.rentalType) {
+    conditions.push(`rental_type = $${p++}::property_unit_rental_type`);
+    values.push(filters.rentalType);
+  }
+
+  if (filters.from) {
+    conditions.push(`DATE(created_at) >= $${p++}`);
+    values.push(filters.from);
+  }
+
+  if (filters.to) {
+    conditions.push(`DATE(created_at) <= $${p++}`);
+    values.push(filters.to);
+  }
+
+  if (filters.occupancy === UnitOccupancyFilter.VACANT) {
+    conditions.push(
+      `rental_type = '${UnitRentalType.LONG_TERM}'::property_unit_rental_type AND NOT ${ACTIVE_LEASE_EXISTS}`
+    );
+  } else if (filters.occupancy === UnitOccupancyFilter.OCCUPIED) {
+    conditions.push(
+      `rental_type = '${UnitRentalType.LONG_TERM}'::property_unit_rental_type AND ${ACTIVE_LEASE_EXISTS}`
+    );
+  }
+
+  const qTrim = filters.q?.trim();
+  if (qTrim) {
+    const pattern = `%${qTrim}%`;
+    conditions.push(`(
+      unit_number ILIKE $${p}
+      OR EXISTS (
+        SELECT 1 FROM property_long_stays pls
+        WHERE pls.unit_id = property_units.id
+          AND pls.status = '${PropertyLongStayStatus.ACTIVE}'::property_long_stay_status
+          AND (
+            pls.guest_name ILIKE $${p + 1}
+            OR pls.tenant_email ILIKE $${p + 2}
+            OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements(pls.secondary_tenants) AS st
+              WHERE st->>'name' ILIKE $${p + 3}
+                 OR COALESCE(st->>'email', '') ILIKE $${p + 4}
+            )
+          )
+      )
+    )`);
+    values.push(pattern, pattern, pattern, pattern, pattern);
+  }
+
+  return { conditions, values };
 }
 
 function getUnitsListSortClause(sortDir: TPropertyUnitsListSortDir): {
@@ -83,12 +154,10 @@ export const propertyUnitsDb = {
 
   async getListMetaByProperty(
     propertyId: string,
+    filters: TPropertyUnitsListFilters = {},
     includeDeleted = false
   ): Promise<IPropertyUnitsListMeta> {
-    const conditions = ["property_id = $1"];
-    if (!includeDeleted) {
-      conditions.push("is_deleted = false");
-    }
+    const { conditions, values } = buildUnitListParts(propertyId, filters, includeDeleted);
 
     const result = await pool.query<{
       long_term_count: number;
@@ -101,7 +170,7 @@ export const propertyUnitsDb = {
          COUNT(*) FILTER (WHERE rental_type = 'long_term')::int AS long_term_count
        FROM property_units
        WHERE ${conditions.join(" AND ")}`,
-      [propertyId]
+      values
     );
 
     const row = result.rows[0];
@@ -134,6 +203,7 @@ export const propertyUnitsDb = {
 
   async listPaginatedByProperty(
     propertyId: string,
+    filters: TPropertyUnitsListFilters,
     options: IUnitsListPaginatedOptions
   ): Promise<{
     meta?: IPropertyUnitsListMeta;
@@ -142,9 +212,9 @@ export const propertyUnitsDb = {
   }> {
     const includeDeleted = options.includeDeleted ?? false;
     const includeMeta = shouldIncludeListMeta(options.cursor);
-    const listPromise = propertyUnitsDb.listPaginatedPage(propertyId, options);
+    const listPromise = propertyUnitsDb.listPaginatedPage(propertyId, filters, options);
     const metaPromise = includeMeta
-      ? propertyUnitsDb.getListMetaByProperty(propertyId, includeDeleted)
+      ? propertyUnitsDb.getListMetaByProperty(propertyId, filters, includeDeleted)
       : Promise.resolve(undefined);
 
     const [{ nextCursor, units }, meta] = await Promise.all([listPromise, metaPromise]);
@@ -154,16 +224,13 @@ export const propertyUnitsDb = {
 
   async listPaginatedPage(
     propertyId: string,
+    filters: TPropertyUnitsListFilters,
     options: IUnitsListPaginatedOptions
   ): Promise<{ nextCursor: string | null; units: IPropertyUnit[] }> {
     const includeDeleted = options.includeDeleted ?? false;
-    const sortDir = options.sortDir ?? "asc";
+    const sortDir = options.sortDir ?? filters.sortDir ?? "asc";
     const { cursorOperator, orderByClause } = getUnitsListSortClause(sortDir);
-    const conditions = ["property_id = $1"];
-    const values: unknown[] = [propertyId];
-    if (!includeDeleted) {
-      conditions.push("is_deleted = false");
-    }
+    const { conditions, values } = buildUnitListParts(propertyId, filters, includeDeleted);
     let p = values.length + 1;
 
     if (options.cursor != null && options.cursor !== "") {

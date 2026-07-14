@@ -704,6 +704,11 @@ export const unitsApi = {
 
 function buildUnitsSearchParams(query: IPropertyUnitsListQuery = {}): string {
   const params = new URLSearchParams();
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.q) params.set("q", query.q);
+  if (query.rentalType) params.set("rentalType", query.rentalType);
+  if (query.occupancy) params.set("occupancy", query.occupancy);
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
   if (query.sortBy != null) params.set("sortBy", query.sortBy);

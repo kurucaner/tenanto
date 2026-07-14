@@ -32,9 +32,18 @@ describe("propertyUnitsDb.getListMetaByProperty", () => {
   test("includes deleted units when requested", async () => {
     mockQuery.mockClear();
 
-    await propertyUnitsDb.getListMetaByProperty("prop-1", true);
+    await propertyUnitsDb.getListMetaByProperty("prop-1", {}, true);
 
     const sql = mockQuery.mock.calls[0]?.[0] as string;
     expect(sql).not.toContain("is_deleted = false");
+  });
+
+  test("applies rental type filter to meta counts", async () => {
+    mockQuery.mockClear();
+
+    await propertyUnitsDb.getListMetaByProperty("prop-1", { rentalType: "short_term" });
+
+    const sql = mockQuery.mock.calls[0]?.[0] as string;
+    expect(sql).toContain("rental_type = $");
   });
 });

@@ -117,11 +117,28 @@ export interface IUpdatePropertyUnitBody {
 export type TPropertyUnitsListSortBy = "type";
 export type TPropertyUnitsListSortDir = "asc" | "desc";
 
-export interface IPropertyUnitsListQuery {
-  cursor?: string;
-  limit?: number;
+export const UnitOccupancyFilter = {
+  OCCUPIED: "occupied",
+  VACANT: "vacant",
+} as const;
+
+export type TUnitOccupancyFilter = (typeof UnitOccupancyFilter)[keyof typeof UnitOccupancyFilter];
+
+export const UNIT_OCCUPANCY_FILTER_VALUES = Object.values(UnitOccupancyFilter);
+
+export type TPropertyUnitsListFilters = {
+  from?: string;
+  occupancy?: TUnitOccupancyFilter;
+  q?: string;
+  rentalType?: TUnitRentalType;
   sortBy?: TPropertyUnitsListSortBy;
   sortDir?: TPropertyUnitsListSortDir;
+  to?: string;
+};
+
+export interface IPropertyUnitsListQuery extends TPropertyUnitsListFilters {
+  cursor?: string;
+  limit?: number;
 }
 
 export interface IPropertyUnitsListResponse {

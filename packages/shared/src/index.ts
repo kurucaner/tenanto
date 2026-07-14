@@ -103,9 +103,13 @@ export {
   type TAddPropertyMemberResponse,
   type TPropertyInviteStatus,
   type TPropertyRole,
+  type TPropertyUnitsListFilters,
   type TPropertyUnitsListSortBy,
   type TPropertyUnitsListSortDir,
+  type TUnitOccupancyFilter,
   type TUnitRentalType,
+  UNIT_OCCUPANCY_FILTER_VALUES,
+  UnitOccupancyFilter,
   UnitRentalType,
 } from "./property-types";
 
