@@ -6,12 +6,14 @@ export function useInfiniteScrollTrigger({
   hasNextPage,
   isFetchingNextPage,
   rootMargin = "200px",
+  scrollRoot = null,
 }: {
   enabled?: boolean;
   fetchNextPage: () => void;
   hasNextPage: boolean | undefined;
   isFetchingNextPage: boolean;
   rootMargin?: string;
+  scrollRoot?: HTMLElement | null;
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -32,12 +34,12 @@ export function useInfiniteScrollTrigger({
           fetchNextPage();
         }
       },
-      { root: null, rootMargin, threshold: 0 }
+      { root: scrollRoot, rootMargin, threshold: 0 }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [enabled, fetchNextPage, hasNextPage, isFetchingNextPage, rootMargin]);
+  }, [enabled, fetchNextPage, hasNextPage, isFetchingNextPage, rootMargin, scrollRoot]);
 
   return sentinelRef;
 }

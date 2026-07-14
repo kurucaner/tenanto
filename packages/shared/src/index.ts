@@ -38,6 +38,7 @@ export type {
   UserNotificationResourceType,
   UserNotificationType,
 } from "./notification-types";
+export { USER_NOTIFICATIONS_LIST_LIMIT } from "./user-notifications-list-constants";
 
 // Support Types
 export type {
