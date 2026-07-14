@@ -84,20 +84,11 @@ export const propertyExpensesDb = {
       taxFree: boolean;
     }
   ): Promise<IPropertyExpense> {
-    const result = await pool.query(
-      `WITH inserted AS (
-         INSERT INTO property_expenses
-           (property_id, category_id, amount, expense_date, description, tax_free)
-         VALUES ($1, $2::uuid, $3, $4, $5, $6)
-         RETURNING id
-       )
-       SELECT
-         pe.*,
-         pect.name        AS category_name,
-         pect.is_annual_amount
-       FROM property_expenses pe
-       JOIN property_expense_category_types pect ON pe.category_id = pect.id
-       JOIN inserted i ON pe.id = i.id`,
+    const insertResult = await pool.query(
+      `INSERT INTO property_expenses
+         (property_id, category_id, amount, expense_date, description, tax_free)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6)
+       RETURNING id`,
       [
         propertyId,
         input.categoryId,
@@ -107,7 +98,12 @@ export const propertyExpensesDb = {
         input.taxFree,
       ]
     );
-    return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
+    const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
+    const expense = await propertyExpensesDb.findById(id);
+    if (!expense) {
+      throw new Error(`Expense ${id} was inserted but could not be loaded`);
+    }
+    return expense;
   },
 
   async createMany(
@@ -146,7 +142,11 @@ export const propertyExpensesDb = {
         );
         const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
         const selectResult = await client.query(`${EXPENSE_SELECT} WHERE pe.id = $1`, [id]);
-        expenses.push(mapPropertyExpenseRow(selectResult.rows[0] as Record<string, unknown>));
+        const row = selectResult.rows[0] as Record<string, unknown> | undefined;
+        if (row === undefined) {
+          throw new Error(`Expense ${id} was inserted but could not be loaded`);
+        }
+        expenses.push(mapPropertyExpenseRow(row));
       }
 
       await client.query("COMMIT");
