@@ -29,13 +29,13 @@ export const TenantEmailComposeCard = memo(
     const [subject, setSubject] = useState("");
     const [htmlBody, setHtmlBody] = useState("<p></p>");
     const [previewOpen, setPreviewOpen] = useState(false);
-    const [submitted, setSubmitted] = useState(false);
+    const [composeSessionKey, setComposeSessionKey] = useState(0);
     const [idempotencyKey, setIdempotencyKey] = useState(createTenantEmailIdempotencyKey);
 
     const resetComposeSession = useCallback(() => {
       setSubject("");
       setHtmlBody("<p></p>");
-      setSubmitted(false);
+      setComposeSessionKey((current) => current + 1);
       setIdempotencyKey(createTenantEmailIdempotencyKey());
     }, []);
 
@@ -50,13 +50,13 @@ export const TenantEmailComposeCard = memo(
         toast.error(error instanceof Error ? error.message : "Failed to queue notification");
       },
       onSuccess: (response) => {
-        setSubmitted(true);
+        resetComposeSession();
         onQueued(response.campaignId);
         toast.success(`Notification queued for ${response.recipientCount} tenants`);
-        void queryClient.invalidateQueries({
+        queryClient.invalidateQueries({
           queryKey: queryKeys.propertyTenantEmailCampaigns(propertyId),
         });
-        void queryClient.prefetchQuery({
+        queryClient.prefetchQuery({
           queryFn: () => tenantEmailCampaignsApi.get(propertyId, response.campaignId),
           queryKey: queryKeys.propertyTenantEmailCampaign(propertyId, response.campaignId),
         });
@@ -78,7 +78,7 @@ export const TenantEmailComposeCard = memo(
     }, [createMutation, htmlBody, idempotencyKey, subject]);
 
     const isBusy = disabled || createMutation.isPending;
-    const canSend = !isBusy && !submitted;
+    const canSend = !isBusy;
 
     return (
       <>
@@ -93,7 +93,7 @@ export const TenantEmailComposeCard = memo(
             <div className="space-y-2">
               <Label htmlFor="tenant-email-subject">Subject</Label>
               <Input
-                disabled={isBusy || submitted}
+                disabled={isBusy}
                 id="tenant-email-subject"
                 onChange={(event) => setSubject(event.target.value)}
                 placeholder="Rent reminder, building update, etc."
@@ -104,7 +104,8 @@ export const TenantEmailComposeCard = memo(
             <div className="space-y-2">
               <Label htmlFor="tenant-email-body">Message</Label>
               <TenantEmailRichTextEditor
-                disabled={isBusy || submitted}
+                disabled={isBusy}
+                key={composeSessionKey}
                 onChange={setHtmlBody}
                 value={htmlBody}
               />
@@ -112,7 +113,7 @@ export const TenantEmailComposeCard = memo(
 
             <div className="flex flex-wrap items-center gap-2">
               <Button
-                disabled={isBusy || submitted}
+                disabled={isBusy}
                 onClick={() => setPreviewOpen(true)}
                 type="button"
                 variant="outline"
@@ -124,16 +125,6 @@ export const TenantEmailComposeCard = memo(
                 {createMutation.isPending ? <Loader2 className="animate-spin" /> : <Send />}
                 Send notification
               </Button>
-              {submitted ? (
-                <>
-                  <p className="text-muted-foreground text-sm">
-                    Notification queued. Track progress below.
-                  </p>
-                  <Button onClick={resetComposeSession} type="button" variant="outline">
-                    Compose another
-                  </Button>
-                </>
-              ) : null}
             </div>
           </CardContent>
         </Card>
