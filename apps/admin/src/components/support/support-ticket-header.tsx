@@ -73,7 +73,7 @@ export const SupportTicketHeader = memo(
     const ticketIdLabel = id.length > 12 ? `${id.slice(0, 8)}…` : id;
 
     return (
-      <div className={cn("sticky top-0 z-10 space-y-2 py-3", supportDetailMetaClass)}>
+      <div className={cn("sticky top-0 z-10 space-y-2 pb-3", supportDetailMetaClass)}>
         <div className="flex flex-wrap items-center gap-3">
           <Link
             className="text-muted-foreground shrink-0 text-sm hover:underline"

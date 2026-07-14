@@ -26,6 +26,8 @@ export interface DataTableInfiniteScroll {
 export interface DataTableVirtualization {
   estimateRowHeight: number;
   overscan?: number;
+  /** Override the admin layout scroll container (e.g. sheet/dialog body). */
+  scrollElement?: HTMLElement | null;
 }
 
 export interface DataTableProps<TItem> {
@@ -52,7 +54,7 @@ export interface DataTableProps<TItem> {
   sort?: DataTableSortController;
   /** Compact controls rendered directly above the table. */
   toolbar?: ReactNode;
-  /** Virtualizes rows against the admin layout scroll container. */
+  /** Virtualizes rows against the admin layout scroll container, or `virtualization.scrollElement`. */
   virtualization?: DataTableVirtualization;
 }
 
@@ -99,7 +101,8 @@ export const DataTable = <TItem,>({
   toolbar,
   virtualization,
 }: DataTableProps<TItem>) => {
-  const scrollElement = useLayoutScrollElement();
+  const layoutScrollElement = useLayoutScrollElement();
+  const scrollElement = virtualization?.scrollElement ?? layoutScrollElement;
   const visibleColumns = columns.filter((column) => !column.hidden);
   const colSpan = visibleColumns.length;
 

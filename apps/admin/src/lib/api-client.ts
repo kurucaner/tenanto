@@ -18,6 +18,7 @@ import {
   type ICreatePropertyLongStayBody,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
+  type ICreateTenantEmailCampaignBody,
   type IEndPropertyLongStayBody,
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
@@ -61,6 +62,12 @@ import {
   type ISupportRequestDetail,
   type ISupportRequestsListQuery,
   type ISupportRequestsListResponse,
+  type ITenantEmailCampaignCreateResponse,
+  type ITenantEmailCampaignDetailResponse,
+  type ITenantEmailCampaignListResponse,
+  type ITenantEmailCampaignPreviewResponse,
+  type ITenantEmailCampaignReenqueueResponse,
+  type ITenantEmailCampaignsListQuery,
   type IUpdatePropertyExpenseBody,
   type IUpdatePropertyIncomeLineBody,
   type IUpdatePropertyLongStayBody,
@@ -745,6 +752,48 @@ export const longStaysApi = {
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
+
+export const tenantEmailCampaignsApi = {
+  create: (propertyId: string, body: ICreateTenantEmailCampaignBody, idempotencyKey: string) =>
+    authenticatedRequest<ITenantEmailCampaignCreateResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns`,
+      {
+        body: JSON.stringify(body),
+        headers: { "Idempotency-Key": idempotencyKey },
+        method: "POST",
+      }
+    ),
+
+  get: (propertyId: string, campaignId: string) =>
+    authenticatedRequest<ITenantEmailCampaignDetailResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns/${encodeURIComponent(campaignId)}`
+    ),
+
+  list: (propertyId: string, query?: ITenantEmailCampaignsListQuery) =>
+    authenticatedRequest<ITenantEmailCampaignListResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns${buildTenantEmailCampaignsSearchParams(query)}`
+    ),
+
+  preview: (propertyId: string) =>
+    authenticatedRequest<ITenantEmailCampaignPreviewResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns/preview`
+    ),
+
+  reenqueue: (propertyId: string, campaignId: string) =>
+    authenticatedRequest<ITenantEmailCampaignReenqueueResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/tenant-email-campaigns/${encodeURIComponent(campaignId)}/reenqueue`,
+      { method: "POST" }
+    ),
+};
+
+function buildTenantEmailCampaignsSearchParams(query: ITenantEmailCampaignsListQuery = {}): string {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
+  if (query.limit != null) params.set("limit", String(query.limit));
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
 
 export const settingsApi = {
   get: (propertyId: string) =>

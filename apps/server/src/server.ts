@@ -28,6 +28,7 @@ import { propertyReportRoutes } from "./routes/admin/property-report-routes";
 import { propertyReservationRoutes } from "./routes/admin/property-reservation-routes";
 import { propertyRoutes } from "./routes/admin/property-routes";
 import { propertySettingsRoutes } from "./routes/admin/property-settings-routes";
+import { propertyTenantEmailCampaignRoutes } from "./routes/admin/property-tenant-email-campaign-routes";
 import { propertyUnitRoutes } from "./routes/admin/property-unit-routes";
 import { authRoutes } from "./routes/auth/auth-routes";
 import { initRoutes } from "./routes/init-routes";
@@ -47,7 +48,13 @@ export const server = Fastify({ logger: false });
 server.log = createFastifyLogAdapter();
 
 server.register(cors, {
-  allowedHeaders: ["Accept", "Authorization", "Content-Type", "X-Stream-Client-Id"],
+  allowedHeaders: [
+    "Accept",
+    "Authorization",
+    "Content-Type",
+    "Idempotency-Key",
+    "X-Stream-Client-Id",
+  ],
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   origin: (origin, callback) => {
     if (origin == null || origin === "") {
@@ -88,6 +95,7 @@ server.register(propertyReservationRoutes);
 server.register(propertyIncomeLineRoutes);
 server.register(propertyIncomeEntriesRoutes);
 server.register(propertyLongStayRoutes);
+server.register(propertyTenantEmailCampaignRoutes);
 server.register(propertyExpenseRoutes);
 server.register(propertyExpenseImportRoutes);
 server.register(propertyIncomeImportRoutes);

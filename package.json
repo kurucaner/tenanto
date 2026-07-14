@@ -6,6 +6,7 @@
     "node": ">=24.14.0"
   },
   "scripts": {
+    "logaway": "logaway",
     "prepare": "husky",
     "dev:mobile": "cd apps/mobile && npm run dev",
     "dev:proxy": "npm run --filter proxy dev",
@@ -32,7 +33,8 @@
     "prettier:web": "npm run --filter web prettier",
     "prettier:server": "npm run --filter server prettier",
     "prettier:admin": "npm run --filter admin prettier",
-    "logaway": "logaway",
+    "worker:email": "bun run --filter server worker:email",
+    "worker:email:prod": "bun run --filter server worker:email:prod",
     "reset:node_modules": "rm -rf node_modules && rm bun.lock && cd apps/mobile && rm -rf node_modules && cd ../web && rm -rf node_modules && cd ../server && rm -rf node_modules && cd ../admin && rm -rf node_modules"
   },
   "workspaces": [

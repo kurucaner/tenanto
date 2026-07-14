@@ -96,3 +96,13 @@ export async function assertPropertyLedgerWriteAccess(
   }
   return true;
 }
+
+export async function assertPropertyTenantNotificationAccess(
+  propertyId: string,
+  userId: string,
+  userType: string,
+  reply: FastifyReply,
+  forbiddenMessage = "Only property owners can send tenant notifications"
+): Promise<boolean> {
+  return assertPropertyStructureAccess(propertyId, userId, userType, reply, forbiddenMessage);
+}
