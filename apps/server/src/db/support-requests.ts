@@ -6,8 +6,13 @@ import type {
   SupportCategory,
   SupportRequestStatus,
   TAdminSupportRequestSettableStatus,
+  TSupportRequestsListSortBy,
+  TSupportRequestsListSortDir,
 } from "@/packages/shared";
-import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
+import {
+  decodeSupportRequestKeysetCursor,
+  encodeSupportRequestKeysetCursor,
+} from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapSupportRequestRow } from "./mappers";
@@ -17,6 +22,13 @@ import {
   supportMessageAttachmentsDb,
 } from "./support-message-attachments";
 import { supportMessagesDb } from "./support-messages";
+import {
+  buildSupportRequestsCursorPredicate,
+  buildSupportRequestsOrderByClause,
+  type ISupportRequestsListSortOptions,
+  readSupportRequestSortKey,
+  resolveSupportRequestsListSort,
+} from "./support-requests-list-sort";
 import { supportStagedUploadsDb } from "./support-staged-uploads";
 
 export interface CreateSupportRequestInput {
@@ -69,8 +81,11 @@ function mapAdminSupportRequestListRow(row: Record<string, unknown>): IAdminSupp
 
 function buildListFilters(params: {
   category?: SupportCategory;
-  cursor?: string;
+  from?: string;
+  includeSubmitterSearch: boolean;
+  q?: string;
   status?: SupportRequestStatus;
+  to?: string;
   userId?: string;
 }): { fragments: string[]; values: unknown[] } {
   const fragments: string[] = [];
@@ -89,13 +104,64 @@ function buildListFilters(params: {
     fragments.push(`sr.category = $${p++}::support_category`);
     values.push(params.category);
   }
-  if (params.cursor != null && params.cursor !== "") {
-    const decoded = decodeKeysetCursor(params.cursor);
-    fragments.push(`(sr.created_at, sr.id) < ($${p++}::timestamptz, $${p++}::uuid)`);
-    values.push(decoded.createdAt, decoded.id);
+  if (params.from != null && params.from !== "") {
+    fragments.push(`sr.created_at >= $${p++}::date`);
+    values.push(params.from);
+  }
+  if (params.to != null && params.to !== "") {
+    fragments.push(`sr.created_at < ($${p++}::date + interval '1 day')`);
+    values.push(params.to);
+  }
+  if (params.q != null && params.q !== "") {
+    const searchConditions = [
+      `sr.id::text ILIKE $${p}`,
+      `EXISTS (
+        SELECT 1
+        FROM support_messages search_message
+        WHERE search_message.support_request_id = sr.id
+          AND search_message.body ILIKE $${p}
+      )`,
+    ];
+    if (params.includeSubmitterSearch) {
+      searchConditions.push(`u.name ILIKE $${p}`, `u.email ILIKE $${p}`);
+    }
+    fragments.push(`(${searchConditions.join(" OR ")})`);
+    values.push(`%${params.q}%`);
   }
 
   return { fragments, values };
+}
+
+function appendCursorFilter(params: {
+  cursor?: string;
+  fragments: string[];
+  sort: ISupportRequestsListSortOptions;
+  values: unknown[];
+}): void {
+  if (params.cursor == null || params.cursor === "") return;
+
+  const cursor = decodeSupportRequestKeysetCursor(params.cursor);
+  if (cursor.sortBy !== params.sort.sortBy || cursor.sortDir !== params.sort.sortDir) {
+    throw new Error("Invalid cursor");
+  }
+
+  const { predicate } = buildSupportRequestsCursorPredicate(params.sort, params.values.length + 1);
+  params.fragments.push(predicate);
+  params.values.push(cursor.sortKey, cursor.createdAt, cursor.id);
+}
+
+function encodeNextCursor(
+  row: Record<string, unknown>,
+  sort: ISupportRequestsListSortOptions
+): string {
+  const createdAt = row.created_at as Date | string;
+  return encodeSupportRequestKeysetCursor({
+    createdAt: typeof createdAt === "string" ? createdAt : createdAt.toISOString(),
+    id: row.id as string,
+    sortBy: sort.sortBy,
+    sortDir: sort.sortDir,
+    sortKey: readSupportRequestSortKey(sort, row),
+  });
 }
 
 export const supportRequestsDb = {
@@ -207,10 +273,20 @@ export const supportRequestsDb = {
   async listPaginatedForAdmin(params: {
     category?: SupportCategory;
     cursor?: string;
+    from?: string;
     limit: number;
+    q?: string;
+    sortBy?: TSupportRequestsListSortBy;
+    sortDir?: TSupportRequestsListSortDir;
     status?: SupportRequestStatus;
+    to?: string;
   }): Promise<{ items: IAdminSupportRequestListItem[]; nextCursor: string | null }> {
-    const { fragments, values } = buildListFilters(params);
+    const sort = resolveSupportRequestsListSort(params.sortBy, params.sortDir);
+    const { fragments, values } = buildListFilters({
+      ...params,
+      includeSubmitterSearch: true,
+    });
+    appendCursorFilter({ cursor: params.cursor, fragments, sort, values });
     const whereClause = fragments.length > 0 ? `WHERE ${fragments.join(" AND ")}` : "";
     const limitParam = values.length + 1;
     values.push(params.limit + 1);
@@ -220,14 +296,14 @@ export const supportRequestsDb = {
        FROM support_requests sr
        INNER JOIN users u ON u.id = sr.user_id
        ${whereClause}
-       ORDER BY sr.created_at DESC, sr.id DESC
+       ${buildSupportRequestsOrderByClause(sort)}
        LIMIT $${limitParam}`,
       values
     );
 
     const rows = result.rows as Record<string, unknown>[];
     const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, params.limit, (last) =>
-      encodeKeysetCursor(last.created_at as Date, last.id as string)
+      encodeNextCursor(last, sort)
     );
     return { items: pageRows.map(mapAdminSupportRequestListRow), nextCursor };
   },
@@ -235,11 +311,21 @@ export const supportRequestsDb = {
   async listPaginatedForUser(params: {
     category?: SupportCategory;
     cursor?: string;
+    from?: string;
     limit: number;
+    q?: string;
+    sortBy?: TSupportRequestsListSortBy;
+    sortDir?: TSupportRequestsListSortDir;
     status?: SupportRequestStatus;
+    to?: string;
     userId: string;
   }): Promise<{ items: ISupportRequestListItem[]; nextCursor: string | null }> {
-    const { fragments, values } = buildListFilters(params);
+    const sort = resolveSupportRequestsListSort(params.sortBy, params.sortDir);
+    const { fragments, values } = buildListFilters({
+      ...params,
+      includeSubmitterSearch: false,
+    });
+    appendCursorFilter({ cursor: params.cursor, fragments, sort, values });
     const whereClause = fragments.length > 0 ? `WHERE ${fragments.join(" AND ")}` : "";
     const limitParam = values.length + 1;
     values.push(params.limit + 1);
@@ -248,14 +334,14 @@ export const supportRequestsDb = {
       `SELECT sr.*, ${LIST_AGGREGATES}
        FROM support_requests sr
        ${whereClause}
-       ORDER BY sr.created_at DESC, sr.id DESC
+       ${buildSupportRequestsOrderByClause(sort)}
        LIMIT $${limitParam}`,
       values
     );
 
     const rows = result.rows as Record<string, unknown>[];
     const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, params.limit, (last) =>
-      encodeKeysetCursor(last.created_at as Date, last.id as string)
+      encodeNextCursor(last, sort)
     );
     return { items: pageRows.map(mapSupportRequestListRow), nextCursor };
   },

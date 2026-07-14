@@ -4,6 +4,8 @@ import {
   SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
   type SupportCategory,
   type SupportRequestStatus,
+  type TSupportRequestsListSortBy,
+  type TSupportRequestsListSortDir,
 } from "@/packages/shared";
 
 export { SUPPORT_MAX_IMAGE_ATTACHMENTS, SUPPORT_MAX_IMAGE_BYTES } from "@/packages/shared";
@@ -47,7 +49,12 @@ export const STATUS_BADGE_CLASS: Record<SupportRequestStatus, string> = {
 
 export type TAppliedSupportFilters = {
   category?: SupportCategory;
+  from?: string;
+  q?: string;
+  sortBy?: TSupportRequestsListSortBy;
+  sortDir?: TSupportRequestsListSortDir;
   status?: SupportRequestStatus;
+  to?: string;
 };
 
 export const supportTextareaClass = cn(

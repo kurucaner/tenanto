@@ -457,3 +457,49 @@ export function encodeExportJobKeysetCursor(input: {
     "utf8"
   ).toString("base64url");
 }
+
+/**
+ * Support request list keyset cursor (v1): selected sort value plus stable createdAt/id
+ * tiebreakers. The sort metadata prevents reusing a cursor with a different ordering.
+ */
+export type SupportRequestKeysetCursorV1 = {
+  createdAt: string;
+  id: string;
+  sortBy: string;
+  sortDir: string;
+  sortKey: string;
+};
+
+export function decodeSupportRequestKeysetCursor(raw: string): SupportRequestKeysetCursorV1 {
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as {
+      createdAt?: unknown;
+      id?: unknown;
+      sortBy?: unknown;
+      sortDir?: unknown;
+      sortKey?: unknown;
+    };
+    if (
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.sortBy !== "string" ||
+      typeof parsed.sortDir !== "string" ||
+      typeof parsed.sortKey !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+      sortBy: parsed.sortBy,
+      sortDir: parsed.sortDir,
+      sortKey: parsed.sortKey,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeSupportRequestKeysetCursor(input: SupportRequestKeysetCursorV1): string {
+  return Buffer.from(JSON.stringify(input), "utf8").toString("base64url");
+}

@@ -10,6 +10,7 @@ import {
   type IAdminSetPropertyFavoriteBody,
   type IAdminSupportRequestPatchBody,
   type IAdminSupportRequestPatchResponse,
+  type IAdminSupportRequestsListResponse,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
@@ -425,8 +426,13 @@ function buildSupportRequestsListSearchParams(query: ISupportRequestsListQuery):
   const params = new URLSearchParams();
   if (query.cursor != null && query.cursor !== "") params.set("cursor", query.cursor);
   if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.q != null && query.q !== "") params.set("q", query.q);
+  if (query.sortBy != null) params.set("sortBy", query.sortBy);
+  if (query.sortDir != null) params.set("sortDir", query.sortDir);
   if (query.status != null) params.set("status", query.status);
   if (query.category != null) params.set("category", query.category);
+  if (query.from != null && query.from !== "") params.set("from", query.from);
+  if (query.to != null && query.to !== "") params.set("to", query.to);
   const s = params.toString();
   return s === "" ? "" : `?${s}`;
 }
@@ -581,7 +587,7 @@ export const adminApi = {
     ),
 
   listSupportRequests: (query: ISupportRequestsListQuery = {}) =>
-    authenticatedRequest<ISupportRequestsListResponse>(
+    authenticatedRequest<IAdminSupportRequestsListResponse>(
       `/support${buildSupportRequestsListSearchParams(query)}`
     ),
 

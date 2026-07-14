@@ -12,11 +12,15 @@ import {
   type ISupportAttachmentPresignBody,
   type ISupportCreateBody,
   type ISupportMessageCreateBody,
+  SUPPORT_REQUESTS_DEFAULT_SORT_BY,
+  SUPPORT_REQUESTS_DEFAULT_SORT_DIR,
   type SupportCategory,
   type SupportRequestStatus,
+  type TSupportRequestsListSortBy,
+  type TSupportRequestsListSortDir,
   UserType,
 } from "@/packages/shared";
-import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { decodeSupportRequestKeysetCursor } from "@/pagination/keyset-cursor";
 import { generateUploadUrl, headObject } from "@/s3/s3-commands";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { notificationStreamHub } from "@/services/notification-stream-hub";
@@ -27,6 +31,9 @@ import { buildSupportStatusChangedNotification, notifyUser } from "@/services/us
 import {
   isValidSupportCategory,
   parseOptionalSupportCategory,
+  parseOptionalSupportListDate,
+  parseOptionalSupportListSortBy,
+  parseOptionalSupportListSortDir,
   parseOptionalSupportRequestStatus,
   parseSupportAttachmentPresignBody,
   parseSupportCreateAttachments,
@@ -39,8 +46,13 @@ import {
 export interface ISupportListQuerystring {
   category?: string;
   cursor?: string;
+  from?: string;
   limit?: string;
+  q?: string;
+  sortBy?: string;
+  sortDir?: string;
   status?: string;
+  to?: string;
 }
 
 async function sendToDiscord(payload: {
@@ -103,19 +115,15 @@ function parseListQuery(
   reply: FastifyReply
 ): {
   category?: SupportCategory;
+  from?: string;
   limit: number;
+  q?: string;
+  sortBy: TSupportRequestsListSortBy;
+  sortDir: TSupportRequestsListSortDir;
   status?: SupportRequestStatus;
+  to?: string;
 } | null {
   const limit = parseSupportListLimit(qs.limit);
-  if (qs.cursor != null && qs.cursor !== "") {
-    try {
-      decodeKeysetCursor(qs.cursor);
-    } catch {
-      void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-      return null;
-    }
-  }
-
   const statusParsed = parseOptionalSupportRequestStatus(qs.status);
   if (statusParsed === null) {
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid status filter" });
@@ -126,11 +134,46 @@ function parseListQuery(
     void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid category filter" });
     return null;
   }
+  const sortByParsed = parseOptionalSupportListSortBy(qs.sortBy);
+  const sortDirParsed = parseOptionalSupportListSortDir(qs.sortDir);
+  if (sortByParsed === null || sortDirParsed === null) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid sort" });
+    return null;
+  }
+  const sortBy = sortByParsed ?? SUPPORT_REQUESTS_DEFAULT_SORT_BY;
+  const sortDir = sortDirParsed ?? SUPPORT_REQUESTS_DEFAULT_SORT_DIR;
+  if (qs.cursor != null && qs.cursor !== "") {
+    try {
+      const cursor = decodeSupportRequestKeysetCursor(qs.cursor);
+      if (cursor.sortBy !== sortBy || cursor.sortDir !== sortDir) {
+        throw new Error("Sort mismatch");
+      }
+    } catch {
+      void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
+      return null;
+    }
+  }
+  const q = typeof qs.q === "string" ? qs.q.trim().slice(0, 200) : "";
+  const fromParsed = parseOptionalSupportListDate(qs.from);
+  if (fromParsed === null) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "from must be a YYYY-MM-DD date" });
+    return null;
+  }
+  const toParsed = parseOptionalSupportListDate(qs.to);
+  if (toParsed === null) {
+    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "to must be a YYYY-MM-DD date" });
+    return null;
+  }
 
   return {
     category: categoryParsed,
+    from: fromParsed,
     limit,
+    q: q === "" ? undefined : q,
+    sortBy,
+    sortDir,
     status: statusParsed,
+    to: toParsed,
   };
 }
 
@@ -326,8 +369,13 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
         const { items, nextCursor } = await supportRequestsDb.listPaginatedForAdmin({
           category: parsed.category,
           cursor: request.query.cursor,
+          from: parsed.from,
           limit: parsed.limit,
+          q: parsed.q,
+          sortBy: parsed.sortBy,
+          sortDir: parsed.sortDir,
           status: parsed.status,
+          to: parsed.to,
         });
         return reply.send({ items, nextCursor });
       }
@@ -335,8 +383,13 @@ export const supportRoutes = async (server: FastifyInstance): Promise<void> => {
       const { items, nextCursor } = await supportRequestsDb.listPaginatedForUser({
         category: parsed.category,
         cursor: request.query.cursor,
+        from: parsed.from,
         limit: parsed.limit,
+        q: parsed.q,
+        sortBy: parsed.sortBy,
+        sortDir: parsed.sortDir,
         status: parsed.status,
+        to: parsed.to,
         userId: request.user.userId,
       });
       return reply.send({ items, nextCursor });

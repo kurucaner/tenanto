@@ -45,6 +45,7 @@ export type {
   IAdminSupportRequestListItem,
   IAdminSupportRequestPatchBody,
   IAdminSupportRequestPatchResponse,
+  IAdminSupportRequestsListResponse,
   ISupportAttachment,
   ISupportAttachmentInput,
   ISupportAttachmentPresignBody,
@@ -64,12 +65,16 @@ export type {
   SupportRequestStatus,
   TAdminSupportRequestSettableStatus,
   TSupportAllowedImageMimeType,
+  TSupportRequestsListSortBy,
+  TSupportRequestsListSortDir,
   TSupportStagedUploadStatus,
 } from "./support-types";
 export {
   SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
   SUPPORT_MAX_IMAGE_ATTACHMENTS,
   SUPPORT_MAX_IMAGE_BYTES,
+  SUPPORT_REQUESTS_DEFAULT_SORT_BY,
+  SUPPORT_REQUESTS_DEFAULT_SORT_DIR,
 } from "./support-types";
 
 // App Config Types
