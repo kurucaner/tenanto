@@ -10,6 +10,7 @@ import {
   PutObjectCommand,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { s3Client } from "./s3-client";
@@ -66,13 +67,16 @@ export const putObjectStream = async (
   body: Readable,
   contentType: string
 ): Promise<void> => {
-  const command = new PutObjectCommand({
-    Body: body,
-    Bucket: bucketName,
-    ContentType: contentType,
-    Key: fileRoute,
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Body: body,
+      Bucket: bucketName,
+      ContentType: contentType,
+      Key: fileRoute,
+    },
   });
-  await s3Client.send(command);
+  await upload.done();
 };
 
 export const initiateMultipartUpload = async (
