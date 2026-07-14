@@ -5,6 +5,7 @@ import {
   buildStayGrossBreakdown,
   buildStayNetPayoutBreakdown,
   buildStayTaxesBreakdown,
+  calculateStayIncome,
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
   getStayNetPayout,
   getStayTaxableBase,
@@ -14,7 +15,6 @@ import {
   isOperandInMetric,
   UnitRentalType,
 } from "@/packages/shared";
-import { calculateStayIncome } from "@/services/property-income-calculator";
 
 const TAX_RATES: IPropertyTaxRate[] = [
   { id: "tax-sales", name: "Sales tax", propertyId: "prop-1", rate: 0.06, sortOrder: 1 },
