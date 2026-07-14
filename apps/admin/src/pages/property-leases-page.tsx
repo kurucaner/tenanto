@@ -44,6 +44,8 @@ import {
   buildLeaseToolbarClearOnePatch,
   buildLeaseToolbarFilterItems,
   countLeaseSecondaryFilters,
+  LEASE_STATUS_FILTER_ALL,
+  LEASE_STATUS_FILTER_OPTIONS,
   type TLeaseToolbarFilterId,
 } from "@/lib/lease-toolbar-filters";
 import {
@@ -64,12 +66,6 @@ import {
   resolveRentIncomeLineTypeId,
   type TPropertyLongStayStatus,
 } from "@/packages/shared";
-
-const LEASE_STATUS_FILTER_OPTIONS = [
-  { label: "All", value: "" },
-  { label: "Active", value: PropertyLongStayStatus.ACTIVE },
-  { label: "Ended", value: PropertyLongStayStatus.ENDED },
-] as const;
 
 const LEASE_ROW_ESTIMATED_HEIGHT = 44;
 
@@ -97,7 +93,7 @@ function buildLeaseListFilters(
   const next: TPropertyLongStaysListFilters = {};
   if (effectiveFrom) next.from = effectiveFrom;
   if (effectiveTo) next.to = effectiveTo;
-  if (status) next.status = status as TPropertyLongStayStatus;
+  if (status && status !== LEASE_STATUS_FILTER_ALL) next.status = status as TPropertyLongStayStatus;
   if (unitId) next.unitId = unitId;
   const qTrim = q.trim();
   if (qTrim) next.q = qTrim;
@@ -226,10 +222,10 @@ export const PropertyLeasesPage = memo(() => {
         to: string;
         unitId: string;
       }>({
-        allTime: { defaultValue: "" },
+        allTime: { defaultValue: "true" },
         from: { defaultValue: defaultDateRange.from },
         q: { defaultValue: "" },
-        status: { defaultValue: "" },
+        status: { defaultValue: PropertyLongStayStatus.ACTIVE },
         to: { defaultValue: defaultDateRange.to },
         unitId: { defaultValue: "" },
       }),
@@ -250,6 +246,7 @@ export const PropertyLeasesPage = memo(() => {
     onToChange,
   } = useUrlDateRangeFilter({
     allTime,
+    allTimeDefault: true,
     dateFilterSchema: leaseFilterSchema,
     from,
     to,
@@ -336,28 +333,15 @@ export const PropertyLeasesPage = memo(() => {
     () =>
       buildLeaseToolbarFilterItems({
         activePreset,
+        allTime,
         dateSummary,
-        isDefaultDateRange:
-          !allTime && from === defaultDateRange.from && to === defaultDateRange.to,
         q,
         status,
         statusOptions: LEASE_STATUS_FILTER_OPTIONS,
         unitId,
         unitOptions: unitFilterOptions,
       }),
-    [
-      activePreset,
-      allTime,
-      dateSummary,
-      defaultDateRange.from,
-      defaultDateRange.to,
-      from,
-      q,
-      status,
-      to,
-      unitFilterOptions,
-      unitId,
-    ]
+    [activePreset, allTime, dateSummary, q, status, unitFilterOptions, unitId]
   );
 
   const handleLeaseFilterChange = useCallback(
@@ -368,7 +352,7 @@ export const PropertyLeasesPage = memo(() => {
   );
 
   const handleClearSecondaryFilters = useCallback(() => {
-    setFilters({ status: "", unitId: "" });
+    setFilters({ status: PropertyLongStayStatus.ACTIVE, unitId: "" });
   }, [setFilters]);
 
   const handleRemoveToolbarFilter = useCallback(

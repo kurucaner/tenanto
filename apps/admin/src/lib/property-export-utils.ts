@@ -1,5 +1,6 @@
 import { buildIncomeTypeFilterOptions } from "@/components/income/income-line-form-options";
 import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
+import { LEASE_STATUS_FILTER_OPTIONS } from "@/lib/lease-toolbar-filters";
 import { type TSelectOption } from "@/lib/select-option-types";
 import {
   ExportFormat,
@@ -25,11 +26,7 @@ export const INCOME_REFUND_STATUS_FILTER_OPTIONS: readonly TSelectOption[] = [
   { label: "Not refunded", value: IncomeRefundFilter.NOT_REFUNDED },
 ];
 
-export const LEASE_STATUS_FILTER_OPTIONS: readonly TSelectOption[] = [
-  { label: "All leases", value: "" },
-  { label: "Active", value: "active" },
-  { label: "Ended", value: "ended" },
-];
+export { LEASE_STATUS_FILTER_OPTIONS } from "@/lib/lease-toolbar-filters";
 
 export type TPropertyTableExportConfig =
   | { filters: TPropertyExpensesListFilters; resourceType: typeof ExportResourceType.EXPENSES }
