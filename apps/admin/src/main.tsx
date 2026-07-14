@@ -26,6 +26,6 @@ createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <AdminThemeSync />
     <App />
-    <Toaster position="top-center" richColors theme="system" />
+    <Toaster position="bottom-right" theme="system" />
   </QueryClientProvider>
 );

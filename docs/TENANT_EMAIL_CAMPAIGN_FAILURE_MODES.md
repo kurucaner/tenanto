@@ -76,7 +76,6 @@ Production on Railway: separate worker service — see [RAILWAY_TENANT_EMAIL_WOR
 
 | Variable                                      | Purpose                   |
 | --------------------------------------------- | ------------------------- |
-| `TENANT_EMAIL_CAMPAIGNS_ENABLED`              | Feature flag              |
 | `REDISHOST` / `REDISPORT` or `REDIS_URL`      | Queue + create rate limit |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | SES                       |
 | `API_PUBLIC_URL`                              | List-Unsubscribe links    |

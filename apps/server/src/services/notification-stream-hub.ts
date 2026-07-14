@@ -10,6 +10,9 @@ import { buildSseCorsHeaders } from "@/lib/cors-headers";
 import {
   type INotificationStreamEvent,
   type IUserNotification,
+  type TExportFormat,
+  type TExportJobStatus,
+  type TExportResourceType,
   type TSupportStagedUploadStatus,
   type TTenantEmailCampaignStatus,
   UserType,
@@ -52,11 +55,23 @@ interface NotifyPayloadTenantEmailCampaign {
   userId: string;
 }
 
+interface NotifyPayloadExportJob {
+  format: TExportFormat;
+  jobId: string;
+  kind: "export_job";
+  propertyId: string;
+  resourceType: TExportResourceType;
+  rowCount?: number;
+  status: TExportJobStatus;
+  userId: string;
+}
+
 type NotifyPayload =
   | NotifyPayloadUser
   | NotifyPayloadSupport
   | NotifyPayloadSupportAttachment
-  | NotifyPayloadTenantEmailCampaign;
+  | NotifyPayloadTenantEmailCampaign
+  | NotifyPayloadExportJob;
 
 interface SseConnection {
   clientId: string | null;
@@ -175,6 +190,39 @@ function parseTenantEmailCampaignPayload(
   };
 }
 
+function parseExportJobPayload(payload: Record<string, unknown>): NotifyPayloadExportJob | null {
+  const userId = payload.userId;
+  const jobId = payload.jobId;
+  const propertyId = payload.propertyId;
+  const status = payload.status;
+  const format = payload.format;
+  const resourceType = payload.resourceType;
+
+  if (
+    typeof userId !== "string" ||
+    typeof jobId !== "string" ||
+    typeof propertyId !== "string" ||
+    typeof status !== "string" ||
+    typeof format !== "string" ||
+    typeof resourceType !== "string"
+  ) {
+    return null;
+  }
+
+  const rowCount = payload.rowCount;
+
+  return {
+    format: format as TExportFormat,
+    jobId,
+    kind: "export_job",
+    propertyId,
+    resourceType: resourceType as TExportResourceType,
+    ...(typeof rowCount === "number" ? { rowCount } : {}),
+    status: status as TExportJobStatus,
+    userId,
+  };
+}
+
 function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
   try {
     const payload = JSON.parse(raw ?? "{}") as Record<string, unknown>;
@@ -186,6 +234,9 @@ function parseNotifyPayload(raw: string | undefined): NotifyPayload | null {
     }
     if (payload.kind === "tenant_email_campaign") {
       return parseTenantEmailCampaignPayload(payload);
+    }
+    if (payload.kind === "export_job") {
+      return parseExportJobPayload(payload);
     }
     return parseUserNotifyPayload(payload);
   } catch {
@@ -217,6 +268,10 @@ class NotificationStreamHub {
       }
       if (payload.kind === "tenant_email_campaign") {
         this.pushTenantEmailCampaignUpdated(payload);
+        return;
+      }
+      if (payload.kind === "export_job") {
+        this.pushExportJobUpdated(payload);
         return;
       }
       void this.pushToUser(payload.userId, payload.notification);
@@ -313,6 +368,30 @@ class NotificationStreamHub {
     ]);
   }
 
+  async publishExportJobUpdated(params: {
+    format: TExportFormat;
+    jobId: string;
+    propertyId: string;
+    resourceType: TExportResourceType;
+    rowCount?: number;
+    status: TExportJobStatus;
+    userId: string;
+  }): Promise<void> {
+    await pool.query(`SELECT pg_notify($1, $2)`, [
+      NOTIFY_CHANNEL,
+      JSON.stringify({
+        format: params.format,
+        jobId: params.jobId,
+        kind: "export_job",
+        propertyId: params.propertyId,
+        resourceType: params.resourceType,
+        rowCount: params.rowCount,
+        status: params.status,
+        userId: params.userId,
+      }),
+    ]);
+  }
+
   async pushToUser(userId: string, notification?: IUserNotification): Promise<void> {
     if (notification != null) {
       this.broadcastToUser(userId, {
@@ -391,6 +470,23 @@ class NotificationStreamHub {
         totalCount: payload.totalCount,
       },
       type: "tenant_email_campaign.updated",
+      v: 1,
+    };
+
+    this.broadcastToUser(payload.userId, event);
+  }
+
+  pushExportJobUpdated(payload: NotifyPayloadExportJob): void {
+    const event: INotificationStreamEvent = {
+      data: {
+        format: payload.format,
+        jobId: payload.jobId,
+        propertyId: payload.propertyId,
+        resourceType: payload.resourceType,
+        status: payload.status,
+        ...(payload.rowCount != null ? { rowCount: payload.rowCount } : {}),
+      },
+      type: "export_job.updated",
       v: 1,
     };
 

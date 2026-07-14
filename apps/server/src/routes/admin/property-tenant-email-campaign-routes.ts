@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
-import { TENANT_EMAIL_CAMPAIGNS_ENABLED } from "@/lib/tenant-email-campaign-config";
 import {
   HttpStatus,
   type ICreateTenantEmailCampaignBody,
@@ -94,10 +93,6 @@ function parseCreateCampaignBody(
   };
 }
 
-function featureDisabled(reply: FastifyReply): FastifyReply {
-  return reply.status(HttpStatus.NOT_FOUND).send({ error: "Not found" });
-}
-
 export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
@@ -105,10 +100,6 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
     "/properties/:propertyId/tenant-email-campaigns/preview",
     { preHandler: authPre },
     async (request, reply) => {
-      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
-        return featureDisabled(reply);
-      }
-
       const propertyId = parseUuidParam(request.params.propertyId);
       if (!propertyId) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid property id" });
@@ -142,10 +133,6 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
       }>,
       reply
     ) => {
-      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
-        return featureDisabled(reply);
-      }
-
       const propertyId = parseUuidParam(request.params.propertyId);
       if (!propertyId) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid property id" });
@@ -192,10 +179,6 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
     "/properties/:propertyId/tenant-email-campaigns/:campaignId",
     { preHandler: authPre },
     async (request, reply) => {
-      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
-        return featureDisabled(reply);
-      }
-
       const propertyId = parseUuidParam(request.params.propertyId);
       const campaignId = parseUuidParam(request.params.campaignId);
       if (!propertyId || !campaignId) {
@@ -229,10 +212,6 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
     "/properties/:propertyId/tenant-email-campaigns",
     { preHandler: authPre },
     async (request: FastifyRequest<{ Params: { propertyId: string } }>, reply: FastifyReply) => {
-      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
-        return featureDisabled(reply);
-      }
-
       const propertyId = parseUuidParam(request.params.propertyId);
       if (!propertyId) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid property id" });
@@ -295,10 +274,6 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
     "/properties/:propertyId/tenant-email-campaigns/:campaignId/reenqueue",
     { preHandler: authPre },
     async (request, reply) => {
-      if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
-        return featureDisabled(reply);
-      }
-
       const propertyId = parseUuidParam(request.params.propertyId);
       const campaignId = parseUuidParam(request.params.campaignId);
       if (!propertyId || !campaignId) {

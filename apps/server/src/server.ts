@@ -20,6 +20,7 @@ import { homeRoutes } from "./routes/admin/home-routes";
 import { portfolioReportRoutes } from "./routes/admin/portfolio-report-routes";
 import { propertyExpenseImportRoutes } from "./routes/admin/property-expense-import-routes";
 import { propertyExpenseRoutes } from "./routes/admin/property-expense-routes";
+import { propertyExportRoutes } from "./routes/admin/property-export-routes";
 import { propertyIncomeEntriesRoutes } from "./routes/admin/property-income-entries-routes";
 import { propertyIncomeImportRoutes } from "./routes/admin/property-income-import-routes";
 import { propertyIncomeLineRoutes } from "./routes/admin/property-income-line-routes";
@@ -37,6 +38,7 @@ import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
+import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
 import { notificationStreamHub } from "./services/notification-stream-hub";
@@ -97,6 +99,7 @@ server.register(propertyIncomeEntriesRoutes);
 server.register(propertyLongStayRoutes);
 server.register(propertyTenantEmailCampaignRoutes);
 server.register(propertyExpenseRoutes);
+server.register(propertyExportRoutes);
 server.register(propertyExpenseImportRoutes);
 server.register(propertyIncomeImportRoutes);
 server.register(propertyReportRoutes);
@@ -167,6 +170,7 @@ const start = async () => {
 
     if (pm2Instance === undefined || pm2Instance === "0") {
       startRefreshTokenCleanupCron();
+      startPropertyExportExpiryCron();
     }
 
     await notificationStreamHub.start();

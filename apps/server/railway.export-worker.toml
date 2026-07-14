@@ -1,0 +1,15 @@
+# Railway: create a service named e.g. "server-export-worker" and set
+# "Config file path" to apps/server/railway.export-worker.toml
+#
+# Uses the same image as the API (docker/Dockerfile.server) with a worker start command.
+# Copy env vars from the server service (DATABASE_URL, AWS/MinIO, etc.).
+# Required: REDIS_URL (Railway Redis reference).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile.server"
+watchPatterns = ["apps/server/**", "packages/**", "docker/Dockerfile.server"]
+
+[deploy]
+startCommand = "dumb-init node apps/server/dist/apps/server/src/workers/property-export-worker.cli.js"
+restartPolicyType = "ON_FAILURE"

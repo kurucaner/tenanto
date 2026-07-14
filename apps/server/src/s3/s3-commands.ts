@@ -1,3 +1,5 @@
+import type { Readable } from "node:stream";
+
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -8,6 +10,7 @@ import {
   PutObjectCommand,
   UploadPartCommand,
 } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { s3Client } from "./s3-client";
@@ -57,6 +60,23 @@ export const generateDownloadUrl = async (fileRoute: string): Promise<string> =>
   return getSignedUrl(s3Client, command, {
     expiresIn: DOWNLOAD_URL_EXPIRATION_SECONDS,
   });
+};
+
+export const putObjectStream = async (
+  fileRoute: string,
+  body: Readable,
+  contentType: string
+): Promise<void> => {
+  const upload = new Upload({
+    client: s3Client,
+    params: {
+      Body: body,
+      Bucket: bucketName,
+      ContentType: contentType,
+      Key: fileRoute,
+    },
+  });
+  await upload.done();
 };
 
 export const initiateMultipartUpload = async (

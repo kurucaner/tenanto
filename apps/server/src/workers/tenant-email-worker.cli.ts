@@ -1,6 +1,5 @@
 import "dotenv/config";
 
-import { TENANT_EMAIL_CAMPAIGNS_ENABLED } from "@/lib/tenant-email-campaign-config";
 import { verifyRedisConnection } from "@/queues/redis-connection";
 import { reenqueueAllStuckTenantEmailCampaigns } from "@/services/tenant-email-campaign-reenqueue";
 import {
@@ -9,11 +8,6 @@ import {
 } from "@/services/tenant-email-send-worker";
 
 async function main(): Promise<void> {
-  if (!TENANT_EMAIL_CAMPAIGNS_ENABLED) {
-    console.error("[tenant-email-worker] TENANT_EMAIL_CAMPAIGNS_ENABLED is not true; exiting.");
-    process.exit(1);
-  }
-
   const redisOk = await verifyRedisConnection();
   if (!redisOk) {
     console.error("[tenant-email-worker] Redis connection failed; exiting.");

@@ -1,6 +1,13 @@
 import { type IUserNotification } from "@/packages/shared";
 
 export function getNotificationHref(notification: IUserNotification): string {
+  if (
+    notification.type === "export_ready" &&
+    notification.resourceType === "property" &&
+    notification.resourceId != null
+  ) {
+    return `/properties/${encodeURIComponent(notification.resourceId)}/exports`;
+  }
   if (notification.resourceType === "property" && notification.resourceId != null) {
     return `/properties/${encodeURIComponent(notification.resourceId)}`;
   }

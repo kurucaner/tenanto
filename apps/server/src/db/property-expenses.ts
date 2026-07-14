@@ -24,7 +24,7 @@ const EXPENSE_SELECT = `
   JOIN property_expense_category_types pect ON pe.category_id = pect.id
 `;
 
-function buildPropertyExpenseListConditions(
+export function buildPropertyExpenseListConditions(
   propertyId: string,
   filters: TPropertyExpensesListFilters,
   includeDeleted: boolean

@@ -29,3 +29,7 @@ export interface IPropertyShortStaysListMeta {
 export interface ITenantEmailCampaignsListMeta {
   totalCount: number;
 }
+
+export interface IPropertyExportsListMeta {
+  totalCount: number;
+}

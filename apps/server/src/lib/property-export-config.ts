@@ -1,0 +1,19 @@
+export const PROPERTY_EXPORT_QUEUE_NAME = "property-export-jobs";
+
+export const PROPERTY_EXPORT_JOB_ATTEMPTS = 3;
+
+export const PROPERTY_EXPORT_BATCH_SIZE = 1000;
+
+export const PROPERTY_EXPORT_PROCESSING_TIMEOUT_MS = Number.parseInt(
+  process.env.PROPERTY_EXPORT_PROCESSING_TIMEOUT_MS ?? "900000",
+  10
+);
+
+export const PROPERTY_EXPORT_PROCESSING_TIMEOUT_MESSAGE =
+  "Export timed out while processing. Please try again with narrower filters.";
+
+export const PROPERTY_EXPORT_DUPLICATE_MESSAGE =
+  "An export with the same filters is already in progress.";
+
+/** Hourly at minute 15 — mark completed exports past expires_at as expired. */
+export const PROPERTY_EXPORT_EXPIRY_CRON_SCHEDULE = "15 * * * *";
