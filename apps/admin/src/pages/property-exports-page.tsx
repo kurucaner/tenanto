@@ -150,6 +150,8 @@ export const PropertyExportsPage = memo(() => {
   useEffect(() => {
     if (highlightJobIdParam != null && highlightJobIdParam !== "") {
       setHighlightedJobId(highlightJobIdParam);
+    } else {
+      setHighlightedJobId(null);
     }
   }, [highlightJobIdParam]);
 
@@ -167,22 +169,23 @@ export const PropertyExportsPage = memo(() => {
 
     const timeoutId = globalThis.setTimeout(() => {
       setHighlightedJobId(null);
-      if (highlightJobIdParam != null) {
-        setSearchParams(
-          (current) => {
-            const nextParams = new URLSearchParams(current);
-            nextParams.delete("highlightJobId");
-            return nextParams;
-          },
-          { replace: true }
-        );
-      }
+      setSearchParams(
+        (current) => {
+          if (!current.has("highlightJobId")) {
+            return current;
+          }
+          const nextParams = new URLSearchParams(current);
+          nextParams.delete("highlightJobId");
+          return nextParams;
+        },
+        { replace: true }
+      );
     }, 4_000);
 
     return () => {
       globalThis.clearTimeout(timeoutId);
     };
-  }, [exports, highlightJobIdParam, highlightedJobId, isPending, setSearchParams]);
+  }, [exports, highlightedJobId, isPending, setSearchParams]);
 
   const dateSummary = useMemo(
     () => getDateRangeSummary(activePreset, displayFrom, displayTo),
