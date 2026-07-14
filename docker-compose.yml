@@ -46,6 +46,7 @@ services:
         VITE_DD_SITE: ${VITE_DD_SITE:-us5.datadoghq.com}
         VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
+        VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED: ${VITE_TENANT_EMAIL_CAMPAIGNS_ENABLED:-false}
     ports:
       - "3002:4173"
     environment:
