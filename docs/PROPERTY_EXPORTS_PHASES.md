@@ -106,10 +106,6 @@ v1 exports are **read-only data access** — any property member who can view th
 - Mirror on server routes (`assertPropertyMemberAccess`) and client (Exports tab visible to all property shell viewers).
 - Do **not** require `canManageLedger` — accountants need exports too.
 
-### Feature flag
-
-`VITE_PROPERTY_EXPORTS_ENABLED` — gate API routes, worker enqueue, Exports tab, and Export table dialog until production-ready. Server-side equivalent env if needed for route registration.
-
 ---
 
 ## Data model (sketch)
@@ -234,7 +230,7 @@ Excel (Phase 5):
 
 - Add to `apps/admin/src/config/property-shell-tabs.ts`: `{ label: "Exports", path: "exports" }`
 - Route: `apps/admin/src/pages/property-exports-page.tsx` (new); register in `apps/admin/src/app/router.tsx`
-- Gate on feature flag + `canView`
+- Gate on `canView`
 - Table columns: requested at, resource type, format, filter summary, status, row count, actions
   - **Download** when `completed` (calls download endpoint → presigned URL)
   - Error message when `failed`
@@ -290,9 +286,8 @@ toast.success("Export queued", {
 - [ ] Shared types in `packages/shared`
 - [ ] API client stubs in `apps/admin/src/lib/api-client.ts`
 - [ ] Query keys: `queryKeys.propertyExports(propertyId)`, `queryKeys.propertyExport(propertyId, jobId)`
-- [ ] Feature flag `VITE_PROPERTY_EXPORTS_ENABLED`
 
-**Exit criteria:** Types compile; migration runs; flag hides all UI.
+**Exit criteria:** Types compile; migration runs; no user-facing UI until Phase 3.
 
 ---
 
