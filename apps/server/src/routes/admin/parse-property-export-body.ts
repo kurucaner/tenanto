@@ -2,21 +2,25 @@ import { parseCategoryId, parseDateString } from "@/lib/validate-create-expense-
 import {
   ExportFormat,
   ExportResourceType,
-  INCOME_ENTRIES_SORT_BY_VALUES,
-  IncomeEntryKind,
   type IPropertyExportCreateRequest,
-  ReservationStatus,
   type TPropertyExpensesListFilters,
   type TPropertyIncomeEntriesListFilters,
   type TPropertyLongStaysListFilters,
-  type TReservationStatus,
 } from "@/packages/shared";
 
-import { parseOptionalUuid } from "./admin-query-utils";
+import { type TQueryParseResult } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
-import { applyOptionalQuerySearchFilter } from "./parse-list-query-filters";
-
-const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
+import {
+  parseIncomeEntriesSortBy,
+  parseIncomeEntriesSortDir,
+  parseIncomeReservationStatus,
+  parseIncomeTypeFilter,
+} from "./parse-income-entries-filter-fields";
+import {
+  applyOptionalQueryDateFilter,
+  applyOptionalQuerySearchFilter,
+  applyOptionalQueryUuidFilter,
+} from "./parse-list-query-filters";
 
 function parseExpenseExportFilters(
   raw: unknown
@@ -54,6 +58,75 @@ function parseExpenseExportFilters(
   return { filters, ok: true };
 }
 
+function applyIncomeExportStatusFilter(
+  record: Record<string, unknown>,
+  filters: TPropertyIncomeEntriesListFilters
+): TQueryParseResult<void> {
+  const status = parseIncomeReservationStatus(record.status);
+  if (status === null) {
+    return { error: "filters.status is invalid", ok: false };
+  }
+  if (status) {
+    filters.status = status;
+  }
+  return { ok: true };
+}
+
+function applyIncomeExportIncomeTypeFilter(
+  record: Record<string, unknown>,
+  filters: TPropertyIncomeEntriesListFilters
+): TQueryParseResult<void> {
+  const incomeType = parseIncomeTypeFilter(record.incomeType);
+  if (incomeType === null) {
+    return {
+      error: "filters.incomeType must be 'stay' or a valid income line type id",
+      ok: false,
+    };
+  }
+  if (incomeType) {
+    filters.incomeType = incomeType;
+  }
+  return { ok: true };
+}
+
+function applyIncomeExportRefundStatusFilter(
+  record: Record<string, unknown>,
+  filters: TPropertyIncomeEntriesListFilters
+): TQueryParseResult<void> {
+  if (record.refundStatus === "refunded" || record.refundStatus === "not_refunded") {
+    filters.refundStatus = record.refundStatus;
+  }
+  return { ok: true };
+}
+
+function applyIncomeExportSortByFilter(
+  record: Record<string, unknown>,
+  filters: TPropertyIncomeEntriesListFilters
+): TQueryParseResult<void> {
+  const sortBy = parseIncomeEntriesSortBy(record.sortBy);
+  if (sortBy === null) {
+    return { error: "filters.sortBy is invalid", ok: false };
+  }
+  if (sortBy) {
+    filters.sortBy = sortBy;
+  }
+  return { ok: true };
+}
+
+function applyIncomeExportSortDirFilter(
+  record: Record<string, unknown>,
+  filters: TPropertyIncomeEntriesListFilters
+): TQueryParseResult<void> {
+  const sortDir = parseIncomeEntriesSortDir(record.sortDir);
+  if (sortDir === null) {
+    return { error: "filters.sortDir must be asc or desc", ok: false };
+  }
+  if (sortDir) {
+    filters.sortDir = sortDir;
+  }
+  return { ok: true };
+}
+
 function parseIncomeExportFilters(
   raw: unknown
 ): { filters: TPropertyIncomeEntriesListFilters; ok: true } | { error: string; ok: false } {
@@ -64,78 +137,62 @@ function parseIncomeExportFilters(
   const record = raw as Record<string, unknown>;
   const filters: TPropertyIncomeEntriesListFilters = {};
 
-  if (record.from !== undefined && record.from !== "") {
-    const from = parseDateString(record.from);
-    if (!from) return { error: "filters.from must be a YYYY-MM-DD date", ok: false };
-    filters.from = from;
-  }
-  if (record.to !== undefined && record.to !== "") {
-    const to = parseDateString(record.to);
-    if (!to) return { error: "filters.to must be a YYYY-MM-DD date", ok: false };
-    filters.to = to;
-  }
-  if (record.unitId !== undefined && record.unitId !== "") {
-    const unitId = parseOptionalUuid(record.unitId);
-    if (unitId === null) return { error: "filters.unitId must be a valid UUID", ok: false };
-    if (unitId) filters.unitId = unitId;
-  }
+  const filterSteps: Array<() => TQueryParseResult<void>> = [
+    () =>
+      applyOptionalQueryDateFilter(
+        record,
+        "from",
+        filters,
+        "filters.from must be a YYYY-MM-DD date"
+      ),
+    () =>
+      applyOptionalQueryDateFilter(record, "to", filters, "filters.to must be a YYYY-MM-DD date"),
+    () =>
+      applyOptionalQueryUuidFilter(
+        record,
+        "unitId",
+        filters,
+        "filters.unitId must be a valid UUID"
+      ),
+    () => applyOptionalQuerySearchFilter(record, filters),
+    () =>
+      applyOptionalQueryUuidFilter(
+        record,
+        "channelCommissionId",
+        filters,
+        "filters.channelCommissionId must be a valid UUID"
+      ),
+    () => applyIncomeExportStatusFilter(record, filters),
+    () => applyIncomeExportIncomeTypeFilter(record, filters),
+    () => applyIncomeExportRefundStatusFilter(record, filters),
+    () => applyIncomeExportSortByFilter(record, filters),
+    () => applyIncomeExportSortDirFilter(record, filters),
+  ];
 
-  const searchResult = applyOptionalQuerySearchFilter(record, filters);
-  if (!searchResult.ok) {
-    return searchResult;
-  }
-
-  if (record.channelCommissionId !== undefined && record.channelCommissionId !== "") {
-    const channelCommissionId = parseOptionalUuid(record.channelCommissionId);
-    if (channelCommissionId === null) {
-      return { error: "filters.channelCommissionId must be a valid UUID", ok: false };
+  for (const applyFilter of filterSteps) {
+    const result = applyFilter();
+    if (!result.ok) {
+      return result;
     }
-    if (channelCommissionId) filters.channelCommissionId = channelCommissionId;
-  }
-
-  if (record.status !== undefined && record.status !== "") {
-    const status = typeof record.status === "string" ? record.status : "";
-    if (!RESERVATION_STATUSES.has(status as TReservationStatus)) {
-      return { error: "filters.status is invalid", ok: false };
-    }
-    filters.status = status as TReservationStatus;
-  }
-
-  if (record.incomeType !== undefined && record.incomeType !== "") {
-    const incomeTypeRaw = typeof record.incomeType === "string" ? record.incomeType.trim() : "";
-    if (incomeTypeRaw === IncomeEntryKind.STAY) {
-      filters.incomeType = IncomeEntryKind.STAY;
-    } else {
-      const incomeType = parseOptionalUuid(incomeTypeRaw);
-      if (incomeType === null) {
-        return {
-          error: "filters.incomeType must be 'stay' or a valid income line type id",
-          ok: false,
-        };
-      }
-      if (incomeType) filters.incomeType = incomeType;
-    }
-  }
-
-  if (record.refundStatus === "refunded" || record.refundStatus === "not_refunded") {
-    filters.refundStatus = record.refundStatus;
-  }
-
-  if (record.sortBy !== undefined && record.sortBy !== "") {
-    const sortBy = typeof record.sortBy === "string" ? record.sortBy : "";
-    if (!(INCOME_ENTRIES_SORT_BY_VALUES as readonly string[]).includes(sortBy)) {
-      return { error: "filters.sortBy is invalid", ok: false };
-    }
-    filters.sortBy = sortBy as TPropertyIncomeEntriesListFilters["sortBy"];
-  }
-
-  if (record.sortDir === "asc" || record.sortDir === "desc") {
-    filters.sortDir = record.sortDir;
-  } else if (record.sortDir !== undefined && record.sortDir !== "") {
-    return { error: "filters.sortDir must be asc or desc", ok: false };
   }
 
   return { filters, ok: true };
+}
+
+function applyLeaseExportStatusFilter(
+  record: Record<string, unknown>,
+  filters: TPropertyLongStaysListFilters
+): TQueryParseResult<void> {
+  if (record.status === "active" || record.status === "ended") {
+    filters.status = record.status;
+    return { ok: true };
+  }
+
+  if (record.status !== undefined && record.status !== "") {
+    return { error: "filters.status must be active or ended", ok: false };
+  }
+
+  return { ok: true };
 }
 
 function parseLeaseExportFilters(
@@ -148,31 +205,32 @@ function parseLeaseExportFilters(
   const record = raw as Record<string, unknown>;
   const filters: TPropertyLongStaysListFilters = {};
 
-  if (record.from !== undefined && record.from !== "") {
-    const from = parseDateString(record.from);
-    if (!from) return { error: "filters.from must be a YYYY-MM-DD date", ok: false };
-    filters.from = from;
-  }
-  if (record.to !== undefined && record.to !== "") {
-    const to = parseDateString(record.to);
-    if (!to) return { error: "filters.to must be a YYYY-MM-DD date", ok: false };
-    filters.to = to;
-  }
-  if (record.unitId !== undefined && record.unitId !== "") {
-    const unitId = parseOptionalUuid(record.unitId);
-    if (unitId === null) return { error: "filters.unitId must be a valid UUID", ok: false };
-    if (unitId) filters.unitId = unitId;
-  }
+  const filterSteps: Array<() => TQueryParseResult<void>> = [
+    () =>
+      applyOptionalQueryDateFilter(
+        record,
+        "from",
+        filters,
+        "filters.from must be a YYYY-MM-DD date"
+      ),
+    () =>
+      applyOptionalQueryDateFilter(record, "to", filters, "filters.to must be a YYYY-MM-DD date"),
+    () =>
+      applyOptionalQueryUuidFilter(
+        record,
+        "unitId",
+        filters,
+        "filters.unitId must be a valid UUID"
+      ),
+    () => applyOptionalQuerySearchFilter(record, filters),
+    () => applyLeaseExportStatusFilter(record, filters),
+  ];
 
-  const searchResult = applyOptionalQuerySearchFilter(record, filters);
-  if (!searchResult.ok) {
-    return searchResult;
-  }
-
-  if (record.status === "active" || record.status === "ended") {
-    filters.status = record.status;
-  } else if (record.status !== undefined && record.status !== "") {
-    return { error: "filters.status must be active or ended", ok: false };
+  for (const applyFilter of filterSteps) {
+    const result = applyFilter();
+    if (!result.ok) {
+      return result;
+    }
   }
 
   return { filters, ok: true };
