@@ -6,23 +6,27 @@ import {
   type TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 
+function isNonEmptyString(value: string | null | undefined): value is string {
+  return value != null && value !== "";
+}
+
 export function normalizeExpenseExportFilters(
   filters: TPropertyExpensesListFilters
 ): TPropertyExpensesListFilters {
   const normalized: TPropertyExpensesListFilters = {};
 
-  if (filters.from != null && filters.from !== "") {
+  if (isNonEmptyString(filters.from)) {
     normalized.from = filters.from;
   }
-  if (filters.to != null && filters.to !== "") {
+  if (isNonEmptyString(filters.to)) {
     normalized.to = filters.to;
   }
-  if (filters.categoryId != null && filters.categoryId !== "") {
+  if (isNonEmptyString(filters.categoryId)) {
     normalized.categoryId = filters.categoryId;
   }
 
   const qTrim = filters.q?.trim();
-  if (qTrim != null && qTrim !== "") {
+  if (isNonEmptyString(qTrim)) {
     normalized.q = qTrim;
   }
 
@@ -34,19 +38,19 @@ export function normalizeIncomeExportFilters(
 ): TPropertyIncomeEntriesListFilters {
   const normalized: TPropertyIncomeEntriesListFilters = {};
 
-  if (filters.from != null && filters.from !== "") {
+  if (isNonEmptyString(filters.from)) {
     normalized.from = filters.from;
   }
-  if (filters.to != null && filters.to !== "") {
+  if (isNonEmptyString(filters.to)) {
     normalized.to = filters.to;
   }
-  if (filters.unitId != null && filters.unitId !== "") {
+  if (isNonEmptyString(filters.unitId)) {
     normalized.unitId = filters.unitId;
   }
-  if (filters.channelCommissionId != null && filters.channelCommissionId !== "") {
+  if (isNonEmptyString(filters.channelCommissionId)) {
     normalized.channelCommissionId = filters.channelCommissionId;
   }
-  if (filters.incomeType != null && filters.incomeType !== "") {
+  if (isNonEmptyString(filters.incomeType)) {
     normalized.incomeType = filters.incomeType;
   }
   if (filters.status != null) {
@@ -63,7 +67,7 @@ export function normalizeIncomeExportFilters(
   }
 
   const qTrim = filters.q?.trim();
-  if (qTrim != null && qTrim !== "") {
+  if (isNonEmptyString(qTrim)) {
     normalized.q = qTrim;
   }
 
@@ -75,13 +79,13 @@ export function normalizeLeaseExportFilters(
 ): TPropertyLongStaysListFilters {
   const normalized: TPropertyLongStaysListFilters = {};
 
-  if (filters.from != null && filters.from !== "") {
+  if (isNonEmptyString(filters.from)) {
     normalized.from = filters.from;
   }
-  if (filters.to != null && filters.to !== "") {
+  if (isNonEmptyString(filters.to)) {
     normalized.to = filters.to;
   }
-  if (filters.unitId != null && filters.unitId !== "") {
+  if (isNonEmptyString(filters.unitId)) {
     normalized.unitId = filters.unitId;
   }
   if (filters.status != null) {
@@ -89,7 +93,7 @@ export function normalizeLeaseExportFilters(
   }
 
   const qTrim = filters.q?.trim();
-  if (qTrim != null && qTrim !== "") {
+  if (isNonEmptyString(qTrim)) {
     normalized.q = qTrim;
   }
 
