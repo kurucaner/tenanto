@@ -6,7 +6,8 @@ import { PropertyExportsTable } from "@/components/exports/property-exports-tabl
 import { useInfiniteScrollTrigger } from "@/hooks/use-infinite-scroll-trigger";
 import { usePropertyExportsInfiniteList } from "@/hooks/use-property-exports-infinite-list";
 import { usePropertyShell } from "@/hooks/use-property-shell";
-import { settingsApi } from "@/lib/api-client";
+import { settingsApi, unitsApi } from "@/lib/api-client";
+import { buildExportFilterSummaryOptions } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 
 export const PropertyExportsPage = memo(() => {
@@ -35,13 +36,18 @@ export const PropertyExportsPage = memo(() => {
     queryKey: queryKeys.propertySettings(propertyId),
   });
 
-  const categoryOptions = useMemo(
+  const unitsQuery = useQuery({
+    queryFn: () => unitsApi.list(propertyId),
+    queryKey: queryKeys.propertyUnits(propertyId),
+  });
+
+  const filterSummaryOptions = useMemo(
     () =>
-      (settingsQuery.data?.settings.expenseCategoryTypes ?? []).map((category) => ({
-        label: category.name,
-        value: category.id,
-      })),
-    [settingsQuery.data?.settings.expenseCategoryTypes]
+      buildExportFilterSummaryOptions(
+        settingsQuery.data?.settings,
+        unitsQuery.data?.units ?? []
+      ),
+    [settingsQuery.data?.settings, unitsQuery.data?.units]
   );
 
   useEffect(() => {
@@ -87,9 +93,9 @@ export const PropertyExportsPage = memo(() => {
 
   return (
     <PropertyExportsTable
-      categoryOptions={categoryOptions}
       countLabel={countLabel}
       exports={exports}
+      filterSummaryOptions={filterSummaryOptions}
       hasNextPage={Boolean(hasNextPage)}
       highlightJobId={highlightedJobId}
       isFetchingNextPage={isFetchingNextPage}

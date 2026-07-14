@@ -14,3 +14,16 @@ export function showPropertyExportQueuedToast(propertyId: string, jobId: string)
     id: `export-queued-${jobId}`,
   });
 }
+
+export function showPropertyExportCompletedToast(propertyId: string, jobId: string): void {
+  toast.success("Export ready", {
+    action: {
+      label: "View export",
+      onClick: () => {
+        router.navigate(`/properties/${propertyId}/exports?highlightJobId=${jobId}`);
+      },
+    },
+    description: "Your file is ready to download.",
+    id: `export-completed-${jobId}`,
+  });
+}

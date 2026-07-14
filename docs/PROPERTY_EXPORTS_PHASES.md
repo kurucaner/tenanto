@@ -361,11 +361,11 @@ toast.success("Export queued", {
 
 ### Phase 5 — Enhancements (post-launch)
 
-- Excel (`exceljs` streaming writer) — enable Excel radio option in dialog
-- Export dialog on income/leases tables (new `resourceType` handlers in worker)
-- In-app notification on completion (`export_ready`) for users not on Exports tab
-- Completion toast with **View export** when SSE fires and user is not on Exports tab
-- Portfolio-wide export across all properties (separate epic)
+- [x] Excel (`exceljs` streaming writer) — enable Excel radio option in dialog
+- [x] Export dialog on income/leases tables (new `resourceType` handlers in worker)
+- [x] In-app notification on completion (`export_ready`) for users not on Exports tab
+- [x] Completion toast with **View export** when SSE fires and user is not on Exports tab
+- Portfolio-wide export across all properties (separate epic — deferred)
 
 ---
 

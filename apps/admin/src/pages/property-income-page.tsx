@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CirclePlus, MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
+import { CirclePlus, Download, MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
 import {
   memo,
   type MouseEvent,
@@ -22,6 +22,7 @@ import {
   RefundEntityButton,
   RestoreEntityButton,
 } from "@/components/deleted-badge";
+import { PropertyTableExportDialog } from "@/components/exports/property-table-export-dialog";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -86,10 +87,15 @@ import {
 } from "@/lib/income-toolbar-filters";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { ledgerEntryRowClassName } from "@/lib/ledger-entry-row-styles";
+import {
+  buildExportFilterSummaryOptions,
+  formatPropertyTableExportFilterSummary,
+} from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  ExportResourceType,
   formatPropertyUnitSelectLabel,
   getIncomeLineRefundableCap,
   getStayAverageDailyRate,
@@ -559,46 +565,58 @@ function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): 
 
 const PropertyIncomePageActions = memo(
   ({
+    canManage,
     onAddOtherIncome,
     onAddStay,
+    onExportTable,
     onImportCsv,
   }: {
+    canManage: boolean;
     onAddOtherIncome: () => void;
     onAddStay: () => void;
+    onExportTable: () => void;
     onImportCsv: () => void;
   }) => (
     <div className="flex items-center gap-2">
-      <Button
-        className="hidden gap-1.5 sm:inline-flex"
-        onClick={onAddStay}
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        <Plus className="size-3.5" />
-        Add Short Stay
+      <Button className="gap-1.5" onClick={onExportTable} size="sm" type="button" variant="outline">
+        <Download className="size-3.5" />
+        Export table
       </Button>
-      <Button className="gap-1.5" onClick={onAddOtherIncome} size="sm" type="button">
-        <Plus className="size-3.5" />
-        Add Other Income
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button aria-label="More income actions" size="icon-sm" type="button" variant="outline">
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem className="sm:hidden" onSelect={onAddStay}>
-            <Plus />
+      {canManage ? (
+        <>
+          <Button
+            className="hidden gap-1.5 sm:inline-flex"
+            onClick={onAddStay}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="size-3.5" />
             Add Short Stay
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={onImportCsv}>
-            <Sparkles />
-            Import CSV
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </Button>
+          <Button className="gap-1.5" onClick={onAddOtherIncome} size="sm" type="button">
+            <Plus className="size-3.5" />
+            Add Other Income
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button aria-label="More income actions" size="icon-sm" type="button" variant="outline">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem className="sm:hidden" onSelect={onAddStay}>
+                <Plus />
+                Add Short Stay
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={onImportCsv}>
+                <Sparkles />
+                Import CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      ) : null}
     </div>
   )
 );
@@ -959,20 +977,22 @@ IncomeEntryRow.displayName = "IncomeEntryRow";
 
 function useRegisterIncomePageActions(
   canManage: boolean,
+  onExportTable: () => void,
   onAddOtherIncome: () => void,
   onAddStay: () => void,
   onImportCsv: () => void
 ) {
   const pageActions = useMemo(
-    () =>
-      canManage ? (
-        <PropertyIncomePageActions
-          onAddOtherIncome={onAddOtherIncome}
-          onAddStay={onAddStay}
-          onImportCsv={onImportCsv}
-        />
-      ) : null,
-    [canManage, onAddOtherIncome, onAddStay, onImportCsv]
+    () => (
+      <PropertyIncomePageActions
+        canManage={canManage}
+        onAddOtherIncome={onAddOtherIncome}
+        onAddStay={onAddStay}
+        onExportTable={onExportTable}
+        onImportCsv={onImportCsv}
+      />
+    ),
+    [canManage, onAddOtherIncome, onAddStay, onExportTable, onImportCsv]
   );
 
   usePropertyShellActions(pageActions);
@@ -983,6 +1003,7 @@ const PropertyIncomePage = memo(() => {
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
   const [createStayOpen, setCreateStayOpen] = useState(false);
+  const [exportTableOpen, setExportTableOpen] = useState(false);
   const [importCsvOpen, setImportCsvOpen] = useState(false);
   const [createLineOpen, setCreateLineOpen] = useState(false);
   const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
@@ -1506,7 +1527,31 @@ const PropertyIncomePage = memo(() => {
     setImportCsvOpen(true);
   }, []);
 
-  useRegisterIncomePageActions(canManage, handleAddOtherIncome, handleAddStay, handleOpenImportCsv);
+  const handleOpenExportTable = useCallback(() => {
+    setExportTableOpen(true);
+  }, []);
+
+  const exportFilterSummaryOptions = useMemo(
+    () => buildExportFilterSummaryOptions(settingsQuery.data?.settings, units),
+    [settingsQuery.data?.settings, units]
+  );
+
+  const incomeExportFilterSummary = useMemo(
+    () =>
+      formatPropertyTableExportFilterSummary(
+        { filters: incomeEntriesFilters, resourceType: ExportResourceType.INCOME },
+        exportFilterSummaryOptions
+      ),
+    [exportFilterSummaryOptions, incomeEntriesFilters]
+  );
+
+  useRegisterIncomePageActions(
+    canManage,
+    handleOpenExportTable,
+    handleAddOtherIncome,
+    handleAddStay,
+    handleOpenImportCsv
+  );
 
   return (
     <>
@@ -1635,6 +1680,14 @@ const PropertyIncomePage = memo(() => {
         onImportCsvOpenChange={setImportCsvOpen}
         propertyId={propertyId}
         units={activeUnits}
+      />
+
+      <PropertyTableExportDialog
+        config={{ filters: incomeEntriesFilters, resourceType: ExportResourceType.INCOME }}
+        filterSummary={incomeExportFilterSummary}
+        onOpenChange={setExportTableOpen}
+        open={exportTableOpen}
+        propertyId={propertyId}
       />
     </>
   );

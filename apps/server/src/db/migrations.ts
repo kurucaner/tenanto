@@ -2434,4 +2434,22 @@ export const migrations: IMigration[] = [
     },
     version: 54,
   },
+  {
+    down: async () => {
+      // PostgreSQL does not support removing enum values; no-op.
+    },
+    name: "property_export_phase5_resource_types_and_export_ready",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE export_resource_type ADD VALUE IF NOT EXISTS 'income';
+      `);
+      await client.query(`
+        ALTER TYPE export_resource_type ADD VALUE IF NOT EXISTS 'leases';
+      `);
+      await client.query(`
+        ALTER TYPE user_notification_type ADD VALUE IF NOT EXISTS 'export_ready';
+      `);
+    },
+    version: 55,
+  },
 ];

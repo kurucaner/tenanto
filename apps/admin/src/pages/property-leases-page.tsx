@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleDollarSign, Eye, Plus, SquarePen } from "lucide-react";
+import { CircleDollarSign, Download, Eye, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
+import { PropertyTableExportDialog } from "@/components/exports/property-table-export-dialog";
 import {
   CreateIncomeLineDialog,
   type CreateIncomeLineDialogPrefill,
@@ -38,11 +39,16 @@ import {
   countLeaseSecondaryFilters,
   type TLeaseToolbarFilterId,
 } from "@/lib/lease-toolbar-filters";
+import {
+  buildExportFilterSummaryOptions,
+  formatPropertyTableExportFilterSummary,
+} from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  ExportResourceType,
   formatPropertyUnitSelectLabel,
   getLeaseOccupancyNames,
   type IPropertyLongStay,
@@ -247,6 +253,7 @@ export const PropertyLeasesPage = memo(() => {
   );
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [exportTableOpen, setExportTableOpen] = useState(false);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentLease, setRecordRentLease] = useState<IPropertyLongStay | null>(null);
   const [recordRentPrefill, setRecordRentPrefill] = useState<CreateIncomeLineDialogPrefill | null>(
@@ -370,15 +377,50 @@ export const PropertyLeasesPage = memo(() => {
     setCreateOpen(true);
   }, []);
 
-  const pageActions = useMemo(
+  const handleOpenExportTable = useCallback(() => {
+    setExportTableOpen(true);
+  }, []);
+
+  const exportFilterSummaryOptions = useMemo(
     () =>
-      canManage ? (
-        <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
-          <Plus className="size-3.5" />
-          Start Lease
+      buildExportFilterSummaryOptions(
+        settingsQuery.data?.settings,
+        unitsQuery.data?.units ?? []
+      ),
+    [settingsQuery.data?.settings, unitsQuery.data?.units]
+  );
+
+  const leaseExportFilterSummary = useMemo(
+    () =>
+      formatPropertyTableExportFilterSummary(
+        { filters: listQueryFilters, resourceType: ExportResourceType.LEASES },
+        exportFilterSummaryOptions
+      ),
+    [exportFilterSummaryOptions, listQueryFilters]
+  );
+
+  const pageActions = useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        <Button
+          className="gap-1.5"
+          onClick={handleOpenExportTable}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <Download className="size-3.5" />
+          Export table
         </Button>
-      ) : null,
-    [canManage, handleOpenCreate]
+        {canManage ? (
+          <Button className="gap-1.5" onClick={handleOpenCreate} size="sm" type="button">
+            <Plus className="size-3.5" />
+            Start Lease
+          </Button>
+        ) : null}
+      </div>
+    ),
+    [canManage, handleOpenCreate, handleOpenExportTable]
   );
 
   usePropertyShellActions(pageActions);
@@ -494,6 +536,14 @@ export const PropertyLeasesPage = memo(() => {
           units={units}
         />
       ) : null}
+
+      <PropertyTableExportDialog
+        config={{ filters: listQueryFilters, resourceType: ExportResourceType.LEASES }}
+        filterSummary={leaseExportFilterSummary}
+        onOpenChange={setExportTableOpen}
+        open={exportTableOpen}
+        propertyId={propertyId}
+      />
     </>
   );
 });

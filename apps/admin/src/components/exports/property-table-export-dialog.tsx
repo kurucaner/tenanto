@@ -14,33 +14,24 @@ import {
 } from "@/components/ui/dialog";
 import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { propertyExportsApi } from "@/lib/api-client";
-import { formatExpenseExportFilterSummary } from "@/lib/property-export-utils";
-import { queryKeys } from "@/lib/query-keys";
-import { type TSelectOption } from "@/lib/select-option-types";
-import { showPropertyExportQueuedToast } from "@/lib/show-property-export-queued-toast";
 import {
-  ExportFormat,
-  ExportResourceType,
-  type TExportFormat,
-  type TPropertyExpensesListFilters,
-} from "@/packages/shared";
+  buildPropertyExportCreateRequest,
+  type TPropertyTableExportConfig,
+} from "@/lib/property-export-utils";
+import { queryKeys } from "@/lib/query-keys";
+import { showPropertyExportQueuedToast } from "@/lib/show-property-export-queued-toast";
+import { ExportFormat, type TExportFormat } from "@/packages/shared";
 
 interface IPropertyTableExportDialogProps {
-  categoryOptions: readonly TSelectOption[];
-  filters: TPropertyExpensesListFilters;
+  config: TPropertyTableExportConfig;
+  filterSummary: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
 }
 
 export const PropertyTableExportDialog = memo(
-  ({
-    categoryOptions,
-    filters,
-    onOpenChange,
-    open,
-    propertyId,
-  }: IPropertyTableExportDialogProps) => {
+  ({ config, filterSummary, onOpenChange, open, propertyId }: IPropertyTableExportDialogProps) => {
     const queryClient = useQueryClient();
     const filterSummaryId = useId();
     const [format, setFormat] = useState<TExportFormat>(ExportFormat.CSV);
@@ -52,15 +43,12 @@ export const PropertyTableExportDialog = memo(
       setFormat(ExportFormat.CSV);
     }, [open]);
 
-    const filterSummary = formatExpenseExportFilterSummary(filters, categoryOptions);
-
     const createMutation = useMutation({
-      mutationFn: () =>
-        propertyExportsApi.create(propertyId, {
-          filters,
-          format: ExportFormat.CSV,
-          resourceType: ExportResourceType.EXPENSES,
-        }),
+      mutationFn: (selectedFormat: TExportFormat) =>
+        propertyExportsApi.create(
+          propertyId,
+          buildPropertyExportCreateRequest(config, selectedFormat)
+        ),
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to queue export");
       },
@@ -92,11 +80,7 @@ export const PropertyTableExportDialog = memo(
     }, []);
 
     const handlePrepare = useCallback(() => {
-      if (format !== ExportFormat.CSV) {
-        toast.error("Excel export is not available yet");
-        return;
-      }
-      createMutation.mutate();
+      createMutation.mutate(format);
     }, [createMutation, format]);
 
     return (
@@ -127,7 +111,7 @@ export const PropertyTableExportDialog = memo(
               value={format}
             >
               <RadioOption label="CSV" value={ExportFormat.CSV} />
-              <RadioOption disabled label="Excel (coming soon)" value={ExportFormat.XLSX} />
+              <RadioOption label="Excel" value={ExportFormat.XLSX} />
             </RadioGroupFieldset>
           </div>
 

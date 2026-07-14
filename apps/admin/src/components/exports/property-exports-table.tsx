@@ -15,9 +15,9 @@ import {
   formatExportJobFilterSummary,
   getExportFormatLabel,
   getExportResourceTypeLabel,
+  type IExportFilterSummaryOptions,
   isExportJobDownloadable,
 } from "@/lib/property-export-utils";
-import { type TSelectOption } from "@/lib/select-option-types";
 import { cn } from "@/lib/utils";
 import { ExportJobStatus, type IExportJob } from "@/packages/shared";
 
@@ -88,13 +88,13 @@ ExportJobActions.displayName = "ExportJobActions";
 
 const ExportJobRow = memo(
   ({
-    categoryOptions,
+    filterSummaryOptions,
     highlighted,
     isDownloading,
     job,
     onDownload,
   }: {
-    categoryOptions: readonly TSelectOption[];
+    filterSummaryOptions: IExportFilterSummaryOptions;
     highlighted: boolean;
     isDownloading: boolean;
     job: IExportJob;
@@ -112,7 +112,7 @@ const ExportJobRow = memo(
       <TableCell>{getExportResourceTypeLabel(job.resourceType)}</TableCell>
       <TableCell>{getExportFormatLabel(job.format)}</TableCell>
       <TableCell className="max-w-[240px] truncate text-sm">
-        {formatExportJobFilterSummary(job, categoryOptions)}
+        {formatExportJobFilterSummary(job, filterSummaryOptions)}
       </TableCell>
       <TableCell>
         <ExportJobStatusBadge status={job.status} />
@@ -127,9 +127,9 @@ const ExportJobRow = memo(
 ExportJobRow.displayName = "ExportJobRow";
 
 interface IPropertyExportsTableProps {
-  categoryOptions: readonly TSelectOption[];
   countLabel?: string;
   exports: IExportJob[];
+  filterSummaryOptions: IExportFilterSummaryOptions;
   hasNextPage: boolean;
   highlightJobId: string | null;
   isFetchingNextPage: boolean;
@@ -140,9 +140,9 @@ interface IPropertyExportsTableProps {
 
 export const PropertyExportsTable = memo(
   ({
-    categoryOptions,
     countLabel,
     exports,
+    filterSummaryOptions,
     hasNextPage,
     highlightJobId,
     isFetchingNextPage,
@@ -167,7 +167,7 @@ export const PropertyExportsTable = memo(
     const renderExportRow = useCallback(
       (job: IExportJob) => (
         <ExportJobRow
-          categoryOptions={categoryOptions}
+          filterSummaryOptions={filterSummaryOptions}
           highlighted={highlightJobId === job.id}
           isDownloading={downloadMutation.isPending && downloadMutation.variables === job.id}
           job={job}
@@ -176,9 +176,9 @@ export const PropertyExportsTable = memo(
         />
       ),
       [
-        categoryOptions,
         downloadMutation.isPending,
         downloadMutation.variables,
+        filterSummaryOptions,
         handleDownload,
         highlightJobId,
       ]
@@ -197,7 +197,7 @@ export const PropertyExportsTable = memo(
         <CardContent className="p-0">
           <DataTable
             columns={EXPORT_COLUMNS}
-            emptyMessage="No exports yet. Queue one from Expenses using Export table."
+            emptyMessage="No exports yet. Queue one from Expenses, Income, or Leases using Export table."
             getItemKey={getExportJobKey}
             infiniteScroll={{ hasNextPage, isFetchingNextPage }}
             infiniteScrollSentinelRef={scrollSentinelRef}

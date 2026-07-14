@@ -57,18 +57,21 @@ export function mapExpenseToCsvValues(expense: IPropertyExpense): string[] {
   ];
 }
 
-export function buildExpensesExportFileName(filters: TPropertyExpensesListFilters): string {
+export function buildExpensesExportFileName(
+  filters: TPropertyExpensesListFilters,
+  format: "csv" | "xlsx" = "csv"
+): string {
   const from = filters.from ?? "all";
   const to = filters.to ?? "all";
-  return `expenses-${from}-${to}.csv`;
+  return `expenses-${from}-${to}.${format}`;
 }
 
-export async function* iterateExpenseExportCsvChunks(
+export async function* iterateExpenseExportRows(
   propertyId: string,
   filters: TPropertyExpensesListFilters,
   maxRows = PROPERTY_EXPORT_MAX_ROWS
-): AsyncGenerator<string> {
-  yield csvRow([...EXPENSE_CSV_HEADERS]);
+): AsyncGenerator<(string | number | null)[]> {
+  yield [...EXPENSE_CSV_HEADERS];
 
   let cursor: string | undefined;
   let rowCount = 0;
@@ -84,13 +87,23 @@ export async function* iterateExpenseExportCsvChunks(
       if (rowCount > maxRows) {
         throw new ExportRowLimitExceededError(rowCount, maxRows);
       }
-      yield csvRow(mapExpenseToCsvValues(expense));
+      yield mapExpenseToCsvValues(expense);
     }
 
     if (page.nextCursor == null) {
       break;
     }
     cursor = page.nextCursor;
+  }
+}
+
+export async function* iterateExpenseExportCsvChunks(
+  propertyId: string,
+  filters: TPropertyExpensesListFilters,
+  maxRows = PROPERTY_EXPORT_MAX_ROWS
+): AsyncGenerator<string> {
+  for await (const row of iterateExpenseExportRows(propertyId, filters, maxRows)) {
+    yield csvRow(row.map((value) => (value == null ? "" : String(value))));
   }
 }
 

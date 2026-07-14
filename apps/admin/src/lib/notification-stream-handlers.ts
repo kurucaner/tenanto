@@ -2,6 +2,7 @@ import { type QueryClient } from "@tanstack/react-query";
 
 import { propertyExportsApi, supportApi, tenantEmailCampaignsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { showPropertyExportCompletedToast } from "@/lib/show-property-export-queued-toast";
 import { notifySupportAttachmentStatus } from "@/lib/support-attachment-status-registry";
 import { shouldSkipSupportDetailRefresh } from "@/lib/support-chat-cache";
 import {
@@ -193,7 +194,11 @@ function isExportFormat(value: unknown): value is TExportFormat {
 }
 
 function isExportResourceType(value: unknown): value is TExportResourceType {
-  return value === ExportResourceType.EXPENSES;
+  return (
+    value === ExportResourceType.EXPENSES ||
+    value === ExportResourceType.INCOME ||
+    value === ExportResourceType.LEASES
+  );
 }
 
 export function parseExportJobUpdatedData(
@@ -254,7 +259,17 @@ export function handleExportJobUpdated(
   });
 
   const exportsPath = `/properties/${data.propertyId}/exports`;
-  if (pathname !== exportsPath || document.visibilityState !== "visible") {
+  const isOnExportsTab = pathname === exportsPath;
+
+  if (
+    data.status === ExportJobStatus.COMPLETED &&
+    !isOnExportsTab &&
+    document.visibilityState === "visible"
+  ) {
+    showPropertyExportCompletedToast(data.propertyId, data.jobId);
+  }
+
+  if (!isOnExportsTab || document.visibilityState !== "visible") {
     return;
   }
 

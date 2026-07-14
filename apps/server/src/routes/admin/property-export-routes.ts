@@ -1,18 +1,13 @@
 import type { FastifyInstance } from "fastify";
 
 import { exportJobsDb } from "@/db/export-jobs";
-import { parseCategoryId, parseDateString } from "@/lib/validate-create-expense-body";
 import {
-  ExportFormat,
-  ExportResourceType,
   HttpStatus,
   type IExportJobDownloadResponse,
-  type IPropertyExportCreateRequest,
   type IPropertyExportDetailResponse,
   type IPropertyExportsListResponse,
   PROPERTY_EXPORTS_LIST_LIMIT,
   PROPERTY_EXPORTS_LIST_MAX_LIMIT,
-  type TPropertyExpensesListFilters,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { generateDownloadUrl } from "@/s3/s3-commands";
@@ -24,83 +19,13 @@ import {
 } from "@/services/property-export/property-export-service";
 
 import { parseUuidParam } from "./admin-query-utils";
-import { parseJsonObject } from "./parse-body-utils";
-import { applyOptionalQuerySearchFilter } from "./parse-list-query-filters";
+import { parseCreateExportBody } from "./parse-property-export-body";
 import { assertPropertyMemberAccess } from "./property-route-access";
 
 function parseExportsListLimit(raw: unknown): number {
   const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
   if (!Number.isFinite(n) || n < 1) return PROPERTY_EXPORTS_LIST_LIMIT;
   return Math.min(PROPERTY_EXPORTS_LIST_MAX_LIMIT, Math.floor(n));
-}
-
-function parseExpenseExportFilters(
-  raw: unknown
-): { filters: TPropertyExpensesListFilters; ok: true } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { filters: {}, ok: true };
-  }
-
-  const record = raw as Record<string, unknown>;
-  const filters: TPropertyExpensesListFilters = {};
-
-  if (record.from !== undefined && record.from !== "") {
-    const from = parseDateString(record.from);
-    if (!from) return { error: "filters.from must be a YYYY-MM-DD date", ok: false };
-    filters.from = from;
-  }
-  if (record.to !== undefined && record.to !== "") {
-    const to = parseDateString(record.to);
-    if (!to) return { error: "filters.to must be a YYYY-MM-DD date", ok: false };
-    filters.to = to;
-  }
-  if (record.categoryId !== undefined && record.categoryId !== "") {
-    const categoryId = parseCategoryId(record.categoryId);
-    if (categoryId === null) {
-      return { error: "filters.categoryId must be a valid UUID", ok: false };
-    }
-    filters.categoryId = categoryId;
-  }
-
-  const searchResult = applyOptionalQuerySearchFilter(record, filters);
-  if (!searchResult.ok) {
-    return searchResult;
-  }
-
-  return { filters, ok: true };
-}
-
-function parseCreateExportBody(
-  raw: unknown
-): { body: IPropertyExportCreateRequest; ok: true } | { error: string; ok: false } {
-  const parsed = parseJsonObject(raw);
-  if (!parsed) {
-    return { error: "Invalid JSON body", ok: false };
-  }
-
-  const resourceType = parsed.resourceType;
-  const format = parsed.format;
-
-  if (resourceType !== ExportResourceType.EXPENSES) {
-    return { error: "resourceType must be expenses", ok: false };
-  }
-  if (format !== ExportFormat.CSV && format !== ExportFormat.XLSX) {
-    return { error: "format must be csv or xlsx", ok: false };
-  }
-
-  const filtersResult = parseExpenseExportFilters(parsed.filters);
-  if (!filtersResult.ok) {
-    return { error: filtersResult.error, ok: false };
-  }
-
-  return {
-    body: {
-      filters: filtersResult.filters,
-      format,
-      resourceType,
-    },
-    ok: true,
-  };
 }
 
 export const propertyExportRoutes = async (server: FastifyInstance): Promise<void> => {

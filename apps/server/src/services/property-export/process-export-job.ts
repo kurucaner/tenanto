@@ -1,11 +1,15 @@
 import { exportJobsDb } from "@/db/export-jobs";
 import { propertyExpensesDb } from "@/db/property-expenses";
+import { propertyIncomeEntriesDb } from "@/db/property-income-entries";
+import { propertyLongStaysDb } from "@/db/property-long-stays";
 import {
   ExportFormat,
   ExportResourceType,
   type IExportJob,
   PROPERTY_EXPORT_FILE_TTL_HOURS,
   type TPropertyExpensesListFilters,
+  type TPropertyIncomeEntriesListFilters,
+  type TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import { putObjectStream } from "@/s3/s3-commands";
 import {
@@ -13,6 +17,18 @@ import {
   createExpensesCsvReadable,
   ExportRowLimitExceededError,
 } from "@/services/property-export/expenses-csv-export";
+import { uploadExpensesXlsxExport } from "@/services/property-export/expenses-xlsx-export";
+import {
+  buildIncomeExportFileName,
+  createIncomeCsvReadable,
+  uploadIncomeXlsxExport,
+} from "@/services/property-export/income-table-export";
+import {
+  buildLeasesExportFileName,
+  createLeasesCsvReadable,
+  uploadLeasesXlsxExport,
+} from "@/services/property-export/leases-table-export";
+import { notifyExportReady } from "@/services/property-export/property-export-notifications";
 import { maybePublishExportJobUpdated } from "@/services/property-export/property-export-stream";
 
 import { WinstonLogger } from "../winston";
@@ -41,16 +57,70 @@ function buildExpiresAt(): Date {
   return new Date(Date.now() + PROPERTY_EXPORT_FILE_TTL_HOURS * 60 * 60 * 1000);
 }
 
-async function processExpensesCsvExport(job: IExportJob, startedAtMs: number): Promise<void> {
-  const filters = job.filters as TPropertyExpensesListFilters;
-  const s3Key = buildExportS3Key(job.propertyId, job.id, ExportFormat.CSV);
-  const fileName = buildExpensesExportFileName(filters);
-  const body = createExpensesCsvReadable(job.propertyId, filters);
+async function getExportRowCount(job: IExportJob): Promise<number> {
+  if (job.resourceType === ExportResourceType.EXPENSES) {
+    const meta = await propertyExpensesDb.getListMetaByProperty(
+      job.propertyId,
+      job.filters as TPropertyExpensesListFilters,
+      false
+    );
+    return meta.totalCount;
+  }
 
-  await putObjectStream(s3Key, body, "text/csv");
+  if (job.resourceType === ExportResourceType.INCOME) {
+    const meta = await propertyIncomeEntriesDb.getListMetaByProperty(
+      job.propertyId,
+      job.filters as TPropertyIncomeEntriesListFilters,
+      false
+    );
+    return meta.totalCount;
+  }
 
-  const meta = await propertyExpensesDb.getListMetaByProperty(job.propertyId, filters, false);
-  const rowCount = meta.totalCount;
+  const meta = await propertyLongStaysDb.getListMetaByProperty(
+    job.propertyId,
+    job.filters as TPropertyLongStaysListFilters
+  );
+  return meta.totalCount;
+}
+
+async function uploadExportArtifact(job: IExportJob): Promise<{ fileName: string; s3Key: string }> {
+  const s3Key = buildExportS3Key(job.propertyId, job.id, job.format);
+
+  if (job.resourceType === ExportResourceType.EXPENSES) {
+    const filters = job.filters as TPropertyExpensesListFilters;
+    const fileName = buildExpensesExportFileName(filters, job.format);
+    if (job.format === ExportFormat.CSV) {
+      await putObjectStream(s3Key, createExpensesCsvReadable(job.propertyId, filters), "text/csv");
+    } else {
+      await uploadExpensesXlsxExport(s3Key, job.propertyId, filters);
+    }
+    return { fileName, s3Key };
+  }
+
+  if (job.resourceType === ExportResourceType.INCOME) {
+    const filters = job.filters as TPropertyIncomeEntriesListFilters;
+    const fileName = buildIncomeExportFileName(filters, job.format);
+    if (job.format === ExportFormat.CSV) {
+      await putObjectStream(s3Key, createIncomeCsvReadable(job.propertyId, filters), "text/csv");
+    } else {
+      await uploadIncomeXlsxExport(s3Key, job.propertyId, filters);
+    }
+    return { fileName, s3Key };
+  }
+
+  const filters = job.filters as TPropertyLongStaysListFilters;
+  const fileName = buildLeasesExportFileName(filters, job.format);
+  if (job.format === ExportFormat.CSV) {
+    await putObjectStream(s3Key, createLeasesCsvReadable(job.propertyId, filters), "text/csv");
+  } else {
+    await uploadLeasesXlsxExport(s3Key, job.propertyId, filters);
+  }
+  return { fileName, s3Key };
+}
+
+async function completeExportJob(job: IExportJob, startedAtMs: number): Promise<void> {
+  const { fileName, s3Key } = await uploadExportArtifact(job);
+  const rowCount = await getExportRowCount(job);
   const expiresAt = buildExpiresAt();
 
   const completed = await exportJobsDb.markCompleted(job.id, {
@@ -75,6 +145,7 @@ async function processExpensesCsvExport(job: IExportJob, startedAtMs: number): P
   });
 
   await maybePublishExportJobUpdated(job.id);
+  await notifyExportReady(completed);
 }
 
 export async function processPropertyExportJob(jobId: string): Promise<void> {
@@ -99,12 +170,7 @@ export async function processPropertyExportJob(jobId: string): Promise<void> {
   await maybePublishExportJobUpdated(jobId);
 
   try {
-    if (job.resourceType === ExportResourceType.EXPENSES && job.format === ExportFormat.CSV) {
-      await processExpensesCsvExport(job, startedAtMs);
-      return;
-    }
-
-    throw new ExportJobPermanentError(`Unsupported export: ${job.resourceType} as ${job.format}`);
+    await completeExportJob(job, startedAtMs);
   } catch (error) {
     if (error instanceof ExportRowLimitExceededError || error instanceof ExportJobPermanentError) {
       await exportJobsDb.markFailed(jobId, error.message);

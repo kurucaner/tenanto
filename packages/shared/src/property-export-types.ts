@@ -1,5 +1,7 @@
 import type { IPropertyExportsListMeta } from "./list-meta-types";
 import type { TPropertyExpensesListFilters } from "./property-expense-types";
+import type { TPropertyIncomeEntriesListFilters } from "./property-income-entries-types";
+import type { TPropertyLongStaysListFilters } from "./property-long-stay-types";
 
 export type TExportJobStatus = "completed" | "expired" | "failed" | "pending" | "processing";
 
@@ -18,17 +20,32 @@ export const ExportFormat = {
   XLSX: "xlsx",
 } as const satisfies Record<string, TExportFormat>;
 
-export type TExportResourceType = "expenses";
+export type TExportResourceType = "expenses" | "income" | "leases";
 
 export const ExportResourceType = {
   EXPENSES: "expenses",
+  INCOME: "income",
+  LEASES: "leases",
 } as const satisfies Record<string, TExportResourceType>;
+
+export type TExportJobFilters =
+  TPropertyExpensesListFilters | TPropertyIncomeEntriesListFilters | TPropertyLongStaysListFilters;
 
 export type IPropertyExportCreateRequest =
   | {
       filters: TPropertyExpensesListFilters;
       format: TExportFormat;
       resourceType: "expenses";
+    }
+  | {
+      filters: TPropertyIncomeEntriesListFilters;
+      format: TExportFormat;
+      resourceType: "income";
+    }
+  | {
+      filters: TPropertyLongStaysListFilters;
+      format: TExportFormat;
+      resourceType: "leases";
     };
 
 export interface IPropertyExportCreateResponse {
@@ -42,7 +59,7 @@ export interface IExportJob {
   errorMessage: string | null;
   expiresAt: string | null;
   fileName: string | null;
-  filters: TPropertyExpensesListFilters;
+  filters: TExportJobFilters;
   format: TExportFormat;
   id: string;
   propertyId: string;

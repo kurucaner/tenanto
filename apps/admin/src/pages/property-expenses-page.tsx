@@ -55,10 +55,15 @@ import {
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
+import { formatExpenseExportFilterSummary } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
-import { type IPropertyExpense, type IPropertyExpenseCategoryType } from "@/packages/shared";
+import {
+  ExportResourceType,
+  type IPropertyExpense,
+  type IPropertyExpenseCategoryType,
+} from "@/packages/shared";
 
 const ExpenseRow = memo(
   ({
@@ -584,8 +589,8 @@ export const PropertyExpensesPage = memo(() => {
       />
 
       <PropertyTableExportDialog
-        categoryOptions={categoryFilterOptions}
-        filters={expenseListFilters}
+        config={{ filters: expenseListFilters, resourceType: ExportResourceType.EXPENSES }}
+        filterSummary={formatExpenseExportFilterSummary(expenseListFilters, categoryFilterOptions)}
         onOpenChange={setExportTableOpen}
         open={exportTableOpen}
         propertyId={propertyId}

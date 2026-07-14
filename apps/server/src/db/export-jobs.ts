@@ -1,14 +1,17 @@
-import { serializeExpenseExportFilters } from "@/lib/property-export-filters";
+import { serializeExportJobFilters } from "@/lib/property-export-filters";
 import type {
   IExportJob,
   IPropertyExportsListMeta,
   IPropertyExportsListResponse,
   TExportFormat,
+  TExportJobFilters,
   TExportJobStatus,
   TExportResourceType,
   TPropertyExpensesListFilters,
+  TPropertyIncomeEntriesListFilters,
+  TPropertyLongStaysListFilters,
 } from "@/packages/shared";
-import { toIso } from "@/packages/shared";
+import { ExportResourceType, toIso } from "@/packages/shared";
 import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
@@ -17,15 +20,7 @@ import { pool } from "./pool";
 
 export interface ICreateExportJobInput {
   createdBy: string;
-  filters: TPropertyExpensesListFilters;
-  format: TExportFormat;
-  propertyId: string;
-  resourceType: TExportResourceType;
-}
-
-export interface IFindActiveExportDuplicateInput {
-  createdBy: string;
-  filters: TPropertyExpensesListFilters;
+  filters: TExportJobFilters;
   format: TExportFormat;
   propertyId: string;
   resourceType: TExportResourceType;
@@ -58,9 +53,71 @@ function parseExpenseFilters(raw: unknown): TPropertyExpensesListFilters {
   return filters;
 }
 
+function parseIncomeExportFilters(raw: unknown): TPropertyIncomeEntriesListFilters {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const record = raw as Record<string, unknown>;
+  const filters: TPropertyIncomeEntriesListFilters = {};
+  if (typeof record.from === "string" && record.from !== "") filters.from = record.from;
+  if (typeof record.to === "string" && record.to !== "") filters.to = record.to;
+  if (typeof record.unitId === "string" && record.unitId !== "") filters.unitId = record.unitId;
+  if (typeof record.channelCommissionId === "string" && record.channelCommissionId !== "") {
+    filters.channelCommissionId = record.channelCommissionId;
+  }
+  if (typeof record.incomeType === "string" && record.incomeType !== "") {
+    filters.incomeType = record.incomeType;
+  }
+  if (typeof record.q === "string" && record.q !== "") filters.q = record.q;
+  if (
+    record.status === "active" ||
+    record.status === "canceled" ||
+    record.status === "no_show" ||
+    record.status === "stayed"
+  ) {
+    filters.status = record.status;
+  }
+  if (record.refundStatus === "refunded" || record.refundStatus === "not_refunded") {
+    filters.refundStatus = record.refundStatus;
+  }
+  if (typeof record.sortBy === "string" && record.sortBy !== "") {
+    filters.sortBy = record.sortBy as TPropertyIncomeEntriesListFilters["sortBy"];
+  }
+  if (record.sortDir === "asc" || record.sortDir === "desc") {
+    filters.sortDir = record.sortDir;
+  }
+  return filters;
+}
+
+function parseLeaseExportFilters(raw: unknown): TPropertyLongStaysListFilters {
+  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
+    return {};
+  }
+  const record = raw as Record<string, unknown>;
+  const filters: TPropertyLongStaysListFilters = {};
+  if (typeof record.from === "string" && record.from !== "") filters.from = record.from;
+  if (typeof record.to === "string" && record.to !== "") filters.to = record.to;
+  if (typeof record.unitId === "string" && record.unitId !== "") filters.unitId = record.unitId;
+  if (typeof record.q === "string" && record.q !== "") filters.q = record.q;
+  if (record.status === "active" || record.status === "ended") {
+    filters.status = record.status;
+  }
+  return filters;
+}
+
+function parseExportJobFilters(resourceType: TExportResourceType, raw: unknown): TExportJobFilters {
+  if (resourceType === ExportResourceType.INCOME) {
+    return parseIncomeExportFilters(raw);
+  }
+  if (resourceType === ExportResourceType.LEASES) {
+    return parseLeaseExportFilters(raw);
+  }
+  return parseExpenseFilters(raw);
+}
+
 function mapExportJobRow(row: Record<string, unknown>): IExportJob {
   const resourceType = row.resource_type as TExportResourceType;
-  const filters = parseExpenseFilters(row.filters);
+  const filters = parseExportJobFilters(resourceType, row.filters);
 
   return {
     completedAt: toIso(row.completed_at),
@@ -82,7 +139,7 @@ function mapExportJobRow(row: Record<string, unknown>): IExportJob {
 
 export const exportJobsDb = {
   async create(input: ICreateExportJobInput): Promise<IExportJob> {
-    const filtersJson = serializeExpenseExportFilters(input.filters);
+    const filtersJson = serializeExportJobFilters(input.resourceType, input.filters);
     const result = await pool.query(
       `INSERT INTO export_jobs (
          property_id,
@@ -99,8 +156,8 @@ export const exportJobsDb = {
     return mapExportJobRow(result.rows[0] as Record<string, unknown>);
   },
 
-  async findActiveDuplicate(input: IFindActiveExportDuplicateInput): Promise<IExportJob | null> {
-    const filtersJson = serializeExpenseExportFilters(input.filters);
+  async findActiveDuplicate(input: ICreateExportJobInput): Promise<IExportJob | null> {
+    const filtersJson = serializeExportJobFilters(input.resourceType, input.filters);
     const result = await pool.query(
       `SELECT * FROM export_jobs
        WHERE property_id = $1
