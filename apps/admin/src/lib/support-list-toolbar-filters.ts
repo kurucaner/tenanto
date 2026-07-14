@@ -51,10 +51,7 @@ export function isSupportListSortDir(value: string): value is TSupportRequestsLi
   return value === "asc" || value === "desc";
 }
 
-export function countSupportSecondaryFilters(values: {
-  category: string;
-  status: string;
-}): number {
+export function countSupportSecondaryFilters(values: { category: string; status: string }): number {
   return Object.values(values).filter(Boolean).length;
 }
 

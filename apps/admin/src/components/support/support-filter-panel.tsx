@@ -17,13 +17,7 @@ interface ISupportFilterPanelProps {
 }
 
 export const SupportFilterPanel = memo(
-  ({
-    activeFilterCount,
-    category,
-    onClear,
-    onFilterChange,
-    status,
-  }: ISupportFilterPanelProps) => (
+  ({ activeFilterCount, category, onClear, onFilterChange, status }: ISupportFilterPanelProps) => (
     <ResponsiveFilterPanel
       description="Narrow requests without leaving the table."
       title="Support filters"
