@@ -598,6 +598,7 @@ export const PropertyExpensesPage = memo(() => {
       <PropertyTableExportDialog
         config={{ filters: expenseListFilters, resourceType: ExportResourceType.EXPENSES }}
         filterSummary={formatExpenseExportFilterSummary(expenseListFilters, categoryFilterOptions)}
+        matchedRowCount={meta?.totalCount}
         onOpenChange={setExportTableOpen}
         open={exportTableOpen}
         propertyId={propertyId}

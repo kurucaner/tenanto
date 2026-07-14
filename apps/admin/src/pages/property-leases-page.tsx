@@ -555,6 +555,7 @@ export const PropertyLeasesPage = memo(() => {
       <PropertyTableExportDialog
         config={{ filters: listQueryFilters, resourceType: ExportResourceType.LEASES }}
         filterSummary={leaseExportFilterSummary}
+        matchedRowCount={meta?.totalCount}
         onOpenChange={setExportTableOpen}
         open={exportTableOpen}
         propertyId={propertyId}

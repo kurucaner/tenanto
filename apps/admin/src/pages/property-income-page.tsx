@@ -1701,6 +1701,7 @@ const PropertyIncomePage = memo(() => {
       <PropertyTableExportDialog
         config={{ filters: incomeEntriesFilters, resourceType: ExportResourceType.INCOME }}
         filterSummary={incomeExportFilterSummary}
+        matchedRowCount={listMeta?.totalCount}
         onOpenChange={setExportTableOpen}
         open={exportTableOpen}
         propertyId={propertyId}

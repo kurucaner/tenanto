@@ -11,6 +11,7 @@ import { generateDownloadUrl } from "@/s3/s3-commands";
 import {
   createPropertyExport,
   PropertyExportDuplicateError,
+  PropertyExportEmptyError,
   PropertyExportRowLimitError,
   PropertyExportValidationError,
 } from "@/services/property-export/property-export-service";
@@ -55,6 +56,9 @@ export const propertyExportRoutes = async (server: FastifyInstance): Promise<voi
           });
         }
         if (error instanceof PropertyExportRowLimitError) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        }
+        if (error instanceof PropertyExportEmptyError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }
         if (error instanceof PropertyExportValidationError) {
