@@ -6,9 +6,9 @@ export function resolveDebouncedUrlInputValue(
 }
 
 export function getDebouncedUrlCommitValue(draftValue: string): string {
-  return draftValue.trim();
+  return draftValue;
 }
 
 export function shouldCommitDebouncedUrlValue(draftValue: string, committedValue: string): boolean {
-  return getDebouncedUrlCommitValue(draftValue) !== committedValue;
+  return draftValue !== committedValue;
 }

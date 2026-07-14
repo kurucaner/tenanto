@@ -10,7 +10,7 @@ import { LIST_SEARCH_DEBOUNCE_MS } from "@/packages/shared";
 interface UseDebouncedUrlFilterOptions {
   committedValue: string;
   debounceMs?: number;
-  onCommit: (trimmedValue: string) => void;
+  onCommit: (value: string) => void;
 }
 
 export function useDebouncedUrlFilter({
@@ -32,8 +32,8 @@ export function useDebouncedUrlFilter({
     const id = setTimeout(() => {
       if (shouldCommitDebouncedUrlValue(draftValue, committedValue)) {
         onCommit(getDebouncedUrlCommitValue(draftValue));
+        setDraftValue(null);
       }
-      setDraftValue(null);
     }, debounceMs);
 
     return () => clearTimeout(id);
