@@ -1,6 +1,7 @@
+import { validatePersonName } from "@/packages/shared";
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_MAX_LENGTH = 255;
-const NAME_MAX_LENGTH = 255;
 const PASSWORD_MIN_LENGTH = 8;
 
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
@@ -16,11 +17,7 @@ export function validateEmail(email: unknown): string | null {
 }
 
 export function validateName(name: unknown): string | null {
-  if (typeof name !== "string") return "Name must be a string";
-  const trimmed = name.trim();
-  if (!trimmed) return "Name is required";
-  if (trimmed.length > NAME_MAX_LENGTH) return "Name is too long";
-  return null;
+  return validatePersonName(name);
 }
 
 export function validatePassword(password: unknown): string | null {

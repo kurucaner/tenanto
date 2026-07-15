@@ -461,6 +461,14 @@ export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./prop
 // Helpers
 export { sleep, toIso } from "./helpers";
 
+// Person name utilities
+export {
+  getPersonNameValidationError,
+  normalizePersonName,
+  PERSON_NAME_MAX_LENGTH,
+  validatePersonName,
+} from "./person-name-utils";
+
 // Phone utilities
 export {
   type CountryCode,

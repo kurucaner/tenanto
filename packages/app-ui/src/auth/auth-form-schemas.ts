@@ -1,12 +1,24 @@
+import { getPersonNameValidationError, normalizePersonName } from "@/packages/shared";
 import { z } from "zod";
 
 export const authEmailSchema = z.email("Enter a valid email");
 
-export const authNameSchema = z
-  .string()
-  .trim()
-  .min(1, "Name is required")
-  .max(255, "Name is too long");
+export function createPersonNameSchema(options?: { requiredMessage?: string }) {
+  const requiredMessage = options?.requiredMessage ?? "Name is required";
+
+  return z.string().transform(normalizePersonName).superRefine((name, ctx) => {
+    const error = getPersonNameValidationError(name);
+    if (!error) return;
+
+    ctx.addIssue({
+      code: "custom",
+      message: error === "Name is required" ? requiredMessage : error,
+    });
+  });
+}
+
+export const personNameSchema = createPersonNameSchema();
+export const authNameSchema = personNameSchema;
 
 export const authPasswordSchema = z
   .string()

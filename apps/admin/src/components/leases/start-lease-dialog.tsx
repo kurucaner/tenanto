@@ -29,6 +29,7 @@ import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { createPersonNameSchema } from "@/packages/app-ui";
 import {
   calculateLeaseEndDate,
   type IPropertyUnit,
@@ -40,7 +41,7 @@ const DEFAULT_TERM_MONTHS = "12";
 const MAX_TERM_MONTHS = 60;
 
 const startLeaseSchema = z.object({
-  guestName: z.string().trim().min(1, "Primary tenant name is required"),
+  guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
   leaseStartDate: z.string().min(1, "Lease start date is required"),
   monthlyRent: requiredPositiveMoneyField("Monthly rent"),
   tenantEmail: z.string(),
@@ -351,7 +352,7 @@ export const StartLeaseDialog = memo(
     const mutation = useMutation({
       mutationFn: (values: TStartLeaseFormValues) =>
         longStaysApi.create(propertyId, {
-          guestName: values.guestName.trim(),
+          guestName: values.guestName,
           leaseStartDate: values.leaseStartDate,
           monthlyRent: Number(values.monthlyRent),
           tenantEmail: values.tenantEmail.trim() || undefined,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { personNameSchema } from "@/packages/app-ui";
 import {
   type IPropertyLongStaySecondaryTenant,
   isValidE164,
@@ -11,7 +12,7 @@ export const tenantPhoneFieldSchema = z.string().refine((value) => isValidE164(v
 });
 
 export const tenantContactFormSchema = z.object({
-  name: z.string().trim().min(1, "Name is required"),
+  name: personNameSchema,
   tenantEmail: z.string(),
   tenantPhone: tenantPhoneFieldSchema,
 });
@@ -27,14 +28,14 @@ export function toSecondaryTenant(
 ): IPropertyLongStaySecondaryTenant {
   return {
     email: values.tenantEmail.trim() || null,
-    name: values.name.trim(),
+    name: values.name,
     phone: normalizeTenantPhone(values.tenantPhone),
   };
 }
 
 export function toPrimaryTenantPatch(values: TTenantContactFormValues) {
   return {
-    guestName: values.name.trim(),
+    guestName: values.name,
     tenantEmail: values.tenantEmail.trim() || null,
     tenantPhone: normalizeTenantPhone(values.tenantPhone),
   };

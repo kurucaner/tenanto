@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance, FastifyReply } from "fastify";
 
 import { hashToken } from "@/auth/jwt";
-import { HttpStatus } from "@/packages/shared";
+import { HttpStatus, normalizePersonName } from "@/packages/shared";
 import {
   validateEmail,
   validateName,
@@ -137,7 +137,7 @@ export async function handleRegisterVerify<TUser, TSession>(
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await realm.createRegisteredUser({
     email,
-    name: name.trim(),
+    name: normalizePersonName(name),
     passwordHash,
   });
 
