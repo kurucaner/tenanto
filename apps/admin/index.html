@@ -6,13 +6,7 @@
       (function () {
         try {
           var k = "propertyos-admin-theme";
-          var lpk = "tenanto-admin-dark-preset";
           var pk = "propertyos-admin-dark-preset";
-          var lpv = localStorage.getItem(lpk);
-          if (lpv !== null && localStorage.getItem(pk) === null) {
-            localStorage.setItem(pk, lpv);
-            localStorage.removeItem(lpk);
-          }
           var ok = ["noir", "obsidian", "evergreen", "plum", "ember", "inkwell"];
           var t = localStorage.getItem(k) || "system";
           if (t !== "light" && t !== "dark" && t !== "system") t = "system";

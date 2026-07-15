@@ -5,7 +5,6 @@ import {
   DARK_PRESET_DEFAULT,
   DARK_PRESET_STORAGE_KEY,
   DARK_PRESETS,
-  LEGACY_DARK_PRESET_STORAGE_KEY,
   readStoredDarkPreset,
 } from "./dark-preset-preference";
 
@@ -95,7 +94,7 @@ export function applyTheme(choice: ThemeChoice, persist = true): void {
 }
 
 /** Inline string for `<head>` (must stay in sync with `index.html` + logic). */
-export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var lpk=${JSON.stringify(LEGACY_DARK_PRESET_STORAGE_KEY)};var pk=${JSON.stringify(DARK_PRESET_STORAGE_KEY)};var lpv=localStorage.getItem(lpk);if(lpv!==null&&localStorage.getItem(pk)===null){localStorage.setItem(pk,lpv);localStorage.removeItem(lpk);}var ok=[${DARK_PRESETS.map((p) => JSON.stringify(p)).join(",")}];var t=localStorage.getItem(k)||"system";if(t!=="light"&&t!=="dark"&&t!=="system")t="system";var r=document.documentElement;r.dataset.theme=t;var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);r.classList.toggle("dark",d);r.style.colorScheme=d?"dark":"light";if(d){var pv=localStorage.getItem(pk)||${JSON.stringify(DARK_PRESET_DEFAULT)};if(ok.indexOf(pv)<0)pv=${JSON.stringify(DARK_PRESET_DEFAULT)};r.setAttribute("data-dark-preset",pv);}else{r.removeAttribute("data-dark-preset");}}catch(e){}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var pk=${JSON.stringify(DARK_PRESET_STORAGE_KEY)};var ok=[${DARK_PRESETS.map((p) => JSON.stringify(p)).join(",")}];var t=localStorage.getItem(k)||"system";if(t!=="light"&&t!=="dark"&&t!=="system")t="system";var r=document.documentElement;r.dataset.theme=t;var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);r.classList.toggle("dark",d);r.style.colorScheme=d?"dark":"light";if(d){var pv=localStorage.getItem(pk)||${JSON.stringify(DARK_PRESET_DEFAULT)};if(ok.indexOf(pv)<0)pv=${JSON.stringify(DARK_PRESET_DEFAULT)};r.setAttribute("data-dark-preset",pv);}else{r.removeAttribute("data-dark-preset");}}catch(e){}})();`;
 
 export function subscribeSystemTheme(onChange: () => void): () => void {
   if (globalThis.window === undefined) {

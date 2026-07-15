@@ -1,7 +1,6 @@
 import { APP_SLUG } from "@/packages/shared";
 
 export const DARK_PRESET_STORAGE_KEY = `${APP_SLUG}-admin-dark-preset`;
-export const LEGACY_DARK_PRESET_STORAGE_KEY = "tenanto-admin-dark-preset";
 
 export const DARK_PRESET_DEFAULT = "noir" as const;
 
