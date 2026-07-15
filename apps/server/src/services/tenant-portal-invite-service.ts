@@ -274,8 +274,7 @@ export const tenantPortalInviteService = {
   },
 
   async previewInvite(token: string): Promise<ITenantInvitePreviewResponse> {
-    const inviteTokenHash = hashPortalInviteToken(token);
-    const membership = await leaseTenantMembershipsDb.findByTokenHash(inviteTokenHash);
+    const membership = await leaseTenantMembershipsDb.findByInviteToken(token);
     if (!membership) {
       throw new PortalInviteNotFoundError("Invalid or expired invite link");
     }

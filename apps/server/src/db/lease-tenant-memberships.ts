@@ -7,6 +7,10 @@ import {
   type TTenantMembershipRole,
   type TTenantMembershipStatus,
 } from "@/packages/shared";
+import {
+  hashPortalInviteToken,
+  portalInviteTokenMatchesHash,
+} from "@/ses/tenant-portal-invite-token";
 
 import { mapLeaseTenantMembershipRow } from "./mappers";
 import { pool } from "./pool";
@@ -211,6 +215,32 @@ export const leaseTenantMembershipsDb = {
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
 
+  /**
+   * Resolve membership by raw invite token (hash lookup + constant-time digest verify).
+   * Returns null when the hash was cleared (accepted / single-use) or does not match.
+   */
+  async findByInviteToken(
+    rawToken: string,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership | null> {
+    const inviteTokenHash = hashPortalInviteToken(rawToken);
+    const result = await db.query(
+      `SELECT * FROM lease_tenant_memberships
+       WHERE invite_token_hash = $1
+         AND invite_token_hash IS NOT NULL`,
+      [inviteTokenHash]
+    );
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    if (!row) return null;
+
+    const storedHash = row["invite_token_hash"];
+    if (typeof storedHash !== "string" || !portalInviteTokenMatchesHash(rawToken, storedHash)) {
+      return null;
+    }
+
+    return mapLeaseTenantMembershipRow(row);
+  },
+
   async findByLeaseId(leaseId: string, db: DbQueryable = pool): Promise<ILeaseTenantMembership[]> {
     const result = await db.query(
       `SELECT * FROM lease_tenant_memberships
@@ -226,7 +256,9 @@ export const leaseTenantMembershipsDb = {
     db: DbQueryable = pool
   ): Promise<ILeaseTenantMembership | null> {
     const result = await db.query(
-      `SELECT * FROM lease_tenant_memberships WHERE invite_token_hash = $1`,
+      `SELECT * FROM lease_tenant_memberships
+       WHERE invite_token_hash = $1
+         AND invite_token_hash IS NOT NULL`,
       [inviteTokenHash]
     );
     if (result.rows.length === 0) return null;
@@ -299,10 +331,13 @@ export const leaseTenantMembershipsDb = {
 
     const timestampColumn = statusTimestampColumn(toStatus);
     const setTimestamp = timestampColumn != null ? `, ${timestampColumn} = NOW()` : "";
+    // Single-use forever: accepted invite links can never be redeemed again.
+    const clearInviteToken =
+      toStatus === TenantMembershipStatus.ACTIVE ? ", invite_token_hash = NULL" : "";
 
     const result = await db.query(
       `UPDATE lease_tenant_memberships
-       SET status = $1::tenant_membership_status${setTimestamp}
+       SET status = $1::tenant_membership_status${setTimestamp}${clearInviteToken}
        WHERE id = $2
        RETURNING *`,
       [toStatus, id]

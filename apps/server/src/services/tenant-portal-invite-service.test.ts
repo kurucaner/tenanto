@@ -60,7 +60,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     create: mockCreateMembership,
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
     expirePendingPortalInvites: mockExpirePendingPortalInvites,
-    findByTokenHash: mockFindByTokenHash,
+    findByInviteToken: mockFindByTokenHash,
   },
 }));
 
@@ -262,7 +262,7 @@ describe("tenantPortalInviteService.previewInvite", () => {
 
     const preview = await tenantPortalInviteService.previewInvite(token);
 
-    expect(mockFindByTokenHash).toHaveBeenCalledWith(hashPortalInviteToken(token));
+    expect(mockFindByTokenHash).toHaveBeenCalledWith(token);
     expect(preview.summary.propertyName).toBe("Oak Apartments");
     expect(preview.summary.unitLabel).toBe("101 (1BR)");
     expect(preview.hasExistingAccount).toBe(false);

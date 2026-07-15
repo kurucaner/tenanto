@@ -51,7 +51,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
     findActiveByTenantUserId: mockFindActiveByTenantUserId,
     findById: mockFindByIdMembership,
-    findByTokenHash: mockFindByTokenHash,
+    findByInviteToken: mockFindByTokenHash,
     findPendingAcceptanceByTenantUserId: mockFindPendingAcceptanceByTenantUserId,
     linkTenantUser: mockLinkTenantUser,
     transitionStatus: mockTransitionStatus,
@@ -211,7 +211,7 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     const tenant = makeTenant();
     const accepted = await tenantPortalMembershipService.redeemInvite(token, tenant);
 
-    expect(mockFindByTokenHash).toHaveBeenCalledWith(hashPortalInviteToken(token));
+    expect(mockFindByTokenHash).toHaveBeenCalledWith(token);
     expect(mockLinkTenantUser).toHaveBeenCalledWith("membership-1", "tenant-1");
     expect(mockTransitionStatus).toHaveBeenCalledWith(
       "membership-1",

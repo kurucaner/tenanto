@@ -27,7 +27,6 @@ import {
   TenantMembershipStatus,
 } from "@/packages/shared";
 import { issueTenantSession } from "@/services/tenant-auth-service";
-import { hashPortalInviteToken } from "@/ses/tenant-portal-invite-token";
 
 import { assertLeaseTenantAccess } from "./tenant-portal-access";
 import {
@@ -257,8 +256,7 @@ export const tenantPortalMembershipService = {
   },
 
   async redeemInvite(token: string, tenantUser: ITenantUser): Promise<ILeaseTenantMembership> {
-    const inviteTokenHash = hashPortalInviteToken(token);
-    const membership = await leaseTenantMembershipsDb.findByTokenHash(inviteTokenHash);
+    const membership = await leaseTenantMembershipsDb.findByInviteToken(token);
     if (!membership) {
       throw new PortalInviteNotFoundError("Invalid or expired invite link");
     }
