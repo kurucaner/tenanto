@@ -7,15 +7,13 @@ import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
 import { tenantUsersDb } from "@/db/tenant-users";
 import { buildTenantInviteLeaseSummary } from "@/lib/build-tenant-invite-lease-summary";
-import type {
-  ICreateLeasePortalInviteResult,
-  ILeaseTenantMembership,
-  IPropertyLongStay,
-  ITenantInviteLeaseSummary,
-  ITenantInvitePreviewResponse,
-} from "@/packages/shared";
 import {
+  type ICreateLeasePortalInviteResult,
+  type ILeaseTenantMembership,
+  type IPropertyLongStay,
   isValidTenantEmail,
+  type ITenantInviteLeaseSummary,
+  type ITenantInvitePreviewResponse,
   normalizeTenantEmail,
   TenantMembershipRole,
   TenantMembershipStatus,
