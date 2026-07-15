@@ -285,11 +285,15 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 ### `apps/tenant` (new app)
 
-1. **Auth** — login, register (OTP), forgot password (optional Phase 3b).
-2. **Accept invite** — public route; shows lease summary; register or login inline.
-3. **Pending invitations** — list for logged-in user with accept/decline.
-4. **Home** — active leases (cards).
-5. **Lease detail** — read-only: unit, dates, rent schedule, property contact (from property settings).
+| Surface | Phase |
+| --- | --- |
+| Theme + scaffold | 2.1 |
+| Auth — login, register (OTP) | 2.3 |
+| Accept invite — public route; lease summary; register or login inline | 2.4 |
+| Pending invitations — accept/decline | 2.5 |
+| Home — active leases (cards) | 2.5 |
+| Lease detail — read-only unit, dates, rent schedule | 3 |
+| Forgot password | 5 (optional) |
 
 ### `apps/admin` (extend)
 
@@ -376,21 +380,123 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 ---
 
-### Phase 2 — Tenant app scaffold + auth + accept flow
+### Phase 2 — Tenant app (UI)
 
-**Goal:** First shippable tenant-facing surface — invite link to accepted lease view.
+**Goal:** First shippable tenant-facing surface — invite link to accepted lease view. Split into sub-phases so each slice is demoable in the browser; extract shared theme/auth/HTTP primitives from admin rather than copying wholesale.
 
-- [ ] Scaffold `apps/tenant` (Vite, React 19, Router, TanStack Query, Zustand, Tailwind v4, shadcn) — mirror `apps/admin` conventions
+**Shared package strategy:** Introduce `packages/app-ui` (or `packages/web-theme` + `packages/web-api`) incrementally — theme first (2.1), HTTP factory (2.2), auth shell (2.3). Refactor admin to import shared code in the same PR as each extraction.
+
+---
+
+#### Phase 2.1 — Shared theme + tenant scaffold
+
+**Goal:** Two apps, one visual system; tenant app boots with working theme switcher.
+
+**Tasks**
+
+- [ ] Add shared front-end package (e.g. `packages/app-ui`):
+  - [ ] Shared CSS: `:root` tokens + `html.dark[data-dark-preset=…]` blocks from [`apps/admin/src/index.css`](apps/admin/src/index.css)
+  - [ ] Parameterized theme helpers: `createThemePreference({ appKey: 'admin' | 'tenant' })` — storage keys `${APP_SLUG}-admin-theme` vs `${APP_SLUG}-tenant-theme` (mirror existing admin pattern)
+  - [ ] Shared dark preset types/options from [`dark-preset-preference.ts`](apps/admin/src/lib/dark-preset-preference.ts)
+  - [ ] Shared components: `ThemeSwitcher`, `DarkPaletteMenu`, `ThemeSync`, `useResolvedDark`
+  - [ ] Minimal shadcn primitives for auth shell only (~Button, Input, Label, Card) — defer moving all admin UI components
+- [ ] **Refactor admin** to import theme CSS + helpers from shared package (behavior unchanged)
+- [ ] Scaffold `apps/tenant` (Vite, React 19, Router, TanStack Query, Zustand, Tailwind v4, shadcn, React Compiler) — mirror `apps/admin` toolchain
 - [ ] `apps/tenant/.env.example` with `VITE_API_URL`
-- [ ] `lib/api-client.ts` typed against `packages/shared`
-- [ ] Auth store + session clear
-- [ ] Pages: login, register (OTP), accept-invite (public)
-- [ ] Pending invitations page (accept/decline)
-- [ ] Wire register/login/redeem/accept to Phases 1.1–1.3 API
 - [ ] Root `package.json` scripts: `dev:tenant`, `build:tenant`, `lint:tenant`
-- [ ] Docker: optional `docker/Dockerfile.tenant` + compose service (defer if not needed for local dev)
+- [ ] Minimal router: public placeholder + theme controls (same corner placement as admin auth pages)
 
-**Exit criteria:** Operator invites email from admin (Phase 3 can be stubbed with curl until then); tenant completes flow in browser; lands on lease list with one active lease.
+**Exit criteria:** Admin and tenant both render; light/dark/system + dark palette presets behave identically; `bun run dev:tenant` works (port e.g. `5174`, already allowed in server CORS).
+
+---
+
+#### Phase 2.2 — Shared HTTP client core + tenant session layer
+
+**Goal:** Typed tenant API access with refresh/logout, mirroring admin session patterns.
+
+**Tasks**
+
+- [ ] Extract `createApiClient({ getBaseUrl, getAccessToken, getRefreshToken, refreshPath, onSessionExpired, clearSession })` — shared fetch wrapper, JSON parse, error shape, deduped refresh (from admin [`api-client.ts`](apps/admin/src/lib/api-client.ts))
+- [ ] Optional: refactor admin refresh block to use same factory
+- [ ] Tenant `lib/api-client.ts`:
+  - [ ] `tenantAuthApi`: register/start, register/verify, login, refresh, logout
+  - [ ] `tenantPortalApi`: me, leases, pending invites, accept/decline, preview, redeem
+  - [ ] All request/response types from `@/packages/shared`
+- [ ] Tenant `stores/auth-store.ts` (`ITenantUser`, persist key `${APP_SLUG}-tenant-auth`)
+- [ ] Tenant `lib/clear-app-session.ts` (Query cache clear + store clear)
+- [ ] `lib/query-client.ts`, `lib/query-keys.ts`
+- [ ] `ProtectedRoute`, `useAuthHydrated`
+
+**Exit criteria:** After login (manual or temporary debug), `GET /tenant/me` succeeds; refresh works; logout clears state.
+
+---
+
+#### Phase 2.3 — Auth UI (login + register OTP)
+
+**Goal:** Tenant can create an account and sign in (no invite flow yet).
+
+**Tasks**
+
+- [ ] Shared auth UI in `packages/app-ui` (or tenant-local first, then extract):
+  - [ ] Generic `AuthPageShell` with slots: `brandLabel`, `subtitle`, `redirectWhenAuthed`, optional OAuth slot (admin uses; tenant omits)
+  - [ ] `AuthCardBody` / `AuthCardFooter`
+  - [ ] `useOtpResendCooldown` + shared OTP cooldown constant (align with server)
+  - [ ] Shared helpers: `getAuthApiErrorMessage`, `maskEmail`, `getOtpResendButtonLabel`
+- [ ] **Refactor admin** auth pages to use shared `AuthPageShell` where possible
+- [ ] Tenant pages: `/login`, `/register` → `/register/verify`
+- [ ] Tenant form schemas (Zod): email, name, password, OTP — mirror admin shape
+- [ ] Wire to Phase 1.2 `/tenant/auth/*` API
+
+**Exit criteria:** Register → OTP verify → session; login with existing user; authed user redirected away from auth pages.
+
+---
+
+#### Phase 2.4 — Accept invite (public magic link)
+
+**Goal:** Close the invite loop in the browser (Phase 1.3 API).
+
+**Tasks**
+
+- [ ] Public route: `/accept-invite?token=` (matches `TENANT_APP_URL/accept-invite?token=…`)
+- [ ] `InvitePreviewPage`: `GET /tenant/invites/preview`; lease summary card; branch on `hasExistingAccount` → login vs register CTAs
+- [ ] Post-auth redeem: `POST /tenant/invites/redeem` with Bearer + `{ token }`, or inline `{ token, email, password }` → session + membership
+- [ ] Return URL: after register verify, return to accept-invite with same token
+- [ ] Shared `InviteLeaseSummaryCard` (reused in 2.5 pending list)
+
+**Exit criteria:** Operator invite (curl/admin until Phase 3) → email link → register or login → accept → redirect to `/leases` with one active lease.
+
+---
+
+#### Phase 2.5 — Portal home (pending invites + lease list)
+
+**Goal:** Logged-in tenant has a usable home beyond first accept.
+
+**Tasks**
+
+- [ ] Authenticated layout: header, theme switcher, logout (minimal — no property nav)
+- [ ] `/leases` — cards from `GET /tenant/me/leases`
+- [ ] `/invites/pending` — list from `GET /tenant/me/invites/pending` with accept/decline
+- [ ] Shared `TenantLeaseCard`, `TenantPendingInviteCard`
+- [ ] Empty states: no leases, no pending invites
+- [ ] Optional: home banner when pending invites exist
+
+**Exit criteria:** Existing user invited to a **second** property sees pending invite; must accept before it appears in active leases.
+
+---
+
+#### Phase 2.6 — Polish (optional / defer)
+
+**Goal:** Production-ready shell; not required for first demo.
+
+- [ ] `DocumentTitle`, favicons, `ErrorPage` / `NotFoundPage`
+- [ ] `docker/Dockerfile.tenant` + compose service
+- [ ] Datadog RUM for tenant (optional — admin has it; tenant may skip v1)
+
+**Exit criteria:** Tenant app deployable via Docker; basic error/not-found pages.
+
+---
+
+**Phase 2 overall exit criteria:** Operator invites email (Phase 3 can be stubbed with curl until then); tenant completes flow in browser; lands on lease list with one active lease; second-property invite requires accept on pending page.
 
 ---
 
@@ -403,7 +509,6 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] Optional footer action: **Invite all** (primary + secondaries with valid emails) — same card, not a new section
 - [ ] API client methods + query keys for `GET .../portal-access` and invite/resend/revoke mutations; invalidate on success
 - [ ] Tenant app: lease detail page (summary + rent schedule from `GET /tenant/me/leases/:id`)
-- [ ] Tenant app: empty states (no invites, no active leases)
 
 **Exit criteria:** Full happy path without curl: admin invites from Tenants tab → tenant email → accept in tenant app → view rent schedule; operator revokes from tenant row → tenant loses access on next request.
 
@@ -440,7 +545,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] Rent payments
 - [ ] In-app messaging with operators
 - [ ] Tenant “disconnect from lease” (portal-only, not lease end)
-- [ ] `packages/ui` — extract shared shadcn primitives from admin + tenant
+- [ ] `packages/app-ui` — extend shared primitives extracted in Phase 2.1–2.3 (full shadcn catalog only if both apps need it)
 - [ ] SSE for tenant notifications (extend `notification-stream-hub` with tenant channel or separate stream)
 - [ ] Docker compose: tenant app + document local dev in `CLAUDE.md`
 
@@ -462,7 +567,8 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - Do **not** let tenant JWT call operator `/properties/*` routes (audience check on both sides).
 - Do **not** let tenants end leases from the tenant app — reuse operator `end lease` only.
 - Do **not** build a separate microservice before Phase 4 ships and pain is demonstrated.
-- Do **not** block Phase 2 on Docker — `bun run dev:tenant` is enough for local dev.
+- Do **not** block Phase 2 on Docker — `bun run dev:tenant` is enough for local dev (Docker is Phase 2.6).
+- Do **not** copy all of `apps/admin` into `apps/tenant` — extract theme/HTTP/auth shell to shared packages as you go (Phase 2.1–2.3).
 - Do **not** duplicate financial write APIs on `/tenant/*` in early phases — read-only views only.
 
 ---
@@ -473,10 +579,14 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 2. **Phase 1.1 — Admin invite + email** — prove operator invite pipeline before tenant auth.
 3. **Phase 1.2 — Tenant auth API** — register/login/refresh independently testable.
 4. **Phase 1.3 — Accept/redeem + lease list + lifecycle** — full backend state machine before any UI.
-5. **Phase 2 — Tenant app auth + accept** — smallest UI that closes the invite loop.
-6. **Phase 3 — Admin Tenants tab + lease detail** — operators invite from existing tenant list; no new section.
-7. **Phase 4 — Hardening + ended-lease archive** — production readiness before marketing the portal.
-8. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
+5. **Phase 2.1 — Shared theme + tenant scaffold** — one visual system before feature UI.
+6. **Phase 2.2 — HTTP + session layer** — typed tenant API client and auth store.
+7. **Phase 2.3 — Auth UI** — login/register OTP wired to Phase 1.2.
+8. **Phase 2.4 — Accept invite** — magic link closes the invite loop (primary Phase 2 milestone).
+9. **Phase 2.5 — Portal home** — pending invites + lease list.
+10. **Phase 3 — Admin Tenants tab + lease detail** — operators invite from existing tenant list; no new section.
+11. **Phase 4 — Hardening + ended-lease archive** — production readiness before marketing the portal.
+12. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
 
 ---
 
@@ -490,11 +600,15 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 | 4 | `POST .../portal-invites` + email templates + invite token | 1.1 |
 | 5 | Tenant register/login/refresh routes | 1.2 |
 | 6 | Accept/redeem + `GET /tenant/me/leases` + lease-end hook | 1.3 |
-| 7 | Scaffold `apps/tenant` with accept-invite page | 2 |
+| 7 | Shared theme package + scaffold `apps/tenant` | 2.1 |
+| 8 | Tenant API client + auth store | 2.2 |
+| 9 | Login + register OTP pages | 2.3 |
+| 10 | Accept-invite page + redeem | 2.4 |
+| 11 | Pending invites + lease list home | 2.5 |
 
 **First backend milestone:** Phase 1.3 exit — full invite → register → accept → lease list via curl/script.
 
-**First user-visible milestone:** Phase 2 exit — tenant opens email, registers, accepts, sees lease on home.
+**First user-visible milestone:** Phase 2.4 exit — tenant opens email, registers, accepts, sees lease on home.
 
 **First operator-visible milestone:** Phase 3 exit — portal badge + Invite on the lease **Tenants** tab in admin.
 
@@ -511,7 +625,13 @@ Phase 1.2 (tenant auth API)
     ↓
 Phase 1.3 (accept/redeem + lease list + lifecycle)
     ↓
-Phase 2 (tenant app auth + accept) ─────────────┐
+Phase 2.1 (shared theme + tenant scaffold)
+    ↓
+Phase 2.2 (HTTP + session) → Phase 2.3 (auth UI)
+    ↓
+Phase 2.4 (accept invite) ──────────────────────┐
+    ↓                                           │
+Phase 2.5 (portal home)                         │
     ↓                                           │
 Phase 3 (Tenants tab badges + lease detail) ←───┘
     ↓
