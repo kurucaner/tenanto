@@ -10,6 +10,7 @@ import { LeaseTenantPortalRow } from "@/components/leases/lease-tenant-portal-ro
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { longStayPortalApi, longStaysApi } from "@/lib/api-client";
 import {
@@ -36,6 +37,11 @@ const MAX_SECONDARY_TENANTS = 10;
 type TLeaseSecondaryTenantDeleteTarget = {
   index: number;
   tenant: IPropertyLongStaySecondaryTenant;
+};
+
+type TLeasePortalRevokeTarget = {
+  membershipId: string;
+  tenantName: string;
 };
 
 function TenantContactLine({ label, value }: Readonly<{ label: string; value: string | null }>) {
@@ -221,6 +227,35 @@ export const LeaseTenantsSection = memo(
         isPending: removeMutation.isPending,
       });
 
+    const revokeFn = useCallback(
+      (target: TLeasePortalRevokeTarget, onDeleted: () => void) => {
+        void runPortalAction("revoke", target.membershipId, {})
+          .then(onDeleted)
+          .catch(() => undefined);
+      },
+      [runPortalAction]
+    );
+
+    const {
+      deleteConfirmationDialog: revokeConfirmationDialog,
+      requestDelete: requestRevoke,
+    } = useDeleteConfirmation<TLeasePortalRevokeTarget>(revokeMutation.isPending, revokeFn);
+
+    const requestRevokeConfirmation = useCallback(
+      (membershipId: string | null | undefined, tenantName: string) => {
+        if (!membershipId) {
+          return;
+        }
+        requestRevoke({
+          confirmLabel: "Revoke",
+          description: `Revoke portal access for "${tenantName}"? They will no longer be able to access this lease in the tenant portal.`,
+          target: { membershipId, tenantName },
+          title: "Revoke portal access",
+        });
+      },
+      [requestRevoke]
+    );
+
     const portalMutationPending =
       inviteMutation.isPending || resendMutation.isPending || revokeMutation.isPending;
 
@@ -252,15 +287,13 @@ export const LeaseTenantsSection = memo(
                     actingMembershipId={actingMembershipId}
                     canManage={canEditTenants}
                     onInvite={() =>
-                      void runPortalAction("invite", primaryMembership?.id ?? null, {
+                      runPortalAction("invite", primaryMembership?.id ?? null, {
                         invitePrimary: true,
                       })
                     }
-                    onResend={() =>
-                      void runPortalAction("resend", primaryMembership?.id ?? null, {})
-                    }
+                    onResend={() => runPortalAction("resend", primaryMembership?.id ?? null, {})}
                     onRevoke={() =>
-                      void runPortalAction("revoke", primaryMembership?.id ?? null, {})
+                      requestRevokeConfirmation(primaryMembership?.id, lease.guestName)
                     }
                     portalState={primaryPortalState}
                   />
@@ -310,15 +343,15 @@ export const LeaseTenantsSection = memo(
                             actingMembershipId={actingMembershipId}
                             canManage={canEditTenants}
                             onInvite={() =>
-                              void runPortalAction("invite", rowMembership?.id ?? null, {
+                              runPortalAction("invite", rowMembership?.id ?? null, {
                                 secondaryIndexes: [index],
                               })
                             }
                             onResend={() =>
-                              void runPortalAction("resend", rowMembership?.id ?? null, {})
+                              runPortalAction("resend", rowMembership?.id ?? null, {})
                             }
                             onRevoke={() =>
-                              void runPortalAction("revoke", rowMembership?.id ?? null, {})
+                              requestRevokeConfirmation(rowMembership?.id, tenant.name)
                             }
                             portalState={rowPortalState}
                           />
@@ -366,7 +399,7 @@ export const LeaseTenantsSection = memo(
                   <Button
                     disabled={portalMutationPending}
                     onClick={() =>
-                      void runPortalAction("invite", null, {
+                      runPortalAction("invite", null, {
                         invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
                         secondaryIndexes: inviteAllTargets.secondaryIndexes,
                       })
@@ -422,6 +455,7 @@ export const LeaseTenantsSection = memo(
         ) : null}
 
         {deleteConfirmationDialog}
+        {revokeConfirmationDialog}
       </>
     );
   }
