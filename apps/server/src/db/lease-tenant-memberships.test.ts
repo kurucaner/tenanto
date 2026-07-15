@@ -3,8 +3,13 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 
+type MockQueryResult = {
+  rowCount: number;
+  rows: Record<string, unknown>[];
+};
+
 const mockFindById = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockQuery = mock(() =>
+const mockQuery = mock((): Promise<MockQueryResult> =>
   Promise.resolve({
     rowCount: 1,
     rows: [],
