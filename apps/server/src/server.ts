@@ -12,6 +12,7 @@ import {
 } from "@/packages/shared";
 
 import { jwtAuthPlugin } from "./auth/jwt";
+import { tenantJwtAuthPlugin } from "./auth/tenant-jwt";
 import { initializeDatabase } from "./db/pool";
 import { resolveAllowedOrigin } from "./lib/cors-headers";
 import { isProduction } from "./lib/environment";
@@ -37,6 +38,8 @@ import { notificationRoutes } from "./routes/notification-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
 import { supportRoutes } from "./routes/support-routes";
+import { tenantAuthRoutes } from "./routes/tenant/tenant-auth-routes";
+import { tenantLeaseRoutes } from "./routes/tenant/tenant-lease-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
@@ -87,8 +90,11 @@ server.register(rateLimit, {
   timeWindow: "1 minute",
 });
 server.register(jwtAuthPlugin);
+server.register(tenantJwtAuthPlugin);
 server.register(initRoutes);
 server.register(authRoutes);
+server.register(tenantAuthRoutes);
+server.register(tenantLeaseRoutes);
 server.register(adminRoutes);
 server.register(propertyRoutes);
 server.register(propertyUnitRoutes);

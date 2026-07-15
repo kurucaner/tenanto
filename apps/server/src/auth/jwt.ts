@@ -4,15 +4,21 @@ import fastifyJwt from "@fastify/jwt";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
-import { HttpStatus, JwtError, UserType } from "@/packages/shared";
+import { HttpStatus, JwtError, TENANT_JWT_AUDIENCE, UserType } from "@/packages/shared";
 
-const ACCESS_TOKEN_EXPIRY = "15m";
+const ACCESS_TOKEN_EXPIRY = "1d";
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
-interface JwtUserPayload {
+export interface JwtUserPayload {
   email: string;
   userId: string;
   userType: UserType;
+}
+
+export interface TenantJwtPayload {
+  aud: typeof TENANT_JWT_AUDIENCE;
+  email: string;
+  tenantUserId: string;
 }
 
 declare module "@fastify/jwt" {

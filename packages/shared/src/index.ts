@@ -507,6 +507,31 @@ export {
   normalizeTenantEmail,
   resolveTenantEmailRecipients,
 } from "./tenant-email-recipient-resolver";
+export {
+  canTransitionTenantMembershipStatus,
+  isTerminalTenantMembershipStatus,
+  TERMINAL_TENANT_MEMBERSHIP_STATUSES,
+} from "./tenant-membership-transitions";
+export {
+  type ICreateLeasePortalInviteResponse,
+  type ILeaseTenantMembership,
+  type ITenantAuthLoginBody,
+  type ITenantAuthLogoutBody,
+  type ITenantAuthRefreshBody,
+  type ITenantAuthRegisterStartBody,
+  type ITenantAuthRegisterVerifyBody,
+  type ITenantAuthSessionResponse,
+  type ITenantInviteLeaseSummary,
+  type ITenantLeaseDetailResponse,
+  type ITenantLeaseListItem,
+  type ITenantPendingInvite,
+  type ITenantUser,
+  TENANT_JWT_AUDIENCE,
+  TenantMembershipRole,
+  TenantMembershipStatus,
+  type TTenantMembershipRole,
+  type TTenantMembershipStatus,
+} from "./tenant-portal-types";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

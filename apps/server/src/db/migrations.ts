@@ -2476,4 +2476,134 @@ export const migrations: IMigration[] = [
     },
     version: 56,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS tenant_refresh_tokens CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS lease_tenant_memberships CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS tenant_users CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS tenant_membership_status CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS tenant_membership_role CASCADE;`);
+    },
+    name: "create_tenant_portal_tables",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE tenant_membership_role AS ENUM ('primary', 'secondary');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE tenant_membership_status AS ENUM (
+            'pending_invite',
+            'pending_acceptance',
+            'active',
+            'declined',
+            'revoked',
+            'ended',
+            'expired'
+          );
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE tenant_users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          password_hash VARCHAR(255),
+          phone VARCHAR(50),
+          email_verified_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX tenant_users_email_lower_idx
+          ON tenant_users (LOWER(TRIM(email)));
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_tenant_users_updated_at
+          BEFORE UPDATE ON tenant_users
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        CREATE TABLE lease_tenant_memberships (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          lease_id UUID NOT NULL REFERENCES property_long_stays(id) ON DELETE CASCADE,
+          tenant_user_id UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
+          role tenant_membership_role NOT NULL,
+          invite_email VARCHAR(255) NOT NULL,
+          display_name VARCHAR(255) NOT NULL,
+          status tenant_membership_status NOT NULL,
+          invited_by UUID NOT NULL REFERENCES users(id),
+          invite_token_hash VARCHAR(64),
+          invited_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          accepted_at TIMESTAMP WITH TIME ZONE,
+          declined_at TIMESTAMP WITH TIME ZONE,
+          revoked_at TIMESTAMP WITH TIME ZONE,
+          ended_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_lease_id
+          ON lease_tenant_memberships (lease_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_tenant_user_id
+          ON lease_tenant_memberships (tenant_user_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_invite_email
+          ON lease_tenant_memberships (LOWER(TRIM(invite_email)));
+      `);
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_status
+          ON lease_tenant_memberships (status);
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX lease_tenant_memberships_non_terminal_uniq
+          ON lease_tenant_memberships (lease_id, LOWER(TRIM(invite_email)), role)
+          WHERE status NOT IN ('declined', 'revoked', 'ended', 'expired');
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_lease_tenant_memberships_updated_at
+          BEFORE UPDATE ON lease_tenant_memberships
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        CREATE TABLE tenant_refresh_tokens (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          tenant_user_id UUID NOT NULL REFERENCES tenant_users(id) ON DELETE CASCADE,
+          token_hash VARCHAR(64) NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          revoked BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_tenant_refresh_tokens_tenant_user
+          ON tenant_refresh_tokens (tenant_user_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_tenant_refresh_tokens_hash
+          ON tenant_refresh_tokens (token_hash);
+      `);
+    },
+    version: 57,
+  },
 ];
