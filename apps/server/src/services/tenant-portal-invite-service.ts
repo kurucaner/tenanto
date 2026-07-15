@@ -29,6 +29,12 @@ import {
   sendTenantPortalInviteNewEmail,
 } from "@/ses/transactional-emails";
 
+import {
+  logTenantPortalInvited,
+  logTenantPortalResent,
+  logTenantPortalRevoked,
+} from "./tenant-portal-observability";
+
 export class PortalInviteNotFoundError extends Error {
   constructor(message = "Portal invite not found") {
     super(message);
@@ -161,6 +167,8 @@ async function createAndSendInvite(input: {
     rawToken,
     existingUser != null
   );
+
+  logTenantPortalInvited(membership);
 
   return {
     emailError: emailResult.emailError,
@@ -346,6 +354,8 @@ export const tenantPortalInviteService = {
       (await tenantUsersDb.findByEmail(updated.inviteEmail)) != null;
     const emailResult = await sendPortalInviteEmail(updated, summary, rawToken, hasExistingAccount);
 
+    logTenantPortalResent(updated);
+
     return {
       emailError: emailResult.emailError,
       emailSent: emailResult.emailSent,
@@ -383,6 +393,8 @@ export const tenantPortalInviteService = {
     if (!updated) {
       throw new PortalInviteNotFoundError("Portal invite not found");
     }
+
+    logTenantPortalRevoked(updated);
     return updated;
   },
 };

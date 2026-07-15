@@ -34,6 +34,7 @@ import {
   PortalInviteInvalidStateError,
   PortalInviteNotFoundError,
 } from "./tenant-portal-invite-service";
+import { logTenantPortalAccepted, logTenantPortalDeclined } from "./tenant-portal-observability";
 
 export class TenantMembershipNotFoundError extends Error {
   constructor(message = "Portal invite not found") {
@@ -103,6 +104,7 @@ async function acceptMembershipForTenant(
   if (!updated) {
     throw new PortalInviteNotFoundError("Portal invite not found");
   }
+  logTenantPortalAccepted(updated);
   return updated;
 }
 
@@ -192,6 +194,7 @@ export const tenantPortalMembershipService = {
     if (!updated) {
       throw new TenantMembershipNotFoundError();
     }
+    logTenantPortalDeclined(updated);
     return updated;
   },
 

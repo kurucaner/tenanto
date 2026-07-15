@@ -31,6 +31,7 @@ import {
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
+import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -691,7 +692,9 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       try {
         const longStay = await propertyLongStaysDb.endLease(longStayId, parsed.body.actualEndDate);
 
-        await leaseTenantMembershipsDb.endAllNonTerminalForLease(longStayId);
+        const endedMemberships =
+          await leaseTenantMembershipsDb.endAllNonTerminalForLease(longStayId);
+        logTenantPortalMembershipsEnded(endedMemberships);
 
         void notifyPrimaryTenantLeaseEnded({ longStayId, propertyId }).catch((err) => {
           request.log.error({ err, longStayId, propertyId }, "Failed to send lease ended email");

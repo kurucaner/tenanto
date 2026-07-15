@@ -553,10 +553,10 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Structured logs: `tenant_portal.invited`, `.resent`, `.revoked`, `.accepted`, `.declined`, `.ended`
-- [ ] Mirror `tenant-email-campaign-observability.ts` pattern (`WinstonLogger.info` with stable keys)
-- [ ] Emit from invite service, membership service, and lease-end hook
-- [ ] Include `leaseId`, `membershipId`, `inviteEmail` (normalized) in context
+- [x] Structured logs: `tenant_portal.invited`, `.resent`, `.revoked`, `.accepted`, `.declined`, `.ended`
+- [x] Mirror `tenant-email-campaign-observability.ts` pattern (`WinstonLogger.info` with stable keys)
+- [x] Emit from invite service, membership service, and lease-end hook
+- [x] Include `leaseId`, `membershipId`, `inviteEmail` (normalized) in context
 
 **Exit criteria:** Each happy/sad path emits one grep-able event; no raw invite tokens in logs.
 
