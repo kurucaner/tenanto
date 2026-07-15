@@ -309,29 +309,68 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] Shared types in `packages/shared` (status, role, membership, list/detail DTOs)
 - [ ] Tenant JWT plugin: `aud: tenant`, `tenantUserId` payload; separate refresh token storage (`tenant_refresh_tokens` table or namespaced rows)
 - [ ] `assertLeaseTenantAccess(leaseId, tenantUserId)` — requires `active` membership
-- [ ] Register `tenantAuthRoutes` + stub `tenantLeaseRoutes` (handlers wired in Phase 1)
+- [ ] Register `tenantAuthRoutes` + stub `tenantLeaseRoutes` (handlers wired in Phases 1.1–1.3)
 - [ ] `TENANT_APP_URL` in `apps/server/.env.example` (mirror `PLATFORM_APP_URL` pattern)
 
 **Exit criteria:** Server boots; migrations pass; unit tests for membership state transitions and access helper; no UI.
 
 ---
 
-### Phase 1 — Backend invite + accept pipeline (API only)
+### Phase 1.1 — Admin invite pipeline (API + email)
 
-**Goal:** End-to-end invite and accept without tenant app UI (verify via API tests or curl).
+**Goal:** Operators can invite tenants via API; invite email sends; magic link token validates — no tenant auth or accept flow yet (~10–12 files).
 
-- [ ] `POST .../portal-invites` — create memberships, send SES emails
-- [ ] Invite token generate/hash/verify (mirror unsubscribe token pattern in `ses/unsubscribe-token.ts`)
-- [ ] `GET /tenant/invites/preview?token=`
-- [ ] `POST /tenant/auth/register/start|verify` for tenant users (reuse OTP table with `purpose: tenant_register` or separate `tenant_auth_otps`)
-- [ ] `POST /tenant/auth/login`, refresh, logout
-- [ ] `POST /tenant/invites/redeem` and `POST /tenant/me/invites/:membershipId/accept|decline` for authenticated user
-- [ ] Branch: new email → `pending_invite` → register → `active`; existing email → `pending_acceptance` → accept → `active`
-- [ ] Hook `notifyPrimaryTenantLeaseEnded` path: when lease ends, mark memberships `ended`
-- [ ] Admin `GET .../portal-access`, `resend`, `revoke`
+**Tasks**
+
+- [ ] Extend `lease-tenant-memberships` DB module: create, list by lease, find by token hash, resend/revoke helpers
+- [ ] Shared admin request/response types (`ICreateLeasePortalInviteBody`, `ILeasePortalAccessResponse`, etc.)
+- [ ] Invite token generate/hash/verify (mirror `ses/unsubscribe-token.ts`) → `ses/tenant-portal-invite-token.ts`
+- [ ] `services/tenant-portal-invite-service.ts` — branch `pending_invite` vs `pending_acceptance` from existing `tenant_users`
+- [ ] Admin routes: `POST .../portal-invites`, `GET .../portal-access`, `POST .../resend`, `POST .../revoke` (extend `property-long-stay-routes.ts` or dedicated module)
+- [ ] Property owner/manager write access (align with long-stay write)
+- [ ] `sendTenantPortalInviteEmail` in `transactional-emails.ts` + `tenant-portal-invite-new.html` / `tenant-portal-invite-existing.html`
 - [ ] `TENANT_APP_URL` in transactional email links
-- [ ] CORS: allow tenant app origin in dev (`http://localhost:5174` or chosen port)
+- [ ] `GET /tenant/invites/preview?token=` — public lease summary for accept page (no auth)
+- [ ] Idempotency: duplicate pending invite for same `(lease, email, role)` → 409
+
+**Exit criteria:** `POST invite` via curl → membership row in DB + SES email received; preview endpoint returns lease summary for valid token; resend/revoke update membership as expected.
+
+---
+
+### Phase 1.2 — Tenant auth API
+
+**Goal:** Tenants can register, login, and refresh tokens via API — independent of accept/redeem (~6–8 files).
+
+**Tasks**
+
+- [ ] `POST /tenant/auth/register/start` — email OTP (`auth_otps` with `purpose: tenant_register`; no migration — column is `VARCHAR`)
+- [ ] `POST /tenant/auth/register/verify` — create `tenant_users`, issue tenant JWT + refresh token
+- [ ] `POST /tenant/auth/login`, `refresh`, `logout` — wire `tenant-refresh-tokens` + `signTenantAccessToken`
+- [ ] Extend `tenant-users` DB module: password lookup for login
+- [ ] Reuse or share validators from `routes/auth/validators.ts`
+- [ ] Fill in `tenant-auth-routes.ts`
+- [ ] CORS: allow tenant app origin in dev (`http://localhost:5174` or chosen port) via `cors-headers.ts`
+
+**Exit criteria:** curl/Postman: register → verify → access + refresh tokens; login with existing user; refresh rotation; logout revokes refresh token.
+
+---
+
+### Phase 1.3 — Accept/redeem + lease read + lifecycle
+
+**Goal:** Close the invite loop and meet backend exit criteria before any tenant UI (~8–10 files).
+
+**Tasks**
+
+- [ ] `POST /tenant/invites/redeem` — exchange magic-link token (+ optional register/login body) → membership progress
+- [ ] `POST /tenant/me/invites/:membershipId/accept|decline` for authenticated tenant
+- [ ] Branch: new email → `pending_invite` → register → `active`; existing email → `pending_acceptance` → accept → `active`
+- [ ] `GET /tenant/me` — tenant profile
+- [ ] `GET /tenant/me/leases` — active memberships only in v1 (minimal list for exit criteria)
+- [ ] `GET /tenant/me/invites/pending` — `pending_acceptance` for logged-in user
+- [ ] Fill in `tenant-lease-routes.ts`
+- [ ] Hook `notifyPrimaryTenantLeaseEnded` path: when lease ends, mark memberships → `ended`
 - [ ] Constraint: cannot accept after `expired` / `declined` without operator resend
+- [ ] Integration script or test: full happy path documented in repo
 
 **Exit criteria:** Script or integration test: create lease → invite → register → accept → `GET /tenant/me/leases` returns lease; second property invite to same email requires accept; end lease removes active access.
 
@@ -347,7 +386,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] Auth store + session clear
 - [ ] Pages: login, register (OTP), accept-invite (public)
 - [ ] Pending invitations page (accept/decline)
-- [ ] Wire register/login/redeem/accept to Phase 1 API
+- [ ] Wire register/login/redeem/accept to Phases 1.1–1.3 API
 - [ ] Root `package.json` scripts: `dev:tenant`, `build:tenant`, `lint:tenant`
 - [ ] Docker: optional `docker/Dockerfile.tenant` + compose service (defer if not needed for local dev)
 
@@ -431,11 +470,13 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 ## Safest sequencing summary
 
 1. **Phase 0 — DB + shared types + tenant JWT** — everything else depends on membership rows and auth audience.
-2. **Phase 1 — Invite/accept API** — prove the full state machine with tests before any UI.
-3. **Phase 2 — Tenant app auth + accept** — smallest UI that closes the invite loop.
-4. **Phase 3 — Admin Tenants tab + lease detail** — operators invite from existing tenant list; no new section.
-5. **Phase 4 — Hardening + ended-lease archive** — production readiness before marketing the portal.
-6. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
+2. **Phase 1.1 — Admin invite + email** — prove operator invite pipeline before tenant auth.
+3. **Phase 1.2 — Tenant auth API** — register/login/refresh independently testable.
+4. **Phase 1.3 — Accept/redeem + lease list + lifecycle** — full backend state machine before any UI.
+5. **Phase 2 — Tenant app auth + accept** — smallest UI that closes the invite loop.
+6. **Phase 3 — Admin Tenants tab + lease detail** — operators invite from existing tenant list; no new section.
+7. **Phase 4 — Hardening + ended-lease archive** — production readiness before marketing the portal.
+8. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
 
 ---
 
@@ -446,9 +487,12 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 | 1 | Read this doc + skim `property-invites.ts` and `auth-routes.ts` | — |
 | 2 | Migration 57 + `lease-tenant-memberships` DB module + shared enums | 0 |
 | 3 | Tenant JWT plugin | 0 |
-| 4 | `POST .../portal-invites` + email template + token | 1 |
-| 5 | Tenant register/login + accept/decline routes | 1 |
-| 6 | Scaffold `apps/tenant` with accept-invite page | 2 |
+| 4 | `POST .../portal-invites` + email templates + invite token | 1.1 |
+| 5 | Tenant register/login/refresh routes | 1.2 |
+| 6 | Accept/redeem + `GET /tenant/me/leases` + lease-end hook | 1.3 |
+| 7 | Scaffold `apps/tenant` with accept-invite page | 2 |
+
+**First backend milestone:** Phase 1.3 exit — full invite → register → accept → lease list via curl/script.
 
 **First user-visible milestone:** Phase 2 exit — tenant opens email, registers, accepts, sees lease on home.
 
@@ -461,11 +505,15 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 ```
 Phase 0 (schema + JWT)
     ↓
-Phase 1 (invite/accept API) ──────────────────┐
-    ↓                                         │
-Phase 2 (tenant app auth + accept)            │
-    ↓                                         │
-Phase 3 (Tenants tab badges + lease detail) ←───────────┘
+Phase 1.1 (admin invite + email + preview)
+    ↓
+Phase 1.2 (tenant auth API)
+    ↓
+Phase 1.3 (accept/redeem + lease list + lifecycle)
+    ↓
+Phase 2 (tenant app auth + accept) ─────────────┐
+    ↓                                           │
+Phase 3 (Tenants tab badges + lease detail) ←───┘
     ↓
 Phase 4 (hardening + archive)
     ↓
