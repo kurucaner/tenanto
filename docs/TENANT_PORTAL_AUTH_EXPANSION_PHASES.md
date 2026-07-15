@@ -83,13 +83,13 @@ Expand tenant portal sign-in beyond email/password while keeping a hard boundary
 
 ### Invite / phone policy (locked for v1)
 
-| Flow | Rule |
-| --- | --- |
-| Portal invite create | Still requires lease emails; unchanged |
-| Accept / redeem | Email normalize match only (`membership-service`) |
-| Phone OTP login | Target row must already exist with email (typically after register or social) |
-| Phone bind | Authenticated tenant (`authenticateTenant`); set `phone` if null or same number; conflict if phone owned elsewhere |
-| Phone-only invite | **Deferred** (Enhancements out of scope until email nullable + invite key redesign) |
+| Flow                 | Rule                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Portal invite create | Still requires lease emails; unchanged                                                                             |
+| Accept / redeem      | Email normalize match only (`membership-service`)                                                                  |
+| Phone OTP login      | Target row must already exist with email (typically after register or social)                                      |
+| Phone bind           | Authenticated tenant (`authenticateTenant`); set `phone` if null or same number; conflict if phone owned elsewhere |
+| Phone-only invite    | **Deferred** (Enhancements out of scope until email nullable + invite key redesign)                                |
 
 ### Permissions
 
@@ -100,8 +100,8 @@ Expand tenant portal sign-in beyond email/password while keeping a hard boundary
 
 ### Feature flags
 
-| Flag | Gates |
-| --- | --- |
+| Flag                        | Gates                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------- |
 | `TENANT_PHONE_AUTH_ENABLED` | `POST /tenant/auth/phone/start`, `/verify`, authenticated bind routes + phone UI |
 
 Google/Apple tenant auth is **not** feature-flagged. Document the phone flag in `apps/server/.env.example` and `apps/tenant/.env.example`.
@@ -112,12 +112,12 @@ Google/Apple tenant auth is **not** feature-flagged. Document the phone flag in 
 
 ### `tenant_users` (extend)
 
-| Column | Notes |
-| --- | --- |
-| `google_id` | `VARCHAR` UNIQUE nullable — mirror `users.google_id` |
-| `apple_id` | `VARCHAR` UNIQUE nullable — mirror `users.apple_id` |
-| `phone` | Already exists (`VARCHAR(50)`); store **E.164**; add unique index on normalized phone where not null |
-| `phone_verified_at` | `TIMESTAMPTZ` nullable — set on successful OTP verify / bind |
+| Column              | Notes                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `google_id`         | `VARCHAR` UNIQUE nullable — mirror `users.google_id`                                                 |
+| `apple_id`          | `VARCHAR` UNIQUE nullable — mirror `users.apple_id`                                                  |
+| `phone`             | Already exists (`VARCHAR(50)`); store **E.164**; add unique index on normalized phone where not null |
+| `phone_verified_at` | `TIMESTAMPTZ` nullable — set on successful OTP verify / bind                                         |
 
 `email` stays `NOT NULL` + unique lower(trim) — social create still needs provider email.
 
@@ -127,12 +127,12 @@ Google/Apple tenant auth is **not** feature-flagged. Document the phone flag in 
 
 ### `auth_phone_otps` (new)
 
-| Column | Notes |
-| --- | --- |
-| `phone` | E.164 |
-| `code_hash` | Same hashing pattern as `auth_otps` |
-| `purpose` | `tenant_phone_login` \| `tenant_phone_bind` |
-| `expires_at` / `created_at` | Match email OTP TTLs |
+| Column                      | Notes                                       |
+| --------------------------- | ------------------------------------------- |
+| `phone`                     | E.164                                       |
+| `code_hash`                 | Same hashing pattern as `auth_otps`         |
+| `purpose`                   | `tenant_phone_login` \| `tenant_phone_bind` |
+| `expires_at` / `created_at` | Match email OTP TTLs                        |
 
 Index `(phone, purpose)` for lookup/delete + cooldown.
 
@@ -142,29 +142,29 @@ Index `(phone, purpose)` for lookup/delete + cooldown.
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `ITenantGoogleAuthBody` | `{ idToken: string }` |
-| `ITenantAppleAuthBody` | `{ identityToken: string; name?: string }` (Apple may omit name after first auth) |
-| `ITenantPhoneAuthStartBody` | `{ phone: string }` |
-| `ITenantPhoneAuthVerifyBody` | `{ phone: string; code: string }` |
-| `ITenantPhoneBindStartBody` / `VerifyBody` | Authenticated bind variants (or reuse start/verify with session) |
-| `ITenantAuthSessionResponse` | Unchanged — social/phone return the same shape |
-| `ITenantUser` | Document `phone`; optional expose of provider-linked state only if UI needs it (prefer omit provider ids from client) |
+| Type                                       | Purpose                                                                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `ITenantGoogleAuthBody`                    | `{ idToken: string }`                                                                                                 |
+| `ITenantAppleAuthBody`                     | `{ identityToken: string; name?: string }` (Apple may omit name after first auth)                                     |
+| `ITenantPhoneAuthStartBody`                | `{ phone: string }`                                                                                                   |
+| `ITenantPhoneAuthVerifyBody`               | `{ phone: string; code: string }`                                                                                     |
+| `ITenantPhoneBindStartBody` / `VerifyBody` | Authenticated bind variants (or reuse start/verify with session)                                                      |
+| `ITenantAuthSessionResponse`               | Unchanged — social/phone return the same shape                                                                        |
+| `ITenantUser`                              | Document `phone`; optional expose of provider-linked state only if UI needs it (prefer omit provider ids from client) |
 
 ---
 
 ## API (sketch)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `POST` | `/tenant/auth/google` | Flag; verify → findOrCreate tenant → `issueTenantSession` |
-| `POST` | `/tenant/auth/apple` | Flag; same |
-| `POST` | `/tenant/auth/phone/start` | Flag; rate limit; send SNS OTP (`tenant_phone_login`) |
-| `POST` | `/tenant/auth/phone/verify` | Flag; verify OTP; **existing** user by phone → session; 404/401 if no user |
-| `POST` | `/tenant/auth/phone/bind/start` | Flag + `authenticateTenant`; OTP purpose `tenant_phone_bind` |
-| `POST` | `/tenant/auth/phone/bind/verify` | Flag + auth; set phone + `phone_verified_at` |
-| Existing | `/tenant/auth/login` etc. | Unchanged |
+| Method   | Path                             | Notes                                                                      |
+| -------- | -------------------------------- | -------------------------------------------------------------------------- |
+| `POST`   | `/tenant/auth/google`            | Flag; verify → findOrCreate tenant → `issueTenantSession`                  |
+| `POST`   | `/tenant/auth/apple`             | Flag; same                                                                 |
+| `POST`   | `/tenant/auth/phone/start`       | Flag; rate limit; send SNS OTP (`tenant_phone_login`)                      |
+| `POST`   | `/tenant/auth/phone/verify`      | Flag; verify OTP; **existing** user by phone → session; 404/401 if no user |
+| `POST`   | `/tenant/auth/phone/bind/start`  | Flag + `authenticateTenant`; OTP purpose `tenant_phone_bind`               |
+| `POST`   | `/tenant/auth/phone/bind/verify` | Flag + auth; set phone + `phone_verified_at`                               |
+| Existing | `/tenant/auth/login` etc.        | Unchanged                                                                  |
 
 Error mapping: mirror platform identity conflicts (`409`) when Google email matches a tenant row already linked to a different `google_id`.
 
@@ -230,11 +230,11 @@ Reuse admin Google button patterns where possible; extract to `packages/app-ui` 
 
 **Goal:** Bind + login by SMS for an existing email tenant user.
 
-- [ ] Phone OTP service (create/verify/cooldown) + `sendSms` message template (`APP_NAME` code)
-- [ ] `phone/start` + `phone/verify` for login (user must exist with that verified phone)
-- [ ] `phone/bind/start` + `bind/verify` for authenticated tenant
-- [ ] Extend `tenant-auth-rate-limit` with phone keys + actions
-- [ ] Tests: bind then login; unknown phone login rejected; phone conflict; flag off; cooldown
+- [x] Phone OTP service (create/verify/cooldown) + `sendSms` message template (`APP_NAME` code)
+- [x] `phone/start` + `phone/verify` for login (user must exist with that verified phone)
+- [x] `phone/bind/start` + `bind/verify` for authenticated tenant
+- [x] Extend `tenant-auth-rate-limit` with phone keys + actions
+- [x] Tests: bind then login; unknown phone login rejected; phone conflict; flag off; cooldown
 
 **Exit criteria:** Scripted bind → logout → phone login issues tenant session; email invite accept still email-only.
 
@@ -258,14 +258,14 @@ Reuse admin Google button patterns where possible; extract to `packages/app-ui` 
 
 **Goal:** Production-safe and cross-audience rejection documented.
 
-| Concern | Action |
-| --- | --- |
-| Audience | Integration tests: platform access token on `/tenant/me/*` → 401; tenant token on admin property routes → 401 |
-| Rate limits | Confirm Redis keys for social/phone under abuse |
+| Concern          | Action                                                                                                                                                                                                                                         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audience         | Integration tests: platform access token on `/tenant/me/*` → 401; tenant token on admin property routes → 401                                                                                                                                  |
+| Rate limits      | Confirm Redis keys for social/phone under abuse                                                                                                                                                                                                |
 | SMS cost / abuse | Strict IP + phone windows; no start without normalize; optional require existing phone on login start to avoid SMS bomb on random numbers (prefer: login start only sends if `findByPhone` exists — **enumeration tradeoff**; document choice) |
-| Observability | Structured logs `tenant_portal.auth_google|apple|phone` without tokens/OTP codes |
-| Apple name | Handle missing name on subsequent Apple logins |
-| Log redaction | Ensure ID tokens never logged |
+| Observability    | Structured logs `tenant_portal.auth_google                                                                                                                                                                                                     | apple | phone` without tokens/OTP codes |
+| Apple name       | Handle missing name on subsequent Apple logins                                                                                                                                                                                                 |
+| Log redaction    | Ensure ID tokens never logged                                                                                                                                                                                                                  |
 
 **SMS enumeration default:** On `phone/start` for login, if no user, return **generic success** without sending SMS (anti-enumeration) **or** send only when user exists and still return generic message. Prefer **no SMS when unknown** + identical HTTP response.
 
@@ -308,9 +308,9 @@ Reuse admin Google button patterns where possible; extract to `packages/app-ui` 
 
 ## Decision record (Phase 3 parent checklist)
 
-| Topic | Decision |
-| --- | --- |
-| Invite email vs phone | **Email only** for invite identity in v1 |
-| Phone auth purpose | Login + bind for **existing** `tenant_users` |
-| Identity storage | Columns on `tenant_users` (mirror `users`), not a cross-app identity table |
-| Social verify | Shared `verifyGoogleToken` / `verifyAppleToken` |
+| Topic                 | Decision                                                                   |
+| --------------------- | -------------------------------------------------------------------------- |
+| Invite email vs phone | **Email only** for invite identity in v1                                   |
+| Phone auth purpose    | Login + bind for **existing** `tenant_users`                               |
+| Identity storage      | Columns on `tenant_users` (mirror `users`), not a cross-app identity table |
+| Social verify         | Shared `verifyGoogleToken` / `verifyAppleToken`                            |

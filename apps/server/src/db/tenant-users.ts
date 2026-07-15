@@ -117,6 +117,17 @@ export const tenantUsersDb = {
     return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async findByVerifiedPhone(phone: string): Promise<ITenantUser | null> {
+    const e164 = requireE164Phone(phone);
+    const result = await pool.query(
+      `SELECT * FROM tenant_users
+       WHERE phone = $1 AND phone_verified_at IS NOT NULL`,
+      [e164]
+    );
+    if (result.rows.length === 0) return null;
+    return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
+  },
+
   async findOrCreateByApple(
     this: ITenantOauthStore,
     input: {

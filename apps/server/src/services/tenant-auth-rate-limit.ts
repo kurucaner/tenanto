@@ -6,7 +6,8 @@ import {
   TENANT_AUTH_RATE_LIMIT_WINDOW_MS,
 } from "@/lib/tenant-portal-rate-limit-config";
 
-export type TTenantAuthRateLimitAction = "apple" | "google" | "login" | "register_start";
+export type TTenantAuthRateLimitAction =
+  "apple" | "google" | "login" | "phone_bind" | "phone_login" | "register_start";
 
 function normalizeEmailKey(email: string): string {
   return email.trim().toLowerCase();
@@ -53,6 +54,39 @@ export async function assertTenantAuthAttemptAllowed(input: {
   return consumeTenantAuthEmailLimit({
     action: input.action,
     email: input.email,
+  });
+}
+
+async function consumeTenantAuthPhoneLimit(input: {
+  action: TTenantAuthRateLimitAction;
+  phone: string;
+}): Promise<{ allowed: true } | { allowed: false; retryAfterSec: number }> {
+  const phoneKey = input.phone.trim();
+  if (!phoneKey) {
+    return { allowed: true };
+  }
+
+  return consumeFixedWindowRateLimit({
+    key: `tenant-auth:${input.action}:phone:${phoneKey}`,
+    limit: TENANT_AUTH_EMAIL_RATE_LIMIT_MAX,
+    windowMs: TENANT_AUTH_RATE_LIMIT_WINDOW_MS,
+  });
+}
+
+/** IP + phone window for tenant phone OTP start/verify. */
+export async function assertTenantAuthPhoneAttemptAllowed(input: {
+  action: TTenantAuthRateLimitAction;
+  ip: string;
+  phone: string;
+}): Promise<{ allowed: true } | { allowed: false; retryAfterSec: number }> {
+  const ipResult = await consumeTenantAuthIpLimit(input);
+  if (!ipResult.allowed) {
+    return ipResult;
+  }
+
+  return consumeTenantAuthPhoneLimit({
+    action: input.action,
+    phone: input.phone,
   });
 }
 
