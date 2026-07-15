@@ -513,8 +513,14 @@ export {
   TERMINAL_TENANT_MEMBERSHIP_STATUSES,
 } from "./tenant-membership-transitions";
 export {
+  type ICreateLeasePortalInviteBody,
   type ICreateLeasePortalInviteResponse,
+  type ICreateLeasePortalInviteResult,
+  type ICreateLeasePortalInvitesResponse,
+  type ILeasePortalAccessResponse,
   type ILeaseTenantMembership,
+  type IResendLeasePortalInviteResponse,
+  type IRevokeLeasePortalInviteResponse,
   type ITenantAuthLoginBody,
   type ITenantAuthLogoutBody,
   type ITenantAuthRefreshBody,
@@ -522,6 +528,7 @@ export {
   type ITenantAuthRegisterVerifyBody,
   type ITenantAuthSessionResponse,
   type ITenantInviteLeaseSummary,
+  type ITenantInvitePreviewResponse,
   type ITenantLeaseDetailResponse,
   type ITenantLeaseListItem,
   type ITenantPendingInvite,

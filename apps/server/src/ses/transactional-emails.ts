@@ -43,6 +43,14 @@ export interface LeaseEndedEmailOptions {
 const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
 const PLATFORM_APP_URL = process.env.PLATFORM_APP_URL;
+const TENANT_APP_URL = process.env.TENANT_APP_URL;
+
+export interface TenantPortalInviteEmailOptions {
+  acceptUrl: string;
+  displayName: string;
+  propertyName: string;
+  unitLabel: string;
+}
 
 function buildSupportTicketUrl(supportRequestId: string): string {
   const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
@@ -214,6 +222,60 @@ export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptio
     paymentStatusLine: escapeHtml(opts.paymentStatusLine),
     propertyName: escapeHtml(opts.propertyName),
     tenantName: escapeHtml(opts.tenantName),
+    unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendTenantPortalInviteNewEmail(
+  to: string,
+  opts: TenantPortalInviteEmailOptions
+): Promise<void> {
+  const subject = `View your lease at ${opts.propertyName} on ${APP_NAME}`;
+  const text = [
+    `Hi ${opts.displayName},`,
+    "",
+    `You've been invited to access your lease at ${opts.propertyName} (${opts.unitLabel}) on ${APP_NAME}.`,
+    "",
+    `Create your account and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("tenant-portal-invite-new.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (TENANT_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    displayName: escapeHtml(opts.displayName),
+    propertyName: escapeHtml(opts.propertyName),
+    unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendTenantPortalInviteExistingEmail(
+  to: string,
+  opts: TenantPortalInviteEmailOptions
+): Promise<void> {
+  const subject = `Accept your lease invite for ${opts.propertyName}`;
+  const text = [
+    `Hi ${opts.displayName},`,
+    "",
+    `You've been invited to access your lease at ${opts.propertyName} (${opts.unitLabel}).`,
+    "",
+    `Sign in and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("tenant-portal-invite-existing.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (TENANT_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    displayName: escapeHtml(opts.displayName),
+    propertyName: escapeHtml(opts.propertyName),
     unitLabel: escapeHtml(opts.unitLabel),
   });
 

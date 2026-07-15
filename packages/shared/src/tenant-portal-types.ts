@@ -91,6 +91,44 @@ export interface ICreateLeasePortalInviteResponse {
   membership: ILeaseTenantMembership;
 }
 
+export interface ICreateLeasePortalInviteBody {
+  /** When true, invite the lease primary tenant (`tenantEmail`). */
+  invitePrimary?: boolean;
+  /** Zero-based indexes into `lease.secondaryTenants` to invite. */
+  secondaryIndexes?: number[];
+}
+
+export interface ICreateLeasePortalInviteResult {
+  emailError?: string;
+  emailSent: boolean;
+  membership: ILeaseTenantMembership;
+}
+
+export interface ICreateLeasePortalInvitesResponse {
+  results: ICreateLeasePortalInviteResult[];
+}
+
+export interface ILeasePortalAccessResponse {
+  memberships: ILeaseTenantMembership[];
+}
+
+export interface ITenantInvitePreviewResponse {
+  hasExistingAccount: boolean;
+  membershipId: string;
+  status: TTenantMembershipStatus;
+  summary: ITenantInviteLeaseSummary;
+}
+
+export interface IResendLeasePortalInviteResponse {
+  emailError?: string;
+  emailSent: boolean;
+  membership: ILeaseTenantMembership;
+}
+
+export interface IRevokeLeasePortalInviteResponse {
+  membership: ILeaseTenantMembership;
+}
+
 export interface ITenantPendingInvite {
   displayName: string;
   expiresAt: string;
