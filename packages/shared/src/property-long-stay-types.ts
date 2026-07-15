@@ -1,4 +1,8 @@
 import type { IPropertyLongStaysListMeta } from "./list-meta-types";
+import type {
+  TPropertyLongStaysListSortBy,
+  TPropertyLongStaysListSortDir,
+} from "./property-long-stay-list-constants";
 
 export type TPropertyLongStayStatus = "active" | "ended";
 
@@ -46,6 +50,8 @@ export interface IPropertyLongStaysListQuery {
   from?: string;
   limit?: number;
   q?: string;
+  sortBy?: TPropertyLongStaysListSortBy;
+  sortDir?: TPropertyLongStaysListSortDir;
   status?: TPropertyLongStayStatus;
   to?: string;
   unitId?: string;
@@ -53,7 +59,7 @@ export interface IPropertyLongStaysListQuery {
 
 export type TPropertyLongStaysListFilters = Pick<
   IPropertyLongStaysListQuery,
-  "from" | "q" | "status" | "to" | "unitId"
+  "from" | "q" | "sortBy" | "sortDir" | "status" | "to" | "unitId"
 >;
 
 export interface IPropertyLongStaysListResponse {

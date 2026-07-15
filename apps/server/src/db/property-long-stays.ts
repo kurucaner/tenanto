@@ -29,6 +29,13 @@ import {
   mapPropertyLongStayRow,
 } from "./mappers";
 import { pool } from "./pool";
+import {
+  buildPropertyLongStaysCursorPredicate,
+  buildPropertyLongStaysOrderByClause,
+  needsUnitJoinForLeaseSort,
+  readPropertyLongStaySortKeyFromRow,
+  resolvePropertyLongStaysListSort,
+} from "./property-long-stays-list-sort";
 
 const LEASE_EFFECTIVE_END = "COALESCE(pls.actual_end_date, pls.lease_end_date)";
 
@@ -78,14 +85,11 @@ function buildPropertyLongStayListParts(
   return { conditions, joinUnits, values };
 }
 
-function formatLeaseStartDateForCursor(leaseStartDate: unknown): string {
-  if (leaseStartDate instanceof Date) {
-    return leaseStartDate.toISOString().slice(0, 10);
+function ensureUnitJoin(joinUnits: string): string {
+  if (joinUnits) {
+    return joinUnits;
   }
-  if (typeof leaseStartDate === "string") {
-    return leaseStartDate.slice(0, 10);
-  }
-  throw new TypeError("invalid lease_start_date");
+  return "LEFT JOIN property_units pu ON pu.id = pls.unit_id";
 }
 
 export class ActiveLongStayConflictError extends Error {
@@ -405,36 +409,49 @@ export const propertyLongStaysDb = {
     filters: TPropertyLongStaysListFilters,
     options: { cursor?: string; limit: number }
   ): Promise<{ longStays: IPropertyLongStay[]; nextCursor: string | null }> {
+    const sort = resolvePropertyLongStaysListSort(filters.sortBy, filters.sortDir);
     const { conditions, joinUnits, values } = buildPropertyLongStayListParts(propertyId, filters);
+    const resolvedJoinUnits = needsUnitJoinForLeaseSort(sort.sortBy)
+      ? ensureUnitJoin(joinUnits)
+      : joinUnits;
     let p = values.length + 1;
 
     if (options.cursor != null && options.cursor !== "") {
       const decoded = decodeLeaseKeysetCursor(options.cursor);
-      conditions.push(
-        `(pls.lease_start_date, pls.created_at, pls.id) < ($${p++}::date, $${p++}::timestamptz, $${p++}::uuid)`
-      );
-      values.push(decoded.leaseStartDate, decoded.createdAt, decoded.id);
+      if (decoded.sortBy !== sort.sortBy || decoded.sortDir !== sort.sortDir) {
+        throw new Error("Invalid cursor");
+      }
+
+      const { nextParamIndex, predicate } = buildPropertyLongStaysCursorPredicate(sort, p);
+      conditions.push(predicate);
+      values.push(decoded.sortKey, decoded.createdAt, decoded.id);
+      p = nextParamIndex;
     }
 
     const limitParam = p;
     values.push(options.limit + 1);
+    const orderByClause = buildPropertyLongStaysOrderByClause(sort);
+    const unitNumberSelect =
+      sort.sortBy === "unit" ? ", pu.unit_number AS unit_number" : "";
 
     const result = await pool.query(
-      `SELECT pls.* FROM property_long_stays pls
-       ${joinUnits}
+      `SELECT pls.*${unitNumberSelect} FROM property_long_stays pls
+       ${resolvedJoinUnits}
        WHERE ${conditions.join(" AND ")}
-       ORDER BY pls.lease_start_date DESC, pls.created_at DESC, pls.id DESC
+       ${orderByClause}
        LIMIT $${limitParam}`,
       values
     );
 
     const rows = result.rows as Record<string, unknown>[];
     const { nextCursor, page: pageRows } = takePageWithNextCursor(rows, options.limit, (last) =>
-      encodeLeaseKeysetCursor(
-        formatLeaseStartDateForCursor(last.lease_start_date),
-        last.created_at as Date | string,
-        last.id as string
-      )
+      encodeLeaseKeysetCursor({
+        createdAt: last.created_at as Date | string,
+        id: last.id as string,
+        sortBy: sort.sortBy,
+        sortDir: sort.sortDir,
+        sortKey: readPropertyLongStaySortKeyFromRow(sort, last),
+      })
     );
 
     return {

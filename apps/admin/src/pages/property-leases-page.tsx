@@ -35,9 +35,11 @@ import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { settingsApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
+import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { formatMoney } from "@/lib/format-money";
 import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import {
@@ -55,6 +57,7 @@ import {
 } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   ExportResourceType,
@@ -62,22 +65,37 @@ import {
   getLeaseOccupancyNames,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
+  isActiveLeaseInHoldover,
+  LEASES_DEFAULT_SORT_BY,
+  LEASES_DEFAULT_SORT_DIR,
+  LEASES_SORT_BY_VALUES,
+  LEASES_SORT_DIR_VALUES,
   PropertyLongStayStatus,
   resolveRentIncomeLineTypeId,
+  type TPropertyLongStaysListSortBy,
+  type TPropertyLongStaysListSortDir,
   type TPropertyLongStayStatus,
 } from "@/packages/shared";
 
 const LEASE_ROW_ESTIMATED_HEIGHT = 44;
 
 const LEASE_COLUMNS: DataTableColumn[] = [
-  { id: "unit", label: "Unit" },
-  { id: "tenant", label: "Tenant" },
-  { id: "start", label: "Start" },
-  { id: "end", label: "End" },
-  { align: "right", id: "rent", label: "Rent/mo" },
-  { id: "status", label: "Status" },
+  { id: "unit", label: "Unit", sortable: true },
+  { id: "tenant", label: "Tenant", sortable: true },
+  { id: "start", label: "Start", sortable: true },
+  { id: "end", label: "End", sortable: true },
+  { align: "right", id: "rent", label: "Rent/mo", sortable: true },
+  { id: "status", label: "Status", sortable: true },
   { id: "actions", label: "Actions" },
 ];
+
+function isLeaseListSortBy(value: string): value is TPropertyLongStaysListSortBy {
+  return (LEASES_SORT_BY_VALUES as readonly string[]).includes(value);
+}
+
+function isLeaseListSortDir(value: string): value is TPropertyLongStaysListSortDir {
+  return (LEASES_SORT_DIR_VALUES as readonly string[]).includes(value);
+}
 
 function getLeaseKey(lease: IPropertyLongStay): string {
   return lease.id;
@@ -87,6 +105,8 @@ function buildLeaseListFilters(
   effectiveFrom: string,
   effectiveTo: string,
   q: string,
+  sortBy: TPropertyLongStaysListSortBy,
+  sortDir: TPropertyLongStaysListSortDir,
   status: string,
   unitId: string
 ): TPropertyLongStaysListFilters {
@@ -95,6 +115,8 @@ function buildLeaseListFilters(
   if (effectiveTo) next.to = effectiveTo;
   if (status && status !== LEASE_STATUS_FILTER_ALL) next.status = status as TPropertyLongStayStatus;
   if (unitId) next.unitId = unitId;
+  if (sortBy) next.sortBy = sortBy;
+  if (sortDir) next.sortDir = sortDir;
   const qTrim = q.trim();
   if (qTrim) next.q = qTrim;
   return next;
@@ -119,6 +141,7 @@ const LeaseRow = memo(
     const navigate = useNavigate();
     const endDate = lease.actualEndDate ?? lease.leaseEndDate;
     const tenantNames = getLeaseOccupancyNames(lease);
+    const isInHoldover = isActiveLeaseInHoldover(lease, getTodayLocalIsoDate());
 
     const handleRowClick = useCallback(() => {
       navigate(leaseDetailPath);
@@ -136,13 +159,18 @@ const LeaseRow = memo(
             ))}
           </div>
         </TableCell>
-        <TableCell>{lease.leaseStartDate}</TableCell>
-        <TableCell>{endDate}</TableCell>
+        <TableCell>{formatIsoDateDisplay(lease.leaseStartDate)}</TableCell>
+        <TableCell>{formatIsoDateDisplay(endDate)}</TableCell>
         <TableCell className="text-right">{formatMoney(lease.monthlyRent)}</TableCell>
         <TableCell>
-          <Badge variant={lease.status === PropertyLongStayStatus.ACTIVE ? "default" : "secondary"}>
-            {lease.status === PropertyLongStayStatus.ACTIVE ? "Active" : "Ended"}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-1">
+            <Badge
+              variant={lease.status === PropertyLongStayStatus.ACTIVE ? "default" : "secondary"}
+            >
+              {lease.status === PropertyLongStayStatus.ACTIVE ? "Active" : "Ended"}
+            </Badge>
+            {isInHoldover ? <Badge variant="outline">Holdover</Badge> : null}
+          </div>
         </TableCell>
         <TableCell>
           <div className="flex items-center gap-1">
@@ -237,6 +265,11 @@ export const PropertyLeasesPage = memo(() => {
     q,
     setFilter
   );
+  const sortController = useUrlTableSort({
+    defaultColumnId: LEASES_DEFAULT_SORT_BY,
+    defaultDirection: LEASES_DEFAULT_SORT_DIR,
+  });
+  const { sortState } = sortController;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [exportTableOpen, setExportTableOpen] = useState(false);
@@ -247,8 +280,17 @@ export const PropertyLeasesPage = memo(() => {
   );
 
   const listQueryFilters = useMemo(
-    () => buildLeaseListFilters(effectiveFrom, effectiveTo, q, status, unitId),
-    [effectiveFrom, effectiveTo, q, status, unitId]
+    () =>
+      buildLeaseListFilters(
+        effectiveFrom,
+        effectiveTo,
+        q,
+        isLeaseListSortBy(sortState.columnId) ? sortState.columnId : LEASES_DEFAULT_SORT_BY,
+        isLeaseListSortDir(sortState.direction) ? sortState.direction : LEASES_DEFAULT_SORT_DIR,
+        status,
+        unitId
+      ),
+    [effectiveFrom, effectiveTo, q, sortState.columnId, sortState.direction, status, unitId]
   );
 
   const { fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, longStays, meta } =
@@ -454,6 +496,7 @@ export const PropertyLeasesPage = memo(() => {
             isRefreshing={isFilterRefetching}
             items={longStays}
             renderRow={renderLeaseRow}
+            sort={sortController}
             toolbar={
               <PropertyLeaseToolbar
                 activeFilterCount={activeSecondaryFilterCount}
@@ -498,6 +541,11 @@ export const PropertyLeasesPage = memo(() => {
           }}
           open={true}
           propertyId={propertyId}
+          rentPeriods={
+            queryClient.getQueryData<IPropertyLongStayDetailResponse>(
+              queryKeys.propertyLongStay(propertyId, endLease.id)
+            )?.rentPeriods ?? []
+          }
         />
       ) : null}
 

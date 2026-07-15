@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/format-money";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
 import { partitionRentSchedule } from "@/lib/lease-rent-schedule-display";
 import {
+  formatProratedDaysLabel,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
   PropertyLongStayStatus,
@@ -68,8 +69,20 @@ function RentScheduleRow({
           <span className="inline-block size-4 shrink-0 rounded-full border" />
         )}
         <div className="min-w-0">
-          <p className="text-sm">{formatLeaseMonthLabel(item.month)}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-sm">{formatLeaseMonthLabel(item.month)}</p>
+            {item.isProrated ? (
+              <Badge className="text-[10px]" variant="outline">
+                Prorated
+              </Badge>
+            ) : null}
+          </div>
           <p className="text-muted-foreground text-xs">{formatMoney(item.expectedRent)}</p>
+          {item.isProrated ? (
+            <p className="text-muted-foreground text-xs">
+              {formatProratedDaysLabel(item.occupiedDays, item.daysInMonth)}
+            </p>
+          ) : null}
         </div>
       </div>
       {action}

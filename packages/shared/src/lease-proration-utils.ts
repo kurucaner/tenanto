@@ -119,3 +119,7 @@ export function isProratedLeaseMonth(
   const occupiedDays = getOccupiedDaysInMonth(month, leaseStartDate, effectiveEndDate);
   return occupiedDays > 0 && occupiedDays < daysInMonth;
 }
+
+export function formatProratedDaysLabel(occupiedDays: number, daysInMonth: number): string {
+  return `${occupiedDays}/${daysInMonth} days`;
+}

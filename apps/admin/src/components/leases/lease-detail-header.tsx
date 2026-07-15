@@ -4,7 +4,12 @@ import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/format-money";
-import { type IPropertyLongStay, PropertyLongStayStatus } from "@/packages/shared";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import {
+  type IPropertyLongStay,
+  isActiveLeaseInHoldover,
+  PropertyLongStayStatus,
+} from "@/packages/shared";
 
 interface LeaseDetailHeaderProps {
   canManage: boolean;
@@ -27,6 +32,7 @@ export const LeaseDetailHeader = memo(
     unitLabel,
   }: LeaseDetailHeaderProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
+    const isInHoldover = isActiveLeaseInHoldover(lease, getTodayLocalIsoDate());
 
     return (
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -36,9 +42,11 @@ export const LeaseDetailHeader = memo(
             <Badge variant={isActive ? "default" : "secondary"}>
               {isActive ? "Active" : "Ended"}
             </Badge>
+            {isInHoldover ? <Badge variant="outline">Holdover</Badge> : null}
           </div>
           <p className="text-muted-foreground text-sm">
             Unit {unitLabel} · {formatMoney(currentRent)}/mo
+            {isInHoldover ? " · Contract ended" : null}
           </p>
         </div>
 

@@ -1,3 +1,5 @@
+import { type IPropertyLongStay, PropertyLongStayStatus } from "./property-long-stay-types";
+
 function formatLocalIsoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -62,4 +64,11 @@ export function validateEndLeaseMoveOutDate(
   }
 
   return null;
+}
+
+export function isActiveLeaseInHoldover(
+  lease: Pick<IPropertyLongStay, "leaseEndDate" | "status">,
+  today: string
+): boolean {
+  return lease.status === PropertyLongStayStatus.ACTIVE && today > lease.leaseEndDate;
 }

@@ -203,6 +203,7 @@ export const PropertyLeaseDetailPage = memo(() => {
           }}
           open={true}
           propertyId={propertyId}
+          rentPeriods={rentPeriods}
         />
       ) : null}
 

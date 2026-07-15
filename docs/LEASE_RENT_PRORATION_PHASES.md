@@ -82,20 +82,20 @@ N/A — safe to ship as corrected billing math. Optional `LEASE_PRORATION_V2` on
 
 **No migration.** Existing fields drive proration:
 
-| Field | Role |
-| --- | --- |
-| `lease_start_date` | First-month occupancy start |
-| `lease_end_date` | Contract end (may be before actual move-out) |
-| `actual_end_date` | Set on end; overrides schedule end when present |
-| `monthly_rent` | Base rate |
+| Field                             | Role                                              |
+| --------------------------------- | ------------------------------------------------- |
+| `lease_start_date`                | First-month occupancy start                       |
+| `lease_end_date`                  | Contract end (may be before actual move-out)      |
+| `actual_end_date`                 | Set on end; overrides schedule end when present   |
+| `monthly_rent`                    | Base rate                                         |
 | `property_long_stay_rent_periods` | Mid-lease rent changes via `getLeaseRentForMonth` |
 
 **Schedule effective end date (v1 rule):**
 
-| Lease status | Effective end for rent schedule |
-| --- | --- |
-| `ended` | `actualEndDate ?? leaseEndDate` |
-| `active`, today ≤ `leaseEndDate` | `leaseEndDate` |
+| Lease status                                | Effective end for rent schedule                            |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| `ended`                                     | `actualEndDate ?? leaseEndDate`                            |
+| `active`, today ≤ `leaseEndDate`            | `leaseEndDate`                                             |
 | `active`, today > `leaseEndDate` (holdover) | `today` (provisional until End Lease sets `actualEndDate`) |
 
 **Proration formula:**
@@ -111,14 +111,14 @@ Where `occupiedDays` is the inclusive overlap of `[leaseStartDate, effectiveEndD
 
 ## Shared contract (`packages/shared`)
 
-| Type / function | Purpose |
-| --- | --- |
-| `getDaysInMonth(month: string): number` | Calendar days for `YYYY-MM` |
-| `getOccupiedDaysInMonth(month, leaseStart, effectiveEnd): number` | Inclusive overlap with lease occupancy |
-| `calculateExpectedRentForLeaseMonth({ month, leaseStartDate, effectiveEndDate, baseMonthlyRent, rentPeriods })` | Prorated or full rent |
-| `getLeaseScheduleEffectiveEndDate(lease, today): string` | Centralize holdover vs ended logic |
-| `isProratedLeaseMonth(...)` | Optional helper for UI badge |
-| Extend `IPropertyLongStayRentMonth` | Optional `isProrated`, `occupiedDays`, `daysInMonth` for UI |
+| Type / function                                                                                                 | Purpose                                                     |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `getDaysInMonth(month: string): number`                                                                         | Calendar days for `YYYY-MM`                                 |
+| `getOccupiedDaysInMonth(month, leaseStart, effectiveEnd): number`                                               | Inclusive overlap with lease occupancy                      |
+| `calculateExpectedRentForLeaseMonth({ month, leaseStartDate, effectiveEndDate, baseMonthlyRent, rentPeriods })` | Prorated or full rent                                       |
+| `getLeaseScheduleEffectiveEndDate(lease, today): string`                                                        | Centralize holdover vs ended logic                          |
+| `isProratedLeaseMonth(...)`                                                                                     | Optional helper for UI badge                                |
+| Extend `IPropertyLongStayRentMonth`                                                                             | Optional `isProrated`, `occupiedDays`, `daysInMonth` for UI |
 
 Update `validateEndLeaseMoveOutDate` / `getEndLeaseMoveOutDateBounds`:
 
@@ -130,10 +130,10 @@ Update `validateEndLeaseMoveOutDate` / `getEndLeaseMoveOutDateBounds`:
 
 ## API (sketch)
 
-| Method | Path | Change |
-| --- | --- | --- |
-| `GET` | `/properties/:id/long-stays/:longStayId` | `rentSchedule[].expectedRent` becomes prorated; optional metadata fields |
-| `POST` | `/properties/:id/long-stays/:longStayId/end` | Relaxed move-out validation; same body `{ actualEndDate }` |
+| Method | Path                                         | Change                                                                   |
+| ------ | -------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET`  | `/properties/:id/long-stays/:longStayId`     | `rentSchedule[].expectedRent` becomes prorated; optional metadata fields |
+| `POST` | `/properties/:id/long-stays/:longStayId/end` | Relaxed move-out validation; same body `{ actualEndDate }`               |
 
 No new endpoints.
 
@@ -219,11 +219,11 @@ N/A.
 
 **Goal:** Operators can complete holdover and early move-out flows with confidence.
 
-- [ ] **End Lease dialog** — update `max` date bounds for holdover; helper text when move-out > lease end
-- [ ] Show live preview: "Final month rent: $X.XX (N/M days)" using shared util (client-side preview OK if inputs match server)
-- [ ] **Lease payments section** — prorated badge/subtitle on partial months
-- [ ] **Start Lease dialog** — first-month rent preview when start date ≠ 1st (read-only, uses shared util)
-- [ ] Copy pass: holdover state when lease is active past `leaseEndDate`
+- [x] **End Lease dialog** — update `max` date bounds for holdover; helper text when move-out > lease end
+- [x] Show live preview: "Final month rent: $X.XX (N/M days)" using shared util (client-side preview OK if inputs match server)
+- [x] **Lease payments section** — prorated badge/subtitle on partial months
+- [x] **Start Lease dialog** — first-month rent preview when start date ≠ 1st (read-only, uses shared util)
+- [x] Copy pass: holdover state when lease is active past `leaseEndDate`
 
 **Exit criteria:** Operator can end lease 5 days after contract end, see prorated July row, record rent at prefilled amount, end lease successfully.
 
@@ -233,15 +233,15 @@ N/A.
 
 **Goal:** Production-safe edge cases and operator clarity.
 
-| Concern | Action |
-| --- | --- |
+| Concern            | Action                                                                 |
+| ------------------ | ---------------------------------------------------------------------- |
 | Holdover ambiguity | Clear copy: schedule uses `today` until End Lease sets `actualEndDate` |
-| Overdue leases | Allow move-out from `leaseEndDate` through `today`, not only today |
-| Extend + prorate | Test extension with rent change on same month as partial end |
-| Refunds | Confirm partial refund still marks month unpaid/paid correctly |
-| Leap year / TZ | Dates stay `YYYY-MM-DD` local ISO; no timezone conversion |
-| Regression | Run `bun test` on shared + server rent schedule + lease-date-utils |
-| Lint/build | `bun run lint` / `build` in admin + server |
+| Overdue leases     | Allow move-out from `leaseEndDate` through `today`, not only today     |
+| Extend + prorate   | Test extension with rent change on same month as partial end           |
+| Refunds            | Confirm partial refund still marks month unpaid/paid correctly         |
+| Leap year / TZ     | Dates stay `YYYY-MM-DD` local ISO; no timezone conversion              |
+| Regression         | Run `bun test` on shared + server rent schedule + lease-date-utils     |
+| Lint/build         | `bun run lint` / `build` in admin + server                             |
 
 **Exit criteria:** Full test matrix green; manual QA checklist completed for 6 scenarios (see below).
 
@@ -268,18 +268,18 @@ N/A.
 
 ## Edge cases reference
 
-| Scenario | Expected behavior |
-| --- | --- |
-| Start 6/16, rent $1,000 | June: $1,000 × (15/30) = $500; July onward: full rent |
-| Move-out 7/15, lease end 12/31 | July: $1,000 × (15/31); Aug–Dec not in schedule |
-| Holdover: lease end 6/30, move-out 7/5 | June: full month; July: $1,000 × (5/31) |
-| Start and end in same month | Single month row, prorated for occupied days only |
-| February 2024 (29 days) | Use 29 as `daysInMonth` |
-| February 2025 (28 days) | Use 28 as `daysInMonth` |
-| Start on 1st | Full first month |
-| End on last day of month | Full last month |
-| Rent increase mid-lease | Proration uses `getLeaseRentForMonth` rate for that calendar month |
-| Active holdover (not yet ended) | Schedule projects through `today` with prorated partial month |
+| Scenario                               | Expected behavior                                                  |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| Start 6/16, rent $1,000                | June: $1,000 × (15/30) = $500; July onward: full rent              |
+| Move-out 7/15, lease end 12/31         | July: $1,000 × (15/31); Aug–Dec not in schedule                    |
+| Holdover: lease end 6/30, move-out 7/5 | June: full month; July: $1,000 × (5/31)                            |
+| Start and end in same month            | Single month row, prorated for occupied days only                  |
+| February 2024 (29 days)                | Use 29 as `daysInMonth`                                            |
+| February 2025 (28 days)                | Use 28 as `daysInMonth`                                            |
+| Start on 1st                           | Full first month                                                   |
+| End on last day of month               | Full last month                                                    |
+| Rent increase mid-lease                | Proration uses `getLeaseRentForMonth` rate for that calendar month |
+| Active holdover (not yet ended)        | Schedule projects through `today` with prorated partial month      |
 
 ---
 
