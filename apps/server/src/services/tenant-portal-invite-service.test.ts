@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
+import type { CreateLeaseTenantMembershipInput } from "@/db/lease-tenant-memberships";
 import type {
   ILeaseTenantMembership,
   IProperty,
@@ -20,7 +21,10 @@ const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null
 const mockFindByIdUnit = mock(() => Promise.resolve(null as IPropertyUnit | null));
 const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
 const mockFindByTokenHash = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockCreateMembership = mock(() => Promise.resolve(makeMembership()));
+const mockCreateMembership = mock(
+  (_input: CreateLeaseTenantMembershipInput): Promise<ILeaseTenantMembership> =>
+    Promise.resolve(makeMembership())
+);
 const mockExpireMembershipIfPastTtl = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
 );
