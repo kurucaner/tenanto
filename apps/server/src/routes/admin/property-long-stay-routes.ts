@@ -29,6 +29,7 @@ import {
   validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
+import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -688,6 +689,11 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
       try {
         const longStay = await propertyLongStaysDb.endLease(longStayId, parsed.body.actualEndDate);
+
+        void notifyPrimaryTenantLeaseEnded({ longStayId, propertyId }).catch((err) => {
+          request.log.error({ err, longStayId, propertyId }, "Failed to send lease ended email");
+        });
+
         return reply.send({ longStay });
       } catch (error) {
         if (error instanceof LongStayNotActiveError) {

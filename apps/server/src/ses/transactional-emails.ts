@@ -26,6 +26,20 @@ export interface RentPaymentRecordedEmailOptions {
   unitLabel: string;
 }
 
+export interface LeaseEndedEmailOptions {
+  contractEndDate: string;
+  finalMonthPlain: string;
+  finalMonthSection: string;
+  holdoverPlain: string;
+  holdoverSection: string;
+  leaseStartDate: string;
+  moveOutDate: string;
+  paymentStatusLine: string;
+  propertyName: string;
+  tenantName: string;
+  unitLabel: string;
+}
+
 const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
 const PLATFORM_APP_URL = process.env.PLATFORM_APP_URL;
@@ -159,6 +173,49 @@ export async function sendRentPaymentRecordedEmail(
     paymentDate: escapeHtml(opts.paymentDate),
     propertyName: escapeHtml(opts.propertyName),
     rentMonthLabel: escapeHtml(opts.rentMonthLabel),
+    tenantName: escapeHtml(opts.tenantName),
+    unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendLeaseEndedEmail(
+  to: string,
+  opts: LeaseEndedEmailOptions
+): Promise<void> {
+  const subject = `Your lease at ${opts.propertyName} has ended`;
+  const text = [
+    `Hi ${opts.tenantName},`,
+    "",
+    `Thank you for your time at ${opts.propertyName}. We recorded your move-out on ${opts.moveOutDate} and your lease is now closed.`,
+    "",
+    `Property: ${opts.propertyName}`,
+    `Unit: ${opts.unitLabel}`,
+    `Lease start: ${opts.leaseStartDate}`,
+    `Contract end: ${opts.contractEndDate}`,
+    `Move-out: ${opts.moveOutDate}`,
+    opts.holdoverPlain ? "" : null,
+    opts.holdoverPlain || null,
+    opts.finalMonthPlain ? "" : null,
+    opts.finalMonthPlain || null,
+    "",
+    opts.paymentStatusLine,
+    "",
+    "If you have questions about your final rent or move-out, contact your property manager.",
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
+
+  const html = renderTemplate("lease-ended.html", {
+    appName: APP_NAME,
+    contractEndDate: escapeHtml(opts.contractEndDate),
+    finalMonthSection: opts.finalMonthSection,
+    holdoverSection: opts.holdoverSection,
+    leaseStartDate: escapeHtml(opts.leaseStartDate),
+    moveOutDate: escapeHtml(opts.moveOutDate),
+    paymentStatusLine: escapeHtml(opts.paymentStatusLine),
+    propertyName: escapeHtml(opts.propertyName),
     tenantName: escapeHtml(opts.tenantName),
     unitLabel: escapeHtml(opts.unitLabel),
   });
