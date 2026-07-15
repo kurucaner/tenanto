@@ -35,6 +35,15 @@ describe("formatLeasePortalAdminStatus", () => {
   test("maps pending statuses to Invite pending", () => {
     expect(formatLeasePortalAdminStatus(memberships[0]!)).toBe("Invite pending");
   });
+
+  test("maps expired status to Expired", () => {
+    expect(
+      formatLeasePortalAdminStatus({
+        ...memberships[0]!,
+        status: "expired",
+      })
+    ).toBe("Expired");
+  });
 });
 
 describe("findLeasePortalMembership", () => {
@@ -49,6 +58,18 @@ describe("getLeasePortalRowState", () => {
   test("offers resend for pending memberships", () => {
     const state = getLeasePortalRowState(memberships[0]!, true);
     expect(state.actions).toEqual(["resend"]);
+  });
+
+  test("offers invite again when membership is expired", () => {
+    const state = getLeasePortalRowState(
+      {
+        ...memberships[0]!,
+        status: "expired",
+      },
+      true
+    );
+    expect(state.statusLabel).toBe("Expired");
+    expect(state.actions).toEqual(["invite"]);
   });
 
   test("disables actions when email is missing", () => {

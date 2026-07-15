@@ -60,7 +60,7 @@ function assertMembershipMatchesTenant(
   }
 }
 
-function assertMembershipActionable(membership: ILeaseTenantMembership): void {
+async function assertMembershipActionable(membership: ILeaseTenantMembership): Promise<void> {
   if (
     membership.status === TenantMembershipStatus.DECLINED ||
     membership.status === TenantMembershipStatus.EXPIRED
@@ -74,7 +74,8 @@ function assertMembershipActionable(membership: ILeaseTenantMembership): void {
     throw new PortalInviteInvalidStateError("This invite is no longer available");
   }
 
-  if (new Date(membership.expiresAt).getTime() <= Date.now()) {
+  const expired = await leaseTenantMembershipsDb.expireMembershipIfPastTtl(membership);
+  if (expired) {
     throw new PortalInviteInvalidStateError("This invite has expired");
   }
 }
@@ -83,7 +84,7 @@ async function acceptMembershipForTenant(
   membership: ILeaseTenantMembership,
   tenantUser: ITenantUser
 ): Promise<ILeaseTenantMembership> {
-  assertMembershipActionable(membership);
+  await assertMembershipActionable(membership);
   assertMembershipMatchesTenant(membership, tenantUser);
 
   let current = membership;
@@ -181,7 +182,7 @@ export const tenantPortalMembershipService = {
       throw new TenantMembershipNotFoundError();
     }
 
-    assertMembershipActionable(membership);
+    await assertMembershipActionable(membership);
     assertMembershipMatchesTenant(membership, tenantUser);
 
     const updated = await leaseTenantMembershipsDb.transitionStatus(

@@ -65,11 +65,11 @@ Stack: **Postgres** (memberships + tenant accounts) + **SES** (invite emails) + 
 
 ### Recommendation: **one Postgres database** (new tables)
 
-| Approach | Verdict |
-| --- | --- |
-| **Same DB, new tables** (`tenant_users`, `lease_tenant_memberships`) | **Start here** |
-| **Same DB, separate schema** (`tenant.*`) | Optional later for clarity; not required for v1 |
-| **Separate Postgres database** | **Defer** until compliance or team boundaries force it |
+| Approach                                                             | Verdict                                                |
+| -------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Same DB, new tables** (`tenant_users`, `lease_tenant_memberships`) | **Start here**                                         |
+| **Same DB, separate schema** (`tenant.*`)                            | Optional later for clarity; not required for v1        |
+| **Separate Postgres database**                                       | **Defer** until compliance or team boundaries force it |
 
 **Why not a separate database now**
 
@@ -139,20 +139,20 @@ sequenceDiagram
 
 **Tenant portal (v1)**
 
-| Action | Who |
-| --- | --- |
-| View active lease summary + rent schedule | Primary or secondary with `active` membership |
-| Accept / decline pending invite | Invited email / logged-in tenant user |
-| End lease | **Operator only** (existing admin flow) |
-| Revoke portal access mid-lease | Operator only |
-| Invite to portal | Property owner or manager (same as long-stay write) |
+| Action                                    | Who                                                 |
+| ----------------------------------------- | --------------------------------------------------- |
+| View active lease summary + rent schedule | Primary or secondary with `active` membership       |
+| Accept / decline pending invite           | Invited email / logged-in tenant user               |
+| End lease                                 | **Operator only** (existing admin flow)             |
+| Revoke portal access mid-lease            | Operator only                                       |
+| Invite to portal                          | Property owner or manager (same as long-stay write) |
 
 **Admin API**
 
-| Action | Who |
-| --- | --- |
-| View portal status on Tenants tab | Any property member (owner, manager, accountant) |
-| Invite / resend / revoke | Property owner or manager (align with long-stay write access) |
+| Action                            | Who                                                           |
+| --------------------------------- | ------------------------------------------------------------- |
+| View portal status on Tenants tab | Any property member (owner, manager, accountant)              |
+| Invite / resend / revoke          | Property owner or manager (align with long-stay write access) |
 
 **Role differences (v1)**
 
@@ -167,34 +167,34 @@ Mirror on server (`assertLeaseTenantAccess`) and tenant app (hide routes without
 
 ### `tenant_users`
 
-| Column | Notes |
-| --- | --- |
-| `id` | UUID PK |
-| `email` | Unique, normalized lowercase |
-| `name` | Display name |
-| `password_hash` | Nullable (social later) |
-| `phone` | Optional |
-| `email_verified_at` | Set on OTP verify |
-| `created_at`, `updated_at` | Timestamps |
+| Column                     | Notes                        |
+| -------------------------- | ---------------------------- |
+| `id`                       | UUID PK                      |
+| `email`                    | Unique, normalized lowercase |
+| `name`                     | Display name                 |
+| `password_hash`            | Nullable (social later)      |
+| `phone`                    | Optional                     |
+| `email_verified_at`        | Set on OTP verify            |
+| `created_at`, `updated_at` | Timestamps                   |
 
 Separate from operator `users` — different auth domain and JWT audience.
 
 ### `lease_tenant_memberships`
 
-| Column | Notes |
-| --- | --- |
-| `id` | UUID PK |
-| `lease_id` | FK → `property_long_stays` |
-| `tenant_user_id` | FK → `tenant_users`, nullable until accepted |
-| `role` | `primary` \| `secondary` |
-| `invite_email` | Normalized email at invite time |
-| `display_name` | Snapshot from lease (`guestName` or secondary name) |
-| `status` | See lifecycle below |
-| `invited_by` | FK → operator `users` |
-| `invite_token_hash` | Hashed magic-link token |
-| `invited_at`, `expires_at` | Invite TTL (default 30 days, mirror `property_invites`) |
-| `accepted_at`, `declined_at`, `revoked_at`, `ended_at` | Lifecycle timestamps |
-| `created_at`, `updated_at` | Timestamps |
+| Column                                                 | Notes                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------- |
+| `id`                                                   | UUID PK                                                 |
+| `lease_id`                                             | FK → `property_long_stays`                              |
+| `tenant_user_id`                                       | FK → `tenant_users`, nullable until accepted            |
+| `role`                                                 | `primary` \| `secondary`                                |
+| `invite_email`                                         | Normalized email at invite time                         |
+| `display_name`                                         | Snapshot from lease (`guestName` or secondary name)     |
+| `status`                                               | See lifecycle below                                     |
+| `invited_by`                                           | FK → operator `users`                                   |
+| `invite_token_hash`                                    | Hashed magic-link token                                 |
+| `invited_at`, `expires_at`                             | Invite TTL (default 30 days, mirror `property_invites`) |
+| `accepted_at`, `declined_at`, `revoked_at`, `ended_at` | Lifecycle timestamps                                    |
+| `created_at`, `updated_at`                             | Timestamps                                              |
 
 **Status enum:** `pending_invite` | `pending_acceptance` | `active` | `declined` | `revoked` | `ended` | `expired`
 
@@ -212,18 +212,18 @@ Separate from operator `users` — different auth domain and JWT audience.
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `TTenantMembershipStatus` | Membership lifecycle enum |
-| `TTenantMembershipRole` | `primary` \| `secondary` |
-| `ITenantUser` | Tenant account (client-safe fields) |
-| `ILeaseTenantMembership` | Membership row for admin + tenant |
-| `ITenantInviteLeaseSummary` | Property name, unit, dates for accept screen |
-| `ITenantLeaseListItem` | Active/past lease card |
-| `ITenantLeaseDetailResponse` | Lease + rent schedule (read-only subset) |
-| `ICreateLeasePortalInviteResponse` | Admin invite result per recipient |
-| `ITenantPendingInvite` | Pending item for tenant home |
-| `ITenantAuth*` | Register/login/refresh bodies (mirror operator shape) |
+| Type                               | Purpose                                               |
+| ---------------------------------- | ----------------------------------------------------- |
+| `TTenantMembershipStatus`          | Membership lifecycle enum                             |
+| `TTenantMembershipRole`            | `primary` \| `secondary`                              |
+| `ITenantUser`                      | Tenant account (client-safe fields)                   |
+| `ILeaseTenantMembership`           | Membership row for admin + tenant                     |
+| `ITenantInviteLeaseSummary`        | Property name, unit, dates for accept screen          |
+| `ITenantLeaseListItem`             | Active/past lease card                                |
+| `ITenantLeaseDetailResponse`       | Lease + rent schedule (read-only subset)              |
+| `ICreateLeasePortalInviteResponse` | Admin invite result per recipient                     |
+| `ITenantPendingInvite`             | Pending item for tenant home                          |
+| `ITenantAuth*`                     | Register/login/refresh bodies (mirror operator shape) |
 
 ---
 
@@ -231,40 +231,40 @@ Separate from operator `users` — different auth domain and JWT audience.
 
 ### Tenant auth (`routes/tenant/tenant-auth-routes.ts`)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `POST` | `/tenant/auth/register/start` | Email OTP |
+| Method | Path                           | Notes                                                 |
+| ------ | ------------------------------ | ----------------------------------------------------- |
+| `POST` | `/tenant/auth/register/start`  | Email OTP                                             |
 | `POST` | `/tenant/auth/register/verify` | Create `tenant_users`, optional pending invite accept |
-| `POST` | `/tenant/auth/login` | Email + password |
-| `POST` | `/tenant/auth/refresh` | Refresh token (separate table or scoped column) |
-| `POST` | `/tenant/auth/logout` | Revoke refresh token |
+| `POST` | `/tenant/auth/login`           | Email + password                                      |
+| `POST` | `/tenant/auth/refresh`         | Refresh token (separate table or scoped column)       |
+| `POST` | `/tenant/auth/logout`          | Revoke refresh token                                  |
 
 ### Tenant portal (`routes/tenant/tenant-lease-routes.ts`)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/tenant/me` | Profile |
-| `GET` | `/tenant/me/invites/pending` | `pending_acceptance` for logged-in user |
-| `POST` | `/tenant/me/invites/:membershipId/accept` | `active` |
-| `POST` | `/tenant/me/invites/:membershipId/decline` | `declined` |
-| `GET` | `/tenant/me/leases` | Active memberships only in v1 |
-| `GET` | `/tenant/me/leases/:leaseId` | Detail + rent schedule |
+| Method | Path                                       | Notes                                   |
+| ------ | ------------------------------------------ | --------------------------------------- |
+| `GET`  | `/tenant/me`                               | Profile                                 |
+| `GET`  | `/tenant/me/invites/pending`               | `pending_acceptance` for logged-in user |
+| `POST` | `/tenant/me/invites/:membershipId/accept`  | `active`                                |
+| `POST` | `/tenant/me/invites/:membershipId/decline` | `declined`                              |
+| `GET`  | `/tenant/me/leases`                        | Active memberships only in v1           |
+| `GET`  | `/tenant/me/leases/:leaseId`               | Detail + rent schedule                  |
 
 ### Public invite redemption
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/tenant/invites/preview?token=` | Lease summary for accept page (no auth) |
-| `POST` | `/tenant/invites/redeem` | Exchange token + auth for accept (register or login body) |
+| Method | Path                             | Notes                                                     |
+| ------ | -------------------------------- | --------------------------------------------------------- |
+| `GET`  | `/tenant/invites/preview?token=` | Lease summary for accept page (no auth)                   |
+| `POST` | `/tenant/invites/redeem`         | Exchange token + auth for accept (register or login body) |
 
 ### Admin — operator (`routes/admin/property-long-stay-routes.ts` or dedicated module)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/properties/:propertyId/long-stays/:leaseId/portal-access` | Memberships + statuses |
-| `POST` | `/properties/:propertyId/long-stays/:leaseId/portal-invites` | Invite primary and/or selected secondaries |
-| `POST` | `/properties/:propertyId/long-stays/:leaseId/portal-invites/:membershipId/resend` | New token + email |
-| `POST` | `/properties/:propertyId/long-stays/:leaseId/portal-invites/:membershipId/revoke` | `revoked` |
+| Method | Path                                                                              | Notes                                      |
+| ------ | --------------------------------------------------------------------------------- | ------------------------------------------ |
+| `GET`  | `/properties/:propertyId/long-stays/:leaseId/portal-access`                       | Memberships + statuses                     |
+| `POST` | `/properties/:propertyId/long-stays/:leaseId/portal-invites`                      | Invite primary and/or selected secondaries |
+| `POST` | `/properties/:propertyId/long-stays/:leaseId/portal-invites/:membershipId/resend` | New token + email                          |
+| `POST` | `/properties/:propertyId/long-stays/:leaseId/portal-invites/:membershipId/revoke` | `revoked`                                  |
 
 ---
 
@@ -272,9 +272,9 @@ Separate from operator `users` — different auth domain and JWT audience.
 
 Reuse `apps/server/src/ses/transactional-emails.ts` + new templates:
 
-| Template | When |
-| --- | --- |
-| `tenant-portal-invite-new.html` | No `tenant_users` row — signup CTA |
+| Template                             | When                                |
+| ------------------------------------ | ----------------------------------- |
+| `tenant-portal-invite-new.html`      | No `tenant_users` row — signup CTA  |
 | `tenant-portal-invite-existing.html` | Account exists — login + accept CTA |
 
 Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLATFORM_APP_URL`).
@@ -285,15 +285,15 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 ### `apps/tenant` (new app)
 
-| Surface | Phase |
-| --- | --- |
-| Theme + scaffold | 2.1 |
-| Auth — login, register (OTP) | 2.3 |
-| Accept invite — public route; lease summary; register or login inline | 2.4 |
-| Pending invitations — accept/decline | 2.5 |
-| Home — active leases (cards) | 2.5 |
-| Lease detail — read-only unit, dates, rent schedule | 3 |
-| Forgot password | 5 (optional) |
+| Surface                                                               | Phase        |
+| --------------------------------------------------------------------- | ------------ |
+| Theme + scaffold                                                      | 2.1          |
+| Auth — login, register (OTP)                                          | 2.3          |
+| Accept invite — public route; lease summary; register or login inline | 2.4          |
+| Pending invitations — accept/decline                                  | 2.5          |
+| Home — active leases (cards)                                          | 2.5          |
+| Lease detail — read-only unit, dates, rent schedule                   | 3            |
+| Forgot password                                                       | 5 (optional) |
 
 ### `apps/admin` (extend)
 
@@ -516,20 +516,134 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 ### Phase 4 — Hardening + lifecycle polish
 
-**Goal:** Production-safe invites and clear lease-end behavior.
+**Goal:** Production-safe invites and clear lease-end behavior. Split into sub-phases so each slice is shippable and testable before the next.
 
-| Concern | Action |
-| --- | --- |
-| Invite expiry | Cron or lazy check: `pending_*` past `expires_at` → `expired` |
-| Rate limits | Invite create per lease; tenant login/register limits |
-| Idempotency | Resend replaces token; duplicate invite returns 409 with existing membership |
-| Wrong email | Document operator revoke + re-invite; no tenant self-removal in v1 |
-| Observability | Structured logs: `tenant_portal.invited`, `.accepted`, `.declined`, `.ended` |
-| Security | Single-use token option; hash tokens at rest; constant-time compare |
-| Past leases | `GET /tenant/me/leases?status=ended` read-only archive (move-out summary) |
-| E2E | Manual test matrix: new user, returning user, decline, revoke, lease end, secondary tenant |
+**Already shipped (Phase 1 / 3 — do not re-implement):**
 
-**Exit criteria:** Failure modes documented; invite TTL works; ended leases move to archive; load test invite accept path.
+| Concern               | Status                                                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Idempotency / 409     | Duplicate pending invite → `DuplicatePortalInviteError` → 409                                                          |
+| Resend replaces token | `updateInviteToken()` on resend                                                                                        |
+| Hash tokens at rest   | `hashPortalInviteToken()` (SHA-256)                                                                                    |
+| Lazy expiry checks    | Preview/redeem/accept reject when `expiresAt <= now` **and** persist `expired` (Phase 4.1); cron + portal-access sweep |
+| Lease end → `ended`   | `endAllNonTerminalForLease()` on end-lease                                                                             |
+| Revoke + re-invite    | Admin Tenants tab + API; terminal statuses allow new invite row                                                        |
+| Global API rate limit | Fastify `rate-limit` on all routes (20/min prod)                                                                       |
+
+---
+
+#### Phase 4.1 — Invite expiry (DB + admin truth)
+
+**Goal:** Expired invites are `expired` in the DB, not only rejected at read time.
+
+**Tasks**
+
+- [x] `expirePendingPortalInvites()` in `lease-tenant-memberships` — `pending_*` where `expires_at <= now` → `expired`
+- [x] Cron (mirror `property-export-expiry-cron`) **or** lazy sweep on `GET .../portal-access` / accept paths
+- [x] Register cron in `server.ts` (production only, if cron path)
+- [x] Tests: pending past TTL → `expired`; admin badge **Expired**; **Invite** available again
+
+**Exit criteria:** Admin Tenants tab status matches DB; accept/preview still blocked after TTL.
+
+---
+
+#### Phase 4.2 — Observability
+
+**Goal:** Debuggable invite lifecycle in production (Datadog / logs).
+
+**Tasks**
+
+- [ ] Structured logs: `tenant_portal.invited`, `.resent`, `.revoked`, `.accepted`, `.declined`, `.ended`
+- [ ] Mirror `tenant-email-campaign-observability.ts` pattern (`WinstonLogger.info` with stable keys)
+- [ ] Emit from invite service, membership service, and lease-end hook
+- [ ] Include `leaseId`, `membershipId`, `inviteEmail` (normalized) in context
+
+**Exit criteria:** Each happy/sad path emits one grep-able event; no raw invite tokens in logs.
+
+---
+
+#### Phase 4.3 — Rate limits (abuse protection)
+
+**Goal:** Throttle invite spam and auth brute-force without breaking normal operator flow.
+
+**Tasks**
+
+- [ ] Per-lease portal invite create limit (Redis counter; mirror `tenant-email-campaign-create-rate-limit`)
+- [ ] Optional tighter limits on `/tenant/auth/register/start` and `/tenant/auth/login` (per IP + per email)
+- [ ] Env vars + 429 responses documented in `apps/server/.env.example`
+- [ ] Tests or manual curl matrix for burst → 429
+
+**Exit criteria:** Burst invite/create returns 429; normal Tenants-tab usage unaffected.
+
+---
+
+#### Phase 4.4 — Security hardening
+
+**Goal:** Close remaining token-handling gaps.
+
+**Tasks**
+
+- [ ] Constant-time compare where raw tokens are verified (if applicable beyond hash lookup)
+- [ ] Optional single-use: clear `invite_token_hash` on accept/redeem so link cannot be reused
+- [ ] Confirm no raw tokens in server logs or RUM (`beforeSend` redaction already in tenant/admin RUM)
+
+**Exit criteria:** Accepted invite link cannot be reused (if single-use enabled); security checklist pass.
+
+---
+
+#### Phase 4.5 — Ended-lease archive (tenant read-only)
+
+**Goal:** Tenants see past leases after move-out.
+
+**Tasks**
+
+- [ ] `GET /tenant/me/leases?status=ended` — extend list endpoint (active remains default)
+- [ ] DB: `findEndedByTenantUserId` (or generalized list with status filter)
+- [ ] Shared types: ended list item / optional ended detail shape
+- [ ] Tenant UI: “Past leases” on `/leases` (or filter); read-only cards
+- [ ] Optional: ended lease detail page (summary only; rent schedule optional)
+
+**Exit criteria:** End lease in admin → tenant sees lease under archive, not active list; no write APIs.
+
+---
+
+#### Phase 4.6 — Docs + E2E matrix
+
+**Goal:** Operators and devs know how failures should behave.
+
+**Tasks**
+
+- [ ] `docs/TENANT_PORTAL_FAILURE_MODES.md` (mirror `TENANT_EMAIL_CAMPAIGN_FAILURE_MODES.md`)
+- [ ] Wrong-email playbook: revoke → fix email on lease → re-invite (no tenant self-removal in v1)
+- [ ] Manual test matrix: new user, returning user, decline, revoke, lease end, secondary tenant, expired invite
+- [ ] Extend `tenant-portal-happy-path.test.ts` or integration script for gaps (expired DB row, 409, revoke)
+
+**Exit criteria:** Failure modes documented; matrix checked off; idempotency/resend still verified.
+
+---
+
+#### Phase 4.7 — Load / soak (optional, pre-prod)
+
+**Goal:** Accept path holds under concurrency.
+
+**Tasks**
+
+- [ ] Document or run light load test on redeem/accept (staging)
+- [ ] Verify no duplicate `active` rows; 409/429 under parallel invites
+
+**Exit criteria:** No regressions under documented concurrency; optional for first production cut.
+
+---
+
+**Phase 4 overall exit criteria:** Failure modes documented; invite TTL works in DB; ended leases in archive; observability in place; rate limits and security hardening shipped (4.3–4.4); load test optional (4.7).
+
+**Suggested implementation order:** 4.1 → 4.2 → 4.3 → 4.4 → 4.5 → 4.6 → 4.7 (optional).
+
+**Minimal three-release cut:**
+
+1. **4.1 + 4.2** — TTL in DB + observable logs
+2. **4.3 + 4.4** — abuse protection + token hardening
+3. **4.5 + 4.6** — archive + documentation
 
 ---
 
@@ -585,26 +699,32 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 8. **Phase 2.4 — Accept invite** — magic link closes the invite loop (primary Phase 2 milestone).
 9. **Phase 2.5 — Portal home** — pending invites + lease list.
 10. **Phase 3 — Admin Tenants tab + lease detail** — operators invite from existing tenant list; no new section.
-11. **Phase 4 — Hardening + ended-lease archive** — production readiness before marketing the portal.
-12. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
+11. **Phase 4.1 — Invite expiry (DB)** — pending rows transition to `expired`; admin truth.
+12. **Phase 4.2 — Observability** — `tenant_portal.*` structured logs.
+13. **Phase 4.3 — Rate limits** — per-lease invite + tenant auth throttles.
+14. **Phase 4.4 — Security hardening** — single-use token option, constant-time compare.
+15. **Phase 4.5 — Ended-lease archive** — `GET /tenant/me/leases?status=ended` + tenant UI.
+16. **Phase 4.6 — Docs + E2E matrix** — failure modes + manual test matrix.
+17. **Phase 4.7 — Load / soak (optional)** — staging concurrency check.
+18. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
 
 ---
 
 ## Where to start (this week)
 
-| Order | Task | Phase |
-| --- | --- | --- |
-| 1 | Read this doc + skim `property-invites.ts` and `auth-routes.ts` | — |
-| 2 | Migration 57 + `lease-tenant-memberships` DB module + shared enums | 0 |
-| 3 | Tenant JWT plugin | 0 |
-| 4 | `POST .../portal-invites` + email templates + invite token | 1.1 |
-| 5 | Tenant register/login/refresh routes | 1.2 |
-| 6 | Accept/redeem + `GET /tenant/me/leases` + lease-end hook | 1.3 |
-| 7 | Shared theme package + scaffold `apps/tenant` | 2.1 |
-| 8 | Tenant API client + auth store | 2.2 |
-| 9 | Login + register OTP pages | 2.3 |
-| 10 | Accept-invite page + redeem | 2.4 |
-| 11 | Pending invites + lease list home | 2.5 |
+| Order | Task                                                               | Phase |
+| ----- | ------------------------------------------------------------------ | ----- |
+| 1     | Read this doc + skim `property-invites.ts` and `auth-routes.ts`    | —     |
+| 2     | Migration 57 + `lease-tenant-memberships` DB module + shared enums | 0     |
+| 3     | Tenant JWT plugin                                                  | 0     |
+| 4     | `POST .../portal-invites` + email templates + invite token         | 1.1   |
+| 5     | Tenant register/login/refresh routes                               | 1.2   |
+| 6     | Accept/redeem + `GET /tenant/me/leases` + lease-end hook           | 1.3   |
+| 7     | Shared theme package + scaffold `apps/tenant`                      | 2.1   |
+| 8     | Tenant API client + auth store                                     | 2.2   |
+| 9     | Login + register OTP pages                                         | 2.3   |
+| 10    | Accept-invite page + redeem                                        | 2.4   |
+| 11    | Pending invites + lease list home                                  | 2.5   |
 
 **First backend milestone:** Phase 1.3 exit — full invite → register → accept → lease list via curl/script.
 
@@ -635,7 +755,17 @@ Phase 2.5 (portal home)                         │
     ↓                                           │
 Phase 3 (Tenants tab badges + lease detail) ←───┘
     ↓
-Phase 4 (hardening + archive)
+Phase 4.1 (invite expiry DB)
+    ↓
+Phase 4.2 (observability)
+    ↓
+Phase 4.3 (rate limits) + Phase 4.4 (security) — can parallelize
+    ↓
+Phase 4.5 (ended-lease archive)
+    ↓
+Phase 4.6 (docs + E2E matrix)
+    ↓
+Phase 4.7 (load / soak, optional)
     ↓
 Phase 5 (enhancements + scale)
 ```

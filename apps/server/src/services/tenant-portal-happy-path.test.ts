@@ -26,6 +26,9 @@ const mockLinkTenantUser = mock((membership: ILeaseTenantMembership) =>
 const mockTransitionStatus = mock((membership: ILeaseTenantMembership) =>
   Promise.resolve(membership)
 );
+const mockExpireMembershipIfPastTtl = mock(() =>
+  Promise.resolve(null as ILeaseTenantMembership | null)
+);
 const mockEndAllNonTerminalForLease = mock(() => Promise.resolve([] as ILeaseTenantMembership[]));
 const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
@@ -42,6 +45,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
   },
   leaseTenantMembershipsDb: {
     endAllNonTerminalForLease: mockEndAllNonTerminalForLease,
+    expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
     findActiveByTenantUserId: mockFindActiveByTenantUserId,
     findById: mockFindByIdMembership,
     findByTokenHash: mockFindByTokenHash,
@@ -165,6 +169,7 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     mockFindPendingAcceptanceByTenantUserId.mockReset();
     mockLinkTenantUser.mockReset();
     mockTransitionStatus.mockReset();
+    mockExpireMembershipIfPastTtl.mockReset();
     mockEndAllNonTerminalForLease.mockReset();
     mockFindByIdLease.mockReset();
     mockFindByIdProperty.mockReset();
@@ -175,6 +180,7 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     mockFindByIdProperty.mockResolvedValue(makeProperty());
     mockFindByIdUnit.mockResolvedValue(makeUnit());
     mockFindTenantById.mockResolvedValue(makeTenant());
+    mockExpireMembershipIfPastTtl.mockResolvedValue(null);
 
     mockLinkTenantUser.mockImplementation(async (_id, _tenantUserId) =>
       makeMembership({ tenantUserId: "tenant-1" })

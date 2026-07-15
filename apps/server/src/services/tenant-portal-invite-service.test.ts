@@ -21,6 +21,10 @@ const mockFindByIdUnit = mock(() => Promise.resolve(null as IPropertyUnit | null
 const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
 const mockFindByTokenHash = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
 const mockCreateMembership = mock(() => Promise.resolve(makeMembership()));
+const mockExpireMembershipIfPastTtl = mock(() =>
+  Promise.resolve(null as ILeaseTenantMembership | null)
+);
+const mockExpirePendingPortalInvites = mock(() => Promise.resolve(0));
 const mockSendNewEmail = mock(() => Promise.resolve());
 const mockSendExistingEmail = mock(() => Promise.resolve());
 
@@ -50,6 +54,8 @@ mock.module("@/db/lease-tenant-memberships", () => ({
   },
   leaseTenantMembershipsDb: {
     create: mockCreateMembership,
+    expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
+    expirePendingPortalInvites: mockExpirePendingPortalInvites,
     findByTokenHash: mockFindByTokenHash,
   },
 }));
@@ -148,7 +154,10 @@ describe("tenantPortalInviteService.createInvites", () => {
     mockFindByIdProperty.mockReset();
     mockFindByIdUnit.mockReset();
     mockFindByEmail.mockReset();
+    mockFindByTokenHash.mockReset();
     mockCreateMembership.mockReset();
+    mockExpireMembershipIfPastTtl.mockReset();
+    mockExpirePendingPortalInvites.mockReset();
     mockSendNewEmail.mockReset();
     mockSendExistingEmail.mockReset();
 
@@ -156,6 +165,8 @@ describe("tenantPortalInviteService.createInvites", () => {
     mockFindByIdProperty.mockResolvedValue(makeProperty());
     mockFindByIdUnit.mockResolvedValue(makeUnit());
     mockFindByEmail.mockResolvedValue(null);
+    mockExpireMembershipIfPastTtl.mockResolvedValue(null);
+    mockExpirePendingPortalInvites.mockResolvedValue(0);
     mockCreateMembership.mockImplementation(async (input) =>
       makeMembership({
         inviteEmail: input.inviteEmail,
@@ -254,15 +265,21 @@ describe("tenantPortalInviteService.previewInvite", () => {
   });
 
   test("rejects expired invites", async () => {
-    mockFindByTokenHash.mockResolvedValue(
+    const pending = makeMembership({
+      expiresAt: new Date(Date.now() - 86_400_000).toISOString(),
+      status: TenantMembershipStatus.PENDING_INVITE,
+    });
+    mockFindByTokenHash.mockResolvedValue(pending);
+    mockExpireMembershipIfPastTtl.mockResolvedValue(
       makeMembership({
-        expiresAt: new Date(Date.now() - 86_400_000).toISOString(),
-        status: TenantMembershipStatus.PENDING_INVITE,
+        ...pending,
+        status: TenantMembershipStatus.EXPIRED,
       })
     );
 
     await expect(tenantPortalInviteService.previewInvite("expired")).rejects.toThrow(
       "This invite has expired"
     );
+    expect(mockExpireMembershipIfPastTtl).toHaveBeenCalledWith(pending);
   });
 });

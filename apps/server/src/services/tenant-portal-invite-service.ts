@@ -262,6 +262,8 @@ export const tenantPortalInviteService = {
     if (!context) {
       throw new PortalInviteNotFoundError("Long stay not found");
     }
+    // Lazy TTL sweep so admin Tenants tab status matches DB without waiting for cron.
+    await leaseTenantMembershipsDb.expirePendingPortalInvites();
     return leaseTenantMembershipsDb.findByLeaseId(leaseId);
   },
 
@@ -276,7 +278,8 @@ export const tenantPortalInviteService = {
       throw new PortalInviteInvalidStateError("This invite is no longer available");
     }
 
-    if (new Date(membership.expiresAt).getTime() <= Date.now()) {
+    const expired = await leaseTenantMembershipsDb.expireMembershipIfPastTtl(membership);
+    if (expired) {
       throw new PortalInviteInvalidStateError("This invite has expired");
     }
 

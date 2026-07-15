@@ -132,6 +132,49 @@ export const leaseTenantMembershipsDb = {
     return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
   },
 
+  /**
+   * If this membership is pending and past TTL, flip it to `expired` and return the updated row.
+   * Returns null when no transition is needed.
+   */
+  async expireMembershipIfPastTtl(
+    membership: ILeaseTenantMembership,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership | null> {
+    const isPending =
+      membership.status === TenantMembershipStatus.PENDING_INVITE ||
+      membership.status === TenantMembershipStatus.PENDING_ACCEPTANCE;
+    if (!isPending || new Date(membership.expiresAt).getTime() > Date.now()) {
+      return null;
+    }
+    return leaseTenantMembershipsDb.transitionStatus(
+      membership.id,
+      TenantMembershipStatus.EXPIRED,
+      db
+    );
+  },
+
+  /**
+   * Persist TTL: pending invites past `expires_at` become `expired` in the DB.
+   * Used by the production cron and lazy sweeps (portal-access / accept paths).
+   */
+  async expirePendingPortalInvites(db: DbQueryable = pool): Promise<number> {
+    const result = await db.query(
+      `UPDATE lease_tenant_memberships
+       SET status = $1::tenant_membership_status
+       WHERE status IN (
+           $2::tenant_membership_status,
+           $3::tenant_membership_status
+         )
+         AND expires_at <= NOW()`,
+      [
+        TenantMembershipStatus.EXPIRED,
+        TenantMembershipStatus.PENDING_INVITE,
+        TenantMembershipStatus.PENDING_ACCEPTANCE,
+      ]
+    );
+    return result.rowCount ?? 0;
+  },
+
   async findActiveByLeaseAndTenantUser(
     leaseId: string,
     tenantUserId: string,

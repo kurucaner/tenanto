@@ -42,6 +42,7 @@ import { supportRoutes } from "./routes/support-routes";
 import { tenantAuthRoutes } from "./routes/tenant/tenant-auth-routes";
 import { tenantLeaseRoutes } from "./routes/tenant/tenant-lease-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
+import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
@@ -179,6 +180,7 @@ const start = async () => {
     if (pm2Instance === undefined || pm2Instance === "0") {
       startRefreshTokenCleanupCron();
       startPropertyExportExpiryCron();
+      startPortalInviteExpiryCron();
     }
 
     await notificationStreamHub.start();

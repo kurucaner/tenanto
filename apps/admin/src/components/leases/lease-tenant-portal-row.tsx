@@ -45,8 +45,7 @@ export const LeaseTenantPortalRow = memo(function LeaseTenantPortalRow({
   portalState,
 }: ILeaseTenantPortalRowProps) {
   const membershipId = portalState.membership?.id ?? null;
-  const isActingOnRow =
-    actingMembershipId === membershipId || (!membershipId && actingAction != null);
+  const isActingOnRow = actingAction != null && actingMembershipId === membershipId;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
