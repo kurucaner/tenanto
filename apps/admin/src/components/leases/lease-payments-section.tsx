@@ -7,11 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format-money";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
+import { getActiveLeaseHoldoverScheduleNotice } from "@/lib/lease-proration-display";
 import { partitionRentSchedule } from "@/lib/lease-rent-schedule-display";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   formatProratedDaysLabel,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
+  isActiveLeaseInHoldover,
   PropertyLongStayStatus,
 } from "@/packages/shared";
 
@@ -262,6 +265,7 @@ export const LeasePaymentsSection = memo(
   ({ canManage, isPending, lease, onRecordRent, rentSchedule }: LeasePaymentsSectionProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
     const canRecord = canManage && isActive;
+    const isInHoldover = isActiveLeaseInHoldover(lease, getTodayLocalIsoDate());
     const { paidMonths, unpaidMonths, unpaidSummary } = useMemo(
       () => partitionRentSchedule(rentSchedule),
       [rentSchedule]
@@ -270,6 +274,9 @@ export const LeasePaymentsSection = memo(
     return (
       <Card>
         <CardContent className="space-y-4">
+          {isInHoldover ? (
+            <p className="text-muted-foreground text-sm">{getActiveLeaseHoldoverScheduleNotice()}</p>
+          ) : null}
           {renderScheduleContent({
             canRecord,
             isPending,

@@ -50,10 +50,11 @@ export const EndLeaseDialog = memo(
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
     const { defaultDate, maxDate, minDate } = getEndLeaseMoveOutDateBounds(
+      lease.leaseStartDate,
       lease.leaseEndDate,
       today
     );
-
+    const isSingleMoveOutDate = minDate === maxDate;
     const isInHoldover = isActiveLeaseInHoldover(lease, today);
 
     const endLeaseSchema = useMemo(
@@ -65,6 +66,7 @@ export const EndLeaseDialog = memo(
           .superRefine((values, ctx) => {
             const error = validateEndLeaseMoveOutDate(
               values.actualEndDate,
+              lease.leaseStartDate,
               lease.leaseEndDate,
               today
             );
@@ -76,7 +78,7 @@ export const EndLeaseDialog = memo(
               });
             }
           }),
-      [lease.leaseEndDate, today]
+      [lease.leaseEndDate, lease.leaseStartDate, today]
     );
 
     const form = useForm<TEndLeaseFormValues>({
@@ -89,8 +91,8 @@ export const EndLeaseDialog = memo(
     const moveOutDate = form.watch("actualEndDate");
 
     const boundsHelperText = useMemo(
-      () => getEndLeaseMoveOutBoundsHelperText(lease.leaseEndDate, today),
-      [lease.leaseEndDate, today]
+      () => getEndLeaseMoveOutBoundsHelperText(lease.leaseStartDate, lease.leaseEndDate, today),
+      [lease.leaseEndDate, lease.leaseStartDate, today]
     );
 
     const holdoverHelperText = useMemo(
@@ -153,13 +155,20 @@ export const EndLeaseDialog = memo(
             <div className="flex flex-col gap-4 px-6 py-5">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="end-lease-date">Move-out Date</Label>
-                <Input
-                  id="end-lease-date"
-                  max={maxDate}
-                  min={minDate}
-                  type="date"
-                  {...form.register("actualEndDate")}
-                />
+                {isSingleMoveOutDate ? (
+                  <>
+                    <input type="hidden" {...form.register("actualEndDate")} />
+                    <Input id="end-lease-date" readOnly type="date" value={minDate} />
+                  </>
+                ) : (
+                  <Input
+                    id="end-lease-date"
+                    max={maxDate}
+                    min={minDate}
+                    type="date"
+                    {...form.register("actualEndDate")}
+                  />
+                )}
                 <p className="text-muted-foreground text-xs">{boundsHelperText}</p>
                 {holdoverHelperText ? (
                   <p className="text-muted-foreground text-xs">{holdoverHelperText}</p>

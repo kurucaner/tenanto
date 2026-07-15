@@ -75,12 +75,16 @@ export function getStartLeaseFirstMonthRentPreview(input: {
   return formatLeaseMonthRentPreviewLabel("First month rent", rent);
 }
 
-export function getEndLeaseMoveOutBoundsHelperText(leaseEndDate: string, today: string): string {
+export function getEndLeaseMoveOutBoundsHelperText(
+  leaseStartDate: string,
+  leaseEndDate: string,
+  today: string
+): string {
   if (today > leaseEndDate) {
     return `Select the actual move-out date between ${formatIsoDateDisplay(leaseEndDate)} and ${formatIsoDateDisplay(today)}.`;
   }
 
-  return "Move-out is recorded as today.";
+  return `Select the move-out date between ${formatIsoDateDisplay(leaseStartDate)} and ${formatIsoDateDisplay(today)}.`;
 }
 
 export function getEndLeaseHoldoverHelperText(
@@ -95,5 +99,9 @@ export function getEndLeaseHoldoverHelperText(
 }
 
 export function getActiveLeaseHoldoverNotice(leaseEndDate: string): string {
-  return `This lease passed its contract end date on ${formatIsoDateDisplay(leaseEndDate)}. Rent accrues through today until you record the actual move-out date.`;
+  return `This lease passed its contract end date on ${formatIsoDateDisplay(leaseEndDate)}. Rent accrues through today until you end the lease with the actual move-out date.`;
+}
+
+export function getActiveLeaseHoldoverScheduleNotice(): string {
+  return "Holdover rent is estimated through today and updates daily until you end the lease with the actual move-out date.";
 }

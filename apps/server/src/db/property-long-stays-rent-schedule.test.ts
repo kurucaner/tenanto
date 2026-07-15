@@ -284,4 +284,87 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isProrated: false,
     });
   });
+
+  test("prorates an extended lease final month using the rent period rate for that month", async () => {
+    currentLeaseRow = buildLeaseRow({
+      actual_end_date: "2025-06-15",
+      id: "lease-extended-partial-end",
+      lease_end_date: "2025-06-15",
+      lease_start_date: "2024-06-16",
+      monthly_rent: "1200.00",
+      status: PropertyLongStayStatus.ENDED,
+      term_months: 12,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      {
+        effective_from_month: "2024-07",
+        monthly_rent: "1000.00",
+      },
+      {
+        effective_from_month: "2025-06",
+        monthly_rent: "1200.00",
+      },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-extended-partial-end",
+      "2025-06-15"
+    );
+
+    expect(schedule.find((month) => month.month === "2025-06")).toEqual({
+      daysInMonth: 30,
+      expectedRent: 600,
+      isPaid: false,
+      isProrated: true,
+      month: "2025-06",
+      occupiedDays: 15,
+    });
+  });
+
+  test("marks a prorated month paid when partial refund leaves reportable rent", async () => {
+    currentLeaseRow = buildLeaseRow({
+      id: "lease-prorated-refund",
+      lease_end_date: "2024-12-31",
+      lease_start_date: "2024-06-16",
+      monthly_rent: "1000.00",
+      term_months: 12,
+    });
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-partial-june",
+        net_income: "500.00",
+        refunded_amount: "200.00",
+        refunded_at: new Date("2024-07-01T00:00:00.000Z"),
+        transaction_date: "2024-06-20",
+      }),
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-refunded-july",
+        net_income: "500.00",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2024-08-01T00:00:00.000Z"),
+        transaction_date: "2024-07-20",
+      }),
+    ];
+    currentRentPeriodRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-prorated-refund", "2024-12-31");
+
+    expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
+      expectedRent: 500,
+      incomeLineId: "line-partial-june",
+      isPaid: true,
+      isProrated: true,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
+      expectedRent: 1000,
+      isPaid: false,
+      isProrated: false,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")?.incomeLineId).toBeUndefined();
+  });
 });

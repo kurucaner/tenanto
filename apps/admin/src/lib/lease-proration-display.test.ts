@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   getActiveLeaseHoldoverNotice,
+  getActiveLeaseHoldoverScheduleNotice,
   getEndLeaseHoldoverHelperText,
   getEndLeaseMoveOutBoundsHelperText,
   getEndLeaseMoveOutRentPreview,
@@ -60,14 +61,21 @@ describe("getStartLeaseFirstMonthRentPreview", () => {
 describe("getEndLeaseMoveOutBoundsHelperText", () => {
   test("describes the holdover date range when the lease is overdue", () => {
     expect(getEndLeaseMoveOutBoundsHelperText("2026-01-15", "2026-06-30", "2026-07-09")).toBe(
-      "Select the actual move-out date between 6/30/2026 and 7/9/2026."
+      "Select the actual move-out date between 06/30/2026 and 07/09/2026."
     );
   });
 
   test("describes the early move-out date range for active leases still within term", () => {
     expect(getEndLeaseMoveOutBoundsHelperText("2026-01-15", "2026-12-31", "2026-07-09")).toBe(
-      "Select the move-out date between 1/15/2026 and 7/9/2026."
+      "Select the move-out date between 01/15/2026 and 07/09/2026."
     );
+  });
+});
+
+describe("getActiveLeaseHoldoverScheduleNotice", () => {
+  test("explains that holdover rent is estimated through today", () => {
+    expect(getActiveLeaseHoldoverScheduleNotice()).toContain("estimated through today");
+    expect(getActiveLeaseHoldoverScheduleNotice()).toContain("actual move-out date");
   });
 });
 
@@ -86,7 +94,7 @@ describe("getEndLeaseHoldoverHelperText", () => {
 
 describe("getActiveLeaseHoldoverNotice", () => {
   test("mentions the contract end date", () => {
-    expect(getActiveLeaseHoldoverNotice("2026-06-30")).toContain("6/30/2026");
-    expect(getActiveLeaseHoldoverNotice("2026-06-30")).toContain("Rent accrues through today");
+    expect(getActiveLeaseHoldoverNotice("2026-06-30")).toContain("06/30/2026");
+    expect(getActiveLeaseHoldoverNotice("2026-06-30")).toContain("actual move-out date");
   });
 });

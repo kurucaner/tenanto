@@ -245,7 +245,14 @@ N/A.
 
 **Exit criteria:** Full test matrix green; manual QA checklist completed for 6 scenarios (see below).
 
-**Manual QA checklist**
+- [x] Holdover schedule notice in payments section (`getActiveLeaseHoldoverScheduleNotice`)
+- [x] Move-out bounds allow `leaseStartDate` → `today` (in-term) and `leaseEndDate` → `today` (overdue/holdover)
+- [x] Server test: extended lease partial end with rent period rate (`lease-extended-partial-end`)
+- [x] Server test: prorated month partial refund paid / full refund unpaid (`lease-prorated-refund`)
+- [x] Shared regression matrix: `lease-proration-regression.test.ts` (6 manual QA scenarios + TZ)
+- [x] Regression + lint/build verified
+
+**Manual QA checklist** (automated in `lease-proration-regression.test.ts`)
 
 1. Mid-month start → prorated first month
 2. Early move-out → prorated last month
