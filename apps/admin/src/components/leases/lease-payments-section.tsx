@@ -266,7 +266,7 @@ export const LeasePaymentsSection = memo(
 
     return (
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4">
           {renderScheduleContent({
             canRecord,
             isPending,
