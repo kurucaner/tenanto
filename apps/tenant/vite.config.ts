@@ -20,15 +20,14 @@ export default defineConfig({
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPackage.version),
   },
   plugins: [
-    appUiThemeInitPlugin("admin"),
+    appUiThemeInitPlugin("tenant"),
     react(),
     babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
   ],
   preview: {
-    allowedHosts: [".propertyos.app"],
     host: true,
-    port: Number(process.env.PORT) || 4173,
+    port: Number(process.env.PORT) || 4174,
     strictPort: true,
   },
   resolve: {
@@ -43,5 +42,9 @@ export default defineConfig({
       },
       { find: "@", replacement: path.resolve(__dirname, "src") },
     ],
+  },
+  server: {
+    port: 5174,
+    strictPort: true,
   },
 });
