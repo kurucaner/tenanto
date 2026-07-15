@@ -1,3 +1,5 @@
+const path = require("node:path");
+
 const { defineConfig } = require("eslint/config");
 const typescriptParser = require("@typescript-eslint/parser");
 const typescriptPlugin = require("@typescript-eslint/eslint-plugin");
@@ -15,6 +17,7 @@ module.exports = defineConfig([
       parserOptions: {
         ecmaVersion: "latest",
         sourceType: "module",
+        tsconfigRootDir: path.dirname(__filename),
       },
     },
     plugins: {
