@@ -1,7 +1,7 @@
 // Re-export all types from organized modules
 
 // Status Codes
-export { AccountError, HttpStatus, JwtError } from "./status-enums";
+export { AccountError, HttpStatus, JwtAudience, JwtError } from "./status-enums";
 
 // User Types
 export type { IUser } from "./user";
@@ -533,7 +533,6 @@ export {
   type ITenantLeaseListItem,
   type ITenantPendingInvite,
   type ITenantUser,
-  TENANT_JWT_AUDIENCE,
   TenantMembershipRole,
   TenantMembershipStatus,
   type TTenantMembershipRole,

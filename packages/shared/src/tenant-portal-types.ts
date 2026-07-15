@@ -19,8 +19,6 @@ export const TenantMembershipStatus = {
 export type TTenantMembershipStatus =
   (typeof TenantMembershipStatus)[keyof typeof TenantMembershipStatus];
 
-export const TENANT_JWT_AUDIENCE = "tenant" as const;
-
 export interface ITenantUser {
   createdAt: string;
   email: string;

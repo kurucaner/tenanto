@@ -4,19 +4,20 @@ import fastifyJwt from "@fastify/jwt";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 
-import { HttpStatus, JwtError, TENANT_JWT_AUDIENCE, UserType } from "@/packages/shared";
+import { HttpStatus, JwtAudience, JwtError, UserType } from "@/packages/shared";
 
 const ACCESS_TOKEN_EXPIRY = "1d";
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
 export interface JwtUserPayload {
+  aud: JwtAudience.PLATFORM;
   email: string;
   userId: string;
   userType: UserType;
 }
 
 export interface TenantJwtPayload {
-  aud: typeof TENANT_JWT_AUDIENCE;
+  aud: JwtAudience.TENANT;
   email: string;
   tenantUserId: string;
 }
@@ -46,6 +47,13 @@ const jwtPlugin = async (server: FastifyInstance) => {
   server.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await request.jwtVerify();
+      if (request.user.aud !== JwtAudience.PLATFORM) {
+        reply.status(HttpStatus.UNAUTHORIZED).send({
+          code: JwtError.TOKEN_INVALID,
+          error: "Unauthorized",
+        });
+        return;
+      }
     } catch (err: unknown) {
       const code =
         (err as { code?: string })?.code === "FST_JWT_AUTHORIZATION_TOKEN_EXPIRED"
@@ -64,8 +72,15 @@ const jwtPlugin = async (server: FastifyInstance) => {
 
 export const jwtAuthPlugin = fp(jwtPlugin, { name: "jwt-auth" });
 
-export const signAccessToken = (server: FastifyInstance, payload: JwtUserPayload): string => {
-  return server.jwt.sign(payload, { expiresIn: ACCESS_TOKEN_EXPIRY });
+export type SignAccessTokenInput = Omit<JwtUserPayload, "aud">;
+
+export const signAccessToken = (server: FastifyInstance, payload: SignAccessTokenInput): string => {
+  return server.jwt.sign(
+    { ...payload, aud: JwtAudience.PLATFORM },
+    {
+      expiresIn: ACCESS_TOKEN_EXPIRY,
+    }
+  );
 };
 
 export const generateRefreshToken = (): string => {
