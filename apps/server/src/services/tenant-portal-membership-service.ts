@@ -199,10 +199,7 @@ export const tenantPortalMembershipService = {
     return updated;
   },
 
-  async getLeaseDetail(
-    leaseId: string,
-    tenantUserId: string
-  ): Promise<ITenantLeaseDetailResponse> {
+  async getLeaseDetail(leaseId: string, tenantUserId: string): Promise<ITenantLeaseDetailResponse> {
     const membership = await assertLeaseTenantReadAccess(leaseId, tenantUserId);
     const lease = await propertyLongStaysDb.findById(leaseId);
     if (!lease) {

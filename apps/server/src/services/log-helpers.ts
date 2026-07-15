@@ -40,10 +40,7 @@ export function redactSensitiveQueryParamsFromUrl(url: string): string {
     }
     return u.pathname + u.search;
   } catch {
-    return url.replaceAll(
-      /([?&])(access_token|refresh_token|token)=[^&]*/gi,
-      "$1$2=[REDACTED]"
-    );
+    return url.replaceAll(/([?&])(access_token|refresh_token|token)=[^&]*/gi, "$1$2=[REDACTED]");
   }
 }
 
