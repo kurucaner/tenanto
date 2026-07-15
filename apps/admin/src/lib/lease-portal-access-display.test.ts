@@ -39,9 +39,9 @@ describe("formatLeasePortalAdminStatus", () => {
 
 describe("findLeasePortalMembership", () => {
   test("matches primary tenant by normalized email", () => {
-    expect(
-      findLeasePortalMembership(memberships, "primary", "  Alex@Example.COM ")?.id
-    ).toBe("membership-1");
+    expect(findLeasePortalMembership(memberships, "primary", "  Alex@Example.COM ")?.id).toBe(
+      "membership-1"
+    );
   });
 });
 

@@ -11,6 +11,7 @@ import {
   type ITenantPendingInvitesResponse,
 } from "@/packages/shared";
 import { parseUuidParam } from "@/routes/notification-query-utils";
+import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 import {
   PortalInviteInvalidStateError,
   PortalInviteNotFoundError,
@@ -20,7 +21,6 @@ import {
   TenantMembershipNotFoundError,
   tenantPortalMembershipService,
 } from "@/services/tenant-portal-membership-service";
-import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 
 function parseRedeemBody(body: unknown): ITenantInviteRedeemBody | null {
   if (body == null || typeof body !== "object") {

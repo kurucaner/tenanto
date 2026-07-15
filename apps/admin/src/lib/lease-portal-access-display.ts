@@ -117,7 +117,10 @@ export function getLeasePortalInviteAllTargets(
     TenantMembershipRole.PRIMARY,
     lease.tenantEmail
   );
-  const primaryState = getLeasePortalRowState(primaryMembership, Boolean(lease.tenantEmail?.trim()));
+  const primaryState = getLeasePortalRowState(
+    primaryMembership,
+    Boolean(lease.tenantEmail?.trim())
+  );
 
   const secondaryIndexes = lease.secondaryTenants
     .map((tenant, index) => {
