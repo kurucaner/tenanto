@@ -654,12 +654,10 @@ Detailed phased plan: **[TENANT_PORTAL_ENHANCEMENTS_PHASES.md](./TENANT_PORTAL_E
 **Product enhancements**
 
 - [ ] Auto-invite on lease create (per-property setting, default off)
-- [ ] Google / Apple sign-in for tenants
-- [ ] Phone OTP for tenants without email
-- [ ] Push notifications (Expo) for invite received, rent recorded
+- [%] Google / Apple sign-in for tenants
+- [%] Phone OTP for tenants without email
 - [ ] Maintenance requests + attachments (MinIO)
 - [ ] Rent payments
-- [ ] In-app messaging with operators
 - [ ] Tenant “disconnect from lease” (portal-only, not lease end)
 - [ ] `packages/app-ui` — extend shared primitives extracted in Phase 2.1–2.3 (full shadcn catalog only if both apps need it)
 - [ ] SSE for tenant notifications (extend `notification-stream-hub` with tenant channel or separate stream)

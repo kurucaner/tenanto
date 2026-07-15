@@ -1,12 +1,14 @@
 import { clearAppSession } from "@/lib/clear-app-session";
 import { createApiClient } from "@/packages/app-ui";
 import {
+  type ITenantAppleAuthBody,
   type ITenantAuthLoginBody,
   type ITenantAuthLogoutBody,
   type ITenantAuthRefreshBody,
   type ITenantAuthRegisterStartBody,
   type ITenantAuthRegisterVerifyBody,
   type ITenantAuthSessionResponse,
+  type ITenantGoogleAuthBody,
   type ITenantInvitePreviewResponse,
   type ITenantInviteRedeemBody,
   type ITenantInviteRedeemResponse,
@@ -54,6 +56,21 @@ export const tenantAuthApi = {
       method: "POST",
     }),
 
+  loginApple: (body: ITenantAppleAuthBody) =>
+    request<ITenantAuthSessionResponse>("/tenant/auth/apple", {
+      body: JSON.stringify({
+        identityToken: body.identityToken,
+        ...(body.name != null && body.name.trim() !== "" ? { name: body.name.trim() } : {}),
+      }),
+      method: "POST",
+    }),
+
+  loginGoogle: (idToken: string) =>
+    request<ITenantAuthSessionResponse>("/tenant/auth/google", {
+      body: JSON.stringify({ idToken } satisfies ITenantGoogleAuthBody),
+      method: "POST",
+    }),
+
   logout: (body: ITenantAuthLogoutBody) =>
     request<{ success: boolean }>("/tenant/auth/logout", {
       body: JSON.stringify({ refreshToken: body.refreshToken }),
@@ -94,7 +111,7 @@ export const tenantPortalApi = {
   declineInvite: (membershipId: string) =>
     authenticatedRequest<ITenantMembershipActionResponse>(
       `/tenant/me/invites/${encodeURIComponent(membershipId)}/decline`,
-      { method: "POST" }
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   getLease: (leaseId: string) =>
@@ -106,9 +123,7 @@ export const tenantPortalApi = {
 
   listLeases: (status: TTenantLeaseListStatus = TenantLeaseListStatus.ACTIVE) => {
     const query =
-      status === TenantLeaseListStatus.ACTIVE
-        ? ""
-        : `?status=${encodeURIComponent(status)}`;
+      status === TenantLeaseListStatus.ACTIVE ? "" : `?status=${encodeURIComponent(status)}`;
     return authenticatedRequest<ITenantLeasesListResponse>(`/tenant/me/leases${query}`);
   },
 

@@ -5,9 +5,11 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
+import { TenantGoogleSignInButton } from "@/components/auth/tenant-google-sign-in-button";
 import { tenantAuthApi } from "@/lib/api-client";
 import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import {
+  AuthProviderDivider,
   Button,
   getAuthApiErrorMessage,
   Input,
@@ -52,13 +54,15 @@ export const LoginPage = memo(function LoginPage() {
 
   return (
     <AuthPageShell
-      cardDescription="Use your email and password."
+      cardDescription="Use Google or your email and password. Lease invites still require the invited email on your account."
       cardTitle="Sign in"
       onSubmit={onSubmit}
       redirectWhenAuthed={returnTo ?? "/leases"}
       subtitle="Sign in to your resident portal."
     >
       <AuthCardBody>
+        <TenantGoogleSignInButton />
+        <AuthProviderDivider />
         <div className="flex flex-col gap-2">
           <Label htmlFor="tenant-login-email">Email</Label>
           <Input

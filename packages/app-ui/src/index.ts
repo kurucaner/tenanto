@@ -25,6 +25,15 @@ export {
   AuthPageShell,
   type IAuthPageShellProps,
 } from "./auth/auth-page-shell";
+export { AuthProviderDivider } from "./auth/auth-provider-divider";
+export {
+  GoogleOAuthProvider,
+  type IGoogleOAuthProviderProps,
+} from "./auth/google-oauth-provider";
+export {
+  GoogleSignInButton,
+  type IGoogleSignInButtonProps,
+} from "./auth/google-sign-in-button";
 export { maskEmail } from "./auth/mask-email";
 export { getOtpResendButtonLabel } from "./auth/otp-resend-button-label";
 export { useOtpResendCooldown } from "./auth/use-otp-resend-cooldown";
@@ -85,3 +94,4 @@ export {
 export { Input } from "./ui/input";
 export { Label } from "./ui/label";
 export { Button, buttonVariants } from "./ui/button";
+export { Separator } from "./ui/separator";

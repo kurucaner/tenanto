@@ -244,13 +244,14 @@ Reuse admin Google button patterns where possible; extract to `packages/app-ui` 
 
 **Goal:** Google/Apple on tenant auth screens; phone UI behind flag.
 
-- [ ] Google/Apple on login (and register if product wants parity) — always shown
-- [ ] Phone login page/step behind phone flag
-- [ ] Account bind-phone UI
-- [ ] Clear copy: invites still require the invited email account
-- [ ] Wire session into existing auth store (same as password login)
+- [x] Google on login + register — always shown when `VITE_GOOGLE_CLIENT_ID` is set (shared `packages/app-ui` button; admin refactored to same primitive)
+- [ ] Apple login/register UI (deferred — ship Google web first; Apple web Services ID later)
+- [ ] Phone login page/step behind phone flag (deferred with Apple)
+- [ ] Account bind-phone UI (deferred with phone)
+- [x] Clear copy: invites still require the invited email account
+- [x] Wire Google session into existing auth store (same as password login)
 
-**Exit criteria:** Staging tenant app: social login works; phone bind/login when phone flag on (hidden/dead when off).
+**Exit criteria (current cut):** Staging tenant app Google sign-in works with shared admin client ID. Phone + Apple UI deferred.
 
 ---
 
