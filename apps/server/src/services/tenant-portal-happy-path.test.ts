@@ -332,4 +332,32 @@ describe("tenant portal happy path (Phase 1.3)", () => {
       tenantPortalMembershipService.acceptInvite("membership-1", makeTenant())
     ).rejects.toThrow("Ask your property manager to resend");
   });
+
+  test("cannot accept when membership is already expired in DB", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({ status: TenantMembershipStatus.EXPIRED })
+    );
+
+    await expect(
+      tenantPortalMembershipService.acceptInvite("membership-1", makeTenant())
+    ).rejects.toThrow("Ask your property manager to resend");
+  });
+
+  test("cannot accept after operator revoked the invite", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({ status: TenantMembershipStatus.REVOKED })
+    );
+
+    await expect(
+      tenantPortalMembershipService.acceptInvite("membership-1", makeTenant())
+    ).rejects.toThrow("This invite is no longer available");
+  });
+
+  test("redeem rejects when invite hash was cleared after accept", async () => {
+    mockFindByTokenHash.mockResolvedValue(null);
+
+    await expect(
+      tenantPortalMembershipService.redeemInvite("stale-token", makeTenant())
+    ).rejects.toThrow("Invalid or expired invite link");
+  });
 });

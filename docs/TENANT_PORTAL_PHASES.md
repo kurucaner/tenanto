@@ -613,10 +613,10 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] `docs/TENANT_PORTAL_FAILURE_MODES.md` (mirror `TENANT_EMAIL_CAMPAIGN_FAILURE_MODES.md`)
-- [ ] Wrong-email playbook: revoke → fix email on lease → re-invite (no tenant self-removal in v1)
-- [ ] Manual test matrix: new user, returning user, decline, revoke, lease end, secondary tenant, expired invite
-- [ ] Extend `tenant-portal-happy-path.test.ts` or integration script for gaps (expired DB row, 409, revoke)
+- [x] `docs/TENANT_PORTAL_FAILURE_MODES.md` (mirror `TENANT_EMAIL_CAMPAIGN_FAILURE_MODES.md`)
+- [x] Wrong-email playbook: revoke → fix email on lease → re-invite (no tenant self-removal in v1)
+- [x] Manual test matrix: new user, returning user, decline, revoke, lease end, secondary tenant, expired invite
+- [x] Extend `tenant-portal-happy-path.test.ts` or integration script for gaps (expired DB row, 409, revoke)
 
 **Exit criteria:** Failure modes documented; matrix checked off; idempotency/resend still verified.
 
