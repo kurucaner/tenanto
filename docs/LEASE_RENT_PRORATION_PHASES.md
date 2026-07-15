@@ -166,11 +166,11 @@ N/A.
 
 **Goal:** Pure proration utilities + move-out validation redesign, fully tested in isolation.
 
-- [ ] Add `packages/shared/src/lease-proration-utils.ts` (or extend `lease-rent-utils.ts` if small)
-- [ ] Implement `getDaysInMonth`, `getOccupiedDaysInMonth`, `calculateExpectedRentForLeaseMonth`, `getLeaseScheduleEffectiveEndDate`
-- [ ] Integrate `getLeaseRentForMonth` for the applicable monthly rate per calendar month
-- [ ] Round with `roundMoney` on final amount
-- [ ] Add `packages/shared/src/lease-proration-utils.test.ts` — edge case matrix:
+- [x] Add `packages/shared/src/lease-proration-utils.ts` (or extend `lease-rent-utils.ts` if small)
+- [x] Implement `getDaysInMonth`, `getOccupiedDaysInMonth`, `calculateExpectedRentForLeaseMonth`, `getLeaseScheduleEffectiveEndDate`
+- [x] Integrate `getLeaseRentForMonth` for the applicable monthly rate per calendar month
+- [x] Round with `roundMoney` on final amount
+- [x] Add `packages/shared/src/lease-proration-utils.test.ts` — edge case matrix:
   - Start 6/16 → June prorated, July full
   - End early mid-month
   - Holdover 5 days into next month
@@ -178,8 +178,8 @@ N/A.
   - February 2024 (leap) and February 2025 (non-leap)
   - Start on 1st / end on last day → full month
   - Rent period change mid-lease on a prorated month
-- [ ] Redesign `validateEndLeaseMoveOutDate` / `getEndLeaseMoveOutDateBounds` + update `lease-date-utils.test.ts`
-- [ ] Export new symbols from `packages/shared/src/index.ts`
+- [x] Redesign `validateEndLeaseMoveOutDate` / `getEndLeaseMoveOutDateBounds` + update `lease-date-utils.test.ts`
+- [x] Export new symbols from `packages/shared/src/index.ts`
 
 **Exit criteria:** All shared unit tests pass; no server/admin imports yet; formula documented in test names.
 

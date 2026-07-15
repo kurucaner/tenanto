@@ -40,10 +40,8 @@ export function getEndLeaseMoveOutDateBounds(
   leaseEndDate: string,
   today: string
 ): { defaultDate: string; maxDate: string; minDate: string } {
-  const minDate = today;
-  const maxDate = leaseEndDate >= today ? leaseEndDate : today;
-  const defaultDate = minDate;
-  return { defaultDate, maxDate, minDate };
+  const minDate = leaseEndDate < today ? leaseEndDate : today;
+  return { defaultDate: today, maxDate: today, minDate };
 }
 
 export function validateEndLeaseMoveOutDate(
@@ -52,11 +50,16 @@ export function validateEndLeaseMoveOutDate(
   today: string
 ): string | null {
   const { maxDate, minDate } = getEndLeaseMoveOutDateBounds(leaseEndDate, today);
-  if (actualEndDate < minDate) {
-    return "Move-out date cannot be in the past";
-  }
+
   if (actualEndDate > maxDate) {
-    return "Move-out date cannot be after lease end date";
+    return "Move-out date cannot be in the future";
   }
+
+  if (actualEndDate < minDate) {
+    return leaseEndDate < today
+      ? "Move-out date cannot be before the lease end date"
+      : "Move-out date cannot be in the past";
+  }
+
   return null;
 }

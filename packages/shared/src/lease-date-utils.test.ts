@@ -42,16 +42,16 @@ describe("getEndLeaseMoveOutDateBounds", () => {
   test("uses today through lease end when lease is not overdue", () => {
     expect(getEndLeaseMoveOutDateBounds("2026-12-31", "2026-07-09")).toEqual({
       defaultDate: "2026-07-09",
-      maxDate: "2026-12-31",
+      maxDate: "2026-07-09",
       minDate: "2026-07-09",
     });
   });
 
-  test("allows only today when lease end date is in the past", () => {
+  test("allows backdating from lease end through today for overdue leases", () => {
     expect(getEndLeaseMoveOutDateBounds("2026-05-01", "2026-07-09")).toEqual({
       defaultDate: "2026-07-09",
       maxDate: "2026-07-09",
-      minDate: "2026-07-09",
+      minDate: "2026-05-01",
     });
   });
 });
@@ -60,31 +60,37 @@ describe("validateEndLeaseMoveOutDate", () => {
   const today = "2026-07-09";
   const leaseEndDate = "2026-12-31";
 
-  test("accepts today and future dates up to lease end", () => {
+  test("accepts today for active leases still within term", () => {
     expect(validateEndLeaseMoveOutDate("2026-07-09", leaseEndDate, today)).toBeNull();
-    expect(validateEndLeaseMoveOutDate("2026-10-01", leaseEndDate, today)).toBeNull();
-    expect(validateEndLeaseMoveOutDate("2026-12-31", leaseEndDate, today)).toBeNull();
   });
 
-  test("rejects dates before today", () => {
+  test("rejects dates before today for active leases still within term", () => {
     expect(validateEndLeaseMoveOutDate("2026-07-08", leaseEndDate, today)).toBe(
       "Move-out date cannot be in the past"
     );
   });
 
-  test("rejects dates after lease end", () => {
-    expect(validateEndLeaseMoveOutDate("2027-01-01", leaseEndDate, today)).toBe(
-      "Move-out date cannot be after lease end date"
+  test("rejects future move-out dates", () => {
+    expect(validateEndLeaseMoveOutDate("2026-07-10", leaseEndDate, today)).toBe(
+      "Move-out date cannot be in the future"
     );
   });
 
-  test("allows only today for overdue leases", () => {
+  test("allows holdover move-out dates after lease end but not before lease end", () => {
+    expect(validateEndLeaseMoveOutDate("2026-07-05", "2026-06-30", today)).toBeNull();
+    expect(validateEndLeaseMoveOutDate("2026-06-29", "2026-06-30", today)).toBe(
+      "Move-out date cannot be before the lease end date"
+    );
+  });
+
+  test("allows backdated move-out from lease end through today for overdue leases", () => {
     expect(validateEndLeaseMoveOutDate("2026-07-09", "2026-05-01", today)).toBeNull();
-    expect(validateEndLeaseMoveOutDate("2026-05-01", "2026-05-01", today)).toBe(
-      "Move-out date cannot be in the past"
+    expect(validateEndLeaseMoveOutDate("2026-05-15", "2026-05-01", today)).toBeNull();
+    expect(validateEndLeaseMoveOutDate("2026-04-30", "2026-05-01", today)).toBe(
+      "Move-out date cannot be before the lease end date"
     );
     expect(validateEndLeaseMoveOutDate("2026-07-10", "2026-05-01", today)).toBe(
-      "Move-out date cannot be after lease end date"
+      "Move-out date cannot be in the future"
     );
   });
 });

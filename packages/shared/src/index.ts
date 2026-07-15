@@ -170,6 +170,14 @@ export {
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
 export {
+  calculateExpectedRentForLeaseMonth,
+  getDaysInMonth,
+  getLeaseScheduleEffectiveEndDate,
+  getOccupiedDaysInMonth,
+  type ILeaseMonthExpectedRent,
+  isProratedLeaseMonth,
+} from "./lease-proration-utils";
+export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
   getFirstExtensionMonth,
