@@ -457,11 +457,11 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Public route: `/accept-invite?token=` (matches `TENANT_APP_URL/accept-invite?token=…`)
-- [ ] `InvitePreviewPage`: `GET /tenant/invites/preview`; lease summary card; branch on `hasExistingAccount` → login vs register CTAs
-- [ ] Post-auth redeem: `POST /tenant/invites/redeem` with Bearer + `{ token }`, or inline `{ token, email, password }` → session + membership
-- [ ] Return URL: after register verify, return to accept-invite with same token
-- [ ] Shared `InviteLeaseSummaryCard` (reused in 2.5 pending list)
+- [x] Public route: `/accept-invite?token=` (matches `TENANT_APP_URL/accept-invite?token=…`)
+- [x] `InvitePreviewPage`: `GET /tenant/invites/preview`; lease summary card; branch on `hasExistingAccount` → login vs register CTAs
+- [x] Post-auth redeem: `POST /tenant/invites/redeem` with Bearer + `{ token }`, or inline `{ token, email, password }` → session + membership
+- [x] Return URL: after register verify, return to accept-invite with same token
+- [x] Shared `InviteLeaseSummaryCard` (reused in 2.5 pending list)
 
 **Exit criteria:** Operator invite (curl/admin until Phase 3) → email link → register or login → accept → redirect to `/leases` with one active lease.
 

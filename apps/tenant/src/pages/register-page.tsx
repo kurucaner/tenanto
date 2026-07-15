@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { memo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
 import { tenantAuthApi } from "@/lib/api-client";
+import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import {
   Button,
   getAuthApiErrorMessage,
@@ -17,6 +18,8 @@ import {
 
 export const RegisterPage = memo(function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = parseSafeReturnTo(searchParams.get("returnTo"));
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<TSignUpFormValues>({
@@ -35,6 +38,7 @@ export const RegisterPage = memo(function RegisterPage() {
           email: values.email.trim(),
           name: values.name.trim(),
           password: values.password,
+          returnTo: returnTo ?? undefined,
         },
       });
     } catch (error) {
@@ -44,11 +48,14 @@ export const RegisterPage = memo(function RegisterPage() {
     }
   });
 
+  const loginHref = returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login";
+
   return (
     <AuthPageShell
       cardDescription="Create your resident portal account with email and password."
       cardTitle="Create account"
       onSubmit={onSubmit}
+      redirectWhenAuthed={returnTo ?? "/account"}
       subtitle="Create your resident portal account."
     >
       <AuthCardBody>
@@ -91,7 +98,7 @@ export const RegisterPage = memo(function RegisterPage() {
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link className="font-medium text-primary hover:underline" to="/login">
+          <Link className="font-medium text-primary hover:underline" to={loginHref}>
             Sign in
           </Link>
         </p>

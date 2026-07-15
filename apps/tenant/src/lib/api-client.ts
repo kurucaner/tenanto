@@ -26,22 +26,18 @@ function getApiBaseUrl(): string {
   return url.replace(/\/$/, "");
 }
 
-const {
-  authenticatedRequest,
-  refreshAccessTokenForStream,
-  request,
-  setOnSessionExpired,
-} = createApiClient<ITenantUser>({
-  clearSession: clearAppSession,
-  getAccessToken: () => useAuthStore.getState().accessToken,
-  getApiBaseUrl,
-  getRefreshToken: () => useAuthStore.getState().refreshToken,
-  onRefreshSuccess: ({ accessToken, user }) => {
-    useAuthStore.getState().setAccessToken(accessToken);
-    useAuthStore.getState().setUser(user);
-  },
-  refreshPath: "/tenant/auth/refresh",
-});
+const { authenticatedRequest, refreshAccessTokenForStream, request, setOnSessionExpired } =
+  createApiClient<ITenantUser>({
+    clearSession: clearAppSession,
+    getAccessToken: () => useAuthStore.getState().accessToken,
+    getApiBaseUrl,
+    getRefreshToken: () => useAuthStore.getState().refreshToken,
+    onRefreshSuccess: ({ accessToken, user }) => {
+      useAuthStore.getState().setAccessToken(accessToken);
+      useAuthStore.getState().setUser(user);
+    },
+    refreshPath: "/tenant/auth/refresh",
+  });
 
 export { refreshAccessTokenForStream, setOnSessionExpired };
 
@@ -113,6 +109,12 @@ export const tenantPortalApi = {
   redeemInvite: (body: ITenantInviteRedeemBody) =>
     request<ITenantInviteRedeemResponse>("/tenant/invites/redeem", {
       body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  redeemInviteAuthenticated: (token: string) =>
+    authenticatedRequest<ITenantInviteRedeemResponse>("/tenant/invites/redeem", {
+      body: JSON.stringify({ token }),
       method: "POST",
     }),
 };

@@ -1,35 +1,33 @@
 import { memo } from "react";
 
 import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
-import {
-  AuthCardBody,
-  AuthCardFooter,
-  AuthPageShell as SharedAuthPageShell,
-  type IAuthPageShellProps,
-} from "@/packages/app-ui";
+import { AuthPageShell as SharedAuthPageShell, type IAuthPageShellProps } from "@/packages/app-ui";
 import { useAuthStore } from "@/stores/auth-store";
 
 type TTenantAuthPageShellProps = Omit<
   IAuthPageShellProps,
   "brandLabel" | "isAuthenticated" | "isAuthHydrated" | "redirectWhenAuthed" | "surfaceClassName"
->;
+> & {
+  redirectWhenAuthed?: string;
+};
 
 export const AuthPageShell = memo((props: TTenantAuthPageShellProps) => {
   const hydrated = useAuthHydrated();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const { redirectWhenAuthed = "/account", ...shellProps } = props;
 
   return (
     <SharedAuthPageShell
-      {...props}
+      {...shellProps}
       brandLabel="Resident portal"
       isAuthenticated={Boolean(accessToken && user)}
       isAuthHydrated={hydrated}
-      redirectWhenAuthed="/account"
+      redirectWhenAuthed={redirectWhenAuthed}
       surfaceClassName="app-surface"
     />
   );
 });
 AuthPageShell.displayName = "AuthPageShell";
 
-export { AuthCardBody, AuthCardFooter };
+export { AuthCardBody, AuthCardFooter } from "@/packages/app-ui";

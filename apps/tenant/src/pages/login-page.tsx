@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { memo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
 import { tenantAuthApi } from "@/lib/api-client";
+import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import {
   Button,
   getAuthApiErrorMessage,
@@ -19,6 +20,8 @@ import { useAuthStore } from "@/stores/auth-store";
 export const LoginPage = memo(function LoginPage() {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = parseSafeReturnTo(searchParams.get("returnTo"));
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<TLoginFormValues>({
@@ -35,7 +38,7 @@ export const LoginPage = memo(function LoginPage() {
       });
       setSession(session);
       toast.success("Signed in");
-      navigate("/account", { replace: true });
+      navigate(returnTo ?? "/account", { replace: true });
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Sign-in failed"));
     } finally {
@@ -43,11 +46,16 @@ export const LoginPage = memo(function LoginPage() {
     }
   });
 
+  const registerHref = returnTo
+    ? `/register?returnTo=${encodeURIComponent(returnTo)}`
+    : "/register";
+
   return (
     <AuthPageShell
       cardDescription="Use your email and password."
       cardTitle="Sign in"
       onSubmit={onSubmit}
+      redirectWhenAuthed={returnTo ?? "/account"}
       subtitle="Sign in to your resident portal."
     >
       <AuthCardBody>
@@ -83,7 +91,7 @@ export const LoginPage = memo(function LoginPage() {
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Need an account?{" "}
-          <Link className="font-medium text-primary hover:underline" to="/register">
+          <Link className="font-medium text-primary hover:underline" to={registerHref}>
             Create an account
           </Link>
         </p>

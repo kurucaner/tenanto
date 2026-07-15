@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
 import { tenantAuthApi } from "@/lib/api-client";
 import { type ITenantRegisterVerifyLocationState } from "@/lib/auth-location-state";
+import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import {
   Button,
   getAuthApiErrorMessage,
@@ -38,6 +39,7 @@ export const RegisterVerifyPage = memo(function RegisterVerifyPage() {
   const email = state?.email ?? "";
   const name = state?.name ?? "";
   const password = state?.password ?? "";
+  const returnTo = parseSafeReturnTo(state?.returnTo ?? null);
 
   const handleResend = useCallback(async () => {
     if (!canResend || resending || !email) {
@@ -68,7 +70,7 @@ export const RegisterVerifyPage = memo(function RegisterVerifyPage() {
       });
       setSession(session);
       toast.success("Account created");
-      navigate("/account", { replace: true });
+      navigate(returnTo ?? "/account", { replace: true });
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Verification failed"));
     } finally {
@@ -85,6 +87,7 @@ export const RegisterVerifyPage = memo(function RegisterVerifyPage() {
       cardDescription={`We sent a code to ${maskEmail(email)}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`}
       cardTitle="Verify email"
       onSubmit={onSubmit}
+      redirectWhenAuthed={returnTo ?? "/account"}
       subtitle="Confirm your email to finish creating your account."
     >
       <AuthCardBody>
