@@ -56,9 +56,8 @@ mock.module("@/ses/transactional-emails", () => ({
   sendRentPaymentRecordedEmail: mockSendRentPaymentRecordedEmail,
 }));
 
-const { notifyPrimaryTenantLeaseEnded, notifyPrimaryTenantRentRecorded } = await import(
-  "./lease-notifications"
-);
+const { notifyPrimaryTenantLeaseEnded, notifyPrimaryTenantRentRecorded } =
+  await import("./lease-notifications");
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {

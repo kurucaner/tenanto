@@ -23,15 +23,13 @@ describe("countLeaseSecondaryFilters", () => {
     expect(
       countLeaseSecondaryFilters({ status: PropertyLongStayStatus.ACTIVE, unitId: "unit-1" })
     ).toBe(1);
-    expect(
-      countLeaseSecondaryFilters({ status: LEASE_STATUS_FILTER_ALL, unitId: "" })
-    ).toBe(1);
-    expect(
-      countLeaseSecondaryFilters({ status: PropertyLongStayStatus.ENDED, unitId: "" })
-    ).toBe(1);
-    expect(
-      countLeaseSecondaryFilters({ status: PropertyLongStayStatus.ACTIVE, unitId: "" })
-    ).toBe(0);
+    expect(countLeaseSecondaryFilters({ status: LEASE_STATUS_FILTER_ALL, unitId: "" })).toBe(1);
+    expect(countLeaseSecondaryFilters({ status: PropertyLongStayStatus.ENDED, unitId: "" })).toBe(
+      1
+    );
+    expect(countLeaseSecondaryFilters({ status: PropertyLongStayStatus.ACTIVE, unitId: "" })).toBe(
+      0
+    );
   });
 });
 

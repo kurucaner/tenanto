@@ -35,10 +35,7 @@ export function countLeaseSecondaryFilters(values: { status: string; unitId: str
   if (values.unitId) {
     count += 1;
   }
-  if (
-    values.status === LEASE_STATUS_FILTER_ALL ||
-    values.status === PropertyLongStayStatus.ENDED
-  ) {
+  if (values.status === LEASE_STATUS_FILTER_ALL || values.status === PropertyLongStayStatus.ENDED) {
     count += 1;
   }
   return count;
@@ -95,10 +92,7 @@ export function buildLeaseToolbarFilterItems(input: {
       label: `Unit: ${findOptionLabel(input.unitOptions, input.unitId)}`,
     });
   }
-  if (
-    input.status === LEASE_STATUS_FILTER_ALL ||
-    input.status === PropertyLongStayStatus.ENDED
-  ) {
+  if (input.status === LEASE_STATUS_FILTER_ALL || input.status === PropertyLongStayStatus.ENDED) {
     items.push({
       id: "status",
       label: `Status: ${findOptionLabel(input.statusOptions, input.status)}`,

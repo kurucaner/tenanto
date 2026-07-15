@@ -72,18 +72,18 @@ function buildHoldoverContent(
   };
 }
 
-function buildFinalMonthContent(
-  finalMonth: IPropertyLongStayRentMonth
-): { plain: string; section: string } {
+function buildFinalMonthContent(finalMonth: IPropertyLongStayRentMonth): {
+  plain: string;
+  section: string;
+} {
   const monthLabel = formatRentMonthLabelFromMonth(finalMonth.month);
   const amount = moneyFormatter.format(finalMonth.expectedRent);
-  const lines = [
-    `Final rent month: ${monthLabel}`,
-    `Amount: ${amount}`,
-  ];
+  const lines = [`Final rent month: ${monthLabel}`, `Amount: ${amount}`];
 
   if (finalMonth.isProrated) {
-    lines.push(`Days billed: ${formatProratedDaysLabel(finalMonth.occupiedDays, finalMonth.daysInMonth)}`);
+    lines.push(
+      `Days billed: ${formatProratedDaysLabel(finalMonth.occupiedDays, finalMonth.daysInMonth)}`
+    );
   }
 
   const plain = lines.join("\n");

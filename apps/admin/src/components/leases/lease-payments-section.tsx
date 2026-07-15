@@ -275,7 +275,9 @@ export const LeasePaymentsSection = memo(
       <Card>
         <CardContent className="space-y-4">
           {isInHoldover ? (
-            <p className="text-muted-foreground text-sm">{getActiveLeaseHoldoverScheduleNotice()}</p>
+            <p className="text-muted-foreground text-sm">
+              {getActiveLeaseHoldoverScheduleNotice()}
+            </p>
           ) : null}
           {renderScheduleContent({
             canRecord,

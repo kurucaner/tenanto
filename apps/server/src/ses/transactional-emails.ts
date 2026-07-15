@@ -180,10 +180,7 @@ export async function sendRentPaymentRecordedEmail(
   await sendTransactionalEmail({ html, subject, text, to });
 }
 
-export async function sendLeaseEndedEmail(
-  to: string,
-  opts: LeaseEndedEmailOptions
-): Promise<void> {
+export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptions): Promise<void> {
   const subject = `Your lease at ${opts.propertyName} has ended`;
   const text = [
     `Hi ${opts.tenantName},`,

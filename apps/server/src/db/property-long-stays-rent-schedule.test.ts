@@ -352,7 +352,10 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     ];
     currentRentPeriodRows = [];
 
-    const schedule = await propertyLongStaysDb.getRentSchedule("lease-prorated-refund", "2024-12-31");
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-prorated-refund",
+      "2024-12-31"
+    );
 
     expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
       expectedRent: 500,

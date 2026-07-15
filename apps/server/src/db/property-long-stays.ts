@@ -431,8 +431,7 @@ export const propertyLongStaysDb = {
     const limitParam = p;
     values.push(options.limit + 1);
     const orderByClause = buildPropertyLongStaysOrderByClause(sort);
-    const unitNumberSelect =
-      sort.sortBy === "unit" ? ", pu.unit_number AS unit_number" : "";
+    const unitNumberSelect = sort.sortBy === "unit" ? ", pu.unit_number AS unit_number" : "";
 
     const result = await pool.query(
       `SELECT pls.*${unitNumberSelect} FROM property_long_stays pls

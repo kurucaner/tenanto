@@ -2,7 +2,10 @@ import { type CreateIncomeLineDialogPrefill } from "@/components/income/create-i
 import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { type IPropertyLongStay } from "@/packages/shared";
 
-import { getExpectedRentForScheduleMonth, type TLeaseRentScheduleMonthAmount } from "./lease-rent-schedule-display";
+import {
+  getExpectedRentForScheduleMonth,
+  type TLeaseRentScheduleMonthAmount,
+} from "./lease-rent-schedule-display";
 
 export function buildLeaseRecordRentPrefill(
   lease: Pick<IPropertyLongStay, "guestName" | "id" | "monthlyRent" | "unitId">,
