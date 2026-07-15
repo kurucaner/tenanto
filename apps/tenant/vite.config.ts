@@ -26,6 +26,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   preview: {
+    allowedHosts: [".propertyos.app"],
     host: true,
     port: Number(process.env.PORT) || 4174,
     strictPort: true,
