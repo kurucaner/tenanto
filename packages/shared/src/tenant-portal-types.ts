@@ -26,6 +26,7 @@ export interface ITenantUser {
   id: string;
   name: string;
   phone: string | null;
+  phoneVerifiedAt: string | null;
   updatedAt: string;
 }
 
@@ -174,6 +175,33 @@ export interface ITenantAuthSessionResponse {
   accessToken: string;
   refreshToken: string;
   user: ITenantUser;
+}
+
+export interface ITenantGoogleAuthBody {
+  idToken: string;
+}
+
+export interface ITenantAppleAuthBody {
+  identityToken: string;
+  name?: string;
+}
+
+export interface ITenantPhoneAuthStartBody {
+  phone: string;
+}
+
+export interface ITenantPhoneAuthVerifyBody {
+  code: string;
+  phone: string;
+}
+
+export interface ITenantPhoneBindStartBody {
+  phone: string;
+}
+
+export interface ITenantPhoneBindVerifyBody {
+  code: string;
+  phone: string;
 }
 
 export interface ITenantMeResponse {

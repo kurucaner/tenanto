@@ -2606,4 +2606,59 @@ export const migrations: IMigration[] = [
     },
     version: 57,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS auth_phone_otps CASCADE;`);
+      await client.query(`DROP INDEX IF EXISTS tenant_users_phone_e164_uniq;`);
+      await client.query(`DROP INDEX IF EXISTS tenant_users_apple_id_uniq;`);
+      await client.query(`DROP INDEX IF EXISTS tenant_users_google_id_uniq;`);
+      await client.query(`
+        ALTER TABLE tenant_users
+          DROP COLUMN IF EXISTS phone_verified_at,
+          DROP COLUMN IF EXISTS apple_id,
+          DROP COLUMN IF EXISTS google_id;
+      `);
+    },
+    name: "tenant_users_social_phone_auth_foundation",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          ADD COLUMN IF NOT EXISTS google_id VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS apple_id VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP WITH TIME ZONE;
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_google_id_uniq
+          ON tenant_users (google_id)
+          WHERE google_id IS NOT NULL;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_apple_id_uniq
+          ON tenant_users (apple_id)
+          WHERE apple_id IS NOT NULL;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_phone_e164_uniq
+          ON tenant_users (phone)
+          WHERE phone IS NOT NULL;
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS auth_phone_otps (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          phone VARCHAR(32) NOT NULL,
+          code_hash VARCHAR(255) NOT NULL,
+          purpose VARCHAR(50) NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_auth_phone_otps_phone_purpose
+          ON auth_phone_otps (phone, purpose);
+      `);
+    },
+    version: 58,
+  },
 ];

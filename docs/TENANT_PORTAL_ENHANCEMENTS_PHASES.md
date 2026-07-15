@@ -99,7 +99,6 @@ Mirror any new tabs with `property-route-access` + admin permission hooks.
 | Flag | Gates |
 | --- | --- |
 | `TENANT_PORTAL_AUTO_INVITE_ENABLED` | Optional global kill-switch on top of per-property setting |
-| `TENANT_SOCIAL_AUTH_ENABLED` | Google/Apple tenant routes + UI |
 | `TENANT_PHONE_AUTH_ENABLED` | Phone OTP routes + UI (+ SNS) |
 | `TENANT_PUSH_ENABLED` | Tenant push token register + send path |
 | `TENANT_SSE_ENABLED` | `/tenant/notifications/stream` |
@@ -263,17 +262,21 @@ Push: on same domain events, best-effort Expo send via existing `expo-client.ts`
 
 ### Phase 3 — Auth expansion (Google / Apple / phone OTP)
 
+Detailed phased plan: **[TENANT_PORTAL_AUTH_EXPANSION_PHASES.md](./TENANT_PORTAL_AUTH_EXPANSION_PHASES.md)**.
+
 **Goal:** More ways to create a tenant session — still `JwtAudience.TENANT`.
 
 - [ ] Mirror platform Google/Apple verify for `tenant_users` (link columns or identity table); issue tenant session
-- [ ] Tenant login/register UI buttons behind `TENANT_SOCIAL_AUTH_ENABLED`
+- [ ] Tenant login/register UI buttons for Google/Apple (always on)
 - [ ] Phone OTP: purpose + SNS send; bind phone on `tenant_users`; rate limits reuse `tenant-auth-rate-limit` pattern
 - [ ] Invite redemption: map invite email **or** verified phone policy (document: phone invite path may still need email on lease for v1 — **decide in this phase**)
 - [ ] Tests: wrong audience JWT still rejected on `/tenant/*` and `/properties/*`
 
-**Exit criteria:** Social and phone login work in staging with flags on; platform Google user cannot call tenant lease routes with their platform token.
+**Exit criteria:** Social and phone login work in staging (phone behind flag); platform Google user cannot call tenant lease routes with their platform token.
 
 **Default if undecided:** Phone auth is for **login of an existing tenant_user** already invited by email; phone-only invites deferred.
+
+**Locked in auth-expansion plan:** Invite accept stays **email-matched**; phone is bind/login only (no phone-only invites / nullable email in v1).
 
 ---
 

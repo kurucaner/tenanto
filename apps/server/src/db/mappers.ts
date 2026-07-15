@@ -330,6 +330,7 @@ export const mapTenantUserRow = (row: Record<string, unknown>): ITenantUser => (
   id: row.id as string,
   name: row.name as string,
   phone: (row.phone as string) ?? null,
+  phoneVerifiedAt: toIso(row.phone_verified_at),
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 
