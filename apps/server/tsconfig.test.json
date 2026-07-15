@@ -1,8 +1,9 @@
 {
-  "extends": "./tsconfig.app.json",
+  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["bun", "node"],
-    "noEmit": true
+    "module": "ESNext",
+    "noEmit": true,
+    "types": ["bun", "node"]
   },
   "include": ["src/**/*.test.ts"],
   "exclude": ["node_modules", "dist", ".dist"]

@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import {
   ActiveLongStayConflictError,
   InvalidExtendLeaseError,
@@ -689,6 +690,8 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
       try {
         const longStay = await propertyLongStaysDb.endLease(longStayId, parsed.body.actualEndDate);
+
+        await leaseTenantMembershipsDb.endAllNonTerminalForLease(longStayId);
 
         void notifyPrimaryTenantLeaseEnded({ longStayId, propertyId }).catch((err) => {
           request.log.error({ err, longStayId, propertyId }, "Failed to send lease ended email");

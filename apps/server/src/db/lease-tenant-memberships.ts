@@ -106,6 +106,32 @@ export const leaseTenantMembershipsDb = {
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async endAllNonTerminalForLease(
+    leaseId: string,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership[]> {
+    const result = await db.query(
+      `UPDATE lease_tenant_memberships
+       SET status = $1::tenant_membership_status,
+           ended_at = NOW()
+       WHERE lease_id = $2
+         AND status IN (
+           $3::tenant_membership_status,
+           $4::tenant_membership_status,
+           $5::tenant_membership_status
+         )
+       RETURNING *`,
+      [
+        TenantMembershipStatus.ENDED,
+        leaseId,
+        TenantMembershipStatus.ACTIVE,
+        TenantMembershipStatus.PENDING_INVITE,
+        TenantMembershipStatus.PENDING_ACCEPTANCE,
+      ]
+    );
+    return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
+  },
+
   async findActiveByLeaseAndTenantUser(
     leaseId: string,
     tenantUserId: string,
@@ -120,6 +146,20 @@ export const leaseTenantMembershipsDb = {
     );
     if (result.rows.length === 0) return null;
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async findActiveByTenantUserId(
+    tenantUserId: string,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership[]> {
+    const result = await db.query(
+      `SELECT * FROM lease_tenant_memberships
+       WHERE tenant_user_id = $1
+         AND status = $2::tenant_membership_status
+       ORDER BY accepted_at DESC NULLS LAST, created_at DESC`,
+      [tenantUserId, TenantMembershipStatus.ACTIVE]
+    );
+    return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
   },
 
   async findById(id: string, db: DbQueryable = pool): Promise<ILeaseTenantMembership | null> {
@@ -165,6 +205,38 @@ export const leaseTenantMembershipsDb = {
        ORDER BY created_at DESC
        LIMIT 1`,
       [leaseId, inviteEmail, role]
+    );
+    if (result.rows.length === 0) return null;
+    return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async findPendingAcceptanceByTenantUserId(
+    tenantUserId: string,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership[]> {
+    const result = await db.query(
+      `SELECT * FROM lease_tenant_memberships
+       WHERE tenant_user_id = $1
+         AND status = $2::tenant_membership_status
+         AND expires_at > NOW()
+       ORDER BY invited_at DESC, created_at DESC`,
+      [tenantUserId, TenantMembershipStatus.PENDING_ACCEPTANCE]
+    );
+    return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
+  },
+
+  async linkTenantUser(
+    id: string,
+    tenantUserId: string,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership | null> {
+    const result = await db.query(
+      `UPDATE lease_tenant_memberships
+       SET tenant_user_id = $1
+       WHERE id = $2
+         AND tenant_user_id IS NULL
+       RETURNING *`,
+      [tenantUserId, id]
     );
     if (result.rows.length === 0) return null;
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);

@@ -166,3 +166,30 @@ export interface ITenantAuthSessionResponse {
   refreshToken: string;
   user: ITenantUser;
 }
+
+export interface ITenantMeResponse {
+  user: ITenantUser;
+}
+
+export interface ITenantLeasesListResponse {
+  leases: ITenantLeaseListItem[];
+}
+
+export interface ITenantPendingInvitesResponse {
+  invites: ITenantPendingInvite[];
+}
+
+export interface ITenantMembershipActionResponse {
+  membership: ILeaseTenantMembership;
+}
+
+export interface ITenantInviteRedeemBody {
+  email?: string;
+  password?: string;
+  token: string;
+}
+
+export interface ITenantInviteRedeemResponse {
+  membership: ILeaseTenantMembership;
+  session?: ITenantAuthSessionResponse;
+}

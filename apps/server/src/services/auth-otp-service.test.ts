@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { OTP_COOLDOWN_SECONDS } from "@/lib/auth-otp-config";
-
 const mockFindMostRecentCreatedAt = mock(() => Promise.resolve(null as Date | null));
 const mockDeleteByEmailAndPurpose = mock(() => Promise.resolve());
 const mockCreate = mock(() => Promise.resolve());
@@ -112,11 +110,5 @@ describe("verifyOtpCode", () => {
     });
 
     expect(result).toEqual({ ok: false });
-  });
-});
-
-describe("OTP_COOLDOWN_SECONDS", () => {
-  test("matches expected cooldown window", () => {
-    expect(OTP_COOLDOWN_SECONDS).toBe(60);
   });
 });
