@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
 import { tenantPortalApi } from "@/lib/api-client";
+import { invalidateTenantPortalCaches } from "@/lib/invalidate-tenant-portal-caches";
 import { getAcceptInvitePath } from "@/lib/invite-return-url";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -111,7 +112,7 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
     setAccepting(true);
     try {
       await tenantPortalApi.redeemInviteAuthenticated(token);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.leases() });
+      await invalidateTenantPortalCaches(queryClient);
       toast.success("Invitation accepted");
       navigate("/leases", { replace: true });
     } catch (error) {

@@ -55,7 +55,7 @@ export const RegisterPage = memo(function RegisterPage() {
       cardDescription="Create your resident portal account with email and password."
       cardTitle="Create account"
       onSubmit={onSubmit}
-      redirectWhenAuthed={returnTo ?? "/account"}
+      redirectWhenAuthed={returnTo ?? "/leases"}
       subtitle="Create your resident portal account."
     >
       <AuthCardBody>

@@ -1,6 +1,7 @@
 import { memo } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
+import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
 import {
   Button,
   Card,
@@ -13,9 +14,17 @@ import {
   useResolvedDark,
 } from "@/packages/app-ui";
 import { APP_NAME } from "@/packages/shared";
+import { useAuthStore } from "@/stores/auth-store";
 
 export const HomePage = memo(function HomePage() {
   const resolvedDark = useResolvedDark();
+  const hydrated = useAuthHydrated();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+
+  if (hydrated && accessToken && user) {
+    return <Navigate replace to="/leases" />;
+  }
 
   return (
     <div className="app-surface relative flex min-h-svh flex-col items-center justify-center gap-10 p-6">

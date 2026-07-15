@@ -70,7 +70,7 @@ export const RegisterVerifyPage = memo(function RegisterVerifyPage() {
       });
       setSession(session);
       toast.success("Account created");
-      navigate(returnTo ?? "/account", { replace: true });
+      navigate(returnTo ?? "/leases", { replace: true });
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Verification failed"));
     } finally {
@@ -87,7 +87,7 @@ export const RegisterVerifyPage = memo(function RegisterVerifyPage() {
       cardDescription={`We sent a code to ${maskEmail(email)}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`}
       cardTitle="Verify email"
       onSubmit={onSubmit}
-      redirectWhenAuthed={returnTo ?? "/account"}
+      redirectWhenAuthed={returnTo ?? "/leases"}
       subtitle="Confirm your email to finish creating your account."
     >
       <AuthCardBody>

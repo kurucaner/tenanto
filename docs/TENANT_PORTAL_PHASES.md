@@ -473,12 +473,12 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Authenticated layout: header, theme switcher, logout (minimal — no property nav)
-- [ ] `/leases` — cards from `GET /tenant/me/leases`
-- [ ] `/invites/pending` — list from `GET /tenant/me/invites/pending` with accept/decline
-- [ ] Shared `TenantLeaseCard`, `TenantPendingInviteCard`
-- [ ] Empty states: no leases, no pending invites
-- [ ] Optional: home banner when pending invites exist
+- [x] Authenticated layout: header, theme switcher, logout (minimal — no property nav)
+- [x] `/leases` — cards from `GET /tenant/me/leases`
+- [x] `/invites/pending` — list from `GET /tenant/me/invites/pending` with accept/decline
+- [x] Shared `TenantLeaseCard`, `TenantPendingInviteCard`
+- [x] Empty states: no leases, no pending invites
+- [x] Optional: home banner when pending invites exist
 
 **Exit criteria:** Existing user invited to a **second** property sees pending invite; must accept before it appears in active leases.
 
