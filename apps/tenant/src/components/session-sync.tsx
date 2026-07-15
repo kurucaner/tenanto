@@ -8,7 +8,7 @@ export const SessionSync = () => {
 
   useEffect(() => {
     setOnSessionExpired(() => {
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     });
     return () => {
       setOnSessionExpired(undefined);

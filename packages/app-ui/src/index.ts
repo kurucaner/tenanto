@@ -1,5 +1,31 @@
 export { createApiClient } from "./api/create-api-client";
 export type { IApiClient, ICreateApiClientConfig, TRequestOptions } from "./api/types";
+export { getAuthApiErrorCode, getAuthApiErrorMessage } from "./auth/auth-api-errors";
+export {
+  authEmailSchema,
+  authNameSchema,
+  authOtpSchema,
+  authPasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  resetPasswordSchema,
+  signUpSchema,
+  type TForgotPasswordFormValues,
+  type TLoginFormValues,
+  type TResetPasswordFormValues,
+  type TSignUpFormValues,
+  type TVerifyOtpFormValues,
+  verifyOtpSchema,
+} from "./auth/auth-form-schemas";
+export {
+  AuthCardBody,
+  AuthCardFooter,
+  AuthPageShell,
+  type IAuthPageShellProps,
+} from "./auth/auth-page-shell";
+export { maskEmail } from "./auth/mask-email";
+export { getOtpResendButtonLabel } from "./auth/otp-resend-button-label";
+export { useOtpResendCooldown } from "./auth/use-otp-resend-cooldown";
 export { DarkPaletteMenu } from "./components/dark-palette-menu";
 export { ThemeSwitcher } from "./components/theme-switcher";
 export { ThemeSync } from "./components/theme-sync";

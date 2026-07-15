@@ -437,15 +437,15 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Shared auth UI in `packages/app-ui` (or tenant-local first, then extract):
-  - [ ] Generic `AuthPageShell` with slots: `brandLabel`, `subtitle`, `redirectWhenAuthed`, optional OAuth slot (admin uses; tenant omits)
-  - [ ] `AuthCardBody` / `AuthCardFooter`
-  - [ ] `useOtpResendCooldown` + shared OTP cooldown constant (align with server)
-  - [ ] Shared helpers: `getAuthApiErrorMessage`, `maskEmail`, `getOtpResendButtonLabel`
-- [ ] **Refactor admin** auth pages to use shared `AuthPageShell` where possible
-- [ ] Tenant pages: `/login`, `/register` → `/register/verify`
-- [ ] Tenant form schemas (Zod): email, name, password, OTP — mirror admin shape
-- [ ] Wire to Phase 1.2 `/tenant/auth/*` API
+- [x] Shared auth UI in `packages/app-ui` (or tenant-local first, then extract):
+  - [x] Generic `AuthPageShell` with slots: `brandLabel`, `subtitle`, `redirectWhenAuthed`, optional OAuth slot (admin uses; tenant omits)
+  - [x] `AuthCardBody` / `AuthCardFooter`
+  - [x] `useOtpResendCooldown` + shared OTP cooldown constant (align with server)
+  - [x] Shared helpers: `getAuthApiErrorMessage`, `maskEmail`, `getOtpResendButtonLabel`
+- [x] **Refactor admin** auth pages to use shared `AuthPageShell` where possible
+- [x] Tenant pages: `/login`, `/register` → `/register/verify`
+- [x] Tenant form schemas (Zod): email, name, password, OTP — mirror admin shape
+- [x] Wire to Phase 1.2 `/tenant/auth/*` API
 
 **Exit criteria:** Register → OTP verify → session; login with existing user; authed user redirected away from auth pages.
 

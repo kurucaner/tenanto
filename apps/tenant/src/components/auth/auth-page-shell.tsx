@@ -9,12 +9,12 @@ import {
 } from "@/packages/app-ui";
 import { useAuthStore } from "@/stores/auth-store";
 
-type TAdminAuthPageShellProps = Omit<
+type TTenantAuthPageShellProps = Omit<
   IAuthPageShellProps,
   "brandLabel" | "isAuthenticated" | "isAuthHydrated" | "redirectWhenAuthed" | "surfaceClassName"
 >;
 
-export const AuthPageShell = memo((props: TAdminAuthPageShellProps) => {
+export const AuthPageShell = memo((props: TTenantAuthPageShellProps) => {
   const hydrated = useAuthHydrated();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
@@ -22,11 +22,11 @@ export const AuthPageShell = memo((props: TAdminAuthPageShellProps) => {
   return (
     <SharedAuthPageShell
       {...props}
-      brandLabel="Workspace"
+      brandLabel="Resident portal"
       isAuthenticated={Boolean(accessToken && user)}
       isAuthHydrated={hydrated}
-      redirectWhenAuthed="/home"
-      surfaceClassName="admin-app-surface"
+      redirectWhenAuthed="/account"
+      surfaceClassName="app-surface"
     />
   );
 });

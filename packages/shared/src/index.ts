@@ -4,6 +4,7 @@
 export { AccountError, HttpStatus, JwtAudience, JwtError } from "./status-enums";
 
 // Auth types
+export { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "./auth-constants";
 export type {
   IAuthRefreshResponse,
   IPlatformAuthRefreshResponse,
@@ -542,8 +543,8 @@ export {
   type ITenantLeaseDetailResponse,
   type ITenantLeaseListItem,
   type ITenantLeasesListResponse,
-  type ITenantMeResponse,
   type ITenantMembershipActionResponse,
+  type ITenantMeResponse,
   type ITenantPendingInvite,
   type ITenantPendingInvitesResponse,
   type ITenantUser,

@@ -24,7 +24,7 @@ const ProtectedRouteInner = memo(() => {
   }
 
   if (!accessToken || !user) {
-    return <Navigate replace to="/" />;
+    return <Navigate replace to="/login" />;
   }
 
   return <Outlet />;
