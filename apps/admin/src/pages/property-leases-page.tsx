@@ -39,6 +39,7 @@ import { settingsApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
+import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import {
   buildLeaseToolbarClearAllPatch,
   buildLeaseToolbarClearOnePatch,
@@ -54,7 +55,6 @@ import {
 } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
-import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   ExportResourceType,
@@ -98,24 +98,6 @@ function buildLeaseListFilters(
   const qTrim = q.trim();
   if (qTrim) next.q = qTrim;
   return next;
-}
-
-function buildRentPrefill(
-  lease: IPropertyLongStay,
-  incomeLineTypeId: string,
-  month?: string,
-  expectedAmount?: number
-): CreateIncomeLineDialogPrefill {
-  const maxDate = getTodayLocalIsoDate();
-  const monthDate = month ? `${month}-01` : maxDate;
-  return {
-    amount: String(expectedAmount ?? lease.monthlyRent),
-    guestName: lease.guestName,
-    incomeLineTypeId,
-    longStayId: lease.id,
-    transactionDate: clampToMaxLocalIsoDate(monthDate, maxDate),
-    unitId: lease.unitId,
-  };
 }
 
 const LeaseRow = memo(
@@ -425,15 +407,16 @@ export const PropertyLeasesPage = memo(() => {
 
   const handleRecordRent = useCallback(
     (lease: IPropertyLongStay, month?: string) => {
-      let expectedAmount: number | undefined;
-      if (month) {
-        const detail = queryClient.getQueryData<IPropertyLongStayDetailResponse>(
-          queryKeys.propertyLongStay(propertyId, lease.id)
-        );
-        expectedAmount = detail?.rentSchedule.find((item) => item.month === month)?.expectedRent;
-      }
+      const detail = queryClient.getQueryData<IPropertyLongStayDetailResponse>(
+        queryKeys.propertyLongStay(propertyId, lease.id)
+      );
       setRecordRentLease(lease);
-      setRecordRentPrefill(buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount));
+      setRecordRentPrefill(
+        buildLeaseRecordRentPrefill(lease, rentIncomeLineTypeId, {
+          month,
+          rentSchedule: detail?.rentSchedule,
+        })
+      );
     },
     [propertyId, queryClient, rentIncomeLineTypeId]
   );

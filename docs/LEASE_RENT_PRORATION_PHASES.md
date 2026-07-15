@@ -189,12 +189,12 @@ N/A.
 
 **Goal:** `getRentSchedule` and end-lease API return correct prorated `expectedRent`.
 
-- [ ] Refactor `propertyLongStaysDb.getRentSchedule` to call `calculateExpectedRentForLeaseMonth` per month
-- [ ] Use `getLeaseScheduleEffectiveEndDate` for holdover preview on active leases
-- [ ] Optionally extend `IPropertyLongStayRentMonth` with `isProrated`, `occupiedDays`, `daysInMonth`
-- [ ] Update `property-long-stays-rent-schedule.test.ts` — proration + holdover + early move-out cases
-- [ ] Apply relaxed `validateEndLeaseMoveOutDate` in `property-long-stay-routes.ts` end handler
-- [ ] Verify `GET /long-stays/:id` response via existing route tests or manual API check
+- [x] Refactor `propertyLongStaysDb.getRentSchedule` to call `calculateExpectedRentForLeaseMonth` per month
+- [x] Use `getLeaseScheduleEffectiveEndDate` for holdover preview on active leases
+- [x] Optionally extend `IPropertyLongStayRentMonth` with `isProrated`, `occupiedDays`, `daysInMonth`
+- [x] Update `property-long-stays-rent-schedule.test.ts` — proration + holdover + early move-out cases
+- [x] Apply relaxed `validateEndLeaseMoveOutDate` in `property-long-stay-routes.ts` end handler
+- [x] Verify `GET /long-stays/:id` response via existing route tests or manual API check
 
 **Exit criteria:** API returns prorated schedule for mid-month start, early end, and holdover scenarios; end lease accepts move-out after `leaseEndDate`; existing paid-month/refund behavior unchanged.
 
@@ -206,10 +206,10 @@ N/A.
 
 **Goal:** Confirm admin consumers display prorated values without dialog changes.
 
-- [ ] Manually verify lease detail page loads new schedule (payments section amounts)
-- [ ] Verify `property-leases-page` Record Rent prefill uses prorated `expectedRent`
-- [ ] Verify unpaid summary totals sum prorated amounts
-- [ ] No UI code required unless types need updating for optional metadata fields
+- [x] Manually verify lease detail page loads new schedule (payments section amounts)
+- [x] Verify `property-leases-page` Record Rent prefill uses prorated `expectedRent`
+- [x] Verify unpaid summary totals sum prorated amounts
+- [x] No UI code required unless types need updating for optional metadata fields
 
 **Exit criteria:** Lease detail shows correct dollar amounts for known test leases; no regressions in extend-lease rent periods.
 

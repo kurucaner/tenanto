@@ -91,8 +91,11 @@ export interface IUpdatePropertyLongStayBody {
 }
 
 export interface IPropertyLongStayRentMonth {
+  daysInMonth: number;
   expectedRent: number;
   incomeLineId?: string;
   isPaid: boolean;
+  isProrated: boolean;
   month: string;
+  occupiedDays: number;
 }

@@ -9,10 +9,11 @@ import type {
   TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import {
+  calculateExpectedRentForLeaseMonth,
   calculateLeaseEndDate,
   enumerateLeaseMonths,
   getCurrentLeaseRent,
-  getLeaseRentForMonth,
+  getLeaseScheduleEffectiveEndDate,
   isIncomeLinePaidForRentSchedule,
   PropertyLongStayStatus,
   transactionDateToMonth,
@@ -307,14 +308,17 @@ export const propertyLongStaysDb = {
     };
   },
 
-  async getRentSchedule(longStayId: string): Promise<IPropertyLongStayRentMonth[]> {
+  async getRentSchedule(
+    longStayId: string,
+    referenceDate: string = getTodayUtcIsoDate()
+  ): Promise<IPropertyLongStayRentMonth[]> {
     const longStay = await propertyLongStaysDb.findById(longStayId);
     if (!longStay) {
       throw new LongStayNotFoundError();
     }
 
     const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
-    const effectiveEndDate = longStay.actualEndDate ?? longStay.leaseEndDate;
+    const effectiveEndDate = getLeaseScheduleEffectiveEndDate(longStay, referenceDate);
     const months = enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
 
     const incomeResult = await pool.query(
@@ -341,11 +345,21 @@ export const propertyLongStaysDb = {
 
     return months.map((month) => {
       const incomeLineId = paidByMonth.get(month);
+      const proration = calculateExpectedRentForLeaseMonth({
+        baseMonthlyRent: longStay.monthlyRent,
+        effectiveEndDate,
+        leaseStartDate: longStay.leaseStartDate,
+        month,
+        rentPeriods,
+      });
       return {
-        expectedRent: getLeaseRentForMonth(longStay.monthlyRent, rentPeriods, month),
+        daysInMonth: proration.daysInMonth,
+        expectedRent: proration.expectedRent,
         incomeLineId,
         isPaid: incomeLineId !== undefined,
+        isProrated: proration.isProrated,
         month,
+        occupiedDays: proration.occupiedDays,
       };
     });
   },

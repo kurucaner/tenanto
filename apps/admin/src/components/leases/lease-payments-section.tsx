@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format-money";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
+import { partitionRentSchedule } from "@/lib/lease-rent-schedule-display";
 import {
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
@@ -34,17 +35,6 @@ function getPaidMonthsToggleLabel(showPaidMonths: boolean, paidCount: number): s
     return "Show 1 paid month";
   }
   return `Show ${paidCount} paid months`;
-}
-
-function partitionRentSchedule(rentSchedule: IPropertyLongStayRentMonth[]) {
-  const unpaidMonths = rentSchedule.filter((item) => !item.isPaid);
-  const paidMonths = rentSchedule.filter((item) => item.isPaid);
-  const totalExpected = unpaidMonths.reduce((sum, item) => sum + item.expectedRent, 0);
-  return {
-    paidMonths,
-    unpaidMonths,
-    unpaidSummary: { count: unpaidMonths.length, totalExpected },
-  };
 }
 
 function RentScheduleRow({
