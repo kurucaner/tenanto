@@ -63,3 +63,16 @@ services:
       - DD_SITE=${DD_SITE:-us5.datadoghq.com}
       - CORS_ORIGINS=${ADMIN_ORIGIN:-http://localhost:3002}
     restart: unless-stopped
+
+  tenant:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tenant
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
+    ports:
+      - "3003:4174"
+    environment:
+      - PORT=4174
+    restart: unless-stopped
