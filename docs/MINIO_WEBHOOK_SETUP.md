@@ -2,7 +2,7 @@
 
 Last updated: **2026-07-06**
 
-Tenanto handles S3 upload notifications on the main API server at `POST /s3-notification`. Support attachment uploads under the `support/` prefix are confirmed event-driven via the `support_staged_uploads` table.
+PropertyOS handles S3 upload notifications on the main API server at `POST /s3-notification`. Support attachment uploads under the `support/` prefix are confirmed event-driven via the `support_staged_uploads` table.
 
 ---
 
@@ -10,7 +10,7 @@ Tenanto handles S3 upload notifications on the main API server at `POST /s3-noti
 
 - MinIO running locally (API on `:9000`, console on `:9001`)
 - `mc` (MinIO Client): `brew install minio/stable/mc`
-- tenanto server running (default `http://localhost:3001`)
+- propertyos server running (default `http://localhost:3001`)
 - `AWS_INTERNAL_SECRET` set in `apps/server/.env` (same value used for webhook auth)
 
 ---
@@ -23,7 +23,7 @@ From the repo root:
 export AWS_INTERNAL_SECRET=your-local-secret
 export MINIO_ACCESS_KEY=minioadmin
 export MINIO_SECRET_KEY=minioadmin
-export MINIO_BUCKET=tenanto
+export MINIO_BUCKET=propertyos
 export API_URL=http://localhost:3001
 
 bash scripts/setup-minio-s3-notifications.sh
@@ -50,7 +50,7 @@ bash scripts/setup-minio-s3-notifications.sh
 
 1. Configures `mc` alias (default `local`)
 2. Creates the bucket if missing
-3. Registers webhook target `notify_webhook:tenanto` → `{API_URL}/s3-notification`
+3. Registers webhook target `notify_webhook:propertyos` → `{API_URL}/s3-notification`
 4. Restarts MinIO to apply config
 5. Adds bucket event: `put` events with prefix `support/`
 
@@ -80,7 +80,7 @@ minio server ~/minio-data --console-address ":9001"
 Manual upload test:
 
 ```bash
-mc cp ./test.png local/tenanto/support/test-user-id/test-object-id
+mc cp ./test.png local/propertyos/support/test-user-id/test-object-id
 ```
 
 ---
@@ -98,9 +98,9 @@ Configure S3 bucket notifications on `s3:ObjectCreated:*` with prefix `support/`
 
 ## Troubleshooting
 
-| Issue | Fix |
-|-------|-----|
-| 401 from `/s3-notification` | Ensure `AWS_INTERNAL_SECRET` matches on server and in `mc admin config` |
-| No events received | Run `mc event list local/tenanto` and restart MinIO after config changes |
+| Issue                         | Fix                                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| 401 from `/s3-notification`   | Ensure `AWS_INTERNAL_SECRET` matches on server and in `mc admin config`                |
+| No events received            | Run `mc event list local/propertyos` and restart MinIO after config changes            |
 | Upload works but ticket fails | Notification may be slow — create still falls back to `headObject` for pending uploads |
-| CORS errors on browser PUT | Configure MinIO bucket CORS to allow `PUT` from your admin origin |
+| CORS errors on browser PUT    | Configure MinIO bucket CORS to allow `PUT` from your admin origin                      |

@@ -37,6 +37,6 @@ describe("formatDocumentTitle", () => {
   test("appends qa suffix when VITE_DD_ENV is qa and not local dev", () => {
     import.meta.env.DEV = false;
     import.meta.env.VITE_DD_ENV = "qa";
-    expect(formatDocumentTitle("Tenanto")).toBe("Tenanto (qa)");
+    expect(formatDocumentTitle("PropertyOS")).toBe("PropertyOS (qa)");
   });
 });

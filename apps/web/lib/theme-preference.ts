@@ -3,7 +3,6 @@ import { APP_SLUG } from "@/packages/shared";
 export type ThemeChoice = "light" | "dark" | "system";
 
 export const THEME_STORAGE_KEY = `${APP_SLUG}-theme`;
-const LEGACY_THEME_STORAGE_KEY = "tenanto-theme";
 
 const storedThemeListeners = new Set<() => void>();
 let storageListenerAttached = false;
@@ -81,7 +80,7 @@ export function applyTheme(choice: ThemeChoice, persist = true): void {
 }
 
 /** Inline string for `beforeInteractive` script (must stay in sync with key + logic). */
-export const THEME_INIT_SCRIPT = `(function(){try{var lk=${JSON.stringify(LEGACY_THEME_STORAGE_KEY)};var k=${JSON.stringify(THEME_STORAGE_KEY)};var lv=localStorage.getItem(lk);if(lv!==null&&localStorage.getItem(k)===null){localStorage.setItem(k,lv);localStorage.removeItem(lk);}var t=localStorage.getItem(k)||"system";if(t!=="light"&&t!=="dark"&&t!=="system")t="system";var r=document.documentElement;r.dataset.theme=t;var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);r.classList.toggle("dark",d);r.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k)||"system";if(t!=="light"&&t!=="dark"&&t!=="system")t="system";var r=document.documentElement;r.dataset.theme=t;var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);r.classList.toggle("dark",d);r.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
 
 export function subscribeSystemTheme(onChange: () => void): () => void {
   const mq = window.matchMedia("(prefers-color-scheme: dark)");

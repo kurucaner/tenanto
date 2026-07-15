@@ -3,7 +3,7 @@ set -euo pipefail
 
 MINIO_ALIAS="${MINIO_ALIAS:-local}"
 MINIO_ENDPOINT="${MINIO_ENDPOINT:-http://localhost:9000}"
-MINIO_BUCKET="${MINIO_BUCKET:-tenanto}"
+MINIO_BUCKET="${MINIO_BUCKET:-propertyos}"
 API_URL="${API_URL:-http://localhost:3001}"
 MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-${MINIO_ROOT_USER:-minioadmin}}"
 MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-${MINIO_ROOT_PASSWORD:-minioadmin}}"
@@ -25,22 +25,22 @@ mc alias set "$MINIO_ALIAS" "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET
 
 mc mb --ignore-existing "$MINIO_ALIAS/$MINIO_BUCKET"
 
-mc admin config set "$MINIO_ALIAS" notify_webhook:tenanto \
+mc admin config set "$MINIO_ALIAS" notify_webhook:propertyos \
   enable="on" \
   endpoint="${API_URL%/}/s3-notification" \
   auth_token="$AWS_INTERNAL_SECRET" \
   queue_limit="0" \
-  comment="Tenanto support attachment upload notifications"
+  comment="PropertyOS support attachment upload notifications"
 
 if ! mc admin service restart "$MINIO_ALIAS"; then
   echo "Warning: could not restart MinIO automatically. Restart MinIO manually, then re-run this script." >&2
 fi
 
-if mc event list "$MINIO_ALIAS/$MINIO_BUCKET" 2>/dev/null | grep -q 'arn:minio:sqs::tenanto:webhook'; then
+if mc event list "$MINIO_ALIAS/$MINIO_BUCKET" 2>/dev/null | grep -q 'arn:minio:sqs::propertyos:webhook'; then
   echo "Bucket event notification already configured for support/ prefix."
 else
   mc event add "$MINIO_ALIAS/$MINIO_BUCKET" \
-    arn:minio:sqs::tenanto:webhook \
+    arn:minio:sqs::propertyos:webhook \
     --event put \
     --prefix support/
 fi

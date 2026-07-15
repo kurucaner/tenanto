@@ -1,27 +1,27 @@
 ---
 name: data-table
 description: >-
-  Scaffold or migrate admin DataTables in Tenanto following repo conventions — virtualized
+  Scaffold or migrate admin DataTables in PropertyOS following repo conventions — virtualized
   DataTable, URL-backed filters/sort/search/date, infinite scroll with keyset cursors,
   toolbar chips, shared list types, server list endpoints, and TanStack Query cache keys.
   Use when creating a new table, migrating an existing table to DataTable, adding list
   filters/sorting/search/date persistence, or when the user mentions table conventions.
 ---
 
-# Tenanto data table conventions
+# PropertyOS data table conventions
 
 Build or migrate list UIs to match existing ledger/support tables. **Read the codebase first** — copy the closest example; do not invent patterns.
 
 ## Choose your path
 
-| Situation | Primary template | Orchestrator location |
-|-----------|------------------|----------------------|
-| **New global list** (admin + user variants, config-driven) | Support | `components/{feature}/{feature}-requests-list.tsx` + `{feature}-list-config.ts` |
-| **New property ledger list** (date + filters, page-owned) | Expenses | `pages/property-{resource}-page.tsx` |
-| **Migrate existing table** | Closest ledger page | Same file, refactor in place |
-| **Sortable + searchable + date** | Support (server) + Expenses (toolbar) | Both |
-| **Footer totals / meta** | Units | `DataTableCountFooter` |
-| **Many filters + server sort** | Exports or Income | Page + `*-list-sort.ts` |
+| Situation                                                  | Primary template                      | Orchestrator location                                                           |
+| ---------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------- |
+| **New global list** (admin + user variants, config-driven) | Support                               | `components/{feature}/{feature}-requests-list.tsx` + `{feature}-list-config.ts` |
+| **New property ledger list** (date + filters, page-owned)  | Expenses                              | `pages/property-{resource}-page.tsx`                                            |
+| **Migrate existing table**                                 | Closest ledger page                   | Same file, refactor in place                                                    |
+| **Sortable + searchable + date**                           | Support (server) + Expenses (toolbar) | Both                                                                            |
+| **Footer totals / meta**                                   | Units                                 | `DataTableCountFooter`                                                          |
+| **Many filters + server sort**                             | Exports or Income                     | Page + `*-list-sort.ts`                                                         |
 
 Full file index, imports, and pitfalls: [reference.md](reference.md).
 
@@ -96,10 +96,26 @@ const schema = defineUrlFilterSchema({
 });
 
 const { filters, setFilter, setFilters } = useUrlFilterState(schema);
-const { effectiveFrom, effectiveTo, displayFrom, displayTo, activePreset, onPresetChange, onFromChange, onToChange } =
-  useUrlDateRangeFilter({ allTime: filters.allTime === "true", dateFilterSchema: schema, from: filters.from, to: filters.to });
+const {
+  effectiveFrom,
+  effectiveTo,
+  displayFrom,
+  displayTo,
+  activePreset,
+  onPresetChange,
+  onFromChange,
+  onToChange,
+} = useUrlDateRangeFilter({
+  allTime: filters.allTime === "true",
+  dateFilterSchema: schema,
+  from: filters.from,
+  to: filters.to,
+});
 const { searchInput, onSearchInputChange } = useLedgerUrlSearch(filters.q, setFilter);
-const sort = useUrlTableSort({ defaultColumnId: DEFAULT_SORT_BY, defaultDirection: DEFAULT_SORT_DIR });
+const sort = useUrlTableSort({
+  defaultColumnId: DEFAULT_SORT_BY,
+  defaultDirection: DEFAULT_SORT_DIR,
+});
 ```
 
 **Date defaults:**
@@ -143,7 +159,7 @@ DataTableToolbar
       emptyMessage="…"
       getItemKey={getItemKey}
       infiniteScroll={{ hasNextPage, isFetchingNextPage }}
-      infiniteScrollSentinelRef={scrollSentinelRef}  // separate prop — React Compiler
+      infiniteScrollSentinelRef={scrollSentinelRef} // separate prop — React Compiler
       isPending={isTableInitialPending}
       isRefreshing={isFilterRefetching}
       items={rows}

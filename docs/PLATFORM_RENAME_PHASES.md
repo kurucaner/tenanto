@@ -50,23 +50,23 @@ Roadmap to rename the operator SPA from **`apps/admin`** to **`apps/platform`**,
 3. **No dual naming** — avoid `IAdminCreatePropertyBody` aliases alongside `ICreatePropertyBody`; rename symbols and consumers together per phase.
 4. **Use `git mv`** for folders and files to preserve history.
 5. **One concern per PR** — mechanical infra first, then UI symbols, then shared types, then optional staff API path rename.
-6. **Migrate client prefs** — localStorage keys (`propertyos-admin-theme` → `propertyos-platform-theme`) need the same legacy-read pattern already used for `tenanto-admin-theme`.
+6. **Migrate client prefs** — localStorage keys (`propertyos-admin-theme` → `propertyos-platform-theme`) need the same legacy-read pattern already used for `propertyoss-admin-theme`.
 7. **Most HTTP paths stay unchanged** — property, home, support, reports routes already live at `/properties`, `/home`, `/support`, etc.; only the **`/admin/*`** staff segment is a candidate for `/staff/*`.
 
 ---
 
 ## Vocabulary: what “admin” means today
 
-| Meaning | Examples | Target |
-| ------- | -------- | ------ |
-| **The app / package** | `apps/admin`, `"name": "admin"`, `dev:admin`, `Dockerfile.admin` | **`platform`** |
-| **UI shell** | `AdminLayout`, `AdminPageLayout`, `admin-nav.ts`, `--admin-surface-glow` | **`App*` / `Platform*` / drop prefix** |
-| **Operator API types** (all authenticated users) | `IAdminCreatePropertyBody`, `IAdminPropertiesListQuery` | **`ICreatePropertyBody`**, **`IPropertiesListQuery`** (drop `Admin`) |
-| **Staff-only API types** | `IAdminPlatformStats`, `IAdminUsersListQuery`, `IAdminAuditEvent` | **`IStaffPlatformStats`**, **`IStaffUsersListQuery`**, **`IStaffAuditEvent`** |
-| **Staff role & guard** | `UserType.ADMIN`, `requireAdmin` | **Keep** or rename guard to `requireStaff` in a dedicated PR |
-| **Staff HTTP paths** | `/admin/stats`, `/admin/users`, `/admin/app-config` | **`/staff/*`** (optional phase) |
-| **Support table variant** | `variant: "admin" \| "user"` | **`"staff" \| "user"`** when touching that code |
-| **Audit of staff actions** | `admin_audit_events`, `AdminAuditAction`, `record-admin-audit.ts` | **Keep** or rename to `staff_audit_*` later (low priority) |
+| Meaning                                          | Examples                                                                 | Target                                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| **The app / package**                            | `apps/admin`, `"name": "admin"`, `dev:admin`, `Dockerfile.admin`         | **`platform`**                                                                |
+| **UI shell**                                     | `AdminLayout`, `AdminPageLayout`, `admin-nav.ts`, `--admin-surface-glow` | **`App*` / `Platform*` / drop prefix**                                        |
+| **Operator API types** (all authenticated users) | `IAdminCreatePropertyBody`, `IAdminPropertiesListQuery`                  | **`ICreatePropertyBody`**, **`IPropertiesListQuery`** (drop `Admin`)          |
+| **Staff-only API types**                         | `IAdminPlatformStats`, `IAdminUsersListQuery`, `IAdminAuditEvent`        | **`IStaffPlatformStats`**, **`IStaffUsersListQuery`**, **`IStaffAuditEvent`** |
+| **Staff role & guard**                           | `UserType.ADMIN`, `requireAdmin`                                         | **Keep** or rename guard to `requireStaff` in a dedicated PR                  |
+| **Staff HTTP paths**                             | `/admin/stats`, `/admin/users`, `/admin/app-config`                      | **`/staff/*`** (optional phase)                                               |
+| **Support table variant**                        | `variant: "admin" \| "user"`                                             | **`"staff" \| "user"`** when touching that code                               |
+| **Audit of staff actions**                       | `admin_audit_events`, `AdminAuditAction`, `record-admin-audit.ts`        | **Keep** or rename to `staff_audit_*` later (low priority)                    |
 
 ---
 
@@ -74,99 +74,99 @@ Roadmap to rename the operator SPA from **`apps/admin`** to **`apps/platform`**,
 
 ### App / monorepo
 
-| Before | After |
-| ------ | ----- |
-| `apps/admin/` | `apps/platform/` |
-| `"name": "admin"` | `"name": "platform"` |
-| `dev:admin` / `build:admin` / `lint:admin` / `prettier:admin` | `dev:platform` / … |
-| `bun.lock` workspace `admin@workspace:apps/admin` | `platform@workspace:apps/platform` |
-| `docker/Dockerfile.admin` | `docker/Dockerfile.platform` |
-| `docker-compose.yml` service `admin` | `platform` |
-| `ADMIN_ORIGIN` (proxy CORS) | `PLATFORM_ORIGIN` (optional; keep alias env var briefly) |
-| `apps/admin/railway.toml` | `apps/platform/railway.toml` |
-| `apps/admin/.env.example` comment “Admin API” | “Platform API” |
+| Before                                                        | After                                                    |
+| ------------------------------------------------------------- | -------------------------------------------------------- |
+| `apps/admin/`                                                 | `apps/platform/`                                         |
+| `"name": "admin"`                                             | `"name": "platform"`                                     |
+| `dev:admin` / `build:admin` / `lint:admin` / `prettier:admin` | `dev:platform` / …                                       |
+| `bun.lock` workspace `admin@workspace:apps/admin`             | `platform@workspace:apps/platform`                       |
+| `docker/Dockerfile.admin`                                     | `docker/Dockerfile.platform`                             |
+| `docker-compose.yml` service `admin`                          | `platform`                                               |
+| `ADMIN_ORIGIN` (proxy CORS)                                   | `PLATFORM_ORIGIN` (optional; keep alias env var briefly) |
+| `apps/admin/railway.toml`                                     | `apps/platform/railway.toml`                             |
+| `apps/admin/.env.example` comment “Admin API”                 | “Platform API”                                           |
 
 ### Platform UI — files with `admin` in the name (11 files)
 
-| Before | After |
-| ------ | ----- |
-| `components/layout/admin-layout.tsx` | `components/layout/app-layout.tsx` |
-| `components/admin-page-layout.tsx` | `components/page-layout.tsx` |
-| `components/admin-page-intro.tsx` | `components/page-intro.tsx` |
-| `config/admin-nav.ts` | `config/app-nav.ts` |
-| `components/admin-audit-shared.tsx` | `components/audit-event-details.tsx` |
-| `components/admin-user-audit-section.tsx` | `components/user-audit-section.tsx` |
-| `components/admin-theme-sync.tsx` | `components/theme-sync.tsx` |
-| `components/admin-theme-switcher.tsx` | `components/theme-switcher.tsx` |
-| `components/admin-dark-palette-menu.tsx` | `components/dark-palette-menu.tsx` |
-| `hooks/use-resolved-admin-dark.ts` | `hooks/use-resolved-dark-preset.ts` |
-| `lib/admin-audit-format.ts` | `lib/audit-event-format.ts` |
+| Before                                    | After                                |
+| ----------------------------------------- | ------------------------------------ |
+| `components/layout/admin-layout.tsx`      | `components/layout/app-layout.tsx`   |
+| `components/admin-page-layout.tsx`        | `components/page-layout.tsx`         |
+| `components/admin-page-intro.tsx`         | `components/page-intro.tsx`          |
+| `config/admin-nav.ts`                     | `config/app-nav.ts`                  |
+| `components/admin-audit-shared.tsx`       | `components/audit-event-details.tsx` |
+| `components/admin-user-audit-section.tsx` | `components/user-audit-section.tsx`  |
+| `components/admin-theme-sync.tsx`         | `components/theme-sync.tsx`          |
+| `components/admin-theme-switcher.tsx`     | `components/theme-switcher.tsx`      |
+| `components/admin-dark-palette-menu.tsx`  | `components/dark-palette-menu.tsx`   |
+| `hooks/use-resolved-admin-dark.ts`        | `hooks/use-resolved-dark-preset.ts`  |
+| `lib/admin-audit-format.ts`               | `lib/audit-event-format.ts`          |
 
 ### Platform UI — symbols
 
-| Before | After |
-| ------ | ----- |
-| `AdminLayout` | `AppLayout` |
-| `AdminPageLayout` / `AdminPageLayoutProps` | `PageLayout` / `PageLayoutProps` |
-| `AdminPageIntro` / `AdminPageIntroProps` | `PageIntro` / `PageIntroProps` |
+| Before                                               | After                                          |
+| ---------------------------------------------------- | ---------------------------------------------- |
+| `AdminLayout`                                        | `AppLayout`                                    |
+| `AdminPageLayout` / `AdminPageLayoutProps`           | `PageLayout` / `PageLayoutProps`               |
+| `AdminPageIntro` / `AdminPageIntroProps`             | `PageIntro` / `PageIntroProps`                 |
 | `AdminNavItem` / `AdminNavMatch` / `ADMIN_NAV_ITEMS` | `AppNavItem` / `AppNavMatch` / `APP_NAV_ITEMS` |
-| `isAdminNavActive` / `getNavItemsForRole` | `isAppNavActive` / … (keep logic) |
-| `useResolvedAdminDark` | `useResolvedDarkPreset` |
-| `--admin-surface-glow-a/b` | `--platform-surface-glow-a/b` |
-| `.admin-app-surface` / `.admin-dashboard-shell` | `.app-surface` / `.dashboard-shell` |
+| `isAdminNavActive` / `getNavItemsForRole`            | `isAppNavActive` / … (keep logic)              |
+| `useResolvedAdminDark`                               | `useResolvedDarkPreset`                        |
+| `--admin-surface-glow-a/b`                           | `--platform-surface-glow-a/b`                  |
+| `.admin-app-surface` / `.admin-dashboard-shell`      | `.app-surface` / `.dashboard-shell`            |
 
 ### Platform UI — localStorage & observability
 
-| Before | After |
-| ------ | ----- |
-| `propertyos-admin-theme` | `propertyos-platform-theme` (+ migrate from `-admin-`) |
-| `propertyos-admin-dark-preset` | `propertyos-platform-dark-preset` |
-| `propertyos-admin-release-notes-seen` | `propertyos-platform-release-notes-seen` |
-| Datadog `RUM_SERVICE = "propertyos-admin"` | `"propertyos-platform"` |
+| Before                                     | After                                                  |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `propertyos-admin-theme`                   | `propertyos-platform-theme` (+ migrate from `-admin-`) |
+| `propertyos-admin-dark-preset`             | `propertyos-platform-dark-preset`                      |
+| `propertyos-admin-release-notes-seen`      | `propertyos-platform-release-notes-seen`               |
+| Datadog `RUM_SERVICE = "propertyos-admin"` | `"propertyos-platform"`                                |
 
 ### Shared types — operator APIs (drop `Admin` prefix)
 
-| Before | After |
-| ------ | ----- |
-| `IAdminPropertiesListQuery` | `IPropertiesListQuery` |
-| `IAdminPropertiesListResponse` | `IPropertiesListResponse` |
-| `IAdminCreatePropertyBody` | `ICreatePropertyBody` |
-| `IAdminUpdatePropertyBody` | `IUpdatePropertyBody` |
-| `IAdminSetPropertyFavoriteBody` | `ISetPropertyFavoriteBody` |
-| `IAdminAddPropertyMemberBody` | `IAddPropertyMemberBody` |
+| Before                           | After                       |
+| -------------------------------- | --------------------------- |
+| `IAdminPropertiesListQuery`      | `IPropertiesListQuery`      |
+| `IAdminPropertiesListResponse`   | `IPropertiesListResponse`   |
+| `IAdminCreatePropertyBody`       | `ICreatePropertyBody`       |
+| `IAdminUpdatePropertyBody`       | `IUpdatePropertyBody`       |
+| `IAdminSetPropertyFavoriteBody`  | `ISetPropertyFavoriteBody`  |
+| `IAdminAddPropertyMemberBody`    | `IAddPropertyMemberBody`    |
 | `IAdminUpdatePropertyMemberBody` | `IUpdatePropertyMemberBody` |
 
 ### Shared types — staff / support triage
 
-| Before | After |
-| ------ | ----- |
-| `IAdminPlatformStats` | `IStaffPlatformStats` |
-| `IAdminPatchAppConfigBody` | `IStaffPatchAppConfigBody` |
-| `IAdminAuditEvent` | `IStaffAuditEvent` |
-| `IAdminAuditEventsListQuery` | `IStaffAuditEventsListQuery` |
-| `IAdminAuditEventsListResponse` | `IStaffAuditEventsListResponse` |
+| Before                                   | After                                    |
+| ---------------------------------------- | ---------------------------------------- |
+| `IAdminPlatformStats`                    | `IStaffPlatformStats`                    |
+| `IAdminPatchAppConfigBody`               | `IStaffPatchAppConfigBody`               |
+| `IAdminAuditEvent`                       | `IStaffAuditEvent`                       |
+| `IAdminAuditEventsListQuery`             | `IStaffAuditEventsListQuery`             |
+| `IAdminAuditEventsListResponse`          | `IStaffAuditEventsListResponse`          |
 | `AdminAuditAction` / `TAdminAuditAction` | `StaffAuditAction` / `TStaffAuditAction` |
-| `IAdminSupportRequestListItem` | `IStaffSupportRequestListItem` |
-| `TAdminSupportRequestSettableStatus` | `TStaffSupportRequestSettableStatus` |
-| `IAdminSupportRequestPatchBody` | `IStaffSupportRequestPatchBody` |
-| `IAdminSupportRequestsListResponse` | `IStaffSupportRequestsListResponse` |
+| `IAdminSupportRequestListItem`           | `IStaffSupportRequestListItem`           |
+| `TAdminSupportRequestSettableStatus`     | `TStaffSupportRequestSettableStatus`     |
+| `IAdminSupportRequestPatchBody`          | `IStaffSupportRequestPatchBody`          |
+| `IAdminSupportRequestsListResponse`      | `IStaffSupportRequestsListResponse`      |
 
 ### Shared — file renames
 
-| Before | After |
-| ------ | ----- |
-| `admin-audit-types.ts` | `staff-audit-types.ts` |
+| Before                          | After                           |
+| ------------------------------- | ------------------------------- |
+| `admin-audit-types.ts`          | `staff-audit-types.ts`          |
 | `admin-platform-stats-types.ts` | `staff-platform-stats-types.ts` |
 
 ### Platform `api-client.ts` — local-only types & API object
 
-| Before | After |
-| ------ | ----- |
-| `IAdminUsersListQuery` / `IAdminUsersListResponse` | `IStaffUsersListQuery` / `IStaffUsersListResponse` |
+| Before                                              | After                                               |
+| --------------------------------------------------- | --------------------------------------------------- |
+| `IAdminUsersListQuery` / `IAdminUsersListResponse`  | `IStaffUsersListQuery` / `IStaffUsersListResponse`  |
 | `IAdminUserDetailUser` / `IAdminUserDetailResponse` | `IStaffUserDetailUser` / `IStaffUserDetailResponse` |
-| `adminApi` | `staffApi` |
-| `getAdminStats` | `getStaffPlatformStats` |
-| `propertiesApi`, etc. | unchanged object names (already neutral) |
+| `adminApi`                                          | `staffApi`                                          |
+| `getAdminStats`                                     | `getStaffPlatformStats`                             |
+| `propertiesApi`, etc.                               | unchanged object names (already neutral)            |
 
 ### HTTP paths
 
@@ -176,47 +176,47 @@ Most operator endpoints **unchanged** (already neutral):
 
 Staff-only segment (optional rename in Phase 5):
 
-| Before | After |
-| ------ | ----- |
-| `GET /admin/stats` | `GET /staff/stats` |
-| `GET /admin/audit-events` | `GET /staff/audit-events` |
-| `GET /admin/users` | `GET /staff/users` |
-| `GET /admin/users/:user_id` | `GET /staff/users/:user_id` |
-| `GET /admin/users/:user_id/audit-events` | `GET /staff/users/:user_id/audit-events` |
+| Before                                     | After                                      |
+| ------------------------------------------ | ------------------------------------------ |
+| `GET /admin/stats`                         | `GET /staff/stats`                         |
+| `GET /admin/audit-events`                  | `GET /staff/audit-events`                  |
+| `GET /admin/users`                         | `GET /staff/users`                         |
+| `GET /admin/users/:user_id`                | `GET /staff/users/:user_id`                |
+| `GET /admin/users/:user_id/audit-events`   | `GET /staff/users/:user_id/audit-events`   |
 | `POST /admin/users/:user_id/reset-account` | `POST /staff/users/:user_id/reset-account` |
-| `GET/PATCH /admin/app-config` | `GET/PATCH /staff/app-config` |
+| `GET/PATCH /admin/app-config`              | `GET/PATCH /staff/app-config`              |
 
 ### Server — folder & representative file renames
 
-| Before | After |
-| ------ | ----- |
-| `routes/admin/` | `routes/platform/` |
-| `admin-routes.ts` | `staff-routes.ts` |
-| `admin-query-utils.ts` | `platform-query-utils.ts` |
-| `record-admin-audit.ts` | `record-staff-audit.ts` (optional) |
+| Before                     | After                                                        |
+| -------------------------- | ------------------------------------------------------------ |
+| `routes/admin/`            | `routes/platform/`                                           |
+| `admin-routes.ts`          | `staff-routes.ts`                                            |
+| `admin-query-utils.ts`     | `platform-query-utils.ts`                                    |
+| `record-admin-audit.ts`    | `record-staff-audit.ts` (optional)                           |
 | `db/admin-audit-events.ts` | `db/staff-audit-events.ts` (optional; no DB rename required) |
 
 ### Docs & tooling
 
-| Before | After |
-| ------ | ----- |
-| `CLAUDE.md` references to `apps/admin` | `apps/platform` |
-| `.claude/skills/*` paths | update to `apps/platform` |
-| `.logawayrc.json` targetDir | `apps/platform` |
-| `.husky/pre-push` `apps/admin` | `apps/platform` |
-| `docs/ADMIN_CAPABILITIES_GAP.md` | `docs/PLATFORM_CAPABILITIES_GAP.md` (optional) |
-| Other `docs/*.md` path references | batch update in Phase 6 |
+| Before                                 | After                                          |
+| -------------------------------------- | ---------------------------------------------- |
+| `CLAUDE.md` references to `apps/admin` | `apps/platform`                                |
+| `.claude/skills/*` paths               | update to `apps/platform`                      |
+| `.logawayrc.json` targetDir            | `apps/platform`                                |
+| `.husky/pre-push` `apps/admin`         | `apps/platform`                                |
+| `docs/ADMIN_CAPABILITIES_GAP.md`       | `docs/PLATFORM_CAPABILITIES_GAP.md` (optional) |
+| Other `docs/*.md` path references      | batch update in Phase 6                        |
 
 ---
 
 ## Do **not** rename (unless doing a separate staff-role project)
 
-| Symbol / concept | Reason |
-| ---------------- | ------ |
-| `UserType.ADMIN` | Staff role in DB and JWT |
-| `requireAdmin` (until staff PR) | Checks `UserType.ADMIN`; name is accurate |
-| `PropertyRole` | Property member role, unrelated |
-| Postgres `admin_audit_events` | Accurate; migration cost > benefit |
+| Symbol / concept                 | Reason                                                   |
+| -------------------------------- | -------------------------------------------------------- |
+| `UserType.ADMIN`                 | Staff role in DB and JWT                                 |
+| `requireAdmin` (until staff PR)  | Checks `UserType.ADMIN`; name is accurate                |
+| `PropertyRole`                   | Property member role, unrelated                          |
+| Postgres `admin_audit_events`    | Accurate; migration cost > benefit                       |
 | `parseAdminLimit` in query utils | Could become `parseStaffLimit` only with staff rename PR |
 
 ---
@@ -295,7 +295,7 @@ docker compose build platform   # if using Docker locally
 3. Update `app/router.tsx` to import `AppLayout` from `app-layout.tsx`.
 4. Update `index.css` CSS variables and class names.
 5. Update `index.html` inline localStorage migration:
-   - Existing: `tenanto-admin-theme` → `propertyos-admin-theme`
+   - Existing: `propertyoss-admin-theme` → `propertyos-admin-theme`
    - Add: `propertyos-admin-theme` → `propertyos-platform-theme` (same for dark-preset, release-notes-seen)
 6. Update `theme-preference.ts`, `dark-preset-preference.ts`, `release-notes-preference.ts` keys + `LEGACY_*` constants.
 7. Update `datadog-rum.ts` service name.
@@ -444,14 +444,14 @@ rg 'apps/admin|dev:admin|Dockerfile\.admin' .
 
 ## PR strategy (recommended)
 
-| PR | Phase | Risk | Can ship independently |
-| -- | ----- | ---- | ---------------------- |
-| 1 | Phase 1 — infra | Low | Yes |
-| 2 | Phase 2 — UI shell | Medium | After PR 1 |
-| 3 | Phase 3 — shared types | Medium–High | After PR 1; ideally with server import fixes |
-| 4 | Phase 4 — server folder | Medium | After PR 3 |
-| 5 | Phase 5 — `/staff` paths | Medium (API break) | Optional |
-| 6 | Phase 6 — docs + cleanup | Low | Last |
+| PR  | Phase                    | Risk               | Can ship independently                       |
+| --- | ------------------------ | ------------------ | -------------------------------------------- |
+| 1   | Phase 1 — infra          | Low                | Yes                                          |
+| 2   | Phase 2 — UI shell       | Medium             | After PR 1                                   |
+| 3   | Phase 3 — shared types   | Medium–High        | After PR 1; ideally with server import fixes |
+| 4   | Phase 4 — server folder  | Medium             | After PR 3                                   |
+| 5   | Phase 5 — `/staff` paths | Medium (API break) | Optional                                     |
+| 6   | Phase 6 — docs + cleanup | Low                | Last                                         |
 
 Phases 3 + 4 can merge into one PR if the team prefers fewer review rounds.
 
@@ -505,16 +505,13 @@ Port mapping stays `3002:4173` unless intentionally changed. Service name in com
 
 ### localStorage backward compatibility
 
-Pattern (already used for Tenanto → PropertyOS):
+Pattern (already used for PropertyOS → PropertyOS):
 
 ```html
 <!-- index.html inline script -->
-var legacy = "propertyos-admin-theme";
-var next = "propertyos-platform-theme";
-if (localStorage.getItem(legacy) !== null && localStorage.getItem(next) === null) {
-  localStorage.setItem(next, localStorage.getItem(legacy));
-  localStorage.removeItem(legacy);
-}
+var legacy = "propertyos-admin-theme"; var next = "propertyos-platform-theme"; if
+(localStorage.getItem(legacy) !== null && localStorage.getItem(next) === null) {
+localStorage.setItem(next, localStorage.getItem(legacy)); localStorage.removeItem(legacy); }
 ```
 
 Repeat for dark-preset and release-notes-seen keys.

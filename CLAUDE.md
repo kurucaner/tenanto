@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Tenanto** (package name `propertyos`) is a property-accounting platform for short-term/long-term rental operators. It tracks properties, units, reservations, extra-income lines, expenses, and produces per-property and portfolio financial reports (revenue, taxes, channel commissions, net income). The product recently pivoted from a previous product ("postscrypt"/"locklet"); see `TODO.md` for the remaining rename/setup checklist and stray references to purge (`rg -i "locklet|postscrypt" --type ts`).
+**PropertyOS** (package name `propertyos`) is a property-accounting platform for short-term/long-term rental operators. It tracks properties, units, reservations, extra-income lines, expenses, and produces per-property and portfolio financial reports (revenue, taxes, channel commissions, net income). The product recently pivoted from a previous product ("postscrypt"/"locklet"); see `TODO.md` for the remaining rename/setup checklist and stray references to purge (`rg -i "locklet|postscrypt" --type ts`).
 
 ## Monorepo layout
 
@@ -24,11 +24,13 @@ Bun workspaces (`apps/*`, `packages/*`). Package manager is **bun** (`bun.lock`,
 Install: `bun install` (root).
 
 Run one app in dev (from repo root):
+
 - `bun run dev:server` · `dev:admin` · `dev:web` · `dev:proxy`
 
 Or run inside the app dir directly (more reliable): `cd apps/server && bun run dev`. Equivalent `build:*`, `start:*`, `lint:*` scripts exist per app at the root.
 
 Per-app essentials:
+
 - Server: `bun run dev` (nodemon + bun), `bun run build` (`tsc` → `tsc-alias` → copies `templates/`), `bun test` (uses `bun test`), `bun run lint`.
 - Admin: `bun run dev` (Vite), `bun run build` (`tsc -b && vite build`), `bun run lint`.
 - Web: `bun run dev`/`build` (Next).

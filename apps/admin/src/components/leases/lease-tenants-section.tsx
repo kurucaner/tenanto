@@ -1,13 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, X } from "lucide-react";
-import { memo, useState } from "react";
+import { Pencil, Plus } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { AddSecondaryTenantDialog } from "@/components/leases/add-secondary-tenant-dialog";
 import { EditPrimaryTenantDialog } from "@/components/leases/edit-primary-tenant-dialog";
 import { EditSecondaryTenantDialog } from "@/components/leases/edit-secondary-tenant-dialog";
+import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import {
@@ -18,6 +20,11 @@ import {
 } from "@/packages/shared";
 
 const MAX_SECONDARY_TENANTS = 10;
+
+type TLeaseSecondaryTenantDeleteTarget = {
+  index: number;
+  tenant: IPropertyLongStaySecondaryTenant;
+};
 
 function TenantContactLine({ label, value }: Readonly<{ label: string; value: string | null }>) {
   if (!value) {
@@ -65,6 +72,30 @@ export const LeaseTenantsSection = memo(
         invalidatePropertyLongStayCaches(queryClient, propertyId);
       },
     });
+
+    const deleteFn = useCallback(
+      (target: TLeaseSecondaryTenantDeleteTarget, onDeleted?: () => void) => {
+        removeMutation.mutate(target.index, { onSuccess: onDeleted });
+      },
+      [removeMutation]
+    );
+
+    const getConfirmationOptions = useCallback(
+      (target: TLeaseSecondaryTenantDeleteTarget) => ({
+        confirmLabel: "Remove",
+        description: `Remove "${target.tenant.name}" from this lease?`,
+        target,
+        title: "Remove secondary tenant",
+      }),
+      []
+    );
+
+    const { deleteConfirmationDialog, handleDelete, isQuickDeleteActive } =
+      useQuickDelete<TLeaseSecondaryTenantDeleteTarget>({
+        deleteFn,
+        getConfirmationOptions,
+        isPending: removeMutation.isPending,
+      });
 
     return (
       <>
@@ -114,16 +145,12 @@ export const LeaseTenantsSection = memo(
                         >
                           <Pencil className="size-3.5" />
                         </Button>
-                        <Button
-                          aria-label={`Remove ${tenant.name}`}
+                        <QuickDeleteButton
+                          ariaLabel={`Remove ${tenant.name}`}
                           disabled={removeMutation.isPending}
-                          onClick={() => removeMutation.mutate(index)}
-                          size="icon-sm"
-                          type="button"
-                          variant="ghost"
-                        >
-                          <X className="size-3.5" />
-                        </Button>
+                          onClick={(event) => handleDelete({ index, tenant }, event)}
+                          quickDeleteActive={isQuickDeleteActive}
+                        />
                       </div>
                     ) : null}
                   </div>
@@ -182,6 +209,8 @@ export const LeaseTenantsSection = memo(
             tenantIndex={editingSecondary.index}
           />
         ) : null}
+
+        {deleteConfirmationDialog}
       </>
     );
   }

@@ -623,7 +623,7 @@ export const ImportIncomeCsvDialog = memo(
 
     return (
       <ImportCsvDialogShell
-        description={`Upload up to ${INCOME_CSV_IMPORT_MAX_FILES} Hotel Tax Calculator CSV files. Tenanto reads stay rows and computes commission and taxes for review.`}
+        description={`Upload up to ${INCOME_CSV_IMPORT_MAX_FILES} Hotel Tax Calculator CSV files. PropertyOS reads stay rows and computes commission and taxes for review.`}
         footer={footer}
         onBodyElementReady={setPreviewScrollElement}
         onOpenChange={handleOpenChange}
