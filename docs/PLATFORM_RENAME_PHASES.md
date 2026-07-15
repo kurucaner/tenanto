@@ -576,4 +576,4 @@ Repeat for dark-preset and release-notes-seen keys.
 - **`UserType.ADMIN` → `UserType.STAFF`** — requires DB migration + JWT payload docs + every role check.
 - **`admin_audit_events` table rename** — cosmetic; needs migration vN+.
 - **Marketing site** (`apps/web`) copy mentioning “admin”.
-- **Future `apps/tenant/`** — see `docs/TENANT_APP_PHASES.md`; platform name clarifies operator vs tenant apps.
+- **Future `apps/tenant/`** — see `docs/TENANT_PORTAL_PHASES.md`; platform name clarifies operator vs tenant apps.

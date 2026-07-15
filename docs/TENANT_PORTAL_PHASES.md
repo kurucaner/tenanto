@@ -7,6 +7,7 @@ Stack: **Postgres** (memberships + tenant accounts) + **SES** (invite emails) + 
 **Related code today**
 
 - Lease records (CRM data, not portal access): `apps/server/src/db/property-long-stays.ts`, `packages/shared/src/property-long-stay-types.ts`
+- Lease lifecycle: `apps/server/src/routes/admin/property-long-stay-routes.ts` (`end`, `extend`, update) and `notifyPrimaryTenantLeaseEnded` hook point
 - Operator invite pattern (mirror, do not reuse): `apps/server/src/db/property-invites.ts`, `apps/server/src/routes/admin/property-routes.ts`, `apps/server/src/routes/auth/auth-routes.ts` (auto-claim on register)
 - One-way tenant emails (no login): `apps/server/src/services/lease-notifications.ts`, `apps/server/src/ses/transactional-emails.ts`
 - Tenant email audience resolver: `packages/shared/src/tenant-email-recipient-resolver.ts`
@@ -30,7 +31,10 @@ Stack: **Postgres** (memberships + tenant accounts) + **SES** (invite emails) + 
 
 ## Non-goals (initial release through Phase 4)
 
+- Separate Postgres database (extend `apps/server`, not a second DB)
 - Separate Node microservice for tenants (extend `apps/server` with `routes/tenant/`)
+- Short-term / reservation guests (long-stay leases only)
+- Native mobile app (responsive web only)
 - Rent payments / Stripe / bank linking
 - Maintenance requests, in-app messaging, document upload
 - Push notifications to tenant app
@@ -46,12 +50,45 @@ Stack: **Postgres** (memberships + tenant accounts) + **SES** (invite emails) + 
 ## Guiding principles
 
 1. **Lease record ≠ portal access** — `property_long_stays.tenant_email` is operator CRM data; portal access requires a `lease_tenant_membership` the tenant accepted.
-2. **Explicit acceptance always** — new email: signup + accept; existing `tenant_users` row: `pending_acceptance` until tenant confirms. Never silently attach a new landlord’s lease.
-3. **Lease-scoped authorization** — tenants see one lease at a time; no `property_members` checks. Operators retain existing admin routes unchanged.
-4. **Postgres before side effects** — insert membership row, then send email; invite state recoverable from DB.
-5. **Reuse server patterns** — OTP register flow, transactional emails, `reply-from-database-error`, mappers, `HttpStatus` from shared.
-6. **Separate JWT audience** — operator tokens must not call `/tenant/*`; tenant tokens must not call `/properties/*` admin routes.
-7. **Operators end leases** — tenants cannot terminate the lease in the app; ending in admin drives membership → `ended`.
+2. **Same Postgres, separate tables** — tenant rows live beside operator data; FK to `property_long_stays` keeps joins simple. Do not split databases until a bounded context justifies operational cost.
+3. **Extend the monolith first** — `routes/tenant/*` on `apps/server`; extract a service later only with proven need.
+4. **Explicit acceptance always** — new email: signup + accept; existing `tenant_users` row: `pending_acceptance` until tenant confirms. Never silently attach a new landlord’s lease.
+5. **Lease-scoped authorization** — tenants see one lease at a time; no `property_members` checks. Operators retain existing admin routes unchanged.
+6. **Postgres before side effects** — insert membership row, then send email; invite state recoverable from DB.
+7. **Reuse server patterns** — OTP register flow, transactional emails, `reply-from-database-error`, mappers, `HttpStatus` from shared.
+8. **Separate JWT audience** — operator tokens must not call `/tenant/*`; tenant tokens must not call `/properties/*` admin routes.
+9. **Operators end leases** — tenants cannot terminate the lease in the app; ending in admin drives membership → `ended`.
+
+---
+
+## Database architecture — one DB or two?
+
+### Recommendation: **one Postgres database** (new tables)
+
+| Approach | Verdict |
+| --- | --- |
+| **Same DB, new tables** (`tenant_users`, `lease_tenant_memberships`) | **Start here** |
+| **Same DB, separate schema** (`tenant.*`) | Optional later for clarity; not required for v1 |
+| **Separate Postgres database** | **Defer** until compliance or team boundaries force it |
+
+**Why not a separate database now**
+
+- Tenant portal reads **lease, unit, property, rent schedule** — all operator-owned tables today. Splitting DBs means cross-DB queries, sync jobs, or duplicated snapshots; you lose FK integrity.
+- Fast growth is handled by **indexes, connection pooling, read replicas, and horizontal API replicas** — not by a second database on day one.
+- This repo already runs one migration runner and one pool (`apps/server/src/db/pool.ts`); a second DB doubles migration tooling, backups, and consistency work.
+
+**When to reconsider a split** (Phase 5+ / years out)
+
+- Legal/compliance requires tenant PII in an isolated trust zone
+- Tenant API team deploys independently with strict SLA separation
+- Tenant traffic dominates and you extract `apps/tenant-api` with an explicit contract — still often **same DB** initially, split DB only if profiling proves connection/contention isolation is insufficient
+
+**Scale path without a new DB**
+
+1. v1–v2: new tables + indexes on `lease_id`, `tenant_user_id`, `invite_email`
+2. Traffic growth: scale server replicas; CDN for `apps/tenant` static assets
+3. Read-heavy endpoints: read replica for tenant list/detail (optional)
+4. Extract worker/service: only if async tenant workloads appear (notifications at scale)
 
 ---
 
@@ -109,6 +146,13 @@ sequenceDiagram
 | End lease | **Operator only** (existing admin flow) |
 | Revoke portal access mid-lease | Operator only |
 | Invite to portal | Property owner or manager (same as long-stay write) |
+
+**Admin API**
+
+| Action | Who |
+| --- | --- |
+| View portal status on Tenants tab | Any property member (owner, manager, accountant) |
+| Invite / resend / revoke | Property owner or manager (align with long-stay write access) |
 
 **Role differences (v1)**
 
@@ -201,8 +245,8 @@ Separate from operator `users` — different auth domain and JWT audience.
 | --- | --- | --- |
 | `GET` | `/tenant/me` | Profile |
 | `GET` | `/tenant/me/invites/pending` | `pending_acceptance` for logged-in user |
-| `POST` | `/tenant/invites/:membershipId/accept` | `active` |
-| `POST` | `/tenant/invites/:membershipId/decline` | `declined` |
+| `POST` | `/tenant/me/invites/:membershipId/accept` | `active` |
+| `POST` | `/tenant/me/invites/:membershipId/decline` | `declined` |
 | `GET` | `/tenant/me/leases` | Active memberships only in v1 |
 | `GET` | `/tenant/me/leases/:leaseId` | Detail + rent schedule |
 
@@ -266,7 +310,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] Tenant JWT plugin: `aud: tenant`, `tenantUserId` payload; separate refresh token storage (`tenant_refresh_tokens` table or namespaced rows)
 - [ ] `assertLeaseTenantAccess(leaseId, tenantUserId)` — requires `active` membership
 - [ ] Register `tenantAuthRoutes` + stub `tenantLeaseRoutes` (handlers wired in Phase 1)
-- [ ] `apps/tenant/.env.example` with `VITE_API_URL`, `TENANT_APP_URL` documented in server `.env.example`
+- [ ] `TENANT_APP_URL` in `apps/server/.env.example` (mirror `PLATFORM_APP_URL` pattern)
 
 **Exit criteria:** Server boots; migrations pass; unit tests for membership state transitions and access helper; no UI.
 
@@ -281,10 +325,12 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] `GET /tenant/invites/preview?token=`
 - [ ] `POST /tenant/auth/register/start|verify` for tenant users (reuse OTP table with `purpose: tenant_register` or separate `tenant_auth_otps`)
 - [ ] `POST /tenant/auth/login`, refresh, logout
-- [ ] `POST /tenant/invites/redeem` and `accept` / `decline` for authenticated user
+- [ ] `POST /tenant/invites/redeem` and `POST /tenant/me/invites/:membershipId/accept|decline` for authenticated user
 - [ ] Branch: new email → `pending_invite` → register → `active`; existing email → `pending_acceptance` → accept → `active`
 - [ ] Hook `notifyPrimaryTenantLeaseEnded` path: when lease ends, mark memberships `ended`
 - [ ] Admin `GET .../portal-access`, `resend`, `revoke`
+- [ ] `TENANT_APP_URL` in transactional email links
+- [ ] CORS: allow tenant app origin in dev (`http://localhost:5174` or chosen port)
 - [ ] Constraint: cannot accept after `expired` / `declined` without operator resend
 
 **Exit criteria:** Script or integration test: create lease → invite → register → accept → `GET /tenant/me/leases` returns lease; second property invite to same email requires accept; end lease removes active access.
@@ -296,6 +342,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 **Goal:** First shippable tenant-facing surface — invite link to accepted lease view.
 
 - [ ] Scaffold `apps/tenant` (Vite, React 19, Router, TanStack Query, Zustand, Tailwind v4, shadcn) — mirror `apps/admin` conventions
+- [ ] `apps/tenant/.env.example` with `VITE_API_URL`
 - [ ] `lib/api-client.ts` typed against `packages/shared`
 - [ ] Auth store + session clear
 - [ ] Pages: login, register (OTP), accept-invite (public)
@@ -318,8 +365,6 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] API client methods + query keys for `GET .../portal-access` and invite/resend/revoke mutations; invalidate on success
 - [ ] Tenant app: lease detail page (summary + rent schedule from `GET /tenant/me/leases/:id`)
 - [ ] Tenant app: empty states (no invites, no active leases)
-- [ ] CORS: allow tenant app origin in dev (`http://localhost:5174` or chosen port)
-- [ ] `TENANT_APP_URL` in transactional email links
 
 **Exit criteria:** Full happy path without curl: admin invites from Tenants tab → tenant email → accept in tenant app → view rent schedule; operator revokes from tenant row → tenant loses access on next request.
 
@@ -344,7 +389,9 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 ---
 
-### Phase 5 — Enhancements (post-launch)
+### Phase 5 — Enhancements + scale (post-launch)
+
+**Product enhancements**
 
 - [ ] Auto-invite on lease create (per-property setting, default off)
 - [ ] Google / Apple sign-in for tenants
@@ -358,10 +405,18 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] SSE for tenant notifications (extend `notification-stream-hub` with tenant channel or separate stream)
 - [ ] Docker compose: tenant app + document local dev in `CLAUDE.md`
 
+**Scale / infra**
+
+- [ ] Read replica for tenant lease list/detail queries
+- [ ] Separate Railway process for tenant API (same DB, same codebase, different start command)
+- [ ] CDN + caching for `apps/tenant` static assets
+- [ ] Split Postgres database — only if compliance/organizational boundaries require it (unlikely near-term); define sync boundary and migration plan if pursued
+
 ---
 
 ## What not to do
 
+- Do **not** create a second Postgres database for v1 — membership rows need FK joins to `property_long_stays`.
 - Do **not** grant portal access when a lease is created — only on explicit invite + tenant accept.
 - Do **not** auto-attach a new lease to an existing `tenant_users` row without `pending_acceptance` + accept.
 - Do **not** reuse `users` + `property_members` for tenant portal authorization.
@@ -380,7 +435,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 3. **Phase 2 — Tenant app auth + accept** — smallest UI that closes the invite loop.
 4. **Phase 3 — Admin Tenants tab + lease detail** — operators invite from existing tenant list; no new section.
 5. **Phase 4 — Hardening + ended-lease archive** — production readiness before marketing the portal.
-6. **Phase 5 — Payments, maintenance, messaging** — only after access control is boring and reliable.
+6. **Phase 5 — Enhancements + scale** — product features and infra scaling only after access control is boring and reliable.
 
 ---
 
@@ -414,5 +469,5 @@ Phase 3 (Tenants tab badges + lease detail) ←───────────
     ↓
 Phase 4 (hardening + archive)
     ↓
-Phase 5 (payments, maintenance, …)
+Phase 5 (enhancements + scale)
 ```
