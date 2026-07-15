@@ -71,7 +71,6 @@ mock.module("@/ses/transactional-emails", () => ({
 }));
 
 const { tenantPortalInviteService } = await import("./tenant-portal-invite-service");
-const { hashPortalInviteToken } = await import("@/ses/tenant-portal-invite-token");
 
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {

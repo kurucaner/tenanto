@@ -75,7 +75,6 @@ mock.module("@/db/tenant-users", () => ({
 }));
 
 const { tenantPortalMembershipService } = await import("./tenant-portal-membership-service");
-const { hashPortalInviteToken } = await import("@/ses/tenant-portal-invite-token");
 
 function makeTenant(overrides: Partial<ITenantUser> = {}): ITenantUser {
   return {
@@ -279,6 +278,28 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     mockFindActiveByTenantUserId.mockResolvedValue([]);
     const leases = await tenantPortalMembershipService.listActiveLeases("tenant-1");
     expect(leases).toHaveLength(0);
+  });
+
+  test("cannot reuse invite token after accept (single-use)", async () => {
+    const token = "one-time-token";
+    const pending = makeMembership({
+      status: TenantMembershipStatus.PENDING_INVITE,
+      tenantUserId: null,
+    });
+    mockFindByTokenHash.mockResolvedValueOnce(pending);
+    mockFindByTokenHash.mockResolvedValueOnce(null);
+
+    const tenant = makeTenant();
+    const accepted = await tenantPortalMembershipService.redeemInvite(token, tenant);
+    expect(accepted.status).toBe(TenantMembershipStatus.ACTIVE);
+    expect(mockTransitionStatus).toHaveBeenCalledWith(
+      "membership-1",
+      TenantMembershipStatus.ACTIVE
+    );
+
+    await expect(tenantPortalMembershipService.redeemInvite(token, tenant)).rejects.toThrow(
+      "Invalid or expired invite link"
+    );
   });
 
   test("cannot accept declined invite without operator resend", async () => {

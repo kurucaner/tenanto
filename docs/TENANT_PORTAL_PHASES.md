@@ -583,11 +583,11 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Constant-time compare where raw tokens are verified (if applicable beyond hash lookup)
-- [ ] Optional single-use: clear `invite_token_hash` on accept/redeem so link cannot be reused
-- [ ] Confirm no raw tokens in server logs or RUM (`beforeSend` redaction already in tenant/admin RUM)
+- [x] Constant-time compare where raw tokens are verified (`portalInviteTokenMatchesHash` after hash lookup)
+- [x] Single-use forever: clear `invite_token_hash` on accept/redeem (`ACTIVE` transition) so link cannot be reused
+- [x] Confirm no raw tokens in server logs or RUM (`token` query redaction in server logs; RUM `beforeSend` already redacts)
 
-**Exit criteria:** Accepted invite link cannot be reused (if single-use enabled); security checklist pass.
+**Exit criteria:** Accepted invite link cannot be reused; security checklist pass.
 
 ---
 

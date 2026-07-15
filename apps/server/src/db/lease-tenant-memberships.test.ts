@@ -67,6 +67,47 @@ describe("leaseTenantMembershipsDb.transitionStatus", () => {
 
     expect(result).toBeNull();
   });
+
+  test("clears invite_token_hash when transitioning to active (single-use)", async () => {
+    mockFindById.mockResolvedValueOnce(
+      makeMembership({ status: TenantMembershipStatus.PENDING_INVITE })
+    );
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          accepted_at: new Date("2026-01-02T00:00:00.000Z"),
+          created_at: new Date("2026-01-01T00:00:00.000Z"),
+          declined_at: null,
+          display_name: "Jane Tenant",
+          ended_at: null,
+          expires_at: new Date("2026-02-01T00:00:00.000Z"),
+          id: "membership-1",
+          invite_email: "jane@example.com",
+          invite_token_hash: null,
+          invited_at: new Date("2026-01-01T00:00:00.000Z"),
+          invited_by: "operator-1",
+          lease_id: "lease-1",
+          revoked_at: null,
+          role: TenantMembershipRole.PRIMARY,
+          status: TenantMembershipStatus.ACTIVE,
+          tenant_user_id: "tenant-1",
+          updated_at: new Date("2026-01-02T00:00:00.000Z"),
+        },
+      ],
+    });
+
+    const result = await leaseTenantMembershipsDb.transitionStatus(
+      "membership-1",
+      TenantMembershipStatus.ACTIVE
+    );
+
+    expect(result?.status).toBe(TenantMembershipStatus.ACTIVE);
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("invite_token_hash = NULL"), [
+      TenantMembershipStatus.ACTIVE,
+      "membership-1",
+    ]);
+  });
 });
 
 describe("leaseTenantMembershipsDb.expirePendingPortalInvites", () => {
