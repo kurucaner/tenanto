@@ -216,11 +216,11 @@ Reuse admin Google button patterns where possible; extract to `packages/app-ui` 
 
 **Goal:** Google/Apple tenant sessions work via curl/Postman.
 
-- [ ] `POST /tenant/auth/google` + `/apple` (always registered; issue tenant session)
-- [ ] `tenantUsersDb.findOrCreateByGoogle|Apple` (email match + link, provider-id uniqueness, conflict codes)
-- [ ] Always `issueTenantSession`; password may remain null for social-only accounts
-- [ ] Rate limit actions `google` / `apple` (IP; optional email key after verify)
-- [ ] Tests: happy path; wrong/expired token; identity conflict; issued JWT `aud === TENANT`
+- [x] `POST /tenant/auth/google` + `/apple` (always registered; issue tenant session)
+- [x] `tenantUsersDb.findOrCreateByGoogle|Apple` (email match + link, provider-id uniqueness, conflict codes)
+- [x] Always `issueTenantSession`; password may remain null for social-only accounts
+- [x] Rate limit actions `google` / `apple` (IP; optional email key after verify)
+- [x] Tests: happy path; wrong/expired token; identity conflict; issued JWT `aud === TENANT`
 
 **Exit criteria:** Staging token login returns tenant session; user row has `google_id`/`apple_id`; platform `/auth/google` untouched.
 

@@ -50,7 +50,7 @@ describe("issueTenantSession", () => {
     mockCreateRefreshToken.mockClear();
   });
 
-  test("issues tenant access and refresh tokens", async () => {
+  test("issues tenant access and refresh tokens with tenant user claims", async () => {
     const user = makeTenantUser();
     const session = await issueTenantSession(mockServer, user);
 

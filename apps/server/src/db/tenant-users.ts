@@ -21,6 +21,22 @@ export interface CreateTenantUserInput {
   phoneVerifiedAt?: Date | null;
 }
 
+export interface ITenantFindOrCreateResult {
+  accountLinked?: boolean;
+  isNewSignup?: boolean;
+  user: ITenantUser;
+}
+
+/** Methods used by findOrCreate* (allows stubbing in unit tests). */
+interface ITenantOauthStore {
+  create: (input: CreateTenantUserInput) => Promise<ITenantUser>;
+  findByAppleId: (appleId: string) => Promise<ITenantUser | null>;
+  findByEmail: (email: string) => Promise<ITenantUser | null>;
+  findByGoogleId: (googleId: string) => Promise<ITenantUser | null>;
+  linkAppleId: (tenantUserId: string, appleId: string) => Promise<ITenantUser>;
+  linkGoogleId: (tenantUserId: string, googleId: string) => Promise<ITenantUser>;
+}
+
 function requireE164Phone(phone: string): string {
   const e164 = normalizeToE164(phone);
   if (!e164) {
@@ -101,16 +117,93 @@ export const tenantUsersDb = {
     return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async findOrCreateByApple(
+    this: ITenantOauthStore,
+    input: {
+      appleId: string;
+      email: string | null;
+      name: string;
+    }
+  ): Promise<ITenantFindOrCreateResult> {
+    const byApple = await this.findByAppleId(input.appleId);
+    if (byApple) {
+      return { user: byApple };
+    }
+
+    if (input.email) {
+      const byEmail = await this.findByEmail(input.email);
+      if (byEmail) {
+        const user = await this.linkAppleId(byEmail.id, input.appleId);
+        return { accountLinked: true, user };
+      }
+    } else {
+      throw new Error("Email required for first-time Apple sign-in");
+    }
+
+    try {
+      const user = await this.create({
+        appleId: input.appleId,
+        email: input.email,
+        emailVerifiedAt: new Date(),
+        name: input.name,
+      });
+      return { isNewSignup: true, user };
+    } catch (error) {
+      if (isPostgresUniqueViolation(error)) {
+        throw createIdentityConflictError(
+          "An account with this email already exists. Sign in with the method you used originally."
+        );
+      }
+      throw error;
+    }
+  },
+
+  async findOrCreateByGoogle(
+    this: ITenantOauthStore,
+    input: {
+      email: string;
+      googleId: string;
+      name: string;
+    }
+  ): Promise<ITenantFindOrCreateResult> {
+    const byGoogle = await this.findByGoogleId(input.googleId);
+    if (byGoogle) {
+      return { user: byGoogle };
+    }
+
+    const byEmail = await this.findByEmail(input.email);
+    if (byEmail) {
+      const user = await this.linkGoogleId(byEmail.id, input.googleId);
+      return { accountLinked: true, user };
+    }
+
+    try {
+      const user = await this.create({
+        email: input.email,
+        emailVerifiedAt: new Date(),
+        googleId: input.googleId,
+        name: input.name,
+      });
+      return { isNewSignup: true, user };
+    } catch (error) {
+      if (isPostgresUniqueViolation(error)) {
+        throw createIdentityConflictError(
+          "An account with this email already exists. Sign in with the method you used originally."
+        );
+      }
+      throw error;
+    }
+  },
+
   /**
    * Returns stored provider id for link conflict checks (not exposed on public ITenantUser).
    */
   async getOauthProviderIds(
     tenantUserId: string
   ): Promise<{ appleId: string | null; googleId: string | null } | null> {
-    const result = await pool.query(
-      `SELECT google_id, apple_id FROM tenant_users WHERE id = $1`,
-      [tenantUserId]
-    );
+    const result = await pool.query(`SELECT google_id, apple_id FROM tenant_users WHERE id = $1`, [
+      tenantUserId,
+    ]);
     if (result.rows.length === 0) return null;
     const row = result.rows[0] as Record<string, unknown>;
     return {
@@ -209,9 +302,7 @@ export const tenantUsersDb = {
         existingOwnerId: existing.id,
       })
     ) {
-      throw createIdentityConflictError(
-        "This phone number is already linked to another account"
-      );
+      throw createIdentityConflictError("This phone number is already linked to another account");
     }
 
     try {
@@ -228,9 +319,7 @@ export const tenantUsersDb = {
       return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
     } catch (error) {
       if (isPostgresUniqueViolation(error)) {
-        throw createIdentityConflictError(
-          "This phone number is already linked to another account"
-        );
+        throw createIdentityConflictError("This phone number is already linked to another account");
       }
       throw error;
     }
