@@ -1,3 +1,5 @@
+export { createApiClient } from "./api/create-api-client";
+export type { IApiClient, ICreateApiClientConfig, TRequestOptions } from "./api/types";
 export { DarkPaletteMenu } from "./components/dark-palette-menu";
 export { ThemeSwitcher } from "./components/theme-switcher";
 export { ThemeSync } from "./components/theme-sync";

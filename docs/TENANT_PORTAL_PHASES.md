@@ -416,16 +416,16 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Extract `createApiClient({ getBaseUrl, getAccessToken, getRefreshToken, refreshPath, onSessionExpired, clearSession })` — shared fetch wrapper, JSON parse, error shape, deduped refresh (from admin [`api-client.ts`](apps/admin/src/lib/api-client.ts))
-- [ ] Optional: refactor admin refresh block to use same factory
-- [ ] Tenant `lib/api-client.ts`:
-  - [ ] `tenantAuthApi`: register/start, register/verify, login, refresh, logout
-  - [ ] `tenantPortalApi`: me, leases, pending invites, accept/decline, preview, redeem
-  - [ ] All request/response types from `@/packages/shared`
-- [ ] Tenant `stores/auth-store.ts` (`ITenantUser`, persist key `${APP_SLUG}-tenant-auth`)
-- [ ] Tenant `lib/clear-app-session.ts` (Query cache clear + store clear)
-- [ ] `lib/query-client.ts`, `lib/query-keys.ts`
-- [ ] `ProtectedRoute`, `useAuthHydrated`
+- [x] Extract `createApiClient({ getBaseUrl, getAccessToken, getRefreshToken, refreshPath, onSessionExpired, clearSession })` — shared fetch wrapper, JSON parse, error shape, deduped refresh (from admin [`api-client.ts`](apps/admin/src/lib/api-client.ts))
+- [x] Optional: refactor admin refresh block to use same factory
+- [x] Tenant `lib/api-client.ts`:
+  - [x] `tenantAuthApi`: register/start, register/verify, login, refresh, logout
+  - [x] `tenantPortalApi`: me, leases, pending invites, accept/decline, preview, redeem
+  - [x] All request/response types from `@/packages/shared`
+- [x] Tenant `stores/auth-store.ts` (`ITenantUser`, persist key `${APP_SLUG}-tenant-auth`)
+- [x] Tenant `lib/clear-app-session.ts` (Query cache clear + store clear)
+- [x] `lib/query-client.ts`, `lib/query-keys.ts`
+- [x] `ProtectedRoute`, `useAuthHydrated`
 
 **Exit criteria:** After login (manual or temporary debug), `GET /tenant/me` succeeds; refresh works; logout clears state.
 

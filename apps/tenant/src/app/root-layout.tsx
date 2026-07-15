@@ -1,3 +1,10 @@
 import { Outlet } from "react-router-dom";
 
-export const RootLayout = () => <Outlet />;
+import { SessionSync } from "@/components/session-sync";
+
+export const RootLayout = () => (
+  <>
+    <SessionSync />
+    <Outlet />
+  </>
+);

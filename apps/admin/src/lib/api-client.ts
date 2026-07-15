@@ -1,4 +1,5 @@
 import { clearAppSession } from "@/lib/clear-app-session";
+import { createApiClient } from "@/packages/app-ui";
 import {
   type IAdminAddPropertyMemberBody,
   type IAdminAuditEventsListQuery,
@@ -87,7 +88,6 @@ import {
   type IUserNotificationsListResponse,
   type IUserNotificationsMarkAllReadResponse,
   type IUserNotificationsUnreadCountResponse,
-  JwtError,
   type TAddPropertyMemberResponse,
   type UserType,
 } from "@/packages/shared";
@@ -101,265 +101,31 @@ function getApiBaseUrl(): string {
   return url.replace(/\/$/, "");
 }
 
-type RequestOptions = RequestInit & { omitDefaultContentType?: boolean };
-
-let onSessionExpired: (() => void) | undefined;
-
-export const setOnSessionExpired = (callback: (() => void) | undefined): void => {
-  onSessionExpired = callback;
-};
-
-const getDefaultHeaders = (): Record<string, string> => ({
-  "Content-Type": "application/json",
+const {
+  authenticatedDownload,
+  authenticatedMultipartRequest,
+  authenticatedRequest,
+  getApiBaseUrl: getApiBaseUrlForClient,
+  refreshAccessTokenForStream,
+  request,
+  setOnSessionExpired,
+} = createApiClient<IUser>({
+  clearSession: clearAppSession,
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  getApiBaseUrl,
+  getRefreshToken: () => useAuthStore.getState().refreshToken,
+  onRefreshSuccess: ({ accessToken, user }) => {
+    useAuthStore.getState().setAccessToken(accessToken);
+    useAuthStore.getState().setUser(user);
+  },
+  refreshPath: "/auth/refresh",
 });
 
-const rawRequest = async (path: string, options: RequestOptions = {}): Promise<Response> => {
-  const { omitDefaultContentType, ...requestInit } = options;
-  const defaultHeaders = { ...getDefaultHeaders() };
-  if (omitDefaultContentType) {
-    delete defaultHeaders["Content-Type"];
-  }
-  return fetch(`${getApiBaseUrl()}${path}`, {
-    ...requestInit,
-    headers: {
-      ...defaultHeaders,
-      ...requestInit.headers,
-    },
-  });
-};
-
-const parseJsonResponse = async <T>(response: Response): Promise<T> => {
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  const text = await response.text();
-  if (!text) {
-    return undefined as T;
-  }
-  return JSON.parse(text) as T;
-};
-
-const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  const response = await rawRequest(path, options);
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
-    const err = new Error(body.error ?? `Request failed: ${response.status}`);
-    (err as Error & { code?: string }).code = body.code;
-    throw err;
-  }
-  return parseJsonResponse<T>(response);
-};
-
-let inFlightRefresh: Promise<string | null> | null = null;
-
-const refreshAccessToken = async (): Promise<string | null> => {
-  const refreshToken = useAuthStore.getState().refreshToken;
-  if (!refreshToken) {
-    clearAppSession();
-    onSessionExpired?.();
-    return null;
-  }
-  try {
-    const result = await request<IAuthRefreshResponse>("/auth/refresh", {
-      body: JSON.stringify({ refreshToken }),
-      method: "POST",
-    });
-    useAuthStore.getState().setAccessToken(result.accessToken);
-    useAuthStore.getState().setUser(result.user);
-    return result.accessToken;
-  } catch {
-    clearAppSession();
-    onSessionExpired?.();
-    return null;
-  }
-};
-
-const getDeduplicatedRefresh = (): Promise<string | null> => {
-  if (!inFlightRefresh) {
-    inFlightRefresh = refreshAccessToken().finally(() => {
-      inFlightRefresh = null;
-    });
-  }
-  return inFlightRefresh;
-};
-
-export const refreshAccessTokenForStream = (): Promise<string | null> => getDeduplicatedRefresh();
-
-export const getApiBaseUrlForClient = getApiBaseUrl;
-
-const handleSessionInvalid = (): never => {
-  clearAppSession();
-  onSessionExpired?.();
-  throw new Error("Session expired");
-};
-
-interface UnauthorizedBody {
-  code?: string;
-  error?: string;
-}
-
-const authenticatedRequest = async <T>(
-  path: string,
-  options: RequestOptions = {},
-  isRetry = false
-): Promise<T> => {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await rawRequest(path, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.ok) {
-    return parseJsonResponse<T>(response);
-  }
-
-  if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Forbidden");
-  }
-
-  if (response.status !== 401) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
-  }
-
-  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
-  const code = body.code;
-
-  if (code !== JwtError.TOKEN_EXPIRED) {
-    handleSessionInvalid();
-  }
-
-  if (isRetry) {
-    handleSessionInvalid();
-  }
-
-  const newToken = await getDeduplicatedRefresh();
-  if (!newToken) {
-    throw new Error("Session expired");
-  }
-
-  return authenticatedRequest<T>(path, options, true);
-};
-
-const authenticatedMultipartRequest = async <T>(
-  path: string,
-  formData: FormData,
-  isRetry = false
-): Promise<T> => {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    body: formData,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    method: "POST",
-  });
-
-  if (response.ok) {
-    return parseJsonResponse<T>(response);
-  }
-
-  if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Forbidden");
-  }
-
-  if (response.status !== 401) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
-  }
-
-  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
-  const code = body.code;
-
-  if (code !== JwtError.TOKEN_EXPIRED) {
-    handleSessionInvalid();
-  }
-
-  if (isRetry) {
-    handleSessionInvalid();
-  }
-
-  const newToken = await getDeduplicatedRefresh();
-  if (!newToken) {
-    throw new Error("Session expired");
-  }
-
-  return authenticatedMultipartRequest<T>(path, formData, true);
-};
-
-const authenticatedDownload = async (
-  path: string,
-  options: RequestOptions = {},
-  isRetry = false
-): Promise<Blob> => {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await rawRequest(path, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-    omitDefaultContentType: true,
-  });
-
-  if (response.ok) {
-    return response.blob();
-  }
-
-  if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Forbidden");
-  }
-
-  if (response.status !== 401) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
-  }
-
-  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
-  const code = body.code;
-
-  if (code !== JwtError.TOKEN_EXPIRED) {
-    handleSessionInvalid();
-  }
-
-  if (isRetry) {
-    handleSessionInvalid();
-  }
-
-  const newToken = await getDeduplicatedRefresh();
-  if (!newToken) {
-    throw new Error("Session expired");
-  }
-
-  return authenticatedDownload(path, options, true);
-};
+export { getApiBaseUrlForClient, refreshAccessTokenForStream, setOnSessionExpired };
 
 interface IAuthEmailResponse {
   accessToken: string;
   refreshToken: string;
-  user: IUser;
-}
-
-interface IAuthRefreshResponse {
-  accessToken: string;
   user: IUser;
 }
 
