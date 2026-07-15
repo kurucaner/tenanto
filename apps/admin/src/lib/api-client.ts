@@ -564,7 +564,7 @@ export const longStayPortalApi = {
   revokeInvite: (propertyId: string, longStayId: string, membershipId: string) =>
     authenticatedRequest<IRevokeLeasePortalInviteResponse>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites/${encodeURIComponent(membershipId)}/revoke`,
-      { method: "POST" }
+      { method: "POST", omitDefaultContentType: true }
     ),
 };
 

@@ -1,0 +1,10 @@
+# Railway: set this service's "Config file path" to apps/tenant/railway.toml
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "docker/Dockerfile.tenant"
+watchPatterns = ["apps/tenant/**", "packages/**", "docker/Dockerfile.tenant"]
+
+[deploy]
+startCommand = "dumb-init npm run start"
+restartPolicyType = "ON_FAILURE"

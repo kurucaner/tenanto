@@ -10,12 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Bun workspaces (`apps/*`, `packages/*`). Package manager is **bun** (`bun.lock`, dev scripts run TypeScript directly with `bun`).
 
-- `apps/server` — Fastify + PostgreSQL API (the core; run on `bun`, no build step in dev). Owns the DB, auth, S3/media, email, push, cron.
+- `apps/server` — Fastify + PostgreSQL API (the core; run on `bun`, no build step in dev). Owns the DB, auth, S3/media, email, push, cron. Serves both operator (`/admin`, platform auth) and tenant portal (`/tenant/*`) routes.
 - `apps/admin` — Vite + React 19 + React Router SPA. The primary operator UI (properties, income, expenses, reports, support, users). Uses TanStack Query + Zustand + shadcn/Radix + Tailwind v4.
+- `apps/tenant` — Vite + React 19 + React Router SPA. Tenant portal (invite accept, auth, active/past leases). Shares UI primitives via `@/packages/app-ui`; talks to the same server on `VITE_API_URL`.
 - `apps/web` — Next.js 16 marketing/legal site (home, privacy, terms, unsubscribe, contact). Not the app UI.
-- `apps/proxy` — thin Fastify proxy for Datadog RUM ingestion from the admin SPA.
+- `apps/proxy` — thin Fastify proxy for Datadog RUM ingestion from the admin SPA (and tenant when RUM is configured).
 - `packages/shared` — `@/packages/shared`: TypeScript types + pure utilities shared between server and clients. **This is the API contract** — request/response body types, enums, and calculation helpers live here and are imported by both sides.
-- `lambda/s3-notification`, `scripts/`, `docker/` — infra glue (MinIO/S3 webhooks, Debian/Datadog setup, per-app Dockerfiles).
+- `packages/app-ui` — `@/packages/app-ui`: shared React UI for admin + tenant (theme, auth shells, API client factory, lease cards, form primitives). Prefer extracting here when **both** apps need the same component.
+- `lambda/s3-notification`, `scripts/`, `docker/` — infra glue (MinIO/S3 webhooks, Debian/Datadog setup, per-app Dockerfiles including `docker/Dockerfile.tenant`).
 
 `apps/mobile` is referenced in scripts/TODO but not currently present.
 
@@ -25,7 +27,7 @@ Install: `bun install` (root).
 
 Run one app in dev (from repo root):
 
-- `bun run dev:server` · `dev:admin` · `dev:web` · `dev:proxy`
+- `bun run dev:server` · `dev:admin` · `dev:tenant` · `dev:web` · `dev:proxy`
 
 Or run inside the app dir directly (more reliable): `cd apps/server && bun run dev`. Equivalent `build:*`, `start:*`, `lint:*` scripts exist per app at the root.
 
@@ -33,13 +35,14 @@ Per-app essentials:
 
 - Server: `bun run dev` (nodemon + bun), `bun run build` (`tsc` → `tsc-alias` → copies `templates/`), `bun test` (uses `bun test`), `bun run lint`.
 - Admin: `bun run dev` (Vite), `bun run build` (`tsc -b && vite build`), `bun run lint`.
+- Tenant: `bun run dev` (Vite on port **5174**), `bun run build` (`tsc -b && vite build`), `bun run lint`. Copy `apps/tenant/.env.example` → `apps/tenant/.env` and set `VITE_API_URL` (typically `http://localhost:3001`).
 - Web: `bun run dev`/`build` (Next).
 
 Run a single server test: `cd apps/server && bun test src/db/pg-errors.test.ts` (tests are colocated `*.test.ts` files, run by `bun test`).
 
 `bun run logaway` strips stray `console.log` calls from server/admin/web (config in `.logawayrc.json`).
 
-Docker: `docker compose up` builds/runs server (3001), web (3000), admin (3002), proxy (8082); each reads its own `apps/<app>/.env`.
+Docker: `docker compose up` builds/runs server (3001), web (3000), admin (3002), tenant (3003 → container preview 4174), proxy (8082). Each app that needs runtime env reads `apps/<app>/.env` (tenant build args: `VITE_API_URL`, optional Datadog RUM — see `docker-compose.yml` `tenant` service and `apps/tenant/.env.example`).
 
 ## Server architecture
 
@@ -56,6 +59,14 @@ Docker: `docker compose up` builds/runs server (3001), web (3000), admin (3002),
 - **Data layer**: `lib/api-client.ts` is the single typed HTTP client — all request/response types come from `@/packages/shared`. Server state is TanStack Query; query keys are centralized in `lib/query-keys.ts` and cache invalidation helpers live in `lib/invalidate-property-*-caches.ts`. Auth/session state is Zustand (`stores/auth-store.ts`, `lib/clear-app-session.ts`).
 - **Structure**: routed pages in `pages/`, feature UI in `components/`, reusable logic in `hooks/`, pure helpers in `lib/`. Uses the React Compiler (Babel plugin) — do not hand-add `useMemo`/`useCallback` purely for referential stability.
 - Path alias `@/` maps to `apps/admin/src`; `@/packages/shared` resolves to the shared package (see root `tsconfig.base.json`).
+
+## Tenant client architecture
+
+- **Data layer**: `lib/api-client.ts` wraps `@/packages/app-ui` `createApiClient` against `VITE_API_URL`; request/response types from `@/packages/shared` (`/tenant/*` contract). Auth session is tenant JWT audience only — never reuse platform/admin tokens.
+- **Structure**: routed pages under `src/`, shared shells/primitives from `@/packages/app-ui`, app-specific UI in local components. React Compiler (Babel plugin) — same rule as admin: no hand-`useMemo`/`useCallback` for referential stability alone.
+- Path alias `@/` maps to `apps/tenant/src`; `@/packages/shared` and `@/packages/app-ui` resolve via Vite aliases to the packages under `packages/`.
+- **Local run**: start the server (`bun run dev:server`), then `bun run dev:tenant` (or `cd apps/tenant && bun run dev`). Open `http://localhost:5174`. Docker serves the built preview at `http://localhost:3003`.
+- **Roadmap**: post-launch enhancements are phased in `docs/TENANT_PORTAL_ENHANCEMENTS_PHASES.md` (parent portal plan: `docs/TENANT_PORTAL_PHASES.md`).
 
 ## Working expectations
 

@@ -649,6 +649,8 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 ### Phase 5 — Enhancements + scale (post-launch)
 
+Detailed phased plan: **[TENANT_PORTAL_ENHANCEMENTS_PHASES.md](./TENANT_PORTAL_ENHANCEMENTS_PHASES.md)** (auto-invite, auth options, SSE/push, maintenance, messaging, payments, disconnect, scale).
+
 **Product enhancements**
 
 - [ ] Auto-invite on lease create (per-property setting, default off)
@@ -661,7 +663,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 - [ ] Tenant “disconnect from lease” (portal-only, not lease end)
 - [ ] `packages/app-ui` — extend shared primitives extracted in Phase 2.1–2.3 (full shadcn catalog only if both apps need it)
 - [ ] SSE for tenant notifications (extend `notification-stream-hub` with tenant channel or separate stream)
-- [ ] Docker compose: tenant app + document local dev in `CLAUDE.md`
+- [x] Docker compose: tenant app + document local dev in `CLAUDE.md` _(compose service exists; CLAUDE.md + `.env.example` documented in Enhancements Phase 0)_
 
 **Scale / infra**
 

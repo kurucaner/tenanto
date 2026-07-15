@@ -561,6 +561,7 @@ export {
   type ITenantUser,
   TenantMembershipRole,
   TenantMembershipStatus,
+  type TTenantDisconnectResponse,
   type TTenantMembershipRole,
   type TTenantMembershipStatus,
 } from "./tenant-portal-types";

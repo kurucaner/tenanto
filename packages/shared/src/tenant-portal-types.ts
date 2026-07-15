@@ -192,6 +192,12 @@ export interface ITenantMembershipActionResponse {
   membership: ILeaseTenantMembership;
 }
 
+/**
+ * Response for `POST /tenant/me/leases/:leaseId/disconnect` (Enhancements Phase 1).
+ * Membership transitions `active` → `revoked`; does not end the lease.
+ */
+export type TTenantDisconnectResponse = ITenantMembershipActionResponse;
+
 export interface ITenantInviteRedeemBody {
   email?: string;
   password?: string;
