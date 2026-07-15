@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
 import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
+import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindLongStayById = mock(() => Promise.resolve(null as IPropertyLongStay | null));
 const mockGetRentSchedule = mock(() => Promise.resolve([] as IPropertyLongStayRentMonth[]));
@@ -52,6 +53,7 @@ mock.module("@/db/property-units", () => ({
 }));
 
 mock.module("@/ses/transactional-emails", () => ({
+  ...transactionalEmails,
   sendLeaseEndedEmail: mockSendLeaseEndedEmail,
   sendRentPaymentRecordedEmail: mockSendRentPaymentRecordedEmail,
 }));

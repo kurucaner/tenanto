@@ -1,66 +1,66 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ITenantUser } from "@/packages/shared";
+import type { IUser } from "@/packages/shared";
+import { UserType } from "@/packages/shared";
 
-const mockSignTenantAccessToken = mock(() => "access-token");
+const mockSignAccessToken = mock(() => "access-token");
 const mockGenerateRefreshToken = mock(() => "refresh-token");
 const mockHashToken = mock((token: string) => `hash:${token}`);
 const mockGetRefreshTokenExpiresAt = mock(() => new Date("2026-02-01T00:00:00.000Z"));
 const mockCreateRefreshToken = mock(() => Promise.resolve());
 
-mock.module("@/auth/tenant-jwt", () => ({
-  signTenantAccessToken: mockSignTenantAccessToken,
-}));
-
 mock.module("@/auth/jwt", () => ({
   generateRefreshToken: mockGenerateRefreshToken,
   getRefreshTokenExpiresAt: mockGetRefreshTokenExpiresAt,
   hashToken: mockHashToken,
-  signAccessToken: mock(() => "unused"),
+  signAccessToken: mockSignAccessToken,
 }));
 
-mock.module("@/db/tenant-refresh-tokens", () => ({
-  tenantRefreshTokenDb: {
+mock.module("@/db/refresh-tokens", () => ({
+  refreshTokenDb: {
     create: mockCreateRefreshToken,
   },
 }));
 
-const { issueTenantAccessToken, issueTenantSession } = await import("./tenant-auth-service");
+const { issuePlatformAccessToken, issuePlatformSession } = await import("./platform-auth-service");
 
 const mockServer = {} as import("fastify").FastifyInstance;
 
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
+function makeUser(overrides: Partial<IUser> = {}): IUser {
   return {
+    appleId: null,
     createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
+    email: "operator@example.com",
+    googleId: null,
+    id: "user-1",
+    name: "Operator",
+    onboardingCompletedAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
+    userType: UserType.USER,
     ...overrides,
   };
 }
 
-describe("issueTenantSession", () => {
+describe("issuePlatformSession", () => {
   beforeEach(() => {
-    mockSignTenantAccessToken.mockClear();
+    mockSignAccessToken.mockClear();
     mockGenerateRefreshToken.mockClear();
     mockCreateRefreshToken.mockClear();
   });
 
-  test("issues tenant access and refresh tokens", async () => {
-    const user = makeTenantUser();
-    const session = await issueTenantSession(mockServer, user);
+  test("issues platform access and refresh tokens", async () => {
+    const user = makeUser();
+    const session = await issuePlatformSession(mockServer, user);
 
-    expect(mockSignTenantAccessToken).toHaveBeenCalledWith(mockServer, {
+    expect(mockSignAccessToken).toHaveBeenCalledWith(mockServer, {
       email: user.email,
-      tenantUserId: user.id,
+      userId: user.id,
+      userType: user.userType,
     });
     expect(mockCreateRefreshToken).toHaveBeenCalledWith({
       expiresAt: new Date("2026-02-01T00:00:00.000Z"),
-      tenantUserId: user.id,
       tokenHash: "hash:refresh-token",
+      userId: user.id,
     });
     expect(session).toEqual({
       accessToken: "access-token",
@@ -70,14 +70,14 @@ describe("issueTenantSession", () => {
   });
 });
 
-describe("issueTenantAccessToken", () => {
+describe("issuePlatformAccessToken", () => {
   beforeEach(() => {
     mockCreateRefreshToken.mockClear();
   });
 
   test("returns access token only", () => {
-    const user = makeTenantUser();
-    const response = issueTenantAccessToken(mockServer, user);
+    const user = makeUser();
+    const response = issuePlatformAccessToken(mockServer, user);
 
     expect(response).toEqual({
       accessToken: "access-token",

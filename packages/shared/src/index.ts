@@ -3,6 +3,14 @@
 // Status Codes
 export { AccountError, HttpStatus, JwtAudience, JwtError } from "./status-enums";
 
+// Auth types
+export type {
+  IAuthRefreshResponse,
+  IPlatformAuthRefreshResponse,
+  IPlatformAuthSessionResponse,
+  ITenantAuthRefreshResponse,
+} from "./auth-types";
+
 // User Types
 export type { IUser } from "./user";
 export { UserType } from "./user";

@@ -13,6 +13,7 @@ import {
   TenantMembershipStatus,
   UnitRentalType,
 } from "@/packages/shared";
+import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
@@ -54,6 +55,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
 }));
 
 mock.module("@/ses/transactional-emails", () => ({
+  ...transactionalEmails,
   sendTenantPortalInviteExistingEmail: mockSendExistingEmail,
   sendTenantPortalInviteNewEmail: mockSendNewEmail,
 }));

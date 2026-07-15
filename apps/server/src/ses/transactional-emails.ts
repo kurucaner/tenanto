@@ -1,4 +1,5 @@
 import type { OtpPurpose } from "@/db/auth-otps";
+import { OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
@@ -40,7 +41,6 @@ export interface LeaseEndedEmailOptions {
   unitLabel: string;
 }
 
-const OTP_EXPIRY_MINUTES = 10;
 const WEB_APP_URL = process.env.WEB_APP_URL;
 const PLATFORM_APP_URL = process.env.PLATFORM_APP_URL;
 const TENANT_APP_URL = process.env.TENANT_APP_URL;
