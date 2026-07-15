@@ -46,6 +46,15 @@ export { ThemeSync } from "./components/theme-sync";
 export { useResolvedDark } from "./components/use-resolved-dark";
 export { cn } from "./lib/utils";
 export { formatIsoDateDisplay } from "./lib/format-iso-date";
+export { buildObfuscatedProxyUrl } from "./rum/build-obfuscated-proxy-url";
+export { createDatadogRum } from "./rum/create-datadog-rum";
+export { DatadogRumUserSync } from "./rum/datadog-rum-user-sync";
+export { DatadogRumViewTracker } from "./rum/datadog-rum-view-tracker";
+export type {
+  ICreateDatadogRumOptions,
+  IDatadogRumClient,
+  IDatadogRumUser,
+} from "./rum/types";
 export { AppThemeProvider, useAppTheme } from "./theme/app-theme-provider";
 export { createAppTheme, type IAppTheme } from "./theme/create-app-theme";
 export { getAppTheme } from "./theme/get-app-theme";

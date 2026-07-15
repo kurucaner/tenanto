@@ -490,7 +490,7 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 - [x] `DocumentTitle`, favicons, `ErrorPage` / `NotFoundPage`
 - [x] `docker/Dockerfile.tenant` + compose service
-- [ ] Datadog RUM for tenant (optional — admin has it; tenant may skip v1)
+- [x] Datadog RUM for tenant (optional — admin has it; tenant may skip v1)
 
 **Exit criteria:** Tenant app deployable via Docker; basic error/not-found pages.
 

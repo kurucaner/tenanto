@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { buildObfuscatedProxyUrl } from "./datadog-rum";
+import { buildObfuscatedProxyUrl } from "./build-obfuscated-proxy-url";
 
 describe("buildObfuscatedProxyUrl", () => {
   test("builds a neutral ingest URL with encoded Datadog target", () => {

@@ -1,6 +1,6 @@
 import { createDatadogRum } from "@/packages/app-ui";
 
-const datadogRum = createDatadogRum({ service: "propertyos-admin" });
+const datadogRum = createDatadogRum({ service: "propertyos-tenant" });
 
 export const {
   clearUser: clearDatadogRumUser,
