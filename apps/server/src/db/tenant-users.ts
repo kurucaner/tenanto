@@ -37,6 +37,21 @@ export const tenantUsersDb = {
     return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async findByEmailWithPassword(
+    email: string
+  ): Promise<(ITenantUser & { passwordHash: string | null }) | null> {
+    const result = await pool.query(
+      `SELECT * FROM tenant_users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`,
+      [email]
+    );
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0] as Record<string, unknown>;
+    return {
+      ...mapTenantUserRow(row),
+      passwordHash: (row.password_hash as string | null) ?? null,
+    };
+  },
+
   async findById(id: string): Promise<ITenantUser | null> {
     const result = await pool.query(`SELECT * FROM tenant_users WHERE id = $1`, [id]);
     if (result.rows.length === 0) return null;

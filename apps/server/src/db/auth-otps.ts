@@ -1,6 +1,6 @@
 import { pool } from "./pool";
 
-export type OtpPurpose = "register" | "reset_password";
+export type OtpPurpose = "register" | "reset_password" | "tenant_register";
 
 interface CreateOtpParams {
   codeHash: string;

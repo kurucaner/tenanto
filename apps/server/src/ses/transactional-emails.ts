@@ -68,6 +68,8 @@ function getSubject(purpose: OtpPurpose): string {
       return `Your ${APP_NAME} verification code`;
     case "reset_password":
       return `Reset your ${APP_NAME} password`;
+    case "tenant_register":
+      return `Your ${APP_NAME} tenant portal verification code`;
     default:
       return `Your ${APP_NAME} verification code`;
   }
@@ -79,6 +81,8 @@ function getHeadline(purpose: OtpPurpose): string {
       return "Your verification code";
     case "reset_password":
       return "Your password reset code";
+    case "tenant_register":
+      return "Your tenant portal verification code";
     default:
       return "Your verification code";
   }
@@ -91,6 +95,8 @@ function getBodyText(purpose: OtpPurpose, code: string): string {
       return `Your verification code is: ${code}. It expires in ${expiry}.`;
     case "reset_password":
       return `Your password reset code is: ${code}. It expires in ${expiry}.`;
+    case "tenant_register":
+      return `Your tenant portal verification code is: ${code}. It expires in ${expiry}.`;
     default:
       return `Your verification code is: ${code}. It expires in ${expiry}.`;
   }
