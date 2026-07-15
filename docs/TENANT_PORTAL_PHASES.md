@@ -568,10 +568,10 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] Per-lease portal invite create limit (Redis counter; mirror `tenant-email-campaign-create-rate-limit`)
-- [ ] Optional tighter limits on `/tenant/auth/register/start` and `/tenant/auth/login` (per IP + per email)
-- [ ] Env vars + 429 responses documented in `apps/server/.env.example`
-- [ ] Tests or manual curl matrix for burst → 429
+- [x] Per-lease portal invite create limit (Redis counter; mirror `tenant-email-campaign-create-rate-limit`)
+- [x] Optional tighter limits on `/tenant/auth/register/start` and `/tenant/auth/login` (per IP + per email)
+- [x] Env vars + 429 responses documented in `apps/server/.env.example`
+- [x] Tests or manual curl matrix for burst → 429
 
 **Exit criteria:** Burst invite/create returns 429; normal Tenants-tab usage unaffected.
 

@@ -1,6 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
+  TENANT_PORTAL_INVITE_CREATE_RATE_LIMIT_MAX,
+  TENANT_PORTAL_INVITE_CREATE_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/tenant-portal-rate-limit-config";
+import {
   HttpStatus,
   type ICreateLeasePortalInviteBody,
   type ICreateLeasePortalInvitesResponse,
@@ -8,6 +12,10 @@ import {
   type IResendLeasePortalInviteResponse,
   type IRevokeLeasePortalInviteResponse,
 } from "@/packages/shared";
+import {
+  assertTenantPortalInviteCreateAllowed,
+  getTenantPortalInviteCreateRateLimitErrorMessage,
+} from "@/services/tenant-portal-invite-create-rate-limit";
 import {
   DuplicatePortalInviteError,
   PortalInviteInvalidStateError,
@@ -159,6 +167,20 @@ export const propertyLongStayPortalRoutes = async (server: FastifyInstance): Pro
       );
       if (!hasAccess) {
         return;
+      }
+
+      const rateLimit = await assertTenantPortalInviteCreateAllowed(longStayId);
+      if (!rateLimit.allowed) {
+        return reply
+          .status(HttpStatus.TOO_MANY_REQUESTS)
+          .header("Retry-After", String(rateLimit.retryAfterSec))
+          .send({
+            error: getTenantPortalInviteCreateRateLimitErrorMessage({
+              limit: TENANT_PORTAL_INVITE_CREATE_RATE_LIMIT_MAX,
+              retryAfterSec: rateLimit.retryAfterSec,
+              windowMs: TENANT_PORTAL_INVITE_CREATE_RATE_LIMIT_WINDOW_MS,
+            }),
+          });
       }
 
       const parsed = parseCreateInviteBody(request.body);
