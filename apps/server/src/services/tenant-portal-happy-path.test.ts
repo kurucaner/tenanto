@@ -6,6 +6,7 @@ import type {
   IPropertyLongStay,
   IPropertyUnit,
   ITenantUser,
+  TTenantMembershipStatus,
 } from "@/packages/shared";
 import {
   PropertyLongStayStatus,
@@ -20,11 +21,13 @@ const mockFindActiveByTenantUserId = mock(() => Promise.resolve([] as ILeaseTena
 const mockFindPendingAcceptanceByTenantUserId = mock(() =>
   Promise.resolve([] as ILeaseTenantMembership[])
 );
-const mockLinkTenantUser = mock((membership: ILeaseTenantMembership) =>
-  Promise.resolve(membership)
+const mockLinkTenantUser = mock(
+  (_id: string, _tenantUserId: string): Promise<ILeaseTenantMembership | null> =>
+    Promise.resolve(null)
 );
-const mockTransitionStatus = mock((membership: ILeaseTenantMembership) =>
-  Promise.resolve(membership)
+const mockTransitionStatus = mock(
+  (_id: string, _toStatus: TTenantMembershipStatus): Promise<ILeaseTenantMembership | null> =>
+    Promise.resolve(null)
 );
 const mockExpireMembershipIfPastTtl = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
@@ -130,7 +133,7 @@ function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongSta
   };
 }
 
-function makeProperty(): IProperty {
+function makeProperty(overrides: Partial<IProperty> = {}): IProperty {
   return {
     address: "123 Main",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -144,10 +147,11 @@ function makeProperty(): IProperty {
     phoneNumber: null,
     unitCount: 1,
     updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
   };
 }
 
-function makeUnit(): IPropertyUnit {
+function makeUnit(overrides: Partial<IPropertyUnit> = {}): IPropertyUnit {
   return {
     createdAt: "2026-01-01T00:00:00.000Z",
     deletedAt: null,
@@ -158,6 +162,7 @@ function makeUnit(): IPropertyUnit {
     rentalType: UnitRentalType.LONG_TERM,
     unitNumber: "101",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
   };
 }
 
