@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Bump the app version and write the "What's changed" release notes for everything shipped since the last version. Use when the user asks to update the version, cut a release, or generate/refresh release notes / changelog for the tenanto admin app.
+description: Bump the app version and write the "What's changed" release notes for everything shipped since the last version. Use when the user asks to update the version, cut a release, or generate/refresh release notes / changelog for the propertyos admin app.
 ---
 
 # Release notes & version bump
@@ -10,6 +10,7 @@ last release, write it in plain non-technical language, and update the two files
 drive the in-app "What's changed" dialog and version label.
 
 ## Files this touches
+
 - `package.json` (repo root) — `version`. This is the single source of truth for the
   in-app version: `apps/admin/vite.config.ts` reads it into `VITE_APP_VERSION`, shown in
   the sidebar. **Bump this, not `apps/admin/package.json`.**
@@ -25,13 +26,17 @@ drive the in-app "What's changed" dialog and version label.
 
 2. **Find the commit range since that release.** The commit that introduced the last note
    is the anchor:
+
    ```bash
    git log -S'id: "<LAST_VERSION>"' --oneline -- apps/admin/src/config/release-notes.ts | head -1
    ```
+
    Then list candidate changes since it:
+
    ```bash
    git log <ANCHOR_COMMIT>..HEAD --oneline
    ```
+
    Also glance at uncommitted work (`git status`, `git diff --stat`) — a feature finished
    this session but not yet committed still belongs in the notes if it's user-visible.
 
@@ -79,6 +84,7 @@ drive the in-app "What's changed" dialog and version label.
    release.
 
 ## Notes
+
 - Do not commit or tag unless the user asks.
 - Keep entries balanced — a few `new`, a few `improved`, a few `fixed` reads better than a
   long undifferentiated list. If there's genuinely nothing in a category, omit it.

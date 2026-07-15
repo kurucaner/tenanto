@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import {
   ActiveLongStayConflictError,
   InvalidExtendLeaseError,
@@ -17,14 +18,20 @@ import {
   type IUpdatePropertyLongStayBody,
   LEASES_LIST_LIMIT,
   LEASES_LIST_MAX_LIMIT,
+  LEASES_SORT_BY_VALUES,
+  LEASES_SORT_DIR_VALUES,
   MAX_ADDITIONAL_TERM_MONTHS,
   PropertyLongStayStatus,
   type TPropertyLongStaysListFilters,
+  type TPropertyLongStaysListSortBy,
+  type TPropertyLongStaysListSortDir,
   type TPropertyLongStayStatus,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
+import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
+import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -336,6 +343,32 @@ function parseLongStaysListLimit(raw: unknown): number {
   return Math.min(LEASES_LIST_MAX_LIMIT, Math.floor(n));
 }
 
+function parseLongStaysListSortBy(value: unknown): TPropertyLongStaysListSortBy | "" | null {
+  if (value === undefined || value === "") {
+    return "";
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  if ((LEASES_SORT_BY_VALUES as readonly string[]).includes(value)) {
+    return value as TPropertyLongStaysListSortBy;
+  }
+  return null;
+}
+
+function parseLongStaysListSortDir(value: unknown): TPropertyLongStaysListSortDir | "" | null {
+  if (value === undefined || value === "") {
+    return "";
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  if ((LEASES_SORT_DIR_VALUES as readonly string[]).includes(value)) {
+    return value as TPropertyLongStaysListSortDir;
+  }
+  return null;
+}
+
 function parseLongStaysListQuery(query: Record<string, unknown>):
   | {
       cursor?: string;
@@ -364,6 +397,28 @@ function parseLongStaysListQuery(query: Record<string, unknown>):
       return { error: "status must be active or ended", ok: false };
     }
     filters.status = status as TPropertyLongStayStatus;
+  }
+
+  const sortBy = parseLongStaysListSortBy(query["sortBy"]);
+  if (sortBy === null) {
+    return {
+      error: `sortBy must be one of: ${LEASES_SORT_BY_VALUES.join(", ")}`,
+      ok: false,
+    };
+  }
+  if (sortBy) {
+    filters.sortBy = sortBy;
+  }
+
+  const sortDir = parseLongStaysListSortDir(query["sortDir"]);
+  if (sortDir === null) {
+    return {
+      error: `sortDir must be one of: ${LEASES_SORT_DIR_VALUES.join(", ")}`,
+      ok: false,
+    };
+  }
+  if (sortDir) {
+    filters.sortDir = sortDir;
   }
 
   const limit = parseLongStaysListLimit(query["limit"]);
@@ -626,6 +681,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       const today = getTodayUtcIsoDate();
       const moveOutDateError = validateEndLeaseMoveOutDate(
         parsed.body.actualEndDate,
+        existing.leaseStartDate,
         existing.leaseEndDate,
         today
       );
@@ -635,6 +691,15 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
       try {
         const longStay = await propertyLongStaysDb.endLease(longStayId, parsed.body.actualEndDate);
+
+        const endedMemberships =
+          await leaseTenantMembershipsDb.endAllNonTerminalForLease(longStayId);
+        logTenantPortalMembershipsEnded(endedMemberships);
+
+        void notifyPrimaryTenantLeaseEnded({ longStayId, propertyId }).catch((err) => {
+          request.log.error({ err, longStayId, propertyId }, "Failed to send lease ended email");
+        });
+
         return reply.send({ longStay });
       } catch (error) {
         if (error instanceof LongStayNotActiveError) {

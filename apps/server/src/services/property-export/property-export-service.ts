@@ -12,6 +12,7 @@ import {
   ExportResourceType,
   type IPropertyExportCreateRequest,
   type IPropertyExportCreateResponse,
+  PROPERTY_EXPORT_EMPTY_MESSAGE,
   PROPERTY_EXPORT_MAX_ROWS,
 } from "@/packages/shared";
 import { enqueuePropertyExportJob } from "@/services/property-export/property-export-reenqueue";
@@ -42,6 +43,13 @@ export class PropertyExportRowLimitError extends PropertyExportValidationError {
     );
     this.name = "PropertyExportRowLimitError";
     this.matchedCount = matchedCount;
+  }
+}
+
+export class PropertyExportEmptyError extends PropertyExportValidationError {
+  constructor() {
+    super(PROPERTY_EXPORT_EMPTY_MESSAGE);
+    this.name = "PropertyExportEmptyError";
   }
 }
 
@@ -114,6 +122,9 @@ export async function createPropertyExport(
   }
 
   const matchedCount = await getMatchedRowCount(propertyId, body);
+  if (matchedCount === 0) {
+    throw new PropertyExportEmptyError();
+  }
   if (matchedCount > PROPERTY_EXPORT_MAX_ROWS) {
     throw new PropertyExportRowLimitError(matchedCount);
   }

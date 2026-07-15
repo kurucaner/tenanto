@@ -2,6 +2,14 @@ export type SupportCategory = "bug" | "feature" | "general";
 
 export type SupportRequestStatus = "pending" | "in_progress" | "resolved";
 
+export type TSupportRequestsListSortBy = "category" | "createdAt" | "status" | "updatedAt";
+
+export type TSupportRequestsListSortDir = "asc" | "desc";
+
+export const SUPPORT_REQUESTS_DEFAULT_SORT_BY: TSupportRequestsListSortBy = "createdAt";
+
+export const SUPPORT_REQUESTS_DEFAULT_SORT_DIR: TSupportRequestsListSortDir = "desc";
+
 /** Status values an admin may set (forward-only triage; not `pending`). */
 export type TAdminSupportRequestSettableStatus = Extract<
   SupportRequestStatus,
@@ -117,12 +125,22 @@ export interface IAdminSupportRequestPatchResponse {
 export interface ISupportRequestsListQuery {
   category?: SupportCategory;
   cursor?: string;
+  from?: string;
   limit?: number;
+  q?: string;
+  sortBy?: TSupportRequestsListSortBy;
+  sortDir?: TSupportRequestsListSortDir;
   status?: SupportRequestStatus;
+  to?: string;
 }
 
 export interface ISupportRequestsListResponse {
   items: ISupportRequestListItem[];
+  nextCursor: string | null;
+}
+
+export interface IAdminSupportRequestsListResponse {
+  items: IAdminSupportRequestListItem[];
   nextCursor: string | null;
 }
 

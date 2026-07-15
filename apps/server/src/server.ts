@@ -12,6 +12,7 @@ import {
 } from "@/packages/shared";
 
 import { jwtAuthPlugin } from "./auth/jwt";
+import { tenantJwtAuthPlugin } from "./auth/tenant-jwt";
 import { initializeDatabase } from "./db/pool";
 import { resolveAllowedOrigin } from "./lib/cors-headers";
 import { isProduction } from "./lib/environment";
@@ -24,6 +25,7 @@ import { propertyExportRoutes } from "./routes/admin/property-export-routes";
 import { propertyIncomeEntriesRoutes } from "./routes/admin/property-income-entries-routes";
 import { propertyIncomeImportRoutes } from "./routes/admin/property-income-import-routes";
 import { propertyIncomeLineRoutes } from "./routes/admin/property-income-line-routes";
+import { propertyLongStayPortalRoutes } from "./routes/admin/property-long-stay-portal-routes";
 import { propertyLongStayRoutes } from "./routes/admin/property-long-stay-routes";
 import { propertyReportRoutes } from "./routes/admin/property-report-routes";
 import { propertyReservationRoutes } from "./routes/admin/property-reservation-routes";
@@ -37,7 +39,10 @@ import { notificationRoutes } from "./routes/notification-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
 import { supportRoutes } from "./routes/support-routes";
+import { tenantAuthRoutes } from "./routes/tenant/tenant-auth-routes";
+import { tenantLeaseRoutes } from "./routes/tenant/tenant-lease-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
+import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
@@ -87,8 +92,11 @@ server.register(rateLimit, {
   timeWindow: "1 minute",
 });
 server.register(jwtAuthPlugin);
+server.register(tenantJwtAuthPlugin);
 server.register(initRoutes);
 server.register(authRoutes);
+server.register(tenantAuthRoutes);
+server.register(tenantLeaseRoutes);
 server.register(adminRoutes);
 server.register(propertyRoutes);
 server.register(propertyUnitRoutes);
@@ -97,6 +105,7 @@ server.register(propertyReservationRoutes);
 server.register(propertyIncomeLineRoutes);
 server.register(propertyIncomeEntriesRoutes);
 server.register(propertyLongStayRoutes);
+server.register(propertyLongStayPortalRoutes);
 server.register(propertyTenantEmailCampaignRoutes);
 server.register(propertyExpenseRoutes);
 server.register(propertyExportRoutes);
@@ -171,6 +180,7 @@ const start = async () => {
     if (pm2Instance === undefined || pm2Instance === "0") {
       startRefreshTokenCleanupCron();
       startPropertyExportExpiryCron();
+      startPortalInviteExpiryCron();
     }
 
     await notificationStreamHub.start();

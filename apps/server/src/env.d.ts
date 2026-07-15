@@ -39,6 +39,8 @@ declare global {
       SNS_SMS_ORIGINATION_NUMBER?: string;
       /** Optional SNS SMS sender ID shown on supported carriers */
       SNS_SMS_SENDER_ID?: string;
+      /** Base URL for the tenant portal app (e.g. https://tenant.propertyos.app) - used for portal invite links */
+      TENANT_APP_URL: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */
       WEB_APP_URL: string;
     }

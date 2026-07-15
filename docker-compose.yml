@@ -61,5 +61,23 @@ services:
     environment:
       - PORT=8082
       - DD_SITE=${DD_SITE:-us5.datadoghq.com}
-      - CORS_ORIGINS=${ADMIN_ORIGIN:-http://localhost:3002}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3002,http://localhost:5174,http://localhost:3003}
+    restart: unless-stopped
+
+  tenant:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tenant
+      args:
+        VITE_API_URL: ${VITE_API_URL}
+        VITE_DD_CLIENT_TOKEN: ${VITE_DD_CLIENT_TOKEN}
+        VITE_DD_ENV: ${VITE_DD_ENV:-production}
+        VITE_DD_RUM_APPLICATION_ID: ${VITE_DD_RUM_APPLICATION_ID}
+        VITE_DD_RUM_PROXY_URL: ${VITE_DD_RUM_PROXY_URL}
+        VITE_DD_SITE: ${VITE_DD_SITE:-us5.datadoghq.com}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
+    ports:
+      - "3003:4174"
+    environment:
+      - PORT=4174
     restart: unless-stopped

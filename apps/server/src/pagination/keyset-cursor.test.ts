@@ -74,14 +74,18 @@ describe("encodeExpenseKeysetCursor / decodeExpenseKeysetCursor", () => {
 });
 
 describe("encodeLeaseKeysetCursor / decodeLeaseKeysetCursor", () => {
-  test("round-trips leaseStartDate, createdAt, and id", () => {
-    const encoded = encodeLeaseKeysetCursor(
-      "2026-07-09",
-      "2026-07-09T12:00:00.000Z",
-      "550e8400-e29b-41d4-a716-446655440000"
-    );
+  test("round-trips sort dimensions, createdAt, and id", () => {
+    const encoded = encodeLeaseKeysetCursor({
+      createdAt: "2026-07-09T12:00:00.000Z",
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      sortBy: "start",
+      sortDir: "desc",
+      sortKey: "2026-07-09",
+    });
     const decoded = decodeLeaseKeysetCursor(encoded);
-    expect(decoded.leaseStartDate).toBe("2026-07-09");
+    expect(decoded.sortBy).toBe("start");
+    expect(decoded.sortDir).toBe("desc");
+    expect(decoded.sortKey).toBe("2026-07-09");
     expect(decoded.createdAt).toBe("2026-07-09T12:00:00.000Z");
     expect(decoded.id).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
@@ -90,11 +94,13 @@ describe("encodeLeaseKeysetCursor / decodeLeaseKeysetCursor", () => {
     expect(() => decodeLeaseKeysetCursor("bad")).toThrow("Invalid cursor");
   });
 
-  test("throws when leaseStartDate is missing", () => {
+  test("throws when createdAt is missing", () => {
     const encoded = Buffer.from(
       JSON.stringify({
-        createdAt: "2026-07-09T12:00:00.000Z",
         id: "550e8400-e29b-41d4-a716-446655440000",
+        sortBy: "start",
+        sortDir: "desc",
+        sortKey: "2026-07-09",
       }),
       "utf8"
     ).toString("base64url");

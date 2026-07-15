@@ -13,22 +13,26 @@
     "dev:server": "npm run --filter server dev",
     "dev:web": "npm run --filter web dev",
     "dev:admin": "npm run --filter admin dev",
+    "dev:tenant": "npm run --filter tenant dev",
     "dev:pinorama": "npm run --filter server dev:pinorama",
     "build:mobile": "cd apps/mobile && npm run build",
     "build:proxy": "npm run --filter proxy build",
     "build:server": "npm run --filter server build",
     "build:web": "npm run --filter web build",
     "build:admin": "npm run --filter admin build",
+    "build:tenant": "npm run --filter tenant build",
     "build:pinorama": "npm run --filter server build:pinorama",
     "start:mobile": "cd apps/mobile && npm run start",
     "start:proxy": "npm run --filter proxy start",
     "start:server": "npm run --filter server start",
     "start:web": "npm run --filter web start",
+    "start:tenant": "npm run --filter tenant start",
     "start:pinorama": "npm run --filter server start:pinorama",
     "lint:mobile": "cd apps/mobile && npm run lint",
     "lint:server": "npm run --filter server lint",
     "lint:web": "npm run --filter web lint",
     "lint:admin": "npm run --filter admin lint",
+    "lint:tenant": "npm run --filter tenant lint",
     "prettier:mobile": "cd apps/mobile && npm run prettier",
     "prettier:web": "npm run --filter web prettier",
     "prettier:server": "npm run --filter server prettier",
@@ -37,7 +41,7 @@
     "worker:email:prod": "bun run --filter server worker:email:prod",
     "worker:export": "bun run --filter server worker:export",
     "worker:export:prod": "bun run --filter server worker:export:prod",
-    "reset:node_modules": "rm -rf node_modules && rm bun.lock && cd apps/mobile && rm -rf node_modules && cd ../web && rm -rf node_modules && cd ../server && rm -rf node_modules && cd ../admin && rm -rf node_modules"
+    "reset:node_modules": "rm -rf node_modules && rm bun.lock && cd apps/mobile && rm -rf node_modules && cd ../web && rm -rf node_modules && cd ../server && rm -rf node_modules && cd ../admin && rm -rf node_modules && cd ../tenant && rm -rf node_modules"
   },
   "workspaces": [
     "apps/*",
@@ -67,6 +71,10 @@
       "prettier --write"
     ],
     "apps/admin/src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "apps/tenant/src/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],

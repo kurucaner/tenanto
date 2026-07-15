@@ -25,27 +25,9 @@ import {
   LEASE_DETAIL_TABS,
   resolveLeaseDetailTab,
 } from "@/lib/lease-detail-tab-schema";
+import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import { queryKeys } from "@/lib/query-keys";
-import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { formatPropertyUnitSelectLabel, resolveRentIncomeLineTypeId } from "@/packages/shared";
-
-function buildRentPrefill(
-  lease: NonNullable<ReturnType<typeof usePropertyLongStayDetail>["lease"]>,
-  incomeLineTypeId: string,
-  month: string | undefined,
-  expectedAmount: number | undefined
-): CreateIncomeLineDialogPrefill {
-  const maxDate = getTodayLocalIsoDate();
-  const monthDate = month ? `${month}-01` : maxDate;
-  return {
-    amount: String(expectedAmount ?? lease.monthlyRent),
-    guestName: lease.guestName,
-    incomeLineTypeId,
-    longStayId: lease.id,
-    transactionDate: clampToMaxLocalIsoDate(monthDate, maxDate),
-    unitId: lease.unitId,
-  };
-}
 
 export const PropertyLeaseDetailPage = memo(() => {
   const { leaseId, propertyId: routePropertyId } = useParams<{
@@ -110,10 +92,12 @@ export const PropertyLeaseDetailPage = memo(() => {
       if (!lease) {
         return;
       }
-      const expectedAmount = month
-        ? rentSchedule.find((item) => item.month === month)?.expectedRent
-        : undefined;
-      setRecordRentPrefill(buildRentPrefill(lease, rentIncomeLineTypeId, month, expectedAmount));
+      setRecordRentPrefill(
+        buildLeaseRecordRentPrefill(lease, rentIncomeLineTypeId, {
+          month,
+          rentSchedule,
+        })
+      );
     },
     [lease, rentIncomeLineTypeId, rentSchedule]
   );
@@ -219,6 +203,7 @@ export const PropertyLeaseDetailPage = memo(() => {
           }}
           open={true}
           propertyId={propertyId}
+          rentPeriods={rentPeriods}
         />
       ) : null}
 

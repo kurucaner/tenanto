@@ -26,8 +26,10 @@ import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { createPersonNameSchema } from "@/packages/app-ui";
 import {
   calculateLeaseEndDate,
   type IPropertyUnit,
@@ -39,7 +41,7 @@ const DEFAULT_TERM_MONTHS = "12";
 const MAX_TERM_MONTHS = 60;
 
 const startLeaseSchema = z.object({
-  guestName: z.string().trim().min(1, "Primary tenant name is required"),
+  guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
   leaseStartDate: z.string().min(1, "Lease start date is required"),
   monthlyRent: requiredPositiveMoneyField("Monthly rent"),
   tenantEmail: z.string(),
@@ -165,6 +167,7 @@ StartLeaseDateTermFields.displayName = "StartLeaseDateTermFields";
 interface StartLeaseDialogFormProps {
   availableUnits: IPropertyUnit[];
   errors: FieldErrors<TStartLeaseFormValues>;
+  firstMonthRentPreview: string | null;
   form: UseFormReturn<TStartLeaseFormValues>;
   isActiveLeasesPending: boolean;
   isSubmitting: boolean;
@@ -179,6 +182,7 @@ const StartLeaseDialogForm = memo(
   ({
     availableUnits,
     errors,
+    firstMonthRentPreview,
     form,
     isActiveLeasesPending,
     isSubmitting,
@@ -261,6 +265,10 @@ const StartLeaseDialogForm = memo(
             Lease ends: {new Date(`${leaseEndDate}T00:00:00`).toLocaleDateString()}
           </p>
         ) : null}
+
+        {firstMonthRentPreview ? (
+          <p className="text-sm font-medium">{firstMonthRentPreview}</p>
+        ) : null}
       </div>
 
       <DialogFooter>
@@ -299,6 +307,7 @@ export const StartLeaseDialog = memo(
     });
 
     const leaseStartDate = form.watch("leaseStartDate");
+    const monthlyRent = form.watch("monthlyRent");
     const termMonths = form.watch("termMonths");
 
     const leaseEndDate = useMemo(() => {
@@ -308,6 +317,26 @@ export const StartLeaseDialog = memo(
       }
       return calculateLeaseEndDate(leaseStartDate, parsedTermMonths);
     }, [leaseStartDate, termMonths]);
+
+    const firstMonthRentPreview = useMemo(() => {
+      const parsedTermMonths = Number.parseInt(termMonths, 10);
+      const parsedMonthlyRent = Number(monthlyRent);
+      if (
+        leaseStartDate === "" ||
+        !Number.isInteger(parsedTermMonths) ||
+        parsedTermMonths < 1 ||
+        !Number.isFinite(parsedMonthlyRent) ||
+        parsedMonthlyRent <= 0
+      ) {
+        return null;
+      }
+
+      return getStartLeaseFirstMonthRentPreview({
+        leaseStartDate,
+        monthlyRent: parsedMonthlyRent,
+        termMonths: parsedTermMonths,
+      });
+    }, [leaseStartDate, monthlyRent, termMonths]);
 
     const availableUnits = useMemo(
       () =>
@@ -323,7 +352,7 @@ export const StartLeaseDialog = memo(
     const mutation = useMutation({
       mutationFn: (values: TStartLeaseFormValues) =>
         longStaysApi.create(propertyId, {
-          guestName: values.guestName.trim(),
+          guestName: values.guestName,
           leaseStartDate: values.leaseStartDate,
           monthlyRent: Number(values.monthlyRent),
           tenantEmail: values.tenantEmail.trim() || undefined,
@@ -372,6 +401,7 @@ export const StartLeaseDialog = memo(
           <StartLeaseDialogForm
             availableUnits={availableUnits}
             errors={errors}
+            firstMonthRentPreview={firstMonthRentPreview}
             form={form}
             isActiveLeasesPending={isActiveLeasesPending}
             isSubmitting={isSubmitting}

@@ -10,6 +10,8 @@ import {
   type SupportRequestStatus,
   type TAdminSupportRequestSettableStatus,
   type TSupportAllowedImageMimeType,
+  type TSupportRequestsListSortBy,
+  type TSupportRequestsListSortDir,
 } from "@/packages/shared";
 
 const ADMIN_SUPPORT_SETTABLE_STATUSES = new Set<TAdminSupportRequestSettableStatus>([
@@ -19,6 +21,14 @@ const ADMIN_SUPPORT_SETTABLE_STATUSES = new Set<TAdminSupportRequestSettableStat
 
 const SUPPORT_STATUSES = new Set<SupportRequestStatus>(["pending", "in_progress", "resolved"]);
 const SUPPORT_CATEGORIES = new Set<SupportCategory>(["bug", "feature", "general"]);
+const SUPPORT_LIST_SORT_COLUMNS = new Set<TSupportRequestsListSortBy>([
+  "category",
+  "createdAt",
+  "status",
+  "updatedAt",
+]);
+
+import { parseDateString } from "./admin/admin-query-utils";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -42,6 +52,29 @@ export function parseSupportListLimit(raw: unknown): number {
   const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
   if (!Number.isFinite(n) || n < 1) return 20;
   return Math.min(100, Math.floor(n));
+}
+
+export function parseOptionalSupportListSortBy(
+  raw: unknown
+): TSupportRequestsListSortBy | undefined | null {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  if (typeof raw !== "string") return null;
+  return SUPPORT_LIST_SORT_COLUMNS.has(raw as TSupportRequestsListSortBy)
+    ? (raw as TSupportRequestsListSortBy)
+    : null;
+}
+
+export function parseOptionalSupportListSortDir(
+  raw: unknown
+): TSupportRequestsListSortDir | undefined | null {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  return raw === "asc" || raw === "desc" ? raw : null;
+}
+
+export function parseOptionalSupportListDate(raw: unknown): string | undefined | null {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const parsed = parseDateString(raw);
+  return parsed ?? null;
 }
 
 export function parseUuidParam(raw: unknown): string | null {

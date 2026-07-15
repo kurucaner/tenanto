@@ -1,0 +1,51 @@
+# Build context: repository root
+
+FROM node:24 AS base-builder
+
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:$PATH"
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY tsconfig.base.json ./
+COPY packages ./packages
+COPY apps ./apps
+
+RUN bun install
+
+ARG VITE_API_URL
+ARG VITE_DD_RUM_APPLICATION_ID
+ARG VITE_DD_CLIENT_TOKEN
+ARG VITE_DD_RUM_PROXY_URL
+ARG VITE_DD_ENV
+ARG VITE_DD_SITE
+ARG VITE_APP_VERSION
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_DD_RUM_APPLICATION_ID=$VITE_DD_RUM_APPLICATION_ID \
+    VITE_DD_CLIENT_TOKEN=$VITE_DD_CLIENT_TOKEN \
+    VITE_DD_RUM_PROXY_URL=$VITE_DD_RUM_PROXY_URL \
+    VITE_DD_ENV=$VITE_DD_ENV \
+    VITE_DD_SITE=$VITE_DD_SITE \
+    VITE_APP_VERSION=$VITE_APP_VERSION
+
+RUN bun run --filter tenant build
+
+FROM node:24
+
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY packages ./packages
+COPY apps/tenant ./apps/tenant
+
+COPY --from=base-builder /app/apps/tenant/dist ./apps/tenant/dist
+COPY --from=base-builder /app/node_modules ./node_modules
+COPY --from=base-builder /app/apps/tenant/node_modules ./apps/tenant/node_modules
+
+ENV NODE_ENV=production
+
+WORKDIR /app/apps/tenant
+CMD ["dumb-init", "npm", "run", "start"]

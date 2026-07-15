@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IPropertyLongStay } from "@/packages/shared";
+import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
 import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
+import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindLongStayById = mock(() => Promise.resolve(null as IPropertyLongStay | null));
+const mockGetRentSchedule = mock(() => Promise.resolve([] as IPropertyLongStayRentMonth[]));
 const mockFindPropertyById = mock(() =>
   Promise.resolve({
     address: "123 Main St",
@@ -29,10 +31,12 @@ const mockFindUnitById = mock(() =>
   })
 );
 const mockSendRentPaymentRecordedEmail = mock(() => Promise.resolve());
+const mockSendLeaseEndedEmail = mock(() => Promise.resolve());
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: {
     findById: mockFindLongStayById,
+    getRentSchedule: mockGetRentSchedule,
   },
 }));
 
@@ -49,10 +53,13 @@ mock.module("@/db/property-units", () => ({
 }));
 
 mock.module("@/ses/transactional-emails", () => ({
+  ...transactionalEmails,
+  sendLeaseEndedEmail: mockSendLeaseEndedEmail,
   sendRentPaymentRecordedEmail: mockSendRentPaymentRecordedEmail,
 }));
 
-const { notifyPrimaryTenantRentRecorded } = await import("./lease-notifications");
+const { notifyPrimaryTenantLeaseEnded, notifyPrimaryTenantRentRecorded } =
+  await import("./lease-notifications");
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {
@@ -154,5 +161,143 @@ describe("notifyPrimaryTenantRentRecorded", () => {
     });
 
     expect(mockSendRentPaymentRecordedEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("notifyPrimaryTenantLeaseEnded", () => {
+  beforeEach(() => {
+    mockFindLongStayById.mockClear();
+    mockGetRentSchedule.mockClear();
+    mockFindPropertyById.mockClear();
+    mockFindUnitById.mockClear();
+    mockSendLeaseEndedEmail.mockClear();
+  });
+
+  test("sends holdover email with prorated final month and unpaid status", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2024-07-05",
+        leaseEndDate: "2024-06-30",
+        status: PropertyLongStayStatus.ENDED,
+      })
+    );
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        daysInMonth: 31,
+        expectedRent: 161.29,
+        isPaid: false,
+        isProrated: true,
+        month: "2024-07",
+        occupiedDays: 5,
+      },
+    ]);
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
+    expect(mockSendLeaseEndedEmail).toHaveBeenCalledWith("jane@example.com", {
+      contractEndDate: "June 30, 2024",
+      finalMonthPlain: "Final rent month: July 2024\nAmount: $161.29\nDays billed: 5/31 days",
+      finalMonthSection: expect.stringContaining("Final rent month:"),
+      holdoverPlain:
+        "Your contract ended on June 30, 2024, and your move-out was recorded on July 5, 2024. Holdover days are included in the final month's prorated rent.",
+      holdoverSection: expect.stringContaining("Holdover days are included"),
+      leaseStartDate: "January 1, 2026",
+      moveOutDate: "July 5, 2024",
+      paymentStatusLine:
+        "Final month rent of $161.29 is still outstanding. Please contact your property manager.",
+      propertyName: "Sunset Apartments",
+      tenantName: "Jane Tenant",
+      unitLabel: "Unit 101",
+    });
+  });
+
+  test("sends on-time end email without holdover and with paid final month", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2026-03-31",
+        leaseEndDate: "2026-03-31",
+        status: PropertyLongStayStatus.ENDED,
+      })
+    );
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        daysInMonth: 31,
+        expectedRent: 1500,
+        incomeLineId: "line-mar",
+        isPaid: true,
+        isProrated: false,
+        month: "2026-03",
+        occupiedDays: 31,
+      },
+    ]);
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
+    expect(mockSendLeaseEndedEmail).toHaveBeenCalledWith("jane@example.com", {
+      contractEndDate: "March 31, 2026",
+      finalMonthPlain: "Final rent month: March 2026\nAmount: $1,500.00",
+      finalMonthSection: expect.stringContaining("March 2026"),
+      holdoverPlain: "",
+      holdoverSection: "",
+      leaseStartDate: "January 1, 2026",
+      moveOutDate: "March 31, 2026",
+      paymentStatusLine: "Final month rent is recorded — you're all set.",
+      propertyName: "Sunset Apartments",
+      tenantName: "Jane Tenant",
+      unitLabel: "Unit 101",
+    });
+  });
+
+  test("no-ops when tenant email is missing", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2026-03-31",
+        status: PropertyLongStayStatus.ENDED,
+        tenantEmail: null,
+      })
+    );
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).not.toHaveBeenCalled();
+  });
+
+  test("no-ops when lease is not found", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(null);
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).not.toHaveBeenCalled();
+  });
+
+  test("no-ops when lease belongs to a different property", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2026-03-31",
+        propertyId: "prop-2",
+        status: PropertyLongStayStatus.ENDED,
+      })
+    );
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).not.toHaveBeenCalled();
   });
 });

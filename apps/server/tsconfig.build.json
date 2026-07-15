@@ -1,0 +1,35 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "lib": ["ESNext"],
+    "outDir": "./dist",
+    "rootDir": "../../",
+    "baseUrl": ".",
+    "paths": {
+      "@/packages/shared": ["../../packages/shared/src"],
+      "@/packages/*": ["../../packages/*"],
+      "@/pagination/*": ["./src/pagination/*"],
+      "@/admin/*": ["./src/admin/*"],
+      "@/auth/*": ["./src/auth/*"],
+      "@/constants/*": ["./src/constants/*"],
+      "@/db/*": ["./src/db/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/email": ["./src/email"],
+      "@/routes/*": ["./src/routes/*"],
+      "@/s3/*": ["./src/s3/*"],
+      "@/push/*": ["./src/push/*"],
+      "@/scheduler/*": ["./src/scheduler/*"],
+      "@/services/*": ["./src/services/*"],
+      "@/ses/*": ["./src/ses/*"],
+      "@/sns/*": ["./src/sns/*"],
+      "@/queues/*": ["./src/queues/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", ".dist", "src/**/*.test.ts"]
+}

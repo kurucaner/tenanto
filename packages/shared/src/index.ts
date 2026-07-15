@@ -1,7 +1,16 @@
 // Re-export all types from organized modules
 
 // Status Codes
-export { AccountError, HttpStatus, JwtError } from "./status-enums";
+export { AccountError, HttpStatus, JwtAudience, JwtError } from "./status-enums";
+
+// Auth types
+export { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "./auth-constants";
+export type {
+  IAuthRefreshResponse,
+  IPlatformAuthRefreshResponse,
+  IPlatformAuthSessionResponse,
+  ITenantAuthRefreshResponse,
+} from "./auth-types";
 
 // User Types
 export type { IUser } from "./user";
@@ -45,6 +54,7 @@ export type {
   IAdminSupportRequestListItem,
   IAdminSupportRequestPatchBody,
   IAdminSupportRequestPatchResponse,
+  IAdminSupportRequestsListResponse,
   ISupportAttachment,
   ISupportAttachmentInput,
   ISupportAttachmentPresignBody,
@@ -64,12 +74,16 @@ export type {
   SupportRequestStatus,
   TAdminSupportRequestSettableStatus,
   TSupportAllowedImageMimeType,
+  TSupportRequestsListSortBy,
+  TSupportRequestsListSortDir,
   TSupportStagedUploadStatus,
 } from "./support-types";
 export {
   SUPPORT_ALLOWED_IMAGE_MIME_TYPES,
   SUPPORT_MAX_IMAGE_ATTACHMENTS,
   SUPPORT_MAX_IMAGE_BYTES,
+  SUPPORT_REQUESTS_DEFAULT_SORT_BY,
+  SUPPORT_REQUESTS_DEFAULT_SORT_DIR,
 } from "./support-types";
 
 // App Config Types
@@ -160,10 +174,21 @@ export {
 export {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
+  isActiveLeaseInHoldover,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
+export {
+  calculateExpectedRentForLeaseMonth,
+  formatProratedDaysLabel,
+  getDaysInMonth,
+  getLeaseScheduleEffectiveEndDate,
+  getOccupiedDaysInMonth,
+  type ILeaseMonthExpectedRent,
+  isProratedLeaseMonth,
+} from "./lease-proration-utils";
 export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
@@ -184,7 +209,16 @@ export {
   type IPropertyUnitsListMeta,
   type ITenantEmailCampaignsListMeta,
 } from "./list-meta-types";
-export { LEASES_LIST_LIMIT, LEASES_LIST_MAX_LIMIT } from "./property-long-stay-list-constants";
+export {
+  LEASES_DEFAULT_SORT_BY,
+  LEASES_DEFAULT_SORT_DIR,
+  LEASES_LIST_LIMIT,
+  LEASES_LIST_MAX_LIMIT,
+  LEASES_SORT_BY_VALUES,
+  LEASES_SORT_DIR_VALUES,
+  type TPropertyLongStaysListSortBy,
+  type TPropertyLongStaysListSortDir,
+} from "./property-long-stay-list-constants";
 export {
   type ICreatePropertyLongStayBody,
   type IEndPropertyLongStayBody,
@@ -288,6 +322,7 @@ export {
   type TPropertyExpensesListFilters,
 } from "./property-expense-types";
 export {
+  PROPERTY_EXPORT_EMPTY_MESSAGE,
   PROPERTY_EXPORT_FILE_TTL_HOURS,
   PROPERTY_EXPORT_MAX_ROWS,
   PROPERTY_EXPORTS_LIST_LIMIT,
@@ -427,6 +462,14 @@ export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./prop
 // Helpers
 export { sleep, toIso } from "./helpers";
 
+// Person name utilities
+export {
+  getPersonNameValidationError,
+  normalizePersonName,
+  PERSON_NAME_MAX_LENGTH,
+  validatePersonName,
+} from "./person-name-utils";
+
 // Phone utilities
 export {
   type CountryCode,
@@ -482,6 +525,57 @@ export {
   normalizeTenantEmail,
   resolveTenantEmailRecipients,
 } from "./tenant-email-recipient-resolver";
+export {
+  canTransitionTenantMembershipStatus,
+  isTerminalTenantMembershipStatus,
+  TERMINAL_TENANT_MEMBERSHIP_STATUSES,
+} from "./tenant-membership-transitions";
+export {
+  isPhoneOwnedByOtherUser,
+  resolveOauthProviderLinkDecision,
+  type TOauthProviderLinkDecision,
+} from "./tenant-oauth-link-utils";
+export {
+  type ICreateLeasePortalInviteBody,
+  type ICreateLeasePortalInviteResponse,
+  type ICreateLeasePortalInviteResult,
+  type ICreateLeasePortalInvitesResponse,
+  type ILeasePortalAccessResponse,
+  type ILeaseTenantMembership,
+  type IResendLeasePortalInviteResponse,
+  type IRevokeLeasePortalInviteResponse,
+  type ITenantAppleAuthBody,
+  type ITenantAuthLoginBody,
+  type ITenantAuthLogoutBody,
+  type ITenantAuthRefreshBody,
+  type ITenantAuthRegisterStartBody,
+  type ITenantAuthRegisterVerifyBody,
+  type ITenantAuthSessionResponse,
+  type ITenantGoogleAuthBody,
+  type ITenantInviteLeaseSummary,
+  type ITenantInvitePreviewResponse,
+  type ITenantInviteRedeemBody,
+  type ITenantInviteRedeemResponse,
+  type ITenantLeaseDetailResponse,
+  type ITenantLeaseListItem,
+  type ITenantLeasesListResponse,
+  type ITenantMembershipActionResponse,
+  type ITenantMeResponse,
+  type ITenantPendingInvite,
+  type ITenantPendingInvitesResponse,
+  type ITenantPhoneAuthStartBody,
+  type ITenantPhoneAuthVerifyBody,
+  type ITenantPhoneBindStartBody,
+  type ITenantPhoneBindVerifyBody,
+  type ITenantUser,
+  TenantLeaseListStatus,
+  TenantMembershipRole,
+  TenantMembershipStatus,
+  type TTenantDisconnectResponse,
+  type TTenantLeaseListStatus,
+  type TTenantMembershipRole,
+  type TTenantMembershipStatus,
+} from "./tenant-portal-types";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

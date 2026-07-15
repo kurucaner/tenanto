@@ -219,16 +219,27 @@ function buildLineFilters(
   return next;
 }
 
-function buildIncomeEntriesFilters(
-  dateFilters: ReturnType<typeof buildDateFilters>,
-  channelCommissionId: string,
-  q: string,
-  refundStatus: string,
-  status: string,
-  incomeType: string,
-  sortBy: TPropertyIncomeEntriesListFilters["sortBy"],
-  sortDir: TPropertyIncomeEntriesListFilters["sortDir"]
-): TPropertyIncomeEntriesListFilters {
+interface IBuildIncomeEntriesFiltersOptions {
+  channelCommissionId: string;
+  dateFilters: ReturnType<typeof buildDateFilters>;
+  incomeType: string;
+  q: string;
+  refundStatus: string;
+  sortBy: TPropertyIncomeEntriesListFilters["sortBy"];
+  sortDir: TPropertyIncomeEntriesListFilters["sortDir"];
+  status: string;
+}
+
+function buildIncomeEntriesFilters({
+  channelCommissionId,
+  dateFilters,
+  incomeType,
+  q,
+  refundStatus,
+  sortBy,
+  sortDir,
+  status,
+}: IBuildIncomeEntriesFiltersOptions): TPropertyIncomeEntriesListFilters {
   const next: TPropertyIncomeEntriesListFilters = { ...dateFilters };
   if (channelCommissionId) next.channelCommissionId = channelCommissionId;
   if (status) next.status = status as TPropertyIncomeEntriesListFilters["status"];
@@ -1140,16 +1151,16 @@ const PropertyIncomePage = memo(() => {
 
   const incomeEntriesFilters = useMemo(
     () =>
-      buildIncomeEntriesFilters(
-        dateFilters,
+      buildIncomeEntriesFilters({
         channelCommissionId,
+        dateFilters,
+        incomeType,
         q,
         refundStatus,
+        sortBy: sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
+        sortDir: sortState.direction,
         status,
-        incomeType,
-        sortState.columnId as TPropertyIncomeEntriesListFilters["sortBy"],
-        sortState.direction
-      ),
+      }),
     [
       channelCommissionId,
       dateFilters,
@@ -1701,6 +1712,7 @@ const PropertyIncomePage = memo(() => {
       <PropertyTableExportDialog
         config={{ filters: incomeEntriesFilters, resourceType: ExportResourceType.INCOME }}
         filterSummary={incomeExportFilterSummary}
+        matchedRowCount={listMeta?.totalCount}
         onOpenChange={setExportTableOpen}
         open={exportTableOpen}
         propertyId={propertyId}

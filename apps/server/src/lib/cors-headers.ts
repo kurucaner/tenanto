@@ -1,8 +1,10 @@
 import { isProduction } from "./environment";
 
-const PRODUCTION_ORIGINS = [process.env["WEB_APP_URL"], process.env["PLATFORM_APP_URL"]].filter(
-  (value): value is string => value != null && value !== ""
-);
+const PRODUCTION_ORIGINS = [
+  process.env["WEB_APP_URL"],
+  process.env["PLATFORM_APP_URL"],
+  process.env["TENANT_APP_URL"],
+];
 
 export function resolveAllowedOrigin(requestOrigin: string | undefined): string | null {
   if (!isProduction) {

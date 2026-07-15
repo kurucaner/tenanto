@@ -5,27 +5,20 @@ import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
 
 import { App } from "@/App";
-import { AdminThemeSync } from "@/components/admin-theme-sync";
 import { initDatadogRum } from "@/lib/datadog-rum";
 import { syncDocumentTitle } from "@/lib/document-title";
 import { queryClient } from "@/lib/query-client";
-import {
-  LEGACY_RELEASE_NOTES_SEEN_STORAGE_KEY,
-  RELEASE_NOTES_SEEN_STORAGE_KEY,
-} from "@/lib/release-notes-preference";
-import { migrateLocalStorageKey } from "@/packages/shared";
-
-migrateLocalStorageKey(LEGACY_RELEASE_NOTES_SEEN_STORAGE_KEY, RELEASE_NOTES_SEEN_STORAGE_KEY);
+import { AppThemeProvider, ThemeSync } from "@/packages/app-ui";
 
 syncDocumentTitle();
 initDatadogRum();
 
-// UptimeMesh.init('ef6a1e0e30dede2a8230f30606c7af678d995862408569349c92e1121893eb97');
-
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <AdminThemeSync />
-    <App />
-    <Toaster position="bottom-right" theme="system" />
-  </QueryClientProvider>
+  <AppThemeProvider appKey="admin">
+    <QueryClientProvider client={queryClient}>
+      <ThemeSync />
+      <App />
+      <Toaster position="bottom-right" theme="system" />
+    </QueryClientProvider>
+  </AppThemeProvider>
 );

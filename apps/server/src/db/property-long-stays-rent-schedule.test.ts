@@ -4,6 +4,12 @@ import { PropertyLongStayStatus } from "@/packages/shared";
 
 const capturedIncomeSql: string[] = [];
 
+type TLeaseRow = Record<string, unknown>;
+
+let currentLeaseRow: TLeaseRow;
+let currentIncomeRows: Record<string, unknown>[] = [];
+let currentRentPeriodRows: Record<string, unknown>[] = [];
+
 function buildIncomeLineRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     amount: "1500.00",
@@ -31,57 +37,39 @@ function buildIncomeLineRow(overrides: Record<string, unknown> = {}): Record<str
   };
 }
 
+function buildLeaseRow(overrides: Record<string, unknown> = {}): TLeaseRow {
+  return {
+    actual_end_date: null,
+    created_at: new Date("2026-01-01T00:00:00.000Z"),
+    guest_name: "Tenant",
+    id: "lease-1",
+    lease_end_date: "2026-03-31",
+    lease_start_date: "2026-01-01",
+    monthly_rent: "1500.00",
+    property_id: "prop-1",
+    secondary_tenants: [],
+    status: PropertyLongStayStatus.ACTIVE,
+    tenant_email: null,
+    tenant_phone: null,
+    term_months: 3,
+    unit_id: "unit-1",
+    updated_at: new Date("2026-01-01T00:00:00.000Z"),
+    ...overrides,
+  };
+}
+
 const mockQuery = mock((sql: string) => {
   if (sql.includes("FROM property_income_lines")) {
     capturedIncomeSql.push(sql);
-    return Promise.resolve({
-      rows: [
-        buildIncomeLineRow({
-          id: "line-partial-jan",
-          refunded_amount: "500.00",
-          refunded_at: new Date("2026-03-01T00:00:00.000Z"),
-          transaction_date: "2026-01-15",
-        }),
-        buildIncomeLineRow({
-          id: "line-full-feb",
-          refunded_amount: "1500.00",
-          refunded_at: new Date("2026-03-01T00:00:00.000Z"),
-          transaction_date: "2026-02-15",
-        }),
-        buildIncomeLineRow({
-          id: "line-paid-mar",
-          transaction_date: "2026-03-15",
-        }),
-      ],
-    });
+    return Promise.resolve({ rows: currentIncomeRows });
   }
 
   if (sql.includes("FROM property_long_stay_rent_periods")) {
-    return Promise.resolve({ rows: [] });
+    return Promise.resolve({ rows: currentRentPeriodRows });
   }
 
   if (sql.includes("FROM property_long_stays")) {
-    return Promise.resolve({
-      rows: [
-        {
-          actual_end_date: null,
-          created_at: new Date("2026-01-01T00:00:00.000Z"),
-          guest_name: "Tenant",
-          id: "lease-1",
-          lease_end_date: "2026-03-31",
-          lease_start_date: "2026-01-01",
-          monthly_rent: "1500.00",
-          property_id: "prop-1",
-          secondary_tenants: [],
-          status: PropertyLongStayStatus.ACTIVE,
-          tenant_email: null,
-          tenant_phone: null,
-          term_months: 3,
-          unit_id: "unit-1",
-          updated_at: new Date("2026-01-01T00:00:00.000Z"),
-        },
-      ],
-    });
+    return Promise.resolve({ rows: [currentLeaseRow] });
   }
 
   return Promise.resolve({ rows: [] });
@@ -95,10 +83,30 @@ const { propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.getRentSchedule", () => {
   test("marks months paid when reportable rent remains after partial refund", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-partial-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-03-01T00:00:00.000Z"),
+        transaction_date: "2026-01-15",
+      }),
+      buildIncomeLineRow({
+        id: "line-full-feb",
+        refunded_amount: "1500.00",
+        refunded_at: new Date("2026-03-01T00:00:00.000Z"),
+        transaction_date: "2026-02-15",
+      }),
+      buildIncomeLineRow({
+        id: "line-paid-mar",
+        transaction_date: "2026-03-15",
+      }),
+    ];
+    currentRentPeriodRows = [];
     capturedIncomeSql.length = 0;
     mockQuery.mockClear();
 
-    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1");
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
 
     expect(capturedIncomeSql).toHaveLength(1);
     expect(capturedIncomeSql[0]).not.toContain("refunded_at IS NULL");
@@ -107,9 +115,259 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     const february = schedule.find((month) => month.month === "2026-02");
     const march = schedule.find((month) => month.month === "2026-03");
 
-    expect(january).toMatchObject({ incomeLineId: "line-partial-jan", isPaid: true });
-    expect(february?.isPaid).toBe(false);
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-partial-jan",
+      isPaid: true,
+      isProrated: false,
+    });
+    expect(february).toMatchObject({ expectedRent: 1500, isPaid: false, isProrated: false });
     expect(february?.incomeLineId).toBeUndefined();
-    expect(march).toMatchObject({ incomeLineId: "line-paid-mar", isPaid: true });
+    expect(march).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-paid-mar",
+      isPaid: true,
+      isProrated: false,
+    });
+  });
+
+  test("prorates the first month when the lease starts mid-month", async () => {
+    currentLeaseRow = buildLeaseRow({
+      id: "lease-mid-start",
+      lease_end_date: "2024-12-31",
+      lease_start_date: "2024-06-16",
+      monthly_rent: "1000.00",
+      term_months: 12,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-mid-start", "2024-12-31");
+
+    expect(schedule.find((month) => month.month === "2024-06")).toEqual({
+      daysInMonth: 30,
+      expectedRent: 500,
+      isPaid: false,
+      isProrated: true,
+      month: "2024-06",
+      occupiedDays: 15,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
+      expectedRent: 1000,
+      isProrated: false,
+    });
+  });
+
+  test("prorates the last month for an early ended lease", async () => {
+    currentLeaseRow = buildLeaseRow({
+      actual_end_date: "2024-07-15",
+      id: "lease-early-end",
+      lease_end_date: "2024-12-31",
+      lease_start_date: "2024-01-01",
+      monthly_rent: "1000.00",
+      status: PropertyLongStayStatus.ENDED,
+      term_months: 12,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-early-end", "2024-07-15");
+
+    expect(schedule.map((month) => month.month)).toEqual([
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+    ]);
+    expect(schedule.find((month) => month.month === "2024-07")).toEqual({
+      daysInMonth: 31,
+      expectedRent: 483.87,
+      isPaid: false,
+      isProrated: true,
+      month: "2024-07",
+      occupiedDays: 15,
+    });
+  });
+
+  test("prorates holdover days after lease end for an ended lease", async () => {
+    currentLeaseRow = buildLeaseRow({
+      actual_end_date: "2024-07-05",
+      id: "lease-holdover",
+      lease_end_date: "2024-06-30",
+      lease_start_date: "2024-01-01",
+      monthly_rent: "1000.00",
+      status: PropertyLongStayStatus.ENDED,
+      term_months: 6,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-holdover", "2024-07-05");
+
+    expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
+      expectedRent: 1000,
+      isProrated: false,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")).toEqual({
+      daysInMonth: 31,
+      expectedRent: 161.29,
+      isPaid: false,
+      isProrated: true,
+      month: "2024-07",
+      occupiedDays: 5,
+    });
+  });
+
+  test("projects holdover through today for an active overdue lease", async () => {
+    currentLeaseRow = buildLeaseRow({
+      id: "lease-active-holdover",
+      lease_end_date: "2024-06-30",
+      lease_start_date: "2024-01-01",
+      monthly_rent: "1000.00",
+      status: PropertyLongStayStatus.ACTIVE,
+      term_months: 6,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-active-holdover",
+      "2024-07-09"
+    );
+
+    expect(schedule.map((month) => month.month)).toEqual([
+      "2024-01",
+      "2024-02",
+      "2024-03",
+      "2024-04",
+      "2024-05",
+      "2024-06",
+      "2024-07",
+    ]);
+    expect(schedule.find((month) => month.month === "2024-07")).toEqual({
+      daysInMonth: 31,
+      expectedRent: 290.32,
+      isPaid: false,
+      isProrated: true,
+      month: "2024-07",
+      occupiedDays: 9,
+    });
+  });
+
+  test("uses the rent period rate when prorating after a mid-lease increase", async () => {
+    currentLeaseRow = buildLeaseRow({
+      id: "lease-rent-change",
+      lease_end_date: "2024-12-31",
+      lease_start_date: "2024-06-16",
+      monthly_rent: "1000.00",
+      term_months: 12,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      {
+        effective_from_month: "2024-07",
+        monthly_rent: "1200.00",
+      },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-rent-change", "2024-12-31");
+
+    expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
+      expectedRent: 500,
+      isProrated: true,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
+      expectedRent: 1200,
+      isProrated: false,
+    });
+  });
+
+  test("prorates an extended lease final month using the rent period rate for that month", async () => {
+    currentLeaseRow = buildLeaseRow({
+      actual_end_date: "2025-06-15",
+      id: "lease-extended-partial-end",
+      lease_end_date: "2025-06-15",
+      lease_start_date: "2024-06-16",
+      monthly_rent: "1200.00",
+      status: PropertyLongStayStatus.ENDED,
+      term_months: 12,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      {
+        effective_from_month: "2024-07",
+        monthly_rent: "1000.00",
+      },
+      {
+        effective_from_month: "2025-06",
+        monthly_rent: "1200.00",
+      },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-extended-partial-end",
+      "2025-06-15"
+    );
+
+    expect(schedule.find((month) => month.month === "2025-06")).toEqual({
+      daysInMonth: 30,
+      expectedRent: 600,
+      isPaid: false,
+      isProrated: true,
+      month: "2025-06",
+      occupiedDays: 15,
+    });
+  });
+
+  test("marks a prorated month paid when partial refund leaves reportable rent", async () => {
+    currentLeaseRow = buildLeaseRow({
+      id: "lease-prorated-refund",
+      lease_end_date: "2024-12-31",
+      lease_start_date: "2024-06-16",
+      monthly_rent: "1000.00",
+      term_months: 12,
+    });
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-partial-june",
+        net_income: "500.00",
+        refunded_amount: "200.00",
+        refunded_at: new Date("2024-07-01T00:00:00.000Z"),
+        transaction_date: "2024-06-20",
+      }),
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-refunded-july",
+        net_income: "500.00",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2024-08-01T00:00:00.000Z"),
+        transaction_date: "2024-07-20",
+      }),
+    ];
+    currentRentPeriodRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-prorated-refund",
+      "2024-12-31"
+    );
+
+    expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
+      expectedRent: 500,
+      incomeLineId: "line-partial-june",
+      isPaid: true,
+      isProrated: true,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
+      expectedRent: 1000,
+      isPaid: false,
+      isProrated: false,
+    });
+    expect(schedule.find((month) => month.month === "2024-07")?.incomeLineId).toBeUndefined();
   });
 });

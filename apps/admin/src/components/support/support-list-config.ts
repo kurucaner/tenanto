@@ -18,13 +18,13 @@ export type TSupportListVariantConfig = {
     applied: TAppliedSupportFilters;
     cursor?: string;
   }) => Promise<TSupportListPageResponse>;
-  filterIdPrefix: string;
   getQueryKey: (applied: TAppliedSupportFilters) => readonly unknown[];
   intro: AdminPageIntroProps;
+  searchPlaceholder: string;
   tableVariant: TSupportListVariant;
 };
 
-const LIST_PAGE_SIZE = 20;
+const LIST_PAGE_SIZE = 50;
 
 export const ADMIN_SUPPORT_LIST_CONFIG: TSupportListVariantConfig = {
   emptyMessage: "No support requests match these filters.",
@@ -33,18 +33,28 @@ export const ADMIN_SUPPORT_LIST_CONFIG: TSupportListVariantConfig = {
     adminApi.listSupportRequests({
       category: applied.category,
       cursor,
+      from: applied.from,
       limit: LIST_PAGE_SIZE,
+      q: applied.q,
+      sortBy: applied.sortBy,
+      sortDir: applied.sortDir,
       status: applied.status,
+      to: applied.to,
     }),
-  filterIdPrefix: "admin-support",
   getQueryKey: (applied) =>
     queryKeys.supportRequestsList({
       category: applied.category,
+      from: applied.from,
+      q: applied.q,
+      sortBy: applied.sortBy,
+      sortDir: applied.sortDir,
       status: applied.status,
+      to: applied.to,
     }),
   intro: {
     eyebrow: "Support",
   },
+  searchPlaceholder: "Search requests, messages, or submitters…",
   tableVariant: "admin",
 };
 
@@ -55,17 +65,27 @@ export const USER_SUPPORT_LIST_CONFIG: TSupportListVariantConfig = {
     supportApi.list({
       category: applied.category,
       cursor,
+      from: applied.from,
       limit: LIST_PAGE_SIZE,
+      q: applied.q,
+      sortBy: applied.sortBy,
+      sortDir: applied.sortDir,
       status: applied.status,
+      to: applied.to,
     }),
-  filterIdPrefix: "user-support",
   getQueryKey: (applied) =>
     queryKeys.userSupportList({
       category: applied.category,
+      from: applied.from,
+      q: applied.q,
+      sortBy: applied.sortBy,
+      sortDir: applied.sortDir,
       status: applied.status,
+      to: applied.to,
     }),
   intro: {
     eyebrow: "Support",
   },
+  searchPlaceholder: "Search requests or messages…",
   tableVariant: "user",
 };

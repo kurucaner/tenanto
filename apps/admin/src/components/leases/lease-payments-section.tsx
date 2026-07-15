@@ -7,9 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format-money";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
+import { getActiveLeaseHoldoverScheduleNotice } from "@/lib/lease-proration-display";
+import { partitionRentSchedule } from "@/lib/lease-rent-schedule-display";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
+  formatProratedDaysLabel,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
+  isActiveLeaseInHoldover,
   PropertyLongStayStatus,
 } from "@/packages/shared";
 
@@ -34,17 +39,6 @@ function getPaidMonthsToggleLabel(showPaidMonths: boolean, paidCount: number): s
     return "Show 1 paid month";
   }
   return `Show ${paidCount} paid months`;
-}
-
-function partitionRentSchedule(rentSchedule: IPropertyLongStayRentMonth[]) {
-  const unpaidMonths = rentSchedule.filter((item) => !item.isPaid);
-  const paidMonths = rentSchedule.filter((item) => item.isPaid);
-  const totalExpected = unpaidMonths.reduce((sum, item) => sum + item.expectedRent, 0);
-  return {
-    paidMonths,
-    unpaidMonths,
-    unpaidSummary: { count: unpaidMonths.length, totalExpected },
-  };
 }
 
 function RentScheduleRow({
@@ -78,8 +72,20 @@ function RentScheduleRow({
           <span className="inline-block size-4 shrink-0 rounded-full border" />
         )}
         <div className="min-w-0">
-          <p className="text-sm">{formatLeaseMonthLabel(item.month)}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-sm">{formatLeaseMonthLabel(item.month)}</p>
+            {item.isProrated ? (
+              <Badge className="text-[10px]" variant="outline">
+                Prorated
+              </Badge>
+            ) : null}
+          </div>
           <p className="text-muted-foreground text-xs">{formatMoney(item.expectedRent)}</p>
+          {item.isProrated ? (
+            <p className="text-muted-foreground text-xs">
+              {formatProratedDaysLabel(item.occupiedDays, item.daysInMonth)}
+            </p>
+          ) : null}
         </div>
       </div>
       {action}
@@ -259,6 +265,7 @@ export const LeasePaymentsSection = memo(
   ({ canManage, isPending, lease, onRecordRent, rentSchedule }: LeasePaymentsSectionProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
     const canRecord = canManage && isActive;
+    const isInHoldover = isActiveLeaseInHoldover(lease, getTodayLocalIsoDate());
     const { paidMonths, unpaidMonths, unpaidSummary } = useMemo(
       () => partitionRentSchedule(rentSchedule),
       [rentSchedule]
@@ -266,7 +273,12 @@ export const LeasePaymentsSection = memo(
 
     return (
       <Card>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-4">
+          {isInHoldover ? (
+            <p className="text-muted-foreground text-sm">
+              {getActiveLeaseHoldoverScheduleNotice()}
+            </p>
+          ) : null}
           {renderScheduleContent({
             canRecord,
             isPending,

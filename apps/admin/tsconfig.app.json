@@ -10,6 +10,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@/packages/app-ui": ["../../packages/app-ui/src"],
       "@/packages/shared": ["../../packages/shared/src"]
     },
 

@@ -46,6 +46,11 @@ export type { IPropertyChannelCommission, IPropertyChannelCommissionInput };
 export { DEFAULT_PROPERTY_CHANNEL_COMMISSIONS } from "./property-channel-commission-config";
 
 export interface IPropertySettings {
+  /**
+   * When true, creating a long-stay lease auto-sends a portal invite.
+   * Default false. Optional until Enhancements Phase 1 migrates the column + mapper.
+   */
+  autoInviteOnLeaseCreate?: boolean;
   channelCommissions: IPropertyChannelCommission[];
   createdAt: string;
   expenseCategoryTypes: IPropertyExpenseCategoryType[];
@@ -56,6 +61,7 @@ export interface IPropertySettings {
 }
 
 export interface IUpdatePropertySettingsBody {
+  autoInviteOnLeaseCreate?: boolean;
   channelCommissions?: IPropertyChannelCommissionInput[];
   expenseCategoryTypes?: IPropertyExpenseCategoryTypeInput[];
   incomeLineTypes?: IPropertyIncomeLineTypeInput[];

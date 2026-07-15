@@ -20,18 +20,26 @@ import {
 } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { showPropertyExportQueuedToast } from "@/lib/show-property-export-queued-toast";
-import { ExportFormat, type TExportFormat } from "@/packages/shared";
+import { ExportFormat, PROPERTY_EXPORT_EMPTY_MESSAGE, type TExportFormat } from "@/packages/shared";
 
 interface IPropertyTableExportDialogProps {
   config: TPropertyTableExportConfig;
   filterSummary: string;
+  matchedRowCount: number | undefined;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
 }
 
 export const PropertyTableExportDialog = memo(
-  ({ config, filterSummary, onOpenChange, open, propertyId }: IPropertyTableExportDialogProps) => {
+  ({
+    config,
+    filterSummary,
+    matchedRowCount,
+    onOpenChange,
+    open,
+    propertyId,
+  }: IPropertyTableExportDialogProps) => {
     const queryClient = useQueryClient();
     const filterSummaryId = useId();
     const [format, setFormat] = useState<TExportFormat>(ExportFormat.CSV);
@@ -80,8 +88,15 @@ export const PropertyTableExportDialog = memo(
     }, []);
 
     const handlePrepare = useCallback(() => {
+      if (matchedRowCount == null || matchedRowCount === 0) {
+        return;
+      }
       createMutation.mutate(format);
-    }, [createMutation, format]);
+    }, [createMutation, format, matchedRowCount]);
+
+    const isPrepareDisabled =
+      createMutation.isPending || matchedRowCount == null || matchedRowCount === 0;
+    const showEmptyExportMessage = matchedRowCount === 0;
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -104,6 +119,15 @@ export const PropertyTableExportDialog = memo(
               </p>
             </div>
 
+            {showEmptyExportMessage ? (
+              <div
+                className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
+                role="alert"
+              >
+                {PROPERTY_EXPORT_EMPTY_MESSAGE}
+              </div>
+            ) : null}
+
             <RadioGroupFieldset
               aria-describedby={filterSummaryId}
               legend="Format"
@@ -124,7 +148,7 @@ export const PropertyTableExportDialog = memo(
             >
               Cancel
             </Button>
-            <Button disabled={createMutation.isPending} onClick={handlePrepare} type="button">
+            <Button disabled={isPrepareDisabled} onClick={handlePrepare} type="button">
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />

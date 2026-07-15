@@ -32,7 +32,7 @@ export function getFirstExtensionMonth(leaseEndDate: string): string {
 
 export function getLeaseRentForMonth(
   baseMonthlyRent: number,
-  rentPeriods: IPropertyLongStayRentPeriod[],
+  rentPeriods: readonly IPropertyLongStayRentPeriod[],
   month: string
 ): number {
   if (rentPeriods.length === 0) {
@@ -52,7 +52,7 @@ export function getLeaseRentForMonth(
 
 export function getCurrentLeaseRent(
   baseMonthlyRent: number,
-  rentPeriods: IPropertyLongStayRentPeriod[],
+  rentPeriods: readonly IPropertyLongStayRentPeriod[],
   today: string
 ): number {
   return getLeaseRentForMonth(baseMonthlyRent, rentPeriods, transactionDateToMonth(today));
@@ -83,7 +83,11 @@ function validateLeaseRentChange(
   if (hasNewRent !== hasEffectiveMonth) {
     return "New monthly rent and effective month must both be provided when changing rent";
   }
-  if (!hasNewRent || body.newMonthlyRent === undefined || body.rentEffectiveFromMonth === undefined) {
+  if (
+    !hasNewRent ||
+    body.newMonthlyRent === undefined ||
+    body.rentEffectiveFromMonth === undefined
+  ) {
     return null;
   }
 

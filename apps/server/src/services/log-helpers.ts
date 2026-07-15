@@ -29,19 +29,26 @@ export function sanitizeForLog(value: unknown): unknown {
   return obj;
 }
 
-/** Strip JWT from URL query logs (HLS manifest `access_token`). */
-export function redactAccessTokenFromUrl(url: string): string {
+/** Strip sensitive query params from URL logs (JWTs, invite tokens). */
+export function redactSensitiveQueryParamsFromUrl(url: string): string {
   try {
     const u = new URL(url, "http://localhost");
-    if (u.searchParams.has("access_token")) {
-      u.searchParams.set("access_token", "[REDACTED]");
+    for (const key of ["access_token", "refresh_token", "token"] as const) {
+      if (u.searchParams.has(key)) {
+        u.searchParams.set(key, "[REDACTED]");
+      }
     }
     return u.pathname + u.search;
   } catch {
-    return url.replaceAll(/([?&])access_token=[^&]*/gi, "$1access_token=[REDACTED]");
+    return url.replaceAll(/([?&])(access_token|refresh_token|token)=[^&]*/gi, "$1$2=[REDACTED]");
   }
 }
 
+/** @deprecated Prefer redactSensitiveQueryParamsFromUrl */
+export function redactAccessTokenFromUrl(url: string): string {
+  return redactSensitiveQueryParamsFromUrl(url);
+}
+
 export function getLogMessage(request: FastifyRequest, statusCode: number): string {
-  return `${request.method} ${redactAccessTokenFromUrl(request.url)} ${statusCode}`;
+  return `${request.method} ${redactSensitiveQueryParamsFromUrl(request.url)} ${statusCode}`;
 }

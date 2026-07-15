@@ -2,7 +2,6 @@ import { LATEST_RELEASE_ID } from "@/config/release-notes";
 import { APP_SLUG } from "@/packages/shared";
 
 export const RELEASE_NOTES_SEEN_STORAGE_KEY = `${APP_SLUG}-admin-release-notes-seen`;
-export const LEGACY_RELEASE_NOTES_SEEN_STORAGE_KEY = "tenanto-admin-release-notes-seen";
 
 const seenReleaseListeners = new Set<() => void>();
 let storageListenerAttached = false;

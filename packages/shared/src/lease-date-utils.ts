@@ -1,3 +1,5 @@
+import { type IPropertyLongStay, PropertyLongStayStatus } from "./property-long-stay-types";
+
 function formatLocalIsoDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -32,31 +34,57 @@ export function enumerateLeaseMonths(leaseStartDate: string, leaseEndDate: strin
   return months;
 }
 
+export function formatLeaseMonthLabel(month: string): string {
+  const parts = month.split("-").map(Number);
+  const year = parts[0] ?? 0;
+  const monthNum = parts[1] ?? 1;
+  return new Date(year, monthNum - 1, 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export function transactionDateToMonth(transactionDate: string): string {
   return transactionDate.slice(0, 7);
 }
 
 export function getEndLeaseMoveOutDateBounds(
+  leaseStartDate: string,
   leaseEndDate: string,
   today: string
 ): { defaultDate: string; maxDate: string; minDate: string } {
-  const minDate = today;
-  const maxDate = leaseEndDate >= today ? leaseEndDate : today;
-  const defaultDate = minDate;
-  return { defaultDate, maxDate, minDate };
+  const maxDate = today;
+  const minDate = today > leaseEndDate ? leaseEndDate : leaseStartDate;
+
+  return { defaultDate: today, maxDate, minDate };
 }
 
 export function validateEndLeaseMoveOutDate(
   actualEndDate: string,
+  leaseStartDate: string,
   leaseEndDate: string,
   today: string
 ): string | null {
-  const { maxDate, minDate } = getEndLeaseMoveOutDateBounds(leaseEndDate, today);
-  if (actualEndDate < minDate) {
-    return "Move-out date cannot be in the past";
-  }
+  const { maxDate, minDate } = getEndLeaseMoveOutDateBounds(leaseStartDate, leaseEndDate, today);
+
   if (actualEndDate > maxDate) {
-    return "Move-out date cannot be after lease end date";
+    return "Move-out date cannot be in the future";
   }
+
+  if (actualEndDate < minDate) {
+    if (today > leaseEndDate) {
+      return "Move-out date cannot be before the lease end date";
+    }
+
+    return "Move-out date cannot be before the lease start date";
+  }
+
   return null;
+}
+
+export function isActiveLeaseInHoldover(
+  lease: Pick<IPropertyLongStay, "leaseEndDate" | "status">,
+  today: string
+): boolean {
+  return lease.status === PropertyLongStayStatus.ACTIVE && today > lease.leaseEndDate;
 }

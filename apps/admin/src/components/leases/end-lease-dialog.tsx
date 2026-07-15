@@ -18,10 +18,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import {
+  getActiveLeaseHoldoverNotice,
+  getEndLeaseHoldoverHelperText,
+  getEndLeaseMoveOutBoundsHelperText,
+  getEndLeaseMoveOutRentPreview,
+} from "@/lib/lease-proration-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   getEndLeaseMoveOutDateBounds,
   type IPropertyLongStay,
+  type IPropertyLongStayRentPeriod,
+  isActiveLeaseInHoldover,
   validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
 
@@ -34,16 +42,20 @@ interface EndLeaseDialogProps {
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
+  rentPeriods?: readonly IPropertyLongStayRentPeriod[];
 }
 
 export const EndLeaseDialog = memo(
-  ({ lease, onOpenChange, open, propertyId }: EndLeaseDialogProps) => {
+  ({ lease, onOpenChange, open, propertyId, rentPeriods = [] }: EndLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
     const { defaultDate, maxDate, minDate } = getEndLeaseMoveOutDateBounds(
+      lease.leaseStartDate,
       lease.leaseEndDate,
       today
     );
+    const isSingleMoveOutDate = minDate === maxDate;
+    const isInHoldover = isActiveLeaseInHoldover(lease, today);
 
     const endLeaseSchema = useMemo(
       () =>
@@ -54,6 +66,7 @@ export const EndLeaseDialog = memo(
           .superRefine((values, ctx) => {
             const error = validateEndLeaseMoveOutDate(
               values.actualEndDate,
+              lease.leaseStartDate,
               lease.leaseEndDate,
               today
             );
@@ -65,7 +78,7 @@ export const EndLeaseDialog = memo(
               });
             }
           }),
-      [lease.leaseEndDate, today]
+      [lease.leaseEndDate, lease.leaseStartDate, today]
     );
 
     const form = useForm<TEndLeaseFormValues>({
@@ -74,6 +87,28 @@ export const EndLeaseDialog = memo(
       },
       resolver: zodResolver(endLeaseSchema),
     });
+
+    const moveOutDate = form.watch("actualEndDate");
+
+    const boundsHelperText = useMemo(
+      () => getEndLeaseMoveOutBoundsHelperText(lease.leaseStartDate, lease.leaseEndDate, today),
+      [lease.leaseEndDate, lease.leaseStartDate, today]
+    );
+
+    const holdoverHelperText = useMemo(
+      () => getEndLeaseHoldoverHelperText(moveOutDate, lease.leaseEndDate),
+      [lease.leaseEndDate, moveOutDate]
+    );
+
+    const finalMonthRentPreview = useMemo(
+      () =>
+        getEndLeaseMoveOutRentPreview({
+          lease,
+          moveOutDate,
+          rentPeriods,
+        }),
+      [lease, moveOutDate, rentPeriods]
+    );
 
     const mutation = useMutation({
       mutationFn: (values: TEndLeaseFormValues) =>
@@ -110,7 +145,9 @@ export const EndLeaseDialog = memo(
           <DialogHeader>
             <DialogTitle>End Lease</DialogTitle>
             <DialogDescription>
-              End the lease for {lease.guestName}. The unit will become vacant.
+              {isInHoldover
+                ? getActiveLeaseHoldoverNotice(lease.leaseEndDate)
+                : `End the lease for ${lease.guestName}. The unit will become vacant.`}
             </DialogDescription>
           </DialogHeader>
 
@@ -118,13 +155,27 @@ export const EndLeaseDialog = memo(
             <div className="flex flex-col gap-4 px-6 py-5">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="end-lease-date">Move-out Date</Label>
-                <Input
-                  id="end-lease-date"
-                  max={maxDate}
-                  min={minDate}
-                  type="date"
-                  {...form.register("actualEndDate")}
-                />
+                {isSingleMoveOutDate ? (
+                  <>
+                    <input type="hidden" {...form.register("actualEndDate")} />
+                    <Input id="end-lease-date" readOnly type="date" value={minDate} />
+                  </>
+                ) : (
+                  <Input
+                    id="end-lease-date"
+                    max={maxDate}
+                    min={minDate}
+                    type="date"
+                    {...form.register("actualEndDate")}
+                  />
+                )}
+                <p className="text-muted-foreground text-xs">{boundsHelperText}</p>
+                {holdoverHelperText ? (
+                  <p className="text-muted-foreground text-xs">{holdoverHelperText}</p>
+                ) : null}
+                {finalMonthRentPreview ? (
+                  <p className="text-sm font-medium">{finalMonthRentPreview}</p>
+                ) : null}
                 {errors.actualEndDate ? (
                   <p className="text-xs text-destructive">{errors.actualEndDate.message}</p>
                 ) : null}

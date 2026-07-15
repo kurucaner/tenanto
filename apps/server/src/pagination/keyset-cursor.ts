@@ -71,13 +71,14 @@ export function encodeExpenseKeysetCursor(
 }
 
 /**
- * Lease list keyset cursor (v1): leaseStartDate (YYYY-MM-DD) + createdAt + id.
- * Matches ORDER BY lease_start_date DESC, created_at DESC, id DESC.
+ * Lease list keyset cursor (v1): sort dimensions + createdAt + id tiebreakers.
  */
 export type LeaseKeysetCursorV1 = {
   createdAt: string;
   id: string;
-  leaseStartDate: string;
+  sortBy: string;
+  sortDir: string;
+  sortKey: string | number | null;
 };
 
 export function decodeLeaseKeysetCursor(raw: string): LeaseKeysetCursorV1 {
@@ -86,34 +87,55 @@ export function decodeLeaseKeysetCursor(raw: string): LeaseKeysetCursorV1 {
     const parsed = JSON.parse(json) as {
       createdAt?: unknown;
       id?: unknown;
-      leaseStartDate?: unknown;
+      sortBy?: unknown;
+      sortDir?: unknown;
+      sortKey?: unknown;
     };
-    if (
-      typeof parsed.createdAt !== "string" ||
-      typeof parsed.id !== "string" ||
-      typeof parsed.leaseStartDate !== "string"
-    ) {
+    if (typeof parsed.createdAt !== "string" || typeof parsed.id !== "string") {
       throw new TypeError("invalid shape");
     }
+
+    const sortBy = typeof parsed.sortBy === "string" ? parsed.sortBy : "start";
+    const sortDir = typeof parsed.sortDir === "string" ? parsed.sortDir : "desc";
+
+    let sortKey: string | number | null = null;
+    if (
+      parsed.sortKey !== null &&
+      (typeof parsed.sortKey === "number" || typeof parsed.sortKey === "string")
+    ) {
+      sortKey = parsed.sortKey;
+    }
+
     return {
       createdAt: parsed.createdAt,
       id: parsed.id,
-      leaseStartDate: parsed.leaseStartDate,
+      sortBy,
+      sortDir,
+      sortKey,
     };
   } catch {
     throw new Error("Invalid cursor");
   }
 }
 
-export function encodeLeaseKeysetCursor(
-  leaseStartDate: string,
-  createdAt: Date | string,
-  id: string
-): string {
-  const iso = typeof createdAt === "string" ? createdAt : createdAt.toISOString();
-  return Buffer.from(JSON.stringify({ createdAt: iso, id, leaseStartDate }), "utf8").toString(
-    "base64url"
-  );
+export function encodeLeaseKeysetCursor(input: {
+  createdAt: Date | string;
+  id: string;
+  sortBy: string;
+  sortDir: string;
+  sortKey: string | number | null;
+}): string {
+  const iso = typeof input.createdAt === "string" ? input.createdAt : input.createdAt.toISOString();
+  return Buffer.from(
+    JSON.stringify({
+      createdAt: iso,
+      id: input.id,
+      sortBy: input.sortBy,
+      sortDir: input.sortDir,
+      sortKey: input.sortKey,
+    }),
+    "utf8"
+  ).toString("base64url");
 }
 
 /**
@@ -456,4 +478,50 @@ export function encodeExportJobKeysetCursor(input: {
     }),
     "utf8"
   ).toString("base64url");
+}
+
+/**
+ * Support request list keyset cursor (v1): selected sort value plus stable createdAt/id
+ * tiebreakers. The sort metadata prevents reusing a cursor with a different ordering.
+ */
+export type SupportRequestKeysetCursorV1 = {
+  createdAt: string;
+  id: string;
+  sortBy: string;
+  sortDir: string;
+  sortKey: string;
+};
+
+export function decodeSupportRequestKeysetCursor(raw: string): SupportRequestKeysetCursorV1 {
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf8")) as {
+      createdAt?: unknown;
+      id?: unknown;
+      sortBy?: unknown;
+      sortDir?: unknown;
+      sortKey?: unknown;
+    };
+    if (
+      typeof parsed.createdAt !== "string" ||
+      typeof parsed.id !== "string" ||
+      typeof parsed.sortBy !== "string" ||
+      typeof parsed.sortDir !== "string" ||
+      typeof parsed.sortKey !== "string"
+    ) {
+      throw new TypeError("invalid shape");
+    }
+    return {
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+      sortBy: parsed.sortBy,
+      sortDir: parsed.sortDir,
+      sortKey: parsed.sortKey,
+    };
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
+export function encodeSupportRequestKeysetCursor(input: SupportRequestKeysetCursorV1): string {
+  return Buffer.from(JSON.stringify(input), "utf8").toString("base64url");
 }

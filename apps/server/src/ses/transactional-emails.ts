@@ -1,4 +1,5 @@
 import type { OtpPurpose } from "@/db/auth-otps";
+import { OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
@@ -26,9 +27,30 @@ export interface RentPaymentRecordedEmailOptions {
   unitLabel: string;
 }
 
-const OTP_EXPIRY_MINUTES = 10;
+export interface LeaseEndedEmailOptions {
+  contractEndDate: string;
+  finalMonthPlain: string;
+  finalMonthSection: string;
+  holdoverPlain: string;
+  holdoverSection: string;
+  leaseStartDate: string;
+  moveOutDate: string;
+  paymentStatusLine: string;
+  propertyName: string;
+  tenantName: string;
+  unitLabel: string;
+}
+
 const WEB_APP_URL = process.env.WEB_APP_URL;
 const PLATFORM_APP_URL = process.env.PLATFORM_APP_URL;
+const TENANT_APP_URL = process.env.TENANT_APP_URL;
+
+export interface TenantPortalInviteEmailOptions {
+  acceptUrl: string;
+  displayName: string;
+  propertyName: string;
+  unitLabel: string;
+}
 
 function buildSupportTicketUrl(supportRequestId: string): string {
   const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
@@ -46,6 +68,8 @@ function getSubject(purpose: OtpPurpose): string {
       return `Your ${APP_NAME} verification code`;
     case "reset_password":
       return `Reset your ${APP_NAME} password`;
+    case "tenant_register":
+      return `Your ${APP_NAME} tenant portal verification code`;
     default:
       return `Your ${APP_NAME} verification code`;
   }
@@ -57,6 +81,8 @@ function getHeadline(purpose: OtpPurpose): string {
       return "Your verification code";
     case "reset_password":
       return "Your password reset code";
+    case "tenant_register":
+      return "Your tenant portal verification code";
     default:
       return "Your verification code";
   }
@@ -69,6 +95,8 @@ function getBodyText(purpose: OtpPurpose, code: string): string {
       return `Your verification code is: ${code}. It expires in ${expiry}.`;
     case "reset_password":
       return `Your password reset code is: ${code}. It expires in ${expiry}.`;
+    case "tenant_register":
+      return `Your tenant portal verification code is: ${code}. It expires in ${expiry}.`;
     default:
       return `Your verification code is: ${code}. It expires in ${expiry}.`;
   }
@@ -160,6 +188,100 @@ export async function sendRentPaymentRecordedEmail(
     propertyName: escapeHtml(opts.propertyName),
     rentMonthLabel: escapeHtml(opts.rentMonthLabel),
     tenantName: escapeHtml(opts.tenantName),
+    unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptions): Promise<void> {
+  const subject = `Your lease at ${opts.propertyName} has ended`;
+  const text = [
+    `Hi ${opts.tenantName},`,
+    "",
+    `Thank you for your time at ${opts.propertyName}. We recorded your move-out on ${opts.moveOutDate} and your lease is now closed.`,
+    "",
+    `Property: ${opts.propertyName}`,
+    `Unit: ${opts.unitLabel}`,
+    `Lease start: ${opts.leaseStartDate}`,
+    `Contract end: ${opts.contractEndDate}`,
+    `Move-out: ${opts.moveOutDate}`,
+    opts.holdoverPlain ? "" : null,
+    opts.holdoverPlain || null,
+    opts.finalMonthPlain ? "" : null,
+    opts.finalMonthPlain || null,
+    "",
+    opts.paymentStatusLine,
+    "",
+    "If you have questions about your final rent or move-out, contact your property manager.",
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
+
+  const html = renderTemplate("lease-ended.html", {
+    appName: APP_NAME,
+    contractEndDate: escapeHtml(opts.contractEndDate),
+    finalMonthSection: opts.finalMonthSection,
+    holdoverSection: opts.holdoverSection,
+    leaseStartDate: escapeHtml(opts.leaseStartDate),
+    moveOutDate: escapeHtml(opts.moveOutDate),
+    paymentStatusLine: escapeHtml(opts.paymentStatusLine),
+    propertyName: escapeHtml(opts.propertyName),
+    tenantName: escapeHtml(opts.tenantName),
+    unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendTenantPortalInviteNewEmail(
+  to: string,
+  opts: TenantPortalInviteEmailOptions
+): Promise<void> {
+  const subject = `View your lease at ${opts.propertyName} on ${APP_NAME}`;
+  const text = [
+    `Hi ${opts.displayName},`,
+    "",
+    `You've been invited to access your lease at ${opts.propertyName} (${opts.unitLabel}) on ${APP_NAME}.`,
+    "",
+    `Create your account and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("tenant-portal-invite-new.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (TENANT_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    displayName: escapeHtml(opts.displayName),
+    propertyName: escapeHtml(opts.propertyName),
+    unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+}
+
+export async function sendTenantPortalInviteExistingEmail(
+  to: string,
+  opts: TenantPortalInviteEmailOptions
+): Promise<void> {
+  const subject = `Accept your lease invite for ${opts.propertyName}`;
+  const text = [
+    `Hi ${opts.displayName},`,
+    "",
+    `You've been invited to access your lease at ${opts.propertyName} (${opts.unitLabel}).`,
+    "",
+    `Sign in and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("tenant-portal-invite-existing.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (TENANT_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    displayName: escapeHtml(opts.displayName),
+    propertyName: escapeHtml(opts.propertyName),
     unitLabel: escapeHtml(opts.unitLabel),
   });
 

@@ -29,6 +29,7 @@
     "baseUrl": ".",
     "paths": {
       "@/packages/*": ["packages/*"],
+      "@/packages/app-ui": ["packages/app-ui/src"],
       "@/packages/shared": ["packages/shared/src"]
     },
     "types": ["node"]

@@ -51,14 +51,14 @@ sections; use "N/A" or "TBD" with a one-line reason when a section does not appl
 
 Default sequence (adapt names, never the order logic):
 
-| Order | Phase | User-facing? | Purpose |
-| --- | --- | --- | --- |
-| 0 | Foundation | No | DB, shared types, infra, flags, pure utilities + tests |
-| 1 | Backend pipeline | No (API/script only) | End-to-end core path without UI |
-| 2 | Real-time / progress | No full UI | SSE, webhooks, polling fallback — prove push path |
-| 3 | UI MVP | Yes | First shippable surface; wire to proven backend |
-| 4 | Hardening | — | Rate limits, idempotency, observability, load test |
-| 5+ | Enhancements | — | Post-launch; explicitly deferred from v1 |
+| Order | Phase                | User-facing?         | Purpose                                                |
+| ----- | -------------------- | -------------------- | ------------------------------------------------------ |
+| 0     | Foundation           | No                   | DB, shared types, infra, flags, pure utilities + tests |
+| 1     | Backend pipeline     | No (API/script only) | End-to-end core path without UI                        |
+| 2     | Real-time / progress | No full UI           | SSE, webhooks, polling fallback — prove push path      |
+| 3     | UI MVP               | Yes                  | First shippable surface; wire to proven backend        |
+| 4     | Hardening            | —                    | Rate limits, idempotency, observability, load test     |
+| 5+    | Enhancements         | —                    | Post-launch; explicitly deferred from v1               |
 
 **Rules:**
 
@@ -83,18 +83,18 @@ sequencing rules. Offer to adjust scope or start Phase 0 — do not implement un
 
 ## Quality bar
 
-| Check | Requirement |
-| --- | --- |
-| Goals | User-visible outcomes + technical bar (e.g. 202, SSE, idempotency) |
-| Non-goals | Explicit v1 cuts — prevents scope creep |
-| Guiding principles | Numbered; each states *why* (source of truth, fail-safe, etc.) |
-| Architecture | ASCII or mermaid flow; name real systems (Postgres, BullMQ, SES…) |
-| Sketches | Tables for schema, API, shared types — not full DDL |
-| Phases | Every phase has Goal + tasks + Exit criteria |
-| Hardening | Table: Concern → Action |
-| Related code | Real paths only |
+| Check              | Requirement                                                        |
+| ------------------ | ------------------------------------------------------------------ |
+| Goals              | User-visible outcomes + technical bar (e.g. 202, SSE, idempotency) |
+| Non-goals          | Explicit v1 cuts — prevents scope creep                            |
+| Guiding principles | Numbered; each states _why_ (source of truth, fail-safe, etc.)     |
+| Architecture       | ASCII or mermaid flow; name real systems (Postgres, BullMQ, SES…)  |
+| Sketches           | Tables for schema, API, shared types — not full DDL                |
+| Phases             | Every phase has Goal + tasks + Exit criteria                       |
+| Hardening          | Table: Concern → Action                                            |
+| Related code       | Real paths only                                                    |
 
-## Tenanto repo defaults
+## PropertyOS repo defaults
 
 When planning features in this monorepo, prefer:
 

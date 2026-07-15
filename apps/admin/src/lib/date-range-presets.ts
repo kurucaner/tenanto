@@ -24,6 +24,10 @@ export const DATE_RANGE_PRESET_OPTIONS: { id: TDateRangePresetId; label: string 
   { id: DateRangePreset.ALL, label: "All time" },
 ];
 
+export const BOUNDED_DATE_RANGE_PRESET_OPTIONS = DATE_RANGE_PRESET_OPTIONS.filter(
+  (option) => option.id !== DateRangePreset.ALL
+);
+
 export function getDateRangeSummary(
   activePreset: TDateRangePresetId | null,
   from: string,
