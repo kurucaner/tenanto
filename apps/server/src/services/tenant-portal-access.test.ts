@@ -6,14 +6,18 @@ import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared"
 const mockFindActiveByLeaseAndTenantUser = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
 );
+const mockFindByLeaseAndTenantUserWithStatuses = mock(() =>
+  Promise.resolve(null as ILeaseTenantMembership | null)
+);
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   leaseTenantMembershipsDb: {
     findActiveByLeaseAndTenantUser: mockFindActiveByLeaseAndTenantUser,
+    findByLeaseAndTenantUserWithStatuses: mockFindByLeaseAndTenantUserWithStatuses,
   },
 }));
 
-const { assertLeaseTenantAccess, TenantLeaseAccessDeniedError } =
+const { assertLeaseTenantAccess, assertLeaseTenantReadAccess, TenantLeaseAccessDeniedError } =
   await import("./tenant-portal-access");
 
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
@@ -57,6 +61,33 @@ describe("assertLeaseTenantAccess", () => {
     mockFindActiveByLeaseAndTenantUser.mockResolvedValueOnce(null);
 
     await expect(assertLeaseTenantAccess("lease-1", "tenant-1")).rejects.toBeInstanceOf(
+      TenantLeaseAccessDeniedError
+    );
+  });
+});
+
+describe("assertLeaseTenantReadAccess", () => {
+  beforeEach(() => {
+    mockFindByLeaseAndTenantUserWithStatuses.mockClear();
+  });
+
+  test("returns ended membership for archive read access", async () => {
+    const membership = makeMembership({ status: TenantMembershipStatus.ENDED });
+    mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValueOnce(membership);
+
+    const result = await assertLeaseTenantReadAccess("lease-1", "tenant-1");
+
+    expect(result).toEqual(membership);
+    expect(mockFindByLeaseAndTenantUserWithStatuses).toHaveBeenCalledWith("lease-1", "tenant-1", [
+      TenantMembershipStatus.ACTIVE,
+      TenantMembershipStatus.ENDED,
+    ]);
+  });
+
+  test("throws when no active or ended membership exists", async () => {
+    mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValueOnce(null);
+
+    await expect(assertLeaseTenantReadAccess("lease-1", "tenant-1")).rejects.toBeInstanceOf(
       TenantLeaseAccessDeniedError
     );
   });

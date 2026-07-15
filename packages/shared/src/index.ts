@@ -552,6 +552,8 @@ export {
   type ITenantLeaseDetailResponse,
   type ITenantLeaseListItem,
   type ITenantLeasesListResponse,
+  TenantLeaseListStatus,
+  type TTenantLeaseListStatus,
   type ITenantMembershipActionResponse,
   type ITenantMeResponse,
   type ITenantPendingInvite,

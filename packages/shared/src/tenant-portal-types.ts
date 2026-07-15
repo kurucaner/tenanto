@@ -68,6 +68,15 @@ export interface ITenantLeaseListItem {
   unitLabel: string;
 }
 
+/** Query filter for `GET /tenant/me/leases` — active is the default. */
+export const TenantLeaseListStatus = {
+  ACTIVE: "active",
+  ENDED: "ended",
+} as const;
+
+export type TTenantLeaseListStatus =
+  (typeof TenantLeaseListStatus)[keyof typeof TenantLeaseListStatus];
+
 export interface ITenantLeaseDetailResponse {
   displayName: string;
   leaseEndDate: string;

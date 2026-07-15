@@ -9,6 +9,8 @@ import {
   type ITenantMembershipActionResponse,
   type ITenantMeResponse,
   type ITenantPendingInvitesResponse,
+  TenantLeaseListStatus,
+  type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { parseUuidParam } from "@/routes/notification-query-utils";
 import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
@@ -55,6 +57,16 @@ function mapMembershipError(error: unknown, reply: FastifyReply): FastifyReply |
     return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
   }
 
+  return null;
+}
+
+function parseLeaseListStatus(raw: unknown): TTenantLeaseListStatus | null {
+  if (raw === undefined || raw === null || raw === "") {
+    return TenantLeaseListStatus.ACTIVE;
+  }
+  if (raw === TenantLeaseListStatus.ACTIVE || raw === TenantLeaseListStatus.ENDED) {
+    return raw;
+  }
   return null;
 }
 
@@ -154,16 +166,21 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
     }
   );
 
-  server.get(
+  server.get<{ Querystring: { status?: string } }>(
     "/tenant/me/leases",
     tenantAuthPre,
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Querystring: { status?: string } }>, reply: FastifyReply) => {
       const tenantUserId = request.tenantUser?.tenantUserId;
       if (!tenantUserId) {
         return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Unauthorized" });
       }
 
-      const leases = await tenantPortalMembershipService.listActiveLeases(tenantUserId);
+      const status = parseLeaseListStatus(request.query.status);
+      if (status === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid status" });
+      }
+
+      const leases = await tenantPortalMembershipService.listLeases(tenantUserId, status);
       const response: ITenantLeasesListResponse = { leases };
       return reply.send(response);
     }
@@ -184,10 +201,7 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
       }
 
       try {
-        const lease = await tenantPortalMembershipService.getActiveLeaseDetail(
-          leaseId,
-          tenantUserId
-        );
+        const lease = await tenantPortalMembershipService.getLeaseDetail(leaseId, tenantUserId);
         return reply.send(lease);
       } catch (error) {
         if (error instanceof TenantLeaseAccessDeniedError) {

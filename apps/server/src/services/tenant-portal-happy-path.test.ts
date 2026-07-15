@@ -10,6 +10,7 @@ import type {
 } from "@/packages/shared";
 import {
   PropertyLongStayStatus,
+  TenantLeaseListStatus,
   TenantMembershipRole,
   TenantMembershipStatus,
   UnitRentalType,
@@ -18,6 +19,7 @@ import {
 const mockFindByIdMembership = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
 const mockFindByTokenHash = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
 const mockFindActiveByTenantUserId = mock(() => Promise.resolve([] as ILeaseTenantMembership[]));
+const mockFindEndedByTenantUserId = mock(() => Promise.resolve([] as ILeaseTenantMembership[]));
 const mockFindPendingAcceptanceByTenantUserId = mock(() =>
   Promise.resolve([] as ILeaseTenantMembership[])
 );
@@ -52,6 +54,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     findActiveByTenantUserId: mockFindActiveByTenantUserId,
     findById: mockFindByIdMembership,
     findByInviteToken: mockFindByTokenHash,
+    findEndedByTenantUserId: mockFindEndedByTenantUserId,
     findPendingAcceptanceByTenantUserId: mockFindPendingAcceptanceByTenantUserId,
     linkTenantUser: mockLinkTenantUser,
     transitionStatus: mockTransitionStatus,
@@ -170,6 +173,7 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     mockFindByIdMembership.mockReset();
     mockFindByTokenHash.mockReset();
     mockFindActiveByTenantUserId.mockReset();
+    mockFindEndedByTenantUserId.mockReset();
     mockFindPendingAcceptanceByTenantUserId.mockReset();
     mockLinkTenantUser.mockReset();
     mockTransitionStatus.mockReset();
@@ -221,7 +225,10 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     mockFindActiveByTenantUserId.mockResolvedValue([
       makeMembership({ status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-1" }),
     ]);
-    const leases = await tenantPortalMembershipService.listActiveLeases("tenant-1");
+    const leases = await tenantPortalMembershipService.listLeases(
+      "tenant-1",
+      TenantLeaseListStatus.ACTIVE
+    );
     expect(leases).toHaveLength(1);
     expect(leases[0]?.propertyName).toBe("Oak Apartments");
     expect(leases[0]?.leaseId).toBe("lease-1");
@@ -263,8 +270,9 @@ describe("tenant portal happy path (Phase 1.3)", () => {
   });
 
   test("end lease marks active and pending memberships as ended", async () => {
+    const endedMembership = makeMembership({ status: TenantMembershipStatus.ENDED });
     mockEndAllNonTerminalForLease.mockResolvedValue([
-      makeMembership({ status: TenantMembershipStatus.ENDED }),
+      endedMembership,
       makeMembership({ id: "membership-2", status: TenantMembershipStatus.ENDED }),
     ]);
 
@@ -276,8 +284,21 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     expect(ended.every((row) => row.status === TenantMembershipStatus.ENDED)).toBe(true);
 
     mockFindActiveByTenantUserId.mockResolvedValue([]);
-    const leases = await tenantPortalMembershipService.listActiveLeases("tenant-1");
-    expect(leases).toHaveLength(0);
+    mockFindEndedByTenantUserId.mockResolvedValue([endedMembership]);
+
+    const activeLeases = await tenantPortalMembershipService.listLeases(
+      "tenant-1",
+      TenantLeaseListStatus.ACTIVE
+    );
+    const pastLeases = await tenantPortalMembershipService.listLeases(
+      "tenant-1",
+      TenantLeaseListStatus.ENDED
+    );
+
+    expect(activeLeases).toHaveLength(0);
+    expect(pastLeases).toHaveLength(1);
+    expect(pastLeases[0]?.leaseId).toBe("lease-1");
+    expect(pastLeases[0]?.status).toBe(TenantMembershipStatus.ENDED);
   });
 
   test("cannot reuse invite token after accept (single-use)", async () => {

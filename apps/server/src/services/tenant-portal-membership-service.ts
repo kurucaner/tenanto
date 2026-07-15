@@ -24,11 +24,13 @@ import {
   formatLeaseMonthLabel,
   JwtAudience,
   normalizeTenantEmail,
+  TenantLeaseListStatus,
   TenantMembershipStatus,
+  type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { issueTenantSession } from "@/services/tenant-auth-service";
 
-import { assertLeaseTenantAccess } from "./tenant-portal-access";
+import { assertLeaseTenantReadAccess } from "./tenant-portal-access";
 import {
   PortalInviteInvalidStateError,
   PortalInviteNotFoundError,
@@ -135,7 +137,7 @@ async function loadPendingInviteItem(
   };
 }
 
-async function loadActiveLeaseItem(
+async function loadLeaseListItem(
   membership: ILeaseTenantMembership
 ): Promise<ITenantLeaseListItem | null> {
   const lease = await propertyLongStaysDb.findById(membership.leaseId);
@@ -197,11 +199,11 @@ export const tenantPortalMembershipService = {
     return updated;
   },
 
-  async getActiveLeaseDetail(
+  async getLeaseDetail(
     leaseId: string,
     tenantUserId: string
   ): Promise<ITenantLeaseDetailResponse> {
-    const membership = await assertLeaseTenantAccess(leaseId, tenantUserId);
+    const membership = await assertLeaseTenantReadAccess(leaseId, tenantUserId);
     const lease = await propertyLongStaysDb.findById(leaseId);
     if (!lease) {
       throw new TenantMembershipNotFoundError();
@@ -210,7 +212,9 @@ export const tenantPortalMembershipService = {
     const [property, unit, rentScheduleMonths] = await Promise.all([
       propertiesDb.findById(lease.propertyId),
       propertyUnitsDb.findById(lease.unitId),
-      propertyLongStaysDb.getRentSchedule(leaseId),
+      membership.status === TenantMembershipStatus.ENDED
+        ? Promise.resolve([])
+        : propertyLongStaysDb.getRentSchedule(leaseId),
     ]);
     if (!property || !unit) {
       throw new TenantMembershipNotFoundError();
@@ -238,11 +242,15 @@ export const tenantPortalMembershipService = {
     return tenantUsersDb.findById(tenantUserId);
   },
 
-  async listActiveLeases(tenantUserId: string): Promise<ITenantLeaseListItem[]> {
-    const memberships = await leaseTenantMembershipsDb.findActiveByTenantUserId(tenantUserId);
-    const items = await Promise.all(
-      memberships.map((membership) => loadActiveLeaseItem(membership))
-    );
+  async listLeases(
+    tenantUserId: string,
+    status: TTenantLeaseListStatus = TenantLeaseListStatus.ACTIVE
+  ): Promise<ITenantLeaseListItem[]> {
+    const memberships =
+      status === TenantLeaseListStatus.ENDED
+        ? await leaseTenantMembershipsDb.findEndedByTenantUserId(tenantUserId)
+        : await leaseTenantMembershipsDb.findActiveByTenantUserId(tenantUserId);
+    const items = await Promise.all(memberships.map((membership) => loadLeaseListItem(membership)));
     return items.filter((item): item is ITenantLeaseListItem => item != null);
   },
 

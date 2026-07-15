@@ -9,6 +9,7 @@ import {
   TenantLeaseDetailSummary,
   TenantLeaseRentSchedule,
 } from "@/packages/app-ui";
+import { TenantMembershipStatus } from "@/packages/shared";
 
 export const LeaseDetailPage = memo(function LeaseDetailPage() {
   const { leaseId = "" } = useParams();
@@ -29,7 +30,11 @@ export const LeaseDetailPage = memo(function LeaseDetailPage() {
           <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
             Lease details
           </h1>
-          <p className="text-sm text-muted-foreground">Read-only summary and rent schedule.</p>
+          <p className="text-sm text-muted-foreground">
+            {leaseQuery.data?.status === TenantMembershipStatus.ENDED
+              ? "Read-only archive summary after move-out."
+              : "Read-only summary and rent schedule."}
+          </p>
         </div>
       </div>
 
@@ -46,7 +51,9 @@ export const LeaseDetailPage = memo(function LeaseDetailPage() {
       {leaseQuery.data ? (
         <>
           <TenantLeaseDetailSummary lease={leaseQuery.data} />
-          <TenantLeaseRentSchedule lease={leaseQuery.data} />
+          {leaseQuery.data.status !== TenantMembershipStatus.ENDED ? (
+            <TenantLeaseRentSchedule lease={leaseQuery.data} />
+          ) : null}
         </>
       ) : null}
     </div>

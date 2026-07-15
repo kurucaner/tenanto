@@ -597,11 +597,11 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Tasks**
 
-- [ ] `GET /tenant/me/leases?status=ended` — extend list endpoint (active remains default)
-- [ ] DB: `findEndedByTenantUserId` (or generalized list with status filter)
-- [ ] Shared types: ended list item / optional ended detail shape
-- [ ] Tenant UI: “Past leases” on `/leases` (or filter); read-only cards
-- [ ] Optional: ended lease detail page (summary only; rent schedule optional)
+- [x] `GET /tenant/me/leases?status=ended` — extend list endpoint (active remains default)
+- [x] DB: `findEndedByTenantUserId` (or generalized list with status filter)
+- [x] Shared types: ended list item / optional ended detail shape
+- [x] Tenant UI: “Past leases” on `/leases` (or filter); read-only cards
+- [x] Optional: ended lease detail page (summary only; rent schedule optional)
 
 **Exit criteria:** End lease in admin → tenant sees lease under archive, not active list; no write APIs.
 

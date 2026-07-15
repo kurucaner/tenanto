@@ -16,6 +16,8 @@ import {
   type ITenantMeResponse,
   type ITenantPendingInvitesResponse,
   type ITenantUser,
+  TenantLeaseListStatus,
+  type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -102,7 +104,13 @@ export const tenantPortalApi = {
 
   getMe: () => authenticatedRequest<ITenantMeResponse>("/tenant/me"),
 
-  listLeases: () => authenticatedRequest<ITenantLeasesListResponse>("/tenant/me/leases"),
+  listLeases: (status: TTenantLeaseListStatus = TenantLeaseListStatus.ACTIVE) => {
+    const query =
+      status === TenantLeaseListStatus.ACTIVE
+        ? ""
+        : `?status=${encodeURIComponent(status)}`;
+    return authenticatedRequest<ITenantLeasesListResponse>(`/tenant/me/leases${query}`);
+  },
 
   listPendingInvites: () =>
     authenticatedRequest<ITenantPendingInvitesResponse>("/tenant/me/invites/pending"),
