@@ -20,6 +20,7 @@ import {
   TenantMembershipNotFoundError,
   tenantPortalMembershipService,
 } from "@/services/tenant-portal-membership-service";
+import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 
 function parseRedeemBody(body: unknown): ITenantInviteRedeemBody | null {
   if (body == null || typeof body !== "object") {
@@ -165,6 +166,38 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
       const leases = await tenantPortalMembershipService.listActiveLeases(tenantUserId);
       const response: ITenantLeasesListResponse = { leases };
       return reply.send(response);
+    }
+  );
+
+  server.get<{ Params: { leaseId: string } }>(
+    "/tenant/me/leases/:leaseId",
+    tenantAuthPre,
+    async (request: FastifyRequest<{ Params: { leaseId: string } }>, reply: FastifyReply) => {
+      const tenantUserId = request.tenantUser?.tenantUserId;
+      if (!tenantUserId) {
+        return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Unauthorized" });
+      }
+
+      const leaseId = parseUuidParam(request.params.leaseId);
+      if (leaseId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid leaseId" });
+      }
+
+      try {
+        const lease = await tenantPortalMembershipService.getActiveLeaseDetail(
+          leaseId,
+          tenantUserId
+        );
+        return reply.send(lease);
+      } catch (error) {
+        if (error instanceof TenantLeaseAccessDeniedError) {
+          return reply.status(HttpStatus.FORBIDDEN).send({ error: error.message });
+        }
+        if (error instanceof TenantMembershipNotFoundError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        }
+        throw error;
+      }
     }
   );
 

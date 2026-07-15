@@ -15,6 +15,8 @@ import {
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
+  type ICreateLeasePortalInviteBody,
+  type ICreateLeasePortalInvitesResponse,
   type ICreatePropertyExpenseBody,
   type ICreatePropertyIncomeLineBody,
   type ICreatePropertyLongStayBody,
@@ -31,6 +33,7 @@ import {
   type IIncomeImportCommitBody,
   type IIncomeImportCommitResponse,
   type IIncomeImportParseResponse,
+  type ILeasePortalAccessResponse,
   type IPortfolioReportSummary,
   type IProperty,
   type IPropertyDetail,
@@ -62,6 +65,8 @@ import {
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
   type IRefundLedgerEntryBody,
+  type IResendLeasePortalInviteResponse,
+  type IRevokeLeasePortalInviteResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
   type ISupportCloseResponse,
@@ -535,6 +540,31 @@ export const longStaysApi = {
     authenticatedRequest<{ longStay: IPropertyLongStay }>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const longStayPortalApi = {
+  createInvites: (propertyId: string, longStayId: string, body: ICreateLeasePortalInviteBody) =>
+    authenticatedRequest<ICreateLeasePortalInvitesResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  getAccess: (propertyId: string, longStayId: string) =>
+    authenticatedRequest<ILeasePortalAccessResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-access`
+    ),
+
+  resendInvite: (propertyId: string, longStayId: string, membershipId: string) =>
+    authenticatedRequest<IResendLeasePortalInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites/${encodeURIComponent(membershipId)}/resend`,
+      { method: "POST" }
+    ),
+
+  revokeInvite: (propertyId: string, longStayId: string, membershipId: string) =>
+    authenticatedRequest<IRevokeLeasePortalInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites/${encodeURIComponent(membershipId)}/revoke`,
+      { method: "POST" }
     ),
 };
 

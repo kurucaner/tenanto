@@ -14,15 +14,22 @@ import {
 import type {
   ILeaseTenantMembership,
   ITenantAuthSessionResponse,
+  ITenantLeaseDetailResponse,
   ITenantLeaseListItem,
   ITenantPendingInvite,
   ITenantUser,
   TTenantMembershipStatus,
 } from "@/packages/shared";
-import { JwtAudience, normalizeTenantEmail, TenantMembershipStatus } from "@/packages/shared";
+import {
+  formatLeaseMonthLabel,
+  JwtAudience,
+  normalizeTenantEmail,
+  TenantMembershipStatus,
+} from "@/packages/shared";
 import { issueTenantSession } from "@/services/tenant-auth-service";
 import { hashPortalInviteToken } from "@/ses/tenant-portal-invite-token";
 
+import { assertLeaseTenantAccess } from "./tenant-portal-access";
 import {
   PortalInviteInvalidStateError,
   PortalInviteNotFoundError,
@@ -185,6 +192,43 @@ export const tenantPortalMembershipService = {
       throw new TenantMembershipNotFoundError();
     }
     return updated;
+  },
+
+  async getActiveLeaseDetail(
+    leaseId: string,
+    tenantUserId: string
+  ): Promise<ITenantLeaseDetailResponse> {
+    const membership = await assertLeaseTenantAccess(leaseId, tenantUserId);
+    const lease = await propertyLongStaysDb.findById(leaseId);
+    if (!lease) {
+      throw new TenantMembershipNotFoundError();
+    }
+
+    const [property, unit, rentScheduleMonths] = await Promise.all([
+      propertiesDb.findById(lease.propertyId),
+      propertyUnitsDb.findById(lease.unitId),
+      propertyLongStaysDb.getRentSchedule(leaseId),
+    ]);
+    if (!property || !unit) {
+      throw new TenantMembershipNotFoundError();
+    }
+
+    return {
+      displayName: membership.displayName,
+      leaseEndDate: lease.leaseEndDate,
+      leaseId: lease.id,
+      leaseStartDate: lease.leaseStartDate,
+      monthlyRent: lease.monthlyRent,
+      propertyName: property.name,
+      rentSchedule: rentScheduleMonths.map((item) => ({
+        amount: item.expectedRent,
+        dueDate: `${item.month}-01`,
+        periodLabel: formatLeaseMonthLabel(item.month),
+      })),
+      role: membership.role,
+      status: membership.status,
+      unitLabel: formatUnitLabel(unit),
+    };
   },
 
   async getProfile(tenantUserId: string): Promise<ITenantUser | null> {

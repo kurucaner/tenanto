@@ -29,6 +29,12 @@ export { maskEmail } from "./auth/mask-email";
 export { getOtpResendButtonLabel } from "./auth/otp-resend-button-label";
 export { useOtpResendCooldown } from "./auth/use-otp-resend-cooldown";
 export {
+  TenantLeaseDetailSummary,
+  TenantLeaseRentSchedule,
+  type ITenantLeaseDetailSummaryProps,
+  type ITenantLeaseRentScheduleProps,
+} from "./components/tenant-lease-detail";
+export {
   TenantLeaseCard,
   type ITenantLeaseCardProps,
 } from "./components/tenant-lease-card";

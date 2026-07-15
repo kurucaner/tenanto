@@ -10,6 +10,7 @@ import {
   type ITenantInvitePreviewResponse,
   type ITenantInviteRedeemBody,
   type ITenantInviteRedeemResponse,
+  type ITenantLeaseDetailResponse,
   type ITenantLeasesListResponse,
   type ITenantMembershipActionResponse,
   type ITenantMeResponse,
@@ -92,6 +93,11 @@ export const tenantPortalApi = {
     authenticatedRequest<ITenantMembershipActionResponse>(
       `/tenant/me/invites/${encodeURIComponent(membershipId)}/decline`,
       { method: "POST" }
+    ),
+
+  getLease: (leaseId: string) =>
+    authenticatedRequest<ITenantLeaseDetailResponse>(
+      `/tenant/me/leases/${encodeURIComponent(leaseId)}`
     ),
 
   getMe: () => authenticatedRequest<ITenantMeResponse>("/tenant/me"),

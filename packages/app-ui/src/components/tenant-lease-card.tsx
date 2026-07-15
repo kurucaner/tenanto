@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { Link } from "react-router-dom";
 
 import { type TTenantMembershipRole, type TTenantMembershipStatus } from "@/packages/shared";
 
@@ -16,6 +17,7 @@ export interface ITenantLeaseCardProps {
   role: TTenantMembershipRole;
   status: TTenantMembershipStatus;
   tenantDisplayName?: string;
+  to?: string;
   unitLabel: string;
 }
 
@@ -26,10 +28,13 @@ export const TenantLeaseCard = memo(function TenantLeaseCard({
   role,
   status,
   tenantDisplayName,
+  to,
   unitLabel,
 }: ITenantLeaseCardProps) {
-  return (
-    <Card className="rounded-xl border-border/80 bg-card/85 shadow-sm">
+  const card = (
+    <Card
+      className={`rounded-xl border-border/80 bg-card/85 shadow-sm${to ? " transition-colors hover:border-primary/40" : ""}`}
+    >
       <CardHeader className="space-y-1">
         <CardTitle className="font-display text-xl font-semibold tracking-tight">
           {propertyName}
@@ -54,5 +59,15 @@ export const TenantLeaseCard = memo(function TenantLeaseCard({
       </CardContent>
     </Card>
   );
+
+  if (to) {
+    return (
+      <Link className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to={to}>
+        {card}
+      </Link>
+    );
+  }
+
+  return card;
 });
 TenantLeaseCard.displayName = "TenantLeaseCard";

@@ -7,6 +7,7 @@ import { AcceptInvitePage } from "@/pages/accept-invite-page";
 import { AccountPage } from "@/pages/account-page";
 import { ErrorPage } from "@/pages/error-page";
 import { HomePage } from "@/pages/home-page";
+import { LeaseDetailPage } from "@/pages/lease-detail-page";
 import { LeasesPage } from "@/pages/leases-page";
 import { LoginPage } from "@/pages/login-page";
 import { NotFoundPage } from "@/pages/not-found-page";
@@ -31,6 +32,11 @@ export const router = createBrowserRouter([
           {
             children: [
               { element: <LeasesPage />, handle: { title: "Your leases" }, path: "leases" },
+              {
+                element: <LeaseDetailPage />,
+                handle: { title: "Lease details" },
+                path: "leases/:leaseId",
+              },
               {
                 element: <PendingInvitesPage />,
                 handle: { title: "Pending invites" },

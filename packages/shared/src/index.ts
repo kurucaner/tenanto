@@ -174,6 +174,7 @@ export {
 export {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
   isActiveLeaseInHoldover,
   transactionDateToMonth,

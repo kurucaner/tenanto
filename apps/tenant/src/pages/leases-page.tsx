@@ -76,6 +76,7 @@ export const LeasesPage = memo(function LeasesPage() {
           role={lease.role}
           status={lease.status}
           tenantDisplayName={user?.name}
+          to={`/leases/${lease.leaseId}`}
           unitLabel={lease.unitLabel}
         />
       ))}

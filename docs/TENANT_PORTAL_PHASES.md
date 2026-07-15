@@ -504,11 +504,11 @@ Link target: `TENANT_APP_URL/accept-invite?token=…` (new env var, mirror `PLAT
 
 **Goal:** Operators manage portal invites from the existing lease **Tenants** tab; tenants see read-only lease detail.
 
-- [ ] Extend [`lease-tenants-section.tsx`](apps/admin/src/components/leases/lease-tenants-section.tsx): portal status **badge** on primary tenant row and each secondary tenant row (e.g. Not invited, Invite pending, Active, Declined, Revoked, Ended, Expired)
-- [ ] Per-row actions in Tenants tab: **Invite** (no membership / expired), **Resend** (`pending_*`), **Revoke** (`active`); disable Invite when email missing
-- [ ] Optional footer action: **Invite all** (primary + secondaries with valid emails) — same card, not a new section
-- [ ] API client methods + query keys for `GET .../portal-access` and invite/resend/revoke mutations; invalidate on success
-- [ ] Tenant app: lease detail page (summary + rent schedule from `GET /tenant/me/leases/:id`)
+- [x] Extend [`lease-tenants-section.tsx`](apps/admin/src/components/leases/lease-tenants-section.tsx): portal status **badge** on primary tenant row and each secondary tenant row (e.g. Not invited, Invite pending, Active, Declined, Revoked, Ended, Expired)
+- [x] Per-row actions in Tenants tab: **Invite** (no membership / expired), **Resend** (`pending_*`), **Revoke** (`active`); disable Invite when email missing
+- [x] Optional footer action: **Invite all** (primary + secondaries with valid emails) — same card, not a new section
+- [x] API client methods + query keys for `GET .../portal-access` and invite/resend/revoke mutations; invalidate on success
+- [x] Tenant app: lease detail page (summary + rent schedule from `GET /tenant/me/leases/:id`)
 
 **Exit criteria:** Full happy path without curl: admin invites from Tenants tab → tenant email → accept in tenant app → view rent schedule; operator revokes from tenant row → tenant loses access on next request.
 
