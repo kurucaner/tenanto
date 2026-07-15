@@ -1,4 +1,1 @@
-export {
-  getAuthApiErrorCode,
-  getAuthApiErrorMessage,
-} from "@/packages/app-ui";
+export { getAuthApiErrorCode, getAuthApiErrorMessage } from "@/packages/app-ui";

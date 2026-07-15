@@ -83,7 +83,9 @@ async function loadLeaseContext(leaseId: string, propertyId: string) {
 
 async function resolveInitialStatus(
   inviteEmail: string
-): Promise<typeof TenantMembershipStatus.PENDING_INVITE | typeof TenantMembershipStatus.PENDING_ACCEPTANCE> {
+): Promise<
+  typeof TenantMembershipStatus.PENDING_INVITE | typeof TenantMembershipStatus.PENDING_ACCEPTANCE
+> {
   const existingUser = await tenantUsersDb.findByEmail(inviteEmail);
   return existingUser
     ? TenantMembershipStatus.PENDING_ACCEPTANCE
@@ -255,10 +257,7 @@ export const tenantPortalInviteService = {
     return results;
   },
 
-  async listPortalAccess(
-    leaseId: string,
-    propertyId: string
-  ): Promise<ILeaseTenantMembership[]> {
+  async listPortalAccess(leaseId: string, propertyId: string): Promise<ILeaseTenantMembership[]> {
     const context = await loadLeaseContext(leaseId, propertyId);
     if (!context) {
       throw new PortalInviteNotFoundError("Long stay not found");
@@ -344,12 +343,7 @@ export const tenantPortalInviteService = {
     const hasExistingAccount =
       updated.status === TenantMembershipStatus.PENDING_ACCEPTANCE ||
       (await tenantUsersDb.findByEmail(updated.inviteEmail)) != null;
-    const emailResult = await sendPortalInviteEmail(
-      updated,
-      summary,
-      rawToken,
-      hasExistingAccount
-    );
+    const emailResult = await sendPortalInviteEmail(updated, summary, rawToken, hasExistingAccount);
 
     return {
       emailError: emailResult.emailError,
