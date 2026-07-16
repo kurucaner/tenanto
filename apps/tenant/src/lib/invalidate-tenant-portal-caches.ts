@@ -6,6 +6,7 @@ export async function invalidateTenantPortalCaches(queryClient: QueryClient): Pr
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.leases() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.pendingInvites() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.rentSummary() }),
   ]);
 }
 
