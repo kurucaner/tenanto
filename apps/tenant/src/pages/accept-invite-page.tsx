@@ -1,14 +1,21 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
 import { tenantPortalApi } from "@/lib/api-client";
+import { getGoogleClientId } from "@/lib/google-auth-client-id";
 import { invalidateTenantPortalCaches } from "@/lib/invalidate-tenant-portal-caches";
 import { getAcceptInvitePath } from "@/lib/invite-return-url";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  authNameSchema,
+  authPasswordSchema,
+  AuthProviderDivider,
   Button,
   Card,
   CardContent,
@@ -17,31 +24,165 @@ import {
   CardTitle,
   DarkPaletteMenu,
   getAuthApiErrorMessage,
+  GoogleSignInButton,
+  Input,
   InviteLeaseSummaryCard,
+  Label,
   ThemeSwitcher,
   useResolvedDark,
 } from "@/packages/app-ui";
 import { APP_NAME } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
+const inviteSignupSchema = z.object({
+  name: authNameSchema,
+  password: authPasswordSchema,
+});
+
+type TInviteSignupFormValues = z.infer<typeof inviteSignupSchema>;
+
 interface IAcceptInviteActionProps {
   accepting: boolean;
   hasExistingAccount: boolean;
   hydrated: boolean;
+  inviteEmail: string;
   isAuthenticated: boolean;
   loginHref: string;
   onAccept: () => void;
-  registerHref: string;
+  onSignupSuccess: () => void;
+  summaryDisplayName: string;
+  token: string;
 }
+
+const AcceptInviteSignupForm = memo(function AcceptInviteSignupForm({
+  inviteEmail,
+  onSignupSuccess,
+  summaryDisplayName,
+  token,
+}: {
+  inviteEmail: string;
+  onSignupSuccess: () => void;
+  summaryDisplayName: string;
+  token: string;
+}) {
+  const setSession = useAuthStore((s) => s.setSession);
+  const [submitting, setSubmitting] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  const form = useForm<TInviteSignupFormValues>({
+    defaultValues: { name: summaryDisplayName, password: "" },
+    resolver: zodResolver(inviteSignupSchema),
+  });
+
+  useEffect(() => {
+    form.reset({ name: summaryDisplayName, password: "" });
+  }, [form, summaryDisplayName]);
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    setSubmitting(true);
+    try {
+      const response = await tenantPortalApi.registerWithInvite({
+        name: values.name,
+        password: values.password,
+        token,
+      });
+      if (!response.session) {
+        throw new Error("Signup succeeded but no session was returned");
+      }
+      setSession(response.session);
+      toast.success("Account created and invitation accepted");
+      onSignupSuccess();
+    } catch (error) {
+      toast.error(getAuthApiErrorMessage(error, "Failed to create account"));
+    } finally {
+      setSubmitting(false);
+    }
+  });
+
+  return (
+    <form className="space-y-4" onSubmit={onSubmit}>
+      <p className="text-sm text-muted-foreground">
+        Create your account to accept this invitation. Your email is already verified via this
+        invite link.
+      </p>
+      <GoogleSignInButton
+        clientId={getGoogleClientId()}
+        onCredential={async (idToken) => {
+          if (googleBusy || submitting) {
+            return;
+          }
+          setGoogleBusy(true);
+          try {
+            const response = await tenantPortalApi.registerWithInviteGoogle({
+              idToken,
+              token,
+            });
+            if (!response.session) {
+              throw new Error("Signup succeeded but no session was returned");
+            }
+            setSession(response.session);
+            toast.success("Account created and invitation accepted");
+            onSignupSuccess();
+          } catch (error) {
+            toast.error(getAuthApiErrorMessage(error, "Google sign-up failed"));
+          } finally {
+            setGoogleBusy(false);
+          }
+        }}
+        onError={() => {
+          toast.error("Google sign-in was cancelled");
+        }}
+        text="signup_with"
+      />
+      <AuthProviderDivider />
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="invite-signup-email">Email</Label>
+        <Input
+          autoComplete="email"
+          id="invite-signup-email"
+          readOnly
+          type="email"
+          value={inviteEmail}
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="invite-signup-name">Name</Label>
+        <Input autoComplete="name" id="invite-signup-name" {...form.register("name")} />
+        {form.formState.errors.name ? (
+          <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="invite-signup-password">Password</Label>
+        <Input
+          autoComplete="new-password"
+          id="invite-signup-password"
+          type="password"
+          {...form.register("password")}
+        />
+        {form.formState.errors.password ? (
+          <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
+        ) : null}
+      </div>
+      <Button className="w-full" disabled={submitting || googleBusy} type="submit">
+        {submitting ? "Creating account…" : "Create account and accept"}
+      </Button>
+    </form>
+  );
+});
+AcceptInviteSignupForm.displayName = "AcceptInviteSignupForm";
 
 const AcceptInviteAction = memo(function AcceptInviteAction({
   accepting,
   hasExistingAccount,
   hydrated,
+  inviteEmail,
   isAuthenticated,
   loginHref,
   onAccept,
-  registerHref,
+  onSignupSuccess,
+  summaryDisplayName,
+  token,
 }: IAcceptInviteActionProps) {
   if (!hydrated) {
     return <p className="text-sm text-muted-foreground">Checking session…</p>;
@@ -69,15 +210,12 @@ const AcceptInviteAction = memo(function AcceptInviteAction({
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Create an account to accept this invitation.</p>
-      <Button asChild className="w-full" type="button">
-        <Link to={registerHref}>Create account</Link>
-      </Button>
-      <Button asChild className="w-full" type="button" variant="outline">
-        <Link to={loginHref}>Already have an account? Sign in</Link>
-      </Button>
-    </div>
+    <AcceptInviteSignupForm
+      inviteEmail={inviteEmail}
+      onSignupSuccess={onSignupSuccess}
+      summaryDisplayName={summaryDisplayName}
+      token={token}
+    />
   );
 });
 AcceptInviteAction.displayName = "AcceptInviteAction";
@@ -102,7 +240,11 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
 
   const returnTo = getAcceptInvitePath(token);
   const loginHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
-  const registerHref = `/register?returnTo=${encodeURIComponent(returnTo)}`;
+
+  const finishAccepted = async () => {
+    await invalidateTenantPortalCaches(queryClient);
+    navigate("/leases", { replace: true });
+  };
 
   const handleAccept = async () => {
     if (!token) {
@@ -112,14 +254,17 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
     setAccepting(true);
     try {
       await tenantPortalApi.redeemInviteAuthenticated(token);
-      await invalidateTenantPortalCaches(queryClient);
       toast.success("Invitation accepted");
-      navigate("/leases", { replace: true });
+      await finishAccepted();
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Failed to accept invitation"));
     } finally {
       setAccepting(false);
     }
+  };
+
+  const handleSignupSuccess = () => {
+    void finishAccepted();
   };
 
   return (
@@ -175,10 +320,15 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
                 accepting={accepting}
                 hasExistingAccount={previewQuery.data.hasExistingAccount}
                 hydrated={hydrated}
+                inviteEmail={previewQuery.data.inviteEmail}
                 isAuthenticated={isAuthenticated}
                 loginHref={loginHref}
-                onAccept={handleAccept}
-                registerHref={registerHref}
+                onAccept={() => {
+                  void handleAccept();
+                }}
+                onSignupSuccess={handleSignupSuccess}
+                summaryDisplayName={previewQuery.data.summary.displayName}
+                token={token}
               />
             </>
           ) : null}

@@ -556,6 +556,8 @@ export {
   type ITenantInvitePreviewResponse,
   type ITenantInviteRedeemBody,
   type ITenantInviteRedeemResponse,
+  type ITenantInviteRegisterBody,
+  type ITenantInviteRegisterGoogleBody,
   type ITenantLeaseDetailResponse,
   type ITenantLeaseListItem,
   type ITenantLeasesListResponse,

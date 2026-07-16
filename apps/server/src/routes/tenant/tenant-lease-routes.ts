@@ -5,14 +5,22 @@ import {
   HttpStatus,
   type ITenantInviteRedeemBody,
   type ITenantInviteRedeemResponse,
+  type ITenantInviteRegisterBody,
+  type ITenantInviteRegisterGoogleBody,
   type ITenantLeasesListResponse,
   type ITenantMembershipActionResponse,
   type ITenantMeResponse,
   type ITenantPendingInvitesResponse,
   TenantLeaseListStatus,
+  type TPlatform,
   type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { parseUuidParam } from "@/routes/notification-query-utils";
+import {
+  registerTenantWithInviteGoogle,
+  registerTenantWithInvitePassword,
+  type TTenantInviteSignupResult,
+} from "@/services/tenant-invite-signup-service";
 import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 import {
   PortalInviteInvalidStateError,
@@ -43,6 +51,54 @@ function parseRedeemBody(body: unknown): ITenantInviteRedeemBody | null {
     password,
     token: token.trim(),
   };
+}
+
+function parseInviteRegisterBody(body: unknown): ITenantInviteRegisterBody | null {
+  if (body == null || typeof body !== "object") {
+    return null;
+  }
+  const record = body as Record<string, unknown>;
+  const token = record.token;
+  const name = record.name;
+  const password = record.password;
+  if (typeof token !== "string" || token.trim() === "") {
+    return null;
+  }
+  if (typeof name !== "string" || typeof password !== "string") {
+    return null;
+  }
+  return { name, password, token: token.trim() };
+}
+
+function parseInviteRegisterGoogleBody(body: unknown): ITenantInviteRegisterGoogleBody | null {
+  if (body == null || typeof body !== "object") {
+    return null;
+  }
+  const record = body as Record<string, unknown>;
+  const token = record.token;
+  const idToken = record.idToken;
+  if (typeof token !== "string" || token.trim() === "") {
+    return null;
+  }
+  if (typeof idToken !== "string" || idToken.trim() === "") {
+    return null;
+  }
+  return { idToken: idToken.trim(), token: token.trim() };
+}
+
+async function sendInviteSignupResult(
+  reply: FastifyReply,
+  result: TTenantInviteSignupResult
+): Promise<FastifyReply> {
+  if (result.status === "error") {
+    if (result.headers) {
+      for (const [key, value] of Object.entries(result.headers)) {
+        reply.header(key, value);
+      }
+    }
+    return reply.status(result.statusCode).send(result.body);
+  }
+  return reply.send(result.response);
 }
 
 function mapMembershipError(error: unknown, reply: FastifyReply): FastifyReply | null {
@@ -235,6 +291,40 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
         }
         throw error;
       }
+    }
+  );
+
+  server.post("/tenant/invites/register", async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = parseInviteRegisterBody(request.body);
+    if (!body) {
+      return reply
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ error: "token, name, and password are required" });
+    }
+
+    const result = await registerTenantWithInvitePassword(server, {
+      body,
+      ip: request.ip,
+    });
+    return sendInviteSignupResult(reply, result);
+  });
+
+  server.post(
+    "/tenant/invites/register/google",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = parseInviteRegisterGoogleBody(request.body);
+      if (!body) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "token and idToken are required" });
+      }
+
+      const result = await registerTenantWithInviteGoogle(server, {
+        body,
+        ip: request.ip,
+        platform: request.headers["x-platform"] as TPlatform,
+      });
+      return sendInviteSignupResult(reply, result);
     }
   );
 

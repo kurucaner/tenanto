@@ -122,6 +122,7 @@ export interface ILeasePortalAccessResponse {
 
 export interface ITenantInvitePreviewResponse {
   hasExistingAccount: boolean;
+  inviteEmail: string;
   membershipId: string;
   status: TTenantMembershipStatus;
   summary: ITenantInviteLeaseSummary;
@@ -229,6 +230,17 @@ export type TTenantDisconnectResponse = ITenantMembershipActionResponse;
 export interface ITenantInviteRedeemBody {
   email?: string;
   password?: string;
+  token: string;
+}
+
+export interface ITenantInviteRegisterBody {
+  name: string;
+  password: string;
+  token: string;
+}
+
+export interface ITenantInviteRegisterGoogleBody {
+  idToken: string;
   token: string;
 }
 

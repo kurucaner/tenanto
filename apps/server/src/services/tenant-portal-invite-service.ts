@@ -305,6 +305,7 @@ export const tenantPortalInviteService = {
 
     return {
       hasExistingAccount,
+      inviteEmail: membership.inviteEmail,
       membershipId: membership.id,
       status: membership.status,
       summary: buildTenantInviteLeaseSummary(membership, lease, property, unit),

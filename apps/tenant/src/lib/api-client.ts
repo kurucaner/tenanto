@@ -12,6 +12,8 @@ import {
   type ITenantInvitePreviewResponse,
   type ITenantInviteRedeemBody,
   type ITenantInviteRedeemResponse,
+  type ITenantInviteRegisterBody,
+  type ITenantInviteRegisterGoogleBody,
   type ITenantLeaseDetailResponse,
   type ITenantLeasesListResponse,
   type ITenantMembershipActionResponse,
@@ -144,6 +146,25 @@ export const tenantPortalApi = {
   redeemInviteAuthenticated: (token: string) =>
     authenticatedRequest<ITenantInviteRedeemResponse>("/tenant/invites/redeem", {
       body: JSON.stringify({ token }),
+      method: "POST",
+    }),
+
+  registerWithInvite: (body: ITenantInviteRegisterBody) =>
+    request<ITenantInviteRedeemResponse>("/tenant/invites/register", {
+      body: JSON.stringify({
+        name: body.name.trim(),
+        password: body.password,
+        token: body.token.trim(),
+      }),
+      method: "POST",
+    }),
+
+  registerWithInviteGoogle: (body: ITenantInviteRegisterGoogleBody) =>
+    request<ITenantInviteRedeemResponse>("/tenant/invites/register/google", {
+      body: JSON.stringify({
+        idToken: body.idToken.trim(),
+        token: body.token.trim(),
+      }),
       method: "POST",
     }),
 };

@@ -338,6 +338,7 @@ describe("tenantPortalInviteService.previewInvite", () => {
     expect(preview.summary.propertyName).toBe("Oak Apartments");
     expect(preview.summary.unitLabel).toBe("101 (1BR)");
     expect(preview.hasExistingAccount).toBe(false);
+    expect(preview.inviteEmail).toBe("jane@example.com");
   });
 
   test("rejects expired invites", async () => {
