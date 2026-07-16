@@ -61,6 +61,8 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyShortStaysListResponse,
+  type IPropertyStripeConnectOnboardingLinkResponse,
+  type IPropertyStripeConnectStatusResponse,
   type IPropertyUnit,
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
@@ -657,6 +659,22 @@ export const settingsApi = {
     authenticatedRequest<{ settings: IPropertySettings }>(
       `/properties/${encodeURIComponent(propertyId)}/settings`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const propertyStripeConnectApi = {
+  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+    authenticatedRequest<IPropertyStripeConnectOnboardingLinkResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/onboarding-link`,
+      {
+        body: JSON.stringify(body ?? {}),
+        method: "POST",
+      }
+    ),
+
+  getStatus: (propertyId: string) =>
+    authenticatedRequest<IPropertyStripeConnectStatusResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/status`
     ),
 };
 
