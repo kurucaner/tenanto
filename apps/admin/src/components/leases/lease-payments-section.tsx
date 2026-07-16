@@ -8,7 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format-money";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
 import { getActiveLeaseHoldoverScheduleNotice } from "@/lib/lease-proration-display";
-import { partitionRentSchedule } from "@/lib/lease-rent-schedule-display";
+import {
+  hasOutstandingRent,
+  isRentMonthPartiallyPaid,
+  partitionRentSchedule,
+} from "@/lib/lease-rent-schedule-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   formatProratedDaysLabel,
@@ -29,7 +33,7 @@ interface LeasePaymentsSectionProps {
 
 interface UnpaidSummary {
   count: number;
-  totalExpected: number;
+  totalRemaining: number;
 }
 
 type TRentScheduleRowVariant = "due" | "paid" | "upcoming";
@@ -44,6 +48,13 @@ function getPaidMonthsToggleLabel(showPaidMonths: boolean, paidCount: number): s
   return `Show ${paidCount} paid months`;
 }
 
+function getRentMonthAmountSubtitle(item: IPropertyLongStayRentMonth): string {
+  if (item.paidRent > 0) {
+    return `${formatMoney(item.paidRent)} / ${formatMoney(item.expectedRent)}`;
+  }
+  return formatMoney(item.expectedRent);
+}
+
 function RentScheduleRow({
   canRecord,
   item,
@@ -55,19 +66,23 @@ function RentScheduleRow({
   onRecordRent: (month: string) => void;
   variant: TRentScheduleRowVariant;
 }>) {
+  const showRecord = variant === "due" && canRecord && hasOutstandingRent(item);
+
   let action;
   if (variant === "paid") {
     action = <Badge variant="secondary">Paid</Badge>;
   } else if (variant === "upcoming") {
     action = <Badge variant="outline">Upcoming</Badge>;
-  } else if (canRecord) {
+  } else if (showRecord) {
     action = (
       <Button onClick={() => onRecordRent(item.month)} size="sm" type="button" variant="outline">
         Record
       </Button>
     );
-  } else {
+  } else if (variant === "due") {
     action = <Badge variant="outline">Missing</Badge>;
+  } else {
+    action = null;
   }
 
   return (
@@ -86,8 +101,13 @@ function RentScheduleRow({
                 Prorated
               </Badge>
             ) : null}
+            {isRentMonthPartiallyPaid(item) ? (
+              <Badge className="text-[10px]" variant="secondary">
+                Partial
+              </Badge>
+            ) : null}
           </div>
-          <p className="text-muted-foreground text-xs">{formatMoney(item.expectedRent)}</p>
+          <p className="text-muted-foreground text-xs">{getRentMonthAmountSubtitle(item)}</p>
           {item.isProrated ? (
             <p className="text-muted-foreground text-xs">
               {formatProratedDaysLabel(item.occupiedDays, item.daysInMonth)}
@@ -111,13 +131,13 @@ function LeasePaymentsScheduleSkeleton() {
 }
 
 function LeasePaymentsSummary({
-  upcomingCount,
   unpaidSummary,
+  upcomingCount,
 }: Readonly<{ upcomingCount: number; unpaidSummary: UnpaidSummary }>) {
   if (unpaidSummary.count > 0) {
     return (
       <p className="text-muted-foreground text-sm">
-        {unpaidSummary.count} unpaid · {formatMoney(unpaidSummary.totalExpected)} expected
+        {unpaidSummary.count} unpaid · {formatMoney(unpaidSummary.totalRemaining)} remaining
       </p>
     );
   }
@@ -245,8 +265,8 @@ function LeasePaymentsScheduleContent({
   dueUnpaidMonths,
   onRecordRent,
   paidMonths,
-  upcomingMonths,
   unpaidSummary,
+  upcomingMonths,
 }: Readonly<{
   canRecord: boolean;
   dueUnpaidMonths: IPropertyLongStayRentMonth[];
@@ -257,10 +277,7 @@ function LeasePaymentsScheduleContent({
 }>) {
   return (
     <>
-      <LeasePaymentsSummary
-        upcomingCount={upcomingMonths.length}
-        unpaidSummary={unpaidSummary}
-      />
+      <LeasePaymentsSummary upcomingCount={upcomingMonths.length} unpaidSummary={unpaidSummary} />
       <UnpaidMonthsList
         canRecord={canRecord}
         dueUnpaidMonths={dueUnpaidMonths}
@@ -283,8 +300,8 @@ function renderScheduleContent({
   onRecordRent,
   paidMonths,
   rentSchedule,
-  upcomingMonths,
   unpaidSummary,
+  upcomingMonths,
 }: Readonly<{
   canRecord: boolean;
   dueUnpaidMonths: IPropertyLongStayRentMonth[];
@@ -321,7 +338,7 @@ export const LeasePaymentsSection = memo(
     const canRecord = canManage && isActive;
     const isInHoldover = isActiveLeaseInHoldover(lease, getTodayLocalIsoDate());
     const asOfMonth = transactionDateToMonth(getTodayLocalIsoDate());
-    const { dueUnpaidMonths, paidMonths, upcomingMonths, unpaidSummary } = useMemo(
+    const { dueUnpaidMonths, paidMonths, unpaidSummary, upcomingMonths } = useMemo(
       () => partitionRentSchedule(rentSchedule, asOfMonth),
       [asOfMonth, rentSchedule]
     );
@@ -341,8 +358,8 @@ export const LeasePaymentsSection = memo(
             onRecordRent,
             paidMonths,
             rentSchedule,
-            upcomingMonths,
             unpaidSummary,
+            upcomingMonths,
           })}
         </CardContent>
       </Card>

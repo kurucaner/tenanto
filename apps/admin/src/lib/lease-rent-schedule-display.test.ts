@@ -5,6 +5,8 @@ import { type IPropertyLongStayRentMonth } from "@/packages/shared";
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
 import {
   getExpectedRentForScheduleMonth,
+  getRemainingRentForScheduleMonth,
+  isRentMonthPartiallyPaid,
   partitionRentSchedule,
 } from "./lease-rent-schedule-display";
 
@@ -57,7 +59,7 @@ const MIXED_DUE_UPCOMING_SCHEDULE: IPropertyLongStayRentMonth[] = [
 ];
 
 describe("partitionRentSchedule", () => {
-  test("sums prorated due unpaid expectedRent amounts for the summary total", () => {
+  test("sums remainingRent for due unpaid months in the summary total", () => {
     const { dueUnpaidMonths, paidMonths, unpaidSummary } = partitionRentSchedule(
       MID_MONTH_START_SCHEDULE,
       "2024-07"
@@ -65,13 +67,13 @@ describe("partitionRentSchedule", () => {
 
     expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
     expect(paidMonths.map((item) => item.month)).toEqual(["2024-08"]);
-    expect(unpaidSummary).toEqual({ count: 2, totalExpected: 1500 });
+    expect(unpaidSummary).toEqual({ count: 2, totalRemaining: 1500 });
   });
 
-  test("includes holdover proration in due unpaid totals", () => {
+  test("includes holdover proration remaining in due unpaid totals", () => {
     const { unpaidSummary } = partitionRentSchedule(HOLD_OVER_SCHEDULE, "2024-07");
 
-    expect(unpaidSummary).toEqual({ count: 1, totalExpected: 161.29 });
+    expect(unpaidSummary).toEqual({ count: 1, totalRemaining: 161.29 });
   });
 
   test("separates future unpaid months into upcoming and excludes them from summary", () => {
@@ -82,7 +84,49 @@ describe("partitionRentSchedule", () => {
 
     expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
     expect(upcomingMonths.map((item) => item.month)).toEqual(["2024-09"]);
-    expect(unpaidSummary).toEqual({ count: 2, totalExpected: 1500 });
+    expect(unpaidSummary).toEqual({ count: 2, totalRemaining: 1500 });
+  });
+
+  test("keeps partially paid months in due unpaid and sums remaining only", () => {
+    const schedule = [
+      buildRentMonth({
+        expectedRent: 1500,
+        month: "2024-07",
+        paidRent: 500,
+        remainingRent: 1000,
+      }),
+      buildRentMonth({ expectedRent: 1000, isPaid: true, month: "2024-08" }),
+    ];
+
+    const { dueUnpaidMonths, paidMonths, unpaidSummary } = partitionRentSchedule(
+      schedule,
+      "2024-07"
+    );
+
+    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-07"]);
+    expect(paidMonths.map((item) => item.month)).toEqual(["2024-08"]);
+    expect(unpaidSummary).toEqual({ count: 1, totalRemaining: 1000 });
+  });
+});
+
+describe("isRentMonthPartiallyPaid", () => {
+  test("returns true when some rent is paid but month is not fully paid", () => {
+    expect(
+      isRentMonthPartiallyPaid(
+        buildRentMonth({ expectedRent: 1500, month: "2024-07", paidRent: 500, remainingRent: 1000 })
+      )
+    ).toBe(true);
+  });
+
+  test("returns false when nothing is paid or month is fully paid", () => {
+    expect(isRentMonthPartiallyPaid(buildRentMonth({ expectedRent: 1500, month: "2024-07" }))).toBe(
+      false
+    );
+    expect(
+      isRentMonthPartiallyPaid(
+        buildRentMonth({ expectedRent: 1500, isPaid: true, month: "2024-07", paidRent: 1500 })
+      )
+    ).toBe(false);
   });
 });
 
@@ -129,5 +173,34 @@ describe("buildLeaseRecordRentPrefill", () => {
     });
 
     expect(prefill.amount).toBe("483.87");
+  });
+
+  test("prefills remainingRent for partially paid schedule months", () => {
+    const schedule = [
+      buildRentMonth({
+        expectedRent: 1500,
+        month: "2024-07",
+        paidRent: 500,
+        remainingRent: 1000,
+      }),
+    ];
+    const prefill = buildLeaseRecordRentPrefill(lease, "income-type-rent", {
+      month: "2024-07",
+      rentSchedule: schedule,
+    });
+
+    expect(prefill.amount).toBe("1000");
+    expect(prefill.rentPeriodMonth).toBe("2024-07");
+  });
+});
+
+describe("getRemainingRentForScheduleMonth", () => {
+  test("returns remainingRent for a schedule month", () => {
+    expect(
+      getRemainingRentForScheduleMonth(
+        [buildRentMonth({ expectedRent: 1500, month: "2024-07", paidRent: 500, remainingRent: 1000 })],
+        "2024-07"
+      )
+    ).toBe(1000);
   });
 });

@@ -173,11 +173,11 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** Payments tab shows partial state; Record works per period.
 
-- [ ] Extend [`lease-payments-section.tsx`](../apps/admin/src/components/leases/lease-payments-section.tsx): show `paidRent / expectedRent` subtitle; keep Record on due months with `remainingRent > 0`
-- [ ] [`partitionRentSchedule`](../apps/admin/src/lib/lease-rent-schedule-display.ts): treat partial as due unpaid (not paid section)
-- [ ] Record dialog: show **Rent period** (read-only from row) vs **Payment date**
-- [ ] Summary: `{count} unpaid · {total} expected` uses `remainingRent` sum, not full expected
-- [ ] Invalidate caches on income create as today
+- [x] Extend [`lease-payments-section.tsx`](../apps/admin/src/components/leases/lease-payments-section.tsx): show `paidRent / expectedRent` subtitle; keep Record on due months with `remainingRent > 0`
+- [x] [`partitionRentSchedule`](../apps/admin/src/lib/lease-rent-schedule-display.ts): treat partial as due unpaid (not paid section)
+- [x] Record dialog: show **Rent period** (read-only from row) vs **Payment date**
+- [x] Summary: `{count} unpaid · {total} expected` uses `remainingRent` sum, not full expected
+- [x] Invalidate caches on income create as today
 
 **Exit criteria:** Operator records $500 on $1,500 month → stays in Unpaid with partial label; second payment completes → moves to Paid.
 

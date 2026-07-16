@@ -2,17 +2,29 @@ import { type IPropertyLongStayRentMonth } from "@/packages/shared";
 
 export type TLeaseRentScheduleMonthAmount = Pick<
   IPropertyLongStayRentMonth,
-  "expectedRent" | "month"
+  "expectedRent" | "month" | "paidRent" | "remainingRent"
 >;
 
 export interface ILeaseRentSchedulePartition {
   dueUnpaidMonths: IPropertyLongStayRentMonth[];
   paidMonths: IPropertyLongStayRentMonth[];
-  upcomingMonths: IPropertyLongStayRentMonth[];
   unpaidSummary: {
     count: number;
-    totalExpected: number;
+    totalRemaining: number;
   };
+  upcomingMonths: IPropertyLongStayRentMonth[];
+}
+
+export function isRentMonthPartiallyPaid(
+  item: Pick<IPropertyLongStayRentMonth, "isPaid" | "paidRent">
+): boolean {
+  return !item.isPaid && item.paidRent > 0;
+}
+
+export function hasOutstandingRent(
+  item: Pick<IPropertyLongStayRentMonth, "remainingRent">
+): boolean {
+  return item.remainingRent > 0;
 }
 
 export function partitionRentSchedule(
@@ -23,13 +35,13 @@ export function partitionRentSchedule(
   const unpaid = rentSchedule.filter((item) => !item.isPaid);
   const dueUnpaidMonths = unpaid.filter((item) => item.month <= asOfMonth);
   const upcomingMonths = unpaid.filter((item) => item.month > asOfMonth);
-  const totalExpected = dueUnpaidMonths.reduce((sum, item) => sum + item.expectedRent, 0);
+  const totalRemaining = dueUnpaidMonths.reduce((sum, item) => sum + item.remainingRent, 0);
 
   return {
     dueUnpaidMonths,
     paidMonths,
+    unpaidSummary: { count: dueUnpaidMonths.length, totalRemaining },
     upcomingMonths,
-    unpaidSummary: { count: dueUnpaidMonths.length, totalExpected },
   };
 }
 
@@ -38,4 +50,11 @@ export function getExpectedRentForScheduleMonth(
   month: string
 ): number | undefined {
   return rentSchedule.find((item) => item.month === month)?.expectedRent;
+}
+
+export function getRemainingRentForScheduleMonth(
+  rentSchedule: readonly TLeaseRentScheduleMonthAmount[],
+  month: string
+): number | undefined {
+  return rentSchedule.find((item) => item.month === month)?.remainingRent;
 }

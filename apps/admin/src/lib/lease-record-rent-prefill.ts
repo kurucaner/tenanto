@@ -4,6 +4,7 @@ import { type IPropertyLongStay } from "@/packages/shared";
 
 import {
   getExpectedRentForScheduleMonth,
+  getRemainingRentForScheduleMonth,
   type TLeaseRentScheduleMonthAmount,
 } from "./lease-rent-schedule-display";
 
@@ -21,7 +22,8 @@ export function buildLeaseRecordRentPrefill(
   const monthDate = month ? `${month}-01` : maxDate;
   const scheduleAmount =
     month && options?.rentSchedule
-      ? getExpectedRentForScheduleMonth(options.rentSchedule, month)
+      ? (getRemainingRentForScheduleMonth(options.rentSchedule, month) ??
+        getExpectedRentForScheduleMonth(options.rentSchedule, month))
       : options?.expectedAmount;
 
   return {
