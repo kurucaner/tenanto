@@ -407,6 +407,136 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     expect(schedule.find((month) => month.month === "2024-07")?.incomeLineId).toBeUndefined();
   });
 
+  test("full refund marks month unpaid with zero paid rent", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-full-refund-jan",
+        refunded_amount: "1500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      isPaid: false,
+      paidRent: 0,
+      remainingRent: 1500,
+    });
+    expect(january?.incomeLineId).toBeUndefined();
+  });
+
+  test("partial refund then re-recording completes the month", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-paid-jan",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    let schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-paid-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-paid-jan",
+      isPaid: false,
+      paidRent: 1000,
+      remainingRent: 500,
+    });
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-paid-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-rerecord-jan",
+        net_income: "500.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-02-10",
+      }),
+    ];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-paid-jan",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("unrefund restores fully paid month after partial refund", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-refunded-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    let schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      isPaid: false,
+      paidRent: 1000,
+      remainingRent: 500,
+    });
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-refunded-jan",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-refunded-jan",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
   test("partial manual payment keeps month unpaid", async () => {
     currentLeaseRow = buildLeaseRow();
     currentIncomeRows = [

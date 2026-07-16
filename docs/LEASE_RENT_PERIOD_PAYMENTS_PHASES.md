@@ -77,10 +77,10 @@ Small phased rollout: add explicit **rent period** on lease income lines (`rent_
 
 ### `property_income_lines` (migration v60+)
 
-| Column | Notes |
-| --- | --- |
+| Column              | Notes                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------- |
 | `rent_period_month` | `VARCHAR(7)` nullable, `YYYY-MM` check; meaningful when `long_stay_id IS NOT NULL` |
-| Index | `(long_stay_id, rent_period_month)` partial where not deleted |
+| Index               | `(long_stay_id, rent_period_month)` partial where not deleted                      |
 
 **Read rule:** effective period = `rent_period_month ?? transactionDateToMonth(transactionDate)`.
 
@@ -90,25 +90,25 @@ Small phased rollout: add explicit **rent period** on lease income lines (`rent_
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `IPropertyLongStayRentMonth` | Add `paidRent: number`, `remainingRent: number`; keep `isPaid` as fully paid |
-| `IPropertyIncomeLine` | Add `rentPeriodMonth: string \| null` |
-| `ICreatePropertyIncomeLineBody` | Optional `rentPeriodMonth` when `longStayId` set |
-| `IUpdatePropertyIncomeLineBody` | Optional `rentPeriodMonth` when `longStayId` set |
-| `rollupLeaseRentPeriod(input)` | Pure: income lines + allocations → per-month paid/remaining |
-| `isLeaseRentMonthFullyPaid(expected, paid)` | Shared tolerance helper |
+| Type                                        | Purpose                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------- |
+| `IPropertyLongStayRentMonth`                | Add `paidRent: number`, `remainingRent: number`; keep `isPaid` as fully paid |
+| `IPropertyIncomeLine`                       | Add `rentPeriodMonth: string \| null`                                        |
+| `ICreatePropertyIncomeLineBody`             | Optional `rentPeriodMonth` when `longStayId` set                             |
+| `IUpdatePropertyIncomeLineBody`             | Optional `rentPeriodMonth` when `longStayId` set                             |
+| `rollupLeaseRentPeriod(input)`              | Pure: income lines + allocations → per-month paid/remaining                  |
+| `isLeaseRentMonthFullyPaid(expected, paid)` | Shared tolerance helper                                                      |
 
 ---
 
 ## API (sketch)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/properties/:id/long-stays/:leaseId` | `rentSchedule[]` includes `paidRent`, `remainingRent` |
-| `POST` | `/properties/:id/income-lines` | Accept `rentPeriodMonth`; validate ∈ lease schedule when `longStayId` set |
-| `PATCH` | `/properties/:id/income-lines/:lineId` | Same optional field; recompute affected months |
-| `GET` | `/tenant/me/leases/:leaseId/balance` | Uses unified rollup (already exposes `remainingCents`) |
+| Method  | Path                                   | Notes                                                                     |
+| ------- | -------------------------------------- | ------------------------------------------------------------------------- |
+| `GET`   | `/properties/:id/long-stays/:leaseId`  | `rentSchedule[]` includes `paidRent`, `remainingRent`                     |
+| `POST`  | `/properties/:id/income-lines`         | Accept `rentPeriodMonth`; validate ∈ lease schedule when `longStayId` set |
+| `PATCH` | `/properties/:id/income-lines/:lineId` | Same optional field; recompute affected months                            |
+| `GET`   | `/tenant/me/leases/:leaseId/balance`   | Uses unified rollup (already exposes `remainingCents`)                    |
 
 No new endpoints required for v1 if existing detail + balance responses carry enriched schedule fields.
 
@@ -198,16 +198,72 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** Production-safe edge cases.
 
-| Concern | Action |
-| --- | --- |
-| Refunds | Recompute period paid after partial/full refund |
-| Idempotency | Multiple income lines per period allowed; rollup is sum |
-| Validation | Reject `rentPeriodMonth` outside lease schedule; block upcoming prepay until product allows |
-| Rounding | Single tolerance constant in shared helper |
-| Observability | Optional metric for partial months count |
-| Docs | Update [`LEASE_RENT_PRORATION_PHASES.md`](./LEASE_RENT_PRORATION_PHASES.md) paid rule |
+**Exit criteria:** Refund + re-record tests pass; backfill complete; validation and rounding are centralized in shared helpers.
 
-**Exit criteria:** Refund + re-record tests pass; backfill complete.
+---
+
+#### Phase 4.1 — Refunds
+
+**Goal:** Partial and full income-line refunds recompute period `paidRent` / `remainingRent` correctly; operators can refund and re-record without stale paid state.
+
+- [x] Rollup uses reportable `netIncome` after refund (`getReportableIncomeLineAmounts`) — already wired in [`lease-rent-period-rollup.ts`](../packages/shared/src/lease-rent-period-rollup.ts)
+- [x] `getRentSchedule` includes refunded lines (no `refunded_at IS NULL` filter) so rollup reflects reduced paid amounts
+- [x] Integration tests: partial refund → month stays partial/unpaid with correct `paidRent`; full refund → month unpaid
+- [x] Integration tests: refund → re-record rent for same period → partial then full paid progression matches admin UI
+- [x] Unrefund restores prior rollup state (schedule + tenant balance)
+- [x] Invalidate long-stay + income caches after refund/unrefund on lease-linked lines
+
+**Exit criteria:** Refunding $500 of a $1,500 January line shows `$1,000 / $1,500` partial on Payments tab; re-recording $500 completes the month on admin and tenant balance.
+
+---
+
+#### Phase 4.2 — Idempotency (multiple lines per period)
+
+**Goal:** Multiple income lines and Stripe allocations for the same `rent_period_month` sum safely; no “first line wins” or replace semantics.
+
+- [ ] Rollup sums all non-deleted lines with reportable `netIncome > 0` per effective period
+- [ ] Rollup sums succeeded Stripe allocations per period; caps total `paidRent` at `expectedRent`
+- [ ] Tests: two partial manual lines same month → fully paid when sum covers expected
+- [ ] Tests: manual partial + Stripe partial → combined `paidRent` without double-count beyond cap
+- [ ] Document: creating another Record Rent row for the same period is **additive**, not an update
+
+**Exit criteria:** Two $750 records on a $1,500 month mark the month paid; Stripe + manual partials show combined partial state until capped at expected.
+
+---
+
+#### Phase 4.3 — Validation
+
+**Goal:** Server rejects invalid period attribution; block upcoming prepay until product explicitly allows it.
+
+- [ ] Reject `rentPeriodMonth` not in lease schedule (`resolveLeaseIncomeRentPeriodMonth`) — shipped in Phase 1b
+- [ ] Default omitted `rentPeriodMonth` to `transactionDateToMonth(transactionDate)` when `longStayId` set
+- [ ] **Block upcoming prepay (v1):** reject create/update when `rentPeriodMonth > asOfMonth` (or `transactionDate` month > asOfMonth when period defaulted), even if month exists on schedule
+- [ ] Admin UI already disables Record on upcoming rows (Phase 2); server must enforce the same rule for API clients
+- [ ] Tests: POST income with future `rentPeriodMonth` on active lease → 400; due-month partial amount still allowed
+
+**Exit criteria:** API cannot prepay a future schedule month; due partial and full records still succeed.
+
+---
+
+#### Phase 4.4 — Rounding
+
+**Goal:** One tolerance constant drives “fully paid” everywhere (admin schedule, tenant balance, Stripe full-cover check).
+
+- [ ] Centralize `LEASE_RENT_PAID_TOLERANCE_DOLLARS` in [`lease-rent-period-rollup.ts`](../packages/shared/src/lease-rent-period-rollup.ts) (`isLeaseRentMonthFullyPaid`)
+- [ ] Audit: no duplicate `0.01` / epsilon checks in server routes or tenant balance mapping
+- [ ] Use same tolerance in `computeTenantBalanceFromRentSchedule` / `computePeriodRemainingCents` edge cases where dollars ↔ cents rounding could flip `isPaid`
+- [ ] Tests: paid within tolerance (e.g. $1,499.99 on $1,500 expected) → `isPaid: true`; materially under → partial
+
+**Exit criteria:** A single exported tolerance constant; tests prove fully-paid boundary behavior is consistent on schedule and tenant `remainingCents`.
+
+---
+
+#### Phase 4 — Remaining (optional)
+
+| Concern       | Action                                                                                |
+| ------------- | ------------------------------------------------------------------------------------- |
+| Observability | Optional metric for partial months count                                              |
+| Docs          | Update [`LEASE_RENT_PRORATION_PHASES.md`](./LEASE_RENT_PRORATION_PHASES.md) paid rule |
 
 ---
 
@@ -238,4 +294,4 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 3. **Write path + backfill (Phase 1b)** before showing partial UI — otherwise UI lies.
 4. **Admin UI (Phase 2)** only after API returns `paidRent` / `remainingRent`.
 5. **Tenant balance (Phase 3)** after admin + Stripe paths share rollup.
-6. **Hardening (Phase 4)** after backfill + refund paths are verified.
+6. **Hardening (Phase 4)** after backfill — 4.1 refunds, 4.2 idempotency, 4.3 validation, 4.4 rounding.

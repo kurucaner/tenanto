@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { PROPERTY_AMENITY_UNIT_VALUE } from "@/lib/property-amenity-unit";
@@ -171,10 +170,9 @@ const CreateIncomeLineDialogForm = memo(
       },
       onSuccess: (_data, values) => {
         toast.success(isRentRecording ? "Rent recorded" : "Other income created");
-        invalidatePropertyIncomeCaches(queryClient, propertyId);
-        if (values.longStayId) {
-          invalidatePropertyLongStayCaches(queryClient, propertyId);
-        }
+        invalidatePropertyIncomeCaches(queryClient, propertyId, {
+          longStayId: values.longStayId || undefined,
+        });
         onClose();
       },
     });

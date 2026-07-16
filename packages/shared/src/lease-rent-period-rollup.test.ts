@@ -156,6 +156,35 @@ describe("rollupLeaseRentByPeriod", () => {
     expect(month?.isPaid).toBe(false);
   });
 
+  test("returns zero paid after full refund", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      incomeLines: [
+        incomeLine({
+          amount: 1500,
+          grossIncome: 1500,
+          netIncome: 1500,
+          refundedAmount: 1500,
+          refundedAt: "2026-03-20T00:00:00.000Z",
+        }),
+      ],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(0);
+    expect(month?.remainingRent).toBe(1500);
+    expect(month?.isPaid).toBe(false);
+  });
+
+  test("restores full paid amount after unrefund clears refund fields", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      incomeLines: [incomeLine()],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(1500);
+    expect(month?.isPaid).toBe(true);
+  });
+
   test("includes succeeded Stripe allocations in paid total", () => {
     const [month] = rollupLeaseRentByPeriod({
       allocations: [{ allocatedCents: 50_000, month: "2026-03" }],

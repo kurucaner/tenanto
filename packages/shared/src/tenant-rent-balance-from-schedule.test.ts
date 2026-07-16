@@ -44,6 +44,30 @@ describe("computeTenantBalanceFromRentSchedule", () => {
     expect(balance.periodMonths).toEqual(["2026-01"]);
   });
 
+  test("reflects partial refund already included in paidRent", () => {
+    const balance = computeTenantBalanceFromRentSchedule(
+      [{ expectedRent: 1500, month: "2026-01", paidRent: 1000 }],
+      "2026-01"
+    );
+
+    expect(balance.amountDueCents).toBe(500_00);
+    expect(balance.periods[0]).toMatchObject({
+      expectedCents: 1500_00,
+      paidCents: 1000_00,
+      remainingCents: 500_00,
+    });
+  });
+
+  test("returns zero due after unrefund restores full paidRent", () => {
+    const balance = computeTenantBalanceFromRentSchedule(
+      [{ expectedRent: 1500, month: "2026-01", paidRent: 1500 }],
+      "2026-01"
+    );
+
+    expect(balance.amountDueCents).toBe(0);
+    expect(balance.periodMonths).toEqual([]);
+  });
+
   test("reflects partial Stripe allocation already included in paidRent", () => {
     const balance = computeTenantBalanceFromRentSchedule(
       [{ expectedRent: 1500, month: "2026-01", paidRent: 500 }],
