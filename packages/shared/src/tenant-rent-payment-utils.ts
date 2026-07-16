@@ -3,6 +3,27 @@ import type { ITenantLeaseBalancePeriod } from "./tenant-rent-payment-types";
 /** Stripe's minimum charge for USD (card). */
 export const STRIPE_MIN_CHARGE_CENTS_USD = 50;
 
+/** Convert ledger dollars (NUMERIC) to integer cents for Stripe. */
+export function dollarsToCents(dollars: number): number {
+  return Math.round(dollars * 100);
+}
+
+/** Convert Stripe cents to ledger dollars. */
+export function centsToDollars(cents: number): number {
+  return Math.round(cents) / 100;
+}
+
+/** Checkout idempotency key — same tenant/lease/months/amount reuses an open payment. */
+export function buildRentCheckoutIdempotencyKey(input: {
+  amountCents: number;
+  leaseId: string;
+  periodMonths: string[];
+  tenantUserId: string;
+}): string {
+  const months = [...input.periodMonths].sort((a, b) => a.localeCompare(b)).join(",");
+  return `rent_checkout:${input.leaseId}:${input.tenantUserId}:${months}:${input.amountCents}`;
+}
+
 const PERIOD_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export interface IRentPeriodInput {
@@ -18,8 +39,7 @@ export interface IRentAllocation {
 }
 
 export type TValidateRentCheckoutResult =
-  | { allocations: IRentAllocation[]; ok: true }
-  | { error: string; ok: false };
+  { allocations: IRentAllocation[]; ok: true } | { error: string; ok: false };
 
 function isNonNegativeInt(value: number): boolean {
   return Number.isInteger(value) && value >= 0;

@@ -591,8 +591,11 @@ export {
 } from "./tenant-rent-payment-types";
 export {
   allocateFifo,
+  buildRentCheckoutIdempotencyKey,
+  centsToDollars,
   computePeriodRemainingCents,
   computeRemainingByMonth,
+  dollarsToCents,
   type IRentAllocation,
   type IRentPeriodInput,
   isValidPeriodMonth,

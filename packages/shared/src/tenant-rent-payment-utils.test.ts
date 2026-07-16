@@ -2,13 +2,40 @@ import { describe, expect, test } from "bun:test";
 
 import {
   allocateFifo,
+  buildRentCheckoutIdempotencyKey,
   computePeriodRemainingCents,
   computeRemainingByMonth,
+  dollarsToCents,
   isValidPeriodMonth,
   STRIPE_MIN_CHARGE_CENTS_USD,
   sumAmountDueCents,
   validateCreateRentCheckoutBody,
 } from "./tenant-rent-payment-utils";
+
+describe("dollarsToCents", () => {
+  test("rounds to nearest cent", () => {
+    expect(dollarsToCents(200)).toBe(200_00);
+    expect(dollarsToCents(12.345)).toBe(1235);
+  });
+});
+
+describe("buildRentCheckoutIdempotencyKey", () => {
+  test("is stable for same inputs regardless of month order", () => {
+    const a = buildRentCheckoutIdempotencyKey({
+      amountCents: 100,
+      leaseId: "lease-1",
+      periodMonths: ["2026-02", "2026-01"],
+      tenantUserId: "tenant-1",
+    });
+    const b = buildRentCheckoutIdempotencyKey({
+      amountCents: 100,
+      leaseId: "lease-1",
+      periodMonths: ["2026-01", "2026-02"],
+      tenantUserId: "tenant-1",
+    });
+    expect(a).toBe(b);
+  });
+});
 
 describe("computePeriodRemainingCents", () => {
   test("subtracts paid from expected", () => {
@@ -83,9 +110,9 @@ describe("allocateFifo", () => {
   });
 
   test("returns empty for non-positive amount", () => {
-    expect(allocateFifo(0, [{ expectedCents: 100, month: "2026-01", remainingCents: 100 }])).toEqual(
-      []
-    );
+    expect(
+      allocateFifo(0, [{ expectedCents: 100, month: "2026-01", remainingCents: 100 }])
+    ).toEqual([]);
   });
 });
 
