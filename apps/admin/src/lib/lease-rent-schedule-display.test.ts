@@ -11,12 +11,18 @@ import {
 function buildRentMonth(
   overrides: Partial<IPropertyLongStayRentMonth> & Pick<IPropertyLongStayRentMonth, "month">
 ): IPropertyLongStayRentMonth {
+  const expectedRent = overrides.expectedRent ?? 1000;
+  const isPaid = overrides.isPaid ?? false;
+  const paidRent = overrides.paidRent ?? (isPaid ? expectedRent : 0);
+
   return {
     daysInMonth: 30,
-    expectedRent: 1000,
-    isPaid: false,
+    expectedRent,
+    isPaid,
     isProrated: false,
     occupiedDays: 30,
+    paidRent,
+    remainingRent: overrides.remainingRent ?? Math.max(0, expectedRent - paidRent),
     ...overrides,
   };
 }
@@ -69,7 +75,7 @@ describe("partitionRentSchedule", () => {
   });
 
   test("separates future unpaid months into upcoming and excludes them from summary", () => {
-    const { dueUnpaidMonths, upcomingMonths, unpaidSummary } = partitionRentSchedule(
+    const { dueUnpaidMonths, unpaidSummary, upcomingMonths } = partitionRentSchedule(
       MIXED_DUE_UPCOMING_SCHEDULE,
       "2024-07"
     );

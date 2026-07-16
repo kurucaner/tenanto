@@ -1,3 +1,4 @@
+import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
 import type {
   ICreatePropertyLongStayBody,
   IExtendPropertyLongStayBody,
@@ -9,12 +10,10 @@ import type {
   TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import {
-  calculateExpectedRentForLeaseMonth,
   calculateLeaseEndDate,
   enumerateLeaseMonths,
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
-  isIncomeLinePaidForRentSchedule,
   PropertyLongStayStatus,
   transactionDateToMonth,
   validateExtendLease,
@@ -36,6 +35,7 @@ import {
   readPropertyLongStaySortKeyFromRow,
   resolvePropertyLongStaysListSort,
 } from "./property-long-stays-list-sort";
+import { tenantRentPaymentsDb } from "./tenant-rent-payments";
 
 const LEASE_EFFECTIVE_END = "COALESCE(pls.actual_end_date, pls.lease_end_date)";
 
@@ -334,37 +334,22 @@ export const propertyLongStaysDb = {
       [longStayId]
     );
 
-    const paidByMonth = new Map<string, string>();
-    for (const row of incomeResult.rows) {
-      const line = mapPropertyIncomeLineRow(row as Record<string, unknown>);
-      if (!isIncomeLinePaidForRentSchedule(line)) {
-        continue;
-      }
+    const incomeLines = incomeResult.rows.map((row) =>
+      mapPropertyIncomeLineRow(row as Record<string, unknown>)
+    );
 
-      const month = transactionDateToMonth(line.transactionDate);
-      if (!paidByMonth.has(month)) {
-        paidByMonth.set(month, line.id);
-      }
-    }
+    const allocationTotals = await tenantRentPaymentsDb.sumSucceededAllocatedCentsByMonths(
+      longStayId,
+      months
+    );
 
-    return months.map((month) => {
-      const incomeLineId = paidByMonth.get(month);
-      const proration = calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: longStay.monthlyRent,
-        effectiveEndDate,
-        leaseStartDate: longStay.leaseStartDate,
-        month,
-        rentPeriods,
-      });
-      return {
-        daysInMonth: proration.daysInMonth,
-        expectedRent: proration.expectedRent,
-        incomeLineId,
-        isPaid: incomeLineId !== undefined,
-        isProrated: proration.isProrated,
-        month,
-        occupiedDays: proration.occupiedDays,
-      };
+    return buildLeaseRentScheduleWithRollup({
+      allocationCentsByMonth: allocationTotals,
+      effectiveEndDate,
+      incomeLines,
+      lease: longStay,
+      months,
+      rentPeriods,
     });
   },
 

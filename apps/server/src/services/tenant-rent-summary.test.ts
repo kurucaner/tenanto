@@ -12,7 +12,15 @@ const mockFindLeaseById = mock(() =>
   } as { id: string; propertyId: string; unitId: string } | null)
 );
 const mockGetRentSchedule = mock(() =>
-  Promise.resolve([{ expectedRent: 200, isPaid: false, month: "2026-01" }])
+  Promise.resolve([
+    {
+      expectedRent: 200,
+      isPaid: false,
+      month: "2026-01",
+      paidRent: 0,
+      remainingRent: 200,
+    },
+  ])
 );
 const mockFindStripeAccount = mock(() =>
   Promise.resolve({

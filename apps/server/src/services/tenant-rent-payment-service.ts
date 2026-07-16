@@ -69,25 +69,14 @@ function requireStripeConfigured(): void {
 
 async function buildBalancePeriods(leaseId: string) {
   const schedule = await propertyLongStaysDb.getRentSchedule(leaseId);
-  const months = schedule.map((row) => row.month);
-  const allocationTotals = await tenantRentPaymentsDb.sumSucceededAllocatedCentsByMonths(
-    leaseId,
-    months
-  );
 
-  const inputs = schedule.map((row) => {
-    const expectedCents = dollarsToCents(row.expectedRent);
-    const fromIncome = row.isPaid ? expectedCents : 0;
-    const fromAllocations = allocationTotals.get(row.month) ?? 0;
-    const paidCents = Math.min(expectedCents, Math.max(fromIncome, fromAllocations));
-    return {
-      expectedCents,
+  return computeRemainingByMonth(
+    schedule.map((row) => ({
+      expectedCents: dollarsToCents(row.expectedRent),
       month: row.month,
-      paidCents,
-    };
-  });
-
-  return computeRemainingByMonth(inputs);
+      paidCents: dollarsToCents(row.paidRent),
+    }))
+  );
 }
 
 async function computeLeaseBalanceFields(

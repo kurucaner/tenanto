@@ -12,14 +12,28 @@ const mockFindLeaseById = mock(() =>
     unitId: "unit-1",
   } as { id: string; propertyId: string; unitId: string } | null)
 );
+function scheduleRow(overrides: {
+  expectedRent: number;
+  isPaid: boolean;
+  month: string;
+  paidRent?: number;
+  remainingRent?: number;
+}) {
+  const paidRent = overrides.paidRent ?? (overrides.isPaid ? overrides.expectedRent : 0);
+  const remainingRent =
+    overrides.remainingRent ?? (overrides.isPaid ? 0 : overrides.expectedRent - paidRent);
+
+  return {
+    expectedRent: overrides.expectedRent,
+    isPaid: overrides.isPaid,
+    month: overrides.month,
+    paidRent,
+    remainingRent,
+  };
+}
+
 const mockGetRentSchedule = mock(() =>
-  Promise.resolve([
-    {
-      expectedRent: 200,
-      isPaid: false,
-      month: "2026-01",
-    },
-  ])
+  Promise.resolve([scheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" })])
 );
 const mockFindStripeAccount = mock(() =>
   Promise.resolve({
@@ -167,7 +181,9 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
       propertyId: "property-1",
       unitId: "unit-1",
     });
-    mockGetRentSchedule.mockResolvedValue([{ expectedRent: 200, isPaid: false, month: "2026-01" }]);
+    mockGetRentSchedule.mockResolvedValue([
+      scheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" }),
+    ]);
     mockFindStripeAccount.mockResolvedValue({
       chargesEnabled: true,
       detailsSubmitted: true,
@@ -217,12 +233,34 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
 
   test("rejects checkout when nothing is due", async () => {
     mockGetRentSchedule.mockResolvedValueOnce([
-      { expectedRent: 200, isPaid: true, month: "2026-01" },
+      scheduleRow({ expectedRent: 200, isPaid: true, month: "2026-01" }),
     ]);
 
     await expect(tenantRentPaymentService.createCheckout("lease-1", "tenant-1")).rejects.toThrow(
       "Nothing is due right now"
     );
     expect(mockSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  test("uses schedule paidRent for partial balance without double-counting allocations", async () => {
+    mockGetRentSchedule.mockResolvedValueOnce([
+      scheduleRow({
+        expectedRent: 200,
+        isPaid: false,
+        month: "2026-01",
+        paidRent: 50,
+        remainingRent: 150,
+      }),
+    ]);
+
+    const balance = await tenantRentPaymentService.getBalance("lease-1", "tenant-1");
+
+    expect(balance.amountDueCents).toBe(150_00);
+    expect(balance.periods[0]).toMatchObject({
+      month: "2026-01",
+      paidCents: 50_00,
+      remainingCents: 150_00,
+    });
+    expect(mockSumSucceededByMonths).not.toHaveBeenCalled();
   });
 });

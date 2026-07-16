@@ -189,6 +189,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         isProrated: true,
         month: "2024-07",
         occupiedDays: 5,
+        paidRent: 0,
+        remainingRent: 161.29,
       },
     ]);
 
@@ -232,6 +234,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         isProrated: false,
         month: "2026-03",
         occupiedDays: 31,
+        paidRent: 1500,
+        remainingRent: 0,
       },
     ]);
 

@@ -111,4 +111,6 @@ export interface IPropertyLongStayRentMonth {
   isProrated: boolean;
   month: string;
   occupiedDays: number;
+  paidRent: number;
+  remainingRent: number;
 }

@@ -132,10 +132,10 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** Schema + pure rollup utilities + tests.
 
-- [ ] Migration v60: `rent_period_month` on `property_income_lines`
-- [ ] Mapper + `IPropertyIncomeLine` / create body in `packages/shared`
-- [ ] `rollupLeaseRentPeriod()` in `packages/shared` (income + optional allocation inputs)
-- [ ] Unit tests: zero paid, partial, full, multiple lines same period, refund reduces paid, fallback when `rentPeriodMonth` null
+- [x] Migration v60: `rent_period_month` on `property_income_lines`
+- [x] Mapper + `IPropertyIncomeLine` / create body in `packages/shared`
+- [x] `rollupLeaseRentPeriod()` in `packages/shared` (income + optional allocation inputs)
+- [x] Unit tests: zero paid, partial, full, multiple lines same period, refund reduces paid, fallback when `rentPeriodMonth` null
 
 **Exit criteria:** Migration applies; shared rollup tests pass.
 
@@ -145,11 +145,11 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** `getRentSchedule` and tenant `buildBalancePeriods` use amount rollup.
 
-- [ ] Refactor `getRentSchedule` in [`property-long-stays.ts`](../apps/server/src/db/property-long-stays.ts): load all lease income lines; group by effective period; sum reportable `netIncome`
-- [ ] Include succeeded Stripe allocations in rollup (same sources as `buildBalancePeriods` today)
-- [ ] Populate `paidRent`, `remainingRent`, `isPaid` (= fully paid)
-- [ ] Align [`tenant-rent-payment-service.ts`](../apps/server/src/services/tenant-rent-payment-service.ts) `buildBalancePeriods` to call shared rollup (remove `isPaid ? expectedCents : 0` shortcut)
-- [ ] Server tests: partial manual payment keeps month unpaid; two partials sum to paid; Stripe partial allocation reflected
+- [x] Refactor `getRentSchedule` in [`property-long-stays.ts`](../apps/server/src/db/property-long-stays.ts): load all lease income lines; group by effective period; sum reportable `netIncome`
+- [x] Include succeeded Stripe allocations in rollup (same sources as `buildBalancePeriods` today)
+- [x] Populate `paidRent`, `remainingRent`, `isPaid` (= fully paid)
+- [x] Align [`tenant-rent-payment-service.ts`](../apps/server/src/services/tenant-rent-payment-service.ts) `buildBalancePeriods` to call shared rollup (remove `isPaid ? expectedCents : 0` shortcut)
+- [x] Server tests: partial manual payment keeps month unpaid; two partials sum to paid; Stripe partial allocation reflected
 
 **Exit criteria:** API returns correct partial state in Postman/tests (legacy binary `isPaid` path removed).
 
