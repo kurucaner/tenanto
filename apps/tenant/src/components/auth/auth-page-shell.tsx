@@ -15,7 +15,7 @@ export const AuthPageShell = memo((props: TTenantAuthPageShellProps) => {
   const hydrated = useAuthHydrated();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
-  const { redirectWhenAuthed = "/leases", ...shellProps } = props;
+  const { redirectWhenAuthed = "/home", ...shellProps } = props;
 
   return (
     <SharedAuthPageShell

@@ -40,7 +40,7 @@ export const LoginPage = memo(function LoginPage() {
       });
       setSession(session);
       toast.success("Signed in");
-      navigate(returnTo ?? "/leases", { replace: true });
+      navigate(returnTo ?? "/home", { replace: true });
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Sign-in failed"));
     } finally {
@@ -57,7 +57,7 @@ export const LoginPage = memo(function LoginPage() {
       cardDescription="Use Google or your email and password. Lease invites still require the invited email on your account."
       cardTitle="Sign in"
       onSubmit={onSubmit}
-      redirectWhenAuthed={returnTo ?? "/leases"}
+      redirectWhenAuthed={returnTo ?? "/home"}
       subtitle="Sign in to your resident portal."
     >
       <AuthCardBody>
