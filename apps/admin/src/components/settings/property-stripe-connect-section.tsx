@@ -33,6 +33,18 @@ function onboardingButtonLabel(uiStatus: ReturnType<typeof getStripeConnectUiSta
   }
 }
 
+function connectDescription(uiStatus: ReturnType<typeof getStripeConnectUiStatus>): string {
+  switch (uiStatus) {
+    case "ready":
+      return "Tenants can pay rent to this property. Funds settle to the connected Stripe account after checkout.";
+    case "setup_incomplete":
+      return "Stripe Connect is started but not fully enabled for charges yet. Continue setup so tenants can pay rent.";
+    case "not_connected":
+    default:
+      return "Connect a Stripe Express account so tenants can pay rent to this property. Funds settle to the connected account after checkout.";
+  }
+}
+
 export const PropertyStripeConnectSection = memo(function PropertyStripeConnectSection({
   canManage,
   propertyId,
@@ -100,10 +112,7 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
           <CardTitle className="text-lg">Rent payments (Stripe)</CardTitle>
           <PropertyStripeConnectStatusBadge status={status} />
         </div>
-        <CardDescription>
-          Connect a Stripe Express account so tenants can pay rent to this property. Funds settle to
-          the connected account after checkout.
-        </CardDescription>
+        <CardDescription>{connectDescription(uiStatus)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="grid gap-2 text-sm sm:grid-cols-2">

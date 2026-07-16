@@ -108,7 +108,7 @@ export const tenantPortalApi = {
   acceptInvite: (membershipId: string) =>
     authenticatedRequest<ITenantMembershipActionResponse>(
       `/tenant/me/invites/${encodeURIComponent(membershipId)}/accept`,
-      { method: "POST" }
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   declineInvite: (membershipId: string) =>
