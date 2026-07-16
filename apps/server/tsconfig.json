@@ -13,6 +13,7 @@
       "@/email": ["./src/email"],
       "@/routes/*": ["./src/routes/*"],
       "@/s3/*": ["./src/s3/*"],
+      "@/stripe/*": ["./src/stripe/*"],
       "@/push/*": ["./src/push/*"],
       "@/scheduler/*": ["./src/scheduler/*"],
       "@/services/*": ["./src/services/*"],

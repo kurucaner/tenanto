@@ -1,7 +1,4 @@
-function isEnvFlagEnabled(name: string): boolean {
-  const raw = process.env[name]?.trim().toLowerCase();
-  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
-}
+import { isEnvFlagEnabled } from "./env-flag";
 
 /** Gates tenant phone OTP login/bind routes (Enhancements Phase 3 / auth expansion). */
 export function isTenantPhoneAuthEnabled(): boolean {
