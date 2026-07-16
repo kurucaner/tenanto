@@ -2784,4 +2784,40 @@ export const migrations: IMigration[] = [
     },
     version: 59,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_long_stay_rent_period_month;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN IF EXISTS rent_period_month;
+      `);
+    },
+    name: "property_income_lines_rent_period_month",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS rent_period_month VARCHAR(7);
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_rent_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_rent_period_month_fmt
+            CHECK (
+              rent_period_month IS NULL
+              OR rent_period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'
+            );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_long_stay_rent_period_month
+          ON property_income_lines (long_stay_id, rent_period_month)
+          WHERE is_deleted = false AND long_stay_id IS NOT NULL;
+      `);
+    },
+    version: 60,
+  },
 ];

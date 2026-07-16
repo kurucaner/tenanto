@@ -190,6 +190,16 @@ export {
   isProratedLeaseMonth,
 } from "./lease-proration-utils";
 export {
+  getEffectiveRentPeriodMonth,
+  type ILeaseRentPeriodAllocationInput,
+  type ILeaseRentPeriodIncomeLineInput,
+  type ILeaseRentPeriodRollupMonth,
+  type ILeaseRentPeriodScheduleMonth,
+  isLeaseRentMonthFullyPaid,
+  LEASE_RENT_PAID_TOLERANCE_DOLLARS,
+  rollupLeaseRentByPeriod,
+} from "./lease-rent-period-rollup";
+export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
   getFirstExtensionMonth,

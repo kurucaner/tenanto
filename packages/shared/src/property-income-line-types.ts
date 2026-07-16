@@ -25,6 +25,7 @@ export interface IPropertyIncomeLine {
   refundedAmount: number | null;
   refundedAt: string | null;
   refundedBy: string | null;
+  rentPeriodMonth: string | null;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   transactionDate: string;
@@ -45,6 +46,7 @@ export interface ICreatePropertyIncomeLineBody {
   guestName?: string;
   incomeLineTypeId: string;
   longStayId?: string;
+  rentPeriodMonth?: string;
   reservationId?: string;
   transactionDate: string;
   unitId?: string | null;
@@ -56,6 +58,7 @@ export interface IUpdatePropertyIncomeLineBody {
   guestName?: string | null;
   incomeLineTypeId?: string;
   longStayId?: string | null;
+  rentPeriodMonth?: string | null;
   reservationId?: string | null;
   transactionDate?: string;
   unitId?: string | null;
