@@ -2820,4 +2820,29 @@ export const migrations: IMigration[] = [
     },
     version: 60,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_tenant_rent_payment_id;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN IF EXISTS tenant_rent_payment_id;
+      `);
+    },
+    name: "property_income_lines_tenant_rent_payment_id",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS tenant_rent_payment_id UUID NULL
+            REFERENCES tenant_rent_payments(id) ON DELETE SET NULL;
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_tenant_rent_payment_id
+          ON property_income_lines (tenant_rent_payment_id)
+          WHERE is_deleted = false AND tenant_rent_payment_id IS NOT NULL;
+      `);
+    },
+    version: 61,
+  },
 ];

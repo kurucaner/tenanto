@@ -148,6 +148,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
         longStayId: payment.leaseId,
         rentPeriodMonth: allocation.periodMonth,
         reservationId: null,
+        tenantRentPaymentId: payment.id,
         transactionDate: `${allocation.periodMonth}-01`,
         unitId: lease.unitId,
       },

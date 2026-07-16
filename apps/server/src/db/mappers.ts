@@ -300,10 +300,10 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
       : null,
   refundedAt: toIso(row.refunded_at),
   refundedBy: (row.refunded_by as string | null) ?? null,
-  rentPeriodMonth:
-    typeof row.rent_period_month === "string" ? row.rent_period_month : null,
+  rentPeriodMonth: typeof row.rent_period_month === "string" ? row.rent_period_month : null,
   reservationId: (row.reservation_id as string) ?? null,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
+  tenantRentPaymentId: (row.tenant_rent_payment_id as string | null) ?? null,
   transactionDate: formatDateColumn(row.transaction_date),
   unitId: (row.unit_id as string | null) ?? null,
   updatedAt: toRequiredIso(row.updated_at),

@@ -108,6 +108,7 @@ export const propertyIncomeLinesDb = {
       longStayId: string | null;
       rentPeriodMonth: string | null;
       reservationId: string | null;
+      tenantRentPaymentId?: string | null;
       transactionDate: string;
       unitId: string | null;
     },
@@ -128,10 +129,11 @@ export const propertyIncomeLinesDb = {
          tax_breakdown,
          channel_commission,
          net_income,
-         rent_period_month
+         rent_period_month,
+         tenant_rent_payment_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9,
-         $10, $11::jsonb, $12, $13, $14
+         $10, $11::jsonb, $12, $13, $14, $15
        )
        RETURNING *`,
       [
@@ -149,6 +151,7 @@ export const propertyIncomeLinesDb = {
         computed.channelCommission,
         computed.netIncome,
         input.rentPeriodMonth,
+        input.tenantRentPaymentId ?? null,
       ]
     );
     const created = await propertyIncomeLinesDb.findById(result.rows[0].id as string);

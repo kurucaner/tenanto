@@ -179,7 +179,7 @@ sequenceDiagram
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `TTenantRentPaymentStatus`          | enum                                                                                                   |
 | `ITenantLeaseBalanceResponse`       | `amountDueCents`, `currency`, `periods[]` with `month`, `expectedCents`, `paidCents`, `remainingCents` |
-| `ITenantCreateRentCheckoutBody`     | Empty `{}` — amount due computed server-side                                                       |
+| `ITenantCreateRentCheckoutBody`     | Empty `{}` — amount due computed server-side                                                           |
 | `ITenantCreateRentCheckoutResponse` | `paymentId`, `checkoutUrl`                                                                             |
 | `ITenantRentPaymentStatusResponse`  | poll after return URL                                                                                  |
 | Admin Connect types                 | onboarding link + account status                                                                       |
@@ -188,14 +188,14 @@ sequenceDiagram
 
 ## API (sketch)
 
-| Method | Path                                                | Notes                                                          |
-| ------ | --------------------------------------------------- | -------------------------------------------------------------- |
-| `GET`  | `/tenant/me/leases/:leaseId/balance`                | Auth tenant; membership active                                 |
+| Method | Path                                                | Notes                                                                                                     |
+| ------ | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/tenant/me/leases/:leaseId/balance`                | Auth tenant; membership active                                                                            |
 | `POST` | `/tenant/me/leases/:leaseId/rent-payments/checkout` | Creates pending row + Checkout for **amount due**; empty body; 400 if nothing due; 409 if Connect missing |
-| `GET`  | `/tenant/me/rent-payments/:paymentId`               | Status for return-page polling                                 |
-| `POST` | `/webhooks/stripe`                                  | Raw body + signature verify; no tenant JWT                     |
-| `POST` | `/properties/:id/stripe/connect/onboarding-link`    | Owner (admin JWT)                                              |
-| `GET`  | `/properties/:id/stripe/connect/status`             | Member read (admin JWT)                                        |
+| `GET`  | `/tenant/me/rent-payments/:paymentId`               | Status for return-page polling                                                                            |
+| `POST` | `/webhooks/stripe`                                  | Raw body + signature verify; no tenant JWT                                                                |
+| `POST` | `/properties/:id/stripe/connect/onboarding-link`    | Owner (admin JWT)                                                                                         |
+| `GET`  | `/properties/:id/stripe/connect/status`             | Member read (admin JWT)                                                                                   |
 
 Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose remaining; default “amount due” = sum remaining for months ≤ current calendar month. Checkout ignores client amounts and charges that amount due (FIFO across due months).
 
@@ -207,12 +207,12 @@ Rent settlement requires a **platform snapshot** Event Destination (or classic w
 
 ### Required destination
 
-| Setting | Value |
-| --- | --- |
-| Scope | **Your account** (platform) — Checkout Sessions are created on the platform with `transfer_data.destination` |
-| Payload | **Snapshot** (`object: "event"`) |
-| URL | `https://<api-host>/webhooks/stripe` |
-| Events | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed` |
+| Setting | Value                                                                                                        |
+| ------- | ------------------------------------------------------------------------------------------------------------ |
+| Scope   | **Your account** (platform) — Checkout Sessions are created on the platform with `transfer_data.destination` |
+| Payload | **Snapshot** (`object: "event"`)                                                                             |
+| URL     | `https://<api-host>/webhooks/stripe`                                                                         |
+| Events  | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`                    |
 
 `STRIPE_WEBHOOK_SECRET` must be **that** destination’s signing secret (`whsec_…`).
 
@@ -294,15 +294,15 @@ Local forward: `stripe listen --forward-to localhost:3001/webhooks/stripe` and u
 
 ### Phase 4 — Hardening
 
-| Concern                    | Action                                                                                                     |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Rate limits                | Redis limits on checkout create per tenant/IP                                                              |
-| Idempotency                | Unique constraints + Stripe Idempotency-Key                                                                |
-| Refunds/disputes           | Webhooks set `refunded` / flag income; no silent ignore                                                    |
-| Race with admin manual pay | Apply path re-reads remaining; overpay → don’t double income; prefer refund or credit note path documented |
-| Observability              | Datadog/log metrics on webhook latency + failures                                                          |
-| PCI                        | Checkout only; no card data on our servers                                                                 |
-| Failure modes              | Extend `TENANT_PORTAL_FAILURE_MODES.md`                                                                    |
+| Concern                    | Action                                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Rate limits                | Redis limits on checkout create per tenant/IP                                                                  |
+| Idempotency                | Unique constraints + Stripe Idempotency-Key                                                                    |
+| Refunds/disputes           | See [`TENANT_STRIPE_RENT_REFUNDS.md`](./TENANT_STRIPE_RENT_REFUNDS.md) — webhooks set `refunded` / flag income |
+| Race with admin manual pay | Apply path re-reads remaining; overpay → don’t double income; prefer refund or credit note path documented     |
+| Observability              | Datadog/log metrics on webhook latency + failures                                                              |
+| PCI                        | Checkout only; no card data on our servers                                                                     |
+| Failure modes              | Extend `TENANT_PORTAL_FAILURE_MODES.md`                                                                        |
 
 **Exit criteria:** Documented failure matrix; load light-test on webhook burst.
 

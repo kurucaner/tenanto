@@ -28,6 +28,7 @@ export interface IPropertyIncomeLine {
   rentPeriodMonth: string | null;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
+  tenantRentPaymentId: string | null;
   transactionDate: string;
   unitId: string | null;
   updatedAt: string;
