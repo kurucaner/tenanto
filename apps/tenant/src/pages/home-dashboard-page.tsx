@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FileText, KeyRound, Users, Wallet, Wrench } from "lucide-react";
+import { FileText, KeyRound, Users, Wrench } from "lucide-react";
 import { memo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ function amountDueHint(totalDue: number, onlinePayAvailable: boolean): string {
     return "You’re all caught up.";
   }
   if (onlinePayAvailable) {
-    return "Pay online securely, or open Pay rent below.";
+    return "Pay online securely using the button above.";
   }
   return "Online payments aren’t available for these leases yet. Open your lease for details.";
 }
@@ -145,12 +145,6 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <QuickActionCard
-                disabled={isStartingCheckout}
-                icon={Wallet}
-                label={isStartingCheckout ? "Starting…" : "Pay rent"}
-                onClick={handlePayRent}
-              />
               {COMING_SOON_ACTIONS.map((action) => (
                 <QuickActionCard
                   icon={action.icon}
