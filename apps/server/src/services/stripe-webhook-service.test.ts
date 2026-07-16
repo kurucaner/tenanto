@@ -14,6 +14,10 @@ const mockMarkSucceeded = mock(() => Promise.resolve(null as unknown));
 const mockMarkFailed = mock(() => Promise.resolve(null as unknown));
 const mockMarkCanceled = mock(() => Promise.resolve(null as unknown));
 const mockMarkRefunded = mock(() => Promise.resolve(null as unknown));
+const mockPostDiscordWebhook = mock(() => Promise.resolve());
+const mockLoggerInfo = mock(() => undefined);
+const mockLoggerWarn = mock(() => undefined);
+const mockLoggerError = mock(() => undefined);
 
 mock.module("@/db/stripe-webhook-events", () => ({
   stripeWebhookEventsDb: {
@@ -41,11 +45,15 @@ mock.module("@/services/tenant-rent-payment-service", () => ({
   },
 }));
 
+mock.module("@/services/discord-webhook", () => ({
+  postDiscordWebhook: mockPostDiscordWebhook,
+}));
+
 mock.module("@/services/winston", () => ({
   WinstonLogger: {
-    error: mock(() => undefined),
-    info: mock(() => undefined),
-    warn: mock(() => undefined),
+    error: mockLoggerError,
+    info: mockLoggerInfo,
+    warn: mockLoggerWarn,
   },
 }));
 
@@ -95,6 +103,10 @@ describe("processStripeWebhookEvent", () => {
     mockMarkFailed.mockReset();
     mockMarkCanceled.mockReset();
     mockMarkRefunded.mockReset();
+    mockPostDiscordWebhook.mockReset();
+    mockLoggerInfo.mockReset();
+    mockLoggerWarn.mockReset();
+    mockLoggerError.mockReset();
   });
 
   test("skips already-processed events (double webhook)", async () => {
@@ -253,6 +265,126 @@ describe("processStripeWebhookEvent", () => {
       chargeAmountCents: 100_00,
     });
     expect(mockMarkProcessed).toHaveBeenCalledWith("evt_5");
+  });
+
+  test("logs and notifies on charge.dispute.created", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_6",
+      type: "charge.dispute.created",
+    });
+    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripePaymentIntentId: "pi_1" });
+    mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          amount: 100_00,
+          currency: "usd",
+          id: "dp_1",
+          object: "dispute",
+          payment_intent: "pi_1",
+          reason: "fraudulent",
+          status: "needs_response",
+        },
+      },
+      id: "evt_6",
+      livemode: false,
+      object: "event",
+      type: "charge.dispute.created",
+    } as never);
+
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        disputeId: "dp_1",
+        msg: "tenant_payments.dispute_created",
+        paymentId: "payment-1",
+      })
+    );
+    expect(mockPostDiscordWebhook).toHaveBeenCalledTimes(1);
+    expect(mockMarkRefunded).not.toHaveBeenCalled();
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_6");
+  });
+
+  test("marks refunded on charge.dispute.closed lost", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_7",
+      type: "charge.dispute.closed",
+    });
+    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripePaymentIntentId: "pi_1" });
+    mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
+    mockMarkRefunded.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.REFUNDED,
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          amount: 100_00,
+          currency: "usd",
+          id: "dp_1",
+          object: "dispute",
+          payment_intent: "pi_1",
+          status: "lost",
+        },
+      },
+      id: "evt_7",
+      livemode: false,
+      object: "event",
+      type: "charge.dispute.closed",
+    } as never);
+
+    expect(mockMarkRefunded).toHaveBeenCalledWith(payment);
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_7");
+  });
+
+  test("logs only on charge.dispute.closed won", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_8",
+      type: "charge.dispute.closed",
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          amount: 100_00,
+          currency: "usd",
+          id: "dp_2",
+          object: "dispute",
+          payment_intent: "pi_1",
+          status: "won",
+        },
+      },
+      id: "evt_8",
+      livemode: false,
+      object: "event",
+      type: "charge.dispute.closed",
+    } as never);
+
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        disputeId: "dp_2",
+        disputeStatus: "won",
+        msg: "tenant_payments.dispute_closed",
+      })
+    );
+    expect(mockMarkRefunded).not.toHaveBeenCalled();
+    expect(mockFindByPaymentIntentId).not.toHaveBeenCalled();
   });
 });
 

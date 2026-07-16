@@ -102,11 +102,11 @@ sequenceDiagram
 
 **Exit criteria:** Sandbox full refund → payment `refunded`, schedule `paidRent` drops, tenant `amountDueCents` restored.
 
-### Phase R2 — Disputes
+### Phase R2 — Disputes ✅
 
-- `charge.dispute.created` → `tenant_payments.dispute_created` log; optional Discord via [`discord-webhook`](../apps/server/src/services/discord-webhook.ts) env
-- `charge.dispute.closed` + `status = lost` → `markRefunded`
-- `won` / `warning_closed` → log only
+- [x] `charge.dispute.created` → `tenant_payments.dispute_created` log; optional Discord via [`discord-webhook`](../apps/server/src/services/discord-webhook.ts) env (`DISCORD_TENANT_PAYMENTS_WEBHOOK_URL`)
+- [x] `charge.dispute.closed` + `status = lost` → `markRefunded`
+- [x] `won` / `warning_closed` → log only
 
 **Exit criteria:** Dispute lost in sandbox → same ledger outcome as refund.
 

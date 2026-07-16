@@ -17,6 +17,8 @@ declare global {
       DB_USER: string;
       /** Discord webhook URL for support requests. Create via Server Settings > Integrations > Webhooks */
       DISCORD_SUPPORT_WEBHOOK_URL: string;
+      /** Optional Discord webhook for tenant rent payment disputes */
+      DISCORD_TENANT_PAYMENTS_WEBHOOK_URL?: string;
       /** Google Credentials */
       GOOGLE_ANDROID_CLIENT_ID: string;
       GOOGLE_IOS_CLIENT_ID: string;

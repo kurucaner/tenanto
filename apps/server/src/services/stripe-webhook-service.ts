@@ -1,7 +1,8 @@
 import Stripe from "stripe";
 
 import { stripeWebhookEventsDb } from "@/db/stripe-webhook-events";
-import { tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { postDiscordWebhook } from "@/services/discord-webhook";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
 import { type TVerifiedStripeWebhook, verifyStripeWebhookPayload } from "@/stripe/stripe-client";
@@ -57,6 +58,65 @@ async function resolvePaymentFromCharge(charge: Stripe.Charge) {
       : (charge.payment_intent?.id ?? null);
   if (!paymentIntentId) return null;
   return resolvePaymentFromPaymentIntentId(paymentIntentId);
+}
+
+function disputePaymentIntentId(dispute: Stripe.Dispute): string | null {
+  return typeof dispute.payment_intent === "string"
+    ? dispute.payment_intent
+    : (dispute.payment_intent?.id ?? null);
+}
+
+async function resolvePaymentFromDispute(dispute: Stripe.Dispute) {
+  const paymentIntentId = disputePaymentIntentId(dispute);
+  if (!paymentIntentId) return null;
+  return resolvePaymentFromPaymentIntentId(paymentIntentId);
+}
+
+async function notifyTenantPaymentDisputeCreated(
+  dispute: Stripe.Dispute,
+  payment: ITenantRentPayment | null
+): Promise<void> {
+  WinstonLogger.warn({
+    amountCents: dispute.amount,
+    currency: dispute.currency,
+    disputeId: dispute.id,
+    disputeReason: dispute.reason,
+    disputeStatus: dispute.status,
+    leaseId: payment?.leaseId ?? null,
+    msg: "tenant_payments.dispute_created",
+    paymentId: payment?.id ?? null,
+    propertyId: payment?.propertyId ?? null,
+  });
+
+  try {
+    await postDiscordWebhook(process.env.DISCORD_TENANT_PAYMENTS_WEBHOOK_URL, {
+      embeds: [
+        {
+          color: 0xdc2626,
+          fields: [
+            { inline: true, name: "Dispute", value: dispute.id },
+            {
+              inline: true,
+              name: "Amount",
+              value: `${(dispute.amount / 100).toFixed(2)} ${dispute.currency.toUpperCase()}`,
+            },
+            { inline: true, name: "Reason", value: dispute.reason ?? "unknown" },
+            { inline: true, name: "Payment", value: payment?.id ?? "unknown" },
+            { inline: true, name: "Lease", value: payment?.leaseId ?? "unknown" },
+            { inline: true, name: "Property", value: payment?.propertyId ?? "unknown" },
+          ],
+          timestamp: new Date().toISOString(),
+          title: "Tenant rent dispute opened",
+        },
+      ],
+    });
+  } catch (error) {
+    WinstonLogger.error({
+      disputeId: dispute.id,
+      err: error,
+      msg: "tenant_payments.dispute_discord_failed",
+    });
+  }
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
@@ -123,6 +183,43 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   });
 }
 
+async function handleChargeDisputeCreated(dispute: Stripe.Dispute): Promise<void> {
+  const payment = await resolvePaymentFromDispute(dispute);
+  await notifyTenantPaymentDisputeCreated(dispute, payment);
+}
+
+async function handleChargeDisputeClosed(dispute: Stripe.Dispute): Promise<void> {
+  if (dispute.status === "won" || dispute.status === "warning_closed") {
+    WinstonLogger.info({
+      disputeId: dispute.id,
+      disputeStatus: dispute.status,
+      msg: "tenant_payments.dispute_closed",
+    });
+    return;
+  }
+
+  if (dispute.status !== "lost") {
+    WinstonLogger.info({
+      disputeId: dispute.id,
+      disputeStatus: dispute.status,
+      msg: "tenant_payments.dispute_closed_unhandled",
+    });
+    return;
+  }
+
+  const payment = await resolvePaymentFromDispute(dispute);
+  if (!payment) {
+    WinstonLogger.warn({
+      disputeId: dispute.id,
+      msg: "tenant_payments.dispute_closed_unknown_payment",
+      paymentIntentId: disputePaymentIntentId(dispute),
+    });
+    return;
+  }
+
+  await tenantRentPaymentService.markRefunded(payment);
+}
+
 async function recordAndProcessEvent(input: {
   payload: Record<string, unknown>;
   stripeEventId: string;
@@ -166,6 +263,12 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
           break;
         case "charge.refunded":
           await handleChargeRefunded(event.data.object as Stripe.Charge);
+          break;
+        case "charge.dispute.created":
+          await handleChargeDisputeCreated(event.data.object as Stripe.Dispute);
+          break;
+        case "charge.dispute.closed":
+          await handleChargeDisputeClosed(event.data.object as Stripe.Dispute);
           break;
         default:
           WinstonLogger.info({
