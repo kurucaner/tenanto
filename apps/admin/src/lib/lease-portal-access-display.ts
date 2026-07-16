@@ -11,10 +11,13 @@ import {
 
 export type TLeasePortalRowAction = "invite" | "resend" | "revoke";
 
+export type TLeasePortalStatusTone = "active" | "muted" | "neutral" | "pending";
+
 export interface ILeasePortalRowState {
   actions: TLeasePortalRowAction[];
   membership: ILeaseTenantMembership | null;
   statusLabel: string;
+  statusTone: TLeasePortalStatusTone;
 }
 
 const PENDING_STATUSES = new Set<TTenantMembershipStatus>([
@@ -34,7 +37,7 @@ export function formatLeasePortalAdminStatus(membership: ILeaseTenantMembership 
   }
 
   if (PENDING_STATUSES.has(membership.status)) {
-    return "Invite pending";
+    return "Pending";
   }
 
   switch (membership.status) {
@@ -50,6 +53,19 @@ export function formatLeasePortalAdminStatus(membership: ILeaseTenantMembership 
       return "Expired";
     default:
       return membership.status;
+  }
+}
+
+export function getLeasePortalStatusTone(statusLabel: string): TLeasePortalStatusTone {
+  switch (statusLabel) {
+    case "Active":
+      return "active";
+    case "Pending":
+      return "pending";
+    case "Not invited":
+      return "neutral";
+    default:
+      return "muted";
   }
 }
 
@@ -80,10 +96,11 @@ export function getLeasePortalRowState(
   hasEmail: boolean
 ): ILeasePortalRowState {
   const statusLabel = formatLeasePortalAdminStatus(membership);
+  const statusTone = getLeasePortalStatusTone(statusLabel);
   const actions: TLeasePortalRowAction[] = [];
 
   if (!hasEmail) {
-    return { actions, membership, statusLabel };
+    return { actions, membership, statusLabel, statusTone };
   }
 
   if (
@@ -102,7 +119,7 @@ export function getLeasePortalRowState(
     actions.push("revoke");
   }
 
-  return { actions, membership, statusLabel };
+  return { actions, membership, statusLabel, statusTone };
 }
 
 export function getLeasePortalInviteAllTargets(

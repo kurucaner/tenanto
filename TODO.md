@@ -1,8 +1,5 @@
 - refactor
   - property-export-list-constants
   - list-meta-types
-- remove .env.example from gitignore
-  - update Optional env tags.
 - Do I need turbo?
-- Revoke API returns error (property details tenants)
 - Eslint configuration merge

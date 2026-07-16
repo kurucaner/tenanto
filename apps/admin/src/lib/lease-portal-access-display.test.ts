@@ -4,6 +4,7 @@ import {
   findLeasePortalMembership,
   formatLeasePortalAdminStatus,
   getLeasePortalRowState,
+  getLeasePortalStatusTone,
 } from "./lease-portal-access-display";
 
 const memberships = [
@@ -32,8 +33,8 @@ describe("formatLeasePortalAdminStatus", () => {
     expect(formatLeasePortalAdminStatus(null)).toBe("Not invited");
   });
 
-  test("maps pending statuses to Invite pending", () => {
-    expect(formatLeasePortalAdminStatus(memberships[0]!)).toBe("Invite pending");
+  test("maps pending statuses to Pending", () => {
+    expect(formatLeasePortalAdminStatus(memberships[0]!)).toBe("Pending");
   });
 
   test("maps expired status to Expired", () => {
@@ -54,10 +55,22 @@ describe("findLeasePortalMembership", () => {
   });
 });
 
+describe("getLeasePortalStatusTone", () => {
+  test("maps labels to calm status tones", () => {
+    expect(getLeasePortalStatusTone("Active")).toBe("active");
+    expect(getLeasePortalStatusTone("Pending")).toBe("pending");
+    expect(getLeasePortalStatusTone("Not invited")).toBe("neutral");
+    expect(getLeasePortalStatusTone("Declined")).toBe("muted");
+    expect(getLeasePortalStatusTone("Revoked")).toBe("muted");
+  });
+});
+
 describe("getLeasePortalRowState", () => {
   test("offers resend for pending memberships", () => {
     const state = getLeasePortalRowState(memberships[0]!, true);
     expect(state.actions).toEqual(["resend"]);
+    expect(state.statusLabel).toBe("Pending");
+    expect(state.statusTone).toBe("pending");
   });
 
   test("offers invite again when membership is expired", () => {

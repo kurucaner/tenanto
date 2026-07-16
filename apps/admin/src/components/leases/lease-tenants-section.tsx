@@ -236,10 +236,8 @@ export const LeaseTenantsSection = memo(
       [runPortalAction]
     );
 
-    const {
-      deleteConfirmationDialog: revokeConfirmationDialog,
-      requestDelete: requestRevoke,
-    } = useDeleteConfirmation<TLeasePortalRevokeTarget>(revokeMutation.isPending, revokeFn);
+    const { deleteConfirmationDialog: revokeConfirmationDialog, requestDelete: requestRevoke } =
+      useDeleteConfirmation<TLeasePortalRevokeTarget>(revokeMutation.isPending, revokeFn);
 
     const requestRevokeConfirmation = useCallback(
       (membershipId: string | null | undefined, tenantName: string) => {
@@ -263,14 +261,12 @@ export const LeaseTenantsSection = memo(
       <>
         <Card>
           <CardContent className="space-y-3 p-6">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1 space-y-2">
-                <div>
-                  <p className="text-muted-foreground text-xs">Primary tenant</p>
-                  <p className="font-medium">{lease.guestName}</p>
-                  <TenantContactLine label="email" value={lease.tenantEmail} />
-                  <TenantContactLine label="phone" value={lease.tenantPhone} />
-                </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-muted-foreground text-xs">Primary tenant</p>
+                <p className="font-medium">{lease.guestName}</p>
+                <TenantContactLine label="email" value={lease.tenantEmail} />
+                <TenantContactLine label="phone" value={lease.tenantPhone} />
                 {portalAccessQuery.isPending ? (
                   <p className="text-muted-foreground text-xs">Loading portal status…</p>
                 ) : null}
@@ -281,39 +277,43 @@ export const LeaseTenantsSection = memo(
                       : "Failed to load portal status"}
                   </p>
                 ) : null}
+              </div>
+              <div className="flex shrink-0 items-start gap-1">
                 {!portalAccessQuery.isPending && !portalAccessQuery.isError ? (
                   <LeaseTenantPortalRow
                     actingAction={actingAction}
                     actingMembershipId={actingMembershipId}
                     canManage={canEditTenants}
                     onInvite={() =>
-                      runPortalAction("invite", primaryMembership?.id ?? null, {
+                      void runPortalAction("invite", primaryMembership?.id ?? null, {
                         invitePrimary: true,
                       })
                     }
-                    onResend={() => runPortalAction("resend", primaryMembership?.id ?? null, {})}
+                    onResend={() =>
+                      void runPortalAction("resend", primaryMembership?.id ?? null, {})
+                    }
                     onRevoke={() =>
                       requestRevokeConfirmation(primaryMembership?.id, lease.guestName)
                     }
                     portalState={primaryPortalState}
                   />
                 ) : null}
+                {canEditTenants ? (
+                  <Button
+                    aria-label="Edit primary tenant"
+                    onClick={() => setEditPrimaryOpen(true)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                ) : null}
               </div>
-              {canEditTenants ? (
-                <Button
-                  aria-label="Edit primary tenant"
-                  onClick={() => setEditPrimaryOpen(true)}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-              ) : null}
             </div>
 
             {lease.secondaryTenants.length > 0 ? (
-              <div className="space-y-2 border-t pt-3">
+              <div className="space-y-3 border-t pt-3">
                 <p className="text-muted-foreground text-xs">Secondary tenants</p>
                 {lease.secondaryTenants.map((tenant, index) => {
                   const rowMembership = findLeasePortalMembership(
@@ -328,27 +328,27 @@ export const LeaseTenantsSection = memo(
 
                   return (
                     <div
-                      className="flex items-start justify-between gap-2"
+                      className="flex items-start justify-between gap-3"
                       key={`${tenant.name}-${index}`}
                     >
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div>
-                          <p className="text-sm font-medium">{tenant.name}</p>
-                          <TenantContactLine label="email" value={tenant.email} />
-                          <TenantContactLine label="phone" value={tenant.phone} />
-                        </div>
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="text-sm font-medium">{tenant.name}</p>
+                        <TenantContactLine label="email" value={tenant.email} />
+                        <TenantContactLine label="phone" value={tenant.phone} />
+                      </div>
+                      <div className="flex shrink-0 items-start gap-1">
                         {!portalAccessQuery.isPending && !portalAccessQuery.isError ? (
                           <LeaseTenantPortalRow
                             actingAction={actingAction}
                             actingMembershipId={actingMembershipId}
                             canManage={canEditTenants}
                             onInvite={() =>
-                              runPortalAction("invite", rowMembership?.id ?? null, {
+                              void runPortalAction("invite", rowMembership?.id ?? null, {
                                 secondaryIndexes: [index],
                               })
                             }
                             onResend={() =>
-                              runPortalAction("resend", rowMembership?.id ?? null, {})
+                              void runPortalAction("resend", rowMembership?.id ?? null, {})
                             }
                             onRevoke={() =>
                               requestRevokeConfirmation(rowMembership?.id, tenant.name)
@@ -356,26 +356,26 @@ export const LeaseTenantsSection = memo(
                             portalState={rowPortalState}
                           />
                         ) : null}
+                        {canEditTenants ? (
+                          <>
+                            <Button
+                              aria-label={`Edit ${tenant.name}`}
+                              onClick={() => setEditingSecondary({ index, tenant })}
+                              size="icon-sm"
+                              type="button"
+                              variant="ghost"
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <QuickDeleteButton
+                              ariaLabel={`Remove ${tenant.name}`}
+                              disabled={removeMutation.isPending}
+                              onClick={(event) => handleDelete({ index, tenant }, event)}
+                              quickDeleteActive={isQuickDeleteActive}
+                            />
+                          </>
+                        ) : null}
                       </div>
-                      {canEditTenants ? (
-                        <div className="flex items-center">
-                          <Button
-                            aria-label={`Edit ${tenant.name}`}
-                            onClick={() => setEditingSecondary({ index, tenant })}
-                            size="icon-sm"
-                            type="button"
-                            variant="ghost"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <QuickDeleteButton
-                            ariaLabel={`Remove ${tenant.name}`}
-                            disabled={removeMutation.isPending}
-                            onClick={(event) => handleDelete({ index, tenant }, event)}
-                            quickDeleteActive={isQuickDeleteActive}
-                          />
-                        </div>
-                      ) : null}
                     </div>
                   );
                 })}
