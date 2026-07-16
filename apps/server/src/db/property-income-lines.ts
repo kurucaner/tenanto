@@ -106,6 +106,7 @@ export const propertyIncomeLinesDb = {
       guestName: string | null;
       incomeLineTypeId: ICreatePropertyIncomeLineBody["incomeLineTypeId"];
       longStayId: string | null;
+      rentPeriodMonth: string | null;
       reservationId: string | null;
       transactionDate: string;
       unitId: string | null;
@@ -126,10 +127,11 @@ export const propertyIncomeLinesDb = {
          gross_income,
          tax_breakdown,
          channel_commission,
-         net_income
+         net_income,
+         rent_period_month
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9,
-         $10, $11::jsonb, $12, $13
+         $10, $11::jsonb, $12, $13, $14
        )
        RETURNING *`,
       [
@@ -146,6 +148,7 @@ export const propertyIncomeLinesDb = {
         JSON.stringify(computed.taxBreakdown),
         computed.channelCommission,
         computed.netIncome,
+        input.rentPeriodMonth,
       ]
     );
     const created = await propertyIncomeLinesDb.findById(result.rows[0].id as string);
@@ -358,6 +361,10 @@ export const propertyIncomeLinesDb = {
     if (input.amount !== undefined) {
       setClauses.push(`amount = $${param++}`);
       values.push(input.amount);
+    }
+    if (input.rentPeriodMonth !== undefined) {
+      setClauses.push(`rent_period_month = $${param++}`);
+      values.push(input.rentPeriodMonth);
     }
 
     setClauses.push(`gross_income = $${param++}`);

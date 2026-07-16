@@ -180,6 +180,7 @@ export {
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
+export { resolveLeaseIncomeRentPeriodMonth } from "./lease-income-rent-period";
 export {
   calculateExpectedRentForLeaseMonth,
   formatProratedDaysLabel,

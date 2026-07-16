@@ -29,6 +29,7 @@ export function buildLeaseRecordRentPrefill(
     guestName: lease.guestName,
     incomeLineTypeId,
     longStayId: lease.id,
+    rentPeriodMonth: month,
     transactionDate: clampToMaxLocalIsoDate(monthDate, maxDate),
     unitId: lease.unitId,
   };

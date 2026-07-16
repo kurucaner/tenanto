@@ -49,6 +49,7 @@ export interface CreateIncomeLineDialogPrefill {
   guestName?: string;
   incomeLineTypeId?: string;
   longStayId?: string;
+  rentPeriodMonth?: string;
   reservationId?: string;
   transactionDate?: string;
   unitId?: string;
@@ -157,6 +158,7 @@ const CreateIncomeLineDialogForm = memo(
           guestName: values.guestName.trim() || undefined,
           incomeLineTypeId: values.incomeLineTypeId,
           longStayId: values.longStayId || undefined,
+          rentPeriodMonth: prefill?.rentPeriodMonth,
           reservationId: values.reservationId || undefined,
           transactionDate: values.transactionDate,
           unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,

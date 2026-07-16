@@ -112,6 +112,7 @@ describe("buildLeaseRecordRentPrefill", () => {
 
     expect(prefill.amount).toBe("500");
     expect(prefill.longStayId).toBe("lease-1");
+    expect(prefill.rentPeriodMonth).toBe("2024-06");
     expect(prefill.transactionDate).toBe("2024-06-01");
   });
 

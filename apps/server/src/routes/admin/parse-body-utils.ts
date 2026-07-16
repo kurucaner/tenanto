@@ -65,3 +65,29 @@ export function parseNullableTrimmedStringField(
   }
   return { ok: true, value: raw.trim() };
 }
+
+export function parseOptionalPeriodMonthField(
+  raw: unknown,
+  fieldLabel: string
+): TParseResult<string | undefined> {
+  if (raw === undefined || raw === null || raw === "") {
+    return { ok: true, value: undefined };
+  }
+  if (typeof raw !== "string") {
+    return { error: `${fieldLabel} must be a string`, ok: false };
+  }
+  return { ok: true, value: raw.trim() };
+}
+
+export function parseNullablePeriodMonthField(
+  raw: unknown,
+  fieldLabel: string
+): TParseResult<string | null> {
+  if (raw === null || raw === "") {
+    return { ok: true, value: null };
+  }
+  if (typeof raw !== "string") {
+    return { error: `${fieldLabel} must be a string or null`, ok: false };
+  }
+  return { ok: true, value: raw.trim() };
+}
