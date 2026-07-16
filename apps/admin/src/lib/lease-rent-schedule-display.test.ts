@@ -44,20 +44,39 @@ const HOLD_OVER_SCHEDULE: IPropertyLongStayRentMonth[] = [
   }),
 ];
 
-describe("partitionRentSchedule", () => {
-  test("sums prorated unpaid expectedRent amounts for the summary total", () => {
-    const { paidMonths, unpaidMonths, unpaidSummary } =
-      partitionRentSchedule(MID_MONTH_START_SCHEDULE);
+const MIXED_DUE_UPCOMING_SCHEDULE: IPropertyLongStayRentMonth[] = [
+  buildRentMonth({ expectedRent: 500, month: "2024-06" }),
+  buildRentMonth({ expectedRent: 1000, month: "2024-07" }),
+  buildRentMonth({ expectedRent: 1000, month: "2024-09" }),
+];
 
-    expect(unpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
+describe("partitionRentSchedule", () => {
+  test("sums prorated due unpaid expectedRent amounts for the summary total", () => {
+    const { dueUnpaidMonths, paidMonths, unpaidSummary } = partitionRentSchedule(
+      MID_MONTH_START_SCHEDULE,
+      "2024-07"
+    );
+
+    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
     expect(paidMonths.map((item) => item.month)).toEqual(["2024-08"]);
     expect(unpaidSummary).toEqual({ count: 2, totalExpected: 1500 });
   });
 
-  test("includes holdover proration in unpaid totals", () => {
-    const { unpaidSummary } = partitionRentSchedule(HOLD_OVER_SCHEDULE);
+  test("includes holdover proration in due unpaid totals", () => {
+    const { unpaidSummary } = partitionRentSchedule(HOLD_OVER_SCHEDULE, "2024-07");
 
     expect(unpaidSummary).toEqual({ count: 1, totalExpected: 161.29 });
+  });
+
+  test("separates future unpaid months into upcoming and excludes them from summary", () => {
+    const { dueUnpaidMonths, upcomingMonths, unpaidSummary } = partitionRentSchedule(
+      MIXED_DUE_UPCOMING_SCHEDULE,
+      "2024-07"
+    );
+
+    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
+    expect(upcomingMonths.map((item) => item.month)).toEqual(["2024-09"]);
+    expect(unpaidSummary).toEqual({ count: 2, totalExpected: 1500 });
   });
 });
 

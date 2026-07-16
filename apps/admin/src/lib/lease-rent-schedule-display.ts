@@ -6,8 +6,9 @@ export type TLeaseRentScheduleMonthAmount = Pick<
 >;
 
 export interface ILeaseRentSchedulePartition {
+  dueUnpaidMonths: IPropertyLongStayRentMonth[];
   paidMonths: IPropertyLongStayRentMonth[];
-  unpaidMonths: IPropertyLongStayRentMonth[];
+  upcomingMonths: IPropertyLongStayRentMonth[];
   unpaidSummary: {
     count: number;
     totalExpected: number;
@@ -15,16 +16,20 @@ export interface ILeaseRentSchedulePartition {
 }
 
 export function partitionRentSchedule(
-  rentSchedule: readonly IPropertyLongStayRentMonth[]
+  rentSchedule: readonly IPropertyLongStayRentMonth[],
+  asOfMonth: string
 ): ILeaseRentSchedulePartition {
-  const unpaidMonths = rentSchedule.filter((item) => !item.isPaid);
   const paidMonths = rentSchedule.filter((item) => item.isPaid);
-  const totalExpected = unpaidMonths.reduce((sum, item) => sum + item.expectedRent, 0);
+  const unpaid = rentSchedule.filter((item) => !item.isPaid);
+  const dueUnpaidMonths = unpaid.filter((item) => item.month <= asOfMonth);
+  const upcomingMonths = unpaid.filter((item) => item.month > asOfMonth);
+  const totalExpected = dueUnpaidMonths.reduce((sum, item) => sum + item.expectedRent, 0);
 
   return {
+    dueUnpaidMonths,
     paidMonths,
-    unpaidMonths,
-    unpaidSummary: { count: unpaidMonths.length, totalExpected },
+    upcomingMonths,
+    unpaidSummary: { count: dueUnpaidMonths.length, totalExpected },
   };
 }
 
