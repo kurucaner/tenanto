@@ -221,6 +221,7 @@ export {
 } from "./property-long-stay-list-constants";
 export {
   type ICreatePropertyLongStayBody,
+  type ICreatePropertyLongStayResponse,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
   type IPropertyLongStay,

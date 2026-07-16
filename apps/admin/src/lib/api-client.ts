@@ -20,6 +20,7 @@ import {
   type ICreatePropertyExpenseBody,
   type ICreatePropertyIncomeLineBody,
   type ICreatePropertyLongStayBody,
+  type ICreatePropertyLongStayResponse,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type ICreateTenantEmailCampaignBody,
@@ -498,7 +499,7 @@ function buildUnitsSearchParams(query: IPropertyUnitsListQuery = {}): string {
 
 export const longStaysApi = {
   create: (propertyId: string, body: ICreatePropertyLongStayBody) =>
-    authenticatedRequest<{ longStay: IPropertyLongStay }>(
+    authenticatedRequest<ICreatePropertyLongStayResponse>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays`,
       { body: JSON.stringify(body), method: "POST" }
     ),

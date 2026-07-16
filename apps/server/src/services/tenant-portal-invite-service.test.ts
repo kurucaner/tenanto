@@ -38,6 +38,7 @@ const mockExpireMembershipIfPastTtl = mock(() =>
 const mockExpirePendingPortalInvites = mock(() => Promise.resolve(0));
 const mockSendNewEmail = mock(() => Promise.resolve());
 const mockSendExistingEmail = mock(() => Promise.resolve());
+const mockWinstonError = mock(() => {});
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: { findById: mockFindByIdLease },
@@ -79,6 +80,14 @@ mock.module("@/ses/transactional-emails", () => ({
   ...transactionalEmails,
   sendTenantPortalInviteExistingEmail: mockSendExistingEmail,
   sendTenantPortalInviteNewEmail: mockSendNewEmail,
+}));
+
+mock.module("./winston", () => ({
+  WinstonLogger: {
+    error: mockWinstonError,
+    info: mock(() => {}),
+    warn: mock(() => {}),
+  },
 }));
 
 const { DuplicatePortalInviteError, tenantPortalInviteService } =
@@ -265,6 +274,111 @@ describe("tenantPortalInviteService.createInvites", () => {
         propertyId: "property-1",
       })
     ).rejects.toBeInstanceOf(DuplicatePortalInviteError);
+  });
+});
+
+describe("tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate", () => {
+  const originalTenantAppUrl = process.env.TENANT_APP_URL;
+
+  beforeEach(() => {
+    process.env.TENANT_APP_URL = "https://tenant.example.com";
+    mockFindByIdLease.mockReset();
+    mockFindByIdProperty.mockReset();
+    mockFindByIdUnit.mockReset();
+    mockFindByEmail.mockReset();
+    mockCreateMembership.mockReset();
+    mockSendNewEmail.mockReset();
+    mockSendExistingEmail.mockReset();
+    mockWinstonError.mockReset();
+
+    mockFindByIdLease.mockResolvedValue(makeLease());
+    mockFindByIdProperty.mockResolvedValue(makeProperty());
+    mockFindByIdUnit.mockResolvedValue(makeUnit());
+    mockFindByEmail.mockResolvedValue(null);
+    mockCreateMembership.mockImplementation(async (input) =>
+      makeMembership({
+        inviteEmail: input.inviteEmail,
+        status: input.status,
+      })
+    );
+  });
+
+  afterEach(() => {
+    if (originalTenantAppUrl === undefined) {
+      delete process.env.TENANT_APP_URL;
+    } else {
+      process.env.TENANT_APP_URL = originalTenantAppUrl;
+    }
+  });
+
+  test("returns null when primary tenant email is missing", async () => {
+    const result = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+      invitedBy: "operator-1",
+      lease: makeLease({ tenantEmail: null }),
+      propertyId: "property-1",
+    });
+
+    expect(result).toBeNull();
+    expect(mockCreateMembership).not.toHaveBeenCalled();
+  });
+
+  test("returns null when primary tenant email is invalid", async () => {
+    const result = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+      invitedBy: "operator-1",
+      lease: makeLease({ tenantEmail: "not-an-email" }),
+      propertyId: "property-1",
+    });
+
+    expect(result).toBeNull();
+    expect(mockCreateMembership).not.toHaveBeenCalled();
+  });
+
+  test("creates invite and sends email when primary tenant email is valid", async () => {
+    const result = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+      invitedBy: "operator-1",
+      lease: makeLease(),
+      propertyId: "property-1",
+    });
+
+    expect(result).not.toBeNull();
+    expect(mockCreateMembership).toHaveBeenCalledTimes(1);
+    expect(mockSendNewEmail).toHaveBeenCalledTimes(1);
+    expect(result?.emailSent).toBe(true);
+    expect(result?.membership.inviteEmail).toBe("jane@example.com");
+  });
+
+  test("returns invite result with emailSent false when SES fails", async () => {
+    mockSendNewEmail.mockRejectedValue(new Error("SES unavailable"));
+
+    const result = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+      invitedBy: "operator-1",
+      lease: makeLease(),
+      propertyId: "property-1",
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.emailSent).toBe(false);
+    expect(result?.emailError).toBe("SES unavailable");
+    expect(mockCreateMembership).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns null and logs when invite creation throws unexpectedly", async () => {
+    mockCreateMembership.mockRejectedValue(new Error("Database connection lost"));
+
+    const result = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+      invitedBy: "operator-1",
+      lease: makeLease(),
+      propertyId: "property-1",
+    });
+
+    expect(result).toBeNull();
+    expect(mockWinstonError).toHaveBeenCalledWith(
+      "tenant_portal.auto_invite_on_lease_create_failed",
+      expect.objectContaining({
+        leaseId: "lease-1",
+        propertyId: "property-1",
+      })
+    );
   });
 });
 

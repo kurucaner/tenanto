@@ -363,8 +363,18 @@ export const StartLeaseDialog = memo(
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to start lease");
       },
-      onSuccess: () => {
-        toast.success("Lease started");
+      onSuccess: (data) => {
+        if (data.portalInvite?.emailSent) {
+          toast.success(
+            `Lease started. Portal invite sent to ${data.portalInvite.membership.inviteEmail}`
+          );
+        } else if (data.portalInvite && !data.portalInvite.emailSent) {
+          toast.warning(
+            `Lease started but portal invite email failed to send: ${data.portalInvite.emailError ?? "Unknown error"}`
+          );
+        } else {
+          toast.success("Lease started");
+        }
         invalidatePropertyLongStayCaches(queryClient, propertyId);
         handleOpenChange(false);
       },

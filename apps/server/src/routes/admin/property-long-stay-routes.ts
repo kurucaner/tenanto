@@ -32,6 +32,7 @@ import {
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
 import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
+import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -573,7 +574,15 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
       try {
         const longStay = await propertyLongStaysDb.create(propertyId, parsed.body);
-        return reply.status(HttpStatus.CREATED).send({ longStay });
+        const portalInvite = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+          invitedBy: request.user.userId,
+          lease: longStay,
+          propertyId,
+        });
+        return reply.status(HttpStatus.CREATED).send({
+          longStay,
+          ...(portalInvite ? { portalInvite } : {}),
+        });
       } catch (error) {
         if (error instanceof ActiveLongStayConflictError) {
           return reply.status(HttpStatus.CONFLICT).send({ error: error.message });

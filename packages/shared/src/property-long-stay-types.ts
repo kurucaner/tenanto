@@ -3,6 +3,7 @@ import type {
   TPropertyLongStaysListSortBy,
   TPropertyLongStaysListSortDir,
 } from "./property-long-stay-list-constants";
+import type { ICreateLeasePortalInviteResult } from "./tenant-portal-types";
 
 export type TPropertyLongStayStatus = "active" | "ended";
 
@@ -43,6 +44,12 @@ export interface ICreatePropertyLongStayBody {
   tenantPhone?: string;
   termMonths: number;
   unitId: string;
+}
+
+export interface ICreatePropertyLongStayResponse {
+  longStay: IPropertyLongStay;
+  /** Present when a valid primary email triggered auto-invite; absent when skipped. */
+  portalInvite?: ICreateLeasePortalInviteResult;
 }
 
 export interface IPropertyLongStaysListQuery {
