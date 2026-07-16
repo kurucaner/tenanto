@@ -78,10 +78,16 @@ describe("isSameLeasePortalActingTarget", () => {
 
   test("matches secondary targets by index", () => {
     expect(
-      isSameLeasePortalActingTarget({ index: 1, kind: "secondary" }, { index: 1, kind: "secondary" })
+      isSameLeasePortalActingTarget(
+        { index: 1, kind: "secondary" },
+        { index: 1, kind: "secondary" }
+      )
     ).toBe(true);
     expect(
-      isSameLeasePortalActingTarget({ index: 0, kind: "secondary" }, { index: 1, kind: "secondary" })
+      isSameLeasePortalActingTarget(
+        { index: 0, kind: "secondary" },
+        { index: 1, kind: "secondary" }
+      )
     ).toBe(false);
   });
 });

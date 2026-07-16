@@ -8,33 +8,31 @@ const mockExpireMembershipIfPastTtl = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
 );
 const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockCreateUser = mock(
-  (_input: unknown): Promise<ITenantUser> =>
-    Promise.resolve({
+const mockCreateUser = mock((_input: unknown): Promise<ITenantUser> =>
+  Promise.resolve({
+    createdAt: "2026-01-01T00:00:00.000Z",
+    email: "jane@example.com",
+    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
+    id: "tenant-new",
+    name: "Jane Doe",
+    phone: null,
+    phoneVerifiedAt: null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  })
+);
+const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: ITenantUser }> =>
+  Promise.resolve({
+    user: {
       createdAt: "2026-01-01T00:00:00.000Z",
       email: "jane@example.com",
       emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-      id: "tenant-new",
+      id: "tenant-google",
       name: "Jane Doe",
       phone: null,
       phoneVerifiedAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
-    })
-);
-const mockFindOrCreateByGoogle = mock(
-  (_input: unknown): Promise<{ user: ITenantUser }> =>
-    Promise.resolve({
-      user: {
-        createdAt: "2026-01-01T00:00:00.000Z",
-        email: "jane@example.com",
-        emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-        id: "tenant-google",
-        name: "Jane Doe",
-        phone: null,
-        phoneVerifiedAt: null,
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
-    })
+    },
+  })
 );
 const mockRedeemInvite = mock(
   (_token: string, _user: ITenantUser): Promise<ILeaseTenantMembership> =>
@@ -129,13 +127,10 @@ mock.module("@/lib/redis-fixed-window-rate-limit", () => ({
   consumeFixedWindowRateLimit: () => Promise.resolve({ allowed: true }),
 }));
 
-const { registerTenantWithInviteGoogle, registerTenantWithInvitePassword } = await import(
-  "./tenant-invite-signup-service"
-);
+const { registerTenantWithInviteGoogle, registerTenantWithInvitePassword } =
+  await import("./tenant-invite-signup-service");
 
-function makeMembership(
-  overrides: Partial<ILeaseTenantMembership> = {}
-): ILeaseTenantMembership {
+function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
     acceptedAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
