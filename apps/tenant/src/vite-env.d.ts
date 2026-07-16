@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLIENT_ID?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;
   readonly VITE_TENANT_PHONE_AUTH_ENABLED?: string;
+  readonly VITE_WEB_APP_URL?: string;
 }
 
 interface ImportMeta {

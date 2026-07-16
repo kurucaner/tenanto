@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
 import { signUpSchema, type TSignUpFormValues } from "@/lib/auth-form-schemas";
+import { getWebAppUrl } from "@/lib/web-app-url";
+import { AuthTermsNotice } from "@/packages/app-ui";
 
 export const SignUpPage = memo(() => {
   const navigate = useNavigate();
@@ -94,6 +96,7 @@ export const SignUpPage = memo(() => {
         <Button className="w-full" disabled={submitting} type="submit">
           {submitting ? "Sending code…" : "Continue"}
         </Button>
+        <AuthTermsNotice webAppUrl={getWebAppUrl()} />
         <p className="text-muted-foreground text-center text-sm">
           Already have an account?{" "}
           <Link className="text-primary font-medium hover:underline" to="/login">

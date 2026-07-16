@@ -8,8 +8,10 @@ import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/a
 import { TenantGoogleSignInButton } from "@/components/auth/tenant-google-sign-in-button";
 import { tenantAuthApi } from "@/lib/api-client";
 import { parseSafeReturnTo } from "@/lib/invite-return-url";
+import { getWebAppUrl } from "@/lib/web-app-url";
 import {
   AuthProviderDivider,
+  AuthTermsNotice,
   Button,
   getAuthApiErrorMessage,
   Input,
@@ -100,6 +102,7 @@ export const RegisterPage = memo(function RegisterPage() {
         <Button className="w-full" disabled={submitting} type="submit">
           {submitting ? "Sending code…" : "Continue"}
         </Button>
+        <AuthTermsNotice webAppUrl={getWebAppUrl()} />
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link className="font-medium text-primary hover:underline" to={loginHref}>

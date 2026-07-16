@@ -26,6 +26,7 @@ export {
   type IAuthPageShellProps,
 } from "./auth/auth-page-shell";
 export { AuthProviderDivider } from "./auth/auth-provider-divider";
+export { AuthTermsNotice, type IAuthTermsNoticeProps } from "./auth/auth-terms-notice";
 export {
   GoogleOAuthProvider,
   type IGoogleOAuthProviderProps,

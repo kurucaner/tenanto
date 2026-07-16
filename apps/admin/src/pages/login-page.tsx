@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
 import { loginSchema, type TLoginFormValues } from "@/lib/auth-form-schemas";
+import { getWebAppUrl } from "@/lib/web-app-url";
+import { AuthTermsNotice } from "@/packages/app-ui";
 import { useAuthStore } from "@/stores/auth-store";
 
 const LoginPageInner = memo(() => {
@@ -91,6 +93,7 @@ const LoginPageInner = memo(() => {
         <Button className="w-full" disabled={submitting} type="submit">
           {submitting ? "Signing in…" : "Sign in"}
         </Button>
+        <AuthTermsNotice webAppUrl={getWebAppUrl()} />
         <p className="text-muted-foreground text-center text-sm">
           Need an account?{" "}
           <Link className="text-primary font-medium hover:underline" to="/signup">
