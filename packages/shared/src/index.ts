@@ -185,6 +185,14 @@ export {
   resolveLeaseIncomeRentPeriodMonth,
 } from "./lease-income-rent-period";
 export {
+  type ILeasePrimaryTenantContact,
+  type ILeasePrimaryTenantContactLeaseInput,
+  type IResolvePrimaryTenantContactInput,
+  resolvePrimaryTenantContact,
+  selectPrimaryMembershipForContact,
+  type TPrimaryTenantContactSource,
+} from "./lease-primary-tenant-contact";
+export {
   calculateExpectedRentForLeaseMonth,
   formatProratedDaysLabel,
   getDaysInMonth,

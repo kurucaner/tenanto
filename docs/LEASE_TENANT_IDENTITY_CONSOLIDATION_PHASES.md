@@ -150,11 +150,11 @@ N/A for core consolidation. Optional env for accept phone sync:
 
 **Goal:** Shared resolver + tests; no UI/API behavior change yet.
 
-- [ ] Add `packages/shared/src/lease-primary-tenant-contact.ts` with `resolvePrimaryTenantContact`
-- [ ] Tests: linked active, pending invite, no membership, ended membership ignored for “active contact”
-- [ ] Export from `packages/shared/src/index.ts`
-- [ ] Server helper: `loadPrimaryMembershipForLease(leaseId)` in `lease-tenant-memberships.ts` or service layer
-- [ ] JSDoc on `IPropertyLongStay` flat fields: “legacy storage; prefer `primaryTenantContact` when present”
+- [x] Add `packages/shared/src/lease-primary-tenant-contact.ts` with `resolvePrimaryTenantContact`
+- [x] Tests: linked active, pending invite, no membership, ended membership ignored for “active contact”
+- [x] Export from `packages/shared/src/index.ts`
+- [x] Server helper: `loadPrimaryMembershipForLease(leaseId)` in `lease-tenant-memberships.ts` or service layer
+- [x] JSDoc on `IPropertyLongStay` flat fields: “legacy storage; prefer `primaryTenantContact` when present”
 
 **Exit criteria:** Shared tests pass; no API response changes; resolver used only in tests.
 

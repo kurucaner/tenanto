@@ -21,6 +21,7 @@ export interface IPropertyLongStaySecondaryTenant {
 export interface IPropertyLongStay {
   actualEndDate: string | null;
   createdAt: string;
+  /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
   guestName: string;
   id: string;
   leaseEndDate: string;
@@ -29,7 +30,9 @@ export interface IPropertyLongStay {
   propertyId: string;
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
   status: TPropertyLongStayStatus;
+  /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
   tenantEmail: string | null;
+  /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
   tenantPhone: string | null;
   termMonths: number;
   unitId: string;

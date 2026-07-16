@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import {
   canTransitionTenantMembershipStatus,
   type ILeaseTenantMembership,
+  selectPrimaryMembershipForContact,
   TenantMembershipStatus,
   type TTenantMembershipRole,
   type TTenantMembershipStatus,
@@ -400,3 +401,12 @@ export const leaseTenantMembershipsDb = {
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
 };
+
+/** Primary membership row for effective tenant contact resolution (Phase 1+). */
+export async function loadPrimaryMembershipForLease(
+  leaseId: string,
+  db: DbQueryable = pool
+): Promise<ILeaseTenantMembership | null> {
+  const memberships = await leaseTenantMembershipsDb.findByLeaseId(leaseId, db);
+  return selectPrimaryMembershipForContact(memberships);
+}
