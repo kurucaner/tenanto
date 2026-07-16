@@ -243,7 +243,7 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
 
   const finishAccepted = async () => {
     await invalidateTenantPortalCaches(queryClient);
-    navigate("/leases", { replace: true });
+    navigate("/home", { replace: true });
   };
 
   const handleAccept = async () => {

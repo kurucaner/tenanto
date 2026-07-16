@@ -313,6 +313,8 @@ Detailed phased plan: **[TENANT_PORTAL_AUTH_EXPANSION_PHASES.md](./TENANT_PORTAL
 
 **Goal:** Tenant pays scheduled rent via a chosen provider; operator ledger remains source of truth.
 
+**Plan:** [`TENANT_STRIPE_RENT_PAYMENTS.md`](./TENANT_STRIPE_RENT_PAYMENTS.md) (alias: [`TENANT_RENT_PAYMENTS_PHASES.md`](./TENANT_RENT_PAYMENTS_PHASES.md)).
+
 - [ ] Product pick: Stripe / ACH / other; PCI scope documented
 - [ ] Intent + webhook endpoints; idempotent webhook handling
 - [ ] On success: create/link income line (or dedicated payment ledger) using existing property income patterns

@@ -578,6 +578,36 @@ export {
   type TTenantMembershipRole,
   type TTenantMembershipStatus,
 } from "./tenant-portal-types";
+export {
+  type IPropertyStripeConnectOnboardingLinkResponse,
+  type IPropertyStripeConnectStatusResponse,
+  isTerminalTenantRentPaymentStatus,
+  type ITenantCreateRentCheckoutBody,
+  type ITenantCreateRentCheckoutResponse,
+  type ITenantLeaseBalancePeriod,
+  type ITenantLeaseBalanceResponse,
+  type ITenantRentPaymentStatusResponse,
+  type ITenantRentSummaryLease,
+  type ITenantRentSummaryResponse,
+  TenantRentPaymentStatus,
+  type TTenantRentPaymentStatus,
+} from "./tenant-rent-payment-types";
+export {
+  allocateFifo,
+  buildRentCheckoutIdempotencyKey,
+  centsToDollars,
+  computePeriodRemainingCents,
+  computeRemainingByMonth,
+  dollarsToCents,
+  type IRentAllocation,
+  type IRentPeriodInput,
+  isValidPeriodMonth,
+  selectDuePeriodMonths,
+  STRIPE_MIN_CHARGE_CENTS_USD,
+  sumAmountDueCents,
+  type TValidateRentCheckoutResult,
+  validateCreateRentCheckoutBody,
+} from "./tenant-rent-payment-utils";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

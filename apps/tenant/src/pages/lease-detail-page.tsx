@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { memo } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { PayRentCard } from "@/components/portal/pay-rent-card";
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -20,6 +21,15 @@ export const LeaseDetailPage = memo(function LeaseDetailPage() {
     queryKey: queryKeys.lease(leaseId),
   });
 
+  const isActive =
+    leaseQuery.data != null && leaseQuery.data.status !== TenantMembershipStatus.ENDED;
+
+  const balanceQuery = useQuery({
+    enabled: leaseId.length > 0 && isActive,
+    queryFn: () => tenantPortalApi.getLeaseBalance(leaseId),
+    queryKey: queryKeys.leaseBalance(leaseId),
+  });
+
   return (
     <div className="flex flex-col gap-6">
       <div className="space-y-3">
@@ -33,7 +43,7 @@ export const LeaseDetailPage = memo(function LeaseDetailPage() {
           <p className="text-sm text-muted-foreground">
             {leaseQuery.data?.status === TenantMembershipStatus.ENDED
               ? "Read-only archive summary after move-out."
-              : "Read-only summary and rent schedule."}
+              : "Summary, rent payments, and schedule."}
           </p>
         </div>
       </div>
@@ -51,8 +61,23 @@ export const LeaseDetailPage = memo(function LeaseDetailPage() {
       {leaseQuery.data ? (
         <>
           <TenantLeaseDetailSummary lease={leaseQuery.data} />
-          {leaseQuery.data.status !== TenantMembershipStatus.ENDED ? (
-            <TenantLeaseRentSchedule lease={leaseQuery.data} />
+          {isActive ? (
+            <>
+              {balanceQuery.isPending ? (
+                <p className="text-sm text-muted-foreground">Loading balance…</p>
+              ) : null}
+              {balanceQuery.isError ? (
+                <p className="text-sm text-destructive">
+                  {balanceQuery.error instanceof Error
+                    ? balanceQuery.error.message
+                    : "Failed to load rent balance"}
+                </p>
+              ) : null}
+              {balanceQuery.data ? (
+                <PayRentCard balance={balanceQuery.data} leaseId={leaseId} />
+              ) : null}
+              <TenantLeaseRentSchedule lease={leaseQuery.data} />
+            </>
           ) : null}
         </>
       ) : null}

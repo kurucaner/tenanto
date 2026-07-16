@@ -23,7 +23,7 @@ export const HomePage = memo(function HomePage() {
   const user = useAuthStore((s) => s.user);
 
   if (hydrated && accessToken && user) {
-    return <Navigate replace to="/leases" />;
+    return <Navigate replace to="/home" />;
   }
 
   return (

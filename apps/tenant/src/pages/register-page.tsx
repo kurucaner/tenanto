@@ -57,7 +57,7 @@ export const RegisterPage = memo(function RegisterPage() {
       cardDescription="Continue with Google, or create an account with email and password. Lease invites still require the invited email on your account."
       cardTitle="Create account"
       onSubmit={onSubmit}
-      redirectWhenAuthed={returnTo ?? "/leases"}
+      redirectWhenAuthed={returnTo ?? "/home"}
       subtitle="Create your resident portal account."
     >
       <AuthCardBody>

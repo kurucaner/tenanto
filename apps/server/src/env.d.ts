@@ -39,6 +39,14 @@ declare global {
       SNS_SMS_ORIGINATION_NUMBER?: string;
       /** Optional SNS SMS sender ID shown on supported carriers */
       SNS_SMS_SENDER_ID?: string;
+      /** Stripe Connect OAuth client id (optional for Express Account Links) */
+      STRIPE_CONNECT_CLIENT_ID?: string;
+      /** Stripe publishable key (pk_…) — documented for ops; Checkout hosted page may not need it server-side */
+      STRIPE_PUBLISHABLE_KEY?: string;
+      /** Stripe secret key (sk_…) — required when rent payments / Connect is enabled */
+      STRIPE_SECRET_KEY?: string;
+      /** Stripe webhook signing secret (whsec_…) */
+      STRIPE_WEBHOOK_SECRET?: string;
       /** Base URL for the tenant portal app (e.g. https://tenant.propertyos.app) - used for portal invite links */
       TENANT_APP_URL: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */

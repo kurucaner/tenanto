@@ -60,6 +60,8 @@ export const queryKeys = {
     propertyId: string,
     filters: Omit<IPropertyReservationsListQuery, "cursor" | "limit"> = {}
   ) => ["property", propertyId, "short-stays", filters] as const,
+  propertyStripeConnectStatus: (propertyId: string) =>
+    ["property", propertyId, "stripe-connect", "status"] as const,
   propertyTenantEmailCampaign: (propertyId: string, campaignId: string) =>
     ["property", propertyId, "tenant-email-campaigns", campaignId] as const,
   propertyTenantEmailCampaigns: (

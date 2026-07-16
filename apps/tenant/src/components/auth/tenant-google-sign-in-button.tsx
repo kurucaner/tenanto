@@ -34,7 +34,7 @@ export const TenantGoogleSignInButton = memo(function TenantGoogleSignInButton({
           const session = await tenantAuthApi.loginGoogle(idToken);
           setSession(session);
           toast.success("Signed in");
-          navigate(returnTo ?? "/leases", { replace: true });
+          navigate(returnTo ?? "/home", { replace: true });
         } catch (error) {
           toast.error(getAuthApiErrorMessage(error, "Google sign-in failed"));
         } finally {
