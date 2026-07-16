@@ -32,6 +32,7 @@ function buildIncomeLineRow(overrides: Record<string, unknown> = {}): Record<str
     rent_period_month: null,
     reservation_id: null,
     tax_breakdown: "[]",
+    tenant_rent_payment_id: null,
     transaction_date: "2026-01-15",
     unit_id: "unit-1",
     updated_at: new Date("2026-01-15T12:00:00.000Z"),
@@ -679,6 +680,33 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isPaid: false,
       paidRent: 500,
       remainingRent: 1000,
+    });
+    expect(january?.incomeLineId).toBeUndefined();
+  });
+
+  test("refunded Stripe-linked income marks month unpaid when allocations are excluded", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-stripe-jan",
+        refunded_amount: "1500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        tenant_rent_payment_id: "payment-1",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      isPaid: false,
+      paidRent: 0,
+      remainingRent: 1500,
     });
     expect(january?.incomeLineId).toBeUndefined();
   });

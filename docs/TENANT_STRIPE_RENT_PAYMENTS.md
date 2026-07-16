@@ -298,7 +298,7 @@ Local forward: `stripe listen --forward-to localhost:3001/webhooks/stripe` and u
 | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Rate limits                | Redis limits on checkout create per tenant/IP                                                                  |
 | Idempotency                | Unique constraints + Stripe Idempotency-Key                                                                    |
-| Refunds/disputes           | See [`TENANT_STRIPE_RENT_REFUNDS.md`](./TENANT_STRIPE_RENT_REFUNDS.md) — webhooks set `refunded` / flag income |
+| Refunds/disputes           | Done — [`TENANT_STRIPE_RENT_REFUNDS.md`](./TENANT_STRIPE_RENT_REFUNDS.md) (R0–R3): webhooks set `refunded` + refund linked income |
 | Race with admin manual pay | Apply path re-reads remaining; overpay → don’t double income; prefer refund or credit note path documented     |
 | Observability              | Datadog/log metrics on webhook latency + failures                                                              |
 | PCI                        | Checkout only; no card data on our servers                                                                     |

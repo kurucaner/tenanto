@@ -11,12 +11,12 @@ Webhook-driven reversal for tenant rent charges. Complements manual admin refund
 | Layer | Status |
 | --- | --- |
 | Admin manual income refund | Done — rollup via `getReportableIncomeLineAmounts` |
-| `tenant_rent_payments.status = refunded` | Enum exists; nothing sets it |
-| Webhooks | Only `checkout.session.*` + `payment_intent.payment_failed`; refund/dispute → `tenant_payments.webhook_ignored` |
-| Income ↔ payment link | No FK — auto-created lines cannot be found for webhook refund |
-| Allocations rollup | Counts `status = succeeded` only — refunded payment still counts until status changes |
+| `tenant_rent_payments.status = refunded` | Done — `markRefunded` via `charge.refunded` / dispute lost |
+| Webhooks | Done — `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed` |
+| Income ↔ payment link | Done — `tenant_rent_payment_id` on auto-created lines |
+| Allocations rollup | Done — `sumSucceededAllocatedCents*` counts `status = succeeded` only |
 
-**Until shipped:** Stripe Dashboard refund → operator manually refunds matching income line(s) in Income UI. Payment row may still show `succeeded`.
+**Partial Stripe refunds:** logged as `tenant_payments.refund_partial_unhandled`; operator fixes income manually.
 
 ---
 
@@ -110,12 +110,12 @@ sequenceDiagram
 
 **Exit criteria:** Dispute lost in sandbox → same ledger outcome as refund.
 
-### Phase R3 — Tests + doc sign-off
+### Phase R3 — Tests + doc sign-off ✅
 
-- [`stripe-webhook-service.test.ts`](../apps/server/src/services/stripe-webhook-service.test.ts): refund + dispute.closed
-- Service: refunded payment excluded from [`sumSucceededAllocatedCents`](../apps/server/src/db/tenant-rent-payments.ts)
-- Schedule integration: linked income refund → month unpaid
-- Check off Phase 4 refunds row in [`TENANT_STRIPE_RENT_PAYMENTS.md`](./TENANT_STRIPE_RENT_PAYMENTS.md)
+- [x] [`stripe-webhook-service.test.ts`](../apps/server/src/services/stripe-webhook-service.test.ts): refund + dispute.closed
+- [x] Service: refunded payment excluded from [`sumSucceededAllocatedCents`](../apps/server/src/db/tenant-rent-payments.ts) — [`tenant-rent-payments-rollup.test.ts`](../apps/server/src/db/tenant-rent-payments-rollup.test.ts)
+- [x] Schedule integration: linked income refund → month unpaid — [`property-long-stays-rent-schedule.test.ts`](../apps/server/src/db/property-long-stays-rent-schedule.test.ts)
+- [x] Check off Phase 4 refunds row in [`TENANT_STRIPE_RENT_PAYMENTS.md`](./TENANT_STRIPE_RENT_PAYMENTS.md)
 
 ---
 
