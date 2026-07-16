@@ -4,10 +4,10 @@ overview: Phased plan for tenant rent payments via Stripe Connect (destination c
 todos:
   - id: write-phases-doc
     content: Write docs/TENANT_RENT_PAYMENTS_PHASES.md from this plan
-    status: pending
+    status: completed
   - id: phase-0
     content: "Phase 0: migrations, Stripe client, flags, balance/allocation helpers"
-    status: pending
+    status: completed
   - id: phase-1
     content: "Phase 1: Connect onboarding + checkout + webhook → income"
     status: pending
@@ -48,7 +48,7 @@ Industry-standard Stripe rent collection for PropertyOS: **Connect** (money land
 - Funds settle to the **property’s Connect account** (Express recommended); optional platform **application fee** later.
 - **Webhook** is the only path that marks rent paid; browser return URL is UX only.
 - Successful payment creates/links **`property_income_lines`** so existing `isPaid` stays correct.
-- Admin can **onboard Connect** for a property and see payment status; feature-flagged until sandbox-proven.
+- Admin can **onboard Connect** for a property and see payment status.
 
 ## Non-goals (v1)
 
@@ -70,7 +70,6 @@ Industry-standard Stripe rent collection for PropertyOS: **Connect** (money land
 4. **Connect Express + destination charges** — industry default for SaaS collecting on behalf of businesses with platform fee later; avoid direct charges until needed.
 5. **Per-period charges, not Subscriptions** — matches prorations / rent periods / extensions.
 6. **API + webhook before tenant UI** — same sequencing as Enhancements Phase 6.
-7. **Feature flag** — `TENANT_RENT_PAYMENTS_ENABLED` (server) + `VITE_TENANT_RENT_PAYMENTS_ENABLED` (tenant).
 
 ---
 
@@ -110,12 +109,6 @@ sequenceDiagram
 - **Tenant (active membership):** read balance, create checkout for own lease, view own payment history.
 - **Property owner:** Connect onboarding + view payment events for property leases.
 - **Manager/accountant:** read-only payment status in admin (no Connect account change unless product expands later).
-
-### Feature flag
-
-`TENANT_RENT_PAYMENTS_ENABLED` / `VITE_TENANT_RENT_PAYMENTS_ENABLED` — gate create-checkout, webhooks apply path (still accept+log events when off if desired), and tenant Pay UI.
-
----
 
 ## Data model (sketch)
 
@@ -204,22 +197,22 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 
 ### Phase 0 — Foundation
 
-**Goal:** Schema, flags, Stripe SDK, Connect account table, shared types — no live charges.
+**Goal:** Schema, Stripe SDK, Connect account table, shared types — no live charges.
 
-- [ ] Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, Connect client ids as required; document in `.env.example`
-- [ ] Migration(s) for tables above
-- [ ] `stripe` package + thin `apps/server/src/stripe/` client wrapper
-- [ ] Shared types + feature flag helpers
-- [ ] Pure helpers: compute remaining by month; validate checkout body; allocation FIFO — unit tests
+- [x] Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, Connect client ids as required; document in `.env.example`
+- [x] Migration(s) for tables above
+- [x] `stripe` package + thin `apps/server/src/stripe/` client wrapper
+- [x] Shared types
+- [x] Pure helpers: compute remaining by month; validate checkout body; allocation FIFO — unit tests
 
-**Exit criteria:** Types compile; flag off by default; helpers tested; no routes live.
+**Exit criteria:** Types compile; helpers tested; no routes live.
 
 ### Phase 1 — Backend pipeline (no tenant UI)
 
 **Goal:** Create Checkout + webhook applies income; script/Postman can complete a sandbox payment.
 
 - [ ] Connect onboarding link API (admin) + account status sync
-- [ ] `GET balance` + `POST checkout` (flagged)
+- [ ] `GET balance` + `POST checkout`
 - [ ] Checkout Session: card, `mode=payment`, destination = property Connect account, metadata (`paymentId`, `leaseId`, periods, amounts)
 - [ ] Webhook handler: verify signature; store event id; on success allocate + create income line(s) linked to lease/month; transition payment `succeeded`
 - [ ] Handle `payment_intent.payment_failed`, `checkout.session.expired` → failed/canceled
@@ -244,7 +237,7 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 - [ ] Admin: property settings Connect onboarding + status badge
 - [ ] Tenant: balance on home / lease; period multi-select; amount input (capped); Pay → redirect Checkout
 - [ ] Return pages: confirming / success / failed
-- [ ] Hide Pay when flag off or Connect not ready
+- [ ] Hide Pay when Connect not ready
 
 **Exit criteria:** Staging E2E: onboard Connect → tenant pays selected/partial → admin income shows → schedule paid.
 
@@ -260,7 +253,7 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 | PCI                        | Checkout only; no card data on our servers                                                                 |
 | Failure modes              | Extend `TENANT_PORTAL_FAILURE_MODES.md`                                                                    |
 
-**Exit criteria:** Documented failure matrix; flag matrix staging; load light-test on webhook burst.
+**Exit criteria:** Documented failure matrix; load light-test on webhook burst.
 
 ### Phase 5+ — Enhancements (deferred)
 
@@ -284,7 +277,7 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 
 ## Safest sequencing summary
 
-1. Flag + schema + balance math tests
+1. Schema + balance math tests
 2. Connect onboarding
 3. Checkout create + webhook → income
 4. Reconcile + return polling
