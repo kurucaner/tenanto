@@ -53,9 +53,14 @@ mock.module("@/stripe/stripe-client", () => ({
   }),
   getStripeClient: mock(() => ({})),
   isStripeSecretConfigured: () => true,
+  verifyStripeWebhookPayload: mock(() => {
+    throw new Error("not used in these tests");
+  }),
 }));
 
-const { processStripeWebhookEvent } = await import("./stripe-webhook-service");
+const { processStripeEventNotification, processStripeWebhookEvent } = await import(
+  "./stripe-webhook-service"
+);
 
 function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
   return {
@@ -206,5 +211,36 @@ describe("processStripeWebhookEvent", () => {
     } as never);
 
     expect(mockMarkFailed).toHaveBeenCalledWith(payment);
+  });
+});
+
+describe("processStripeEventNotification", () => {
+  beforeEach(() => {
+    mockFindById.mockReset();
+    mockTryInsert.mockReset();
+    mockMarkProcessed.mockReset();
+  });
+
+  test("acks destination ping and marks processed", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_ping",
+      type: "v2.core.event_destination.ping",
+    });
+
+    await processStripeEventNotification({
+      created: "2026-07-16T12:28:53.624Z",
+      id: "evt_ping",
+      livemode: false,
+      object: "v2.core.event",
+      type: "v2.core.event_destination.ping",
+    } as never);
+
+    expect(mockTryInsert).toHaveBeenCalledTimes(1);
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_ping");
+    expect(mockMarkSucceeded).not.toHaveBeenCalled();
   });
 });

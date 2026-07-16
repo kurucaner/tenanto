@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 
 import { HttpStatus } from "@/packages/shared";
 import {
-  processStripeWebhookEvent,
+  processVerifiedStripeWebhook,
   StripeWebhookSignatureError,
   verifyAndParseStripeWebhook,
 } from "@/services/stripe-webhook-service";
@@ -23,8 +23,8 @@ export const stripeWebhookRoutes = async (server: FastifyInstance): Promise<void
     }
 
     try {
-      const event = verifyAndParseStripeWebhook(rawBody, request.headers["stripe-signature"]);
-      await processStripeWebhookEvent(event);
+      const verified = verifyAndParseStripeWebhook(rawBody, request.headers["stripe-signature"]);
+      await processVerifiedStripeWebhook(verified);
       return reply.status(HttpStatus.OK).send({ received: true });
     } catch (error) {
       if (error instanceof StripeWebhookSignatureError) {
