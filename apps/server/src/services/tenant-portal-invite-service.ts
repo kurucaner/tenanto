@@ -211,6 +211,34 @@ function resolveSecondaryInviteTarget(
 }
 
 export const tenantPortalInviteService = {
+  async autoInvitePrimaryOnLeaseCreate(input: {
+    invitedBy: string;
+    lease: IPropertyLongStay;
+    propertyId: string;
+  }): Promise<ICreateLeasePortalInviteResult | null> {
+    const email = input.lease.tenantEmail?.trim() ?? "";
+    if (!isValidTenantEmail(email)) {
+      return null;
+    }
+
+    try {
+      const results = await tenantPortalInviteService.createInvites({
+        invitedBy: input.invitedBy,
+        invitePrimary: true,
+        leaseId: input.lease.id,
+        propertyId: input.propertyId,
+      });
+      return results[0] ?? null;
+    } catch (error) {
+      WinstonLogger.error("tenant_portal.auto_invite_on_lease_create_failed", {
+        error: error instanceof Error ? error.message : String(error),
+        leaseId: input.lease.id,
+        propertyId: input.propertyId,
+      });
+      return null;
+    }
+  },
+
   async createInvites(input: {
     invitedBy: string;
     invitePrimary?: boolean;
@@ -262,34 +290,6 @@ export const tenantPortalInviteService = {
     }
 
     return results;
-  },
-
-  async autoInvitePrimaryOnLeaseCreate(input: {
-    invitedBy: string;
-    lease: IPropertyLongStay;
-    propertyId: string;
-  }): Promise<ICreateLeasePortalInviteResult | null> {
-    const email = input.lease.tenantEmail?.trim() ?? "";
-    if (!isValidTenantEmail(email)) {
-      return null;
-    }
-
-    try {
-      const results = await tenantPortalInviteService.createInvites({
-        invitedBy: input.invitedBy,
-        invitePrimary: true,
-        leaseId: input.lease.id,
-        propertyId: input.propertyId,
-      });
-      return results[0] ?? null;
-    } catch (error) {
-      WinstonLogger.error("tenant_portal.auto_invite_on_lease_create_failed", {
-        error: error instanceof Error ? error.message : String(error),
-        leaseId: input.lease.id,
-        propertyId: input.propertyId,
-      });
-      return null;
-    }
   },
 
   async listPortalAccess(leaseId: string, propertyId: string): Promise<ILeaseTenantMembership[]> {

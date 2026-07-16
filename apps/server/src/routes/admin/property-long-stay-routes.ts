@@ -31,8 +31,8 @@ import {
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
-import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
+import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
