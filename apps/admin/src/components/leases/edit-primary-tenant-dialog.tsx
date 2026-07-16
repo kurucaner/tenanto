@@ -21,7 +21,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import {
+  invalidatePropertyLongStayCaches,
+  invalidatePropertyLongStayDetailCaches,
+} from "@/lib/invalidate-property-long-stay-caches";
 import type { ILeasePrimaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 
 interface EditPrimaryTenantDialogProps {
@@ -64,6 +67,8 @@ export const EditPrimaryTenantDialog = memo(
       }
     }, [form, open, primaryTenantContact]);
 
+    const isPortalLinked = primaryTenantContact.source === "linked_user";
+
     const mutation = useMutation({
       mutationFn: (values: TTenantContactFormValues) =>
         longStaysApi.update(propertyId, lease.id, toPrimaryTenantPatch(values)),
@@ -73,6 +78,7 @@ export const EditPrimaryTenantDialog = memo(
       onSuccess: () => {
         toast.success("Primary tenant updated");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
+        invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });
@@ -99,7 +105,9 @@ export const EditPrimaryTenantDialog = memo(
           <DialogHeader>
             <DialogTitle>Edit Primary Tenant</DialogTitle>
             <DialogDescription>
-              Update the primary tenant&apos;s contact information.
+              {isPortalLinked
+                ? "Update the linked portal account contact. Email is read-only."
+                : "Update the primary tenant's contact information."}
             </DialogDescription>
           </DialogHeader>
 
@@ -107,6 +115,7 @@ export const EditPrimaryTenantDialog = memo(
             <div className="flex flex-col gap-4 px-6 py-5">
               <TenantContactFields
                 control={form.control}
+                emailDisabled={isPortalLinked}
                 errors={errors}
                 idPrefix="primary-tenant"
                 register={form.register}

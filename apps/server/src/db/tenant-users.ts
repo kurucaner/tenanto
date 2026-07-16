@@ -372,4 +372,58 @@ export const tenantUsersDb = {
       throw error;
     }
   },
+
+  async updateName(tenantUserId: string, name: string): Promise<ITenantUser> {
+    const result = await pool.query(
+      `UPDATE tenant_users
+       SET name = $1, updated_at = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [name.trim(), tenantUserId]
+    );
+    if (result.rows.length === 0) {
+      throw new Error("updateName failed: tenant user not found");
+    }
+    return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  /**
+   * Updates phone for linked-tenant admin edits when phone is not verified.
+   * Does not set phone_verified_at.
+   */
+  async updateUnverifiedPhone(tenantUserId: string, phone: string | null): Promise<ITenantUser> {
+    const e164 = phone?.trim() ? requireE164Phone(phone) : null;
+    if (e164) {
+      const existing = await tenantUsersDb.findByPhone(e164);
+      if (
+        existing &&
+        isPhoneOwnedByOtherUser({
+          candidateOwnerId: tenantUserId,
+          existingOwnerId: existing.id,
+        })
+      ) {
+        throw createIdentityConflictError("This phone number is already linked to another account");
+      }
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE tenant_users
+         SET phone = $1, updated_at = NOW()
+         WHERE id = $2
+           AND phone_verified_at IS NULL
+         RETURNING *`,
+        [e164, tenantUserId]
+      );
+      if (result.rows.length === 0) {
+        throw new Error("updateUnverifiedPhone failed: tenant user not found or phone is verified");
+      }
+      return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
+    } catch (error) {
+      if (isPostgresUniqueViolation(error)) {
+        throw createIdentityConflictError("This phone number is already linked to another account");
+      }
+      throw error;
+    }
+  },
 };

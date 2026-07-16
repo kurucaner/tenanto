@@ -193,13 +193,13 @@ N/A for core consolidation.
 
 **Goal:** Editing primary tenant updates the right rows; no one-sided updates.
 
-- [ ] Refactor `PATCH .../long-stays/:id` (or dedicated sub-route) in `property-long-stay-routes.ts`:
+- [x] Refactor `PATCH .../long-stays/:id` (or dedicated sub-route) in `property-long-stay-routes.ts`:
   - **Linked:** update `tenant_users` (name; email only if matches invite policy — email change may require re-invite; **v1: block email change when linked** or sync membership `invite_email` with validation)
   - **Phone:** update `tenant_users.phone` only if not verified OR same number; else 409 with clear error
   - **Always:** update lease columns as **snapshot** for exports/history OR stop writing lease columns when linked (pick one; recommend **dual-write snapshot** in v1 for safe rollback)
   - **Unlinked:** current behavior (lease fields only); if pending membership exists, update `display_name` / re-normalize `invite_email` when email changes
-- [ ] Admin `EditPrimaryTenantDialog`: disable email field when linked (or show warning); toast on 409
-- [ ] Invalidate portal access + lease detail caches on success
+- [x] Admin `EditPrimaryTenantDialog`: disable email field when linked (or show warning); toast on 409
+- [x] Invalidate portal access + lease detail caches on success
 
 **Exit criteria:** Edit name/phone on linked lease updates `/tenant/me`; edit on unlinked lease updates lease only; no case where lease phone updates but user phone does not (when linked).
 

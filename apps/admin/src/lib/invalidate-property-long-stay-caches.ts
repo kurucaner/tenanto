@@ -22,3 +22,14 @@ export function invalidatePropertyLongStayPortalCaches(
     queryKey: queryKeys.propertyLongStayPortalAccess(propertyId, longStayId),
   });
 }
+
+export function invalidatePropertyLongStayDetailCaches(
+  queryClient: QueryClient,
+  propertyId: string,
+  longStayId: string
+) {
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.propertyLongStay(propertyId, longStayId),
+  });
+  invalidatePropertyLongStayPortalCaches(queryClient, propertyId, longStayId);
+}

@@ -400,6 +400,42 @@ export const leaseTenantMembershipsDb = {
     if (result.rows.length === 0) return null;
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
+
+  async updatePendingPrimaryContact(
+    membershipId: string,
+    patch: { displayName?: string; inviteEmail?: string },
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership | null> {
+    const setClauses: string[] = [];
+    const values: unknown[] = [membershipId];
+    let paramIndex = 2;
+
+    if (patch.displayName !== undefined) {
+      setClauses.push(`display_name = $${paramIndex++}`);
+      values.push(patch.displayName.trim());
+    }
+    if (patch.inviteEmail !== undefined) {
+      setClauses.push(`invite_email = LOWER(TRIM($${paramIndex++}))`);
+      values.push(patch.inviteEmail);
+    }
+
+    if (setClauses.length === 0) {
+      return leaseTenantMembershipsDb.findById(membershipId, db);
+    }
+
+    const result = await db.query(
+      `UPDATE lease_tenant_memberships
+       SET ${setClauses.join(", ")},
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = 'primary'::tenant_membership_role
+         AND status IN ('pending_invite'::tenant_membership_status, 'pending_acceptance'::tenant_membership_status)
+       RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return null;
+    return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
+  },
 };
 
 /** Primary membership row for effective tenant contact resolution (Phase 1+). */

@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import {
   ActiveLongStayConflictError,
@@ -34,6 +35,10 @@ import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
 import { resolvePrimaryTenantContactForLongStay } from "@/services/lease-primary-tenant-contact-service";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
+import {
+  LinkedTenantContactError,
+  updatePrimaryTenantContact,
+} from "@/services/update-primary-tenant-contact-service";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -635,9 +640,30 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       }
 
       try {
-        const longStay = await propertyLongStaysDb.updateLease(longStayId, parsed.body);
+        const { guestName, secondaryTenants, tenantEmail, tenantPhone } = parsed.body;
+        const hasPrimaryPatch =
+          guestName !== undefined || tenantEmail !== undefined || tenantPhone !== undefined;
+
+        let longStay = existing;
+        if (hasPrimaryPatch) {
+          longStay = await updatePrimaryTenantContact(existing, {
+            guestName,
+            tenantEmail,
+            tenantPhone,
+          });
+        }
+        if (secondaryTenants !== undefined) {
+          longStay = await propertyLongStaysDb.updateLease(longStayId, { secondaryTenants });
+        }
+
         return reply.send({ longStay });
       } catch (error) {
+        if (error instanceof LinkedTenantContactError) {
+          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
+        }
+        if (isIdentityConflictError(error)) {
+          return reply.status(HttpStatus.CONFLICT).send({ code: error.code, error: error.message });
+        }
         if (error instanceof LongStayNotActiveError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }
