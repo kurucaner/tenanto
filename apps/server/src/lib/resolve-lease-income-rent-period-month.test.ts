@@ -64,4 +64,29 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
       ok: false,
     });
   });
+
+  test("rejects upcoming rentPeriodMonth on an active lease", async () => {
+    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+      longStayId: "lease-1",
+      referenceDate: "2026-02-15",
+      rentPeriodMonth: "2026-03",
+      transactionDate: "2026-02-10",
+    });
+
+    expect(result).toEqual({
+      error: "Cannot record rent for an upcoming lease month",
+      ok: false,
+    });
+  });
+
+  test("allows due-month resolution for partial rent recording", async () => {
+    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+      longStayId: "lease-1",
+      referenceDate: "2026-02-15",
+      rentPeriodMonth: "2026-02",
+      transactionDate: "2026-02-10",
+    });
+
+    expect(result).toEqual({ ok: true, value: "2026-02" });
+  });
 });

@@ -1,7 +1,10 @@
 import { transactionDateToMonth } from "./lease-date-utils";
 import { isValidPeriodMonth } from "./tenant-rent-payment-utils";
 
+export const LEASE_UPCOMING_RENT_PERIOD_ERROR = "Cannot record rent for an upcoming lease month";
+
 export function resolveLeaseIncomeRentPeriodMonth(input: {
+  asOfMonth?: string;
   rentPeriodMonth?: string | null;
   scheduleMonths: readonly string[];
   transactionDate: string;
@@ -18,6 +21,10 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
         ok: false,
       };
     }
+    const upcoming = rejectUpcomingLeaseRentPeriod(explicit, input.asOfMonth);
+    if (upcoming) {
+      return upcoming;
+    }
     return { ok: true, value: explicit };
   }
 
@@ -31,5 +38,24 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
       ok: false,
     };
   }
+  const upcoming = rejectUpcomingLeaseRentPeriod(defaulted, input.asOfMonth);
+  if (upcoming) {
+    return upcoming;
+  }
   return { ok: true, value: defaulted };
+}
+
+function rejectUpcomingLeaseRentPeriod(
+  resolvedMonth: string,
+  asOfMonth: string | undefined
+): { error: string; ok: false } | null {
+  if (asOfMonth === undefined || !isValidPeriodMonth(asOfMonth)) {
+    return null;
+  }
+
+  if (resolvedMonth > asOfMonth) {
+    return { error: LEASE_UPCOMING_RENT_PERIOD_ERROR, ok: false };
+  }
+
+  return null;
 }

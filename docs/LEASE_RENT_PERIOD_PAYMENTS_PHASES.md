@@ -235,11 +235,11 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** Server rejects invalid period attribution; block upcoming prepay until product explicitly allows it.
 
-- [ ] Reject `rentPeriodMonth` not in lease schedule (`resolveLeaseIncomeRentPeriodMonth`) — shipped in Phase 1b
-- [ ] Default omitted `rentPeriodMonth` to `transactionDateToMonth(transactionDate)` when `longStayId` set
-- [ ] **Block upcoming prepay (v1):** reject create/update when `rentPeriodMonth > asOfMonth` (or `transactionDate` month > asOfMonth when period defaulted), even if month exists on schedule
-- [ ] Admin UI already disables Record on upcoming rows (Phase 2); server must enforce the same rule for API clients
-- [ ] Tests: POST income with future `rentPeriodMonth` on active lease → 400; due-month partial amount still allowed
+- [x] Reject `rentPeriodMonth` not in lease schedule (`resolveLeaseIncomeRentPeriodMonth`) — shipped in Phase 1b
+- [x] Default omitted `rentPeriodMonth` to `transactionDateToMonth(transactionDate)` when `longStayId` set
+- [x] **Block upcoming prepay (v1):** reject create/update when `rentPeriodMonth > asOfMonth` (or `transactionDate` month > asOfMonth when period defaulted), even if month exists on schedule
+- [x] Admin UI already disables Record on upcoming rows (Phase 2); server must enforce the same rule for API clients
+- [x] Tests: POST income with future `rentPeriodMonth` on active lease → 400; due-month partial amount still allowed
 
 **Exit criteria:** API cannot prepay a future schedule month; due partial and full records still succeed.
 
