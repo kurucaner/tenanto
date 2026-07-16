@@ -198,7 +198,14 @@ describe("getRemainingRentForScheduleMonth", () => {
   test("returns remainingRent for a schedule month", () => {
     expect(
       getRemainingRentForScheduleMonth(
-        [buildRentMonth({ expectedRent: 1500, month: "2024-07", paidRent: 500, remainingRent: 1000 })],
+        [
+          buildRentMonth({
+            expectedRent: 1500,
+            month: "2024-07",
+            paidRent: 500,
+            remainingRent: 1000,
+          }),
+        ],
         "2024-07"
       )
     ).toBe(1000);

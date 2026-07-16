@@ -236,7 +236,10 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_5",
       type: "charge.refunded",
     });
-    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripePaymentIntentId: "pi_1" });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.SUCCEEDED,
+      stripePaymentIntentId: "pi_1",
+    });
     mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
     mockMarkRefunded.mockResolvedValueOnce({
       ...payment,
@@ -276,7 +279,10 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_6",
       type: "charge.dispute.created",
     });
-    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripePaymentIntentId: "pi_1" });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.SUCCEEDED,
+      stripePaymentIntentId: "pi_1",
+    });
     mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
 
     await processStripeWebhookEvent({
@@ -319,7 +325,10 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_7",
       type: "charge.dispute.closed",
     });
-    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripePaymentIntentId: "pi_1" });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.SUCCEEDED,
+      stripePaymentIntentId: "pi_1",
+    });
     mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
     mockMarkRefunded.mockResolvedValueOnce({
       ...payment,
