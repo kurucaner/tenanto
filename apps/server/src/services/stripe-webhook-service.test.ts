@@ -58,9 +58,8 @@ mock.module("@/stripe/stripe-client", () => ({
   }),
 }));
 
-const { processStripeEventNotification, processStripeWebhookEvent } = await import(
-  "./stripe-webhook-service"
-);
+const { processStripeEventNotification, processStripeWebhookEvent } =
+  await import("./stripe-webhook-service");
 
 function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
   return {
