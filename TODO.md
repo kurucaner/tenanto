@@ -6,3 +6,4 @@
 - SMS flow at the beginning with campaign opt in compatability
 - Typescript 7 implementation
   - bun:test error
+- Logging who created, updated, deleted, incomes, units, etc.

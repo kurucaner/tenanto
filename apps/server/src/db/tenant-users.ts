@@ -303,6 +303,43 @@ export const tenantUsersDb = {
     }
   },
 
+  /**
+   * Copies operator-entered lease phone onto the tenant account without OTP verification.
+   * No-op when the user already has a phone or the number is owned by another account.
+   */
+  async setUnverifiedPhoneIfNull(tenantUserId: string, phone: string): Promise<ITenantUser | null> {
+    const e164 = requireE164Phone(phone);
+    const existing = await tenantUsersDb.findByPhone(e164);
+    if (
+      existing &&
+      isPhoneOwnedByOtherUser({
+        candidateOwnerId: tenantUserId,
+        existingOwnerId: existing.id,
+      })
+    ) {
+      return null;
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE tenant_users
+         SET phone = $1, updated_at = NOW()
+         WHERE id = $2 AND phone IS NULL
+         RETURNING *`,
+        [e164, tenantUserId]
+      );
+      if (result.rows.length === 0) {
+        return null;
+      }
+      return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
+    } catch (error) {
+      if (isPostgresUniqueViolation(error)) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
   async setVerifiedPhone(tenantUserId: string, phone: string): Promise<ITenantUser> {
     const e164 = requireE164Phone(phone);
     const existing = await tenantUsersDb.findByPhone(e164);

@@ -91,9 +91,7 @@ resolvePrimaryTenantContact(lease, membership?, user?)
 
 ### Feature flag
 
-N/A for core consolidation. Optional env for accept phone sync:
-
-- `TENANT_ACCEPT_SYNC_LEASE_PHONE=true` (default on) — gates copy-on-accept in Phase 2.
+N/A for core consolidation.
 
 ---
 
@@ -176,17 +174,18 @@ N/A for core consolidation. Optional env for accept phone sync:
 
 ---
 
-### Phase 2 — Sync on accept (+ optional env)
+### Phase 2 — Sync on accept
 
 **Goal:** On primary invite accept/redeem, copy lease phone to account when safe.
 
-- [ ] Add `syncLeasePhoneToTenantUserOnAccept(lease, tenantUser)` in `tenant-portal-membership-service` or small helper module
-- [ ] Rules: primary role only; `tenant_users.phone` is null; `lease.tenant_phone` valid E.164; do not set `phone_verified_at` (lease phone is operator-entered, not OTP-verified) unless product decides otherwise — **document as unverified contact**
-- [ ] Call from `acceptMembershipForTenant` after link + transition to `active`
-- [ ] Gate with `TENANT_ACCEPT_SYNC_LEASE_PHONE`
-- [ ] Tests in `tenant-portal-happy-path.test.ts` / new accept-sync test
+- [x] Add `syncLeasePhoneToTenantUserOnAccept(lease, tenantUser)` in `tenant-portal-membership-service` or small helper module
+- [x] Rules: primary role only; `tenant_users.phone` is null; `lease.tenant_phone` valid E.164; do not set `phone_verified_at` (lease phone is operator-entered, not OTP-verified) unless product decides otherwise — **document as unverified contact**
+- [x] Call from `acceptMembershipForTenant` after link + transition to `active`
+- [x] Tests in `tenant-portal-happy-path.test.ts` / new accept-sync test
 
 **Exit criteria:** Accept with null user phone + lease phone set → `/tenant/me` returns phone; existing user phone never overwritten.
+
+**Note:** Synced lease phone is stored on `tenant_users.phone` without `phone_verified_at` (unverified operator contact). Tenant OTP bind still sets `phone_verified_at`.
 
 ---
 

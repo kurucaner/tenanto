@@ -39,6 +39,9 @@ const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay |
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
 const mockFindByIdUnit = mock(() => Promise.resolve(null as IPropertyUnit | null));
 const mockFindTenantById = mock(() => Promise.resolve(null as ITenantUser | null));
+const mockSetUnverifiedPhoneIfNull = mock(
+  (): Promise<ITenantUser | null> => Promise.resolve(null)
+);
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
@@ -74,7 +77,10 @@ mock.module("@/db/property-units", () => ({
 }));
 
 mock.module("@/db/tenant-users", () => ({
-  tenantUsersDb: { findById: mockFindTenantById },
+  tenantUsersDb: {
+    findById: mockFindTenantById,
+    setUnverifiedPhoneIfNull: mockSetUnverifiedPhoneIfNull,
+  },
 }));
 
 const { tenantPortalMembershipService } = await import("./tenant-portal-membership-service");
@@ -184,6 +190,7 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     mockFindByIdProperty.mockReset();
     mockFindByIdUnit.mockReset();
     mockFindTenantById.mockReset();
+    mockSetUnverifiedPhoneIfNull.mockReset();
 
     mockFindByIdLease.mockResolvedValue(makeLease());
     mockFindByIdProperty.mockResolvedValue(makeProperty());
@@ -360,5 +367,39 @@ describe("tenant portal happy path (Phase 1.3)", () => {
     await expect(
       tenantPortalMembershipService.redeemInvite("stale-token", makeTenant())
     ).rejects.toThrow("Invalid or expired invite link");
+  });
+
+  test("syncs lease phone to tenant user on primary accept when user phone is null", async () => {
+    mockFindByIdLease.mockResolvedValue(makeLease({ tenantPhone: "+13055550100" }));
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-1",
+      })
+    );
+    mockSetUnverifiedPhoneIfNull.mockResolvedValue(
+      makeTenant({ phone: "+13055550100", phoneVerifiedAt: null })
+    );
+
+    await tenantPortalMembershipService.acceptInvite("membership-1", makeTenant());
+
+    expect(mockSetUnverifiedPhoneIfNull).toHaveBeenCalledWith("tenant-1", "+13055550100");
+  });
+
+  test("does not overwrite existing tenant phone on accept", async () => {
+    mockFindByIdLease.mockResolvedValue(makeLease({ tenantPhone: "+13055550100" }));
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-1",
+      })
+    );
+
+    await tenantPortalMembershipService.acceptInvite(
+      "membership-1",
+      makeTenant({ phone: "+13055550999", phoneVerifiedAt: "2026-01-01T00:00:00.000Z" })
+    );
+
+    expect(mockSetUnverifiedPhoneIfNull).not.toHaveBeenCalled();
   });
 });

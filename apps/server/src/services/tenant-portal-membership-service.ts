@@ -29,6 +29,7 @@ import {
   type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { issueTenantSession } from "@/services/tenant-auth-service";
+import { syncLeasePhoneToTenantUserOnAccept } from "@/services/sync-lease-phone-to-tenant-on-accept";
 
 import { assertLeaseTenantReadAccess } from "./tenant-portal-access";
 import {
@@ -106,6 +107,7 @@ async function acceptMembershipForTenant(
     throw new PortalInviteNotFoundError("Portal invite not found");
   }
   logTenantPortalAccepted(updated);
+  await syncLeasePhoneToTenantUserOnAccept(updated, tenantUser);
   return updated;
 }
 
