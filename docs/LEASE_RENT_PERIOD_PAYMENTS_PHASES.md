@@ -249,10 +249,10 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** One tolerance constant drives “fully paid” everywhere (admin schedule, tenant balance, Stripe full-cover check).
 
-- [ ] Centralize `LEASE_RENT_PAID_TOLERANCE_DOLLARS` in [`lease-rent-period-rollup.ts`](../packages/shared/src/lease-rent-period-rollup.ts) (`isLeaseRentMonthFullyPaid`)
-- [ ] Audit: no duplicate `0.01` / epsilon checks in server routes or tenant balance mapping
-- [ ] Use same tolerance in `computeTenantBalanceFromRentSchedule` / `computePeriodRemainingCents` edge cases where dollars ↔ cents rounding could flip `isPaid`
-- [ ] Tests: paid within tolerance (e.g. $1,499.99 on $1,500 expected) → `isPaid: true`; materially under → partial
+- [x] Centralize `LEASE_RENT_PAID_TOLERANCE_DOLLARS` in [`lease-rent-paid-tolerance.ts`](../packages/shared/src/lease-rent-paid-tolerance.ts) (`isLeaseRentMonthFullyPaid`)
+- [x] Audit: no duplicate `0.01` / epsilon checks in server routes or tenant balance mapping
+- [x] Use same tolerance in `computeTenantBalanceFromRentSchedule` / `computePeriodRemainingCents` edge cases where dollars ↔ cents rounding could flip `isPaid`
+- [x] Tests: paid within tolerance (e.g. $1,499.99 on $1,500 expected) → `isPaid: true`; materially under → partial
 
 **Exit criteria:** A single exported tolerance constant; tests prove fully-paid boundary behavior is consistent on schedule and tenant `remainingCents`.
 

@@ -68,6 +68,20 @@ describe("computeTenantBalanceFromRentSchedule", () => {
     expect(balance.periodMonths).toEqual([]);
   });
 
+  test("returns zero due when schedule month is paid within tolerance", () => {
+    const balance = computeTenantBalanceFromRentSchedule(
+      [{ expectedRent: 1500, month: "2026-01", paidRent: 1499.99 }],
+      "2026-01"
+    );
+
+    expect(balance.amountDueCents).toBe(0);
+    expect(balance.periodMonths).toEqual([]);
+    expect(balance.periods[0]).toMatchObject({
+      paidCents: 149_999,
+      remainingCents: 0,
+    });
+  });
+
   test("reflects partial Stripe allocation already included in paidRent", () => {
     const balance = computeTenantBalanceFromRentSchedule(
       [{ expectedRent: 1500, month: "2026-01", paidRent: 500 }],

@@ -295,4 +295,31 @@ describe("rollupLeaseRentByPeriod", () => {
     expect(month?.remainingRent).toBe(0);
     expect(month?.isPaid).toBe(true);
   });
+
+  test("treats paid within tolerance as fully paid with zero remaining", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      incomeLines: [incomeLine({ amount: 1499.99, grossIncome: 1499.99, netIncome: 1499.99 })],
+      scheduleMonths: schedule,
+    });
+
+    expect(month).toMatchObject({
+      expectedRent: 1500,
+      isPaid: true,
+      paidRent: 1499.99,
+      remainingRent: 0,
+    });
+  });
+
+  test("keeps partial state when paid is materially under expected", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      incomeLines: [incomeLine({ amount: 1499.98, grossIncome: 1499.98, netIncome: 1499.98 })],
+      scheduleMonths: schedule,
+    });
+
+    expect(month).toMatchObject({
+      isPaid: false,
+      paidRent: 1499.98,
+      remainingRent: 0.02,
+    });
+  });
 });

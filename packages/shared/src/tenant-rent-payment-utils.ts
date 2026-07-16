@@ -1,3 +1,4 @@
+import { isLeaseRentPeriodFullyPaidCents } from "./lease-rent-paid-tolerance";
 import type { ITenantLeaseBalancePeriod } from "./tenant-rent-payment-types";
 
 /** Stripe's minimum charge for USD (card). */
@@ -45,9 +46,12 @@ function isNonNegativeInt(value: number): boolean {
   return Number.isInteger(value) && value >= 0;
 }
 
-/** Remaining due for one month (never negative). */
+/** Remaining due for one month (never negative). Uses lease rent tolerance at the boundary. */
 export function computePeriodRemainingCents(expectedCents: number, paidCents: number): number {
   if (!isNonNegativeInt(expectedCents) || !isNonNegativeInt(paidCents)) {
+    return 0;
+  }
+  if (isLeaseRentPeriodFullyPaidCents(expectedCents, paidCents)) {
     return 0;
   }
   return Math.max(0, expectedCents - paidCents);

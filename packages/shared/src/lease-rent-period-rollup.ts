@@ -1,11 +1,14 @@
 import { transactionDateToMonth } from "./lease-date-utils";
+import { isLeaseRentMonthFullyPaid } from "./lease-rent-paid-tolerance";
 import { roundMoney } from "./property-income-calculator";
 import { getReportableIncomeLineAmounts } from "./property-partial-refund-utils";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
 import { centsToDollars, isValidPeriodMonth } from "./tenant-rent-payment-utils";
 
-/** Dollars — schedule month is fully paid when remaining is at or below this. */
-export const LEASE_RENT_PAID_TOLERANCE_DOLLARS = 0.01;
+export {
+  isLeaseRentMonthFullyPaid,
+  LEASE_RENT_PAID_TOLERANCE_DOLLARS,
+} from "./lease-rent-paid-tolerance";
 
 export interface ILeaseRentPeriodIncomeLineInput {
   amount: number;
@@ -47,17 +50,6 @@ export function getEffectiveRentPeriodMonth(input: {
     return explicit;
   }
   return transactionDateToMonth(input.transactionDate);
-}
-
-export function isLeaseRentMonthFullyPaid(
-  expectedRent: number,
-  paidRent: number,
-  tolerance = LEASE_RENT_PAID_TOLERANCE_DOLLARS
-): boolean {
-  if (expectedRent <= 0) {
-    return paidRent <= tolerance;
-  }
-  return expectedRent - paidRent <= tolerance;
 }
 
 function sumIncomePaidByPeriod(
@@ -121,11 +113,12 @@ export function rollupLeaseRentByPeriod(input: {
     const allocationPaid = allocationByPeriod.get(month) ?? 0;
     const rawPaid = roundMoney(incomePaid + allocationPaid);
     const paidRent = roundMoney(Math.min(expectedRent, Math.max(0, rawPaid)));
-    const remainingRent = roundMoney(Math.max(0, expectedRent - paidRent));
+    const isPaid = isLeaseRentMonthFullyPaid(expectedRent, paidRent);
+    const remainingRent = isPaid ? 0 : roundMoney(Math.max(0, expectedRent - paidRent));
 
     return {
       expectedRent,
-      isPaid: isLeaseRentMonthFullyPaid(expectedRent, paidRent),
+      isPaid,
       month,
       paidRent,
       remainingRent,

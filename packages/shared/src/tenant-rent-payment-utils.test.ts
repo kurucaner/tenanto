@@ -46,6 +46,14 @@ describe("computePeriodRemainingCents", () => {
   test("never goes negative", () => {
     expect(computePeriodRemainingCents(100_00, 150_00)).toBe(0);
   });
+
+  test("returns zero remaining when paid is within lease rent tolerance", () => {
+    expect(computePeriodRemainingCents(150_000, 149_999)).toBe(0);
+  });
+
+  test("returns positive remaining when paid is materially under expected", () => {
+    expect(computePeriodRemainingCents(150_000, 149_998)).toBe(2);
+  });
 });
 
 describe("computeRemainingByMonth", () => {

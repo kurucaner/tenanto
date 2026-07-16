@@ -194,13 +194,17 @@ export {
   isProratedLeaseMonth,
 } from "./lease-proration-utils";
 export {
+  isLeaseRentMonthFullyPaid,
+  isLeaseRentPeriodFullyPaidCents,
+  LEASE_RENT_PAID_TOLERANCE_CENTS,
+  LEASE_RENT_PAID_TOLERANCE_DOLLARS,
+} from "./lease-rent-paid-tolerance";
+export {
   getEffectiveRentPeriodMonth,
   type ILeaseRentPeriodAllocationInput,
   type ILeaseRentPeriodIncomeLineInput,
   type ILeaseRentPeriodRollupMonth,
   type ILeaseRentPeriodScheduleMonth,
-  isLeaseRentMonthFullyPaid,
-  LEASE_RENT_PAID_TOLERANCE_DOLLARS,
   rollupLeaseRentByPeriod,
 } from "./lease-rent-period-rollup";
 export {

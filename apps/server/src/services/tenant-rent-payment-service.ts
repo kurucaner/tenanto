@@ -10,6 +10,7 @@ import {
   calculateMiscIncomeLine,
   centsToDollars,
   computeTenantBalanceFromRentSchedule,
+  isLeaseRentPeriodFullyPaidCents,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
@@ -131,7 +132,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
       allocation.periodMonth
     );
     const expectedCents = allocation.expectedCentsSnapshot;
-    if (totalAllocated < expectedCents) {
+    if (!isLeaseRentPeriodFullyPaidCents(expectedCents, totalAllocated)) {
       continue;
     }
 
