@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: phase-2
     content: "Phase 2: return polling + reconcile job"
-    status: pending
+    status: completed
   - id: phase-3
     content: "Phase 3: admin Connect UI + tenant pay UI"
     status: pending
@@ -224,9 +224,9 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 
 **Goal:** Failsafe sync without full product UI.
 
-- [ ] Success/cancel return URLs → tenant pages that **poll** `GET payment status` until terminal
-- [ ] Daily (or hourly) reconcile job: list recent succeeded PaymentIntents for platform; find missing local `succeeded`; alert/log `tenant_payments.reconcile_gap`
-- [ ] Structured logs `tenant_payments.*` (no secrets)
+- [x] Success/cancel return URLs → tenant pages that **poll** `GET payment status` until terminal
+- [x] Daily (or hourly) reconcile job: list recent succeeded PaymentIntents for platform; find missing local `succeeded`; alert/log `tenant_payments.reconcile_gap`
+- [x] Structured logs `tenant_payments.*` (no secrets)
 
 **Exit criteria:** Simulated missed webhook recovered by reconcile or clearly alerted; return page never marks paid alone.
 

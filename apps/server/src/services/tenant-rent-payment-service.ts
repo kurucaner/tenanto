@@ -22,6 +22,7 @@ import {
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
+import { WinstonLogger } from "@/services/winston";
 import { getStripeClient, isStripeSecretConfigured } from "@/stripe/stripe-client";
 
 import { StripeConnectNotConfiguredError } from "./property-stripe-connect-service";
@@ -282,6 +283,14 @@ export const tenantRentPaymentService = {
     await tenantRentPaymentsDb.updateStripeIds(payment.id, {
       stripeCheckoutSessionId: session.id,
       stripePaymentIntentId: paymentIntentId,
+    });
+
+    WinstonLogger.info({
+      amountCents: body.amountCents,
+      leaseId,
+      msg: "tenant_payments.checkout_created",
+      paymentId: payment.id,
+      stripeCheckoutSessionId: session.id,
     });
 
     return { checkoutUrl: session.url, paymentId: payment.id };

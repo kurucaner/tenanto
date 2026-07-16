@@ -48,6 +48,7 @@ import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
+import { startTenantRentPaymentReconcileCron } from "./scheduler/tenant-rent-payment-reconcile-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
 import { notificationStreamHub } from "./services/notification-stream-hub";
 import { createFastifyLogAdapter, normalizeWinstonRecord, WinstonLogger } from "./services/winston";
@@ -187,6 +188,7 @@ const start = async () => {
       startRefreshTokenCleanupCron();
       startPropertyExportExpiryCron();
       startPortalInviteExpiryCron();
+      startTenantRentPaymentReconcileCron();
     }
 
     await notificationStreamHub.start();

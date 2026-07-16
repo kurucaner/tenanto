@@ -4,4 +4,5 @@ export const queryKeys = {
   leases: (status: "active" | "ended" = "active") => ["tenant", "leases", status] as const,
   me: () => ["tenant", "me"] as const,
   pendingInvites: () => ["tenant", "invites", "pending"] as const,
+  rentPayment: (paymentId: string) => ["tenant", "rent-payment", paymentId] as const,
 };

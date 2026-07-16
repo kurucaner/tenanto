@@ -12,6 +12,17 @@ export const TenantRentPaymentStatus = {
 export type TTenantRentPaymentStatus =
   (typeof TenantRentPaymentStatus)[keyof typeof TenantRentPaymentStatus];
 
+const TERMINAL_TENANT_RENT_PAYMENT_STATUSES = new Set<TTenantRentPaymentStatus>([
+  TenantRentPaymentStatus.CANCELED,
+  TenantRentPaymentStatus.FAILED,
+  TenantRentPaymentStatus.REFUNDED,
+  TenantRentPaymentStatus.SUCCEEDED,
+]);
+
+export function isTerminalTenantRentPaymentStatus(status: TTenantRentPaymentStatus): boolean {
+  return TERMINAL_TENANT_RENT_PAYMENT_STATUSES.has(status);
+}
+
 /** One schedule month in a lease balance response. */
 export interface ITenantLeaseBalancePeriod {
   expectedCents: number;

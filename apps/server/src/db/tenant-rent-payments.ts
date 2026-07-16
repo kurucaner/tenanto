@@ -168,6 +168,28 @@ export const tenantRentPaymentsDb = {
     return result.rows.map((row) => mapAllocationRow(row as Record<string, unknown>));
   },
 
+  /**
+   * Open (non-terminal success) payments that have a PaymentIntent id,
+   * created on/after `since` — candidates for Stripe reconcile.
+   */
+  async listReconcileCandidatesSince(since: Date): Promise<ITenantRentPayment[]> {
+    const result = await pool.query(
+      `SELECT * FROM tenant_rent_payments
+       WHERE created_at >= $1
+         AND stripe_payment_intent_id IS NOT NULL
+         AND status NOT IN ($2, $3, $4, $5)
+       ORDER BY created_at ASC`,
+      [
+        since.toISOString(),
+        TenantRentPaymentStatus.SUCCEEDED,
+        TenantRentPaymentStatus.FAILED,
+        TenantRentPaymentStatus.CANCELED,
+        TenantRentPaymentStatus.REFUNDED,
+      ]
+    );
+    return result.rows.map((row) => mapPaymentRow(row as Record<string, unknown>));
+  },
+
   async sumSucceededAllocatedCents(leaseId: string, periodMonth: string): Promise<number> {
     const result = await pool.query(
       `SELECT COALESCE(SUM(a.allocated_cents), 0)::int AS total

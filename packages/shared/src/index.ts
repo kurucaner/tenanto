@@ -581,6 +581,7 @@ export {
 export {
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
+  isTerminalTenantRentPaymentStatus,
   type ITenantCreateRentCheckoutBody,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,

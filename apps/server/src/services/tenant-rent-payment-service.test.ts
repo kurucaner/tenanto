@@ -113,6 +113,14 @@ mock.module("@/stripe/stripe-client", () => ({
   isStripeSecretConfigured: () => true,
 }));
 
+mock.module("@/services/winston", () => ({
+  WinstonLogger: {
+    error: mock(() => undefined),
+    info: mock(() => undefined),
+    warn: mock(() => undefined),
+  },
+}));
+
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
 function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
