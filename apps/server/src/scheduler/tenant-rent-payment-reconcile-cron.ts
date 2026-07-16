@@ -16,7 +16,8 @@ export function startTenantRentPaymentReconcileCron(): void {
       await reconcileTenantRentPayments();
     } catch (err) {
       WinstonLogger.error({
-        err: err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
+        err:
+          err instanceof Error ? { message: err.message, name: err.name, stack: err.stack } : err,
         msg: "tenant_payments.reconcile_cron_failed",
       });
       console.error("[TenantRentPaymentReconcileCron] Error:", err);

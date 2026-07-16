@@ -90,7 +90,9 @@ server.register(multipart, {
 server.register(rateLimit, {
   allowList: (request) => {
     const path = request.url.split("?")[0];
-    return path === "/notifications/stream" || path === "/s3-notification" || path === "/webhooks/stripe";
+    return (
+      path === "/notifications/stream" || path === "/s3-notification" || path === "/webhooks/stripe"
+    );
   },
   max: isProduction ? 20 : 100,
   timeWindow: "1 minute",
