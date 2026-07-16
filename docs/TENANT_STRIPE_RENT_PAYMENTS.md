@@ -16,13 +16,13 @@ todos:
     status: completed
   - id: phase-3
     content: "Phase 3: admin Connect UI + tenant pay UI"
-    status: pending
+    status: completed
   - id: phase-3a
     content: "Phase 3a: admin Stripe Connect UI"
     status: completed
   - id: phase-3b
     content: "Phase 3b: tenant pay UI"
-    status: pending
+    status: completed
   - id: phase-4
     content: "Phase 4: hardening, refunds/disputes, failure modes doc"
     status: pending
@@ -249,9 +249,9 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 
 **Goal:** Tenant sees amount due, selects periods, pays via Checkout; Pay hidden when Connect not ready.
 
-- [ ] Tenant: balance on home / lease; period multi-select; amount input (capped); Pay → redirect Checkout
-- [ ] Return pages polish: confirming / success / failed
-- [ ] Hide Pay when Connect not ready (`paymentsEnabled` on balance)
+- [x] Tenant: balance on home / lease; period multi-select; amount input (capped); Pay → redirect Checkout
+- [x] Return pages polish: confirming / success / failed
+- [x] Hide Pay when Connect not ready (`paymentsEnabled` on balance)
 
 **Exit criteria:** Staging E2E: onboard Connect (3a) → tenant pays selected/partial → admin income shows → schedule paid.
 

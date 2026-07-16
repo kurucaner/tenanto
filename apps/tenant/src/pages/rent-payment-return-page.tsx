@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { memo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { memo, useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { tenantPortalApi } from "@/lib/api-client";
+import { invalidateTenantLeasePaymentCaches } from "@/lib/invalidate-tenant-portal-caches";
 import { queryKeys } from "@/lib/query-keys";
+import { Button } from "@/packages/app-ui";
 import {
   isTerminalTenantRentPaymentStatus,
   TenantRentPaymentStatus,
@@ -47,10 +49,32 @@ function statusHeading(
   };
 }
 
+function formatStatusLabel(status: TTenantRentPaymentStatus): string {
+  switch (status) {
+    case TenantRentPaymentStatus.SUCCEEDED:
+      return "Succeeded";
+    case TenantRentPaymentStatus.FAILED:
+      return "Failed";
+    case TenantRentPaymentStatus.CANCELED:
+      return "Canceled";
+    case TenantRentPaymentStatus.REFUNDED:
+      return "Refunded";
+    case TenantRentPaymentStatus.PROCESSING:
+      return "Processing";
+    case TenantRentPaymentStatus.REQUIRES_ACTION:
+      return "Action required";
+    case TenantRentPaymentStatus.PENDING:
+    default:
+      return "Pending";
+  }
+}
+
 export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
   const { paymentId = "" } = useParams<{ paymentId: string }>();
   const [searchParams] = useSearchParams();
   const returnHint = searchParams.get("status");
+  const queryClient = useQueryClient();
+  const didInvalidateSuccess = useRef(false);
 
   const paymentQuery = useQuery({
     enabled: paymentId.length > 0,
@@ -66,8 +90,20 @@ export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
   });
 
   const status = paymentQuery.data?.status;
-  const { subtitle, title } = statusHeading(status, returnHint);
   const leaseId = paymentQuery.data?.leaseId;
+  const { subtitle, title } = statusHeading(status, returnHint);
+
+  useEffect(() => {
+    if (
+      status !== TenantRentPaymentStatus.SUCCEEDED ||
+      !leaseId ||
+      didInvalidateSuccess.current
+    ) {
+      return;
+    }
+    didInvalidateSuccess.current = true;
+    void invalidateTenantLeasePaymentCaches(queryClient, leaseId);
+  }, [leaseId, queryClient, status]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,6 +113,10 @@ export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
         </h1>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
+
+      {paymentQuery.isPending ? (
+        <p className="text-sm text-muted-foreground">Loading payment status…</p>
+      ) : null}
 
       {paymentQuery.isError ? (
         <p className="text-sm text-destructive">
@@ -88,7 +128,9 @@ export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Status</dt>
-            <dd className="font-medium text-foreground">{paymentQuery.data.status}</dd>
+            <dd className="font-medium text-foreground">
+              {formatStatusLabel(paymentQuery.data.status)}
+            </dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted-foreground">Amount</dt>
@@ -102,18 +144,21 @@ export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
         </dl>
       ) : null}
 
-      <div className="flex flex-wrap gap-3 text-sm">
+      <div className="flex flex-wrap gap-3">
         {leaseId ? (
-          <Link
-            className="text-primary underline-offset-4 hover:underline"
-            to={`/leases/${leaseId}`}
-          >
-            Back to lease
-          </Link>
+          <Button asChild type="button">
+            <Link to={`/leases/${leaseId}`}>
+              {status === TenantRentPaymentStatus.FAILED ||
+              status === TenantRentPaymentStatus.CANCELED ||
+              returnHint === "cancel"
+                ? "Try again on lease"
+                : "Back to lease"}
+            </Link>
+          </Button>
         ) : null}
-        <Link className="text-primary underline-offset-4 hover:underline" to="/home">
-          Home
-        </Link>
+        <Button asChild type="button" variant="outline">
+          <Link to="/home">Home</Link>
+        </Button>
       </div>
     </div>
   );

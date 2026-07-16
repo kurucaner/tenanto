@@ -8,12 +8,15 @@ import {
   type ITenantAuthRegisterStartBody,
   type ITenantAuthRegisterVerifyBody,
   type ITenantAuthSessionResponse,
+  type ITenantCreateRentCheckoutBody,
+  type ITenantCreateRentCheckoutResponse,
   type ITenantGoogleAuthBody,
   type ITenantInvitePreviewResponse,
   type ITenantInviteRedeemBody,
   type ITenantInviteRedeemResponse,
   type ITenantInviteRegisterBody,
   type ITenantInviteRegisterGoogleBody,
+  type ITenantLeaseBalanceResponse,
   type ITenantLeaseDetailResponse,
   type ITenantLeasesListResponse,
   type ITenantMembershipActionResponse,
@@ -111,6 +114,15 @@ export const tenantPortalApi = {
       { method: "POST", omitDefaultContentType: true }
     ),
 
+  createRentCheckout: (leaseId: string, body: ITenantCreateRentCheckoutBody) =>
+    authenticatedRequest<ITenantCreateRentCheckoutResponse>(
+      `/tenant/me/leases/${encodeURIComponent(leaseId)}/rent-payments/checkout`,
+      {
+        body: JSON.stringify(body),
+        method: "POST",
+      }
+    ),
+
   declineInvite: (membershipId: string) =>
     authenticatedRequest<ITenantMembershipActionResponse>(
       `/tenant/me/invites/${encodeURIComponent(membershipId)}/decline`,
@@ -120,6 +132,11 @@ export const tenantPortalApi = {
   getLease: (leaseId: string) =>
     authenticatedRequest<ITenantLeaseDetailResponse>(
       `/tenant/me/leases/${encodeURIComponent(leaseId)}`
+    ),
+
+  getLeaseBalance: (leaseId: string) =>
+    authenticatedRequest<ITenantLeaseBalanceResponse>(
+      `/tenant/me/leases/${encodeURIComponent(leaseId)}/balance`
     ),
 
   getMe: () => authenticatedRequest<ITenantMeResponse>("/tenant/me"),

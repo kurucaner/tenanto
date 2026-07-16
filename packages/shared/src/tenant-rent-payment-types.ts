@@ -35,6 +35,8 @@ export interface ITenantLeaseBalanceResponse {
   amountDueCents: number;
   currency: string;
   leaseId: string;
+  /** True when property Connect has charges_enabled — gate Pay UI. */
+  paymentsEnabled: boolean;
   periods: ITenantLeaseBalancePeriod[];
 }
 

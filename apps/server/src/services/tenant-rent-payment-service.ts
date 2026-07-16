@@ -298,12 +298,21 @@ export const tenantRentPaymentService = {
 
   async getBalance(leaseId: string, tenantUserId: string): Promise<ITenantLeaseBalanceResponse> {
     await assertLeaseTenantAccess(leaseId, tenantUserId);
-    const periods = await buildBalancePeriods(leaseId);
+    const lease = await propertyLongStaysDb.findById(leaseId);
+    if (!lease) {
+      throw new RentPaymentNotFoundError("Lease not found");
+    }
+
+    const [periods, connect] = await Promise.all([
+      buildBalancePeriods(leaseId),
+      propertyStripeAccountsDb.findByPropertyId(lease.propertyId),
+    ]);
     const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
     return {
       amountDueCents: sumAmountDueCents(periods, asOfMonth),
       currency: "usd",
       leaseId,
+      paymentsEnabled: Boolean(connect?.chargesEnabled),
       periods,
     };
   },
