@@ -42,6 +42,25 @@ function primaryDueCtaLabel(isStartingCheckout: boolean, onlinePayAvailable: boo
   return onlinePayAvailable ? "Pay rent" : "View leases";
 }
 
+function NoActiveLeaseSection({ hasPastLeases }: { hasPastLeases: boolean }) {
+  return (
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+          No active lease
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          You don’t have an active lease on this account.
+          {hasPastLeases ? " You can still open past leases to review details." : null}
+        </p>
+      </div>
+      <Button asChild type="button" variant="outline">
+        <Link to="/leases">{hasPastLeases ? "View past leases" : "View leases"}</Link>
+      </Button>
+    </section>
+  );
+}
+
 export const HomeDashboardPage = memo(function HomeDashboardPage() {
   const navigate = useNavigate();
   const summaryQuery = useQuery({
@@ -63,6 +82,7 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
   const totalDue = summary?.totalAmountDueCents ?? 0;
   const onlinePayAvailable = summary ? hasOnlinePayAvailable(summary.leases) : false;
   const isStartingCheckout = checkoutMutation.isPending;
+  const hasActiveLease = summary?.hasActiveLease ?? false;
 
   const handlePayRent = () => {
     if (payAction.kind === "checkout") {
@@ -78,19 +98,24 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="space-y-3">
-        {summaryQuery.isPending ? (
-          <p className="text-sm text-muted-foreground">Loading balance…</p>
-        ) : null}
-        {summaryQuery.isError ? (
-          <p className="text-sm text-destructive">
-            {summaryQuery.error instanceof Error
-              ? summaryQuery.error.message
-              : "Failed to load rent balance"}
-          </p>
-        ) : null}
-        {summary ? (
-          <>
+      {summaryQuery.isPending ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : null}
+      {summaryQuery.isError ? (
+        <p className="text-sm text-destructive">
+          {summaryQuery.error instanceof Error
+            ? summaryQuery.error.message
+            : "Failed to load portal summary"}
+        </p>
+      ) : null}
+
+      {summary && !hasActiveLease ? (
+        <NoActiveLeaseSection hasPastLeases={summary.hasPastLeases} />
+      ) : null}
+
+      {summary && hasActiveLease ? (
+        <>
+          <section className="space-y-3">
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Amount due</p>
               <p className="font-display text-4xl font-semibold tracking-tight text-foreground">
@@ -109,36 +134,36 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
                 <Link to="/leases">View leases</Link>
               </Button>
             )}
-          </>
-        ) : null}
-      </section>
+          </section>
 
-      <section className="flex flex-col gap-6">
-        <div className="space-y-1">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
-            Quick actions
-          </h1>
-          <p className="text-sm text-muted-foreground">Shortcuts for your resident portal.</p>
-        </div>
+          <section className="flex flex-col gap-6">
+            <div className="space-y-1">
+              <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">
+                Quick actions
+              </h1>
+              <p className="text-sm text-muted-foreground">Shortcuts for your resident portal.</p>
+            </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <QuickActionCard
-            disabled={isStartingCheckout}
-            icon={Wallet}
-            label={isStartingCheckout ? "Starting…" : "Pay rent"}
-            onClick={handlePayRent}
-          />
-          {COMING_SOON_ACTIONS.map((action) => (
-            <QuickActionCard
-              icon={action.icon}
-              key={action.label}
-              label={action.label}
-              onClick={showComingSoon}
-            />
-          ))}
-          <QuickActionCard href="/leases" icon={KeyRound} label="Leases" />
-        </div>
-      </section>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <QuickActionCard
+                disabled={isStartingCheckout}
+                icon={Wallet}
+                label={isStartingCheckout ? "Starting…" : "Pay rent"}
+                onClick={handlePayRent}
+              />
+              {COMING_SOON_ACTIONS.map((action) => (
+                <QuickActionCard
+                  icon={action.icon}
+                  key={action.label}
+                  label={action.label}
+                  onClick={showComingSoon}
+                />
+              ))}
+              <QuickActionCard href="/leases" icon={KeyRound} label="Leases" />
+            </div>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 });

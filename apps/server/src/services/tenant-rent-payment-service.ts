@@ -357,10 +357,10 @@ export const tenantRentPaymentService = {
   },
 
   async getRentSummary(tenantUserId: string): Promise<ITenantRentSummaryResponse> {
-    const activeLeases = await tenantPortalMembershipService.listLeases(
-      tenantUserId,
-      TenantLeaseListStatus.ACTIVE
-    );
+    const [activeLeases, endedLeases] = await Promise.all([
+      tenantPortalMembershipService.listLeases(tenantUserId, TenantLeaseListStatus.ACTIVE),
+      tenantPortalMembershipService.listLeases(tenantUserId, TenantLeaseListStatus.ENDED),
+    ]);
 
     const leases: ITenantRentSummaryLease[] = await Promise.all(
       activeLeases.map(async (item) => {
@@ -391,6 +391,8 @@ export const tenantRentPaymentService = {
     const totalAmountDueCents = leases.reduce((sum, row) => sum + row.amountDueCents, 0);
     return {
       currency: "usd",
+      hasActiveLease: activeLeases.length > 0,
+      hasPastLeases: endedLeases.length > 0,
       leases,
       totalAmountDueCents,
     };

@@ -52,6 +52,10 @@ export interface ITenantRentSummaryLease {
 /** Aggregated dues across active leases for Home. */
 export interface ITenantRentSummaryResponse {
   currency: string;
+  /** True when the tenant has at least one active lease membership. */
+  hasActiveLease: boolean;
+  /** True when the tenant has at least one ended (past) lease membership. */
+  hasPastLeases: boolean;
   leases: ITenantRentSummaryLease[];
   totalAmountDueCents: number;
 }
