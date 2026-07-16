@@ -67,6 +67,9 @@ export const GoogleSignInButton = memo(
             text={text}
             theme={resolvedDark ? "filled_black" : "outline"}
             width={buttonWidth}
+            containerProps={{
+              className: "bg-transparent",
+            }}
           />
         ) : null}
       </div>
