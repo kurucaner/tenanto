@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { Plus } from "lucide-react";
+import { memo, type MouseEvent, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AddSecondaryTenantDialog } from "@/components/leases/add-secondary-tenant-dialog";
 import { EditPrimaryTenantDialog } from "@/components/leases/edit-primary-tenant-dialog";
 import { EditSecondaryTenantDialog } from "@/components/leases/edit-secondary-tenant-dialog";
-import { LeaseTenantPortalRow } from "@/components/leases/lease-tenant-portal-row";
-import { QuickDeleteButton } from "@/components/table/quick-delete-button";
+import {
+  LeasePrimaryTenantBlock,
+  LeaseSecondaryTenantRow,
+} from "@/components/leases/lease-tenant-block";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
@@ -25,7 +27,6 @@ import {
 } from "@/lib/lease-portal-access-display";
 import { queryKeys } from "@/lib/query-keys";
 import {
-  formatPhoneDisplay,
   type IPropertyLongStay,
   type IPropertyLongStaySecondaryTenant,
   PropertyLongStayStatus,
@@ -43,19 +44,6 @@ type TLeasePortalRevokeTarget = {
   membershipId: string;
   tenantName: string;
 };
-
-function TenantContactLine({ label, value }: Readonly<{ label: string; value: string | null }>) {
-  if (!value) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        <span className="italic">Not set ({label})</span>
-      </p>
-    );
-  }
-
-  const displayValue = label === "phone" ? formatPhoneDisplay(value) : value;
-  return <p className="text-muted-foreground text-xs">{displayValue}</p>;
-}
 
 interface LeaseTenantsSectionProps {
   canManage: boolean;
@@ -82,7 +70,20 @@ export const LeaseTenantsSection = memo(
       queryKey: queryKeys.propertyLongStayPortalAccess(propertyId, lease.id),
     });
 
-    const memberships = portalAccessQuery.data?.memberships ?? [];
+    const memberships = useMemo(
+      () => portalAccessQuery.data?.memberships ?? [],
+      [portalAccessQuery.data?.memberships]
+    );
+    const showPortalRow = !portalAccessQuery.isPending && !portalAccessQuery.isError;
+    const portalErrorMessage = useMemo(() => {
+      if (!portalAccessQuery.isError) {
+        return null;
+      }
+      if (portalAccessQuery.error instanceof Error) {
+        return portalAccessQuery.error.message;
+      }
+      return "Failed to load portal status";
+    }, [portalAccessQuery.error, portalAccessQuery.isError]);
 
     const invalidatePortalCaches = useCallback(() => {
       invalidatePropertyLongStayPortalCaches(queryClient, propertyId, lease.id);
@@ -254,6 +255,110 @@ export const LeaseTenantsSection = memo(
       [requestRevoke]
     );
 
+    const handleInvitePrimary = useCallback(() => {
+      void runPortalAction("invite", primaryMembership?.id ?? null, {
+        invitePrimary: true,
+      });
+    }, [primaryMembership?.id, runPortalAction]);
+
+    const handleResendPrimary = useCallback(() => {
+      void runPortalAction("resend", primaryMembership?.id ?? null, {});
+    }, [primaryMembership?.id, runPortalAction]);
+
+    const handleRevokePrimary = useCallback(() => {
+      requestRevokeConfirmation(primaryMembership?.id, lease.guestName);
+    }, [lease.guestName, primaryMembership?.id, requestRevokeConfirmation]);
+
+    const handleEditPrimary = useCallback(() => {
+      setEditPrimaryOpen(true);
+    }, []);
+
+    const findSecondaryMembership = useCallback(
+      (index: number) => {
+        const tenant = lease.secondaryTenants[index];
+        if (!tenant) {
+          return { membership: null, tenant: null };
+        }
+        return {
+          membership: findLeasePortalMembership(
+            memberships,
+            TenantMembershipRole.SECONDARY,
+            tenant.email
+          ),
+          tenant,
+        };
+      },
+      [lease.secondaryTenants, memberships]
+    );
+
+    const handleInviteSecondary = useCallback(
+      (index: number) => {
+        const { membership } = findSecondaryMembership(index);
+        void runPortalAction("invite", membership?.id ?? null, {
+          secondaryIndexes: [index],
+        });
+      },
+      [findSecondaryMembership, runPortalAction]
+    );
+
+    const handleResendSecondary = useCallback(
+      (index: number) => {
+        const { membership } = findSecondaryMembership(index);
+        void runPortalAction("resend", membership?.id ?? null, {});
+      },
+      [findSecondaryMembership, runPortalAction]
+    );
+
+    const handleRevokeSecondary = useCallback(
+      (index: number) => {
+        const { membership, tenant } = findSecondaryMembership(index);
+        if (!tenant) {
+          return;
+        }
+        requestRevokeConfirmation(membership?.id, tenant.name);
+      },
+      [findSecondaryMembership, requestRevokeConfirmation]
+    );
+
+    const handleEditSecondary = useCallback(
+      (index: number) => {
+        const { tenant } = findSecondaryMembership(index);
+        if (!tenant) {
+          return;
+        }
+        setEditingSecondary({ index, tenant });
+      },
+      [findSecondaryMembership]
+    );
+
+    const handleDeleteSecondary = useCallback(
+      (index: number, event: MouseEvent<HTMLButtonElement>) => {
+        const { tenant } = findSecondaryMembership(index);
+        if (!tenant) {
+          return;
+        }
+        handleDelete({ index, tenant }, event);
+      },
+      [findSecondaryMembership, handleDelete]
+    );
+
+    const handleOpenAddSecondary = useCallback(() => {
+      setAddSecondaryOpen(true);
+    }, []);
+
+    const handleInviteAll = useCallback(() => {
+      void runPortalAction("invite", null, {
+        invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
+        secondaryIndexes: inviteAllTargets.secondaryIndexes,
+      });
+    }, [inviteAllTargets.invitePrimary, inviteAllTargets.secondaryIndexes, runPortalAction]);
+
+    const handleEditSecondaryDialogOpenChange = useCallback((nextOpen: boolean) => {
+      if (!nextOpen) {
+        setEditingSecondary(null);
+      }
+    }, []);
+
     const portalMutationPending =
       inviteMutation.isPending || resendMutation.isPending || revokeMutation.isPending;
 
@@ -261,56 +366,24 @@ export const LeaseTenantsSection = memo(
       <>
         <Card>
           <CardContent className="space-y-3 p-6">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-muted-foreground text-xs">Primary tenant</p>
-                <p className="font-medium">{lease.guestName}</p>
-                <TenantContactLine label="email" value={lease.tenantEmail} />
-                <TenantContactLine label="phone" value={lease.tenantPhone} />
-                {portalAccessQuery.isPending ? (
-                  <p className="text-muted-foreground text-xs">Loading portal status…</p>
-                ) : null}
-                {portalAccessQuery.isError ? (
-                  <p className="text-destructive text-xs">
-                    {portalAccessQuery.error instanceof Error
-                      ? portalAccessQuery.error.message
-                      : "Failed to load portal status"}
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex shrink-0 items-start gap-1">
-                {!portalAccessQuery.isPending && !portalAccessQuery.isError ? (
-                  <LeaseTenantPortalRow
-                    actingAction={actingAction}
-                    actingMembershipId={actingMembershipId}
-                    canManage={canEditTenants}
-                    onInvite={() =>
-                      void runPortalAction("invite", primaryMembership?.id ?? null, {
-                        invitePrimary: true,
-                      })
-                    }
-                    onResend={() =>
-                      void runPortalAction("resend", primaryMembership?.id ?? null, {})
-                    }
-                    onRevoke={() =>
-                      requestRevokeConfirmation(primaryMembership?.id, lease.guestName)
-                    }
-                    portalState={primaryPortalState}
-                  />
-                ) : null}
-                {canEditTenants ? (
-                  <Button
-                    aria-label="Edit primary tenant"
-                    onClick={() => setEditPrimaryOpen(true)}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                ) : null}
-              </div>
-            </div>
+            <LeasePrimaryTenantBlock
+              actingAction={actingAction}
+              actingMembershipId={actingMembershipId}
+              canEdit={canEditTenants}
+              editAriaLabel="Edit primary tenant"
+              email={lease.tenantEmail}
+              name={lease.guestName}
+              onEdit={handleEditPrimary}
+              onInvite={handleInvitePrimary}
+              onResend={handleResendPrimary}
+              onRevoke={handleRevokePrimary}
+              phone={lease.tenantPhone}
+              portalErrorMessage={portalErrorMessage}
+              portalLoading={portalAccessQuery.isPending}
+              portalState={primaryPortalState}
+              roleLabel="Primary tenant"
+              showPortalRow={showPortalRow}
+            />
 
             {lease.secondaryTenants.length > 0 ? (
               <div className="space-y-3 border-t pt-3">
@@ -327,56 +400,23 @@ export const LeaseTenantsSection = memo(
                   );
 
                   return (
-                    <div
-                      className="flex items-start justify-between gap-3"
+                    <LeaseSecondaryTenantRow
+                      actingAction={actingAction}
+                      actingMembershipId={actingMembershipId}
+                      canEdit={canEditTenants}
+                      index={index}
+                      isDeletePending={removeMutation.isPending}
+                      isQuickDeleteActive={isQuickDeleteActive}
                       key={`${tenant.name}-${index}`}
-                    >
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p className="text-sm font-medium">{tenant.name}</p>
-                        <TenantContactLine label="email" value={tenant.email} />
-                        <TenantContactLine label="phone" value={tenant.phone} />
-                      </div>
-                      <div className="flex shrink-0 items-start gap-1">
-                        {!portalAccessQuery.isPending && !portalAccessQuery.isError ? (
-                          <LeaseTenantPortalRow
-                            actingAction={actingAction}
-                            actingMembershipId={actingMembershipId}
-                            canManage={canEditTenants}
-                            onInvite={() =>
-                              void runPortalAction("invite", rowMembership?.id ?? null, {
-                                secondaryIndexes: [index],
-                              })
-                            }
-                            onResend={() =>
-                              void runPortalAction("resend", rowMembership?.id ?? null, {})
-                            }
-                            onRevoke={() =>
-                              requestRevokeConfirmation(rowMembership?.id, tenant.name)
-                            }
-                            portalState={rowPortalState}
-                          />
-                        ) : null}
-                        {canEditTenants ? (
-                          <>
-                            <Button
-                              aria-label={`Edit ${tenant.name}`}
-                              onClick={() => setEditingSecondary({ index, tenant })}
-                              size="icon-sm"
-                              type="button"
-                              variant="ghost"
-                            >
-                              <Pencil className="size-3.5" />
-                            </Button>
-                            <QuickDeleteButton
-                              ariaLabel={`Remove ${tenant.name}`}
-                              disabled={removeMutation.isPending}
-                              onClick={(event) => handleDelete({ index, tenant }, event)}
-                              quickDeleteActive={isQuickDeleteActive}
-                            />
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
+                      onDelete={handleDeleteSecondary}
+                      onEdit={handleEditSecondary}
+                      onInvite={handleInviteSecondary}
+                      onResend={handleResendSecondary}
+                      onRevoke={handleRevokeSecondary}
+                      portalState={rowPortalState}
+                      showPortalRow={showPortalRow}
+                      tenant={tenant}
+                    />
                   );
                 })}
               </div>
@@ -387,7 +427,7 @@ export const LeaseTenantsSection = memo(
                 <Button
                   className="gap-1.5"
                   disabled={lease.secondaryTenants.length >= MAX_SECONDARY_TENANTS}
-                  onClick={() => setAddSecondaryOpen(true)}
+                  onClick={handleOpenAddSecondary}
                   size="sm"
                   type="button"
                   variant="outline"
@@ -398,12 +438,7 @@ export const LeaseTenantsSection = memo(
                 {canInviteAll ? (
                   <Button
                     disabled={portalMutationPending}
-                    onClick={() =>
-                      runPortalAction("invite", null, {
-                        invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
-                        secondaryIndexes: inviteAllTargets.secondaryIndexes,
-                      })
-                    }
+                    onClick={handleInviteAll}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -442,11 +477,7 @@ export const LeaseTenantsSection = memo(
           <EditSecondaryTenantDialog
             key={`${lease.id}-edit-secondary-${editingSecondary.index}`}
             lease={lease}
-            onOpenChange={(nextOpen) => {
-              if (!nextOpen) {
-                setEditingSecondary(null);
-              }
-            }}
+            onOpenChange={handleEditSecondaryDialogOpenChange}
             open={true}
             propertyId={propertyId}
             tenant={editingSecondary.tenant}
