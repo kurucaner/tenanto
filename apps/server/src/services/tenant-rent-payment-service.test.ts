@@ -53,6 +53,7 @@ const mockSessionsRetrieve = mock(() =>
 
 mock.module("@/services/tenant-portal-access", () => ({
   assertLeaseTenantAccess: mockAssertLeaseTenantAccess,
+  assertLeaseTenantReadAccess: mockAssertLeaseTenantAccess,
   TenantLeaseAccessDeniedError: class extends Error {
     name = "TenantLeaseAccessDeniedError";
   },
@@ -184,11 +185,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
     mockCreateWithAllocations.mockRejectedValueOnce({ code: "23505" });
     mockFindByIdempotencyKey.mockResolvedValueOnce(existing);
 
-    const result = await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", {
-      amountCents: 200_00,
-      leaseId: "lease-1",
-      periodMonths: ["2026-01"],
-    });
+    const result = await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
 
     expect(result).toEqual({
       checkoutUrl: "https://checkout.stripe.test/pay/cs_existing",
@@ -211,14 +208,21 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
       stripePaymentIntentId: "pi_new",
     });
 
-    const result = await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", {
-      amountCents: 200_00,
-      leaseId: "lease-1",
-      periodMonths: ["2026-01"],
-    });
+    const result = await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
 
     expect(result.paymentId).toBe("payment-2");
     expect(result.checkoutUrl).toContain("cs_new");
     expect(mockSessionsCreate).toHaveBeenCalledTimes(1);
+  });
+
+  test("rejects checkout when nothing is due", async () => {
+    mockGetRentSchedule.mockResolvedValueOnce([
+      { expectedRent: 200, isPaid: true, month: "2026-01" },
+    ]);
+
+    await expect(tenantRentPaymentService.createCheckout("lease-1", "tenant-1")).rejects.toThrow(
+      "Nothing is due right now"
+    );
+    expect(mockSessionsCreate).not.toHaveBeenCalled();
   });
 });

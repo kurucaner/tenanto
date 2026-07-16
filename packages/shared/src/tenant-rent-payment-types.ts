@@ -57,14 +57,10 @@ export interface ITenantRentSummaryResponse {
 }
 
 /**
- * Create Checkout: selected months + total amount (≤ sum remaining of selected).
- * Server recomputes remaining; client amounts are not trusted alone.
+ * Create Checkout body — unused for settlement. Amount due is computed server-side.
+ * Clients may POST `{}`.
  */
-export interface ITenantCreateRentCheckoutBody {
-  amountCents: number;
-  leaseId: string;
-  periodMonths: string[];
-}
+export type ITenantCreateRentCheckoutBody = Record<string, never>;
 
 export interface ITenantCreateRentCheckoutResponse {
   checkoutUrl: string;

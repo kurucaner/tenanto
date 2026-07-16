@@ -31,9 +31,9 @@ isProject: false
 
 # Tenant rent payments (Stripe Connect) — Implementation Phases
 
-Industry-standard Stripe rent collection for PropertyOS: **Connect** (money lands on the property owner’s connected account), **Checkout Session / PaymentIntent** per charge (not Subscriptions — rent prorates and changes), **webhook-first settlement**, **idempotent ledger**, **operator income lines remain schedule truth**. Tenant may **select periods** and **pay partial** amounts against allocated periods.
+Industry-standard Stripe rent collection for PropertyOS: **Connect** (money lands on the property owner’s connected account), **Checkout Session / PaymentIntent** per charge (not Subscriptions — rent prorates and changes), **webhook-first settlement**, **idempotent ledger**, **operator income lines remain schedule truth**.
 
-**Product decisions locked:** Connect (1B); period selection + partial pay (2B). ACH deferred to a later phase on the same payment ledger.
+**Product decisions locked:** Connect (1B). **Tenant portal v1 charges amount due only** (unpaid months ≤ today UTC); checkout is **server-authoritative**. Period selection + partial pay remain in the allocation helpers for a later phase.
 
 **Related code today**
 
@@ -49,21 +49,23 @@ Industry-standard Stripe rent collection for PropertyOS: **Connect** (money land
 
 ## Goals
 
-- Tenant can see **amount due** from unpaid schedule periods and **pay via Stripe** (card first).
-- Tenant can **choose which unpaid periods** to pay and/or pay a **partial** amount allocated FIFO (or explicit allocation) across selected periods.
+- Tenant can see **amount due** from unpaid schedule periods (≤ today) and **pay via Stripe** (card first).
+- Checkout amount and periods are computed **on the server**; tenant UI is a single Pay rent CTA (Home + lease).
+- Period multi-select / partial amount UX is **deferred** (helpers + FIFO allocation remain for later).
 - Funds settle to the **property’s Connect account** (Express recommended); optional platform **application fee** later.
 - **Webhook** is the only path that marks rent paid; browser return URL is UX only.
-- Successful payment creates/links **`property_income_lines`** so existing `isPaid` stays correct.
+- Successful payment creates/links **`property_income_lines`** so existing `isPaid` stays correct (when a month is fully covered).
 - Admin can **onboard Connect** for a property and see payment status.
 
 ## Non-goals (v1)
 
 - ACH / bank debit (Phase 5+)
 - Stripe Subscriptions / fixed recurring products
+- Tenant period selection / partial pay UI (deferred)
 - Partial platform marketplace payouts beyond Connect destination charge + optional app fee
 - Late fees, credits, deposits as first-class products (schema may allow extension)
 - Multi-currency
-- Letting tenants edit schedule or invent amounts outside computed due
+- Letting tenants invent amounts outside computed due
 - Dashboard polish beyond pay + balance (property manager contact is separate)
 
 ---
@@ -177,7 +179,7 @@ sequenceDiagram
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | `TTenantRentPaymentStatus`          | enum                                                                                                   |
 | `ITenantLeaseBalanceResponse`       | `amountDueCents`, `currency`, `periods[]` with `month`, `expectedCents`, `paidCents`, `remainingCents` |
-| `ITenantCreateRentCheckoutBody`     | `leaseId`, `periodMonths[]`, `amountCents` (must be ≤ sum remaining of selected; ≥ min Stripe amount)  |
+| `ITenantCreateRentCheckoutBody`     | Empty `{}` — amount due computed server-side                                                       |
 | `ITenantCreateRentCheckoutResponse` | `paymentId`, `checkoutUrl`                                                                             |
 | `ITenantRentPaymentStatusResponse`  | poll after return URL                                                                                  |
 | Admin Connect types                 | onboarding link + account status                                                                       |
@@ -189,13 +191,48 @@ sequenceDiagram
 | Method | Path                                                | Notes                                                          |
 | ------ | --------------------------------------------------- | -------------------------------------------------------------- |
 | `GET`  | `/tenant/me/leases/:leaseId/balance`                | Auth tenant; membership active                                 |
-| `POST` | `/tenant/me/leases/:leaseId/rent-payments/checkout` | Creates pending row + Checkout Session; 409 if Connect missing |
+| `POST` | `/tenant/me/leases/:leaseId/rent-payments/checkout` | Creates pending row + Checkout for **amount due**; empty body; 400 if nothing due; 409 if Connect missing |
 | `GET`  | `/tenant/me/rent-payments/:paymentId`               | Status for return-page polling                                 |
 | `POST` | `/webhooks/stripe`                                  | Raw body + signature verify; no tenant JWT                     |
 | `POST` | `/properties/:id/stripe/connect/onboarding-link`    | Owner (admin JWT)                                              |
 | `GET`  | `/properties/:id/stripe/connect/status`             | Member read (admin JWT)                                        |
 
-Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose remaining; default “amount due” = sum remaining for months with due date ≤ today (or calendar month ≤ current). Checkout validates selected months unpaid remaining and `amountCents` ≤ sum(selected remaining). Allocation: explicit if client sends per-period amounts; else **FIFO** across selected months.
+Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose remaining; default “amount due” = sum remaining for months ≤ current calendar month. Checkout ignores client amounts and charges that amount due (FIFO across due months).
+
+---
+
+## Webhook destination setup (platform snapshot)
+
+Rent settlement requires a **platform snapshot** Event Destination (or classic webhook endpoint), not an Accounts v2 thin destination.
+
+### Required destination
+
+| Setting | Value |
+| --- | --- |
+| Scope | **Your account** (platform) — Checkout Sessions are created on the platform with `transfer_data.destination` |
+| Payload | **Snapshot** (`object: "event"`) |
+| URL | `https://<api-host>/webhooks/stripe` |
+| Events | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed` |
+
+`STRIPE_WEBHOOK_SECRET` must be **that** destination’s signing secret (`whsec_…`).
+
+### Verifier behavior (code)
+
+[`apps/server/src/stripe/stripe-client.ts`](apps/server/src/stripe/stripe-client.ts) `verifyStripeWebhookPayload`:
+
+- Snapshot (`object: "event"`) → `webhooks.constructEvent`
+- Thin (`object: "v2.core.event"`) → `parseEventNotification` (acks destination pings; other thin types ignored until handled)
+
+**One signing secret per URL.** Do not point a thin Accounts v2 destination (`v2.core.account*`, `v2.core.account_person*`) at the same `/webhooks/stripe` with a different `whsec_` — verification will fail. Disable that destination or use a different path if you need Accounts lifecycle events later. Accounts v2 events are **not** required for rent; Connect readiness is synced via `accounts.retrieve` on status/onboarding return.
+
+### Ops checklist
+
+1. Create the snapshot destination (table above); set `STRIPE_WEBHOOK_SECRET`; restart/redeploy the API.
+2. Disable or retarget any thin Accounts destination previously using `/webhooks/stripe`.
+3. Smoke test: sandbox Checkout pay → `stripe_webhook_events` / logs show `checkout.session.completed` → `tenant_rent_payments.status = succeeded`.
+4. Recover a missed webhook (e.g. earlier signature failures): Dashboard **Resend** of that session’s `checkout.session.completed`, or wait for / run reconcile (`tenant_payments.reconcile_*`, 48h lookback; cron runs when `NODE_ENV=production`).
+
+Local forward: `stripe listen --forward-to localhost:3001/webhooks/stripe` and use the CLI-printed `whsec_` (not a Dashboard secret).
 
 ---
 
@@ -249,11 +286,11 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 
 **Goal:** Tenant sees amount due, selects periods, pays via Checkout; Pay hidden when Connect not ready.
 
-- [x] Tenant: balance on home / lease; period multi-select; amount input (capped); Pay → redirect Checkout
+- [x] Tenant: amount due on home / lease; single Pay rent CTA → Checkout (server-authoritative amount due)
 - [x] Return pages polish: confirming / success / failed
 - [x] Hide Pay when Connect not ready (`paymentsEnabled` on balance)
 
-**Exit criteria:** Staging E2E: onboard Connect (3a) → tenant pays selected/partial → admin income shows → schedule paid.
+**Exit criteria:** Staging E2E: onboard Connect (3a) → tenant pays amount due → admin income shows → schedule paid.
 
 ### Phase 4 — Hardening
 
@@ -271,6 +308,7 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 
 ### Phase 5+ — Enhancements (deferred)
 
+- Tenant period selection + partial pay UI (reuse FIFO helpers)
 - ACH / bank debits (`us_bank_account`) with `processing` status
 - Application fees / platform revenue
 - Automatic rent-due emails with Checkout links
@@ -287,6 +325,7 @@ Balance logic: from `getRentSchedule`, for each month with remaining > 0, expose
 - Do not skip Connect onboarding checks (“pay to platform then forget”).
 - Do not create income lines without linking payment id + period months.
 - Do not process webhooks without signature verification and raw body.
+- Do not point a thin Accounts v2 destination at `/webhooks/stripe` with a different signing secret than the snapshot payments destination.
 - Do not ship tenant Pay UI before Phase 1 sandbox webhook proof.
 
 ## Safest sequencing summary

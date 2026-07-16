@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 
-import { HttpStatus, type ITenantCreateRentCheckoutBody } from "@/packages/shared";
+import { HttpStatus } from "@/packages/shared";
 import { StripeConnectNotConfiguredError } from "@/services/property-stripe-connect-service";
 import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 import {
@@ -30,21 +30,6 @@ function mapRentPaymentError(error: unknown, reply: FastifyReply): FastifyReply 
     return reply.status(HttpStatus.SERVICE_UNAVAILABLE).send({ error: error.message });
   }
   return null;
-}
-
-function parseCheckoutBody(raw: unknown): ITenantCreateRentCheckoutBody | null {
-  if (typeof raw !== "object" || raw === null) return null;
-  const body = raw as Record<string, unknown>;
-  if (typeof body.leaseId !== "string" || !body.leaseId.trim()) return null;
-  if (typeof body.amountCents !== "number" || !Number.isInteger(body.amountCents)) return null;
-  if (!Array.isArray(body.periodMonths) || !body.periodMonths.every((m) => typeof m === "string")) {
-    return null;
-  }
-  return {
-    amountCents: body.amountCents,
-    leaseId: body.leaseId.trim(),
-    periodMonths: body.periodMonths as string[],
-  };
 }
 
 export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -103,15 +88,8 @@ export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid leaseId" });
       }
 
-      const body = parseCheckoutBody(request.body);
-      if (!body) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({
-          error: "amountCents (integer), leaseId, and periodMonths[] are required",
-        });
-      }
-
       try {
-        const result = await tenantRentPaymentService.createCheckout(leaseId, tenantUserId, body);
+        const result = await tenantRentPaymentService.createCheckout(leaseId, tenantUserId);
         return reply.status(HttpStatus.CREATED).send(result);
       } catch (error) {
         const mapped = mapRentPaymentError(error, reply);
