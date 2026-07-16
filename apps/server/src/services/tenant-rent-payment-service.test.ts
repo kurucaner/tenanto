@@ -264,3 +264,69 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
     expect(mockSumSucceededByMonths).not.toHaveBeenCalled();
   });
 });
+
+describe("tenantRentPaymentService tenant balance rollup", () => {
+  beforeEach(() => {
+    process.env.TENANT_APP_URL = "http://localhost:5174";
+    mockAssertLeaseTenantAccess.mockClear();
+    mockGetRentSchedule.mockClear();
+    mockFindStripeAccount.mockClear();
+    mockSumSucceededByMonths.mockClear();
+    mockCreateWithAllocations.mockClear();
+    mockUpdateStripeIds.mockClear();
+    mockSessionsCreate.mockClear();
+    mockFindStripeAccount.mockResolvedValue({
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_1",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+  });
+
+  test("createCheckout charges only remaining cents after partial payment", async () => {
+    mockGetRentSchedule.mockResolvedValueOnce([
+      scheduleRow({
+        expectedRent: 1500,
+        isPaid: false,
+        month: "2026-01",
+        paidRent: 500,
+        remainingRent: 1000,
+      }),
+    ]);
+    mockCreateWithAllocations.mockResolvedValueOnce(makePayment({ amountCents: 1000_00 }));
+    mockUpdateStripeIds.mockResolvedValueOnce(makePayment({ amountCents: 1000_00 }));
+
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
+
+    expect(mockCreateWithAllocations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allocations: [
+          expect.objectContaining({
+            allocatedCents: 1000_00,
+            periodMonth: "2026-01",
+          }),
+        ],
+        amountCents: 1000_00,
+      })
+    );
+    expect(mockSumSucceededByMonths).not.toHaveBeenCalled();
+  });
+
+  test("getBalance returns zero due when schedule month is fully paid", async () => {
+    mockGetRentSchedule.mockResolvedValueOnce([
+      scheduleRow({ expectedRent: 1500, isPaid: true, month: "2026-01", paidRent: 1500 }),
+    ]);
+
+    const balance = await tenantRentPaymentService.getBalance("lease-1", "tenant-1");
+
+    expect(balance.amountDueCents).toBe(0);
+    expect(balance.periods[0]).toMatchObject({
+      month: "2026-01",
+      paidCents: 1500_00,
+      remainingCents: 0,
+    });
+  });
+});

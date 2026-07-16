@@ -591,6 +591,11 @@ export {
   type TTenantMembershipStatus,
 } from "./tenant-portal-types";
 export {
+  computeTenantBalanceFromRentSchedule,
+  type ITenantRentScheduleBalance,
+  type TTenantRentScheduleBalanceMonth,
+} from "./tenant-rent-balance-from-schedule";
+export {
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   isTerminalTenantRentPaymentStatus,

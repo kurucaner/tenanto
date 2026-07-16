@@ -187,8 +187,8 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** Tenant amount due matches admin partial logic.
 
-- [ ] Rent summary / balance endpoints use Phase 1 rollup
-- [ ] Partial Stripe payment reduces `amountDueCents` before month is fully paid
+- [x] Rent summary / balance endpoints use Phase 1 rollup
+- [x] Partial Stripe payment reduces `amountDueCents` before month is fully paid
 
 **Exit criteria:** Sandbox partial Stripe payment → tenant home shows reduced due; full payment → month paid on both sides.
 

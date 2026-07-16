@@ -9,8 +9,7 @@ import {
   buildRentCheckoutIdempotencyKey,
   calculateMiscIncomeLine,
   centsToDollars,
-  computeRemainingByMonth,
-  dollarsToCents,
+  computeTenantBalanceFromRentSchedule,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
@@ -18,8 +17,6 @@ import {
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
   resolveRentIncomeLineTypeId,
-  selectDuePeriodMonths,
-  sumAmountDueCents,
   TenantLeaseListStatus,
   TenantRentPaymentStatus,
   transactionDateToMonth,
@@ -67,16 +64,10 @@ function requireStripeConfigured(): void {
   }
 }
 
-async function buildBalancePeriods(leaseId: string) {
+async function loadTenantBalanceFromSchedule(leaseId: string) {
   const schedule = await propertyLongStaysDb.getRentSchedule(leaseId);
-
-  return computeRemainingByMonth(
-    schedule.map((row) => ({
-      expectedCents: dollarsToCents(row.expectedRent),
-      month: row.month,
-      paidCents: dollarsToCents(row.paidRent),
-    }))
-  );
+  const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
+  return computeTenantBalanceFromRentSchedule(schedule, asOfMonth);
 }
 
 async function computeLeaseBalanceFields(
@@ -87,15 +78,14 @@ async function computeLeaseBalanceFields(
   paymentsEnabled: boolean;
   periods: ITenantLeaseBalancePeriod[];
 }> {
-  const [periods, connect] = await Promise.all([
-    buildBalancePeriods(leaseId),
+  const [balance, connect] = await Promise.all([
+    loadTenantBalanceFromSchedule(leaseId),
     propertyStripeAccountsDb.findByPropertyId(propertyId),
   ]);
-  const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
   return {
-    amountDueCents: sumAmountDueCents(periods, asOfMonth),
+    amountDueCents: balance.amountDueCents,
     paymentsEnabled: Boolean(connect?.chargesEnabled),
-    periods,
+    periods: balance.periods,
   };
 }
 
@@ -184,29 +174,26 @@ export const tenantRentPaymentService = {
       throw new RentPaymentConnectNotReadyError();
     }
 
-    const periods = await buildBalancePeriods(leaseId);
-    const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
-    const periodMonths = selectDuePeriodMonths(periods, asOfMonth);
-    const amountCents = sumAmountDueCents(periods, asOfMonth);
+    const balance = await loadTenantBalanceFromSchedule(leaseId);
 
-    if (amountCents <= 0 || periodMonths.length === 0) {
+    if (balance.amountDueCents <= 0 || balance.periodMonths.length === 0) {
       throw new RentPaymentValidationError("Nothing is due right now");
     }
 
     const validated = validateCreateRentCheckoutBody({
-      amountCents,
+      amountCents: balance.amountDueCents,
       leaseId,
-      periodMonths,
-      periods,
+      periodMonths: balance.periodMonths,
+      periods: balance.periods,
     });
     if (!validated.ok) {
       throw new RentPaymentValidationError(validated.error);
     }
 
     const idempotencyKey = buildRentCheckoutIdempotencyKey({
-      amountCents,
+      amountCents: balance.amountDueCents,
       leaseId,
-      periodMonths,
+      periodMonths: balance.periodMonths,
       tenantUserId,
     });
 
@@ -218,7 +205,7 @@ export const tenantRentPaymentService = {
           expectedCentsSnapshot: a.expectedCentsSnapshot,
           periodMonth: a.month,
         })),
-        amountCents,
+        amountCents: balance.amountDueCents,
         connectedAccountId: connect.stripeAccountId,
         idempotencyKey,
         leaseId,
@@ -261,13 +248,13 @@ export const tenantRentPaymentService = {
                 description: `Lease rent (${periodMonthsMeta})`,
                 name: "Rent payment",
               },
-              unit_amount: amountCents,
+              unit_amount: balance.amountDueCents,
             },
             quantity: 1,
           },
         ],
         metadata: {
-          amountCents: String(amountCents),
+          amountCents: String(balance.amountDueCents),
           leaseId,
           paymentId: payment.id,
           periodMonths: periodMonthsMeta,
@@ -304,7 +291,7 @@ export const tenantRentPaymentService = {
     });
 
     WinstonLogger.info({
-      amountCents,
+      amountCents: balance.amountDueCents,
       leaseId,
       msg: "tenant_payments.checkout_created",
       paymentId: payment.id,

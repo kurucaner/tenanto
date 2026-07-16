@@ -129,6 +129,36 @@ describe("tenantRentPaymentService.getRentSummary", () => {
     expect(summary.totalAmountDueCents).toBe(200_00);
   });
 
+  test("uses schedule paidRent for partial Stripe allocation in rent summary", async () => {
+    mockListLeases.mockImplementation((_tenantUserId: string, status: string) => {
+      if (status === TenantLeaseListStatus.ACTIVE) {
+        return Promise.resolve([
+          {
+            leaseId: "lease-1",
+            propertyName: "A",
+            unitLabel: "1",
+          },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        expectedRent: 1500,
+        isPaid: false,
+        month: "2026-01",
+        paidRent: 500,
+        remainingRent: 1000,
+      },
+    ]);
+
+    const summary = await tenantRentPaymentService.getRentSummary("tenant-1");
+
+    expect(summary.totalAmountDueCents).toBe(1000_00);
+    expect(summary.leases[0]?.amountDueCents).toBe(1000_00);
+    expect(mockSumSucceededByMonths).not.toHaveBeenCalled();
+  });
+
   test("flags false when tenant has no leases", async () => {
     mockListLeases.mockResolvedValue([]);
 
