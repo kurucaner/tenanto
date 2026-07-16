@@ -50,6 +50,22 @@ function parseCheckoutBody(raw: unknown): ITenantCreateRentCheckoutBody | null {
 export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<void> => {
   const tenantAuthPre = { preHandler: server.authenticateTenant.bind(server) };
 
+  server.get("/tenant/me/rent-summary", tenantAuthPre, async (request, reply) => {
+    const tenantUserId = request.tenantUser?.tenantUserId;
+    if (!tenantUserId) {
+      return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Unauthorized" });
+    }
+
+    try {
+      const summary = await tenantRentPaymentService.getRentSummary(tenantUserId);
+      return reply.status(HttpStatus.OK).send(summary);
+    } catch (error) {
+      const mapped = mapRentPaymentError(error, reply);
+      if (mapped) return mapped;
+      throw error;
+    }
+  });
+
   server.get<{ Params: { leaseId: string } }>(
     "/tenant/me/leases/:leaseId/balance",
     tenantAuthPre,

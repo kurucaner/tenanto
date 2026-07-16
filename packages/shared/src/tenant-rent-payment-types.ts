@@ -40,6 +40,22 @@ export interface ITenantLeaseBalanceResponse {
   periods: ITenantLeaseBalancePeriod[];
 }
 
+/** One active lease row in the Home rent summary. */
+export interface ITenantRentSummaryLease {
+  amountDueCents: number;
+  leaseId: string;
+  paymentsEnabled: boolean;
+  propertyName: string;
+  unitLabel: string;
+}
+
+/** Aggregated dues across active leases for Home. */
+export interface ITenantRentSummaryResponse {
+  currency: string;
+  leases: ITenantRentSummaryLease[];
+  totalAmountDueCents: number;
+}
+
 /**
  * Create Checkout: selected months + total amount (≤ sum remaining of selected).
  * Server recomputes remaining; client amounts are not trusted alone.

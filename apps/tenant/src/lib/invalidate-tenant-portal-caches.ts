@@ -17,5 +17,6 @@ export async function invalidateTenantLeasePaymentCaches(
     queryClient.invalidateQueries({ queryKey: queryKeys.lease(leaseId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.leaseBalance(leaseId) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.leases() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.rentSummary() }),
   ]);
 }

@@ -23,6 +23,7 @@ import {
   type ITenantMeResponse,
   type ITenantPendingInvitesResponse,
   type ITenantRentPaymentStatusResponse,
+  type ITenantRentSummaryResponse,
   type ITenantUser,
   TenantLeaseListStatus,
   type TTenantLeaseListStatus,
@@ -145,6 +146,8 @@ export const tenantPortalApi = {
     authenticatedRequest<ITenantRentPaymentStatusResponse>(
       `/tenant/me/rent-payments/${encodeURIComponent(paymentId)}`
     ),
+
+  getRentSummary: () => authenticatedRequest<ITenantRentSummaryResponse>("/tenant/me/rent-summary"),
 
   listLeases: (status: TTenantLeaseListStatus = TenantLeaseListStatus.ACTIVE) => {
     const query =

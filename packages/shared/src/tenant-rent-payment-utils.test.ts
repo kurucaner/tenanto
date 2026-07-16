@@ -7,6 +7,7 @@ import {
   computeRemainingByMonth,
   dollarsToCents,
   isValidPeriodMonth,
+  selectDuePeriodMonths,
   STRIPE_MIN_CHARGE_CENTS_USD,
   sumAmountDueCents,
   validateCreateRentCheckoutBody,
@@ -84,6 +85,19 @@ describe("sumAmountDueCents", () => {
 
   test("excludes months after asOfMonth", () => {
     expect(sumAmountDueCents(periods, "2026-02")).toBe(200_00);
+  });
+});
+
+describe("selectDuePeriodMonths", () => {
+  const periods = computeRemainingByMonth([
+    { expectedCents: 100_00, month: "2026-01", paidCents: 0 },
+    { expectedCents: 100_00, month: "2026-02", paidCents: 100_00 },
+    { expectedCents: 100_00, month: "2026-03", paidCents: 0 },
+  ]);
+
+  test("returns unpaid months through asOfMonth, sorted", () => {
+    expect(selectDuePeriodMonths(periods, "2026-03")).toEqual(["2026-01", "2026-03"]);
+    expect(selectDuePeriodMonths(periods, "2026-02")).toEqual(["2026-01"]);
   });
 });
 

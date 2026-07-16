@@ -13,15 +13,20 @@ import {
   dollarsToCents,
   type ITenantCreateRentCheckoutBody,
   type ITenantCreateRentCheckoutResponse,
+  type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
   type ITenantRentPaymentStatusResponse,
+  type ITenantRentSummaryLease,
+  type ITenantRentSummaryResponse,
   resolveRentIncomeLineTypeId,
   sumAmountDueCents,
+  TenantLeaseListStatus,
   TenantRentPaymentStatus,
   transactionDateToMonth,
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
+import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 import { WinstonLogger } from "@/services/winston";
 import { getStripeClient, isStripeSecretConfigured } from "@/stripe/stripe-client";
 
@@ -83,6 +88,26 @@ async function buildBalancePeriods(leaseId: string) {
   });
 
   return computeRemainingByMonth(inputs);
+}
+
+async function computeLeaseBalanceFields(
+  leaseId: string,
+  propertyId: string
+): Promise<{
+  amountDueCents: number;
+  paymentsEnabled: boolean;
+  periods: ITenantLeaseBalancePeriod[];
+}> {
+  const [periods, connect] = await Promise.all([
+    buildBalancePeriods(leaseId),
+    propertyStripeAccountsDb.findByPropertyId(propertyId),
+  ]);
+  const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
+  return {
+    amountDueCents: sumAmountDueCents(periods, asOfMonth),
+    paymentsEnabled: Boolean(connect?.chargesEnabled),
+    periods,
+  };
 }
 
 function toStatusResponse(payment: ITenantRentPayment): ITenantRentPaymentStatusResponse {
@@ -303,16 +328,15 @@ export const tenantRentPaymentService = {
       throw new RentPaymentNotFoundError("Lease not found");
     }
 
-    const [periods, connect] = await Promise.all([
-      buildBalancePeriods(leaseId),
-      propertyStripeAccountsDb.findByPropertyId(lease.propertyId),
-    ]);
-    const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
+    const { amountDueCents, paymentsEnabled, periods } = await computeLeaseBalanceFields(
+      leaseId,
+      lease.propertyId
+    );
     return {
-      amountDueCents: sumAmountDueCents(periods, asOfMonth),
+      amountDueCents,
       currency: "usd",
       leaseId,
-      paymentsEnabled: Boolean(connect?.chargesEnabled),
+      paymentsEnabled,
       periods,
     };
   },
@@ -327,6 +351,46 @@ export const tenantRentPaymentService = {
     }
     await assertLeaseTenantAccess(payment.leaseId, tenantUserId);
     return toStatusResponse(payment);
+  },
+
+  async getRentSummary(tenantUserId: string): Promise<ITenantRentSummaryResponse> {
+    const activeLeases = await tenantPortalMembershipService.listLeases(
+      tenantUserId,
+      TenantLeaseListStatus.ACTIVE
+    );
+
+    const leases: ITenantRentSummaryLease[] = await Promise.all(
+      activeLeases.map(async (item) => {
+        const lease = await propertyLongStaysDb.findById(item.leaseId);
+        if (!lease) {
+          return {
+            amountDueCents: 0,
+            leaseId: item.leaseId,
+            paymentsEnabled: false,
+            propertyName: item.propertyName,
+            unitLabel: item.unitLabel,
+          };
+        }
+        const { amountDueCents, paymentsEnabled } = await computeLeaseBalanceFields(
+          item.leaseId,
+          lease.propertyId
+        );
+        return {
+          amountDueCents,
+          leaseId: item.leaseId,
+          paymentsEnabled,
+          propertyName: item.propertyName,
+          unitLabel: item.unitLabel,
+        };
+      })
+    );
+
+    const totalAmountDueCents = leases.reduce((sum, row) => sum + row.amountDueCents, 0);
+    return {
+      currency: "usd",
+      leases,
+      totalAmountDueCents,
+    };
   },
 
   async markCanceled(payment: ITenantRentPayment) {

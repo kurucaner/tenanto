@@ -86,6 +86,17 @@ export function sumAmountDueCents(
   }, 0);
 }
 
+/** Unpaid months that count toward amount due (≤ `asOfMonth`), sorted chronologically. */
+export function selectDuePeriodMonths(
+  periods: ITenantLeaseBalancePeriod[],
+  asOfMonth: string
+): string[] {
+  return periods
+    .filter((period) => period.remainingCents > 0 && period.month <= asOfMonth)
+    .map((period) => period.month)
+    .sort((a, b) => a.localeCompare(b));
+}
+
 export function isValidPeriodMonth(month: string): boolean {
   return PERIOD_MONTH_RE.test(month);
 }

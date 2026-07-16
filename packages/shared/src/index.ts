@@ -587,6 +587,8 @@ export {
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
   type ITenantRentPaymentStatusResponse,
+  type ITenantRentSummaryLease,
+  type ITenantRentSummaryResponse,
   TenantRentPaymentStatus,
   type TTenantRentPaymentStatus,
 } from "./tenant-rent-payment-types";
@@ -600,6 +602,7 @@ export {
   type IRentAllocation,
   type IRentPeriodInput,
   isValidPeriodMonth,
+  selectDuePeriodMonths,
   STRIPE_MIN_CHARGE_CENTS_USD,
   sumAmountDueCents,
   type TValidateRentCheckoutResult,
