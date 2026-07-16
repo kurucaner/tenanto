@@ -3,6 +3,8 @@ import { memo, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   type ILeasePortalRowState,
+  isSameLeasePortalActingTarget,
+  type TLeasePortalActingTarget,
   type TLeasePortalRowAction,
   type TLeasePortalStatusTone,
 } from "@/lib/lease-portal-access-display";
@@ -10,12 +12,14 @@ import { cn } from "@/lib/utils";
 
 interface ILeaseTenantPortalRowProps {
   actingAction: TLeasePortalRowAction | null;
-  actingMembershipId: string | null;
+  actingTarget: TLeasePortalActingTarget | null;
   canManage: boolean;
   onInvite: () => void;
   onResend: () => void;
   onRevoke: () => void;
+  portalMutationPending: boolean;
   portalState: ILeasePortalRowState;
+  rowTarget: TLeasePortalActingTarget;
 }
 
 const STATUS_DOT_CLASS: Record<TLeasePortalStatusTone, string> = {
@@ -33,16 +37,18 @@ const ACTION_LABEL: Record<TLeasePortalRowAction, { idle: string; pending: strin
 
 export const LeaseTenantPortalRow = memo(function LeaseTenantPortalRow({
   actingAction,
-  actingMembershipId,
+  actingTarget,
   canManage,
   onInvite,
   onResend,
   onRevoke,
+  portalMutationPending,
   portalState,
+  rowTarget,
 }: ILeaseTenantPortalRowProps) {
   const membershipId = portalState.membership?.id ?? null;
   const action = portalState.actions[0] ?? null;
-  const isActingOnRow = actingAction != null && actingMembershipId === membershipId;
+  const isActingOnRow = isSameLeasePortalActingTarget(actingTarget, rowTarget);
   const showAction = canManage && action != null && (action === "invite" || membershipId != null);
 
   const handleAction = useCallback(() => {
@@ -79,7 +85,7 @@ export const LeaseTenantPortalRow = memo(function LeaseTenantPortalRow({
       {showAction && action ? (
         <Button
           className={buttonClassName}
-          disabled={isActingOnRow}
+          disabled={portalMutationPending}
           onClick={handleAction}
           size="sm"
           type="button"

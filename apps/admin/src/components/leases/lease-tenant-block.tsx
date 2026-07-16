@@ -6,6 +6,7 @@ import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Button } from "@/components/ui/button";
 import {
   type ILeasePortalRowState,
+  type TLeasePortalActingTarget,
   type TLeasePortalRowAction,
 } from "@/lib/lease-portal-access-display";
 import { formatPhoneDisplay, type IPropertyLongStaySecondaryTenant } from "@/packages/shared";
@@ -25,7 +26,7 @@ function TenantContactLine({ label, value }: Readonly<{ label: string; value: st
 
 interface ILeaseTenantBlockActionsProps {
   actingAction: TLeasePortalRowAction | null;
-  actingMembershipId: string | null;
+  actingTarget: TLeasePortalActingTarget | null;
   canEdit: boolean;
   deleteAriaLabel?: string;
   editAriaLabel: string;
@@ -36,14 +37,16 @@ interface ILeaseTenantBlockActionsProps {
   onInvite: () => void;
   onResend: () => void;
   onRevoke: () => void;
+  portalMutationPending: boolean;
   portalState: ILeasePortalRowState;
+  rowTarget: TLeasePortalActingTarget;
   showDelete: boolean;
   showPortalRow: boolean;
 }
 
 const LeaseTenantBlockActions = memo(function LeaseTenantBlockActions({
   actingAction,
-  actingMembershipId,
+  actingTarget,
   canEdit,
   deleteAriaLabel,
   editAriaLabel,
@@ -54,7 +57,9 @@ const LeaseTenantBlockActions = memo(function LeaseTenantBlockActions({
   onInvite,
   onResend,
   onRevoke,
+  portalMutationPending,
   portalState,
+  rowTarget,
   showDelete,
   showPortalRow,
 }: ILeaseTenantBlockActionsProps) {
@@ -63,12 +68,14 @@ const LeaseTenantBlockActions = memo(function LeaseTenantBlockActions({
       {showPortalRow ? (
         <LeaseTenantPortalRow
           actingAction={actingAction}
-          actingMembershipId={actingMembershipId}
+          actingTarget={actingTarget}
           canManage={canEdit}
           onInvite={onInvite}
           onResend={onResend}
           onRevoke={onRevoke}
+          portalMutationPending={portalMutationPending}
           portalState={portalState}
+          rowTarget={rowTarget}
         />
       ) : null}
       {canEdit ? (
@@ -99,7 +106,7 @@ LeaseTenantBlockActions.displayName = "LeaseTenantBlockActions";
 
 interface ILeasePrimaryTenantBlockProps {
   actingAction: TLeasePortalRowAction | null;
-  actingMembershipId: string | null;
+  actingTarget: TLeasePortalActingTarget | null;
   canEdit: boolean;
   editAriaLabel: string;
   email: string | null;
@@ -111,6 +118,7 @@ interface ILeasePrimaryTenantBlockProps {
   phone: string | null;
   portalErrorMessage: string | null;
   portalLoading: boolean;
+  portalMutationPending: boolean;
   portalState: ILeasePortalRowState;
   roleLabel: string;
   showPortalRow: boolean;
@@ -118,7 +126,7 @@ interface ILeasePrimaryTenantBlockProps {
 
 export const LeasePrimaryTenantBlock = memo(function LeasePrimaryTenantBlock({
   actingAction,
-  actingMembershipId,
+  actingTarget,
   canEdit,
   editAriaLabel,
   email,
@@ -130,6 +138,7 @@ export const LeasePrimaryTenantBlock = memo(function LeasePrimaryTenantBlock({
   phone,
   portalErrorMessage,
   portalLoading,
+  portalMutationPending,
   portalState,
   roleLabel,
   showPortalRow,
@@ -144,18 +153,22 @@ export const LeasePrimaryTenantBlock = memo(function LeasePrimaryTenantBlock({
         {portalLoading ? (
           <p className="text-muted-foreground text-xs">Loading portal status…</p>
         ) : null}
-        {portalErrorMessage ? <p className="text-destructive text-xs">{portalErrorMessage}</p> : null}
+        {portalErrorMessage ? (
+          <p className="text-destructive text-xs">{portalErrorMessage}</p>
+        ) : null}
       </div>
       <LeaseTenantBlockActions
         actingAction={actingAction}
-        actingMembershipId={actingMembershipId}
+        actingTarget={actingTarget}
         canEdit={canEdit}
         editAriaLabel={editAriaLabel}
         onEdit={onEdit}
         onInvite={onInvite}
         onResend={onResend}
         onRevoke={onRevoke}
+        portalMutationPending={portalMutationPending}
         portalState={portalState}
+        rowTarget={{ kind: "primary" }}
         showDelete={false}
         showPortalRow={showPortalRow}
       />
@@ -166,7 +179,7 @@ LeasePrimaryTenantBlock.displayName = "LeasePrimaryTenantBlock";
 
 interface ILeaseSecondaryTenantRowProps {
   actingAction: TLeasePortalRowAction | null;
-  actingMembershipId: string | null;
+  actingTarget: TLeasePortalActingTarget | null;
   canEdit: boolean;
   index: number;
   isDeletePending: boolean;
@@ -176,6 +189,7 @@ interface ILeaseSecondaryTenantRowProps {
   onInvite: (index: number) => void;
   onResend: (index: number) => void;
   onRevoke: (index: number) => void;
+  portalMutationPending: boolean;
   portalState: ILeasePortalRowState;
   showPortalRow: boolean;
   tenant: IPropertyLongStaySecondaryTenant;
@@ -183,7 +197,7 @@ interface ILeaseSecondaryTenantRowProps {
 
 export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   actingAction,
-  actingMembershipId,
+  actingTarget,
   canEdit,
   index,
   isDeletePending,
@@ -193,6 +207,7 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   onInvite,
   onResend,
   onRevoke,
+  portalMutationPending,
   portalState,
   showPortalRow,
   tenant,
@@ -229,7 +244,7 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
       </div>
       <LeaseTenantBlockActions
         actingAction={actingAction}
-        actingMembershipId={actingMembershipId}
+        actingTarget={actingTarget}
         canEdit={canEdit}
         deleteAriaLabel={`Remove ${tenant.name}`}
         editAriaLabel={`Edit ${tenant.name}`}
@@ -240,7 +255,9 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
         onInvite={handleInvite}
         onResend={handleResend}
         onRevoke={handleRevoke}
+        portalMutationPending={portalMutationPending}
         portalState={portalState}
+        rowTarget={{ index, kind: "secondary" }}
         showDelete
         showPortalRow={showPortalRow}
       />

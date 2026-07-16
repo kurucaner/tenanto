@@ -11,6 +11,9 @@ import {
 
 export type TLeasePortalRowAction = "invite" | "resend" | "revoke";
 
+export type TLeasePortalActingTarget =
+  { kind: "invite-all" } | { kind: "primary" } | { index: number; kind: "secondary" };
+
 export type TLeasePortalStatusTone = "active" | "muted" | "neutral" | "pending";
 
 export interface ILeasePortalRowState {
@@ -18,6 +21,19 @@ export interface ILeasePortalRowState {
   membership: ILeaseTenantMembership | null;
   statusLabel: string;
   statusTone: TLeasePortalStatusTone;
+}
+
+export function isSameLeasePortalActingTarget(
+  actingTarget: TLeasePortalActingTarget | null,
+  rowTarget: TLeasePortalActingTarget
+): boolean {
+  if (!actingTarget || actingTarget.kind !== rowTarget.kind) {
+    return false;
+  }
+  if (actingTarget.kind === "secondary" && rowTarget.kind === "secondary") {
+    return actingTarget.index === rowTarget.index;
+  }
+  return true;
 }
 
 const PENDING_STATUSES = new Set<TTenantMembershipStatus>([

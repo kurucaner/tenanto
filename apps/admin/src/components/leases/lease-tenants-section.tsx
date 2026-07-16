@@ -23,6 +23,7 @@ import {
   findLeasePortalMembership,
   getLeasePortalInviteAllTargets,
   getLeasePortalRowState,
+  type TLeasePortalActingTarget,
   type TLeasePortalRowAction,
 } from "@/lib/lease-portal-access-display";
 import { queryKeys } from "@/lib/query-keys";
@@ -41,6 +42,7 @@ type TLeaseSecondaryTenantDeleteTarget = {
 };
 
 type TLeasePortalRevokeTarget = {
+  actingTarget: TLeasePortalActingTarget;
   membershipId: string;
   tenantName: string;
 };
@@ -61,7 +63,7 @@ export const LeaseTenantsSection = memo(
       tenant: IPropertyLongStaySecondaryTenant;
     } | null>(null);
     const [actingAction, setActingAction] = useState<TLeasePortalRowAction | null>(null);
-    const [actingMembershipId, setActingMembershipId] = useState<string | null>(null);
+    const [actingTarget, setActingTarget] = useState<TLeasePortalActingTarget | null>(null);
 
     const canEditTenants = canManage && lease.status === PropertyLongStayStatus.ACTIVE;
 
@@ -147,10 +149,11 @@ export const LeaseTenantsSection = memo(
       async (
         action: TLeasePortalRowAction,
         membershipId: string | null,
-        body: { invitePrimary?: boolean; secondaryIndexes?: number[] }
+        body: { invitePrimary?: boolean; secondaryIndexes?: number[] },
+        target: TLeasePortalActingTarget
       ) => {
         setActingAction(action);
-        setActingMembershipId(membershipId);
+        setActingTarget(target);
         try {
           if (action === "invite") {
             await inviteMutation.mutateAsync(body);
@@ -166,7 +169,7 @@ export const LeaseTenantsSection = memo(
           await revokeMutation.mutateAsync(membershipId);
         } finally {
           setActingAction(null);
-          setActingMembershipId(null);
+          setActingTarget(null);
         }
       },
       [inviteMutation, resendMutation, revokeMutation]
@@ -230,7 +233,7 @@ export const LeaseTenantsSection = memo(
 
     const revokeFn = useCallback(
       (target: TLeasePortalRevokeTarget, onDeleted: () => void) => {
-        void runPortalAction("revoke", target.membershipId, {})
+        void runPortalAction("revoke", target.membershipId, {}, target.actingTarget)
           .then(onDeleted)
           .catch(() => undefined);
       },
@@ -241,14 +244,18 @@ export const LeaseTenantsSection = memo(
       useDeleteConfirmation<TLeasePortalRevokeTarget>(revokeMutation.isPending, revokeFn);
 
     const requestRevokeConfirmation = useCallback(
-      (membershipId: string | null | undefined, tenantName: string) => {
+      (
+        membershipId: string | null | undefined,
+        tenantName: string,
+        target: TLeasePortalActingTarget
+      ) => {
         if (!membershipId) {
           return;
         }
         requestRevoke({
           confirmLabel: "Revoke",
           description: `Revoke portal access for "${tenantName}"? They will no longer be able to access this lease in the tenant portal.`,
-          target: { membershipId, tenantName },
+          target: { actingTarget: target, membershipId, tenantName },
           title: "Revoke portal access",
         });
       },
@@ -256,17 +263,22 @@ export const LeaseTenantsSection = memo(
     );
 
     const handleInvitePrimary = useCallback(() => {
-      void runPortalAction("invite", primaryMembership?.id ?? null, {
-        invitePrimary: true,
-      });
+      void runPortalAction(
+        "invite",
+        primaryMembership?.id ?? null,
+        {
+          invitePrimary: true,
+        },
+        { kind: "primary" }
+      );
     }, [primaryMembership?.id, runPortalAction]);
 
     const handleResendPrimary = useCallback(() => {
-      void runPortalAction("resend", primaryMembership?.id ?? null, {});
+      void runPortalAction("resend", primaryMembership?.id ?? null, {}, { kind: "primary" });
     }, [primaryMembership?.id, runPortalAction]);
 
     const handleRevokePrimary = useCallback(() => {
-      requestRevokeConfirmation(primaryMembership?.id, lease.guestName);
+      requestRevokeConfirmation(primaryMembership?.id, lease.guestName, { kind: "primary" });
     }, [lease.guestName, primaryMembership?.id, requestRevokeConfirmation]);
 
     const handleEditPrimary = useCallback(() => {
@@ -294,9 +306,14 @@ export const LeaseTenantsSection = memo(
     const handleInviteSecondary = useCallback(
       (index: number) => {
         const { membership } = findSecondaryMembership(index);
-        void runPortalAction("invite", membership?.id ?? null, {
-          secondaryIndexes: [index],
-        });
+        void runPortalAction(
+          "invite",
+          membership?.id ?? null,
+          {
+            secondaryIndexes: [index],
+          },
+          { index, kind: "secondary" }
+        );
       },
       [findSecondaryMembership, runPortalAction]
     );
@@ -304,7 +321,7 @@ export const LeaseTenantsSection = memo(
     const handleResendSecondary = useCallback(
       (index: number) => {
         const { membership } = findSecondaryMembership(index);
-        void runPortalAction("resend", membership?.id ?? null, {});
+        void runPortalAction("resend", membership?.id ?? null, {}, { index, kind: "secondary" });
       },
       [findSecondaryMembership, runPortalAction]
     );
@@ -315,7 +332,10 @@ export const LeaseTenantsSection = memo(
         if (!tenant) {
           return;
         }
-        requestRevokeConfirmation(membership?.id, tenant.name);
+        requestRevokeConfirmation(membership?.id, tenant.name, {
+          index,
+          kind: "secondary",
+        });
       },
       [findSecondaryMembership, requestRevokeConfirmation]
     );
@@ -347,10 +367,15 @@ export const LeaseTenantsSection = memo(
     }, []);
 
     const handleInviteAll = useCallback(() => {
-      void runPortalAction("invite", null, {
-        invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
-        secondaryIndexes: inviteAllTargets.secondaryIndexes,
-      });
+      void runPortalAction(
+        "invite",
+        null,
+        {
+          invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
+          secondaryIndexes: inviteAllTargets.secondaryIndexes,
+        },
+        { kind: "invite-all" }
+      );
     }, [inviteAllTargets.invitePrimary, inviteAllTargets.secondaryIndexes, runPortalAction]);
 
     const handleEditSecondaryDialogOpenChange = useCallback((nextOpen: boolean) => {
@@ -368,7 +393,7 @@ export const LeaseTenantsSection = memo(
           <CardContent className="space-y-3 p-6">
             <LeasePrimaryTenantBlock
               actingAction={actingAction}
-              actingMembershipId={actingMembershipId}
+              actingTarget={actingTarget}
               canEdit={canEditTenants}
               editAriaLabel="Edit primary tenant"
               email={lease.tenantEmail}
@@ -380,6 +405,7 @@ export const LeaseTenantsSection = memo(
               phone={lease.tenantPhone}
               portalErrorMessage={portalErrorMessage}
               portalLoading={portalAccessQuery.isPending}
+              portalMutationPending={portalMutationPending}
               portalState={primaryPortalState}
               roleLabel="Primary tenant"
               showPortalRow={showPortalRow}
@@ -402,7 +428,7 @@ export const LeaseTenantsSection = memo(
                   return (
                     <LeaseSecondaryTenantRow
                       actingAction={actingAction}
-                      actingMembershipId={actingMembershipId}
+                      actingTarget={actingTarget}
                       canEdit={canEditTenants}
                       index={index}
                       isDeletePending={removeMutation.isPending}
@@ -413,6 +439,7 @@ export const LeaseTenantsSection = memo(
                       onInvite={handleInviteSecondary}
                       onResend={handleResendSecondary}
                       onRevoke={handleRevokeSecondary}
+                      portalMutationPending={portalMutationPending}
                       portalState={rowPortalState}
                       showPortalRow={showPortalRow}
                       tenant={tenant}
@@ -443,9 +470,7 @@ export const LeaseTenantsSection = memo(
                     type="button"
                     variant="outline"
                   >
-                    {actingAction === "invite" && actingMembershipId === null
-                      ? "Inviting…"
-                      : "Invite all"}
+                    {actingTarget?.kind === "invite-all" ? "Inviting…" : "Invite all"}
                   </Button>
                 ) : null}
               </div>

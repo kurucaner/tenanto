@@ -5,6 +5,7 @@ import {
   formatLeasePortalAdminStatus,
   getLeasePortalRowState,
   getLeasePortalStatusTone,
+  isSameLeasePortalActingTarget,
 } from "./lease-portal-access-display";
 
 const memberships = [
@@ -62,6 +63,26 @@ describe("getLeasePortalStatusTone", () => {
     expect(getLeasePortalStatusTone("Not invited")).toBe("neutral");
     expect(getLeasePortalStatusTone("Declined")).toBe("muted");
     expect(getLeasePortalStatusTone("Revoked")).toBe("muted");
+  });
+});
+
+describe("isSameLeasePortalActingTarget", () => {
+  test("matches primary and invite-all by kind", () => {
+    expect(isSameLeasePortalActingTarget({ kind: "primary" }, { kind: "primary" })).toBe(true);
+    expect(isSameLeasePortalActingTarget({ kind: "invite-all" }, { kind: "invite-all" })).toBe(
+      true
+    );
+    expect(isSameLeasePortalActingTarget({ kind: "primary" }, { kind: "invite-all" })).toBe(false);
+    expect(isSameLeasePortalActingTarget(null, { kind: "primary" })).toBe(false);
+  });
+
+  test("matches secondary targets by index", () => {
+    expect(
+      isSameLeasePortalActingTarget({ index: 1, kind: "secondary" }, { index: 1, kind: "secondary" })
+    ).toBe(true);
+    expect(
+      isSameLeasePortalActingTarget({ index: 0, kind: "secondary" }, { index: 1, kind: "secondary" })
+    ).toBe(false);
   });
 });
 
