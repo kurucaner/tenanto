@@ -22,39 +22,47 @@ import {
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import type { IPropertyLongStay } from "@/packages/shared";
+import type { ILeasePrimaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 
 interface EditPrimaryTenantDialogProps {
   lease: IPropertyLongStay;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  primaryTenantContact: ILeasePrimaryTenantContact;
   propertyId: string;
 }
 
+function primaryTenantContactFormValues(
+  primaryTenantContact: ILeasePrimaryTenantContact
+): TTenantContactFormValues {
+  return tenantContactFormDefaults({
+    email: primaryTenantContact.effectiveEmail,
+    name: primaryTenantContact.effectiveName,
+    phone: primaryTenantContact.effectivePhone,
+  });
+}
+
 export const EditPrimaryTenantDialog = memo(
-  ({ lease, onOpenChange, open, propertyId }: EditPrimaryTenantDialogProps) => {
+  ({
+    lease,
+    onOpenChange,
+    open,
+    primaryTenantContact,
+    propertyId,
+  }: EditPrimaryTenantDialogProps) => {
     const queryClient = useQueryClient();
+    const contactValues = primaryTenantContactFormValues(primaryTenantContact);
 
     const form = useForm<TTenantContactFormValues>({
-      defaultValues: tenantContactFormDefaults({
-        email: lease.tenantEmail,
-        name: lease.guestName,
-        phone: lease.tenantPhone,
-      }),
+      defaultValues: contactValues,
       resolver: zodResolver(tenantContactFormSchema),
     });
 
     useEffect(() => {
       if (open) {
-        form.reset(
-          tenantContactFormDefaults({
-            email: lease.tenantEmail,
-            name: lease.guestName,
-            phone: lease.tenantPhone,
-          })
-        );
+        form.reset(primaryTenantContactFormValues(primaryTenantContact));
       }
-    }, [form, lease.guestName, lease.tenantEmail, lease.tenantPhone, open]);
+    }, [form, open, primaryTenantContact]);
 
     const mutation = useMutation({
       mutationFn: (values: TTenantContactFormValues) =>
@@ -72,17 +80,11 @@ export const EditPrimaryTenantDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(
-            tenantContactFormDefaults({
-              email: lease.tenantEmail,
-              name: lease.guestName,
-              phone: lease.tenantPhone,
-            })
-          );
+          form.reset(primaryTenantContactFormValues(primaryTenantContact));
         }
         onOpenChange(nextOpen);
       },
-      [form, lease.guestName, lease.tenantEmail, lease.tenantPhone, onOpenChange]
+      [form, onOpenChange, primaryTenantContact]
     );
 
     const onSubmit = form.handleSubmit((values) => {

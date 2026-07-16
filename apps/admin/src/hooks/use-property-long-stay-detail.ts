@@ -15,6 +15,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
 
   const detail = detailQuery.data;
   const lease = detail?.longStay;
+  const primaryTenantContact = detail?.primaryTenantContact;
   const rentSchedule = detail?.rentSchedule ?? [];
   const rentPeriods = useMemo(() => detail?.rentPeriods ?? [], [detail?.rentPeriods]);
 
@@ -31,6 +32,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
     isError: detailQuery.isError,
     isPending: detailQuery.isPending,
     lease,
+    primaryTenantContact,
     rentPeriods,
     rentSchedule,
   };

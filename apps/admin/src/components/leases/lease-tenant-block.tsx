@@ -3,6 +3,7 @@ import { memo, type MouseEvent, useCallback } from "react";
 
 import { LeaseTenantPortalRow } from "@/components/leases/lease-tenant-portal-row";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   type ILeasePortalRowState,
@@ -110,6 +111,7 @@ interface ILeasePrimaryTenantBlockProps {
   canEdit: boolean;
   editAriaLabel: string;
   email: string | null;
+  isPortalLinked: boolean;
   name: string;
   onEdit: () => void;
   onInvite: () => void;
@@ -130,6 +132,7 @@ export const LeasePrimaryTenantBlock = memo(function LeasePrimaryTenantBlock({
   canEdit,
   editAriaLabel,
   email,
+  isPortalLinked,
   name,
   onEdit,
   onInvite,
@@ -146,7 +149,14 @@ export const LeasePrimaryTenantBlock = memo(function LeasePrimaryTenantBlock({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-muted-foreground text-xs">{roleLabel}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-muted-foreground text-xs">{roleLabel}</p>
+          {isPortalLinked ? (
+            <Badge className="h-5" variant="secondary">
+              Portal account linked
+            </Badge>
+          ) : null}
+        </div>
         <p className="font-medium">{name}</p>
         <TenantContactLine label="email" value={email} />
         <TenantContactLine label="phone" value={phone} />

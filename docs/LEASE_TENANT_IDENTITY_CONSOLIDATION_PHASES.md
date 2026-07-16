@@ -103,44 +103,44 @@ N/A for core consolidation. Optional env for accept phone sync:
 
 ### Effective contact (computed, not stored)
 
-| Field | Linked (active primary) | Pending invite | No membership |
-| --- | --- | --- | --- |
-| Name | `tenant_users.name` | `membership.display_name` ?? `lease.guest_name` | `lease.guest_name` |
-| Email | `tenant_users.email` | `membership.invite_email` | `lease.tenant_email` |
-| Phone | `tenant_users.phone` | `lease.tenant_phone` | `lease.tenant_phone` |
+| Field | Linked (active primary) | Pending invite                                  | No membership        |
+| ----- | ----------------------- | ----------------------------------------------- | -------------------- |
+| Name  | `tenant_users.name`     | `membership.display_name` ?? `lease.guest_name` | `lease.guest_name`   |
+| Email | `tenant_users.email`    | `membership.invite_email`                       | `lease.tenant_email` |
+| Phone | `tenant_users.phone`    | `lease.tenant_phone`                            | `lease.tenant_phone` |
 
 **Membership selection:** non-terminal primary row for lease (`active` preferred; else latest `pending_*` for display).
 
 ### Phase 5 (deferred) — column deprecation
 
-| Action | Notes |
-| --- | --- |
-| Drop `guest_name`, `tenant_email`, `tenant_phone` | After all readers migrated |
-| Optional `primary_tenant_user_id` | Denormalized cache; maintain on accept/end/revoke |
+| Action                                            | Notes                                             |
+| ------------------------------------------------- | ------------------------------------------------- |
+| Drop `guest_name`, `tenant_email`, `tenant_phone` | After all readers migrated                        |
+| Optional `primary_tenant_user_id`                 | Denormalized cache; maintain on accept/end/revoke |
 
 ---
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `TPrimaryTenantContactSource` | `'linked_user' \| 'membership_pending' \| 'lease'` |
-| `ILeasePrimaryTenantContact` | `effectiveName`, `effectiveEmail`, `effectivePhone`, `source`, `tenantUserId`, `membershipId`, `membershipStatus` |
-| `resolvePrimaryTenantContact(...)` | Pure resolver + unit tests |
-| `IPropertyLongStayDetailResponse` (extend) | Optional nested `primaryTenantContact` (additive; keep flat fields during transition) |
-| `IUpdatePrimaryTenantContactBody` (optional) | Unified admin patch shape for Phase 3 |
+| Type                                         | Purpose                                                                                                           |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `TPrimaryTenantContactSource`                | `'linked_user' \| 'membership_pending' \| 'lease'`                                                                |
+| `ILeasePrimaryTenantContact`                 | `effectiveName`, `effectiveEmail`, `effectivePhone`, `source`, `tenantUserId`, `membershipId`, `membershipStatus` |
+| `resolvePrimaryTenantContact(...)`           | Pure resolver + unit tests                                                                                        |
+| `IPropertyLongStayDetailResponse` (extend)   | Optional nested `primaryTenantContact` (additive; keep flat fields during transition)                             |
+| `IUpdatePrimaryTenantContactBody` (optional) | Unified admin patch shape for Phase 3                                                                             |
 
 ---
 
 ## API (sketch)
 
-| Method | Path | Change |
-| --- | --- | --- |
-| `GET` | `/properties/:id/long-stays/:id` | Include `primaryTenantContact`; flat `guestName`/`tenantEmail`/`tenantPhone` mirror **effective** values when linked (transition) |
-| `GET` | `.../portal-access` | Expose link state; optional effective contact for admin tenants tab |
-| `PATCH` | `/properties/:id/long-stays/:id` | Branch: linked → update `tenant_users` + sync snapshots; unlinked → lease only |
-| `GET` | `/tenant/me` | Unchanged shape; phone populated after accept sync / bind |
-| `POST` | `/tenant/me/invites/:id/accept` | Trigger phone sync helper after `acceptMembershipForTenant` |
+| Method  | Path                             | Change                                                                                                                            |
+| ------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/properties/:id/long-stays/:id` | Include `primaryTenantContact`; flat `guestName`/`tenantEmail`/`tenantPhone` mirror **effective** values when linked (transition) |
+| `GET`   | `.../portal-access`              | Expose link state; optional effective contact for admin tenants tab                                                               |
+| `PATCH` | `/properties/:id/long-stays/:id` | Branch: linked → update `tenant_users` + sync snapshots; unlinked → lease only                                                    |
+| `GET`   | `/tenant/me`                     | Unchanged shape; phone populated after accept sync / bind                                                                         |
+| `POST`  | `/tenant/me/invites/:id/accept`  | Trigger phone sync helper after `acceptMembershipForTenant`                                                                       |
 
 ---
 
@@ -164,13 +164,15 @@ N/A for core consolidation. Optional env for accept phone sync:
 
 **Goal:** Admin and lease APIs **show** effective contact when primary membership is active + linked; fall back to lease fields otherwise.
 
-- [ ] Extend long-stay **detail** response with `primaryTenantContact` (`property-long-stays` route + shared type)
-- [ ] **Transition rule:** optionally set response `guestName`/`tenantEmail`/`tenantPhone` to effective values for linked leases (document breaking-change risk; prefer additive field first, then flip admin to read `primaryTenantContact` only)
-- [ ] Admin `LeasePrimaryTenantBlock` / edit dialog **prefill** from effective contact (via API field), not raw lease only
-- [ ] Show badge: “Portal account linked” when `source === 'linked_user'`
-- [ ] Tenant `/tenant/me` — no change required if accept sync not yet shipped; document that phone stays null until Phase 2
+- [x] Extend long-stay **detail** response with `primaryTenantContact` (`property-long-stays` route + shared type)
+- [x] **Transition rule:** optionally set response `guestName`/`tenantEmail`/`tenantPhone` to effective values for linked leases (document breaking-change risk; prefer additive field first, then flip admin to read `primaryTenantContact` only)
+- [x] Admin `LeasePrimaryTenantBlock` / edit dialog **prefill** from effective contact (via API field), not raw lease only
+- [x] Show badge: “Portal account linked” when `source === 'linked_user'`
+- [x] Tenant `/tenant/me` — no change required if accept sync not yet shipped; document that phone stays null until Phase 2
 
 **Exit criteria:** Linked lease in admin shows `tenant_users` name/email/phone; unlinked lease unchanged; integration test: create user → invite → accept → GET lease detail shows user email/phone.
+
+**Note:** `/tenant/me` phone may remain null until Phase 2 accept sync; admin linked display reads `tenant_users.phone` when set (e.g. after tenant phone bind).
 
 ---
 
@@ -208,14 +210,14 @@ N/A for core consolidation. Optional env for accept phone sync:
 
 **Goal:** Production-safe; campaigns and search aware of effective contact.
 
-| Concern | Action |
-| --- | --- |
-| Email campaigns | Extend `resolveTenantEmailRecipients` to use `resolvePrimaryTenantContact` (or server pre-join) for primary role |
-| Drift detection | Admin-only script or log: active linked leases where lease email ≠ user email |
-| List search/sort | Phase 4b: JOIN `tenant_users` for `guest_name` sort/search when linked (keep lease column fallback) |
-| Exports | `leases-table-export.ts` use effective contact |
-| Observability | Log `tenant_identity.sync_on_accept`, `tenant_identity.admin_update_linked` |
-| Docs | Update `TENANT_PORTAL_PHASES.md` domain rules; add `TENANT_IDENTITY_FAILURE_MODES.md` |
+| Concern          | Action                                                                                                           |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Email campaigns  | Extend `resolveTenantEmailRecipients` to use `resolvePrimaryTenantContact` (or server pre-join) for primary role |
+| Drift detection  | Admin-only script or log: active linked leases where lease email ≠ user email                                    |
+| List search/sort | Phase 4b: JOIN `tenant_users` for `guest_name` sort/search when linked (keep lease column fallback)              |
+| Exports          | `leases-table-export.ts` use effective contact                                                                   |
+| Observability    | Log `tenant_identity.sync_on_accept`, `tenant_identity.admin_update_linked`                                      |
+| Docs             | Update `TENANT_PORTAL_PHASES.md` domain rules; add `TENANT_IDENTITY_FAILURE_MODES.md`                            |
 
 **Exit criteria:** Campaign send uses linked user email for active primary; drift script reports zero rows in staging after backfill; failure modes doc complete.
 

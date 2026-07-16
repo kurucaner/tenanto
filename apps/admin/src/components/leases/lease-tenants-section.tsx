@@ -28,6 +28,7 @@ import {
 } from "@/lib/lease-portal-access-display";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  type ILeasePrimaryTenantContact,
   type IPropertyLongStay,
   type IPropertyLongStaySecondaryTenant,
   PropertyLongStayStatus,
@@ -50,11 +51,12 @@ type TLeasePortalRevokeTarget = {
 interface LeaseTenantsSectionProps {
   canManage: boolean;
   lease: IPropertyLongStay;
+  primaryTenantContact: ILeasePrimaryTenantContact;
   propertyId: string;
 }
 
 export const LeaseTenantsSection = memo(
-  ({ canManage, lease, propertyId }: LeaseTenantsSectionProps) => {
+  ({ canManage, lease, primaryTenantContact, propertyId }: LeaseTenantsSectionProps) => {
     const queryClient = useQueryClient();
     const [addSecondaryOpen, setAddSecondaryOpen] = useState(false);
     const [editPrimaryOpen, setEditPrimaryOpen] = useState(false);
@@ -396,13 +398,14 @@ export const LeaseTenantsSection = memo(
               actingTarget={actingTarget}
               canEdit={canEditTenants}
               editAriaLabel="Edit primary tenant"
-              email={lease.tenantEmail}
-              name={lease.guestName}
+              email={primaryTenantContact.effectiveEmail}
+              isPortalLinked={primaryTenantContact.source === "linked_user"}
+              name={primaryTenantContact.effectiveName}
               onEdit={handleEditPrimary}
               onInvite={handleInvitePrimary}
               onResend={handleResendPrimary}
               onRevoke={handleRevokePrimary}
-              phone={lease.tenantPhone}
+              phone={primaryTenantContact.effectivePhone}
               portalErrorMessage={portalErrorMessage}
               portalLoading={portalAccessQuery.isPending}
               portalMutationPending={portalMutationPending}
@@ -494,6 +497,7 @@ export const LeaseTenantsSection = memo(
             lease={lease}
             onOpenChange={setEditPrimaryOpen}
             open={true}
+            primaryTenantContact={primaryTenantContact}
             propertyId={propertyId}
           />
         ) : null}

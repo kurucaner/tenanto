@@ -1,3 +1,4 @@
+import type { ILeasePrimaryTenantContact } from "./lease-primary-tenant-contact";
 import type { IPropertyLongStaysListMeta } from "./list-meta-types";
 import type {
   TPropertyLongStaysListSortBy,
@@ -80,6 +81,8 @@ export interface IPropertyLongStaysListResponse {
 
 export interface IPropertyLongStayDetailResponse {
   longStay: IPropertyLongStay;
+  /** Effective primary tenant contact (linked user, pending invite, or lease fallback). */
+  primaryTenantContact: ILeasePrimaryTenantContact;
   rentPeriods: IPropertyLongStayRentPeriod[];
   rentSchedule: IPropertyLongStayRentMonth[];
 }

@@ -31,6 +31,7 @@ import {
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
+import { resolvePrimaryTenantContactForLongStay } from "@/services/lease-primary-tenant-contact-service";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
 
@@ -534,7 +535,8 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
       const rentSchedule = await propertyLongStaysDb.getRentSchedule(longStayId);
       const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
-      return reply.send({ longStay, rentPeriods, rentSchedule });
+      const primaryTenantContact = await resolvePrimaryTenantContactForLongStay(longStay);
+      return reply.send({ longStay, primaryTenantContact, rentPeriods, rentSchedule });
     }
   );
 

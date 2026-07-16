@@ -47,8 +47,15 @@ export const PropertyLeaseDetailPage = memo(() => {
     null
   );
 
-  const { currentRent, isError, isPending, lease, rentPeriods, rentSchedule } =
-    usePropertyLongStayDetail(propertyId, leaseId);
+  const {
+    currentRent,
+    isError,
+    isPending,
+    lease,
+    primaryTenantContact,
+    rentPeriods,
+    rentSchedule,
+  } = usePropertyLongStayDetail(propertyId, leaseId);
 
   const unitsQuery = useQuery({
     queryFn: () => unitsApi.list(propertyId),
@@ -120,7 +127,7 @@ export const PropertyLeaseDetailPage = memo(() => {
     );
   }
 
-  if (isError || !lease) {
+  if (isError || !lease || !primaryTenantContact) {
     return (
       <div className="space-y-4">
         <Link
@@ -168,7 +175,12 @@ export const PropertyLeaseDetailPage = memo(() => {
           </TabsContent>
 
           <TabsContent value="tenants">
-            <LeaseTenantsSection canManage={canManage} lease={lease} propertyId={propertyId} />
+            <LeaseTenantsSection
+              canManage={canManage}
+              lease={lease}
+              primaryTenantContact={primaryTenantContact}
+              propertyId={propertyId}
+            />
           </TabsContent>
 
           <TabsContent value="payments">
