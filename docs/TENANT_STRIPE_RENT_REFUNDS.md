@@ -91,14 +91,14 @@ sequenceDiagram
 
 **Exit:** New Stripe-settled income rows carry `tenant_rent_payment_id`.
 
-### Phase R1 — Refund webhook
+### Phase R1 — Refund webhook ✅
 
-- [`stripe-webhook-service.ts`](../apps/server/src/services/stripe-webhook-service.ts): `charge.refunded` → resolve payment by `payment_intent` → `markRefunded`
-- [`tenant-rent-payment-service.ts`](../apps/server/src/services/tenant-rent-payment-service.ts): `markRefunded`:
+- [x] [`stripe-webhook-service.ts`](../apps/server/src/services/stripe-webhook-service.ts): `charge.refunded` → resolve payment by `payment_intent` → `markRefunded`
+- [x] [`tenant-rent-payment-service.ts`](../apps/server/src/services/tenant-rent-payment-service.ts): `markRefunded`:
   - No-op if already `refunded`
   - `updateStatus(..., REFUNDED)` — allocations drop from rollup automatically
   - Refund income lines where `tenant_rent_payment_id = payment.id` (system actor; extend [`propertyIncomeLinesDb.refund`](../apps/server/src/db/property-income-lines.ts) or dedicated webhook helper)
-- **v1 full refund only:** if `amount_refunded < charge.amount`, log `tenant_payments.refund_partial_unhandled`, still mark payment `refunded`; operator fixes income manually
+- [x] **v1 full refund only:** if `amount_refunded < charge.amount`, log `tenant_payments.refund_partial_unhandled`, still mark payment `refunded`; operator fixes income manually
 
 **Exit criteria:** Sandbox full refund → payment `refunded`, schedule `paidRent` drops, tenant `amountDueCents` restored.
 

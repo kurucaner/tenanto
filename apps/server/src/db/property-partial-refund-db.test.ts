@@ -89,4 +89,18 @@ describe("propertyIncomeLinesDb partial refund", () => {
     expect(capturedQueries[0]?.sql).toContain("refunded_amount = NULL");
     expect(capturedQueries[0]?.values).toEqual([lineId]);
   });
+
+  test("refundAllLinkedToTenantRentPayment refunds non-deleted linked lines with null actor", async () => {
+    capturedQueries.length = 0;
+    mockPoolQuery.mockClear();
+
+    const count = await propertyIncomeLinesDb.refundAllLinkedToTenantRentPayment(
+      "44444444-4444-4444-8444-444444444444"
+    );
+
+    expect(count).toBe(1);
+    expect(capturedQueries[0]?.sql).toContain("tenant_rent_payment_id = $1");
+    expect(capturedQueries[0]?.sql).toContain("refunded_by = NULL");
+    expect(capturedQueries[0]?.values).toEqual(["44444444-4444-4444-8444-444444444444"]);
+  });
 });

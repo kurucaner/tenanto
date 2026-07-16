@@ -397,6 +397,48 @@ export const tenantRentPaymentService = {
     return tenantRentPaymentsDb.updateStatus(payment.id, TenantRentPaymentStatus.FAILED);
   },
 
+  async markRefunded(
+    payment: ITenantRentPayment,
+    charge?: { amountRefundedCents: number; chargeAmountCents: number }
+  ) {
+    if (payment.status === TenantRentPaymentStatus.REFUNDED) {
+      return payment;
+    }
+
+    const isFullRefund =
+      charge === undefined || charge.amountRefundedCents >= charge.chargeAmountCents;
+
+    if (charge && !isFullRefund) {
+      WinstonLogger.warn({
+        amountRefundedCents: charge.amountRefundedCents,
+        chargeAmountCents: charge.chargeAmountCents,
+        msg: "tenant_payments.refund_partial_unhandled",
+        paymentId: payment.id,
+      });
+    }
+
+    const updated = await tenantRentPaymentsDb.updateStatus(
+      payment.id,
+      TenantRentPaymentStatus.REFUNDED
+    );
+    if (!updated) {
+      throw new RentPaymentNotFoundError();
+    }
+
+    if (isFullRefund) {
+      const refundedLineCount = await propertyIncomeLinesDb.refundAllLinkedToTenantRentPayment(
+        payment.id
+      );
+      WinstonLogger.info({
+        msg: "tenant_payments.refunded",
+        paymentId: payment.id,
+        refundedIncomeLineCount: refundedLineCount,
+      });
+    }
+
+    return updated;
+  },
+
   async markSucceeded(payment: ITenantRentPayment, stripePaymentIntentId?: string | null) {
     let updated = payment;
     if (payment.status !== TenantRentPaymentStatus.SUCCEEDED) {

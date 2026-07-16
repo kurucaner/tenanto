@@ -296,6 +296,20 @@ export const propertyIncomeLinesDb = {
     return (result.rowCount ?? 0) > 0;
   },
 
+  async refundAllLinkedToTenantRentPayment(tenantRentPaymentId: string): Promise<number> {
+    const result = await pool.query(
+      `UPDATE property_income_lines
+       SET refunded_at = NOW(),
+           refunded_by = NULL,
+           refunded_amount = amount
+       WHERE tenant_rent_payment_id = $1
+         AND is_deleted = false
+         AND refunded_at IS NULL`,
+      [tenantRentPaymentId]
+    );
+    return result.rowCount ?? 0;
+  },
+
   async restore(id: string): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_income_lines SET is_deleted = false, deleted_at = NULL WHERE id = $1`,

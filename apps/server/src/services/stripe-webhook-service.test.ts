@@ -13,6 +13,7 @@ const mockUpdateStripeIds = mock(() => Promise.resolve(null as ITenantRentPaymen
 const mockMarkSucceeded = mock(() => Promise.resolve(null as unknown));
 const mockMarkFailed = mock(() => Promise.resolve(null as unknown));
 const mockMarkCanceled = mock(() => Promise.resolve(null as unknown));
+const mockMarkRefunded = mock(() => Promise.resolve(null as unknown));
 
 mock.module("@/db/stripe-webhook-events", () => ({
   stripeWebhookEventsDb: {
@@ -35,6 +36,7 @@ mock.module("@/services/tenant-rent-payment-service", () => ({
   tenantRentPaymentService: {
     markCanceled: mockMarkCanceled,
     markFailed: mockMarkFailed,
+    markRefunded: mockMarkRefunded,
     markSucceeded: mockMarkSucceeded,
   },
 }));
@@ -92,6 +94,7 @@ describe("processStripeWebhookEvent", () => {
     mockMarkSucceeded.mockReset();
     mockMarkFailed.mockReset();
     mockMarkCanceled.mockReset();
+    mockMarkRefunded.mockReset();
   });
 
   test("skips already-processed events (double webhook)", async () => {
@@ -210,6 +213,46 @@ describe("processStripeWebhookEvent", () => {
     } as never);
 
     expect(mockMarkFailed).toHaveBeenCalledWith(payment);
+  });
+
+  test("marks refunded on charge.refunded", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_5",
+      type: "charge.refunded",
+    });
+    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripePaymentIntentId: "pi_1" });
+    mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
+    mockMarkRefunded.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.REFUNDED,
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          amount: 100_00,
+          amount_refunded: 100_00,
+          id: "ch_1",
+          object: "charge",
+          payment_intent: "pi_1",
+        },
+      },
+      id: "evt_5",
+      livemode: false,
+      object: "event",
+      type: "charge.refunded",
+    } as never);
+
+    expect(mockMarkRefunded).toHaveBeenCalledWith(payment, {
+      amountRefundedCents: 100_00,
+      chargeAmountCents: 100_00,
+    });
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_5");
   });
 });
 

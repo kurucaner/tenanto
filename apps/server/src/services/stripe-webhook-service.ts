@@ -37,6 +37,10 @@ async function resolvePaymentFromCheckoutSession(session: Stripe.Checkout.Sessio
   return tenantRentPaymentsDb.findByCheckoutSessionId(session.id);
 }
 
+async function resolvePaymentFromPaymentIntentId(paymentIntentId: string) {
+  return tenantRentPaymentsDb.findByPaymentIntentId(paymentIntentId);
+}
+
 async function resolvePaymentFromPaymentIntent(paymentIntent: Stripe.PaymentIntent) {
   const paymentId = paymentIntent.metadata?.paymentId;
   if (paymentId) {
@@ -44,6 +48,15 @@ async function resolvePaymentFromPaymentIntent(paymentIntent: Stripe.PaymentInte
     if (byMeta) return byMeta;
   }
   return tenantRentPaymentsDb.findByPaymentIntentId(paymentIntent.id);
+}
+
+async function resolvePaymentFromCharge(charge: Stripe.Charge) {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : (charge.payment_intent?.id ?? null);
+  if (!paymentIntentId) return null;
+  return resolvePaymentFromPaymentIntentId(paymentIntentId);
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
@@ -90,6 +103,26 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): P
   await tenantRentPaymentService.markFailed(payment);
 }
 
+async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+  const payment = await resolvePaymentFromCharge(charge);
+  if (!payment) {
+    WinstonLogger.warn({
+      chargeId: charge.id,
+      msg: "tenant_payments.charge_refunded_unknown_payment",
+      paymentIntentId:
+        typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : (charge.payment_intent?.id ?? null),
+    });
+    return;
+  }
+
+  await tenantRentPaymentService.markRefunded(payment, {
+    amountRefundedCents: charge.amount_refunded,
+    chargeAmountCents: charge.amount,
+  });
+}
+
 async function recordAndProcessEvent(input: {
   payload: Record<string, unknown>;
   stripeEventId: string;
@@ -130,6 +163,9 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
           break;
         case "payment_intent.payment_failed":
           await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+          break;
+        case "charge.refunded":
+          await handleChargeRefunded(event.data.object as Stripe.Charge);
           break;
         default:
           WinstonLogger.info({
