@@ -42,7 +42,7 @@ Small phased rollout: add explicit **rent period** on lease income lines (`rent_
 
 1. **One period bucket per lease month** — rollup key is `YYYY-MM` on the lease schedule, not calendar date alone.
 2. **`rent_period_month` is attribution; `transactionDate` is cash date** — reports stay correct; schedule uses period.
-3. **Amount rollup is source of truth** — `paid = sum(reportable netIncome by period) + sum(succeeded Stripe allocations by period)`; no binary “any line exists”.
+3. **Amount rollup is source of truth** — `paid = sum(reportable netIncome by period) + sum(succeeded Stripe allocations by period)`; no binary “any line exists”. Multiple income lines for the same `rent_period_month` are **additive** (Record Rent creates a new row; it does not update an existing one).
 4. **Backward compatible reads** — null `rent_period_month` ⇒ fall back to `transactionDateToMonth(transactionDate)` until backfill complete.
 5. **Reuse Stripe helpers** — extend `tenant-rent-payment-utils` / `buildBalancePeriods`; do not fork a second balance engine.
 6. **API before UI** — prove rollup in `getRentSchedule` + tests before Payments tab changes.
@@ -221,11 +221,11 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 
 **Goal:** Multiple income lines and Stripe allocations for the same `rent_period_month` sum safely; no “first line wins” or replace semantics.
 
-- [ ] Rollup sums all non-deleted lines with reportable `netIncome > 0` per effective period
-- [ ] Rollup sums succeeded Stripe allocations per period; caps total `paidRent` at `expectedRent`
-- [ ] Tests: two partial manual lines same month → fully paid when sum covers expected
-- [ ] Tests: manual partial + Stripe partial → combined `paidRent` without double-count beyond cap
-- [ ] Document: creating another Record Rent row for the same period is **additive**, not an update
+- [x] Rollup sums all non-deleted lines with reportable `netIncome > 0` per effective period
+- [x] Rollup sums succeeded Stripe allocations per period; caps total `paidRent` at `expectedRent`
+- [x] Tests: two partial manual lines same month → fully paid when sum covers expected
+- [x] Tests: manual partial + Stripe partial → combined `paidRent` without double-count beyond cap
+- [x] Document: creating another Record Rent row for the same period is **additive**, not an update
 
 **Exit criteria:** Two $750 records on a $1,500 month mark the month paid; Stripe + manual partials show combined partial state until capped at expected.
 

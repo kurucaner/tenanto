@@ -596,6 +596,75 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     });
   });
 
+  test("two $750 manual lines with rentPeriodMonth mark month paid", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-a",
+        net_income: "750.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-10",
+      }),
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-b",
+        net_income: "750.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-20",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-partial-a",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("manual partial plus Stripe partial combine without exceeding expected rent", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-manual-jan",
+        net_income: "500.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-10",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [{ month: "2026-01", total: 50_000 }];
+
+    let schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-manual-jan",
+      isPaid: false,
+      paidRent: 1000,
+      remainingRent: 500,
+    });
+
+    currentAllocationRows = [{ month: "2026-01", total: 120_000 }];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-manual-jan",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
   test("includes succeeded Stripe allocations in rollup", async () => {
     currentLeaseRow = buildLeaseRow();
     currentIncomeRows = [];

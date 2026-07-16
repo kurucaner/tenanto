@@ -99,6 +99,15 @@ function sumAllocationPaidByPeriod(
   return byPeriod;
 }
 
+/**
+ * Roll up lease rent paid/remaining per schedule month.
+ *
+ * Multiple income lines and Stripe allocations for the same effective period are
+ * **additive** — each non-deleted line with reportable `netIncome > 0` and each
+ * succeeded allocation contributes to `paidRent`. Totals are capped at `expectedRent`.
+ * Recording another rent income row for the same month adds to the period; it does
+ * not replace prior rows.
+ */
 export function rollupLeaseRentByPeriod(input: {
   allocations?: readonly ILeaseRentPeriodAllocationInput[];
   incomeLines: readonly ILeaseRentPeriodIncomeLineInput[];

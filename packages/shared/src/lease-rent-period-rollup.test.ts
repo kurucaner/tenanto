@@ -185,6 +185,95 @@ describe("rollupLeaseRentByPeriod", () => {
     expect(month?.isPaid).toBe(true);
   });
 
+  test("two $750 lines with the same rentPeriodMonth fully pay the month", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      incomeLines: [
+        incomeLine({
+          amount: 750,
+          grossIncome: 750,
+          netIncome: 750,
+          rentPeriodMonth: "2026-03",
+          transactionDate: "2026-03-05",
+        }),
+        incomeLine({
+          amount: 750,
+          grossIncome: 750,
+          netIncome: 750,
+          rentPeriodMonth: "2026-03",
+          transactionDate: "2026-03-20",
+        }),
+      ],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(1500);
+    expect(month?.remainingRent).toBe(0);
+    expect(month?.isPaid).toBe(true);
+  });
+
+  test("ignores deleted income lines when summing a period", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      incomeLines: [
+        incomeLine({
+          amount: 750,
+          grossIncome: 750,
+          isDeleted: true,
+          netIncome: 750,
+          rentPeriodMonth: "2026-03",
+        }),
+        incomeLine({
+          amount: 750,
+          grossIncome: 750,
+          netIncome: 750,
+          rentPeriodMonth: "2026-03",
+        }),
+      ],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(750);
+    expect(month?.isPaid).toBe(false);
+  });
+
+  test("combines manual income and Stripe allocations for partial paid state", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      allocations: [{ allocatedCents: 50_000, month: "2026-03" }],
+      incomeLines: [incomeLine({ amount: 500, grossIncome: 500, netIncome: 500 })],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(1000);
+    expect(month?.remainingRent).toBe(500);
+    expect(month?.isPaid).toBe(false);
+  });
+
+  test("caps combined manual income and Stripe allocations at expected rent", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      allocations: [{ allocatedCents: 100_000, month: "2026-03" }],
+      incomeLines: [incomeLine({ amount: 1000, grossIncome: 1000, netIncome: 1000 })],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(1500);
+    expect(month?.remainingRent).toBe(0);
+    expect(month?.isPaid).toBe(true);
+  });
+
+  test("sums multiple Stripe allocations for the same period", () => {
+    const [month] = rollupLeaseRentByPeriod({
+      allocations: [
+        { allocatedCents: 25_000, month: "2026-03" },
+        { allocatedCents: 25_000, month: "2026-03" },
+      ],
+      incomeLines: [],
+      scheduleMonths: schedule,
+    });
+
+    expect(month?.paidRent).toBe(500);
+    expect(month?.remainingRent).toBe(1000);
+    expect(month?.isPaid).toBe(false);
+  });
+
   test("includes succeeded Stripe allocations in paid total", () => {
     const [month] = rollupLeaseRentByPeriod({
       allocations: [{ allocatedCents: 50_000, month: "2026-03" }],

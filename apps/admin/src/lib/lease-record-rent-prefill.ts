@@ -8,6 +8,11 @@ import {
   type TLeaseRentScheduleMonthAmount,
 } from "./lease-rent-schedule-display";
 
+/**
+ * Prefill for Record Rent on a lease schedule month.
+ * Each submission creates a new income line; partial payments for the same
+ * `rentPeriodMonth` are additive and roll up to `paidRent` on the schedule.
+ */
 export function buildLeaseRecordRentPrefill(
   lease: Pick<IPropertyLongStay, "guestName" | "id" | "monthlyRent" | "unitId">,
   incomeLineTypeId: string,

@@ -106,6 +106,7 @@ export interface IUpdatePropertyLongStayBody {
 export interface IPropertyLongStayRentMonth {
   daysInMonth: number;
   expectedRent: number;
+  /** First non-deleted income line with reportable rent for the period (display/link only). */
   incomeLineId?: string;
   isPaid: boolean;
   isProrated: boolean;
