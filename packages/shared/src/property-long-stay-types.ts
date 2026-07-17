@@ -109,6 +109,37 @@ export interface IUpdatePropertyLongStayBody {
   tenantPhone?: string | null;
 }
 
+export const LeaseTermsEditBlockReason = {
+  HAS_INCOME_LINES: "has_income_lines",
+  HAS_RENT_PERIOD_HISTORY: "has_rent_period_history",
+  HAS_SUCCEEDED_PAYMENTS: "has_succeeded_payments",
+  LEASE_ENDED: "lease_ended",
+} as const;
+
+export type TLeaseTermsEditBlockReason =
+  (typeof LeaseTermsEditBlockReason)[keyof typeof LeaseTermsEditBlockReason];
+
+export interface ILeaseTermsEditability {
+  editable: boolean;
+  reason?: TLeaseTermsEditBlockReason;
+}
+
+export interface ILeaseTermsEditSignals {
+  hasIncomeLines: boolean;
+  hasRentPeriodHistory: boolean;
+  hasSucceededPayments: boolean;
+}
+
+export interface IEditPropertyLongStayTermsBody {
+  leaseStartDate: string;
+  monthlyRent: number;
+  termMonths: number;
+}
+
+export interface IEditPropertyLongStayTermsResponse {
+  longStay: IPropertyLongStay;
+}
+
 export interface IPropertyLongStayRentMonth {
   daysInMonth: number;
   expectedRent: number;

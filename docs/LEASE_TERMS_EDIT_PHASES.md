@@ -45,12 +45,12 @@ Phased rollout for correcting **lease start date**, **term (→ contract end)**,
 
 **Use a hard gate, not “first month unpaid.”**
 
-| Allow edit when ALL are true | Block when ANY are true |
-| --- | --- |
-| Lease `status = active` | Any non-deleted `property_income_lines` with `long_stay_id = lease` |
-| Zero linked income lines | Any `tenant_rent_payments` for lease with `status = succeeded` |
+| Allow edit when ALL are true                        | Block when ANY are true                                                       |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Lease `status = active`                             | Any non-deleted `property_income_lines` with `long_stay_id = lease`           |
+| Zero linked income lines                            | Any `tenant_rent_payments` for lease with `status = succeeded`                |
 | No extend rent history (see rent-period rule below) | Lease was **extended** — rent period rows beyond the pristine single-row case |
-| | Pending Stripe checkout in flight (optional Phase 3 hardening) |
+|                                                     | Pending Stripe checkout in flight (optional Phase 3 hardening)                |
 
 **Rent-period rule (v1):** Block when `property_long_stay_rent_periods` has more than one row, or has a row whose `effective_from_month` is not the lease-start month. Pristine leases have **zero** rent-period rows; rent comes from `property_long_stays.monthly_rent`.
 
@@ -110,29 +110,29 @@ N/A — low-risk admin-only correction. Optional `LEASE_TERMS_EDIT_ENABLED` only
 
 ### `property_long_stays`
 
-| Column | Edit behavior |
-| --- | --- |
-| `lease_start_date` | Updatable when gate passes |
-| `term_months` | Updatable → recalc `lease_end_date` |
-| `lease_end_date` | Derived via `calculateLeaseEndDate` |
-| `monthly_rent` | Updatable when gate passes |
-| `actual_end_date` | **Not** editable here (use End lease) |
+| Column             | Edit behavior                         |
+| ------------------ | ------------------------------------- |
+| `lease_start_date` | Updatable when gate passes            |
+| `term_months`      | Updatable → recalc `lease_end_date`   |
+| `lease_end_date`   | Derived via `calculateLeaseEndDate`   |
+| `monthly_rent`     | Updatable when gate passes            |
+| `actual_end_date`  | **Not** editable here (use End lease) |
 
 ### `property_long_stay_rent_periods`
 
-| Rule |
-| --- |
-| Pristine lease: **no rows** — rent comes from `monthly_rent` on lease row |
+| Rule                                                                                                      |
+| --------------------------------------------------------------------------------------------------------- |
+| Pristine lease: **no rows** — rent comes from `monthly_rent` on lease row                                 |
 | If exactly **one** row at lease-start month (edge case): update its `monthly_rent` when base rent changes |
-| If **extend** created multiple periods → **not editable** (gate fails) |
+| If **extend** created multiple periods → **not editable** (gate fails)                                    |
 
 ### Eligibility queries (new DB helpers)
 
-| Check | SQL sketch |
-| --- | --- |
-| Income linked | `EXISTS (SELECT 1 FROM property_income_lines WHERE long_stay_id = $1 AND is_deleted = false)` |
-| Stripe succeeded | `EXISTS (SELECT 1 FROM tenant_rent_payments WHERE lease_id = $1 AND status = 'succeeded')` |
-| Extension / rent history | `COUNT(*) > 1` on rent_periods, or row with `effective_from_month <> start month` |
+| Check                    | SQL sketch                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| Income linked            | `EXISTS (SELECT 1 FROM property_income_lines WHERE long_stay_id = $1 AND is_deleted = false)` |
+| Stripe succeeded         | `EXISTS (SELECT 1 FROM tenant_rent_payments WHERE lease_id = $1 AND status = 'succeeded')`    |
+| Extension / rent history | `COUNT(*) > 1` on rent_periods, or row with `effective_from_month <> start month`             |
 
 **Domain rule:** Editability is derived from ledger signals, not from schedule `isPaid` flags alone.
 
@@ -140,14 +140,14 @@ N/A — low-risk admin-only correction. Optional `LEASE_TERMS_EDIT_ENABLED` only
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `TLeaseTermsEditBlockReason` | `has_income_lines` \| `has_succeeded_payments` \| `has_rent_period_history` \| `lease_ended` |
-| `ILeaseTermsEditability` | `{ editable: boolean; reason?: TLeaseTermsEditBlockReason }` |
-| `IEditPropertyLongStayTermsBody` | `{ leaseStartDate, termMonths, monthlyRent }` |
-| `IEditPropertyLongStayTermsResponse` | `{ longStay: IPropertyLongStay }` |
-| `validateEditLeaseTerms(body, lease, today)` | Pure validation (dates, term bounds) |
-| `deriveLeaseTermsEditability(lease, signals)` | Pure gate from booleans |
+| Type                                          | Purpose                                                                                      |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `TLeaseTermsEditBlockReason`                  | `has_income_lines` \| `has_succeeded_payments` \| `has_rent_period_history` \| `lease_ended` |
+| `ILeaseTermsEditability`                      | `{ editable: boolean; reason?: TLeaseTermsEditBlockReason }`                                 |
+| `IEditPropertyLongStayTermsBody`              | `{ leaseStartDate, termMonths, monthlyRent }`                                                |
+| `IEditPropertyLongStayTermsResponse`          | `{ longStay: IPropertyLongStay }`                                                            |
+| `validateEditLeaseTerms(body, lease, today)`  | Pure validation (dates, term bounds)                                                         |
+| `deriveLeaseTermsEditability(lease, signals)` | Pure gate from booleans                                                                      |
 
 Extend GET long-stay detail response with `termsEditability: ILeaseTermsEditability`.
 
@@ -155,9 +155,9 @@ Extend GET long-stay detail response with `termsEditability: ILeaseTermsEditabil
 
 ## API (sketch)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/properties/:propertyId/long-stays/:longStayId` | Include `termsEditability` on detail payload |
+| Method  | Path                                                   | Notes                                                                                                                |
+| ------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/properties/:propertyId/long-stays/:longStayId`       | Include `termsEditability` on detail payload                                                                         |
 | `PATCH` | `/properties/:propertyId/long-stays/:longStayId/terms` | Body: `IEditPropertyLongStayTermsBody`; **200** updated lease; **409** not editable; **400** validation; ledger auth |
 
 No new list endpoint. Do **not** add PATCH on table row.
@@ -193,10 +193,10 @@ N/A
 
 **Goal:** Shared rules, DB eligibility queries, tests — no routes/UI.
 
-- [ ] Add `TLeaseTermsEditBlockReason`, `ILeaseTermsEditability`, `IEditPropertyLongStayTermsBody` in `packages/shared`
-- [ ] Add `validateEditLeaseTerms` + `deriveLeaseTermsEditability` with unit tests (gate matrix, date/term validation)
-- [ ] Add `propertyLongStaysDb.getTermsEditSignals(longStayId)` — income exists, succeeded payment exists, rent period shape
-- [ ] Add `LeaseTermsNotEditableError` + map block reasons to **409** responses
+- [x] Add `TLeaseTermsEditBlockReason`, `ILeaseTermsEditability`, `IEditPropertyLongStayTermsBody` in `packages/shared`
+- [x] Add `validateEditLeaseTerms` + `deriveLeaseTermsEditability` with unit tests (gate matrix, date/term validation)
+- [x] Add `propertyLongStaysDb.getTermsEditSignals(longStayId)` — income exists, succeeded payment exists, rent period shape
+- [x] Add `LeaseTermsNotEditableError` + map block reasons to **409** responses
 
 **Exit criteria:** Shared tests pass; eligibility helper returns correct reasons for fixture leases; no API/UI changes.
 
@@ -234,14 +234,14 @@ N/A
 
 **Goal:** Production-safe edge cases.
 
-| Concern | Action |
-| --- | --- |
-| Concurrent edit | `UPDATE … WHERE updated_at = $expected` optimistic check → **409** conflict |
-| Pending checkout | Block if open `tenant_rent_payments` (pending/processing) for lease |
-| Unit conflict | Re-run active-lease-on-unit check if overlap logic ever applies (unit unchanged; cheap guard) |
-| Error mapping | Map block reasons to user-facing strings in admin |
-| Observability | Structured log `lease.terms_updated` with leaseId, propertyId (no PII) |
-| Regression | Extend `property-long-stays-rent-schedule.test.ts` for post-edit proration |
+| Concern          | Action                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| Concurrent edit  | `UPDATE … WHERE updated_at = $expected` optimistic check → **409** conflict                   |
+| Pending checkout | Block if open `tenant_rent_payments` (pending/processing) for lease                           |
+| Unit conflict    | Re-run active-lease-on-unit check if overlap logic ever applies (unit unchanged; cheap guard) |
+| Error mapping    | Map block reasons to user-facing strings in admin                                             |
+| Observability    | Structured log `lease.terms_updated` with leaseId, propertyId (no PII)                        |
+| Regression       | Extend `property-long-stays-rent-schedule.test.ts` for post-edit proration                    |
 
 **Exit criteria:** Double-submit safe; pending checkout blocked if implemented; cross-link added in `LEASE_RENT_PRORATION_PHASES.md`.
 

@@ -246,6 +246,13 @@ export {
 } from "./lease-rent-utils";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
+  deriveLeaseTermsEditability,
+  getLeaseTermsEditBlockMessage,
+  hasRentPeriodHistory,
+  MAX_LEASE_TERM_MONTHS,
+  validateEditLeaseTerms,
+} from "./lease-terms-edit-utils";
+export {
   type IPropertyExpensesListMeta,
   type IPropertyExportsListMeta,
   type IPropertyIncomeEntriesListMeta,
@@ -268,8 +275,12 @@ export {
 export {
   type ICreatePropertyLongStayBody,
   type ICreatePropertyLongStayResponse,
+  type IEditPropertyLongStayTermsBody,
+  type IEditPropertyLongStayTermsResponse,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
+  type ILeaseTermsEditability,
+  type ILeaseTermsEditSignals,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStayRentMonth,
@@ -278,7 +289,9 @@ export {
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   type IUpdatePropertyLongStayBody,
+  LeaseTermsEditBlockReason,
   PropertyLongStayStatus,
+  type TLeaseTermsEditBlockReason,
   type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";

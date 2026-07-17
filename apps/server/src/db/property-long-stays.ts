@@ -2,6 +2,7 @@ import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedul
 import type {
   ICreatePropertyLongStayBody,
   IExtendPropertyLongStayBody,
+  ILeaseTermsEditSignals,
   IPropertyLongStay,
   IPropertyLongStayRentMonth,
   IPropertyLongStayRentPeriod,
@@ -351,6 +352,61 @@ export const propertyLongStaysDb = {
       months,
       rentPeriods,
     });
+  },
+
+  async getTermsEditSignals(longStayId: string): Promise<{
+    leaseStartDate: string;
+    signals: ILeaseTermsEditSignals;
+  } | null> {
+    const result = await pool.query(
+      `SELECT
+         pls.lease_start_date,
+         EXISTS (
+           SELECT 1
+           FROM property_income_lines pil
+           WHERE pil.long_stay_id = pls.id
+             AND pil.is_deleted = false
+         ) AS has_income_lines,
+         EXISTS (
+           SELECT 1
+           FROM tenant_rent_payments trp
+           WHERE trp.lease_id = pls.id
+             AND trp.status = 'succeeded'::tenant_rent_payment_status
+         ) AS has_succeeded_payments,
+         (
+           (SELECT COUNT(*)::int
+            FROM property_long_stay_rent_periods rp
+            WHERE rp.long_stay_id = pls.id) > 1
+           OR EXISTS (
+             SELECT 1
+             FROM property_long_stay_rent_periods rp
+             WHERE rp.long_stay_id = pls.id
+               AND rp.effective_from_month <> to_char(pls.lease_start_date, 'YYYY-MM')
+           )
+         ) AS has_rent_period_history
+       FROM property_long_stays pls
+       WHERE pls.id = $1`,
+      [longStayId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0] as Record<string, unknown>;
+    const leaseStartDate =
+      row.lease_start_date instanceof Date
+        ? row.lease_start_date.toISOString().slice(0, 10)
+        : String(row.lease_start_date).slice(0, 10);
+
+    return {
+      leaseStartDate,
+      signals: {
+        hasIncomeLines: row.has_income_lines === true,
+        hasRentPeriodHistory: row.has_rent_period_history === true,
+        hasSucceededPayments: row.has_succeeded_payments === true,
+      },
+    };
   },
 
   async listByProperty(
