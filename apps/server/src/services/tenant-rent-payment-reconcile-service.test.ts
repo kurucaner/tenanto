@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
@@ -70,7 +70,10 @@ function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPa
 }
 
 describe("reconcileTenantRentPayments", () => {
+  const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
+
   beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
     mockListReconcileCandidatesSince.mockReset();
     mockFindById.mockReset();
     mockMarkSucceeded.mockReset();
@@ -84,9 +87,29 @@ describe("reconcileTenantRentPayments", () => {
     mockListPi.mockResolvedValue({ data: [] });
   });
 
+  afterEach(() => {
+    if (originalStripeConnectEnabled === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalStripeConnectEnabled;
+    }
+  });
+
   test("skips when Stripe is not configured", async () => {
     mockIsStripeConfigured.mockReturnValue(false);
     const result = await reconcileTenantRentPayments();
+    expect(result).toEqual({ gaps: 0, recovered: 0, scannedLocal: 0, scannedStripe: 0 });
+    expect(mockWinstonInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: "tenant_payments.reconcile_skipped" })
+    );
+  });
+
+  test("skips when STRIPE_CONNECT_ENABLED is off", async () => {
+    process.env.STRIPE_CONNECT_ENABLED = "false";
+    mockIsStripeConfigured.mockReturnValue(true);
+
+    const result = await reconcileTenantRentPayments();
+
     expect(result).toEqual({ gaps: 0, recovered: 0, scannedLocal: 0, scannedStripe: 0 });
     expect(mockWinstonInfo).toHaveBeenCalledWith(
       expect.objectContaining({ msg: "tenant_payments.reconcile_skipped" })

@@ -43,6 +43,8 @@ declare global {
       SNS_SMS_SENDER_ID?: string;
       /** Stripe Connect OAuth client id (optional for Express Account Links) */
       STRIPE_CONNECT_CLIENT_ID?: string;
+      /** Enable Stripe Connect + tenant online rent payments (default off) */
+      STRIPE_CONNECT_ENABLED?: string;
       /** Stripe publishable key (pk_…) — documented for ops; Checkout hosted page may not need it server-side */
       STRIPE_PUBLISHABLE_KEY?: string;
       /** Stripe secret key (sk_…) — required when rent payments / Connect is enabled */

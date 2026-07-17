@@ -7,3 +7,4 @@
 - Typescript 7 implementation
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
+- RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same

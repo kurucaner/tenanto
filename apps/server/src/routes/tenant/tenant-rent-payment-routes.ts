@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 
+import { StripeConnectNotConfiguredError } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
-import { StripeConnectNotConfiguredError } from "@/services/property-stripe-connect-service";
 import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 import {
   RentPaymentConnectNotReadyError,

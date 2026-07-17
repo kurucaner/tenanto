@@ -85,6 +85,8 @@ export interface IPropertyStripeConnectStatusResponse {
   detailsSubmitted: boolean;
   onboardingComplete: boolean;
   payoutsEnabled: boolean;
+  /** False when deployment has STRIPE_CONNECT_ENABLED off. */
+  platformEnabled: boolean;
   stripeAccountId: string | null;
 }
 

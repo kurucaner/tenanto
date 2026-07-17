@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
@@ -89,14 +89,9 @@ mock.module("@/db/property-stripe-accounts", () => ({
     detailsSubmitted: false,
     onboardingComplete: false,
     payoutsEnabled: false,
+    platformEnabled: true,
     stripeAccountId: null,
   }),
-}));
-
-mock.module("@/services/property-stripe-connect-service", () => ({
-  StripeConnectNotConfiguredError: class extends Error {
-    name = "StripeConnectNotConfiguredError";
-  },
 }));
 
 mock.module("@/db/tenant-rent-payments", () => ({
@@ -163,7 +158,10 @@ function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPa
 }
 
 describe("tenantRentPaymentService.createCheckout idempotency", () => {
+  const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
+
   beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
     process.env.TENANT_APP_URL = "http://localhost:5174";
     mockAssertLeaseTenantAccess.mockClear();
     mockFindLeaseById.mockClear();
@@ -194,6 +192,14 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     mockSumSucceededByMonths.mockResolvedValue(new Map());
+  });
+
+  afterEach(() => {
+    if (originalStripeConnectEnabled === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalStripeConnectEnabled;
+    }
   });
 
   test("returns existing open Checkout Session on duplicate click", async () => {
@@ -266,7 +272,10 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
 });
 
 describe("tenantRentPaymentService tenant balance rollup", () => {
+  const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
+
   beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
     process.env.TENANT_APP_URL = "http://localhost:5174";
     mockAssertLeaseTenantAccess.mockClear();
     mockGetRentSchedule.mockClear();
@@ -284,6 +293,14 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
       stripeAccountId: "acct_1",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
+  });
+
+  afterEach(() => {
+    if (originalStripeConnectEnabled === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalStripeConnectEnabled;
+    }
   });
 
   test("createCheckout charges only remaining cents after partial payment", async () => {
@@ -328,5 +345,13 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
       paidCents: 1500_00,
       remainingCents: 0,
     });
+  });
+
+  test("getBalance returns paymentsEnabled false when STRIPE_CONNECT_ENABLED is off", async () => {
+    process.env.STRIPE_CONNECT_ENABLED = "false";
+
+    const balance = await tenantRentPaymentService.getBalance("lease-1", "tenant-1");
+
+    expect(balance.paymentsEnabled).toBe(false);
   });
 });

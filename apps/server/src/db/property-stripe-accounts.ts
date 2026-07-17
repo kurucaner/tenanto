@@ -1,3 +1,4 @@
+import { isStripeConnectEnabled } from "@/lib/stripe-connect-config";
 import type { IPropertyStripeConnectStatusResponse } from "@/packages/shared";
 
 import { pool } from "./pool";
@@ -25,7 +26,8 @@ function mapRow(row: Record<string, unknown>): IPropertyStripeAccount {
 }
 
 export function toConnectStatusResponse(
-  account: IPropertyStripeAccount | null
+  account: IPropertyStripeAccount | null,
+  platformEnabled = isStripeConnectEnabled()
 ): IPropertyStripeConnectStatusResponse {
   if (!account) {
     return {
@@ -33,6 +35,7 @@ export function toConnectStatusResponse(
       detailsSubmitted: false,
       onboardingComplete: false,
       payoutsEnabled: false,
+      platformEnabled,
       stripeAccountId: null,
     };
   }
@@ -41,6 +44,7 @@ export function toConnectStatusResponse(
     detailsSubmitted: account.detailsSubmitted,
     onboardingComplete: account.onboardingComplete,
     payoutsEnabled: account.payoutsEnabled,
+    platformEnabled,
     stripeAccountId: account.stripeAccountId,
   };
 }

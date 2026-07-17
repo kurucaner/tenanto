@@ -1,9 +1,29 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
-import { TenantLeaseListStatus } from "@/packages/shared";
+import {
+  type ITenantLeaseListItem,
+  TenantLeaseListStatus,
+  TenantMembershipRole,
+  TenantMembershipStatus,
+} from "@/packages/shared";
 
-const mockListLeases = mock((_tenantUserId: string, _status: string) => Promise.resolve([]));
+function makeLeaseListItem(
+  overrides: Pick<ITenantLeaseListItem, "leaseId" | "propertyName" | "unitLabel"> &
+    Partial<ITenantLeaseListItem>
+): ITenantLeaseListItem {
+  return {
+    leaseEndDate: "2026-12-31",
+    leaseStartDate: "2026-01-01",
+    role: TenantMembershipRole.PRIMARY,
+    status: TenantMembershipStatus.ACTIVE,
+    ...overrides,
+  };
+}
+
+const mockListLeases = mock(
+  (_tenantUserId: string, _status: string): Promise<ITenantLeaseListItem[]> => Promise.resolve([])
+);
 const mockFindLeaseById = mock(() =>
   Promise.resolve({
     id: "lease-1",
@@ -65,6 +85,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     detailsSubmitted: false,
     onboardingComplete: false,
     payoutsEnabled: false,
+    platformEnabled: true,
     stripeAccountId: null,
   }),
 }));
@@ -91,7 +112,10 @@ mock.module("@/services/winston", () => ({
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
 describe("tenantRentPaymentService.getRentSummary", () => {
+  const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
+
   beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
     mockListLeases.mockReset();
     mockFindLeaseById.mockClear();
     mockGetRentSchedule.mockClear();
@@ -100,23 +124,32 @@ describe("tenantRentPaymentService.getRentSummary", () => {
     mockSumSucceededByMonths.mockResolvedValue(new Map());
   });
 
+  afterEach(() => {
+    if (originalStripeConnectEnabled === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalStripeConnectEnabled;
+    }
+  });
+
   test("sets hasActiveLease and hasPastLeases from membership lists", async () => {
     mockListLeases.mockImplementation((_tenantUserId: string, status: string) => {
       if (status === TenantLeaseListStatus.ACTIVE) {
         return Promise.resolve([
-          {
+          makeLeaseListItem({
             leaseId: "lease-1",
             propertyName: "A",
             unitLabel: "1",
-          },
+          }),
         ]);
       }
       return Promise.resolve([
-        {
+        makeLeaseListItem({
           leaseId: "lease-past",
           propertyName: "B",
+          status: TenantMembershipStatus.ENDED,
           unitLabel: "2",
-        },
+        }),
       ]);
     });
 
@@ -133,11 +166,11 @@ describe("tenantRentPaymentService.getRentSummary", () => {
     mockListLeases.mockImplementation((_tenantUserId: string, status: string) => {
       if (status === TenantLeaseListStatus.ACTIVE) {
         return Promise.resolve([
-          {
+          makeLeaseListItem({
             leaseId: "lease-1",
             propertyName: "A",
             unitLabel: "1",
-          },
+          }),
         ]);
       }
       return Promise.resolve([]);

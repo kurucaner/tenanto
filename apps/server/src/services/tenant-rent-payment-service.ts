@@ -4,6 +4,10 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import {
+  isStripeConnectEnabled,
+  requireStripeConnectOperational,
+} from "@/lib/stripe-connect-config";
 import { getTodayUtcIsoDate } from "@/lib/validate-create-expense-body";
 import {
   buildRentCheckoutIdempotencyKey,
@@ -26,9 +30,7 @@ import {
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 import { WinstonLogger } from "@/services/winston";
-import { getStripeClient, isStripeSecretConfigured } from "@/stripe/stripe-client";
-
-import { StripeConnectNotConfiguredError } from "./property-stripe-connect-service";
+import { getStripeClient } from "@/stripe/stripe-client";
 
 export class RentPaymentConnectNotReadyError extends Error {
   constructor(message = "Property Stripe Connect account is not ready to accept payments") {
@@ -60,9 +62,7 @@ function tenantAppBaseUrl(): string {
 }
 
 function requireStripeConfigured(): void {
-  if (!isStripeSecretConfigured()) {
-    throw new StripeConnectNotConfiguredError();
-  }
+  requireStripeConnectOperational();
 }
 
 async function loadTenantBalanceFromSchedule(leaseId: string) {
@@ -85,7 +85,7 @@ async function computeLeaseBalanceFields(
   ]);
   return {
     amountDueCents: balance.amountDueCents,
-    paymentsEnabled: Boolean(connect?.chargesEnabled),
+    paymentsEnabled: isStripeConnectEnabled() && Boolean(connect?.chargesEnabled),
     periods: balance.periods,
   };
 }

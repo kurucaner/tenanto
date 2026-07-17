@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePropertySettingsForm } from "@/hooks/use-property-settings-form";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
-import { settingsApi } from "@/lib/api-client";
+import { propertyStripeConnectApi, settingsApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { type IPropertySettings } from "@/packages/shared";
 
@@ -47,8 +47,21 @@ export const PropertySettingsPage = memo(() => {
     queryKey: queryKeys.propertySettings(propertyId),
   });
 
+  const stripeConnectStatusQuery = useQuery({
+    enabled: canManageStripeConnect,
+    queryFn: () => propertyStripeConnectApi.getStatus(propertyId),
+    queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
+  });
+
+  const showStripeConnectSection =
+    canManageStripeConnect && stripeConnectStatusQuery.data?.platformEnabled === true;
+
   useEffect(() => {
     if (!canManageStripeConnect) {
+      return;
+    }
+
+    if (stripeConnectStatusQuery.data?.platformEnabled === false) {
       return;
     }
 
@@ -74,7 +87,14 @@ export const PropertySettingsPage = memo(() => {
     const next = new URLSearchParams(searchParams);
     next.delete("stripe_connect");
     setSearchParams(next, { replace: true });
-  }, [canManageStripeConnect, propertyId, queryClient, searchParams, setSearchParams]);
+  }, [
+    canManageStripeConnect,
+    propertyId,
+    queryClient,
+    searchParams,
+    setSearchParams,
+    stripeConnectStatusQuery.data?.platformEnabled,
+  ]);
 
   if (settingsQuery.isPending) {
     return (
@@ -97,7 +117,9 @@ export const PropertySettingsPage = memo(() => {
 
   return (
     <div className="space-y-6">
-      {canManageStripeConnect ? <PropertyStripeConnectSection propertyId={propertyId} /> : null}
+      {showStripeConnectSection ? (
+        <PropertyStripeConnectSection propertyId={propertyId} />
+      ) : null}
       <PropertySettingsForm
         canEdit={canEdit}
         propertyId={propertyId}

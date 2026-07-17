@@ -1,14 +1,12 @@
 import type { FastifyInstance } from "fastify";
 
+import { StripeConnectNotConfiguredError } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
 import {
   assertPropertyMemberAccess,
   assertPropertyStructureAccess,
 } from "@/routes/admin/property-route-access";
-import {
-  propertyStripeConnectService,
-  StripeConnectNotConfiguredError,
-} from "@/services/property-stripe-connect-service";
+import { propertyStripeConnectService } from "@/services/property-stripe-connect-service";
 import { WinstonLogger } from "@/services/winston";
 
 export const propertyStripeConnectRoutes = async (server: FastifyInstance): Promise<void> => {

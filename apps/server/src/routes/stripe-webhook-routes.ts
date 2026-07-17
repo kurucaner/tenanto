@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
+import { isStripeConnectEnabled } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
 import {
   processVerifiedStripeWebhook,
@@ -17,6 +18,10 @@ export const stripeWebhookRoutes = async (server: FastifyInstance): Promise<void
   });
 
   server.post("/webhooks/stripe", async (request, reply) => {
+    if (!isStripeConnectEnabled()) {
+      return reply.status(HttpStatus.NOT_FOUND).send({ error: "Not found" });
+    }
+
     const rawBody = request.body;
     if (!Buffer.isBuffer(rawBody) && typeof rawBody !== "string") {
       return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Expected raw JSON body" });

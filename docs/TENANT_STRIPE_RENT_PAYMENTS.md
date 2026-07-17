@@ -216,6 +216,10 @@ Rent settlement requires a **platform snapshot** Event Destination (or classic w
 
 `STRIPE_WEBHOOK_SECRET` must be **that** destination’s signing secret (`whsec_…`).
 
+### Feature flag
+
+Set `STRIPE_CONNECT_ENABLED=true` on the API server to opt in (default off when unset). When disabled, Connect onboarding, tenant checkout, webhooks, and reconcile are inactive; admin Settings hides the Stripe section; tenant `paymentsEnabled` stays false even if a property row exists.
+
 ### Verifier behavior (code)
 
 [`apps/server/src/stripe/stripe-client.ts`](apps/server/src/stripe/stripe-client.ts) `verifyStripeWebhookPayload`:
@@ -242,7 +246,7 @@ Local forward: `stripe listen --forward-to localhost:3001/webhooks/stripe` and u
 
 **Goal:** Schema, Stripe SDK, Connect account table, shared types — no live charges.
 
-- [x] Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, Connect client ids as required; document in `.env.example`
+- [x] Env: `STRIPE_CONNECT_ENABLED` (opt-in, default off), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, Connect client ids as required; document in `.env.example`
 - [x] Migration(s) for tables above
 - [x] `stripe` package + thin `apps/server/src/stripe/` client wrapper
 - [x] Shared types

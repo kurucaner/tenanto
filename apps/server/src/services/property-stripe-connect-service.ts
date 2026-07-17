@@ -1,22 +1,13 @@
 import { propertyStripeAccountsDb, toConnectStatusResponse } from "@/db/property-stripe-accounts";
+import {
+  isStripeConnectEnabled,
+  requireStripeConnectOperational,
+} from "@/lib/stripe-connect-config";
 import type {
   IPropertyStripeConnectOnboardingLinkResponse,
   IPropertyStripeConnectStatusResponse,
 } from "@/packages/shared";
-import { getStripeClient, isStripeSecretConfigured } from "@/stripe/stripe-client";
-
-export class StripeConnectNotConfiguredError extends Error {
-  constructor(message = "Stripe is not configured") {
-    super(message);
-    this.name = "StripeConnectNotConfiguredError";
-  }
-}
-
-function requireStripeConfigured(): void {
-  if (!isStripeSecretConfigured()) {
-    throw new StripeConnectNotConfiguredError();
-  }
-}
+import { getStripeClient } from "@/stripe/stripe-client";
 
 function flagsFromStripeAccount(account: {
   charges_enabled: boolean | null;
@@ -52,7 +43,7 @@ export const propertyStripeConnectService = {
     propertyId: string,
     options?: { refreshUrl?: string; returnUrl?: string }
   ): Promise<IPropertyStripeConnectOnboardingLinkResponse> {
-    requireStripeConfigured();
+    requireStripeConnectOperational();
     const stripe = getStripeClient();
     const base = platformAppBaseUrl();
     const refreshUrl =
@@ -93,29 +84,35 @@ export const propertyStripeConnectService = {
   },
 
   async getStatus(propertyId: string): Promise<IPropertyStripeConnectStatusResponse> {
+    const platformEnabled = isStripeConnectEnabled();
     const local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
-    if (!local || !isStripeSecretConfigured()) {
-      return toConnectStatusResponse(local);
+
+    if (!platformEnabled) {
+      return toConnectStatusResponse(local, false);
+    }
+
+    if (!local) {
+      return toConnectStatusResponse(null, true);
     }
 
     try {
       return await propertyStripeConnectService.syncAccountStatus(propertyId);
     } catch {
-      return toConnectStatusResponse(local);
+      return toConnectStatusResponse(local, true);
     }
   },
 
   async syncAccountStatus(propertyId: string): Promise<IPropertyStripeConnectStatusResponse> {
-    requireStripeConfigured();
+    requireStripeConnectOperational();
     const local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
     if (!local) {
-      return toConnectStatusResponse(null);
+      return toConnectStatusResponse(null, true);
     }
 
     const stripe = getStripeClient();
     const account = await stripe.accounts.retrieve(local.stripeAccountId);
     const flags = flagsFromStripeAccount(account);
     const updated = await propertyStripeAccountsDb.updateFlags(propertyId, flags);
-    return toConnectStatusResponse(updated);
+    return toConnectStatusResponse(updated, true);
   },
 };

@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 
 import { tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { isStripeConnectEnabled } from "@/lib/stripe-connect-config";
 import {
   TENANT_RENT_PAYMENT_RECONCILE_LOOKBACK_HOURS,
   TENANT_RENT_PAYMENT_RECONCILE_STRIPE_LIMIT,
@@ -79,7 +80,7 @@ export async function reconcileTenantRentPayments(
     scannedStripe: 0,
   };
 
-  if (!isStripeSecretConfigured()) {
+  if (!isStripeConnectEnabled() || !isStripeSecretConfigured()) {
     WinstonLogger.info({
       msg: "tenant_payments.reconcile_skipped",
       reason: "stripe_not_configured",
