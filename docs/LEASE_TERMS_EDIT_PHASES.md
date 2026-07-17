@@ -206,11 +206,11 @@ N/A
 
 **Goal:** PATCH terms works for eligible active leases; blocked leases get 409.
 
-- [ ] Add `propertyLongStaysDb.updateTerms(id, body)` in transaction: update start/term/rent/end; sync single rent_period row if applicable
-- [ ] Add `lease-terms-edit-service.ts` — orchestrate gate + validation + DB
-- [ ] Register `PATCH …/terms` in `property-long-stay-routes.ts` with `assertPropertyLedgerWriteAccess`
-- [ ] Include `termsEditability` on GET long-stay detail
-- [ ] Server tests: editable lease updates schedule; blocked cases (income line, succeeded payment, extend history); ended lease rejected
+- [x] Add `propertyLongStaysDb.updateTerms(id, body)` in transaction: update start/term/rent/end; sync single rent_period row if applicable
+- [x] Add `lease-terms-edit-service.ts` — orchestrate gate + validation + DB
+- [x] Register `PATCH …/terms` in `property-long-stay-routes.ts` with `assertPropertyLedgerWriteAccess`
+- [x] Include `termsEditability` on GET long-stay detail
+- [x] Server tests: editable lease updates schedule; blocked cases (income line, succeeded payment, extend history); ended lease rejected
 
 **Exit criteria:** Script/Postman can PATCH a pristine lease; `getRentSchedule` reflects new dates/rent; 409 with reason when income exists.
 

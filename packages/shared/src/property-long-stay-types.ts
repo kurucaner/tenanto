@@ -85,6 +85,7 @@ export interface IPropertyLongStayDetailResponse {
   primaryTenantContact: ILeasePrimaryTenantContact;
   rentPeriods: IPropertyLongStayRentPeriod[];
   rentSchedule: IPropertyLongStayRentMonth[];
+  termsEditability: ILeaseTermsEditability;
 }
 
 export interface IPropertyLongStayRentPeriod {

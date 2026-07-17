@@ -1,6 +1,7 @@
 import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
 import type {
   ICreatePropertyLongStayBody,
+  IEditPropertyLongStayTermsBody,
   IExtendPropertyLongStayBody,
   ILeaseTermsEditSignals,
   IPropertyLongStay,
@@ -554,5 +555,72 @@ export const propertyLongStaysDb = {
       throw new LongStayNotActiveError();
     }
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async updateTerms(id: string, body: IEditPropertyLongStayTermsBody): Promise<IPropertyLongStay> {
+    const existing = await propertyLongStaysDb.findById(id);
+    if (!existing) {
+      throw new LongStayNotFoundError();
+    }
+    if (existing.status !== PropertyLongStayStatus.ACTIVE) {
+      throw new LongStayNotActiveError();
+    }
+
+    const leaseEndDate = calculateLeaseEndDate(body.leaseStartDate, body.termMonths);
+    const startMonth = transactionDateToMonth(body.leaseStartDate);
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const rentPeriodsResult = await client.query(
+        `SELECT id
+         FROM property_long_stay_rent_periods
+         WHERE long_stay_id = $1
+         ORDER BY effective_from_month ASC`,
+        [id]
+      );
+
+      if (rentPeriodsResult.rows.length === 1) {
+        await client.query(
+          `UPDATE property_long_stay_rent_periods
+           SET effective_from_month = $2,
+               monthly_rent = $3
+           WHERE long_stay_id = $1`,
+          [id, startMonth, body.monthlyRent]
+        );
+      }
+
+      const result = await client.query(
+        `UPDATE property_long_stays
+         SET lease_start_date = $2,
+             term_months = $3,
+             monthly_rent = $4,
+             lease_end_date = $5
+         WHERE id = $1
+           AND status = $6::property_long_stay_status
+         RETURNING *`,
+        [
+          id,
+          body.leaseStartDate,
+          body.termMonths,
+          body.monthlyRent,
+          leaseEndDate,
+          PropertyLongStayStatus.ACTIVE,
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new LongStayNotActiveError();
+      }
+
+      await client.query("COMMIT");
+      return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 };

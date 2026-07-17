@@ -3,34 +3,6 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { IPropertyLongStay } from "@/packages/shared";
 import { LeaseTermsEditBlockReason, PropertyLongStayStatus } from "@/packages/shared";
 
-const mockFindById = mock((): Promise<IPropertyLongStay | null> => Promise.resolve(null));
-const mockGetTermsEditSignals = mock(
-  (): Promise<{
-    leaseStartDate: string;
-    signals: {
-      hasIncomeLines: boolean;
-      hasRentPeriodHistory: boolean;
-      hasSucceededPayments: boolean;
-    };
-  } | null> => Promise.resolve(null)
-);
-
-mock.module("@/db/property-long-stays", () => ({
-  LongStayNotFoundError: class LongStayNotFoundError extends Error {
-    constructor() {
-      super("Long stay not found");
-      this.name = "LongStayNotFoundError";
-    }
-  },
-  propertyLongStaysDb: {
-    findById: mockFindById,
-    getTermsEditSignals: mockGetTermsEditSignals,
-  },
-}));
-
-const { assertLeaseTermsEditable, getLeaseTermsEditability } =
-  await import("./lease-terms-edit-service");
-
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {
     actualEndDate: null,
@@ -51,6 +23,41 @@ function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongSta
     ...overrides,
   };
 }
+
+const mockFindById = mock((): Promise<IPropertyLongStay | null> => Promise.resolve(null));
+const mockGetTermsEditSignals = mock(
+  (): Promise<{
+    leaseStartDate: string;
+    signals: {
+      hasIncomeLines: boolean;
+      hasRentPeriodHistory: boolean;
+      hasSucceededPayments: boolean;
+    };
+  } | null> => Promise.resolve(null)
+);
+const mockUpdateTerms = mock((): Promise<IPropertyLongStay> => Promise.resolve(makeLease()));
+
+mock.module("@/db/property-long-stays", () => ({
+  LongStayNotFoundError: class LongStayNotFoundError extends Error {
+    constructor() {
+      super("Long stay not found");
+      this.name = "LongStayNotFoundError";
+    }
+  },
+  propertyLongStaysDb: {
+    findById: mockFindById,
+    getTermsEditSignals: mockGetTermsEditSignals,
+    updateTerms: mockUpdateTerms,
+  },
+}));
+
+const {
+  assertLeaseTermsEditable,
+  editLeaseTerms,
+  getLeaseTermsEditability,
+  LeaseTermsNotEditableError,
+  LeaseTermsValidationError,
+} = await import("./lease-terms-edit-service");
 
 describe("getLeaseTermsEditability", () => {
   beforeEach(() => {
@@ -131,5 +138,137 @@ describe("assertLeaseTermsEditable", () => {
     });
 
     await expect(assertLeaseTermsEditable("lease-1")).resolves.toBeUndefined();
+  });
+});
+
+function mockEditableLease(lease: IPropertyLongStay = makeLease()): void {
+  mockFindById.mockResolvedValue(lease);
+  mockGetTermsEditSignals.mockResolvedValue({
+    leaseStartDate: lease.leaseStartDate,
+    signals: {
+      hasIncomeLines: false,
+      hasRentPeriodHistory: false,
+      hasSucceededPayments: false,
+    },
+  });
+}
+
+describe("editLeaseTerms", () => {
+  beforeEach(() => {
+    mockFindById.mockReset();
+    mockGetTermsEditSignals.mockReset();
+    mockUpdateTerms.mockReset();
+  });
+
+  test("updates terms when lease is editable and body is valid", async () => {
+    const lease = makeLease();
+    mockEditableLease(lease);
+    const updatedLease = makeLease({
+      leaseEndDate: "2026-08-31",
+      leaseStartDate: "2026-02-01",
+      monthlyRent: 1800,
+      termMonths: 7,
+    });
+    mockUpdateTerms.mockResolvedValueOnce(updatedLease);
+
+    const body = {
+      leaseStartDate: "2026-02-01",
+      monthlyRent: 1800,
+      termMonths: 7,
+    };
+
+    await expect(editLeaseTerms("lease-1", body)).resolves.toEqual(updatedLease);
+    expect(mockUpdateTerms).toHaveBeenCalledWith("lease-1", body);
+  });
+
+  test("rejects ended leases", async () => {
+    mockEditableLease(makeLease({ status: PropertyLongStayStatus.ENDED }));
+
+    await expect(
+      editLeaseTerms("lease-1", {
+        leaseStartDate: "2026-02-01",
+        monthlyRent: 1800,
+        termMonths: 7,
+      })
+    ).rejects.toBeInstanceOf(LeaseTermsNotEditableError);
+  });
+
+  test("rejects leases with income lines", async () => {
+    mockFindById.mockResolvedValue(makeLease());
+    mockGetTermsEditSignals.mockResolvedValue({
+      leaseStartDate: "2026-01-01",
+      signals: {
+        hasIncomeLines: true,
+        hasRentPeriodHistory: false,
+        hasSucceededPayments: false,
+      },
+    });
+
+    await expect(
+      editLeaseTerms("lease-1", {
+        leaseStartDate: "2026-02-01",
+        monthlyRent: 1800,
+        termMonths: 7,
+      })
+    ).rejects.toMatchObject({
+      reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES,
+    });
+  });
+
+  test("rejects leases with succeeded payments", async () => {
+    mockFindById.mockResolvedValue(makeLease());
+    mockGetTermsEditSignals.mockResolvedValue({
+      leaseStartDate: "2026-01-01",
+      signals: {
+        hasIncomeLines: false,
+        hasRentPeriodHistory: false,
+        hasSucceededPayments: true,
+      },
+    });
+
+    await expect(
+      editLeaseTerms("lease-1", {
+        leaseStartDate: "2026-02-01",
+        monthlyRent: 1800,
+        termMonths: 7,
+      })
+    ).rejects.toMatchObject({
+      reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS,
+    });
+  });
+
+  test("rejects leases with extend rent period history", async () => {
+    mockFindById.mockResolvedValue(makeLease());
+    mockGetTermsEditSignals.mockResolvedValue({
+      leaseStartDate: "2026-01-01",
+      signals: {
+        hasIncomeLines: false,
+        hasRentPeriodHistory: true,
+        hasSucceededPayments: false,
+      },
+    });
+
+    await expect(
+      editLeaseTerms("lease-1", {
+        leaseStartDate: "2026-02-01",
+        monthlyRent: 1800,
+        termMonths: 7,
+      })
+    ).rejects.toMatchObject({
+      reason: LeaseTermsEditBlockReason.HAS_RENT_PERIOD_HISTORY,
+    });
+  });
+
+  test("rejects no-op updates", async () => {
+    const lease = makeLease();
+    mockEditableLease(lease);
+
+    await expect(
+      editLeaseTerms("lease-1", {
+        leaseStartDate: lease.leaseStartDate,
+        monthlyRent: lease.monthlyRent,
+        termMonths: lease.termMonths,
+      })
+    ).rejects.toBeInstanceOf(LeaseTermsValidationError);
   });
 });
