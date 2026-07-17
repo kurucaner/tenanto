@@ -21,6 +21,7 @@ import {
 import { decodePropertyFavoriteKeysetCursor } from "@/pagination/keyset-cursor";
 import {
   DuplicatePropertyMemberInviteError,
+  PropertyMemberAlreadyMemberError,
   PropertyMemberInviteInvalidStateError,
   PropertyMemberInviteMismatchError,
   PropertyMemberInviteNotFoundError,
@@ -243,42 +244,6 @@ async function assertPropertyAccess(
     }
   }
   return property as never;
-}
-
-type TPropertyRecord = NonNullable<Awaited<ReturnType<typeof propertiesDb.findById>>>;
-
-async function addExistingPropertyMember(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  property: TPropertyRecord,
-  propertyId: string,
-  targetUser: NonNullable<Awaited<ReturnType<typeof userDb.findByEmail>>>,
-  role: TPropertyRole
-) {
-  if (targetUser.id === property.createdBy) {
-    return reply.status(HttpStatus.CONFLICT).send({
-      error: "The property creator is already assigned as owner",
-    });
-  }
-
-  const existingMember = await propertyMembersDb.findOne(propertyId, targetUser.id);
-  if (existingMember) {
-    return reply
-      .status(HttpStatus.CONFLICT)
-      .send({ error: "User is already a member of this property" });
-  }
-
-  const member = await propertyMembersDb.add(propertyId, targetUser.id, role, request.user.userId);
-  notifyUser({
-    body: `You were added as ${role}.`,
-    resourceId: propertyId,
-    resourceType: "property",
-    title: `Added to ${property.name}`,
-    type: "property_member_added",
-    userId: targetUser.id,
-  }).catch((err) => request.log.error(err));
-
-  return reply.status(HttpStatus.CREATED).send({ member, type: "member_added" });
 }
 
 interface IPropertiesListQuerystring {
@@ -574,18 +539,6 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         });
       }
 
-      const targetUser = await userDb.findByEmail(email);
-      if (targetUser) {
-        return addExistingPropertyMember(
-          request,
-          reply,
-          propertyExists,
-          propertyId,
-          targetUser,
-          role
-        );
-      }
-
       try {
         const response = await propertyMemberInviteService.addMemberViaInvite({
           email,
@@ -599,6 +552,9 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
           return reply
             .status(HttpStatus.CONFLICT)
             .send({ error: "An invitation has already been sent to this email" });
+        }
+        if (error instanceof PropertyMemberAlreadyMemberError) {
+          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
         }
         throw error;
       }

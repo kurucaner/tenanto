@@ -157,7 +157,7 @@ sequenceDiagram
 
 ### `property_members` (unchanged)
 
-Created only on **accept** or when inviting an **existing** platform user (`addExistingPropertyMember`).
+Created only on **accept**.
 
 ---
 
@@ -329,7 +329,7 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 - [x] Document operator flow in README or ops docs
 - [x] Delete dead code paths in `property-routes.ts` (`sendPropertyMemberInvite` inline logic → service only)
 
-**Exit criteria:** No auto-accept code; one email template pair; all pending invites have token flow.
+**Exit criteria:** No auto-accept code; one email template pair; all pending invites have token flow; add-member always creates an invite (existing platform users must accept manually).
 
 ---
 

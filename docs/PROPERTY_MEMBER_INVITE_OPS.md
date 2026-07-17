@@ -8,7 +8,6 @@ Invites are stored in `property_invites` until the invitee **explicitly accepts*
 
 - **New user** (`pending_invite`): magic link → inline signup on `/accept-invite` → accept
 - **Existing user** (`pending_acceptance`): magic link → sign in → accept or decline
-- **Already a member**: add-member API adds them directly (no invite row)
 
 ## Operator workflow
 
@@ -16,9 +15,11 @@ Invites are stored in `property_invites` until the invitee **explicitly accepts*
 
 1. Open **Property → Members**.
 2. Click **Add Member**, enter email + role (Owner / Manager / Accountant).
-3. If the email is not on the platform, an invite row appears as **Pending** and an email is sent.
+3. An invite row appears as **Pending** and an email is sent. The invitee must **accept** before they appear in the members list — this applies to both new and existing platform users.
 
-**409 conflict** if a pending invite already exists for that email on the property — use **Resend** instead.
+**409 conflict** if:
+- A pending invite already exists for that email on the property — use **Resend** instead.
+- The email already belongs to a **member** of this property.
 
 ### 2. Manage invites on property detail
 

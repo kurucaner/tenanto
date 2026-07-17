@@ -68,18 +68,13 @@ export const AddPropertyMemberDialog = memo(
         toast.error(e instanceof Error ? e.message : "Failed to add member");
       },
       onSuccess: (data) => {
-        if (data.type === "member_added") {
-          handlePropertyMemberInviteMutationSuccess("Member added");
-        } else if (data.type === "invite_sent") {
+        if (data.type === "invite_sent") {
           handlePropertyMemberInviteMutationSuccess(`Invitation sent to ${data.invite.email}`);
-        } else if (data.type === "invite_email_failed") {
-          handlePropertyMemberInviteMutationSuccess(
-            "Invitation saved but email failed to send",
-            {
-              emailError: data.invite.emailError ?? "Unknown error",
-              emailSent: false,
-            }
-          );
+        } else {
+          handlePropertyMemberInviteMutationSuccess("Invitation saved but email failed to send", {
+            emailError: data.invite.emailError ?? "Unknown error",
+            emailSent: false,
+          });
         }
         queryClient.invalidateQueries({
           queryKey: queryKeys.propertyDetail(propertyId),
@@ -110,8 +105,8 @@ export const AddPropertyMemberDialog = memo(
           <DialogHeader>
             <DialogTitle>Add Member</DialogTitle>
             <DialogDescription>
-              Enter the email address of the person you want to add. If they're not on the platform
-              yet, they'll receive an invitation email.
+              Enter the email and role. We&apos;ll send an invitation — they must accept before
+              joining this property.
             </DialogDescription>
           </DialogHeader>
 
@@ -158,7 +153,7 @@ export const AddPropertyMemberDialog = memo(
                 Cancel
               </Button>
               <Button disabled={mutation.isPending || isSubmitting} type="submit">
-                {mutation.isPending ? "Sending…" : "Add Member"}
+                {mutation.isPending ? "Sending…" : "Send invitation"}
               </Button>
             </DialogFooter>
           </form>

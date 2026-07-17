@@ -252,6 +252,5 @@ export interface IPropertyInviteRedeemResponse {
 }
 
 export type TAddPropertyMemberResponse =
-  | { member: IPropertyMember; type: "member_added" }
   | { invite: IPropertyInvite; type: "invite_sent" }
   | { invite: IPropertyInvite; type: "invite_email_failed" };

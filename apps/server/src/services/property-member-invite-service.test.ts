@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IProperty, IPropertyInvite, IUser } from "@/packages/shared";
+import type { IProperty, IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
 import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
 
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
@@ -8,6 +8,8 @@ const mockFindByEmail = mock(() => Promise.resolve(null as IUser | null));
 const mockFindByIdUser = mock(() => Promise.resolve(null as IUser | null));
 const mockFindByInviteToken = mock(() => Promise.resolve(null as IPropertyInvite | null));
 const mockExpireInviteIfPastTtl = mock(() => Promise.resolve(null as IPropertyInvite | null));
+const mockFindOneMember = mock(() => Promise.resolve(null as IPropertyMember | null));
+const mockCreateInvite = mock(() => Promise.resolve(makeInvite()));
 const mockSendNewEmail = mock(() => Promise.resolve(true));
 const mockSendExistingEmail = mock(() => Promise.resolve(true));
 
@@ -28,7 +30,7 @@ function makeProperty(): IProperty {
   };
 }
 
-function makeUser(): IUser {
+function makeUser(overrides?: Partial<IUser>): IUser {
   return {
     appleId: null,
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -39,10 +41,11 @@ function makeUser(): IUser {
     onboardingCompletedAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
     userType: UserType.USER,
+    ...overrides,
   };
 }
 
-function makeInvite(): IPropertyInvite {
+function makeInvite(overrides?: Partial<IPropertyInvite>): IPropertyInvite {
   return {
     acceptedAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -58,6 +61,7 @@ function makeInvite(): IPropertyInvite {
     role: PropertyRole.MANAGER,
     status: PropertyInviteStatus.PENDING_INVITE,
     updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
   };
 }
 
@@ -72,10 +76,16 @@ mock.module("@/db/users", () => ({
   },
 }));
 
+mock.module("@/db/property-members", () => ({
+  propertyMembersDb: {
+    findOne: mockFindOneMember,
+  },
+}));
+
 mock.module("@/db/property-invites", () => ({
   DuplicatePropertyMemberInviteError: class DuplicatePropertyMemberInviteError extends Error {},
   propertyInvitesDb: {
-    create: mock(() => Promise.resolve(makeInvite())),
+    create: mockCreateInvite,
     expireInviteIfPastTtl: mockExpireInviteIfPastTtl,
     findById: mock(() => Promise.resolve(makeInvite())),
     findByInviteToken: mockFindByInviteToken,
@@ -92,7 +102,11 @@ mock.module("@/ses/transactional-emails", () => ({
   sendPropertyMemberInviteNewEmail: mockSendNewEmail,
 }));
 
-const { propertyMemberInviteService } = await import("@/services/property-member-invite-service");
+const {
+  DuplicatePropertyMemberInviteError,
+  PropertyMemberAlreadyMemberError,
+  propertyMemberInviteService,
+} = await import("@/services/property-member-invite-service");
 
 describe("propertyMemberInviteService.previewInvite", () => {
   beforeEach(() => {
@@ -127,5 +141,115 @@ describe("propertyMemberInviteService.revokeInvite", () => {
     });
 
     expect(result.invite.status).toBe(PropertyInviteStatus.REVOKED);
+  });
+});
+
+describe("propertyMemberInviteService.addMemberViaInvite", () => {
+  beforeEach(() => {
+    mockFindByIdProperty.mockReset();
+    mockFindByIdUser.mockReset();
+    mockFindByEmail.mockReset();
+    mockFindOneMember.mockReset();
+    mockCreateInvite.mockReset();
+    mockSendNewEmail.mockReset();
+    mockSendExistingEmail.mockReset();
+
+    mockFindByIdProperty.mockResolvedValue(makeProperty());
+    mockFindByIdUser.mockResolvedValue(makeUser());
+    mockCreateInvite.mockResolvedValue(makeInvite());
+    mockSendNewEmail.mockResolvedValue(true);
+    mockSendExistingEmail.mockResolvedValue(true);
+    mockFindOneMember.mockResolvedValue(null);
+  });
+
+  test("sends new-user invite for unknown email", async () => {
+    mockFindByEmail.mockResolvedValue(null);
+
+    const result = await propertyMemberInviteService.addMemberViaInvite({
+      email: "new@example.com",
+      invitedBy: "inviter-1",
+      propertyId: "property-1",
+      role: PropertyRole.MANAGER,
+    });
+
+    expect(result.type).toBe("invite_sent");
+    expect(mockCreateInvite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "new@example.com",
+        status: PropertyInviteStatus.PENDING_INVITE,
+      })
+    );
+    expect(mockSendNewEmail).toHaveBeenCalled();
+    expect(mockSendExistingEmail).not.toHaveBeenCalled();
+    expect(mockFindOneMember).not.toHaveBeenCalled();
+  });
+
+  test("sends existing-user invite without adding member row", async () => {
+    mockFindByEmail.mockResolvedValue(
+      makeUser({ email: "existing@example.com", id: "existing-user-1" })
+    );
+    mockCreateInvite.mockResolvedValue(
+      makeInvite({
+        email: "existing@example.com",
+        status: PropertyInviteStatus.PENDING_ACCEPTANCE,
+      })
+    );
+
+    const result = await propertyMemberInviteService.addMemberViaInvite({
+      email: "existing@example.com",
+      invitedBy: "inviter-1",
+      propertyId: "property-1",
+      role: PropertyRole.ACCOUNTANT,
+    });
+
+    expect(result.type).toBe("invite_sent");
+    expect(mockFindOneMember).toHaveBeenCalledWith("property-1", "existing-user-1");
+    expect(mockCreateInvite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "existing@example.com",
+        status: PropertyInviteStatus.PENDING_ACCEPTANCE,
+      })
+    );
+    expect(mockSendExistingEmail).toHaveBeenCalled();
+    expect(mockSendNewEmail).not.toHaveBeenCalled();
+  });
+
+  test("throws when user is already a member", async () => {
+    mockFindByEmail.mockResolvedValue(
+      makeUser({ email: "member@example.com", id: "member-user-1" })
+    );
+    mockFindOneMember.mockResolvedValue({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      id: "membership-1",
+      propertyId: "property-1",
+      role: PropertyRole.MANAGER,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      userId: "member-user-1",
+    });
+
+    await expect(
+      propertyMemberInviteService.addMemberViaInvite({
+        email: "member@example.com",
+        invitedBy: "inviter-1",
+        propertyId: "property-1",
+        role: PropertyRole.MANAGER,
+      })
+    ).rejects.toBeInstanceOf(PropertyMemberAlreadyMemberError);
+
+    expect(mockCreateInvite).not.toHaveBeenCalled();
+  });
+
+  test("propagates duplicate pending invite errors", async () => {
+    mockFindByEmail.mockResolvedValue(null);
+    mockCreateInvite.mockRejectedValueOnce(new DuplicatePropertyMemberInviteError());
+
+    await expect(
+      propertyMemberInviteService.addMemberViaInvite({
+        email: "new@example.com",
+        invitedBy: "inviter-1",
+        propertyId: "property-1",
+        role: PropertyRole.MANAGER,
+      })
+    ).rejects.toBeInstanceOf(DuplicatePropertyMemberInviteError);
   });
 });

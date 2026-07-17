@@ -1,5 +1,6 @@
 import { propertiesDb } from "@/db/properties";
 import { DuplicatePropertyMemberInviteError, propertyInvitesDb } from "@/db/property-invites";
+import { propertyMembersDb } from "@/db/property-members";
 import { userDb } from "@/db/users";
 import { buildPropertyMemberInviteSummary } from "@/lib/build-property-member-invite-summary";
 import {
@@ -46,6 +47,13 @@ export class PropertyMemberInviteInvalidStateError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PropertyMemberInviteInvalidStateError";
+  }
+}
+
+export class PropertyMemberAlreadyMemberError extends Error {
+  constructor(message = "User is already a member of this property") {
+    super(message);
+    this.name = "PropertyMemberAlreadyMemberError";
   }
 }
 
@@ -165,12 +173,19 @@ export const propertyMemberInviteService = {
     invitedBy: string;
     propertyId: string;
     role: TPropertyRole;
-  }): Promise<
-    Extract<TAddPropertyMemberResponse, { type: "invite_email_failed" | "invite_sent" }>
-  > {
+  }): Promise<TAddPropertyMemberResponse> {
     const property = await propertiesDb.findById(input.propertyId);
     if (!property) {
       throw new PropertyMemberInviteNotFoundError("Property not found");
+    }
+
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const existingUser = await userDb.findByEmail(normalizedEmail);
+    if (existingUser) {
+      const existingMember = await propertyMembersDb.findOne(input.propertyId, existingUser.id);
+      if (existingMember) {
+        throw new PropertyMemberAlreadyMemberError();
+      }
     }
 
     const result = await createAndSendInvite({

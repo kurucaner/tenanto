@@ -245,11 +245,7 @@ export const PropertyDetailPage = memo(() => {
       toast.error(error instanceof Error ? error.message : "Failed to resend invite");
     },
     onSuccess: (response) => {
-      handleInviteMutationSuccess(
-        "Invitation resent",
-        response.emailSent,
-        response.emailError
-      );
+      handleInviteMutationSuccess("Invitation resent", response.emailSent, response.emailError);
     },
   });
 
@@ -270,10 +266,6 @@ export const PropertyDetailPage = memo(() => {
       toast.error(error instanceof Error ? error.message : "Failed to send invite");
     },
     onSuccess: (response) => {
-      if (response.type === "member_added") {
-        handleInviteMutationSuccess("Member added");
-        return;
-      }
       if (response.type === "invite_sent") {
         handleInviteMutationSuccess(`Invitation sent to ${response.invite.email}`);
         return;
@@ -322,11 +314,13 @@ export const PropertyDetailPage = memo(() => {
     [runInviteAction]
   );
 
-  const { deleteConfirmationDialog: revokeInviteConfirmationDialog, requestDelete: requestRevokeInvite } =
-    useDeleteConfirmation<IPropertyMemberInviteRevokeTarget>(
-      revokeInviteMutation.isPending,
-      revokeInviteFn
-    );
+  const {
+    deleteConfirmationDialog: revokeInviteConfirmationDialog,
+    requestDelete: requestRevokeInvite,
+  } = useDeleteConfirmation<IPropertyMemberInviteRevokeTarget>(
+    revokeInviteMutation.isPending,
+    revokeInviteFn
+  );
 
   const handleResendInvite = useCallback(
     (invite: IPropertyInvite) => {
