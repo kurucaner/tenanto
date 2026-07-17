@@ -45,9 +45,8 @@ mock.module("@/db/tenant-users", () => ({
   },
 }));
 
-const { LinkedTenantContactError, updatePrimaryTenantContact } = await import(
-  "./update-primary-tenant-contact-service"
-);
+const { LinkedTenantContactError, updatePrimaryTenantContact } =
+  await import("./update-primary-tenant-contact-service");
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {

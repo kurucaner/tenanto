@@ -11,10 +11,7 @@ export function hashPropertyMemberInviteToken(token: string): string {
 /**
  * Constant-time compare of a raw invite token against a stored SHA-256 hex digest.
  */
-export function propertyMemberInviteTokenMatchesHash(
-  token: string,
-  expectedHash: string
-): boolean {
+export function propertyMemberInviteTokenMatchesHash(token: string, expectedHash: string): boolean {
   const actualHex = hashPropertyMemberInviteToken(token);
   if (actualHex.length !== expectedHash.length) {
     return false;

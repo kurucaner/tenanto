@@ -39,9 +39,7 @@ const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay |
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
 const mockFindByIdUnit = mock(() => Promise.resolve(null as IPropertyUnit | null));
 const mockFindTenantById = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockSetUnverifiedPhoneIfNull = mock(
-  (): Promise<ITenantUser | null> => Promise.resolve(null)
-);
+const mockSetUnverifiedPhoneIfNull = mock((): Promise<ITenantUser | null> => Promise.resolve(null));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {

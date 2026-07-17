@@ -108,9 +108,7 @@ export const mapPropertyInviteRow = (row: Record<string, unknown>): IPropertyInv
   role: row.role as TPropertyRole,
   status: row.status as TPropertyInviteStatus,
   updatedAt:
-    toIso(row.updated_at) ??
-    toIso(row.created_at) ??
-    (row.created_at as Date).toISOString(),
+    toIso(row.updated_at) ?? toIso(row.created_at) ?? (row.created_at as Date).toISOString(),
 });
 
 export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit => ({
