@@ -55,6 +55,7 @@ export const PropertyLeaseDetailPage = memo(() => {
     primaryTenantContact,
     rentPeriods,
     rentSchedule,
+    termsEditability,
   } = usePropertyLongStayDetail(propertyId, leaseId);
 
   const unitsQuery = useQuery({
@@ -199,6 +200,7 @@ export const PropertyLeaseDetailPage = memo(() => {
               lease={lease}
               propertyId={propertyId}
               rentPeriods={rentPeriods}
+              termsEditability={termsEditability}
             />
           </TabsContent>
         </Tabs>

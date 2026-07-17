@@ -220,11 +220,11 @@ N/A
 
 **Goal:** Operators can correct mistakes from lease detail.
 
-- [ ] Add `longStaysApi.updateTerms` in `apps/admin/src/lib/api-client.ts`
-- [ ] Add `EditLeaseTermsDialog` (mirror `start-lease-dialog.tsx` fields/validation)
-- [ ] Wire button in `lease-detail-header.tsx` or `lease-terms-section.tsx`
-- [ ] Show blocked copy when `termsEditability.editable === false`
-- [ ] Invalidate caches via `invalidatePropertyLongStayCaches`
+- [x] Add `longStaysApi.updateTerms` in `apps/admin/src/lib/api-client.ts`
+- [x] Add `EditLeaseTermsDialog` (mirror `start-lease-dialog.tsx` fields/validation)
+- [x] Wire button in `lease-detail-header.tsx` or `lease-terms-section.tsx`
+- [x] Show blocked copy when `termsEditability.editable === false`
+- [x] Invalidate caches via `invalidatePropertyLongStayCaches`
 
 **Exit criteria:** Happy path on lease with no income; button hidden/disabled with clear reason after first Record rent; schedule + overview update without full page reload.
 

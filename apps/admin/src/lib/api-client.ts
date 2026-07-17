@@ -24,6 +24,8 @@ import {
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type ICreateTenantEmailCampaignBody,
+  type IEditPropertyLongStayTermsBody,
+  type IEditPropertyLongStayTermsResponse,
   type IEndPropertyLongStayBody,
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
@@ -600,6 +602,12 @@ export const longStaysApi = {
   update: (propertyId: string, longStayId: string, body: IUpdatePropertyLongStayBody) =>
     authenticatedRequest<{ longStay: IPropertyLongStay }>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  updateTerms: (propertyId: string, longStayId: string, body: IEditPropertyLongStayTermsBody) =>
+    authenticatedRequest<IEditPropertyLongStayTermsResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/terms`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 };
