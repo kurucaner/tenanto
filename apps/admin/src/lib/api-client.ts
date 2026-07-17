@@ -53,6 +53,8 @@ import {
   type IPropertyIncomeLinesListResponse,
   type IPropertyInvitePreviewResponse,
   type IPropertyInviteRedeemResponse,
+  type IPropertyInviteRegisterBody,
+  type IPropertyInviteRegisterGoogleBody,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
@@ -425,6 +427,18 @@ export const propertyInvitesApi = {
   redeemInvite: (token: string) =>
     authenticatedRequest<IPropertyInviteRedeemResponse>("/invites/redeem", {
       body: JSON.stringify({ token }),
+      method: "POST",
+    }),
+
+  registerWithInvite: (body: IPropertyInviteRegisterBody) =>
+    request<IPropertyInviteRedeemResponse>("/invites/register", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  registerWithInviteGoogle: (body: IPropertyInviteRegisterGoogleBody) =>
+    request<IPropertyInviteRedeemResponse>("/invites/register/google", {
+      body: JSON.stringify(body),
       method: "POST",
     }),
 };

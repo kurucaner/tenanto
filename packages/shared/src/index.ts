@@ -99,8 +99,8 @@ export {
   canTransitionPropertyMemberInviteStatus,
   isPendingPropertyMemberInviteStatus,
   isTerminalPropertyMemberInviteStatus,
-  pickCanonicalPropertyMemberInvitesForAdmin,
   PENDING_PROPERTY_MEMBER_INVITE_STATUSES,
+  pickCanonicalPropertyMemberInvitesForAdmin,
   TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES,
 } from "./property-member-invite-transitions";
 export {
@@ -119,6 +119,8 @@ export {
   type IPropertyInvitePreviewResponse,
   type IPropertyInviteRedeemBody,
   type IPropertyInviteRedeemResponse,
+  type IPropertyInviteRegisterBody,
+  type IPropertyInviteRegisterGoogleBody,
   type IPropertyMember,
   type IPropertyMemberInviteActionResponse,
   type IPropertyMemberInviteSummary,

@@ -1,3 +1,4 @@
+import type { IPlatformAuthSessionResponse } from "./auth-types";
 import type { IPropertyUnitsListMeta } from "./list-meta-types";
 
 export const PropertyRole = {
@@ -233,9 +234,21 @@ export interface IPropertyInviteRedeemBody {
   token: string;
 }
 
+export interface IPropertyInviteRegisterBody {
+  name: string;
+  password: string;
+  token: string;
+}
+
+export interface IPropertyInviteRegisterGoogleBody {
+  idToken: string;
+  token: string;
+}
+
 export interface IPropertyInviteRedeemResponse {
   invite: IPropertyInvite;
   member: IPropertyMember;
+  session?: IPlatformAuthSessionResponse;
 }
 
 export type TAddPropertyMemberResponse =
