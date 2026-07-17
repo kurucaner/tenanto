@@ -28,10 +28,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     updateFlags: mockUpdateFlags,
     upsert: mockUpsert,
   },
-  toConnectStatusResponse: (
-    account: IPropertyStripeAccount | null,
-    platformEnabled: boolean
-  ) => ({
+  toConnectStatusResponse: (account: IPropertyStripeAccount | null, platformEnabled: boolean) => ({
     chargesEnabled: account?.chargesEnabled ?? false,
     detailsSubmitted: account?.detailsSubmitted ?? false,
     onboardingComplete: account?.onboardingComplete ?? false,

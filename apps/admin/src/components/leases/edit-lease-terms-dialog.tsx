@@ -177,7 +177,11 @@ export const EditLeaseTermsDialog = memo(
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="edit-lease-start-date">Lease Start Date</Label>
-                  <Input id="edit-lease-start-date" type="date" {...form.register("leaseStartDate")} />
+                  <Input
+                    id="edit-lease-start-date"
+                    type="date"
+                    {...form.register("leaseStartDate")}
+                  />
                   {errors.leaseStartDate ? (
                     <p className="text-xs text-destructive">{errors.leaseStartDate.message}</p>
                   ) : null}
@@ -243,7 +247,12 @@ export const EditLeaseTermsDialog = memo(
             </div>
 
             <DialogFooter>
-              <Button disabled={mutation.isPending} onClick={() => handleOpenChange(false)} type="button" variant="outline">
+              <Button
+                disabled={mutation.isPending}
+                onClick={() => handleOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
                 Cancel
               </Button>
               <Button disabled={mutation.isPending || isSubmitting} type="submit">

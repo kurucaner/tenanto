@@ -117,9 +117,7 @@ export const PropertySettingsPage = memo(() => {
 
   return (
     <div className="space-y-6">
-      {showStripeConnectSection ? (
-        <PropertyStripeConnectSection propertyId={propertyId} />
-      ) : null}
+      {showStripeConnectSection ? <PropertyStripeConnectSection propertyId={propertyId} /> : null}
       <PropertySettingsForm
         canEdit={canEdit}
         propertyId={propertyId}
