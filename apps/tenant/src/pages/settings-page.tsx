@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { memo } from "react";
+import { toast } from "sonner";
 
 import { useTenantLogout } from "@/hooks/use-tenant-logout";
 import { tenantPortalApi } from "@/lib/api-client";
@@ -15,6 +16,7 @@ import {
   ThemeSwitcher,
   useResolvedDark,
 } from "@/packages/app-ui";
+import { formatPhoneDisplay } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 export const SettingsPage = memo(function SettingsPage() {
@@ -49,12 +51,39 @@ export const SettingsPage = memo(function SettingsPage() {
             </p>
           ) : null}
           {meQuery.data ? (
-            <p className="text-muted-foreground">
-              Member since{" "}
-              {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
-                new Date(meQuery.data.user.createdAt)
-              )}
-            </p>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Member since</p>
+                <p className="text-foreground">
+                  {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+                    new Date(meQuery.data.user.createdAt)
+                  )}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Phone</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-foreground">
+                    {meQuery.data.user.phone
+                      ? formatPhoneDisplay(meQuery.data.user.phone)
+                      : "Not added"}
+                  </p>
+                  {meQuery.data.user.phone && !meQuery.data.user.phoneVerifiedAt ? (
+                    <Button
+                      onClick={() => toast.message("Coming soon")}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Verify
+                    </Button>
+                  ) : null}
+                </div>
+                {meQuery.data.user.phone && meQuery.data.user.phoneVerifiedAt ? (
+                  <p className="text-xs text-muted-foreground">Verified</p>
+                ) : null}
+              </div>
+            </div>
           ) : null}
         </CardContent>
       </Card>
