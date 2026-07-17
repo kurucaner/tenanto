@@ -324,10 +324,10 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 **Goal:** Remove legacy path; single invite model in production.
 
-- [ ] Remove `acceptPendingPropertyInvitesForUser` hooks from auth routes and platform realm (or delete service)
-- [ ] Retire `property-invite.html` or redirect to split new/existing templates
-- [ ] Document operator flow in README or ops docs
-- [ ] Delete dead code paths in `property-routes.ts` (`sendPropertyMemberInvite` inline logic → service only)
+- [x] Remove `acceptPendingPropertyInvitesForUser` hooks from auth routes and platform realm (or delete service)
+- [x] Retire `property-invite.html` or redirect to split new/existing templates
+- [x] Document operator flow in README or ops docs
+- [x] Delete dead code paths in `property-routes.ts` (`sendPropertyMemberInvite` inline logic → service only)
 
 **Exit criteria:** No auto-accept code; one email template pair; all pending invites have token flow.
 

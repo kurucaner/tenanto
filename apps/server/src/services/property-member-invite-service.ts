@@ -9,6 +9,7 @@ import {
   type IPropertyInvitePreviewResponse,
   isPendingPropertyMemberInviteStatus,
   PropertyInviteStatus,
+  type TAddPropertyMemberResponse,
   type TPropertyRole,
 } from "@/packages/shared";
 import {
@@ -159,6 +160,33 @@ async function createAndSendInvite(input: {
 }
 
 export const propertyMemberInviteService = {
+  async addMemberViaInvite(input: {
+    email: string;
+    invitedBy: string;
+    propertyId: string;
+    role: TPropertyRole;
+  }): Promise<
+    Extract<TAddPropertyMemberResponse, { type: "invite_email_failed" | "invite_sent" }>
+  > {
+    const property = await propertiesDb.findById(input.propertyId);
+    if (!property) {
+      throw new PropertyMemberInviteNotFoundError("Property not found");
+    }
+
+    const result = await createAndSendInvite({
+      email: input.email,
+      invitedBy: input.invitedBy,
+      property,
+      propertyId: input.propertyId,
+      role: input.role,
+    });
+
+    if (!result.emailSent) {
+      return { invite: result.invite, type: "invite_email_failed" };
+    }
+    return { invite: result.invite, type: "invite_sent" };
+  },
+
   async createInvite(input: {
     email: string;
     invitedBy: string;

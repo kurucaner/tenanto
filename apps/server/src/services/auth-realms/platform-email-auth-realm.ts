@@ -12,10 +12,6 @@ export const platformEmailPasswordAuthRealm: IEmailPasswordAuthRealm<
   IUser,
   IPlatformAuthSessionResponse
 > = {
-  async afterAuthenticated(_user) {},
-
-  async afterRegisterVerified(_user, _email) {},
-
   async createRegisteredUser(input) {
     return userDb.createWithEmail({
       email: input.email,

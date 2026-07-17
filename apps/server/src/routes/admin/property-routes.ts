@@ -281,39 +281,6 @@ async function addExistingPropertyMember(
   return reply.status(HttpStatus.CREATED).send({ member, type: "member_added" });
 }
 
-async function sendPropertyMemberInvite(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  propertyId: string,
-  email: string,
-  role: TPropertyRole
-) {
-  try {
-    const result = await propertyMemberInviteService.createInvite({
-      email,
-      invitedBy: request.user.userId,
-      propertyId,
-      role,
-    });
-
-    if (!result.emailSent) {
-      return reply.status(HttpStatus.CREATED).send({
-        invite: result.invite,
-        type: "invite_email_failed",
-      });
-    }
-
-    return reply.status(HttpStatus.CREATED).send({ invite: result.invite, type: "invite_sent" });
-  } catch (error) {
-    if (error instanceof DuplicatePropertyMemberInviteError) {
-      return reply
-        .status(HttpStatus.CONFLICT)
-        .send({ error: "An invitation has already been sent to this email" });
-    }
-    throw error;
-  }
-}
-
 interface IPropertiesListQuerystring {
   cursor?: string;
   limit?: string;
@@ -619,7 +586,22 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         );
       }
 
-      return sendPropertyMemberInvite(request, reply, propertyId, email, role);
+      try {
+        const response = await propertyMemberInviteService.addMemberViaInvite({
+          email,
+          invitedBy: request.user.userId,
+          propertyId,
+          role,
+        });
+        return reply.status(HttpStatus.CREATED).send(response);
+      } catch (error) {
+        if (error instanceof DuplicatePropertyMemberInviteError) {
+          return reply
+            .status(HttpStatus.CONFLICT)
+            .send({ error: "An invitation has already been sent to this email" });
+        }
+        throw error;
+      }
     }
   );
 

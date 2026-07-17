@@ -8,12 +8,6 @@ import { sendSesEmail, sendTransactionalEmail } from "./ses";
 import { escapeHtml } from "./ses-utils";
 import { buildListUnsubscribeUrl } from "./unsubscribe-token";
 
-export interface PropertyInviteEmailOptions {
-  inviterEmail: string;
-  propertyName: string;
-  role: string;
-}
-
 export interface SupportReplyEmailOptions {
   messagePreview: string;
   supportRequestId: string;
@@ -63,11 +57,6 @@ export interface PropertyMemberInviteEmailOptions {
 function buildSupportTicketUrl(supportRequestId: string): string {
   const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
   return `${base}/support-requests/${encodeURIComponent(supportRequestId)}`;
-}
-
-function buildRegisterUrl(): string {
-  const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
-  return `${base}/signup`;
 }
 
 function getSubject(purpose: OtpPurpose): string {
@@ -129,27 +118,6 @@ export async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose
     text,
     to,
   });
-}
-
-export async function sendPropertyInviteEmail(
-  to: string,
-  opts: PropertyInviteEmailOptions
-): Promise<void> {
-  const registerUrl = buildRegisterUrl();
-  const roleLabel = opts.role.charAt(0).toUpperCase() + opts.role.slice(1);
-  const subject = `You've been invited to join ${opts.propertyName} on ${APP_NAME}`;
-  const text = `${opts.inviterEmail} has invited you to join the property management for ${opts.propertyName} as a ${roleLabel}. Register now at ${registerUrl} using this email address to accept.`;
-
-  const html = renderTemplate("property-invite.html", {
-    appName: APP_NAME,
-    baseUrl: WEB_APP_URL ?? "",
-    inviterEmail: opts.inviterEmail,
-    propertyName: opts.propertyName,
-    registerUrl,
-    role: roleLabel,
-  });
-
-  await sendTransactionalEmail({ html, subject, text, to });
 }
 
 export async function sendSupportReplyEmail(
