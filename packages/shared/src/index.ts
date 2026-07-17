@@ -99,6 +99,7 @@ export {
   canTransitionPropertyMemberInviteStatus,
   isPendingPropertyMemberInviteStatus,
   isTerminalPropertyMemberInviteStatus,
+  pickCanonicalPropertyMemberInvitesForAdmin,
   PENDING_PROPERTY_MEMBER_INVITE_STATUSES,
   TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES,
 } from "./property-member-invite-transitions";

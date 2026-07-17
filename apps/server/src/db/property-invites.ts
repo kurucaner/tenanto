@@ -1,6 +1,7 @@
 import {
   canTransitionPropertyMemberInviteStatus,
   type IPropertyInvite,
+  pickCanonicalPropertyMemberInvitesForAdmin,
   PropertyInviteStatus,
   type TPropertyInviteStatus,
   type TPropertyRole,
@@ -132,7 +133,9 @@ export const propertyInvitesDb = {
        ORDER BY created_at ASC`,
       [propertyId, ADMIN_HIDDEN_INVITE_STATUSES]
     );
-    return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
+    return pickCanonicalPropertyMemberInvitesForAdmin(
+      result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>))
+    );
   },
 
   async findById(id: string): Promise<IPropertyInvite | null> {

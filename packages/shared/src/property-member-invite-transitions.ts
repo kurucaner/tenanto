@@ -1,5 +1,6 @@
 import {
   PropertyInviteStatus,
+  type IPropertyInvite,
   type TPropertyInviteStatus,
 } from "./property-types";
 
@@ -68,4 +69,65 @@ export function canTransitionPropertyMemberInviteStatus(
     return false;
   }
   return ALLOWED_TRANSITIONS[from].includes(to);
+}
+
+function normalizePropertyMemberInviteEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function getPropertyMemberInviteAdminPriority(status: TPropertyInviteStatus): number {
+  if (isPendingPropertyMemberInviteStatus(status)) {
+    return 0;
+  }
+  if (status === PropertyInviteStatus.EMAIL_FAILED) {
+    return 1;
+  }
+  return 2;
+}
+
+function getPropertyMemberInviteSortTimestamp(invite: IPropertyInvite): number {
+  return new Date(invite.invitedAt).getTime() || new Date(invite.createdAt).getTime();
+}
+
+function pickCanonicalPropertyMemberInvite(
+  invites: readonly IPropertyInvite[]
+): IPropertyInvite {
+  return invites.reduce((best, current) => {
+    const bestPriority = getPropertyMemberInviteAdminPriority(best.status);
+    const currentPriority = getPropertyMemberInviteAdminPriority(current.status);
+
+    if (currentPriority < bestPriority) {
+      return current;
+    }
+    if (currentPriority > bestPriority) {
+      return best;
+    }
+
+    return getPropertyMemberInviteSortTimestamp(current) > getPropertyMemberInviteSortTimestamp(best)
+      ? current
+      : best;
+  });
+}
+
+export function pickCanonicalPropertyMemberInvitesForAdmin(
+  invites: readonly IPropertyInvite[]
+): IPropertyInvite[] {
+  const byEmail = new Map<string, IPropertyInvite[]>();
+
+  for (const invite of invites) {
+    const key = normalizePropertyMemberInviteEmail(invite.email);
+    const group = byEmail.get(key);
+    if (group) {
+      group.push(invite);
+    } else {
+      byEmail.set(key, [invite]);
+    }
+  }
+
+  return [...byEmail.values()]
+    .map(pickCanonicalPropertyMemberInvite)
+    .sort(
+      (left, right) =>
+        getPropertyMemberInviteSortTimestamp(left) - getPropertyMemberInviteSortTimestamp(right)
+    );
 }
