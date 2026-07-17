@@ -1,6 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useState } from "react";
+import { memo, useCallback } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { propertiesApi } from "@/lib/api-client";
 import { handlePropertyMemberInviteMutationSuccess } from "@/lib/property-member-invite-mutation-toast";
 import { queryKeys } from "@/lib/query-keys";
+import { authEmailSchema } from "@/packages/app-ui";
 import { PropertyRole, type TPropertyRole } from "@/packages/shared";
 
 const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
@@ -25,7 +29,23 @@ const ROLE_OPTIONS: { label: string; value: TPropertyRole }[] = [
   { label: "Accountant", value: PropertyRole.ACCOUNTANT },
 ];
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const addPropertyMemberSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .pipe(authEmailSchema)
+    .transform((value) => value.toLowerCase()),
+  role: z.enum([PropertyRole.OWNER, PropertyRole.MANAGER, PropertyRole.ACCOUNTANT]),
+});
+
+type TAddPropertyMemberFormValues = z.infer<typeof addPropertyMemberSchema>;
+
+function getDefaultValues(): TAddPropertyMemberFormValues {
+  return {
+    email: "",
+    role: PropertyRole.OWNER,
+  };
+}
 
 interface AddPropertyMemberDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -36,18 +56,14 @@ interface AddPropertyMemberDialogProps {
 export const AddPropertyMemberDialog = memo(
   ({ onOpenChange, open, propertyId }: AddPropertyMemberDialogProps) => {
     const queryClient = useQueryClient();
-    const [email, setEmail] = useState("");
-    const [emailTouched, setEmailTouched] = useState(false);
-    const [role, setRole] = useState<TPropertyRole>(PropertyRole.OWNER);
-
-    const emailError =
-      emailTouched && email.trim() !== "" && !EMAIL_REGEX.test(email.trim())
-        ? "Please enter a valid email address"
-        : null;
+    const form = useForm<TAddPropertyMemberFormValues>({
+      defaultValues: getDefaultValues(),
+      resolver: zodResolver(addPropertyMemberSchema),
+    });
 
     const mutation = useMutation({
-      mutationFn: () =>
-        propertiesApi.addMember(propertyId, { email: email.trim().toLowerCase(), role }),
+      mutationFn: (values: TAddPropertyMemberFormValues) =>
+        propertiesApi.addMember(propertyId, values),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to add member");
       },
@@ -68,21 +84,28 @@ export const AddPropertyMemberDialog = memo(
         queryClient.invalidateQueries({
           queryKey: queryKeys.propertyDetail(propertyId),
         });
-        handleClose();
+        handleOpenChange(false);
       },
     });
 
-    const handleClose = () => {
-      onOpenChange(false);
-      setEmail("");
-      setEmailTouched(false);
-      setRole(PropertyRole.OWNER);
-    };
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        if (!nextOpen) {
+          form.reset(getDefaultValues());
+        }
+        onOpenChange(nextOpen);
+      },
+      [form, onOpenChange]
+    );
 
-    const canSubmit = EMAIL_REGEX.test(email.trim()) && !mutation.isPending;
+    const onSubmit = form.handleSubmit((values) => {
+      mutation.mutate(values);
+    });
+
+    const { errors, isSubmitting } = form.formState;
 
     return (
-      <Dialog onOpenChange={handleClose} open={open}>
+      <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[460px]">
           <DialogHeader>
             <DialogTitle>Add Member</DialogTitle>
@@ -92,44 +115,53 @@ export const AddPropertyMemberDialog = memo(
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-5 px-6 py-5">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="add-member-email">Email address</Label>
-              <Input
-                autoFocus
-                aria-invalid={emailError !== null}
-                id="add-member-email"
-                onBlur={() => setEmailTouched(true)}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@example.com"
-                type="email"
-                value={email}
+          <form onSubmit={onSubmit}>
+            <div className="flex flex-col gap-5 px-6 py-5">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="add-member-email">Email address</Label>
+                <Input
+                  autoFocus
+                  aria-invalid={errors.email != null}
+                  id="add-member-email"
+                  placeholder="name@example.com"
+                  type="email"
+                  {...form.register("email")}
+                />
+                {errors.email ? (
+                  <p className="text-xs text-destructive">{errors.email.message}</p>
+                ) : null}
+              </div>
+
+              <Controller
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormSelectField
+                    error={errors.role?.message}
+                    id="add-member-role"
+                    label="Role"
+                    onChange={(e) => field.onChange(e.target.value as TPropertyRole)}
+                    options={ROLE_OPTIONS}
+                    value={field.value}
+                  />
+                )}
               />
-              {emailError ? <p className="text-xs text-destructive">{emailError}</p> : null}
             </div>
 
-            <FormSelectField
-              id="add-member-role"
-              label="Role"
-              onChange={(e) => setRole(e.target.value as TPropertyRole)}
-              options={ROLE_OPTIONS}
-              value={role}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button
-              disabled={mutation.isPending}
-              onClick={handleClose}
-              type="button"
-              variant="outline"
-            >
-              Cancel
-            </Button>
-            <Button disabled={!canSubmit} onClick={() => mutation.mutate()} type="button">
-              {mutation.isPending ? "Sending…" : "Add Member"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button
+                disabled={mutation.isPending}
+                onClick={() => handleOpenChange(false)}
+                type="button"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button disabled={mutation.isPending || isSubmitting} type="submit">
+                {mutation.isPending ? "Sending…" : "Add Member"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     );
