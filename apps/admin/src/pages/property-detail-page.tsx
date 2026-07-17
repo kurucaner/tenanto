@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
+import { PropertyMemberInviteStatusBadge } from "@/components/properties/property-member-invite-status-badge";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ import { propertiesApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import {
   formatPhoneDisplay,
+  type IPropertyInvite,
   type IPropertyMember,
   type IPropertyMemberUser,
   PropertyRole,
@@ -49,6 +51,8 @@ const MemberTableRow = memo(
     member,
     onChangeRole,
     onRemove,
+    showActionsColumn,
+    showStatusColumn,
   }: {
     canManageMembers: boolean;
     creatorUserId: string;
@@ -57,6 +61,8 @@ const MemberTableRow = memo(
     member: IPropertyMember;
     onChangeRole: (userId: string, role: TPropertyRole) => void;
     onRemove: (member: IPropertyMember, event?: MouseEvent<HTMLButtonElement>) => void;
+    showActionsColumn: boolean;
+    showStatusColumn: boolean;
   }) => {
     const canEditMember = canManageMembers && member.userId !== creatorUserId;
 
@@ -74,24 +80,27 @@ const MemberTableRow = memo(
         <TableCell className="text-muted-foreground text-xs">
           {new Date(member.createdAt).toLocaleString()}
         </TableCell>
-        <TableCell>
-          {canEditMember ? (
-            <div className="flex items-center gap-2">
-              <NativeSelect
-                className="h-7 w-auto px-2 text-xs"
-                onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
-                options={ROLE_OPTIONS}
-                value={member.role}
-              />
-              <QuickDeleteButton
-                ariaLabel="Remove member"
-                disabled={isRemovePending}
-                onClick={(event) => onRemove(member, event)}
-                quickDeleteActive={isQuickDeleteActive}
-              />
-            </div>
-          ) : null}
-        </TableCell>
+        {showStatusColumn ? <TableCell /> : null}
+        {showActionsColumn ? (
+          <TableCell>
+            {canEditMember ? (
+              <div className="flex items-center gap-2">
+                <NativeSelect
+                  className="h-7 w-auto px-2 text-xs"
+                  onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
+                  options={ROLE_OPTIONS}
+                  value={member.role}
+                />
+                <QuickDeleteButton
+                  ariaLabel="Remove member"
+                  disabled={isRemovePending}
+                  onClick={(event) => onRemove(member, event)}
+                  quickDeleteActive={isQuickDeleteActive}
+                />
+              </div>
+            ) : null}
+          </TableCell>
+        ) : null}
       </TableRow>
     );
   }
@@ -103,10 +112,14 @@ const CreatorTableRow = memo(
     createdAt,
     creator,
     isCurrentUser,
+    showActionsColumn,
+    showStatusColumn,
   }: {
     createdAt: string;
     creator: IPropertyMemberUser;
     isCurrentUser: boolean;
+    showActionsColumn: boolean;
+    showStatusColumn: boolean;
   }) => (
     <TableRow>
       <TableCell>
@@ -128,11 +141,36 @@ const CreatorTableRow = memo(
       <TableCell className="text-muted-foreground text-xs">
         {new Date(createdAt).toLocaleString()}
       </TableCell>
-      <TableCell />
+      {showStatusColumn ? <TableCell /> : null}
+      {showActionsColumn ? <TableCell /> : null}
     </TableRow>
   )
 );
 CreatorTableRow.displayName = "CreatorTableRow";
+
+const InviteTableRow = memo(
+  ({ invite, showActionsColumn }: { invite: IPropertyInvite; showActionsColumn: boolean }) => (
+    <TableRow className="bg-muted/20">
+      <TableCell>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground font-medium italic">{invite.email}</span>
+          <span className="text-muted-foreground text-xs">Invite pending</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <PropertyRoleBadge role={invite.role} />
+      </TableCell>
+      <TableCell className="text-muted-foreground text-xs">
+        {new Date(invite.invitedAt).toLocaleString()}
+      </TableCell>
+      <TableCell>
+        <PropertyMemberInviteStatusBadge invite={invite} />
+      </TableCell>
+      {showActionsColumn ? <TableCell /> : null}
+    </TableRow>
+  )
+);
+InviteTableRow.displayName = "InviteTableRow";
 
 export const PropertyDetailPage = memo(() => {
   const { permissions, property, propertyId } = usePropertyShell();
@@ -147,6 +185,10 @@ export const PropertyDetailPage = memo(() => {
     () => property.members.filter((member) => member.userId !== property.createdBy),
     [property.createdBy, property.members]
   );
+
+  const inviteRows = useMemo(() => property.invites ?? [], [property.invites]);
+  const showStatusColumn = inviteRows.length > 0;
+  const showActionsColumn = canManageMembers;
 
   const deleteMutation = useMutation({
     mutationFn: () => propertiesApi.delete(propertyId),
@@ -284,7 +326,9 @@ export const PropertyDetailPage = memo(() => {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base">Members</CardTitle>
-            <CardDescription>Users assigned to this property with their roles.</CardDescription>
+            <CardDescription>
+              Users assigned to this property and pending email invites.
+            </CardDescription>
           </div>
           {canManageMembers ? (
             <Button
@@ -305,7 +349,8 @@ export const PropertyDetailPage = memo(() => {
                 <TableHead>User</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Added</TableHead>
-                {canManageMembers ? <TableHead>Actions</TableHead> : null}
+                {showStatusColumn ? <TableHead>Status</TableHead> : null}
+                {showActionsColumn ? <TableHead>Actions</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -313,6 +358,8 @@ export const PropertyDetailPage = memo(() => {
                 createdAt={property.createdAt}
                 creator={property.creator}
                 isCurrentUser={currentUser?.id === property.createdBy}
+                showActionsColumn={showActionsColumn}
+                showStatusColumn={showStatusColumn}
               />
               {memberRows.map((member) => (
                 <MemberTableRow
@@ -324,6 +371,15 @@ export const PropertyDetailPage = memo(() => {
                   member={member}
                   onChangeRole={(userId, role) => updateRoleMutation.mutate({ role, userId })}
                   onRemove={handleRemoveMember}
+                  showActionsColumn={showActionsColumn}
+                  showStatusColumn={showStatusColumn}
+                />
+              ))}
+              {inviteRows.map((invite) => (
+                <InviteTableRow
+                  invite={invite}
+                  key={invite.id}
+                  showActionsColumn={showActionsColumn}
                 />
               ))}
             </TableBody>

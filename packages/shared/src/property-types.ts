@@ -42,6 +42,8 @@ export interface IPropertyMember {
 
 export interface IPropertyDetail extends IProperty {
   creator: IPropertyMemberUser;
+  /** Non-terminal invites for this property (pending / email delivery issues). */
+  invites: IPropertyInvite[];
   members: IPropertyMember[];
 }
 

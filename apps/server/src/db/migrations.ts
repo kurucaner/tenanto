@@ -24,6 +24,12 @@ export const runMigrations = async (pool: Pool): Promise<void> => {
           migration.version,
           migration.name,
         ]);
+
+        // New enum values cannot be used until the transaction that added them commits.
+        if (migration.commitAfter) {
+          await client.query("COMMIT");
+          await client.query("BEGIN");
+        }
       }
     }
 
@@ -47,6 +53,8 @@ const SOFT_DELETE_TABLES = [
 ] as const;
 
 interface IMigration {
+  /** Commit immediately after this migration so later migrations can use new enum values. */
+  commitAfter?: boolean;
   down: (client: TDBClient) => Promise<void>;
   name: string;
   up: (client: TDBClient) => Promise<void>;
@@ -2846,6 +2854,27 @@ export const migrations: IMigration[] = [
     version: 61,
   },
   {
+    commitAfter: true,
+    down: async () => {
+      // PostgreSQL does not support removing enum values; no-op.
+    },
+    name: "property_member_invite_v2_enum_values",
+    up: async (client: TDBClient) => {
+      for (const value of [
+        "pending_invite",
+        "pending_acceptance",
+        "declined",
+        "revoked",
+        "expired",
+      ]) {
+        await client.query(`
+          ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS '${value}';
+        `);
+      }
+    },
+    version: 62,
+  },
+  {
     down: async (client: TDBClient) => {
       await client.query(`DROP INDEX IF EXISTS property_invites_pending_property_email_idx;`);
       await client.query(`
@@ -2860,18 +2889,6 @@ export const migrations: IMigration[] = [
     },
     name: "property_member_invite_v2_foundation",
     up: async (client: TDBClient) => {
-      for (const value of [
-        "pending_invite",
-        "pending_acceptance",
-        "declined",
-        "revoked",
-        "expired",
-      ]) {
-        await client.query(`
-          ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS '${value}';
-        `);
-      }
-
       await client.query(`
         ALTER TABLE property_invites
           ADD COLUMN IF NOT EXISTS invite_token_hash TEXT,
@@ -2928,6 +2945,6 @@ export const migrations: IMigration[] = [
           );
       `);
     },
-    version: 62,
+    version: 63,
   },
 ];

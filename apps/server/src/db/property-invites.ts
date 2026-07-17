@@ -1,6 +1,7 @@
 import {
   type IPropertyInvite,
   PropertyInviteStatus,
+  TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES,
   type TPropertyInviteStatus,
   type TPropertyRole,
 } from "@/packages/shared";
@@ -67,6 +68,17 @@ export const propertyInvitesDb = {
     );
     if (result.rows.length === 0) return null;
     return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async findNonTerminalByProperty(propertyId: string): Promise<IPropertyInvite[]> {
+    const result = await pool.query(
+      `SELECT * FROM property_invites
+       WHERE property_id = $1
+         AND NOT (status = ANY($2::property_invite_status[]))
+       ORDER BY created_at ASC`,
+      [propertyId, TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES]
+    );
+    return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
   },
 
   async findPendingByEmail(email: string): Promise<IPropertyInvite[]> {

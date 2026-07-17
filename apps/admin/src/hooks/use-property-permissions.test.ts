@@ -54,6 +54,7 @@ function makeProperty(members: IPropertyMember[]): IPropertyDetail {
     },
     favoritedAt: null,
     id: propertyId,
+    invites: [],
     isFavorite: false,
     legalName: null,
     memberCount: members.length,

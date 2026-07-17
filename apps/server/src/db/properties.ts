@@ -17,6 +17,7 @@ import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 
 import { mapPropertyMemberRow, mapPropertyRow } from "./mappers";
 import { pool } from "./pool";
+import { propertyInvitesDb } from "./property-invites";
 
 type DbQueryable = Pool | PoolClient;
 
@@ -236,7 +237,12 @@ export const propertiesDb = {
       mapPropertyMemberRow(memberRow as Record<string, unknown>)
     );
 
-    return { ...property, creator, members };
+    const memberEmails = new Set(members.map((member) => member.user.email.trim().toLowerCase()));
+    const invites = (await propertyInvitesDb.findNonTerminalByProperty(id)).filter(
+      (invite) => !memberEmails.has(invite.email.trim().toLowerCase())
+    );
+
+    return { ...property, creator, invites, members };
   },
 
   async listAccessibleForUser(
