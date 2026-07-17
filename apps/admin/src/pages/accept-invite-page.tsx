@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useState, type ReactNode } from "react";
+import { memo, type ReactNode, useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -380,7 +380,9 @@ const AcceptInviteByInviteIdPanel = memo(function AcceptInviteByInviteIdPanel({
   if (!isAuthenticated) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">Sign in to review and respond to this invitation.</p>
+        <p className="text-sm text-muted-foreground">
+          Sign in to review and respond to this invitation.
+        </p>
         <Button asChild className="w-full" type="button">
           <Link to={loginHref}>Sign in to continue</Link>
         </Button>
@@ -434,7 +436,11 @@ const AcceptInviteByInviteIdPanel = memo(function AcceptInviteByInviteIdPanel({
 });
 AcceptInviteByInviteIdPanel.displayName = "AcceptInviteByInviteIdPanel";
 
-const AcceptInviteByTokenPanel = memo(function AcceptInviteByTokenPanel({ token }: { token: string }) {
+const AcceptInviteByTokenPanel = memo(function AcceptInviteByTokenPanel({
+  token,
+}: {
+  token: string;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const hydrated = useAuthHydrated();

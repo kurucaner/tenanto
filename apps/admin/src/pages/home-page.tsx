@@ -68,9 +68,7 @@ const HomePendingPropertyInvitesBanner = memo(function HomePendingPropertyInvite
           <Mail className="size-4" />
           <CardTitle className="text-base font-semibold">Pending invitations</CardTitle>
         </div>
-        <CardDescription>
-          You have {inviteCountLabel} waiting for your response.
-        </CardDescription>
+        <CardDescription>You have {inviteCountLabel} waiting for your response.</CardDescription>
       </CardHeader>
       <CardContent>
         <Button asChild className="gap-2" variant="secondary">

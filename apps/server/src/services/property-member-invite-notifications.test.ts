@@ -9,9 +9,8 @@ mock.module("@/services/user-notifications", () => ({
   notifyUser: mockNotifyUser,
 }));
 
-const { notifyPropertyMemberInviteReceived } = await import(
-  "@/services/property-member-invite-notifications"
-);
+const { notifyPropertyMemberInviteReceived } =
+  await import("@/services/property-member-invite-notifications");
 
 function makeProperty(): IProperty {
   return {

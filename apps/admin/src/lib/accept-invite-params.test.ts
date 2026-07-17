@@ -8,9 +8,7 @@ import { PropertyInviteStatus, PropertyRole } from "@/packages/shared";
 
 describe("parseAcceptInviteSearchParams", () => {
   test("parses token and inviteId from search params", () => {
-    const params = new URLSearchParams(
-      "token=abc123&inviteId=invite-1&other=ignored"
-    );
+    const params = new URLSearchParams("token=abc123&inviteId=invite-1&other=ignored");
     expect(parseAcceptInviteSearchParams(params)).toEqual({
       inviteId: "invite-1",
       token: "abc123",
