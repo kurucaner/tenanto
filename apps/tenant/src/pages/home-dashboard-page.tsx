@@ -42,7 +42,10 @@ function primaryDueCtaLabel(isStartingCheckout: boolean, onlinePayAvailable: boo
   return onlinePayAvailable ? "Pay rent" : "View leases";
 }
 
-function NoActiveLeaseSection({ hasPastLeases }: { hasPastLeases: boolean }) {
+interface NoActiveLeaseSectionProps {
+  hasPastLeases: boolean;
+}
+function NoActiveLeaseSection({ hasPastLeases }: Readonly<NoActiveLeaseSectionProps>) {
   return (
     <section className="space-y-3">
       <div className="space-y-1">
@@ -98,9 +101,7 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {summaryQuery.isPending ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : null}
+      {summaryQuery.isPending ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
       {summaryQuery.isError ? (
         <p className="text-sm text-destructive">
           {summaryQuery.error instanceof Error
