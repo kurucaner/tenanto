@@ -1,10 +1,10 @@
 import { isProduction } from "./environment";
 
-const PRODUCTION_ORIGINS = new Set([
+const PRODUCTION_ORIGINS = [
   process.env["WEB_APP_URL"],
   process.env["PLATFORM_APP_URL"],
   process.env["TENANT_APP_URL"],
-]);
+];
 
 export function resolveAllowedOrigin(requestOrigin: string | undefined): string | null {
   if (!isProduction) {
@@ -13,7 +13,7 @@ export function resolveAllowedOrigin(requestOrigin: string | undefined): string 
   if (requestOrigin == null || requestOrigin === "") {
     return null;
   }
-  return PRODUCTION_ORIGINS.has(requestOrigin) ? requestOrigin : null;
+  return PRODUCTION_ORIGINS.includes(requestOrigin) ? requestOrigin : null;
 }
 
 export function buildSseCorsHeaders(requestOrigin: string | undefined): Record<string, string> {
