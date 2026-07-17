@@ -5,6 +5,8 @@ import {
   propertyInvitesDb,
 } from "@/db/property-invites";
 import { propertyMembersDb } from "@/db/property-members";
+import { userDb } from "@/db/users";
+import { buildPropertyMemberInviteSummary } from "@/lib/build-property-member-invite-summary";
 import { formatPropertyRoleLabel } from "@/lib/format-property-role-label";
 import {
   type IPropertyInvite,
@@ -70,6 +72,11 @@ async function loadPendingInviteItem(
     return null;
   }
 
+  const inviter = await userDb.findById(invite.invitedBy);
+  if (!inviter) {
+    return null;
+  }
+
   return {
     expiresAt: invite.expiresAt,
     inviteId: invite.id,
@@ -78,6 +85,7 @@ async function loadPendingInviteItem(
     role: invite.role,
     roleLabel: formatPropertyRoleLabel(invite.role),
     status: invite.status,
+    summary: buildPropertyMemberInviteSummary(invite, property, inviter),
   };
 }
 

@@ -102,6 +102,12 @@ mock.module("@/ses/transactional-emails", () => ({
   sendPropertyMemberInviteNewEmail: mockSendNewEmail,
 }));
 
+const mockNotifyUser = mock(() => Promise.resolve());
+
+mock.module("@/services/user-notifications", () => ({
+  notifyUser: mockNotifyUser,
+}));
+
 const {
   DuplicatePropertyMemberInviteError,
   PropertyMemberAlreadyMemberError,
@@ -153,6 +159,7 @@ describe("propertyMemberInviteService.addMemberViaInvite", () => {
     mockCreateInvite.mockReset();
     mockSendNewEmail.mockReset();
     mockSendExistingEmail.mockReset();
+    mockNotifyUser.mockReset();
 
     mockFindByIdProperty.mockResolvedValue(makeProperty());
     mockFindByIdUser.mockResolvedValue(makeUser());
@@ -182,6 +189,7 @@ describe("propertyMemberInviteService.addMemberViaInvite", () => {
     expect(mockSendNewEmail).toHaveBeenCalled();
     expect(mockSendExistingEmail).not.toHaveBeenCalled();
     expect(mockFindOneMember).not.toHaveBeenCalled();
+    expect(mockNotifyUser).not.toHaveBeenCalled();
   });
 
   test("sends existing-user invite without adding member row", async () => {
@@ -212,6 +220,13 @@ describe("propertyMemberInviteService.addMemberViaInvite", () => {
     );
     expect(mockSendExistingEmail).toHaveBeenCalled();
     expect(mockSendNewEmail).not.toHaveBeenCalled();
+    expect(mockNotifyUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contextResourceId: "invite-1",
+        type: "property_member_invite_received",
+        userId: "existing-user-1",
+      })
+    );
   });
 
   test("throws when user is already a member", async () => {

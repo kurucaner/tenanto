@@ -335,10 +335,14 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 ### Phase 6 — Enhancements (post-launch)
 
-- Pending property invites banner on admin home for logged-in invitees
-- Notification stream event when property invite received
-- Optional: “copy invite link” for operators (support/debug)
-- Partial unique index performance audit if invite volume grows
+- [x] **6.1** Logged-in accept deep link: `/accept-invite?inviteId=…` (notification + home banner targets)
+- [x] **6.2** `property_member_invite_received` notification on invite/resend for existing platform users
+- [x] **6.3** Notification bell/toast deep link + stream cache invalidation for pending invites
+- [x] **6.4** Pending property invites banner on admin home
+- [ ] **6.5 (deferred)** “Copy invite link” for operators (support/debug)
+- [ ] Partial unique index performance audit if invite volume grows
+
+**Exit criteria:** Existing user invited → in-app notification → click → accept on `/accept-invite?inviteId=…` → property member.
 
 ---
 

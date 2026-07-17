@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, History, SlidersHorizontal, Users } from "lucide-react";
+import { ArrowRight, History, Mail, SlidersHorizontal, Users } from "lucide-react";
 import { memo } from "react";
 import { Link } from "react-router-dom";
 
@@ -8,7 +8,8 @@ import { HomeFinancialOverview } from "@/components/home/home-financial-overview
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { adminApi } from "@/lib/api-client";
+import { adminApi, propertyInvitesApi } from "@/lib/api-client";
+import { getAcceptInvitePathByInviteId } from "@/lib/invite-return-url";
 import { queryKeys } from "@/lib/query-keys";
 import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
@@ -42,6 +43,48 @@ const StatsSectionSkeleton = memo(() => (
 ));
 StatsSectionSkeleton.displayName = "StatsSectionSkeleton";
 
+const HomePendingPropertyInvitesBanner = memo(function HomePendingPropertyInvitesBanner() {
+  const pendingQuery = useQuery({
+    queryFn: () => propertyInvitesApi.listPendingInvites(),
+    queryKey: queryKeys.pendingMemberInvites(),
+  });
+
+  const invites = pendingQuery.data?.invites ?? [];
+  if (pendingQuery.isPending || pendingQuery.isError || invites.length === 0) {
+    return null;
+  }
+
+  const inviteCountLabel =
+    invites.length === 1 ? "1 property invitation" : `${invites.length} property invitations`;
+  const firstInvite = invites[0];
+  if (!firstInvite) {
+    return null;
+  }
+
+  return (
+    <Card className="border-border/80 border-l-2 border-l-primary/35 bg-card/80 shadow-sm backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2 text-primary">
+          <Mail className="size-4" />
+          <CardTitle className="text-base font-semibold">Pending invitations</CardTitle>
+        </div>
+        <CardDescription>
+          You have {inviteCountLabel} waiting for your response.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button asChild className="gap-2" variant="secondary">
+          <Link to={getAcceptInvitePathByInviteId(firstInvite.inviteId)}>
+            Review invitation
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+});
+HomePendingPropertyInvitesBanner.displayName = "HomePendingPropertyInvitesBanner";
+
 const HomePageInner = memo(() => {
   const userType = useAuthStore((s) => s.user?.userType);
   const isAdmin = userType === UserType.ADMIN;
@@ -55,6 +98,8 @@ const HomePageInner = memo(() => {
   return (
     <AdminPageLayout>
       <div className="flex flex-col gap-8">
+        <HomePendingPropertyInvitesBanner />
+
         {isAdmin ? (
           <section aria-label="Platform statistics">
             {statsQuery.isLoading ? <StatsSectionSkeleton /> : null}

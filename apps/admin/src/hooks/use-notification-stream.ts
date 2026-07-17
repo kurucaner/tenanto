@@ -7,6 +7,7 @@ import { getApiBaseUrlForClient, refreshAccessTokenForStream } from "@/lib/api-c
 import { NOTIFICATION_STREAM_CLIENT_ID_KEY } from "@/lib/notification-stream-constants";
 import {
   handleExportJobUpdated,
+  handlePropertyMemberInviteReceivedNotification,
   handlePropertyMembershipNotification,
   handleSupportAttachmentUpdated,
   handleSupportRequestUpdated,
@@ -178,6 +179,7 @@ function handleStreamNewNotificationEvent(
   if (notification == null || context.userType !== UserType.USER) return;
 
   handlePropertyMembershipNotification(context.queryClient, notification);
+  handlePropertyMemberInviteReceivedNotification(context.queryClient, notification);
   if (!context.suppressToasts) {
     showNotificationToast(notification);
   }

@@ -7,7 +7,7 @@ How property owners invite teammates to the admin app using the token-based invi
 Invites are stored in `property_invites` until the invitee **explicitly accepts**. There is no silent auto-join on signup or login.
 
 - **New user** (`pending_invite`): magic link → inline signup on `/accept-invite` → accept
-- **Existing user** (`pending_acceptance`): magic link → sign in → accept or decline
+- **Existing user** (`pending_acceptance`): magic link or in-app notification → sign in → accept or decline on `/accept-invite`
 
 ## Operator workflow
 
@@ -33,10 +33,12 @@ Each email shows **one row** (canonical invite; older revoked/declined rows are 
 ### 3. Invitee experience
 
 1. Email contains a link to `{PLATFORM_APP_URL}/accept-invite?token=…`
-2. Invitee reviews property + role summary.
-3. **New user**: Google sign-up or name/password on the accept page (no OTP).
-4. **Existing user**: Sign in, then **Accept** or **Decline**.
-5. On accept, they become a property member with the invited role.
+2. **Existing platform users** also receive an in-app notification (`property_member_invite_received`). Clicking it opens `/accept-invite?inviteId=…`.
+3. A **Pending invitations** card on home links to the same accept page when invites are waiting.
+4. Invitee reviews property + role summary.
+5. **New user**: Google sign-up or name/password on the accept page (no OTP).
+6. **Existing user**: Sign in (if needed), then **Accept** or **Decline**.
+7. On accept, they become a property member with the invited role.
 
 ### 4. Expiry
 
@@ -61,6 +63,7 @@ Legacy `property-invite.html` (generic signup CTA, auto-accept copy) has been re
 | Preview (public) | `GET` | `/invites/preview?token=` |
 | Register + accept (public) | `POST` | `/invites/register`, `/invites/register/google` |
 | Accept when signed in | `POST` | `/invites/redeem` or `/me/invites/:inviteId/accept` |
+| List pending (signed in) | `GET` | `/me/invites/pending` |
 | Decline | `POST` | `/me/invites/:inviteId/decline` |
 
 ## Observability

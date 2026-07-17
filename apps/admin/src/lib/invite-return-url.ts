@@ -2,6 +2,10 @@ export function getAcceptInvitePath(token: string): string {
   return `/accept-invite?token=${encodeURIComponent(token)}`;
 }
 
+export function getAcceptInvitePathByInviteId(inviteId: string): string {
+  return `/accept-invite?inviteId=${encodeURIComponent(inviteId)}`;
+}
+
 export function parseSafeReturnTo(value: string | null): string | null {
   if (value == null || value === "") {
     return null;

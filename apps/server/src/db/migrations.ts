@@ -24,12 +24,6 @@ export const runMigrations = async (pool: Pool): Promise<void> => {
           migration.version,
           migration.name,
         ]);
-
-        // New enum values cannot be used until the transaction that added them commits.
-        if (migration.commitAfter) {
-          await client.query("COMMIT");
-          await client.query("BEGIN");
-        }
       }
     }
 
@@ -53,8 +47,6 @@ const SOFT_DELETE_TABLES = [
 ] as const;
 
 interface IMigration {
-  /** Commit immediately after this migration so later migrations can use new enum values. */
-  commitAfter?: boolean;
   down: (client: TDBClient) => Promise<void>;
   name: string;
   up: (client: TDBClient) => Promise<void>;
@@ -2854,95 +2846,34 @@ export const migrations: IMigration[] = [
     version: 61,
   },
   {
-    commitAfter: true,
-    down: async () => {
-      // PostgreSQL does not support removing enum values; no-op.
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships DROP COLUMN IF EXISTS contact_phone;
+      `);
     },
-    name: "property_member_invite_v2_enum_values",
+    name: "secondary_tenant_membership_listed_and_contact_phone",
     up: async (client: TDBClient) => {
-      for (const value of [
-        "pending_invite",
-        "pending_acceptance",
-        "declined",
-        "revoked",
-        "expired",
-      ]) {
-        await client.query(`
-          ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS '${value}';
-        `);
-      }
+      await client.query(`
+        ALTER TYPE tenant_membership_status ADD VALUE IF NOT EXISTS 'listed';
+      `);
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(32);
+      `);
     },
     version: 62,
   },
   {
     down: async (client: TDBClient) => {
-      await client.query(`DROP INDEX IF EXISTS property_invites_pending_property_email_idx;`);
       await client.query(`
-        ALTER TABLE property_invites
-          DROP COLUMN IF EXISTS invite_token_hash,
-          DROP COLUMN IF EXISTS invited_at,
-          DROP COLUMN IF EXISTS accepted_at,
-          DROP COLUMN IF EXISTS declined_at,
-          DROP COLUMN IF EXISTS revoked_at,
-          DROP COLUMN IF EXISTS updated_at;
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS secondary_tenants JSONB NOT NULL DEFAULT '[]';
       `);
     },
-    name: "property_member_invite_v2_foundation",
+    name: "drop_property_long_stays_secondary_tenants",
     up: async (client: TDBClient) => {
       await client.query(`
-        ALTER TABLE property_invites
-          ADD COLUMN IF NOT EXISTS invite_token_hash TEXT,
-          ADD COLUMN IF NOT EXISTS invited_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS declined_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ,
-          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
-      `);
-
-      await client.query(`
-        UPDATE property_invites
-        SET invited_at = created_at
-        WHERE invited_at IS NULL;
-      `);
-
-      await client.query(`
-        UPDATE property_invites pi
-        SET status = CASE
-          WHEN EXISTS (
-            SELECT 1
-            FROM users u
-            WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(pi.email))
-              AND u.is_deleted = false
-          ) THEN 'pending_acceptance'::property_invite_status
-          ELSE 'pending_invite'::property_invite_status
-        END
-        WHERE pi.status = 'pending'::property_invite_status;
-      `);
-
-      await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
-      await client.query(`
-        UPDATE property_invites
-        SET invite_token_hash = encode(digest(gen_random_uuid()::text || id::text, 'sha256'), 'hex')
-        WHERE invite_token_hash IS NULL
-          AND status IN (
-            'pending_invite'::property_invite_status,
-            'pending_acceptance'::property_invite_status
-          );
-      `);
-
-      await client.query(`
-        ALTER TABLE property_invites
-          DROP CONSTRAINT IF EXISTS property_invites_property_id_email_key;
-      `);
-
-      await client.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS property_invites_pending_property_email_idx
-          ON property_invites (property_id, LOWER(TRIM(email)))
-          WHERE status IN (
-            'pending'::property_invite_status,
-            'pending_invite'::property_invite_status,
-            'pending_acceptance'::property_invite_status
-          );
+        ALTER TABLE property_long_stays DROP COLUMN IF EXISTS secondary_tenants;
       `);
     },
     version: 63,

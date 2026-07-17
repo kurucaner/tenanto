@@ -23,6 +23,7 @@ import {
   sendPropertyMemberInviteNewEmail,
 } from "@/ses/transactional-emails";
 
+import { notifyPropertyMemberInviteReceived } from "./property-member-invite-notifications";
 import {
   logPropertyMemberInviteInvited,
   logPropertyMemberInviteResent,
@@ -105,6 +106,22 @@ async function sendPropertyMemberInviteEmail(
   }
 }
 
+async function maybeNotifyExistingUserInviteReceived(
+  invite: IPropertyInvite,
+  property: IProperty
+): Promise<void> {
+  const existingUser = await userDb.findByEmail(invite.email.trim().toLowerCase());
+  if (!existingUser) {
+    return;
+  }
+
+  await notifyPropertyMemberInviteReceived({
+    invite,
+    invitee: existingUser,
+    property,
+  }).catch(() => {});
+}
+
 async function createAndSendInvite(input: {
   email: string;
   invitedBy: string;
@@ -152,6 +169,7 @@ async function createAndSendInvite(input: {
       status: PropertyInviteStatus.EMAIL_FAILED,
     };
     logPropertyMemberInviteInvited(resultInvite, { emailSent: false });
+    await maybeNotifyExistingUserInviteReceived(resultInvite, input.property);
     return {
       emailError: emailResult.emailError,
       emailSent: false,
@@ -160,6 +178,7 @@ async function createAndSendInvite(input: {
   }
 
   logPropertyMemberInviteInvited(invite, { emailSent: true });
+  await maybeNotifyExistingUserInviteReceived(invite, input.property);
 
   return {
     emailSent: true,
@@ -318,6 +337,7 @@ export const propertyMemberInviteService = {
         status: PropertyInviteStatus.EMAIL_FAILED,
       };
       logPropertyMemberInviteResent(resultInvite, { emailSent: false });
+      await maybeNotifyExistingUserInviteReceived(resultInvite, property);
       return {
         emailError: emailResult.emailError,
         emailSent: false,
@@ -332,6 +352,7 @@ export const propertyMemberInviteService = {
       const restored = await propertyInvitesDb.updateStatus(updated.id, restoredStatus);
       const resultInvite = restored ?? { ...updated, emailError: null, status: restoredStatus };
       logPropertyMemberInviteResent(resultInvite, { emailSent: true });
+      await maybeNotifyExistingUserInviteReceived(resultInvite, property);
       return {
         emailSent: true,
         invite: resultInvite,
@@ -339,6 +360,7 @@ export const propertyMemberInviteService = {
     }
 
     logPropertyMemberInviteResent(updated, { emailSent: true });
+    await maybeNotifyExistingUserInviteReceived(updated, property);
 
     return {
       emailSent: true,

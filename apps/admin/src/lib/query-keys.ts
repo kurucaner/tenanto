@@ -22,6 +22,7 @@ export const queryKeys = {
   notificationBroadcastHistory: () => ["notification-broadcasts", "history"] as const,
   notificationsList: () => ["notifications", "list"] as const,
   notificationsUnreadCount: () => ["notifications", "unread-count"] as const,
+  pendingMemberInvites: () => ["property-member-invites", "pending"] as const,
   platformStats: () => ["platform-stats"] as const,
   portfolioReportSummary: (filters: IPropertyReportsQuery) =>
     ["portfolio", "reports", filters] as const,

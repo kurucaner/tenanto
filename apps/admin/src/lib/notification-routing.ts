@@ -2,6 +2,12 @@ import { type IUserNotification } from "@/packages/shared";
 
 export function getNotificationHref(notification: IUserNotification): string {
   if (
+    notification.type === "property_member_invite_received" &&
+    notification.contextResourceId != null
+  ) {
+    return `/accept-invite?inviteId=${encodeURIComponent(notification.contextResourceId)}`;
+  }
+  if (
     notification.type === "tenant_email_campaign_completed" &&
     notification.resourceType === "property" &&
     notification.resourceId != null &&

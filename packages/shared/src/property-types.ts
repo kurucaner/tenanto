@@ -219,6 +219,7 @@ export interface IPropertyPendingMemberInvite {
   role: TPropertyRole;
   roleLabel: string;
   status: TPropertyInviteStatus;
+  summary: IPropertyMemberInviteSummary;
 }
 
 export interface IPropertyPendingMemberInvitesResponse {
