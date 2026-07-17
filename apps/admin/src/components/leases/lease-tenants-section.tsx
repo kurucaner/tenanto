@@ -399,7 +399,6 @@ export const LeaseTenantsSection = memo(
               canEdit={canEditTenants}
               editAriaLabel="Edit primary tenant"
               email={primaryTenantContact.effectiveEmail}
-              isPortalLinked={primaryTenantContact.source === "linked_user"}
               name={primaryTenantContact.effectiveName}
               onEdit={handleEditPrimary}
               onInvite={handleInvitePrimary}

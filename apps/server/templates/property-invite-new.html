@@ -43,9 +43,8 @@
       color: #1a1a1a;
     "
   >
-    <!-- preview text -->
     <div style="display: none; max-height: 0; overflow: hidden">
-      {{inviterEmail}} has invited you to join the property management for {{propertyName}}.
+      You've been invited to join {{propertyName}} on {{appName}}.
     </div>
 
     <table
@@ -57,7 +56,6 @@
     >
       <tr>
         <td align="center">
-          <!-- container -->
           <table
             role="presentation"
             width="100%"
@@ -66,7 +64,6 @@
             class="email-container"
             style="max-width: 600px; background: #ffffff; border-radius: 10px; padding: 36px 32px"
           >
-            <!-- header -->
             <tr>
               <td align="center">
                 <div
@@ -81,12 +78,11 @@
                 </div>
 
                 <div class="text-muted" style="font-size: 14px; margin-bottom: 36px">
-                  Property Management
+                  Property workspace
                 </div>
               </td>
             </tr>
 
-            <!-- invite body -->
             <tr>
               <td align="center" style="padding-bottom: 28px">
                 <div
@@ -94,19 +90,20 @@
                 ></div>
 
                 <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px">
-                  You've been invited
+                  Join a property team
                 </div>
 
                 <div
                   class="text-muted"
                   style="font-size: 15px; line-height: 1.6; margin-bottom: 24px"
                 >
-                  <strong>{{inviterEmail}}</strong> has invited you to join the property management
-                  for <strong>{{propertyName}}</strong> as a <strong>{{role}}</strong>.
+                  {{inviterName}} invited you to join <strong>{{propertyName}}</strong> as
+                  <strong>{{roleLabel}}</strong>. Create your account to review and accept the
+                  invitation.
                 </div>
 
                 <a
-                  href="{{registerUrl}}"
+                  href="{{acceptUrl}}"
                   style="
                     display: inline-block;
                     background: #d4b034;
@@ -119,15 +116,14 @@
                     margin-bottom: 16px;
                   "
                 >
-                  Register now
+                  Create account and accept
                 </a>
 
                 <div
                   class="text-muted"
                   style="font-size: 14px; line-height: 1.6; margin-bottom: 8px"
                 >
-                  Use this email address when you register. Your membership will be activated
-                  automatically.
+                  Use the email address this message was sent to when you register.
                 </div>
 
                 <div class="text-muted" style="font-size: 13px">
@@ -138,7 +134,6 @@
               </td>
             </tr>
 
-            <!-- footer -->
             <tr>
               <td
                 class="footer-td"

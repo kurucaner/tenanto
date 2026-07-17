@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
@@ -13,17 +13,27 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
 import { signUpSchema, type TSignUpFormValues } from "@/lib/auth-form-schemas";
+import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import { getWebAppUrl } from "@/lib/web-app-url";
 import { AuthTermsNotice } from "@/packages/app-ui";
 
 export const SignUpPage = memo(() => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = parseSafeReturnTo(searchParams.get("returnTo"));
+  const prefilledEmail = searchParams.get("email")?.trim() ?? "";
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<TSignUpFormValues>({
-    defaultValues: { email: "", name: "", password: "" },
+    defaultValues: { email: prefilledEmail, name: "", password: "" },
     resolver: zodResolver(signUpSchema),
   });
+
+  useEffect(() => {
+    if (prefilledEmail) {
+      form.setValue("email", prefilledEmail);
+    }
+  }, [form, prefilledEmail]);
 
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitting(true);
@@ -40,6 +50,7 @@ export const SignUpPage = memo(() => {
           email: values.email.trim(),
           name: values.name.trim(),
           password: values.password,
+          returnTo: returnTo ?? undefined,
         },
       });
     } catch (error) {
@@ -57,7 +68,7 @@ export const SignUpPage = memo(() => {
       subtitle="Create your workspace account."
     >
       <AuthCardBody>
-        <GoogleSignInButton />
+        <GoogleSignInButton returnTo={returnTo} />
         <AuthProviderDivider />
         <div className="flex flex-col gap-2">
           <Label htmlFor="signup-name">Name</Label>

@@ -54,7 +54,11 @@ export function createDatadogRum(options: ICreateDatadogRumOptions): IDatadogRum
   let rumInitialized = false;
 
   const init = (): void => {
-    if (rumInitialized || globalThis.window === undefined) {
+    if (
+      rumInitialized ||
+      globalThis.window === undefined ||
+      import.meta.env.VITE_DD_ENV === "local"
+    ) {
       return;
     }
 

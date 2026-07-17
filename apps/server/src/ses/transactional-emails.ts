@@ -1,17 +1,12 @@
 import type { OtpPurpose } from "@/db/auth-otps";
 import { OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
+import { isTenantEmailNotificationsEnabled } from "@/lib/tenant-email-notifications-config";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
 import { sendSesEmail, sendTransactionalEmail } from "./ses";
 import { escapeHtml } from "./ses-utils";
 import { buildListUnsubscribeUrl } from "./unsubscribe-token";
-
-export interface PropertyInviteEmailOptions {
-  inviterEmail: string;
-  propertyName: string;
-  role: string;
-}
 
 export interface SupportReplyEmailOptions {
   messagePreview: string;
@@ -52,14 +47,16 @@ export interface TenantPortalInviteEmailOptions {
   unitLabel: string;
 }
 
+export interface PropertyMemberInviteEmailOptions {
+  acceptUrl: string;
+  inviterName: string;
+  propertyName: string;
+  roleLabel: string;
+}
+
 function buildSupportTicketUrl(supportRequestId: string): string {
   const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
   return `${base}/support-requests/${encodeURIComponent(supportRequestId)}`;
-}
-
-function buildRegisterUrl(): string {
-  const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
-  return `${base}/signup`;
 }
 
 function getSubject(purpose: OtpPurpose): string {
@@ -123,27 +120,6 @@ export async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose
   });
 }
 
-export async function sendPropertyInviteEmail(
-  to: string,
-  opts: PropertyInviteEmailOptions
-): Promise<void> {
-  const registerUrl = buildRegisterUrl();
-  const roleLabel = opts.role.charAt(0).toUpperCase() + opts.role.slice(1);
-  const subject = `You've been invited to join ${opts.propertyName} on ${APP_NAME}`;
-  const text = `${opts.inviterEmail} has invited you to join the property management for ${opts.propertyName} as a ${roleLabel}. Register now at ${registerUrl} using this email address to accept.`;
-
-  const html = renderTemplate("property-invite.html", {
-    appName: APP_NAME,
-    baseUrl: WEB_APP_URL ?? "",
-    inviterEmail: opts.inviterEmail,
-    propertyName: opts.propertyName,
-    registerUrl,
-    role: roleLabel,
-  });
-
-  await sendTransactionalEmail({ html, subject, text, to });
-}
-
 export async function sendSupportReplyEmail(
   to: string,
   opts: SupportReplyEmailOptions
@@ -165,7 +141,11 @@ export async function sendSupportReplyEmail(
 export async function sendRentPaymentRecordedEmail(
   to: string,
   opts: RentPaymentRecordedEmailOptions
-): Promise<void> {
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `Rent payment received — ${opts.propertyName}`;
   const text = [
     `Hi ${opts.tenantName},`,
@@ -192,9 +172,17 @@ export async function sendRentPaymentRecordedEmail(
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
-export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptions): Promise<void> {
+export async function sendLeaseEndedEmail(
+  to: string,
+  opts: LeaseEndedEmailOptions
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `Your lease at ${opts.propertyName} has ended`;
   const text = [
     `Hi ${opts.tenantName},`,
@@ -232,12 +220,17 @@ export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptio
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
 export async function sendTenantPortalInviteNewEmail(
   to: string,
   opts: TenantPortalInviteEmailOptions
-): Promise<void> {
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `View your lease at ${opts.propertyName} on ${APP_NAME}`;
   const text = [
     `Hi ${opts.displayName},`,
@@ -259,12 +252,17 @@ export async function sendTenantPortalInviteNewEmail(
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
 export async function sendTenantPortalInviteExistingEmail(
   to: string,
   opts: TenantPortalInviteEmailOptions
-): Promise<void> {
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `Accept your lease invite for ${opts.propertyName}`;
   const text = [
     `Hi ${opts.displayName},`,
@@ -286,6 +284,59 @@ export async function sendTenantPortalInviteExistingEmail(
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
+}
+
+export async function sendPropertyMemberInviteNewEmail(
+  to: string,
+  opts: PropertyMemberInviteEmailOptions
+): Promise<boolean> {
+  const subject = `Join ${opts.propertyName} on ${APP_NAME}`;
+  const text = [
+    `${opts.inviterName} invited you to join ${opts.propertyName} as ${opts.roleLabel}.`,
+    "",
+    `Create your account and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("property-invite-new.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (PLATFORM_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    inviterName: escapeHtml(opts.inviterName),
+    propertyName: escapeHtml(opts.propertyName),
+    roleLabel: escapeHtml(opts.roleLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+  return true;
+}
+
+export async function sendPropertyMemberInviteExistingEmail(
+  to: string,
+  opts: PropertyMemberInviteEmailOptions
+): Promise<boolean> {
+  const subject = `Accept your invite to ${opts.propertyName}`;
+  const text = [
+    `${opts.inviterName} invited you to join ${opts.propertyName} as ${opts.roleLabel}.`,
+    "",
+    `Sign in and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("property-invite-existing.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (PLATFORM_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    inviterName: escapeHtml(opts.inviterName),
+    propertyName: escapeHtml(opts.propertyName),
+    roleLabel: escapeHtml(opts.roleLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
 export interface TenantCampaignEmailOptions {

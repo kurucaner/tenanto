@@ -37,6 +37,7 @@ import { propertyUnitRoutes } from "./routes/admin/property-unit-routes";
 import { authRoutes } from "./routes/auth/auth-routes";
 import { initRoutes } from "./routes/init-routes";
 import { notificationRoutes } from "./routes/notification-routes";
+import { propertyInviteRoutes } from "./routes/property-invite-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
 import { stripeWebhookRoutes } from "./routes/stripe-webhook-routes";
@@ -47,6 +48,7 @@ import { tenantRentPaymentRoutes } from "./routes/tenant/tenant-rent-payment-rou
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
+import { startPropertyMemberInviteExpiryCron } from "./scheduler/property-member-invite-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
 import { startTenantRentPaymentReconcileCron } from "./scheduler/tenant-rent-payment-reconcile-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
@@ -101,6 +103,7 @@ server.register(jwtAuthPlugin);
 server.register(tenantJwtAuthPlugin);
 server.register(initRoutes);
 server.register(authRoutes);
+server.register(propertyInviteRoutes);
 server.register(tenantAuthRoutes);
 server.register(tenantLeaseRoutes);
 server.register(tenantRentPaymentRoutes);
@@ -190,6 +193,7 @@ const start = async () => {
       startRefreshTokenCleanupCron();
       startPropertyExportExpiryCron();
       startPortalInviteExpiryCron();
+      startPropertyMemberInviteExpiryCron();
       startTenantRentPaymentReconcileCron();
     }
 

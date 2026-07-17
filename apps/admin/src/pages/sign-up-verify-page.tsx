@@ -13,6 +13,7 @@ import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
 import { type TVerifyOtpFormValues, verifyOtpSchema } from "@/lib/auth-form-schemas";
 import { type ISignUpVerifyLocationState } from "@/lib/auth-location-state";
+import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import { maskEmail } from "@/lib/mask-email";
 import { getOtpResendButtonLabel } from "@/lib/otp-resend-button-label";
 import { useAuthStore } from "@/stores/auth-store";
@@ -34,6 +35,7 @@ export const SignUpVerifyPage = memo(() => {
   const email = state?.email ?? "";
   const name = state?.name ?? "";
   const password = state?.password ?? "";
+  const returnTo = parseSafeReturnTo(state?.returnTo ?? null);
 
   const handleResend = useCallback(async () => {
     if (!canResend || resending || !email || !name || !password) {
@@ -68,7 +70,7 @@ export const SignUpVerifyPage = memo(() => {
         user: res.user,
       });
       toast.success("Account created");
-      navigate("/home", { replace: true });
+      navigate(returnTo ?? "/home", { replace: true });
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Verification failed"));
     } finally {

@@ -7,6 +7,7 @@ export interface IPropertyPermissions {
   callerMembership?: IPropertyMember;
   canManageLedger: boolean;
   canManageMembers: boolean;
+  canManageStripeConnect: boolean;
   canManageStructure: boolean;
   canManageUnits: boolean;
   canSendTenantNotifications: boolean;
@@ -25,6 +26,7 @@ export function derivePropertyPermissions(
   const isOwnerMember = callerMembership?.role === PropertyRole.OWNER;
   const isManagerMember = callerMembership?.role === PropertyRole.MANAGER;
   const canManageStructure = isAdmin || isCreator || isOwnerMember;
+  const canManageStripeConnect = isAdmin || isOwnerMember;
   const canManageUnits = isAdmin || isCreator || isOwnerMember || isManagerMember;
   const canManageLedger = isAdmin || isCreator || isOwnerMember || isManagerMember;
   const canView = isAdmin || isCreator || Boolean(callerMembership);
@@ -34,6 +36,7 @@ export function derivePropertyPermissions(
     callerMembership,
     canManageLedger,
     canManageMembers: canManageStructure,
+    canManageStripeConnect,
     canManageStructure,
     canManageUnits,
     canSendTenantNotifications,

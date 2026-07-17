@@ -6,6 +6,7 @@ import { PropertyShellLayout } from "@/components/properties/property-page-shell
 import { ProtectedRoute } from "@/components/protected-route";
 import { RequireRole } from "@/components/require-role";
 import { UserType } from "@/packages/shared";
+import { AcceptInvitePage } from "@/pages/accept-invite-page";
 import { ActivityPage } from "@/pages/activity-page";
 import { ConfigPage } from "@/pages/config-page";
 import { ErrorPage } from "@/pages/error-page";
@@ -38,6 +39,7 @@ const ADMIN_ONLY = [UserType.ADMIN];
 export const router = createBrowserRouter([
   {
     children: [
+      { element: <AcceptInvitePage />, path: "accept-invite" },
       { element: <LoginPage />, path: "login" },
       { element: <SignUpPage />, path: "signup" },
       { element: <SignUpVerifyPage />, path: "signup/verify" },

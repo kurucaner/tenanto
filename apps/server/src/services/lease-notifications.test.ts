@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
 import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
@@ -83,11 +83,22 @@ function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongSta
 }
 
 describe("notifyPrimaryTenantRentRecorded", () => {
+  const originalFlag = process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+
   beforeEach(() => {
+    process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = "true";
     mockFindLongStayById.mockClear();
     mockFindPropertyById.mockClear();
     mockFindUnitById.mockClear();
     mockSendRentPaymentRecordedEmail.mockClear();
+  });
+
+  afterEach(() => {
+    if (originalFlag === undefined) {
+      delete process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+    } else {
+      process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = originalFlag;
+    }
   });
 
   test("sends email when lease has tenant email and related records resolve", async () => {
@@ -165,12 +176,23 @@ describe("notifyPrimaryTenantRentRecorded", () => {
 });
 
 describe("notifyPrimaryTenantLeaseEnded", () => {
+  const originalFlag = process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+
   beforeEach(() => {
+    process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = "true";
     mockFindLongStayById.mockClear();
     mockGetRentSchedule.mockClear();
     mockFindPropertyById.mockClear();
     mockFindUnitById.mockClear();
     mockSendLeaseEndedEmail.mockClear();
+  });
+
+  afterEach(() => {
+    if (originalFlag === undefined) {
+      delete process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+    } else {
+      process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = originalFlag;
+    }
   });
 
   test("sends holdover email with prorated final month and unpaid status", async () => {

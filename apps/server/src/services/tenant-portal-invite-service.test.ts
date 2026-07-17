@@ -36,8 +36,8 @@ const mockExpireMembershipIfPastTtl = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
 );
 const mockExpirePendingPortalInvites = mock(() => Promise.resolve(0));
-const mockSendNewEmail = mock(() => Promise.resolve());
-const mockSendExistingEmail = mock(() => Promise.resolve());
+const mockSendNewEmail = mock(() => Promise.resolve(true));
+const mockSendExistingEmail = mock(() => Promise.resolve(true));
 const mockWinstonError = mock(() => {});
 
 mock.module("@/db/property-long-stays", () => ({
@@ -187,6 +187,8 @@ describe("tenantPortalInviteService.createInvites", () => {
     mockExpirePendingPortalInvites.mockReset();
     mockSendNewEmail.mockReset();
     mockSendExistingEmail.mockReset();
+    mockSendNewEmail.mockResolvedValue(true);
+    mockSendExistingEmail.mockResolvedValue(true);
 
     mockFindByIdLease.mockResolvedValue(makeLease());
     mockFindByIdProperty.mockResolvedValue(makeProperty());
@@ -289,6 +291,8 @@ describe("tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate", () => {
     mockCreateMembership.mockReset();
     mockSendNewEmail.mockReset();
     mockSendExistingEmail.mockReset();
+    mockSendNewEmail.mockResolvedValue(true);
+    mockSendExistingEmail.mockResolvedValue(true);
     mockWinstonError.mockReset();
 
     mockFindByIdLease.mockResolvedValue(makeLease());
@@ -359,6 +363,21 @@ describe("tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate", () => {
     expect(result).not.toBeNull();
     expect(result?.emailSent).toBe(false);
     expect(result?.emailError).toBe("SES unavailable");
+    expect(mockCreateMembership).toHaveBeenCalledTimes(1);
+  });
+
+  test("returns invite result with emailSent false when tenant email notifications are disabled", async () => {
+    mockSendNewEmail.mockResolvedValueOnce(false);
+
+    const result = await tenantPortalInviteService.autoInvitePrimaryOnLeaseCreate({
+      invitedBy: "operator-1",
+      lease: makeLease(),
+      propertyId: "property-1",
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.emailSent).toBe(false);
+    expect(result?.emailError).toBeUndefined();
     expect(mockCreateMembership).toHaveBeenCalledTimes(1);
   });
 

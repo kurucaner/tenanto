@@ -51,6 +51,8 @@ declare global {
       STRIPE_WEBHOOK_SECRET?: string;
       /** Base URL for the tenant portal app (e.g. https://tenant.propertyos.app) - used for portal invite links */
       TENANT_APP_URL: string;
+      /** Optional — enables tenant lease/rent/portal-invite transactional emails */
+      TENANT_EMAIL_NOTIFICATIONS_ENABLED?: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */
       WEB_APP_URL: string;
     }

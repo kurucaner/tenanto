@@ -2845,4 +2845,37 @@ export const migrations: IMigration[] = [
     },
     version: 61,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships DROP COLUMN IF EXISTS contact_phone;
+      `);
+    },
+    name: "secondary_tenant_membership_listed_and_contact_phone",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE tenant_membership_status ADD VALUE IF NOT EXISTS 'listed';
+      `);
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(32);
+      `);
+    },
+    version: 62,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS secondary_tenants JSONB NOT NULL DEFAULT '[]';
+      `);
+    },
+    name: "drop_property_long_stays_secondary_tenants",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays DROP COLUMN IF EXISTS secondary_tenants;
+      `);
+    },
+    version: 63,
+  },
 ];

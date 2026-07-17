@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { OtpPurpose } from "@/db/auth-otps";
 
 export interface IEmailPasswordAuthRealm<TUser, TSession> {
+  afterAuthenticated?(user: TUser): Promise<void>;
   afterRegisterVerified?(user: TUser, email: string): Promise<void>;
   createRegisteredUser(input: {
     email: string;

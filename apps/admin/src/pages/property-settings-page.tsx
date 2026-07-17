@@ -38,6 +38,7 @@ PropertySettingsForm.displayName = "PropertySettingsForm";
 export const PropertySettingsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canEdit = permissions.canManageStructure;
+  const canManageStripeConnect = permissions.canManageStripeConnect;
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -47,12 +48,16 @@ export const PropertySettingsPage = memo(() => {
   });
 
   useEffect(() => {
+    if (!canManageStripeConnect) {
+      return;
+    }
+
     const stripeConnect = searchParams.get("stripe_connect");
     if (stripeConnect !== "return" && stripeConnect !== "refresh") {
       return;
     }
 
-    void queryClient.invalidateQueries({
+    queryClient.invalidateQueries({
       queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
     });
 
@@ -69,7 +74,7 @@ export const PropertySettingsPage = memo(() => {
     const next = new URLSearchParams(searchParams);
     next.delete("stripe_connect");
     setSearchParams(next, { replace: true });
-  }, [propertyId, queryClient, searchParams, setSearchParams]);
+  }, [canManageStripeConnect, propertyId, queryClient, searchParams, setSearchParams]);
 
   if (settingsQuery.isPending) {
     return (
@@ -92,7 +97,7 @@ export const PropertySettingsPage = memo(() => {
 
   return (
     <div className="space-y-6">
-      <PropertyStripeConnectSection canManage={canEdit} propertyId={propertyId} />
+      {canManageStripeConnect ? <PropertyStripeConnectSection propertyId={propertyId} /> : null}
       <PropertySettingsForm
         canEdit={canEdit}
         propertyId={propertyId}

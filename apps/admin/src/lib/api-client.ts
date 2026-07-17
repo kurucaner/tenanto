@@ -51,11 +51,17 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyIncomeLinesListResponse,
+  type IPropertyInvitePreviewResponse,
+  type IPropertyInviteRedeemResponse,
+  type IPropertyInviteRegisterBody,
+  type IPropertyInviteRegisterGoogleBody,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   type IPropertyMember,
+  type IPropertyMemberInviteActionResponse,
+  type IPropertyPendingMemberInvitesResponse,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
   type IPropertyReservation,
@@ -69,7 +75,9 @@ import {
   type IPropertyUnitsListResponse,
   type IRefundLedgerEntryBody,
   type IResendLeasePortalInviteResponse,
+  type IResendPropertyMemberInviteResponse,
   type IRevokeLeasePortalInviteResponse,
+  type IRevokePropertyMemberInviteResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
   type ISupportCloseResponse,
@@ -397,6 +405,44 @@ export const adminApi = {
     ),
 };
 
+export const propertyInvitesApi = {
+  acceptInvite: (inviteId: string) =>
+    authenticatedRequest<IPropertyInviteRedeemResponse>(
+      `/me/invites/${encodeURIComponent(inviteId)}/accept`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  declineInvite: (inviteId: string) =>
+    authenticatedRequest<IPropertyMemberInviteActionResponse>(
+      `/me/invites/${encodeURIComponent(inviteId)}/decline`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  listPendingInvites: () =>
+    authenticatedRequest<IPropertyPendingMemberInvitesResponse>("/me/invites/pending"),
+
+  previewInvite: (token: string) =>
+    request<IPropertyInvitePreviewResponse>(`/invites/preview?token=${encodeURIComponent(token)}`),
+
+  redeemInvite: (token: string) =>
+    authenticatedRequest<IPropertyInviteRedeemResponse>("/invites/redeem", {
+      body: JSON.stringify({ token }),
+      method: "POST",
+    }),
+
+  registerWithInvite: (body: IPropertyInviteRegisterBody) =>
+    request<IPropertyInviteRedeemResponse>("/invites/register", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  registerWithInviteGoogle: (body: IPropertyInviteRegisterGoogleBody) =>
+    request<IPropertyInviteRedeemResponse>("/invites/register/google", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+};
+
 export const propertiesApi = {
   addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
     authenticatedRequest<TAddPropertyMemberResponse>(
@@ -430,6 +476,18 @@ export const propertiesApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+
+  resendMemberInvite: (propertyId: string, inviteId: string) =>
+    authenticatedRequest<IResendPropertyMemberInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/resend`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  revokeMemberInvite: (propertyId: string, inviteId: string) =>
+    authenticatedRequest<IRevokePropertyMemberInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/revoke`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>

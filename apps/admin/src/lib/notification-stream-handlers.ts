@@ -31,6 +31,23 @@ function isPropertyMembershipNotification(
   return type === "property_member_added" || type === "property_member_removed";
 }
 
+export function handlePropertyMembershipNotification(
+  queryClient: QueryClient,
+  notification: IUserNotification
+): void {
+  if (!isPropertyMembershipNotification(notification.type)) {
+    return;
+  }
+
+  queryClient.invalidateQueries({ queryKey: ["properties"] });
+
+  if (notification.resourceId != null) {
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.propertyDetail(notification.resourceId),
+    });
+  }
+}
+
 function isSupportStagedUploadStatus(value: unknown): value is TSupportStagedUploadStatus {
   return value === "pending" || value === "confirmed" || value === "linked";
 }
@@ -52,15 +69,15 @@ export function parseSupportAttachmentUpdatedData(
   };
 }
 
-export function handlePropertyMembershipNotification(
+export function handlePropertyMemberInviteReceivedNotification(
   queryClient: QueryClient,
   notification: IUserNotification
 ): void {
-  if (!isPropertyMembershipNotification(notification.type)) {
+  if (notification.type !== "property_member_invite_received") {
     return;
   }
 
-  queryClient.invalidateQueries({ queryKey: ["properties"] });
+  queryClient.invalidateQueries({ queryKey: queryKeys.pendingMemberInvites() });
 
   if (notification.resourceId != null) {
     queryClient.invalidateQueries({

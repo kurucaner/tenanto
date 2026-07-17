@@ -28,8 +28,8 @@ import {
   TenantMembershipStatus,
   type TTenantLeaseListStatus,
 } from "@/packages/shared";
-import { issueTenantSession } from "@/services/tenant-auth-service";
 import { syncLeasePhoneToTenantUserOnAccept } from "@/services/sync-lease-phone-to-tenant-on-accept";
+import { issueTenantSession } from "@/services/tenant-auth-service";
 
 import { assertLeaseTenantReadAccess } from "./tenant-portal-access";
 import {

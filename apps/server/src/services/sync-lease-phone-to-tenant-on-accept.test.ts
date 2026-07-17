@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type {
-  ILeaseTenantMembership,
-  IPropertyLongStay,
-  ITenantUser,
-} from "@/packages/shared";
+import type { ILeaseTenantMembership, IPropertyLongStay, ITenantUser } from "@/packages/shared";
 import {
   PropertyLongStayStatus,
   TenantMembershipRole,
@@ -12,9 +8,7 @@ import {
 } from "@/packages/shared";
 
 const mockFindByIdLease = mock((): Promise<IPropertyLongStay | null> => Promise.resolve(null));
-const mockSetUnverifiedPhoneIfNull = mock(
-  (): Promise<ITenantUser | null> => Promise.resolve(null)
-);
+const mockSetUnverifiedPhoneIfNull = mock((): Promise<ITenantUser | null> => Promise.resolve(null));
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: { findById: mockFindByIdLease },
@@ -24,13 +18,10 @@ mock.module("@/db/tenant-users", () => ({
   tenantUsersDb: { setUnverifiedPhoneIfNull: mockSetUnverifiedPhoneIfNull },
 }));
 
-const { syncLeasePhoneToTenantUserOnAccept } = await import(
-  "./sync-lease-phone-to-tenant-on-accept"
-);
+const { syncLeasePhoneToTenantUserOnAccept } =
+  await import("./sync-lease-phone-to-tenant-on-accept");
 
-function makeMembership(
-  overrides: Partial<ILeaseTenantMembership> = {}
-): ILeaseTenantMembership {
+function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
     acceptedAt: "2026-01-02T00:00:00.000Z",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -113,11 +104,7 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
   test("skips when tenant already has a phone", async () => {
     const tenant = makeTenant({ phone: "+13055550999" });
 
-    const result = await syncLeasePhoneToTenantUserOnAccept(
-      makeMembership(),
-      tenant,
-      makeLease()
-    );
+    const result = await syncLeasePhoneToTenantUserOnAccept(makeMembership(), tenant, makeLease());
 
     expect(mockSetUnverifiedPhoneIfNull).not.toHaveBeenCalled();
     expect(result).toBe(tenant);

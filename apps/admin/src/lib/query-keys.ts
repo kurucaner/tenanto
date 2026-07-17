@@ -18,9 +18,11 @@ export const queryKeys = {
   auditLog: (filters: Omit<IAdminAuditEventsListQuery, "cursor" | "limit">) =>
     ["activity", filters] as const,
   homeFinancialOverview: () => ["home", "financial-overview"] as const,
+  invitePreview: (token: string) => ["invite-preview", token] as const,
   notificationBroadcastHistory: () => ["notification-broadcasts", "history"] as const,
   notificationsList: () => ["notifications", "list"] as const,
   notificationsUnreadCount: () => ["notifications", "unread-count"] as const,
+  pendingMemberInvites: () => ["property-member-invites", "pending"] as const,
   platformStats: () => ["platform-stats"] as const,
   portfolioReportSummary: (filters: IPropertyReportsQuery) =>
     ["portfolio", "reports", filters] as const,
