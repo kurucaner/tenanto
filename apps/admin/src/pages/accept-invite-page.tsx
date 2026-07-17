@@ -1,14 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
-import { memo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { memo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { useAuthHydrated } from "@/hooks/use-auth-hydrated";
 import { propertyInvitesApi } from "@/lib/api-client";
-import {
-  buildAuthHrefWithReturnTo,
-  getAcceptInvitePath,
-  parseSafeReturnTo,
-} from "@/lib/invite-return-url";
+import { buildAuthHrefWithReturnTo, getAcceptInvitePath } from "@/lib/invite-return-url";
 import { queryKeys } from "@/lib/query-keys";
 import {
   Button,
@@ -17,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  getAuthApiErrorMessage,
   InvitePropertySummaryCard,
   ThemeSwitcher,
 } from "@/packages/app-ui";
@@ -25,12 +23,15 @@ import { useAuthStore } from "@/stores/auth-store";
 
 export const AcceptInvitePage = memo(function AcceptInvitePage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const hydrated = useAuthHydrated();
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = Boolean(accessToken && user);
   const token = searchParams.get("token")?.trim() ?? "";
   const returnTo = getAcceptInvitePath(token);
+  const [acting, setActing] = useState<"accept" | "decline" | null>(null);
 
   const previewQuery = useQuery({
     enabled: token.length > 0,
@@ -42,6 +43,50 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
   const signupHref = previewQuery.data
     ? `${buildAuthHrefWithReturnTo("/signup", returnTo)}&email=${encodeURIComponent(previewQuery.data.inviteEmail)}`
     : buildAuthHrefWithReturnTo("/signup", returnTo);
+
+  const inviteEmailMatchesUser =
+    previewQuery.data != null &&
+    user?.email != null &&
+    previewQuery.data.inviteEmail.trim().toLowerCase() === user.email.trim().toLowerCase();
+
+  const finishAccepted = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["properties"] });
+    navigate("/home", { replace: true });
+  };
+
+  const handleAccept = async () => {
+    if (!token) {
+      return;
+    }
+
+    setActing("accept");
+    try {
+      await propertyInvitesApi.redeemInvite(token);
+      toast.success("Invitation accepted");
+      await finishAccepted();
+    } catch (error) {
+      toast.error(getAuthApiErrorMessage(error, "Failed to accept invitation"));
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!previewQuery.data) {
+      return;
+    }
+
+    setActing("decline");
+    try {
+      await propertyInvitesApi.declineInvite(previewQuery.data.inviteId);
+      toast.success("Invitation declined");
+      navigate("/home", { replace: true });
+    } catch (error) {
+      toast.error(getAuthApiErrorMessage(error, "Failed to decline invitation"));
+    } finally {
+      setActing(null);
+    }
+  };
 
   return (
     <div className="app-surface relative flex min-h-svh flex-col items-center justify-center gap-10 p-6">
@@ -94,14 +139,45 @@ export const AcceptInvitePage = memo(function AcceptInvitePage() {
               {!hydrated ? (
                 <p className="text-sm text-muted-foreground">Checking session…</p>
               ) : isAuthenticated ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    You&apos;re signed in as {user?.email}. Return to your workspace to continue.
-                  </p>
-                  <Button asChild className="w-full" type="button">
-                    <Link to={parseSafeReturnTo(returnTo) ?? "/home"}>Go to workspace</Link>
-                  </Button>
-                </div>
+                inviteEmailMatchesUser ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      You&apos;re signed in as {user?.email}. Accept to join this property or
+                      decline the invitation.
+                    </p>
+                    <Button
+                      className="w-full"
+                      disabled={acting != null}
+                      onClick={() => {
+                        void handleAccept();
+                      }}
+                      type="button"
+                    >
+                      {acting === "accept" ? "Accepting…" : "Accept invitation"}
+                    </Button>
+                    <Button
+                      className="w-full"
+                      disabled={acting != null}
+                      onClick={() => {
+                        void handleDecline();
+                      }}
+                      type="button"
+                      variant="outline"
+                    >
+                      {acting === "decline" ? "Declining…" : "Decline invitation"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-destructive">
+                      This invitation was sent to {previewQuery.data.inviteEmail}, but you&apos;re
+                      signed in as {user?.email}. Sign out and use the invited email to continue.
+                    </p>
+                    <Button asChild className="w-full" type="button" variant="outline">
+                      <Link to="/login">Switch account</Link>
+                    </Button>
+                  </div>
+                )
               ) : previewQuery.data.hasExistingAccount ? (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">

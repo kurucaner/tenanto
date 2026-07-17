@@ -206,6 +206,34 @@ export interface ICreatePropertyMemberInviteResult {
 
 export type IResendPropertyMemberInviteResponse = ICreatePropertyMemberInviteResult;
 
+export interface IPropertyPendingMemberInvite {
+  expiresAt: string;
+  inviteId: string;
+  propertyId: string;
+  propertyName: string;
+  role: TPropertyRole;
+  roleLabel: string;
+  status: TPropertyInviteStatus;
+}
+
+export interface IPropertyPendingMemberInvitesResponse {
+  invites: IPropertyPendingMemberInvite[];
+}
+
+export interface IPropertyMemberInviteActionResponse {
+  invite: IPropertyInvite;
+  member?: IPropertyMember;
+}
+
+export interface IPropertyInviteRedeemBody {
+  token: string;
+}
+
+export interface IPropertyInviteRedeemResponse {
+  invite: IPropertyInvite;
+  member: IPropertyMember;
+}
+
 export type TAddPropertyMemberResponse =
   | { member: IPropertyMember; type: "member_added" }
   | { invite: IPropertyInvite; type: "invite_sent" }

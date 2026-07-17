@@ -17,7 +17,6 @@ import {
 } from "@/services/auth-otp-service";
 import { platformEmailPasswordAuthRealm } from "@/services/auth-realms/platform-email-auth-realm";
 import { issuePlatformSession } from "@/services/platform-auth-service";
-import { acceptPendingPropertyInvitesForUser } from "@/services/property-invite-acceptance-service";
 
 import { AccountEvent } from "../../server-types";
 import { registerEmailPasswordAuthRoutes } from "./register-email-password-auth-routes";
@@ -103,8 +102,6 @@ export const authRoutes = async (server: FastifyInstance) => {
       throw error;
     }
 
-    await acceptPendingPropertyInvitesForUser(user.id, googleUser.email || user.email);
-
     return reply.send(await issuePlatformSession(server, user));
   });
 
@@ -141,8 +138,6 @@ export const authRoutes = async (server: FastifyInstance) => {
         }
         throw error;
       }
-
-      await acceptPendingPropertyInvitesForUser(user.id, appleUser.email ?? user.email);
 
       return reply.send(await issuePlatformSession(server, user));
     } catch (error) {

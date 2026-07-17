@@ -52,11 +52,14 @@ import {
   type IPropertyIncomeLinesListQuery,
   type IPropertyIncomeLinesListResponse,
   type IPropertyInvitePreviewResponse,
+  type IPropertyInviteRedeemResponse,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   type IPropertyMember,
+  type IPropertyMemberInviteActionResponse,
+  type IPropertyPendingMemberInvitesResponse,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
   type IPropertyReservation,
@@ -400,8 +403,29 @@ export const adminApi = {
 };
 
 export const propertyInvitesApi = {
+  acceptInvite: (inviteId: string) =>
+    authenticatedRequest<IPropertyInviteRedeemResponse>(
+      `/me/invites/${encodeURIComponent(inviteId)}/accept`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  declineInvite: (inviteId: string) =>
+    authenticatedRequest<IPropertyMemberInviteActionResponse>(
+      `/me/invites/${encodeURIComponent(inviteId)}/decline`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  listPendingInvites: () =>
+    authenticatedRequest<IPropertyPendingMemberInvitesResponse>("/me/invites/pending"),
+
   previewInvite: (token: string) =>
     request<IPropertyInvitePreviewResponse>(`/invites/preview?token=${encodeURIComponent(token)}`),
+
+  redeemInvite: (token: string) =>
+    authenticatedRequest<IPropertyInviteRedeemResponse>("/invites/redeem", {
+      body: JSON.stringify({ token }),
+      method: "POST",
+    }),
 };
 
 export const propertiesApi = {

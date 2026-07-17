@@ -5,7 +5,6 @@ import { refreshTokenDb } from "@/db/refresh-tokens";
 import { userDb } from "@/db/users";
 import type { IPlatformAuthSessionResponse, IUser } from "@/packages/shared";
 import { issuePlatformAccessToken, issuePlatformSession } from "@/services/platform-auth-service";
-import { acceptPendingPropertyInvitesForUser } from "@/services/property-invite-acceptance-service";
 
 import type { IEmailPasswordAuthRealm } from "./email-password-auth-realm";
 
@@ -13,13 +12,9 @@ export const platformEmailPasswordAuthRealm: IEmailPasswordAuthRealm<
   IUser,
   IPlatformAuthSessionResponse
 > = {
-  async afterAuthenticated(user) {
-    await acceptPendingPropertyInvitesForUser(user.id, user.email);
-  },
+  async afterAuthenticated(_user) {},
 
-  async afterRegisterVerified(user, email) {
-    await acceptPendingPropertyInvitesForUser(user.id, email);
-  },
+  async afterRegisterVerified(_user, _email) {},
 
   async createRegisteredUser(input) {
     return userDb.createWithEmail({

@@ -1,7 +1,7 @@
 import {
+  canTransitionPropertyMemberInviteStatus,
   type IPropertyInvite,
   PropertyInviteStatus,
-  TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES,
   type TPropertyInviteStatus,
   type TPropertyRole,
 } from "@/packages/shared";
@@ -20,6 +20,31 @@ const PENDING_INVITE_STATUSES: TPropertyInviteStatus[] = [
   PropertyInviteStatus.PENDING_INVITE,
   PropertyInviteStatus.PENDING_ACCEPTANCE,
 ];
+
+const ADMIN_HIDDEN_INVITE_STATUSES: TPropertyInviteStatus[] = [
+  PropertyInviteStatus.ACCEPTED,
+  PropertyInviteStatus.EXPIRED,
+];
+
+export class InvalidPropertyMemberInviteTransitionError extends Error {
+  constructor(from: TPropertyInviteStatus, to: TPropertyInviteStatus) {
+    super(`Invalid property member invite transition from ${from} to ${to}`);
+    this.name = "InvalidPropertyMemberInviteTransitionError";
+  }
+}
+
+function inviteStatusTimestampColumn(status: TPropertyInviteStatus): string | null {
+  switch (status) {
+    case PropertyInviteStatus.ACCEPTED:
+      return "accepted_at";
+    case PropertyInviteStatus.DECLINED:
+      return "declined_at";
+    case PropertyInviteStatus.REVOKED:
+      return "revoked_at";
+    default:
+      return null;
+  }
+}
 
 export interface CreatePropertyInviteInput {
   email: string;
@@ -99,6 +124,17 @@ export const propertyInvitesDb = {
     return result.rowCount ?? 0;
   },
 
+  async findAdminVisibleByProperty(propertyId: string): Promise<IPropertyInvite[]> {
+    const result = await pool.query(
+      `SELECT * FROM property_invites
+       WHERE property_id = $1
+         AND NOT (status = ANY($2::property_invite_status[]))
+       ORDER BY created_at ASC`,
+      [propertyId, ADMIN_HIDDEN_INVITE_STATUSES]
+    );
+    return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
+  },
+
   async findById(id: string): Promise<IPropertyInvite | null> {
     const result = await pool.query(`SELECT * FROM property_invites WHERE id = $1`, [id]);
     if (result.rows.length === 0) return null;
@@ -148,14 +184,7 @@ export const propertyInvitesDb = {
   },
 
   async findNonTerminalByProperty(propertyId: string): Promise<IPropertyInvite[]> {
-    const result = await pool.query(
-      `SELECT * FROM property_invites
-       WHERE property_id = $1
-         AND NOT (status = ANY($2::property_invite_status[]))
-       ORDER BY created_at ASC`,
-      [propertyId, TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES]
-    );
-    return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
+    return propertyInvitesDb.findAdminVisibleByProperty(propertyId);
   },
 
   async findPendingByEmail(email: string): Promise<IPropertyInvite[]> {
@@ -182,6 +211,36 @@ export const propertyInvitesDb = {
        ORDER BY created_at DESC
        LIMIT 1`,
       [propertyId, email, PENDING_INVITE_STATUSES]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async transitionStatus(
+    id: string,
+    toStatus: TPropertyInviteStatus
+  ): Promise<IPropertyInvite | null> {
+    const current = await propertyInvitesDb.findById(id);
+    if (!current) {
+      return null;
+    }
+
+    if (!canTransitionPropertyMemberInviteStatus(current.status, toStatus)) {
+      throw new InvalidPropertyMemberInviteTransitionError(current.status, toStatus);
+    }
+
+    const timestampColumn = inviteStatusTimestampColumn(toStatus);
+    const setTimestamp = timestampColumn != null ? `, ${timestampColumn} = NOW()` : "";
+    const clearInviteToken =
+      toStatus === PropertyInviteStatus.ACCEPTED ? ", invite_token_hash = NULL" : "";
+
+    const result = await pool.query(
+      `UPDATE property_invites
+       SET status = $1::property_invite_status,
+           updated_at = NOW()${setTimestamp}${clearInviteToken}
+       WHERE id = $2
+       RETURNING *`,
+      [toStatus, id]
     );
     if (result.rows.length === 0) return null;
     return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);

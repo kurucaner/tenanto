@@ -20,6 +20,10 @@ export function formatPropertyMemberInviteAdminStatus(status: TPropertyInviteSta
   switch (status) {
     case PropertyInviteStatus.EMAIL_FAILED:
       return "Email failed";
+    case PropertyInviteStatus.DECLINED:
+      return "Declined";
+    case PropertyInviteStatus.REVOKED:
+      return "Revoked";
     default:
       return status;
   }
@@ -33,6 +37,9 @@ export function getPropertyMemberInviteStatusTone(
       return "pending";
     case "Email failed":
       return "warning";
+    case "Declined":
+    case "Revoked":
+      return "muted";
     default:
       return "muted";
   }

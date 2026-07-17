@@ -282,11 +282,11 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 **Goal:** New invites use magic links and accept preview; legacy auto-accept remains until Phase 3.
 
-- [ ] `property-member-invite-service.ts`: create invite with token; branch `pending_invite` vs `pending_acceptance`; send new email templates
-- [ ] `GET /invites/preview?token=` (public)
-- [ ] Admin app: route `/accept-invite`, page mirroring tenant accept flow (property summary, not lease)
-- [ ] Wire `POST /properties/:id/members` to invite service
-- [ ] Resend path for legacy pending rows without tokens
+- [x] `property-member-invite-service.ts`: create invite with token; branch `pending_invite` vs `pending_acceptance`; send new email templates
+- [x] `GET /invites/preview?token=` (public)
+- [x] Admin app: route `/accept-invite`, page mirroring tenant accept flow (property summary, not lease)
+- [x] Wire `POST /properties/:id/members` to invite service
+- [x] Resend path for legacy pending rows without tokens
 
 **Exit criteria:** New invite email opens admin `/accept-invite` with correct property/role; user can register or log in on that page.
 
