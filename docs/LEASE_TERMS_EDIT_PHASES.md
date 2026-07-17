@@ -50,7 +50,7 @@ Phased rollout for correcting **lease start date**, **term (→ contract end)**,
 | Lease `status = active`                             | Any non-deleted `property_income_lines` with `long_stay_id = lease`           |
 | Zero linked income lines                            | Any `tenant_rent_payments` for lease with `status = succeeded`                |
 | No extend rent history (see rent-period rule below) | Lease was **extended** — rent period rows beyond the pristine single-row case |
-|                                                     | Pending Stripe checkout in flight (optional Phase 3 hardening)                |
+|                                                     | Pending Stripe checkout in flight (Phase 3.2)                                 |
 
 **Rent-period rule (v1):** Block when `property_long_stay_rent_periods` has more than one row, or has a row whose `effective_from_month` is not the lease-start month. Pristine leases have **zero** rent-period rows; rent comes from `property_long_stays.monthly_rent`.
 
@@ -232,18 +232,111 @@ N/A
 
 ### Phase 3 — Hardening
 
-**Goal:** Production-safe edge cases.
+**Goal:** Production-safe edge cases — concurrent edits, in-flight Stripe checkouts, and operator-visible failures without silent data races.
 
-| Concern          | Action                                                                                        |
-| ---------------- | --------------------------------------------------------------------------------------------- |
-| Concurrent edit  | `UPDATE … WHERE updated_at = $expected` optimistic check → **409** conflict                   |
-| Pending checkout | Block if open `tenant_rent_payments` (pending/processing) for lease                           |
-| Unit conflict    | Re-run active-lease-on-unit check if overlap logic ever applies (unit unchanged; cheap guard) |
-| Error mapping    | Map block reasons to user-facing strings in admin                                             |
-| Observability    | Structured log `lease.terms_updated` with leaseId, propertyId (no PII)                        |
-| Regression       | Extend `property-long-stays-rent-schedule.test.ts` for post-edit proration                    |
+| Sub-phase                                              | Concern                                       |
+| ------------------------------------------------------ | --------------------------------------------- |
+| [3.1](#phase-31--concurrent-edit-optimistic-locking)   | Double-submit / concurrent PATCH              |
+| [3.2](#phase-32--pending-checkout-gate)                | Open tenant checkout blocks terms edit        |
+| [3.3](#phase-33--unit-conflict-guard)                   | Cheap active-lease-on-unit guard              |
+| [3.4](#phase-34--admin-error-mapping)                  | Block reasons + 409 copy in admin             |
+| [3.5](#phase-35--observability)                        | Structured `lease.terms_updated` log          |
+| [3.6](#phase-36--proration-regression--doc-cross-link) | Post-edit schedule tests + proration doc link |
 
-**Exit criteria:** Double-submit safe; pending checkout blocked if implemented; cross-link added in `LEASE_RENT_PRORATION_PHASES.md`.
+**Exit criteria (Phase 3 overall):** All sub-phases below complete; double-submit returns **409**; pending checkout blocked; proration regression tests pass; cross-link added in [`LEASE_RENT_PRORATION_PHASES.md`](./LEASE_RENT_PRORATION_PHASES.md).
+
+---
+
+#### Phase 3.1 — Concurrent edit (optimistic locking)
+
+**Goal:** Two operators (or double-submit) cannot silently overwrite each other's terms PATCH.
+
+**Tasks**
+
+- [ ] Accept optional `expectedUpdatedAt` on `IEditPropertyLongStayTermsBody` (or read from GET detail `longStay.updatedAt` client-side only — server compares DB row)
+- [ ] `propertyLongStaysDb.updateTerms` — `UPDATE … WHERE id = $1 AND updated_at = $expected` inside existing transaction; **0 rows** → dedicated error (e.g. `LeaseTermsConcurrentEditError`)
+- [ ] Route maps concurrent conflict to **409** `{ error, code: "LEASE_TERMS_STALE" }` (distinct from editability **409** `{ reason }`)
+- [ ] Admin dialog: send current `lease.updatedAt`; on stale conflict toast + refetch detail (do not close dialog with stale values)
+- [ ] Tests: two sequential updates with same `expectedUpdatedAt` → second fails; fresh timestamp succeeds
+
+**Exit criteria:** Rapid double-click Save or stale tab edit returns **409** stale conflict; refetch shows latest terms; no partial rent_period sync without lease row update.
+
+---
+
+#### Phase 3.2 — Pending checkout gate
+
+**Goal:** Block terms edit while a tenant Stripe checkout is in flight (`pending`, `requires_action`, or `processing`).
+
+**Tasks**
+
+- [ ] Add `TLeaseTermsEditBlockReason` value `has_pending_checkout` + message in `getLeaseTermsEditBlockMessage`
+- [ ] Extend `getTermsEditSignals` — `EXISTS (… tenant_rent_payments WHERE lease_id AND status IN ('pending','requires_action','processing'))`
+- [ ] Update `deriveLeaseTermsEditability` priority (after `has_succeeded_payments`, before `has_rent_period_history` — or document chosen order in shared tests)
+- [ ] Shared gate matrix test for pending checkout
+- [ ] Admin blocked copy uses shared message (Phase 3.4 may refine wording)
+
+**Exit criteria:** Lease with open checkout shows `termsEditability.editable === false` and **409** on PATCH; after payment succeeds/fails/cancels, existing succeeded-payment or editable rules apply.
+
+---
+
+#### Phase 3.3 — Unit conflict guard
+
+**Goal:** Cheap server guard even though unit is not editable — catch impossible overlap if dates shift or data is inconsistent.
+
+**Tasks**
+
+- [x] In `updateTerms` (or service, before write): `findActiveByUnitId(lease.unitId)` — if another active lease exists and `id !== longStayId`, throw `ActiveLongStayConflictError` (same as create)
+- [x] Only run when `leaseStartDate` or `termMonths` change (no-op rent-only patch skips)
+- [x] Test: fixture with two active leases on same unit should not be creatable; guard documents intent if bad data exists
+
+**Exit criteria:** PATCH that would imply two active leases on one unit returns **409**; rent-only correction on unchanged dates skips check.
+
+---
+
+#### Phase 3.4 — Admin error mapping
+
+**Goal:** Operators see consistent, actionable copy for every failure mode (gate, validation, stale, network).
+
+**Tasks**
+
+- [ ] Centralize admin strings in one module (e.g. `lease-terms-edit-messages.ts`) mapping `TLeaseTermsEditBlockReason` → UI copy (can wrap `getLeaseTermsEditBlockMessage` with product tone)
+- [ ] Map PATCH **409** editability responses using `reason` field (not only `error` string)
+- [ ] Map stale conflict **409** (`LEASE_TERMS_STALE`) → “Lease was updated elsewhere. Refresh and try again.”
+- [ ] Map **400** validation → field-level or toast from server `error`
+- [ ] Terms tab blocked state uses same mapper as dialog errors (single source)
+
+**Exit criteria:** Each block reason and stale conflict has distinct, tested admin copy; no raw server enum slugs shown to operators.
+
+---
+
+#### Phase 3.5 — Observability
+
+**Goal:** Production debugging for terms corrections without PII in logs.
+
+**Tasks**
+
+- [ ] Emit structured log `lease.terms_updated` from `editLeaseTerms` (or route) with `propertyId`, `longStayId`, `userId` (operator id ok); **no** guest name, email, phone, or rent amounts
+- [ ] Optional debug fields: `{ changedFields: ["leaseStartDate","termMonths"] }` booleans only
+- [ ] Mirror pattern from `tenant-portal-observability.ts` / `log-helpers.ts`
+- [ ] Test or snapshot that log payload shape excludes PII keys
+
+**Exit criteria:** Successful PATCH produces one grep-able `lease.terms_updated` event in server logs; blocked PATCH does not emit it.
+
+---
+
+#### Phase 3.6 — Proration regression + doc cross-link
+
+**Goal:** Prove `getRentSchedule` stays correct after terms PATCH; link proration doc to this flow.
+
+**Tasks**
+
+- [ ] Extend `property-long-stays-rent-schedule.test.ts` — mid-month start after `updateTerms`: first month prorated, full middle months, term boundary months correct
+- [ ] Case: edit only `monthlyRent` on pristine lease → all months reflect new rent
+- [ ] Case: edit `leaseStartDate` + `termMonths` → month list length matches `enumerateLeaseMonths`
+- [ ] Add subsection + link in [`LEASE_RENT_PRORATION_PHASES.md`](./LEASE_RENT_PRORATION_PHASES.md) under related code / post-edit correction pointer to this doc Phase 3.6
+- [ ] Add back-link here to proration doc test matrix
+
+**Exit criteria:** New rent-schedule tests pass in CI; both phase docs cross-reference each other.
 
 ---
 

@@ -10,6 +10,7 @@ describe("getVisiblePropertyShellTabs", () => {
       callerMembership: undefined,
       canManageLedger: true,
       canManageMembers: false,
+      canManageStripeConnect: false,
       canManageStructure: false,
       canManageUnits: true,
       canSendTenantNotifications: false,

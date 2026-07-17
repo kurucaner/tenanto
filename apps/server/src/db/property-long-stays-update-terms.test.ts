@@ -5,6 +5,7 @@ import { PropertyLongStayStatus } from "@/packages/shared";
 type TLeaseRow = Record<string, unknown>;
 
 let currentLeaseRow: TLeaseRow;
+let activeLeaseOnUnit: TLeaseRow | null = null;
 let currentRentPeriodRows: Record<string, unknown>[] = [];
 const capturedClientSql: string[] = [];
 
@@ -68,7 +69,7 @@ const mockClient = {
   release: mock(() => {}),
 };
 
-const mockQuery = mock((sql: string) => {
+const mockQuery = mock((sql: string, params?: unknown[]) => {
   if (sql.includes("FROM property_income_lines")) {
     return Promise.resolve({ rows: [] });
   }
@@ -79,6 +80,14 @@ const mockQuery = mock((sql: string) => {
 
   if (sql.includes("FROM property_long_stay_rent_periods")) {
     return Promise.resolve({ rows: currentRentPeriodRows });
+  }
+
+  if (sql.includes("WHERE unit_id = $1") && sql.includes("status = $2")) {
+    return Promise.resolve({ rows: activeLeaseOnUnit ? [activeLeaseOnUnit] : [] });
+  }
+
+  if (sql.includes("FROM property_long_stays") && sql.includes("WHERE id = $1")) {
+    return Promise.resolve({ rows: [currentLeaseRow] });
   }
 
   if (sql.includes("FROM property_long_stays")) {
@@ -101,11 +110,12 @@ mock.module("./tenant-rent-payments", () => ({
   },
 }));
 
-const { propertyLongStaysDb } = await import("./property-long-stays");
+const { ActiveLongStayConflictError, propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.updateTerms", () => {
   test("updates lease fields in a transaction", async () => {
     currentLeaseRow = buildLeaseRow();
+    activeLeaseOnUnit = null;
     currentRentPeriodRows = [];
     capturedClientSql.length = 0;
     mockClientQuery.mockClear();
@@ -165,5 +175,62 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     expect(schedule.map((month) => month.month)).toEqual(["2026-01", "2026-02", "2026-03"]);
     expect(schedule.every((month) => month.expectedRent === 2000)).toBe(true);
+  });
+
+  test("throws when another active lease exists on the unit and schedule changes", async () => {
+    currentLeaseRow = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    activeLeaseOnUnit = buildLeaseRow({
+      guest_name: "Other Tenant",
+      id: "lease-2",
+      unit_id: "unit-1",
+    });
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    await expect(
+      propertyLongStaysDb.updateTerms("lease-1", {
+        leaseStartDate: "2026-02-01",
+        monthlyRent: 1800,
+        termMonths: 6,
+      })
+    ).rejects.toBeInstanceOf(ActiveLongStayConflictError);
+
+    expect(capturedClientSql.some((sql) => sql === "BEGIN")).toBe(false);
+  });
+
+  test("allows rent-only patch when another active lease row exists for the same lease id", async () => {
+    currentLeaseRow = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    activeLeaseOnUnit = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    const updated = await propertyLongStaysDb.updateTerms("lease-1", {
+      leaseStartDate: "2026-01-01",
+      monthlyRent: 1750,
+      termMonths: 3,
+    });
+
+    expect(updated.monthlyRent).toBe(1750);
+    expect(capturedClientSql.some((sql) => sql === "COMMIT")).toBe(true);
+  });
+
+  test("skips unit conflict check for rent-only patch", async () => {
+    currentLeaseRow = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    activeLeaseOnUnit = buildLeaseRow({
+      guest_name: "Other Tenant",
+      id: "lease-2",
+      unit_id: "unit-1",
+    });
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    const updated = await propertyLongStaysDb.updateTerms("lease-1", {
+      leaseStartDate: "2026-01-01",
+      monthlyRent: 1600,
+      termMonths: 3,
+    });
+
+    expect(updated.monthlyRent).toBe(1600);
+    expect(capturedClientSql.some((sql) => sql === "COMMIT")).toBe(true);
   });
 });

@@ -852,6 +852,9 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         if (error instanceof LeaseTermsValidationError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }
+        if (error instanceof ActiveLongStayConflictError) {
+          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
+        }
         if (error instanceof LongStayNotActiveError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }

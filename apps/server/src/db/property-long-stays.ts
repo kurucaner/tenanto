@@ -566,6 +566,15 @@ export const propertyLongStaysDb = {
       throw new LongStayNotActiveError();
     }
 
+    const scheduleChanged =
+      body.leaseStartDate !== existing.leaseStartDate || body.termMonths !== existing.termMonths;
+    if (scheduleChanged) {
+      const activeOnUnit = await propertyLongStaysDb.findActiveByUnitId(existing.unitId);
+      if (activeOnUnit && activeOnUnit.id !== id) {
+        throw new ActiveLongStayConflictError();
+      }
+    }
+
     const leaseEndDate = calculateLeaseEndDate(body.leaseStartDate, body.termMonths);
     const startMonth = transactionDateToMonth(body.leaseStartDate);
 
