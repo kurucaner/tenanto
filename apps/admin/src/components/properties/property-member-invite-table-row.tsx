@@ -111,7 +111,7 @@ export const PropertyMemberInviteTableRow = memo(function PropertyMemberInviteTa
       </TableCell>
       {showActionsColumn ? (
         <TableCell>
-          {actionButtons ? <div className="flex justify-end gap-2">{actionButtons}</div> : null}
+          {actionButtons ? <div className="flex items-center gap-2">{actionButtons}</div> : null}
         </TableCell>
       ) : null}
     </TableRow>
