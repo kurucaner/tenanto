@@ -29,6 +29,7 @@ import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { createPersonNameSchema } from "@/packages/app-ui";
 import {
   calculateLeaseEndDate,
   type IPropertyUnit,
@@ -40,7 +41,7 @@ const DEFAULT_TERM_MONTHS = "12";
 const MAX_TERM_MONTHS = 60;
 
 const startLeaseSchema = z.object({
-  guestName: z.string().trim().min(1, "Primary tenant name is required"),
+  guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
   leaseStartDate: z.string().min(1, "Lease start date is required"),
   monthlyRent: requiredPositiveMoneyField("Monthly rent"),
   tenantEmail: z.string(),
@@ -351,7 +352,7 @@ export const StartLeaseDialog = memo(
     const mutation = useMutation({
       mutationFn: (values: TStartLeaseFormValues) =>
         longStaysApi.create(propertyId, {
-          guestName: values.guestName.trim(),
+          guestName: values.guestName,
           leaseStartDate: values.leaseStartDate,
           monthlyRent: Number(values.monthlyRent),
           tenantEmail: values.tenantEmail.trim() || undefined,
@@ -362,8 +363,18 @@ export const StartLeaseDialog = memo(
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to start lease");
       },
-      onSuccess: () => {
-        toast.success("Lease started");
+      onSuccess: (data) => {
+        if (data.portalInvite?.emailSent) {
+          toast.success(
+            `Lease started. Portal invite sent to ${data.portalInvite.membership.inviteEmail}`
+          );
+        } else if (data.portalInvite && !data.portalInvite.emailSent) {
+          toast.warning(
+            `Lease started but portal invite email failed to send: ${data.portalInvite.emailError ?? "Unknown error"}`
+          );
+        } else {
+          toast.success("Lease started");
+        }
         invalidatePropertyLongStayCaches(queryClient, propertyId);
         handleOpenChange(false);
       },

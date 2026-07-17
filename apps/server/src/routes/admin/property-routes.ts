@@ -3,7 +3,6 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { adminAuditEventsDb } from "@/db/admin-audit-events";
 import { pool } from "@/db/pool";
 import { propertiesDb } from "@/db/properties";
-import { propertyInvitesDb } from "@/db/property-invites";
 import { propertyMembersDb } from "@/db/property-members";
 import { propertyUserFavoritesDb } from "@/db/property-user-favorites";
 import { userDb } from "@/db/users";
@@ -20,8 +19,15 @@ import {
   UserType,
 } from "@/packages/shared";
 import { decodePropertyFavoriteKeysetCursor } from "@/pagination/keyset-cursor";
+import {
+  DuplicatePropertyMemberInviteError,
+  PropertyMemberAlreadyMemberError,
+  PropertyMemberInviteInvalidStateError,
+  PropertyMemberInviteMismatchError,
+  PropertyMemberInviteNotFoundError,
+  propertyMemberInviteService,
+} from "@/services/property-member-invite-service";
 import { notifyUser } from "@/services/user-notifications";
-import { sendPropertyInviteEmail } from "@/ses/transactional-emails";
 
 import { parseAdminLimit, parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -240,80 +246,6 @@ async function assertPropertyAccess(
   return property as never;
 }
 
-type TPropertyRecord = NonNullable<Awaited<ReturnType<typeof propertiesDb.findById>>>;
-
-async function addExistingPropertyMember(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  property: TPropertyRecord,
-  propertyId: string,
-  targetUser: NonNullable<Awaited<ReturnType<typeof userDb.findByEmail>>>,
-  role: TPropertyRole
-) {
-  if (targetUser.id === property.createdBy) {
-    return reply.status(HttpStatus.CONFLICT).send({
-      error: "The property creator is already assigned as owner",
-    });
-  }
-
-  const existingMember = await propertyMembersDb.findOne(propertyId, targetUser.id);
-  if (existingMember) {
-    return reply
-      .status(HttpStatus.CONFLICT)
-      .send({ error: "User is already a member of this property" });
-  }
-
-  const member = await propertyMembersDb.add(propertyId, targetUser.id, role, request.user.userId);
-  notifyUser({
-    body: `You were added as ${role}.`,
-    resourceId: propertyId,
-    resourceType: "property",
-    title: `Added to ${property.name}`,
-    type: "property_member_added",
-    userId: targetUser.id,
-  }).catch((err) => request.log.error(err));
-
-  return reply.status(HttpStatus.CREATED).send({ member, type: "member_added" });
-}
-
-async function sendPropertyMemberInvite(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  property: TPropertyRecord,
-  propertyId: string,
-  email: string,
-  role: TPropertyRole
-) {
-  const existingInvite = await propertyInvitesDb.findByPropertyAndEmail(propertyId, email);
-  if (existingInvite?.status === "pending") {
-    return reply
-      .status(HttpStatus.CONFLICT)
-      .send({ error: "An invitation has already been sent to this email" });
-  }
-
-  const currentUser = await userDb.findById(request.user.userId);
-  const invite = await propertyInvitesDb.create({
-    email,
-    invitedBy: request.user.userId,
-    propertyId,
-    role,
-  });
-
-  try {
-    await sendPropertyInviteEmail(email, {
-      inviterEmail: currentUser?.email ?? "someone@propertyos.com",
-      propertyName: property.name,
-      role,
-    });
-    return reply.status(HttpStatus.CREATED).send({ invite, type: "invite_sent" });
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : "Unknown email error";
-    await propertyInvitesDb.updateStatus(invite.id, "email_failed", errMsg);
-    const failed = { ...invite, emailError: errMsg, status: "email_failed" as const };
-    return reply.status(HttpStatus.CREATED).send({ invite: failed, type: "invite_email_failed" });
-  }
-}
-
 interface IPropertiesListQuerystring {
   cursor?: string;
   limit?: string;
@@ -327,6 +259,11 @@ interface IPropertyParams {
 interface IPropertyMemberParams {
   propertyId: string;
   userId: string;
+}
+
+interface IPropertyMemberInviteParams {
+  inviteId: string;
+  propertyId: string;
 }
 
 export const propertyRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -602,19 +539,127 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         });
       }
 
-      const targetUser = await userDb.findByEmail(email);
-      if (targetUser) {
-        return addExistingPropertyMember(
-          request,
-          reply,
-          propertyExists,
+      try {
+        const response = await propertyMemberInviteService.addMemberViaInvite({
+          email,
+          invitedBy: request.user.userId,
           propertyId,
-          targetUser,
-          role
-        );
+          role,
+        });
+        return reply.status(HttpStatus.CREATED).send(response);
+      } catch (error) {
+        if (error instanceof DuplicatePropertyMemberInviteError) {
+          return reply
+            .status(HttpStatus.CONFLICT)
+            .send({ error: "An invitation has already been sent to this email" });
+        }
+        if (error instanceof PropertyMemberAlreadyMemberError) {
+          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post<{ Params: IPropertyMemberInviteParams }>(
+    "/properties/:propertyId/member-invites/:inviteId/resend",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Params: IPropertyMemberInviteParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const inviteId = parseUuidParam(request.params.inviteId);
+      if (inviteId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid inviteId" });
       }
 
-      return sendPropertyMemberInvite(request, reply, propertyExists, propertyId, email, role);
+      const propertyExists = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!propertyExists) return;
+
+      const canManageMembers = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can manage members"
+      );
+      if (!canManageMembers) return;
+
+      try {
+        const result = await propertyMemberInviteService.resendInvite({ inviteId, propertyId });
+        return reply.send(result);
+      } catch (error) {
+        if (error instanceof PropertyMemberInviteMismatchError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        }
+        if (
+          error instanceof PropertyMemberInviteNotFoundError ||
+          error instanceof PropertyMemberInviteInvalidStateError
+        ) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post<{ Params: IPropertyMemberInviteParams }>(
+    "/properties/:propertyId/member-invites/:inviteId/revoke",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Params: IPropertyMemberInviteParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const inviteId = parseUuidParam(request.params.inviteId);
+      if (inviteId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid inviteId" });
+      }
+
+      const propertyExists = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!propertyExists) return;
+
+      const canManageMembers = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can manage members"
+      );
+      if (!canManageMembers) return;
+
+      try {
+        const result = await propertyMemberInviteService.revokeInvite({ inviteId, propertyId });
+        return reply.send(result);
+      } catch (error) {
+        if (error instanceof PropertyMemberInviteMismatchError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        }
+        if (
+          error instanceof PropertyMemberInviteNotFoundError ||
+          error instanceof PropertyMemberInviteInvalidStateError
+        ) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
+        }
+        throw error;
+      }
     }
   );
 

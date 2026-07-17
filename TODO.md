@@ -1,5 +1,10 @@
 - refactor
   - property-export-list-constants
   - list-meta-types
-- remove .env.example from gitignore
-  - update Optional env tags.
+- Do I need turbo?
+- Eslint configuration merge
+- SMS flow at the beginning with campaign opt in compatability
+- Typescript 7 implementation
+  - bun:test error
+- Logging who created, updated, deleted, incomes, units, etc.
+- RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same

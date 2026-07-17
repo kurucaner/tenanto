@@ -1,4 +1,5 @@
 import { clearAppSession } from "@/lib/clear-app-session";
+import { createApiClient } from "@/packages/app-ui";
 import {
   type IAdminAddPropertyMemberBody,
   type IAdminAuditEventsListQuery,
@@ -14,12 +15,17 @@ import {
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
   type IAppConfig,
+  type ICreateLeasePortalInviteBody,
+  type ICreateLeasePortalInvitesResponse,
   type ICreatePropertyExpenseBody,
   type ICreatePropertyIncomeLineBody,
   type ICreatePropertyLongStayBody,
+  type ICreatePropertyLongStayResponse,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
   type ICreateTenantEmailCampaignBody,
+  type IEditPropertyLongStayTermsBody,
+  type IEditPropertyLongStayTermsResponse,
   type IEndPropertyLongStayBody,
   type IExpenseImportCommitBody,
   type IExpenseImportCommitResponse,
@@ -30,6 +36,7 @@ import {
   type IIncomeImportCommitBody,
   type IIncomeImportCommitResponse,
   type IIncomeImportParseResponse,
+  type ILeasePortalAccessResponse,
   type IPortfolioReportSummary,
   type IProperty,
   type IPropertyDetail,
@@ -46,21 +53,33 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyIncomeLinesListResponse,
+  type IPropertyInvitePreviewResponse,
+  type IPropertyInviteRedeemResponse,
+  type IPropertyInviteRegisterBody,
+  type IPropertyInviteRegisterGoogleBody,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   type IPropertyMember,
+  type IPropertyMemberInviteActionResponse,
+  type IPropertyPendingMemberInvitesResponse,
   type IPropertyReportsQuery,
   type IPropertyReportSummary,
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyShortStaysListResponse,
+  type IPropertyStripeConnectOnboardingLinkResponse,
+  type IPropertyStripeConnectStatusResponse,
   type IPropertyUnit,
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
   type IRefundLedgerEntryBody,
+  type IResendLeasePortalInviteResponse,
+  type IResendPropertyMemberInviteResponse,
+  type IRevokeLeasePortalInviteResponse,
+  type IRevokePropertyMemberInviteResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
   type ISupportCloseResponse,
@@ -87,7 +106,6 @@ import {
   type IUserNotificationsListResponse,
   type IUserNotificationsMarkAllReadResponse,
   type IUserNotificationsUnreadCountResponse,
-  JwtError,
   type TAddPropertyMemberResponse,
   type UserType,
 } from "@/packages/shared";
@@ -101,265 +119,31 @@ function getApiBaseUrl(): string {
   return url.replace(/\/$/, "");
 }
 
-type RequestOptions = RequestInit & { omitDefaultContentType?: boolean };
-
-let onSessionExpired: (() => void) | undefined;
-
-export const setOnSessionExpired = (callback: (() => void) | undefined): void => {
-  onSessionExpired = callback;
-};
-
-const getDefaultHeaders = (): Record<string, string> => ({
-  "Content-Type": "application/json",
+const {
+  authenticatedDownload,
+  authenticatedMultipartRequest,
+  authenticatedRequest,
+  getApiBaseUrl: getApiBaseUrlForClient,
+  refreshAccessTokenForStream,
+  request,
+  setOnSessionExpired,
+} = createApiClient<IUser>({
+  clearSession: clearAppSession,
+  getAccessToken: () => useAuthStore.getState().accessToken,
+  getApiBaseUrl,
+  getRefreshToken: () => useAuthStore.getState().refreshToken,
+  onRefreshSuccess: ({ accessToken, user }) => {
+    useAuthStore.getState().setAccessToken(accessToken);
+    useAuthStore.getState().setUser(user);
+  },
+  refreshPath: "/auth/refresh",
 });
 
-const rawRequest = async (path: string, options: RequestOptions = {}): Promise<Response> => {
-  const { omitDefaultContentType, ...requestInit } = options;
-  const defaultHeaders = { ...getDefaultHeaders() };
-  if (omitDefaultContentType) {
-    delete defaultHeaders["Content-Type"];
-  }
-  return fetch(`${getApiBaseUrl()}${path}`, {
-    ...requestInit,
-    headers: {
-      ...defaultHeaders,
-      ...requestInit.headers,
-    },
-  });
-};
-
-const parseJsonResponse = async <T>(response: Response): Promise<T> => {
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  const text = await response.text();
-  if (!text) {
-    return undefined as T;
-  }
-  return JSON.parse(text) as T;
-};
-
-const request = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  const response = await rawRequest(path, options);
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { error?: string; code?: string };
-    const err = new Error(body.error ?? `Request failed: ${response.status}`);
-    (err as Error & { code?: string }).code = body.code;
-    throw err;
-  }
-  return parseJsonResponse<T>(response);
-};
-
-let inFlightRefresh: Promise<string | null> | null = null;
-
-const refreshAccessToken = async (): Promise<string | null> => {
-  const refreshToken = useAuthStore.getState().refreshToken;
-  if (!refreshToken) {
-    clearAppSession();
-    onSessionExpired?.();
-    return null;
-  }
-  try {
-    const result = await request<IAuthRefreshResponse>("/auth/refresh", {
-      body: JSON.stringify({ refreshToken }),
-      method: "POST",
-    });
-    useAuthStore.getState().setAccessToken(result.accessToken);
-    useAuthStore.getState().setUser(result.user);
-    return result.accessToken;
-  } catch {
-    clearAppSession();
-    onSessionExpired?.();
-    return null;
-  }
-};
-
-const getDeduplicatedRefresh = (): Promise<string | null> => {
-  if (!inFlightRefresh) {
-    inFlightRefresh = refreshAccessToken().finally(() => {
-      inFlightRefresh = null;
-    });
-  }
-  return inFlightRefresh;
-};
-
-export const refreshAccessTokenForStream = (): Promise<string | null> => getDeduplicatedRefresh();
-
-export const getApiBaseUrlForClient = getApiBaseUrl;
-
-const handleSessionInvalid = (): never => {
-  clearAppSession();
-  onSessionExpired?.();
-  throw new Error("Session expired");
-};
-
-interface UnauthorizedBody {
-  code?: string;
-  error?: string;
-}
-
-const authenticatedRequest = async <T>(
-  path: string,
-  options: RequestOptions = {},
-  isRetry = false
-): Promise<T> => {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await rawRequest(path, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (response.ok) {
-    return parseJsonResponse<T>(response);
-  }
-
-  if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Forbidden");
-  }
-
-  if (response.status !== 401) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
-  }
-
-  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
-  const code = body.code;
-
-  if (code !== JwtError.TOKEN_EXPIRED) {
-    handleSessionInvalid();
-  }
-
-  if (isRetry) {
-    handleSessionInvalid();
-  }
-
-  const newToken = await getDeduplicatedRefresh();
-  if (!newToken) {
-    throw new Error("Session expired");
-  }
-
-  return authenticatedRequest<T>(path, options, true);
-};
-
-const authenticatedMultipartRequest = async <T>(
-  path: string,
-  formData: FormData,
-  isRetry = false
-): Promise<T> => {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
-    body: formData,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    method: "POST",
-  });
-
-  if (response.ok) {
-    return parseJsonResponse<T>(response);
-  }
-
-  if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Forbidden");
-  }
-
-  if (response.status !== 401) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
-  }
-
-  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
-  const code = body.code;
-
-  if (code !== JwtError.TOKEN_EXPIRED) {
-    handleSessionInvalid();
-  }
-
-  if (isRetry) {
-    handleSessionInvalid();
-  }
-
-  const newToken = await getDeduplicatedRefresh();
-  if (!newToken) {
-    throw new Error("Session expired");
-  }
-
-  return authenticatedMultipartRequest<T>(path, formData, true);
-};
-
-const authenticatedDownload = async (
-  path: string,
-  options: RequestOptions = {},
-  isRetry = false
-): Promise<Blob> => {
-  const token = useAuthStore.getState().accessToken;
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const response = await rawRequest(path, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-    omitDefaultContentType: true,
-  });
-
-  if (response.ok) {
-    return response.blob();
-  }
-
-  if (response.status === 403) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? "Forbidden");
-  }
-
-  if (response.status !== 401) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Request failed: ${response.status}`);
-  }
-
-  const body = (await response.json().catch(() => ({}))) as UnauthorizedBody;
-  const code = body.code;
-
-  if (code !== JwtError.TOKEN_EXPIRED) {
-    handleSessionInvalid();
-  }
-
-  if (isRetry) {
-    handleSessionInvalid();
-  }
-
-  const newToken = await getDeduplicatedRefresh();
-  if (!newToken) {
-    throw new Error("Session expired");
-  }
-
-  return authenticatedDownload(path, options, true);
-};
+export { getApiBaseUrlForClient, refreshAccessTokenForStream, setOnSessionExpired };
 
 interface IAuthEmailResponse {
   accessToken: string;
   refreshToken: string;
-  user: IUser;
-}
-
-interface IAuthRefreshResponse {
-  accessToken: string;
   user: IUser;
 }
 
@@ -623,6 +407,44 @@ export const adminApi = {
     ),
 };
 
+export const propertyInvitesApi = {
+  acceptInvite: (inviteId: string) =>
+    authenticatedRequest<IPropertyInviteRedeemResponse>(
+      `/me/invites/${encodeURIComponent(inviteId)}/accept`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  declineInvite: (inviteId: string) =>
+    authenticatedRequest<IPropertyMemberInviteActionResponse>(
+      `/me/invites/${encodeURIComponent(inviteId)}/decline`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  listPendingInvites: () =>
+    authenticatedRequest<IPropertyPendingMemberInvitesResponse>("/me/invites/pending"),
+
+  previewInvite: (token: string) =>
+    request<IPropertyInvitePreviewResponse>(`/invites/preview?token=${encodeURIComponent(token)}`),
+
+  redeemInvite: (token: string) =>
+    authenticatedRequest<IPropertyInviteRedeemResponse>("/invites/redeem", {
+      body: JSON.stringify({ token }),
+      method: "POST",
+    }),
+
+  registerWithInvite: (body: IPropertyInviteRegisterBody) =>
+    request<IPropertyInviteRedeemResponse>("/invites/register", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+
+  registerWithInviteGoogle: (body: IPropertyInviteRegisterGoogleBody) =>
+    request<IPropertyInviteRedeemResponse>("/invites/register/google", {
+      body: JSON.stringify(body),
+      method: "POST",
+    }),
+};
+
 export const propertiesApi = {
   addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
     authenticatedRequest<TAddPropertyMemberResponse>(
@@ -656,6 +478,18 @@ export const propertiesApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+
+  resendMemberInvite: (propertyId: string, inviteId: string) =>
+    authenticatedRequest<IResendPropertyMemberInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/resend`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  revokeMemberInvite: (propertyId: string, inviteId: string) =>
+    authenticatedRequest<IRevokePropertyMemberInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/revoke`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>
@@ -725,7 +559,7 @@ function buildUnitsSearchParams(query: IPropertyUnitsListQuery = {}): string {
 
 export const longStaysApi = {
   create: (propertyId: string, body: ICreatePropertyLongStayBody) =>
-    authenticatedRequest<{ longStay: IPropertyLongStay }>(
+    authenticatedRequest<ICreatePropertyLongStayResponse>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays`,
       { body: JSON.stringify(body), method: "POST" }
     ),
@@ -769,6 +603,37 @@ export const longStaysApi = {
     authenticatedRequest<{ longStay: IPropertyLongStay }>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  updateTerms: (propertyId: string, longStayId: string, body: IEditPropertyLongStayTermsBody) =>
+    authenticatedRequest<IEditPropertyLongStayTermsResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/terms`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const longStayPortalApi = {
+  createInvites: (propertyId: string, longStayId: string, body: ICreateLeasePortalInviteBody) =>
+    authenticatedRequest<ICreateLeasePortalInvitesResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  getAccess: (propertyId: string, longStayId: string) =>
+    authenticatedRequest<ILeasePortalAccessResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-access`
+    ),
+
+  resendInvite: (propertyId: string, longStayId: string, membershipId: string) =>
+    authenticatedRequest<IResendLeasePortalInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites/${encodeURIComponent(membershipId)}/resend`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  revokeInvite: (propertyId: string, longStayId: string, membershipId: string) =>
+    authenticatedRequest<IRevokeLeasePortalInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/portal-invites/${encodeURIComponent(membershipId)}/revoke`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 };
 
@@ -861,6 +726,22 @@ export const settingsApi = {
     authenticatedRequest<{ settings: IPropertySettings }>(
       `/properties/${encodeURIComponent(propertyId)}/settings`,
       { body: JSON.stringify(body), method: "PATCH" }
+    ),
+};
+
+export const propertyStripeConnectApi = {
+  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+    authenticatedRequest<IPropertyStripeConnectOnboardingLinkResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/onboarding-link`,
+      {
+        body: JSON.stringify(body ?? {}),
+        method: "POST",
+      }
+    ),
+
+  getStatus: (propertyId: string) =>
+    authenticatedRequest<IPropertyStripeConnectStatusResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/status`
     ),
 };
 

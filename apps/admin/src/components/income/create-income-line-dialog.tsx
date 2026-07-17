@@ -25,9 +25,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { PROPERTY_AMENITY_UNIT_VALUE } from "@/lib/property-amenity-unit";
 import {
@@ -49,6 +51,7 @@ export interface CreateIncomeLineDialogPrefill {
   guestName?: string;
   incomeLineTypeId?: string;
   longStayId?: string;
+  rentPeriodMonth?: string;
   reservationId?: string;
   transactionDate?: string;
   unitId?: string;
@@ -157,6 +160,7 @@ const CreateIncomeLineDialogForm = memo(
           guestName: values.guestName.trim() || undefined,
           incomeLineTypeId: values.incomeLineTypeId,
           longStayId: values.longStayId || undefined,
+          rentPeriodMonth: prefill?.rentPeriodMonth,
           reservationId: values.reservationId || undefined,
           transactionDate: values.transactionDate,
           unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,
@@ -166,10 +170,9 @@ const CreateIncomeLineDialogForm = memo(
       },
       onSuccess: (_data, values) => {
         toast.success(isRentRecording ? "Rent recorded" : "Other income created");
-        invalidatePropertyIncomeCaches(queryClient, propertyId);
-        if (values.longStayId) {
-          invalidatePropertyLongStayCaches(queryClient, propertyId);
-        }
+        invalidatePropertyIncomeCaches(queryClient, propertyId, {
+          longStayId: values.longStayId || undefined,
+        });
         onClose();
       },
     });
@@ -240,6 +243,18 @@ const CreateIncomeLineDialogForm = memo(
             )}
           />
 
+          {isRentRecording && prefill?.rentPeriodMonth ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${FIELD_ID_PREFIX}-rent-period`}>Rent period</Label>
+              <Input
+                disabled
+                id={`${FIELD_ID_PREFIX}-rent-period`}
+                readOnly
+                value={formatLeaseMonthLabel(prefill.rentPeriodMonth)}
+              />
+            </div>
+          ) : null}
+
           <Controller
             control={form.control}
             name="amount"
@@ -257,6 +272,7 @@ const CreateIncomeLineDialogForm = memo(
                       onAmountChange={amountField.onChange}
                       onDateChange={dateField.onChange}
                       transactionDate={dateField.value}
+                      transactionDateLabel={isRentRecording ? "Payment date" : "Date"}
                     />
                     {errors.amount ? (
                       <p className="text-xs text-destructive">{errors.amount.message}</p>

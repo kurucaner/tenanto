@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AddPropertyMemberDialog } from "@/components/properties/add-property-member-dialog";
 import { EditPropertyDialog } from "@/components/properties/edit-property-dialog";
+import { PropertyMemberInviteTableRow } from "@/components/properties/property-member-invite-table-row";
 import { PropertyRoleBadge } from "@/components/properties/property-role-badge";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { Badge } from "@/components/ui/badge";
@@ -20,13 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDeleteConfirmation } from "@/hooks/use-delete-confirmation";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { propertiesApi } from "@/lib/api-client";
+import { type TPropertyMemberInviteRowAction } from "@/lib/property-member-invite-display";
+import { handlePropertyMemberInviteMutationSuccess } from "@/lib/property-member-invite-mutation-toast";
 import { queryKeys } from "@/lib/query-keys";
 import {
   formatPhoneDisplay,
+  type IPropertyInvite,
   type IPropertyMember,
   type IPropertyMemberUser,
   PropertyRole,
@@ -49,6 +54,8 @@ const MemberTableRow = memo(
     member,
     onChangeRole,
     onRemove,
+    showActionsColumn,
+    showStatusColumn,
   }: {
     canManageMembers: boolean;
     creatorUserId: string;
@@ -57,6 +64,8 @@ const MemberTableRow = memo(
     member: IPropertyMember;
     onChangeRole: (userId: string, role: TPropertyRole) => void;
     onRemove: (member: IPropertyMember, event?: MouseEvent<HTMLButtonElement>) => void;
+    showActionsColumn: boolean;
+    showStatusColumn: boolean;
   }) => {
     const canEditMember = canManageMembers && member.userId !== creatorUserId;
 
@@ -74,24 +83,27 @@ const MemberTableRow = memo(
         <TableCell className="text-muted-foreground text-xs">
           {new Date(member.createdAt).toLocaleString()}
         </TableCell>
-        <TableCell>
-          {canEditMember ? (
-            <div className="flex items-center gap-2">
-              <NativeSelect
-                className="h-7 w-auto px-2 text-xs"
-                onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
-                options={ROLE_OPTIONS}
-                value={member.role}
-              />
-              <QuickDeleteButton
-                ariaLabel="Remove member"
-                disabled={isRemovePending}
-                onClick={(event) => onRemove(member, event)}
-                quickDeleteActive={isQuickDeleteActive}
-              />
-            </div>
-          ) : null}
-        </TableCell>
+        {showStatusColumn ? <TableCell /> : null}
+        {showActionsColumn ? (
+          <TableCell>
+            {canEditMember ? (
+              <div className="flex items-center gap-2">
+                <NativeSelect
+                  className="h-7 w-auto px-2 text-xs"
+                  onChange={(e) => onChangeRole(member.userId, e.target.value as TPropertyRole)}
+                  options={ROLE_OPTIONS}
+                  value={member.role}
+                />
+                <QuickDeleteButton
+                  ariaLabel="Remove member"
+                  disabled={isRemovePending}
+                  onClick={(event) => onRemove(member, event)}
+                  quickDeleteActive={isQuickDeleteActive}
+                />
+              </div>
+            ) : null}
+          </TableCell>
+        ) : null}
       </TableRow>
     );
   }
@@ -103,10 +115,14 @@ const CreatorTableRow = memo(
     createdAt,
     creator,
     isCurrentUser,
+    showActionsColumn,
+    showStatusColumn,
   }: {
     createdAt: string;
     creator: IPropertyMemberUser;
     isCurrentUser: boolean;
+    showActionsColumn: boolean;
+    showStatusColumn: boolean;
   }) => (
     <TableRow>
       <TableCell>
@@ -128,11 +144,16 @@ const CreatorTableRow = memo(
       <TableCell className="text-muted-foreground text-xs">
         {new Date(createdAt).toLocaleString()}
       </TableCell>
-      <TableCell />
+      {showStatusColumn ? <TableCell /> : null}
+      {showActionsColumn ? <TableCell /> : null}
     </TableRow>
   )
 );
 CreatorTableRow.displayName = "CreatorTableRow";
+
+interface IPropertyMemberInviteRevokeTarget {
+  invite: IPropertyInvite;
+}
 
 export const PropertyDetailPage = memo(() => {
   const { permissions, property, propertyId } = usePropertyShell();
@@ -142,11 +163,30 @@ export const PropertyDetailPage = memo(() => {
   const currentUser = useAuthStore((s) => s.user);
   const [editOpen, setEditOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [actingInviteAction, setActingInviteAction] =
+    useState<TPropertyMemberInviteRowAction | null>(null);
+  const [actingInviteId, setActingInviteId] = useState<string | null>(null);
+
+  const invalidatePropertyDetail = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.propertyDetail(propertyId) });
+  }, [propertyId, queryClient]);
+
+  const handleInviteMutationSuccess = useCallback(
+    (message: string, emailSent?: boolean, emailError?: string) => {
+      invalidatePropertyDetail();
+      handlePropertyMemberInviteMutationSuccess(message, { emailError, emailSent });
+    },
+    [invalidatePropertyDetail]
+  );
 
   const memberRows = useMemo(
     () => property.members.filter((member) => member.userId !== property.createdBy),
     [property.createdBy, property.members]
   );
+
+  const inviteRows = useMemo(() => property.invites ?? [], [property.invites]);
+  const showStatusColumn = inviteRows.length > 0;
+  const showActionsColumn = canManageMembers;
 
   const deleteMutation = useMutation({
     mutationFn: () => propertiesApi.delete(propertyId),
@@ -198,6 +238,115 @@ export const PropertyDetailPage = memo(() => {
     }),
     isPending: removeMemberMutation.isPending,
   });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: (inviteId: string) => propertiesApi.resendMemberInvite(propertyId, inviteId),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to resend invite");
+    },
+    onSuccess: (response) => {
+      handleInviteMutationSuccess("Invitation resent", response.emailSent, response.emailError);
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: (inviteId: string) => propertiesApi.revokeMemberInvite(propertyId, inviteId),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to revoke invite");
+    },
+    onSuccess: () => {
+      handleInviteMutationSuccess("Invitation revoked");
+    },
+  });
+
+  const inviteAgainMutation = useMutation({
+    mutationFn: (invite: IPropertyInvite) =>
+      propertiesApi.addMember(propertyId, { email: invite.email, role: invite.role }),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to send invite");
+    },
+    onSuccess: (response) => {
+      if (response.type === "invite_sent") {
+        handleInviteMutationSuccess(`Invitation sent to ${response.invite.email}`);
+        return;
+      }
+      handleInviteMutationSuccess(
+        "Invitation saved but email failed to send",
+        false,
+        response.invite.emailError ?? "Unknown error"
+      );
+    },
+  });
+
+  const inviteMutationPending =
+    resendInviteMutation.isPending ||
+    revokeInviteMutation.isPending ||
+    inviteAgainMutation.isPending;
+
+  const runInviteAction = useCallback(
+    async (action: TPropertyMemberInviteRowAction, invite: IPropertyInvite) => {
+      setActingInviteAction(action);
+      setActingInviteId(invite.id);
+      try {
+        if (action === "resend") {
+          await resendInviteMutation.mutateAsync(invite.id);
+          return;
+        }
+        if (action === "invite-again") {
+          await inviteAgainMutation.mutateAsync(invite);
+          return;
+        }
+        await revokeInviteMutation.mutateAsync(invite.id);
+      } finally {
+        setActingInviteAction(null);
+        setActingInviteId(null);
+      }
+    },
+    [inviteAgainMutation, resendInviteMutation, revokeInviteMutation]
+  );
+
+  const revokeInviteFn = useCallback(
+    (target: IPropertyMemberInviteRevokeTarget, onDeleted: () => void) => {
+      void runInviteAction("revoke", target.invite)
+        .then(onDeleted)
+        .catch(() => undefined);
+    },
+    [runInviteAction]
+  );
+
+  const {
+    deleteConfirmationDialog: revokeInviteConfirmationDialog,
+    requestDelete: requestRevokeInvite,
+  } = useDeleteConfirmation<IPropertyMemberInviteRevokeTarget>(
+    revokeInviteMutation.isPending,
+    revokeInviteFn
+  );
+
+  const handleResendInvite = useCallback(
+    (invite: IPropertyInvite) => {
+      void runInviteAction("resend", invite);
+    },
+    [runInviteAction]
+  );
+
+  const handleInviteAgain = useCallback(
+    (invite: IPropertyInvite) => {
+      void runInviteAction("invite-again", invite);
+    },
+    [runInviteAction]
+  );
+
+  const handleRevokeInvite = useCallback(
+    (invite: IPropertyInvite) => {
+      requestRevokeInvite({
+        confirmLabel: "Revoke",
+        description: `Revoke the invitation for "${invite.email}"? They will no longer be able to accept access to this property.`,
+        target: { invite },
+        title: "Revoke invitation",
+      });
+    },
+    [requestRevokeInvite]
+  );
 
   const handleDelete = useCallback(() => {
     if (!globalThis.confirm("Delete this property? This cannot be undone.")) return;
@@ -284,7 +433,9 @@ export const PropertyDetailPage = memo(() => {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="text-base">Members</CardTitle>
-            <CardDescription>Users assigned to this property with their roles.</CardDescription>
+            <CardDescription>
+              Users assigned to this property and pending email invites.
+            </CardDescription>
           </div>
           {canManageMembers ? (
             <Button
@@ -305,7 +456,8 @@ export const PropertyDetailPage = memo(() => {
                 <TableHead>User</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Added</TableHead>
-                {canManageMembers ? <TableHead>Actions</TableHead> : null}
+                {showStatusColumn ? <TableHead>Status</TableHead> : null}
+                {showActionsColumn ? <TableHead>Actions</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -313,6 +465,8 @@ export const PropertyDetailPage = memo(() => {
                 createdAt={property.createdAt}
                 creator={property.creator}
                 isCurrentUser={currentUser?.id === property.createdBy}
+                showActionsColumn={showActionsColumn}
+                showStatusColumn={showStatusColumn}
               />
               {memberRows.map((member) => (
                 <MemberTableRow
@@ -324,6 +478,22 @@ export const PropertyDetailPage = memo(() => {
                   member={member}
                   onChangeRole={(userId, role) => updateRoleMutation.mutate({ role, userId })}
                   onRemove={handleRemoveMember}
+                  showActionsColumn={showActionsColumn}
+                  showStatusColumn={showStatusColumn}
+                />
+              ))}
+              {inviteRows.map((invite) => (
+                <PropertyMemberInviteTableRow
+                  actingAction={actingInviteAction}
+                  actingInviteId={actingInviteId}
+                  canManageMembers={canManageMembers}
+                  invite={invite}
+                  key={invite.id}
+                  mutationPending={inviteMutationPending}
+                  onInviteAgain={handleInviteAgain}
+                  onResend={handleResendInvite}
+                  onRevoke={handleRevokeInvite}
+                  showActionsColumn={showActionsColumn}
                 />
               ))}
             </TableBody>
@@ -332,6 +502,7 @@ export const PropertyDetailPage = memo(() => {
       </Card>
 
       {deleteConfirmationDialog}
+      {revokeInviteConfirmationDialog}
 
       <EditPropertyDialog onOpenChange={setEditOpen} open={editOpen} property={property} />
       <AddPropertyMemberDialog

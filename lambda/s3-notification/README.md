@@ -1,13 +1,13 @@
 # S3 Notification Lambda
 
-Forwards native AWS S3 event notifications to the tenanto API `POST /s3-notification` endpoint.
+Forwards native AWS S3 event notifications to the propertyos API `POST /s3-notification` endpoint.
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `API_PUBLIC_URL` | Yes | API base URL without trailing slash (e.g. `https://api.example.com`) |
-| `AWS_INTERNAL_SECRET` | Yes | Must match `AWS_INTERNAL_SECRET` on the API server |
+| Variable              | Required | Description                                                          |
+| --------------------- | -------- | -------------------------------------------------------------------- |
+| `API_PUBLIC_URL`      | Yes      | API base URL without trailing slash (e.g. `https://api.example.com`) |
+| `AWS_INTERNAL_SECRET` | Yes      | Must match `AWS_INTERNAL_SECRET` on the API server                   |
 
 ## Deploy (manual)
 

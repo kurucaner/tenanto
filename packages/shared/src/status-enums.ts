@@ -26,6 +26,11 @@ export enum JwtError {
   TOKEN_INVALID = "TOKEN_INVALID",
 }
 
+export enum JwtAudience {
+  PLATFORM = "platform",
+  TENANT = "tenant",
+}
+
 export enum AccountError {
   ACCOUNT_PERMANENTLY_DELETED = "ACCOUNT_PERMANENTLY_DELETED",
   IDENTITY_CONFLICT = "IDENTITY_CONFLICT",

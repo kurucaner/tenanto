@@ -6,7 +6,12 @@ import { resolveIntakeOrigin } from "./lib/intake-origin";
 import { registerRumProxyRoutes } from "./routes/rum-proxy";
 
 const DEFAULT_PORT = 8082;
-const DEFAULT_CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3002"];
+const DEFAULT_CORS_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:3002",
+  "http://localhost:5174",
+  "http://localhost:3003",
+];
 
 function parseCorsOrigins(value: string | undefined): string[] {
   if (!value?.trim()) {

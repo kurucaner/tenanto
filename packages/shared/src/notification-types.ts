@@ -1,6 +1,7 @@
 export type UserNotificationType =
   | "export_ready"
   | "property_member_added"
+  | "property_member_invite_received"
   | "property_member_removed"
   | "support_request_reply"
   | "support_request_status_changed"

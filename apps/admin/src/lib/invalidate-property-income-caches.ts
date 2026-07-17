@@ -1,5 +1,6 @@
 import { type QueryClient } from "@tanstack/react-query";
 
+import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { queryKeys } from "@/lib/query-keys";
 
 export function invalidatePropertyIncomeCaches(
@@ -27,8 +28,6 @@ export function invalidatePropertyIncomeCaches(
   });
 
   if (options.longStayId) {
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.propertyLongStay(propertyId, options.longStayId),
-    });
+    invalidatePropertyLongStayCaches(queryClient, propertyId);
   }
 }

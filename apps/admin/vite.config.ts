@@ -7,17 +7,24 @@ import tailwindcss from "@tailwindcss/vite";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+import { appUiThemeInitPlugin } from "../../packages/app-ui/src/vite/app-ui-theme-init-plugin";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const rootPackage = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8")
 ) as { version: string };
-// https://vite.dev/config/
+
 export default defineConfig({
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(rootPackage.version),
   },
-  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
+  plugins: [
+    appUiThemeInitPlugin("admin"),
+    react(),
+    babel({ presets: [reactCompilerPreset()] }),
+    tailwindcss(),
+  ],
   preview: {
     allowedHosts: [".propertyos.app"],
     host: true,
@@ -26,6 +33,10 @@ export default defineConfig({
   },
   resolve: {
     alias: [
+      {
+        find: "@/packages/app-ui",
+        replacement: path.resolve(__dirname, "../../packages/app-ui/src"),
+      },
       {
         find: "@/packages/shared",
         replacement: path.resolve(__dirname, "../../packages/shared/src"),

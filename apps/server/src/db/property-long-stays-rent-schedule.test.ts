@@ -9,6 +9,7 @@ type TLeaseRow = Record<string, unknown>;
 let currentLeaseRow: TLeaseRow;
 let currentIncomeRows: Record<string, unknown>[] = [];
 let currentRentPeriodRows: Record<string, unknown>[] = [];
+let currentAllocationRows: Array<{ month: string; total: number }> = [];
 
 function buildIncomeLineRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -28,8 +29,10 @@ function buildIncomeLineRow(overrides: Record<string, unknown> = {}): Record<str
     refunded_amount: null,
     refunded_at: null,
     refunded_by: null,
+    rent_period_month: null,
     reservation_id: null,
     tax_breakdown: "[]",
+    tenant_rent_payment_id: null,
     transaction_date: "2026-01-15",
     unit_id: "unit-1",
     updated_at: new Date("2026-01-15T12:00:00.000Z"),
@@ -64,6 +67,15 @@ const mockQuery = mock((sql: string) => {
     return Promise.resolve({ rows: currentIncomeRows });
   }
 
+  if (sql.includes("FROM tenant_rent_payment_allocations")) {
+    return Promise.resolve({
+      rows: currentAllocationRows.map((row) => ({
+        month: row.month,
+        total: row.total,
+      })),
+    });
+  }
+
   if (sql.includes("FROM property_long_stay_rent_periods")) {
     return Promise.resolve({ rows: currentRentPeriodRows });
   }
@@ -82,7 +94,7 @@ mock.module("./pool", () => ({
 const { propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.getRentSchedule", () => {
-  test("marks months paid when reportable rent remains after partial refund", async () => {
+  test("partial refund leaves month unpaid with paid and remaining amounts", async () => {
     currentLeaseRow = buildLeaseRow();
     currentIncomeRows = [
       buildIncomeLineRow({
@@ -103,6 +115,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       }),
     ];
     currentRentPeriodRows = [];
+    currentAllocationRows = [];
     capturedIncomeSql.length = 0;
     mockQuery.mockClear();
 
@@ -118,16 +131,26 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     expect(january).toMatchObject({
       expectedRent: 1500,
       incomeLineId: "line-partial-jan",
-      isPaid: true,
+      isPaid: false,
       isProrated: false,
+      paidRent: 1000,
+      remainingRent: 500,
     });
-    expect(february).toMatchObject({ expectedRent: 1500, isPaid: false, isProrated: false });
+    expect(february).toMatchObject({
+      expectedRent: 1500,
+      isPaid: false,
+      isProrated: false,
+      paidRent: 0,
+      remainingRent: 1500,
+    });
     expect(february?.incomeLineId).toBeUndefined();
     expect(march).toMatchObject({
       expectedRent: 1500,
       incomeLineId: "line-paid-mar",
       isPaid: true,
       isProrated: false,
+      paidRent: 1500,
+      remainingRent: 0,
     });
   });
 
@@ -151,6 +174,8 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isProrated: true,
       month: "2024-06",
       occupiedDays: 15,
+      paidRent: 0,
+      remainingRent: 500,
     });
     expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
       expectedRent: 1000,
@@ -189,6 +214,8 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isProrated: true,
       month: "2024-07",
       occupiedDays: 15,
+      paidRent: 0,
+      remainingRent: 483.87,
     });
   });
 
@@ -218,6 +245,8 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isProrated: true,
       month: "2024-07",
       occupiedDays: 5,
+      paidRent: 0,
+      remainingRent: 161.29,
     });
   });
 
@@ -254,6 +283,8 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isProrated: true,
       month: "2024-07",
       occupiedDays: 9,
+      paidRent: 0,
+      remainingRent: 290.32,
     });
   });
 
@@ -319,10 +350,12 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       isProrated: true,
       month: "2025-06",
       occupiedDays: 15,
+      paidRent: 0,
+      remainingRent: 600,
     });
   });
 
-  test("marks a prorated month paid when partial refund leaves reportable rent", async () => {
+  test("prorated partial refund leaves month unpaid when reportable rent is short", async () => {
     currentLeaseRow = buildLeaseRow({
       id: "lease-prorated-refund",
       lease_end_date: "2024-12-31",
@@ -360,14 +393,321 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
       expectedRent: 500,
       incomeLineId: "line-partial-june",
-      isPaid: true,
+      isPaid: false,
       isProrated: true,
+      paidRent: 300,
+      remainingRent: 200,
     });
     expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
       expectedRent: 1000,
       isPaid: false,
       isProrated: false,
+      paidRent: 0,
+      remainingRent: 1000,
     });
     expect(schedule.find((month) => month.month === "2024-07")?.incomeLineId).toBeUndefined();
+  });
+
+  test("full refund marks month unpaid with zero paid rent", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-full-refund-jan",
+        refunded_amount: "1500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      isPaid: false,
+      paidRent: 0,
+      remainingRent: 1500,
+    });
+    expect(january?.incomeLineId).toBeUndefined();
+  });
+
+  test("partial refund then re-recording completes the month", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-paid-jan",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    let schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-paid-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-paid-jan",
+      isPaid: false,
+      paidRent: 1000,
+      remainingRent: 500,
+    });
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-paid-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-rerecord-jan",
+        net_income: "500.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-02-10",
+      }),
+    ];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-paid-jan",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("unrefund restores fully paid month after partial refund", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-refunded-jan",
+        refunded_amount: "500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    let schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      isPaid: false,
+      paidRent: 1000,
+      remainingRent: 500,
+    });
+
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-refunded-jan",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-refunded-jan",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("partial manual payment keeps month unpaid", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-jan",
+        net_income: "750.00",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-partial-jan",
+      isPaid: false,
+      paidRent: 750,
+      remainingRent: 750,
+    });
+  });
+
+  test("two partial income lines sum to fully paid month", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-a",
+        net_income: "750.00",
+        transaction_date: "2026-01-10",
+      }),
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-b",
+        net_income: "750.00",
+        transaction_date: "2026-01-20",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-partial-a",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("two $750 manual lines with rentPeriodMonth mark month paid", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-a",
+        net_income: "750.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-10",
+      }),
+      buildIncomeLineRow({
+        amount: "750.00",
+        gross_income: "750.00",
+        id: "line-partial-b",
+        net_income: "750.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-20",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-partial-a",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("manual partial plus Stripe partial combine without exceeding expected rent", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        amount: "500.00",
+        gross_income: "500.00",
+        id: "line-manual-jan",
+        net_income: "500.00",
+        rent_period_month: "2026-01",
+        transaction_date: "2026-01-10",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [{ month: "2026-01", total: 50_000 }];
+
+    let schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-manual-jan",
+      isPaid: false,
+      paidRent: 1000,
+      remainingRent: 500,
+    });
+
+    currentAllocationRows = [{ month: "2026-01", total: 120_000 }];
+
+    schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    expect(schedule.find((month) => month.month === "2026-01")).toMatchObject({
+      incomeLineId: "line-manual-jan",
+      isPaid: true,
+      paidRent: 1500,
+      remainingRent: 0,
+    });
+  });
+
+  test("includes succeeded Stripe allocations in rollup", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [{ month: "2026-01", total: 50_000 }];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      isPaid: false,
+      paidRent: 500,
+      remainingRent: 1000,
+    });
+    expect(january?.incomeLineId).toBeUndefined();
+  });
+
+  test("refunded Stripe-linked income marks month unpaid when allocations are excluded", async () => {
+    currentLeaseRow = buildLeaseRow();
+    currentIncomeRows = [
+      buildIncomeLineRow({
+        id: "line-stripe-jan",
+        refunded_amount: "1500.00",
+        refunded_at: new Date("2026-02-01T00:00:00.000Z"),
+        rent_period_month: "2026-01",
+        tenant_rent_payment_id: "payment-1",
+        transaction_date: "2026-01-15",
+      }),
+    ];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-1", "2026-03-15");
+    const january = schedule.find((month) => month.month === "2026-01");
+
+    expect(january).toMatchObject({
+      expectedRent: 1500,
+      isPaid: false,
+      paidRent: 0,
+      remainingRent: 1500,
+    });
+    expect(january?.incomeLineId).toBeUndefined();
   });
 });

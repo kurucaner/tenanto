@@ -21,40 +21,53 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import type { IPropertyLongStay } from "@/packages/shared";
+import {
+  invalidatePropertyLongStayCaches,
+  invalidatePropertyLongStayDetailCaches,
+} from "@/lib/invalidate-property-long-stay-caches";
+import type { ILeasePrimaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 
 interface EditPrimaryTenantDialogProps {
   lease: IPropertyLongStay;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  primaryTenantContact: ILeasePrimaryTenantContact;
   propertyId: string;
 }
 
+function primaryTenantContactFormValues(
+  primaryTenantContact: ILeasePrimaryTenantContact
+): TTenantContactFormValues {
+  return tenantContactFormDefaults({
+    email: primaryTenantContact.effectiveEmail,
+    name: primaryTenantContact.effectiveName,
+    phone: primaryTenantContact.effectivePhone,
+  });
+}
+
 export const EditPrimaryTenantDialog = memo(
-  ({ lease, onOpenChange, open, propertyId }: EditPrimaryTenantDialogProps) => {
+  ({
+    lease,
+    onOpenChange,
+    open,
+    primaryTenantContact,
+    propertyId,
+  }: EditPrimaryTenantDialogProps) => {
     const queryClient = useQueryClient();
+    const contactValues = primaryTenantContactFormValues(primaryTenantContact);
 
     const form = useForm<TTenantContactFormValues>({
-      defaultValues: tenantContactFormDefaults({
-        email: lease.tenantEmail,
-        name: lease.guestName,
-        phone: lease.tenantPhone,
-      }),
+      defaultValues: contactValues,
       resolver: zodResolver(tenantContactFormSchema),
     });
 
     useEffect(() => {
       if (open) {
-        form.reset(
-          tenantContactFormDefaults({
-            email: lease.tenantEmail,
-            name: lease.guestName,
-            phone: lease.tenantPhone,
-          })
-        );
+        form.reset(primaryTenantContactFormValues(primaryTenantContact));
       }
-    }, [form, lease.guestName, lease.tenantEmail, lease.tenantPhone, open]);
+    }, [form, open, primaryTenantContact]);
+
+    const isPortalLinked = primaryTenantContact.source === "linked_user";
 
     const mutation = useMutation({
       mutationFn: (values: TTenantContactFormValues) =>
@@ -65,6 +78,7 @@ export const EditPrimaryTenantDialog = memo(
       onSuccess: () => {
         toast.success("Primary tenant updated");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
+        invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });
@@ -72,17 +86,11 @@ export const EditPrimaryTenantDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(
-            tenantContactFormDefaults({
-              email: lease.tenantEmail,
-              name: lease.guestName,
-              phone: lease.tenantPhone,
-            })
-          );
+          form.reset(primaryTenantContactFormValues(primaryTenantContact));
         }
         onOpenChange(nextOpen);
       },
-      [form, lease.guestName, lease.tenantEmail, lease.tenantPhone, onOpenChange]
+      [form, onOpenChange, primaryTenantContact]
     );
 
     const onSubmit = form.handleSubmit((values) => {
@@ -97,7 +105,9 @@ export const EditPrimaryTenantDialog = memo(
           <DialogHeader>
             <DialogTitle>Edit Primary Tenant</DialogTitle>
             <DialogDescription>
-              Update the primary tenant&apos;s contact information.
+              {isPortalLinked
+                ? "Update the linked portal account contact. Email is read-only."
+                : "Update the primary tenant's contact information."}
             </DialogDescription>
           </DialogHeader>
 
@@ -105,6 +115,7 @@ export const EditPrimaryTenantDialog = memo(
             <div className="flex flex-col gap-4 px-6 py-5">
               <TenantContactFields
                 control={form.control}
+                emailDisabled={isPortalLinked}
                 errors={errors}
                 idPrefix="primary-tenant"
                 register={form.register}

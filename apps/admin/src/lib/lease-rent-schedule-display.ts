@@ -2,29 +2,46 @@ import { type IPropertyLongStayRentMonth } from "@/packages/shared";
 
 export type TLeaseRentScheduleMonthAmount = Pick<
   IPropertyLongStayRentMonth,
-  "expectedRent" | "month"
+  "expectedRent" | "month" | "paidRent" | "remainingRent"
 >;
 
 export interface ILeaseRentSchedulePartition {
+  dueUnpaidMonths: IPropertyLongStayRentMonth[];
   paidMonths: IPropertyLongStayRentMonth[];
-  unpaidMonths: IPropertyLongStayRentMonth[];
   unpaidSummary: {
     count: number;
-    totalExpected: number;
+    totalRemaining: number;
   };
+  upcomingMonths: IPropertyLongStayRentMonth[];
+}
+
+export function isRentMonthPartiallyPaid(
+  item: Pick<IPropertyLongStayRentMonth, "isPaid" | "paidRent">
+): boolean {
+  return !item.isPaid && item.paidRent > 0;
+}
+
+export function hasOutstandingRent(
+  item: Pick<IPropertyLongStayRentMonth, "remainingRent">
+): boolean {
+  return item.remainingRent > 0;
 }
 
 export function partitionRentSchedule(
-  rentSchedule: readonly IPropertyLongStayRentMonth[]
+  rentSchedule: readonly IPropertyLongStayRentMonth[],
+  asOfMonth: string
 ): ILeaseRentSchedulePartition {
-  const unpaidMonths = rentSchedule.filter((item) => !item.isPaid);
   const paidMonths = rentSchedule.filter((item) => item.isPaid);
-  const totalExpected = unpaidMonths.reduce((sum, item) => sum + item.expectedRent, 0);
+  const unpaid = rentSchedule.filter((item) => !item.isPaid);
+  const dueUnpaidMonths = unpaid.filter((item) => item.month <= asOfMonth);
+  const upcomingMonths = unpaid.filter((item) => item.month > asOfMonth);
+  const totalRemaining = dueUnpaidMonths.reduce((sum, item) => sum + item.remainingRent, 0);
 
   return {
+    dueUnpaidMonths,
     paidMonths,
-    unpaidMonths,
-    unpaidSummary: { count: unpaidMonths.length, totalExpected },
+    unpaidSummary: { count: dueUnpaidMonths.length, totalRemaining },
+    upcomingMonths,
   };
 }
 
@@ -33,4 +50,11 @@ export function getExpectedRentForScheduleMonth(
   month: string
 ): number | undefined {
   return rentSchedule.find((item) => item.month === month)?.expectedRent;
+}
+
+export function getRemainingRentForScheduleMonth(
+  rentSchedule: readonly TLeaseRentScheduleMonthAmount[],
+  month: string
+): number | undefined {
+  return rentSchedule.find((item) => item.month === month)?.remainingRent;
 }

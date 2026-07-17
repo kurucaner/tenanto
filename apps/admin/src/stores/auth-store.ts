@@ -20,25 +20,6 @@ interface IAuthState {
 }
 
 const AUTH_STORAGE_KEY = `${APP_SLUG}-admin-auth`;
-const LEGACY_AUTH_STORAGE_KEY = "tenanto-admin-auth";
-
-const authStorage = createJSONStorage(() => ({
-  getItem: (name) => {
-    const value = localStorage.getItem(name);
-    if (value !== null) return value;
-    const legacy = localStorage.getItem(LEGACY_AUTH_STORAGE_KEY);
-    if (legacy === null) return null;
-    localStorage.setItem(name, legacy);
-    localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
-    return legacy;
-  },
-  removeItem: (name) => {
-    localStorage.removeItem(name);
-  },
-  setItem: (name, value) => {
-    localStorage.setItem(name, value);
-  },
-}));
 
 export const useAuthStore = create<IAuthState>()(
   persist(
@@ -66,7 +47,7 @@ export const useAuthStore = create<IAuthState>()(
         refreshToken: s.refreshToken,
         user: s.user,
       }),
-      storage: authStorage,
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

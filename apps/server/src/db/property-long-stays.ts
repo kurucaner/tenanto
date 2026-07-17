@@ -1,6 +1,9 @@
+import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
 import type {
   ICreatePropertyLongStayBody,
+  IEditPropertyLongStayTermsBody,
   IExtendPropertyLongStayBody,
+  ILeaseTermsEditSignals,
   IPropertyLongStay,
   IPropertyLongStayRentMonth,
   IPropertyLongStayRentPeriod,
@@ -9,12 +12,10 @@ import type {
   TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import {
-  calculateExpectedRentForLeaseMonth,
   calculateLeaseEndDate,
   enumerateLeaseMonths,
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
-  isIncomeLinePaidForRentSchedule,
   PropertyLongStayStatus,
   transactionDateToMonth,
   validateExtendLease,
@@ -36,6 +37,7 @@ import {
   readPropertyLongStaySortKeyFromRow,
   resolvePropertyLongStaysListSort,
 } from "./property-long-stays-list-sort";
+import { tenantRentPaymentsDb } from "./tenant-rent-payments";
 
 const LEASE_EFFECTIVE_END = "COALESCE(pls.actual_end_date, pls.lease_end_date)";
 
@@ -334,38 +336,78 @@ export const propertyLongStaysDb = {
       [longStayId]
     );
 
-    const paidByMonth = new Map<string, string>();
-    for (const row of incomeResult.rows) {
-      const line = mapPropertyIncomeLineRow(row as Record<string, unknown>);
-      if (!isIncomeLinePaidForRentSchedule(line)) {
-        continue;
-      }
+    const incomeLines = incomeResult.rows.map((row) =>
+      mapPropertyIncomeLineRow(row as Record<string, unknown>)
+    );
 
-      const month = transactionDateToMonth(line.transactionDate);
-      if (!paidByMonth.has(month)) {
-        paidByMonth.set(month, line.id);
-      }
+    const allocationTotals = await tenantRentPaymentsDb.sumSucceededAllocatedCentsByMonths(
+      longStayId,
+      months
+    );
+
+    return buildLeaseRentScheduleWithRollup({
+      allocationCentsByMonth: allocationTotals,
+      effectiveEndDate,
+      incomeLines,
+      lease: longStay,
+      months,
+      rentPeriods,
+    });
+  },
+
+  async getTermsEditSignals(longStayId: string): Promise<{
+    leaseStartDate: string;
+    signals: ILeaseTermsEditSignals;
+  } | null> {
+    const result = await pool.query(
+      `SELECT
+         pls.lease_start_date,
+         EXISTS (
+           SELECT 1
+           FROM property_income_lines pil
+           WHERE pil.long_stay_id = pls.id
+             AND pil.is_deleted = false
+         ) AS has_income_lines,
+         EXISTS (
+           SELECT 1
+           FROM tenant_rent_payments trp
+           WHERE trp.lease_id = pls.id
+             AND trp.status = 'succeeded'::tenant_rent_payment_status
+         ) AS has_succeeded_payments,
+         (
+           (SELECT COUNT(*)::int
+            FROM property_long_stay_rent_periods rp
+            WHERE rp.long_stay_id = pls.id) > 1
+           OR EXISTS (
+             SELECT 1
+             FROM property_long_stay_rent_periods rp
+             WHERE rp.long_stay_id = pls.id
+               AND rp.effective_from_month <> to_char(pls.lease_start_date, 'YYYY-MM')
+           )
+         ) AS has_rent_period_history
+       FROM property_long_stays pls
+       WHERE pls.id = $1`,
+      [longStayId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
     }
 
-    return months.map((month) => {
-      const incomeLineId = paidByMonth.get(month);
-      const proration = calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: longStay.monthlyRent,
-        effectiveEndDate,
-        leaseStartDate: longStay.leaseStartDate,
-        month,
-        rentPeriods,
-      });
-      return {
-        daysInMonth: proration.daysInMonth,
-        expectedRent: proration.expectedRent,
-        incomeLineId,
-        isPaid: incomeLineId !== undefined,
-        isProrated: proration.isProrated,
-        month,
-        occupiedDays: proration.occupiedDays,
-      };
-    });
+    const row = result.rows[0] as Record<string, unknown>;
+    const leaseStartDate =
+      row.lease_start_date instanceof Date
+        ? row.lease_start_date.toISOString().slice(0, 10)
+        : String(row.lease_start_date).slice(0, 10);
+
+    return {
+      leaseStartDate,
+      signals: {
+        hasIncomeLines: row.has_income_lines === true,
+        hasRentPeriodHistory: row.has_rent_period_history === true,
+        hasSucceededPayments: row.has_succeeded_payments === true,
+      },
+    };
   },
 
   async listByProperty(
@@ -513,5 +555,81 @@ export const propertyLongStaysDb = {
       throw new LongStayNotActiveError();
     }
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async updateTerms(id: string, body: IEditPropertyLongStayTermsBody): Promise<IPropertyLongStay> {
+    const existing = await propertyLongStaysDb.findById(id);
+    if (!existing) {
+      throw new LongStayNotFoundError();
+    }
+    if (existing.status !== PropertyLongStayStatus.ACTIVE) {
+      throw new LongStayNotActiveError();
+    }
+
+    const scheduleChanged =
+      body.leaseStartDate !== existing.leaseStartDate || body.termMonths !== existing.termMonths;
+    if (scheduleChanged) {
+      const activeOnUnit = await propertyLongStaysDb.findActiveByUnitId(existing.unitId);
+      if (activeOnUnit && activeOnUnit.id !== id) {
+        throw new ActiveLongStayConflictError();
+      }
+    }
+
+    const leaseEndDate = calculateLeaseEndDate(body.leaseStartDate, body.termMonths);
+    const startMonth = transactionDateToMonth(body.leaseStartDate);
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+
+      const rentPeriodsResult = await client.query(
+        `SELECT id
+         FROM property_long_stay_rent_periods
+         WHERE long_stay_id = $1
+         ORDER BY effective_from_month ASC`,
+        [id]
+      );
+
+      if (rentPeriodsResult.rows.length === 1) {
+        await client.query(
+          `UPDATE property_long_stay_rent_periods
+           SET effective_from_month = $2,
+               monthly_rent = $3
+           WHERE long_stay_id = $1`,
+          [id, startMonth, body.monthlyRent]
+        );
+      }
+
+      const result = await client.query(
+        `UPDATE property_long_stays
+         SET lease_start_date = $2,
+             term_months = $3,
+             monthly_rent = $4,
+             lease_end_date = $5
+         WHERE id = $1
+           AND status = $6::property_long_stay_status
+         RETURNING *`,
+        [
+          id,
+          body.leaseStartDate,
+          body.termMonths,
+          body.monthlyRent,
+          leaseEndDate,
+          PropertyLongStayStatus.ACTIVE,
+        ]
+      );
+
+      if (result.rows.length === 0) {
+        throw new LongStayNotActiveError();
+      }
+
+      await client.query("COMMIT");
+      return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 };

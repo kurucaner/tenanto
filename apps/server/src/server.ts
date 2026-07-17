@@ -12,6 +12,7 @@ import {
 } from "@/packages/shared";
 
 import { jwtAuthPlugin } from "./auth/jwt";
+import { tenantJwtAuthPlugin } from "./auth/tenant-jwt";
 import { initializeDatabase } from "./db/pool";
 import { resolveAllowedOrigin } from "./lib/cors-headers";
 import { isProduction } from "./lib/environment";
@@ -24,22 +25,32 @@ import { propertyExportRoutes } from "./routes/admin/property-export-routes";
 import { propertyIncomeEntriesRoutes } from "./routes/admin/property-income-entries-routes";
 import { propertyIncomeImportRoutes } from "./routes/admin/property-income-import-routes";
 import { propertyIncomeLineRoutes } from "./routes/admin/property-income-line-routes";
+import { propertyLongStayPortalRoutes } from "./routes/admin/property-long-stay-portal-routes";
 import { propertyLongStayRoutes } from "./routes/admin/property-long-stay-routes";
 import { propertyReportRoutes } from "./routes/admin/property-report-routes";
 import { propertyReservationRoutes } from "./routes/admin/property-reservation-routes";
 import { propertyRoutes } from "./routes/admin/property-routes";
 import { propertySettingsRoutes } from "./routes/admin/property-settings-routes";
+import { propertyStripeConnectRoutes } from "./routes/admin/property-stripe-connect-routes";
 import { propertyTenantEmailCampaignRoutes } from "./routes/admin/property-tenant-email-campaign-routes";
 import { propertyUnitRoutes } from "./routes/admin/property-unit-routes";
 import { authRoutes } from "./routes/auth/auth-routes";
 import { initRoutes } from "./routes/init-routes";
 import { notificationRoutes } from "./routes/notification-routes";
+import { propertyInviteRoutes } from "./routes/property-invite-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
+import { stripeWebhookRoutes } from "./routes/stripe-webhook-routes";
 import { supportRoutes } from "./routes/support-routes";
+import { tenantAuthRoutes } from "./routes/tenant/tenant-auth-routes";
+import { tenantLeaseRoutes } from "./routes/tenant/tenant-lease-routes";
+import { tenantRentPaymentRoutes } from "./routes/tenant/tenant-rent-payment-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
+import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
+import { startPropertyMemberInviteExpiryCron } from "./scheduler/property-member-invite-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
+import { startTenantRentPaymentReconcileCron } from "./scheduler/tenant-rent-payment-reconcile-cron";
 import { getLogMessage, sanitizeForLog } from "./services/log-helpers";
 import { notificationStreamHub } from "./services/notification-stream-hub";
 import { createFastifyLogAdapter, normalizeWinstonRecord, WinstonLogger } from "./services/winston";
@@ -81,22 +92,31 @@ server.register(multipart, {
 server.register(rateLimit, {
   allowList: (request) => {
     const path = request.url.split("?")[0];
-    return path === "/notifications/stream" || path === "/s3-notification";
+    return (
+      path === "/notifications/stream" || path === "/s3-notification" || path === "/webhooks/stripe"
+    );
   },
   max: isProduction ? 20 : 100,
   timeWindow: "1 minute",
 });
 server.register(jwtAuthPlugin);
+server.register(tenantJwtAuthPlugin);
 server.register(initRoutes);
 server.register(authRoutes);
+server.register(propertyInviteRoutes);
+server.register(tenantAuthRoutes);
+server.register(tenantLeaseRoutes);
+server.register(tenantRentPaymentRoutes);
 server.register(adminRoutes);
 server.register(propertyRoutes);
 server.register(propertyUnitRoutes);
 server.register(propertySettingsRoutes);
+server.register(propertyStripeConnectRoutes);
 server.register(propertyReservationRoutes);
 server.register(propertyIncomeLineRoutes);
 server.register(propertyIncomeEntriesRoutes);
 server.register(propertyLongStayRoutes);
+server.register(propertyLongStayPortalRoutes);
 server.register(propertyTenantEmailCampaignRoutes);
 server.register(propertyExpenseRoutes);
 server.register(propertyExportRoutes);
@@ -107,6 +127,7 @@ server.register(portfolioReportRoutes);
 server.register(homeRoutes);
 server.register(pushTokenRoutes);
 server.register(s3Routes);
+server.register(stripeWebhookRoutes);
 server.register(supportRoutes);
 server.register(notificationRoutes);
 server.register(unsubscribeRoutes);
@@ -171,6 +192,9 @@ const start = async () => {
     if (pm2Instance === undefined || pm2Instance === "0") {
       startRefreshTokenCleanupCron();
       startPropertyExportExpiryCron();
+      startPortalInviteExpiryCron();
+      startPropertyMemberInviteExpiryCron();
+      startTenantRentPaymentReconcileCron();
     }
 
     await notificationStreamHub.start();

@@ -66,6 +66,7 @@ interface IncomeLineAmountDateFieldsProps extends FieldIdPrefixProps {
   onAmountChange: (amount: string) => void;
   onDateChange: (transactionDate: string) => void;
   transactionDate: string;
+  transactionDateLabel?: string;
 }
 
 export const IncomeLineAmountDateFields = memo(
@@ -77,6 +78,7 @@ export const IncomeLineAmountDateFields = memo(
     onAmountChange,
     onDateChange,
     transactionDate,
+    transactionDateLabel = "Date",
   }: IncomeLineAmountDateFieldsProps) => {
     const handleAmountChange = useCallback(
       (e: ChangeEvent<HTMLInputElement>) => {
@@ -106,7 +108,7 @@ export const IncomeLineAmountDateFields = memo(
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`${fieldIdPrefix}-date`}>Date</Label>
+          <Label htmlFor={`${fieldIdPrefix}-date`}>{transactionDateLabel}</Label>
           <Input
             id={`${fieldIdPrefix}-date`}
             max={maxDate}

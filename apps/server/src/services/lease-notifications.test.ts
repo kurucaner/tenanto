@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
 import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
+import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindLongStayById = mock(() => Promise.resolve(null as IPropertyLongStay | null));
 const mockGetRentSchedule = mock(() => Promise.resolve([] as IPropertyLongStayRentMonth[]));
@@ -52,6 +53,7 @@ mock.module("@/db/property-units", () => ({
 }));
 
 mock.module("@/ses/transactional-emails", () => ({
+  ...transactionalEmails,
   sendLeaseEndedEmail: mockSendLeaseEndedEmail,
   sendRentPaymentRecordedEmail: mockSendRentPaymentRecordedEmail,
 }));
@@ -81,11 +83,22 @@ function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongSta
 }
 
 describe("notifyPrimaryTenantRentRecorded", () => {
+  const originalFlag = process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+
   beforeEach(() => {
+    process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = "true";
     mockFindLongStayById.mockClear();
     mockFindPropertyById.mockClear();
     mockFindUnitById.mockClear();
     mockSendRentPaymentRecordedEmail.mockClear();
+  });
+
+  afterEach(() => {
+    if (originalFlag === undefined) {
+      delete process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+    } else {
+      process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = originalFlag;
+    }
   });
 
   test("sends email when lease has tenant email and related records resolve", async () => {
@@ -163,12 +176,23 @@ describe("notifyPrimaryTenantRentRecorded", () => {
 });
 
 describe("notifyPrimaryTenantLeaseEnded", () => {
+  const originalFlag = process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+
   beforeEach(() => {
+    process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = "true";
     mockFindLongStayById.mockClear();
     mockGetRentSchedule.mockClear();
     mockFindPropertyById.mockClear();
     mockFindUnitById.mockClear();
     mockSendLeaseEndedEmail.mockClear();
+  });
+
+  afterEach(() => {
+    if (originalFlag === undefined) {
+      delete process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
+    } else {
+      process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = originalFlag;
+    }
   });
 
   test("sends holdover email with prorated final month and unpaid status", async () => {
@@ -187,6 +211,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         isProrated: true,
         month: "2024-07",
         occupiedDays: 5,
+        paidRent: 0,
+        remainingRent: 161.29,
       },
     ]);
 
@@ -230,6 +256,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         isProrated: false,
         month: "2026-03",
         occupiedDays: 31,
+        paidRent: 1500,
+        remainingRent: 0,
       },
     ]);
 

@@ -1,3 +1,4 @@
+import type { IPlatformAuthSessionResponse } from "./auth-types";
 import type { IPropertyUnitsListMeta } from "./list-meta-types";
 
 export const PropertyRole = {
@@ -42,6 +43,8 @@ export interface IPropertyMember {
 
 export interface IPropertyDetail extends IProperty {
   creator: IPropertyMemberUser;
+  /** Non-terminal invites for this property (pending / email delivery issues). */
+  invites: IPropertyInvite[];
   members: IPropertyMember[];
 }
 
@@ -149,26 +152,106 @@ export interface IPropertyUnitsListResponse {
 
 export const PropertyInviteStatus = {
   ACCEPTED: "accepted",
+  DECLINED: "declined",
   EMAIL_FAILED: "email_failed",
+  EXPIRED: "expired",
+  /** Legacy value — migrated to pending_invite / pending_acceptance in v62+ */
   PENDING: "pending",
+  PENDING_ACCEPTANCE: "pending_acceptance",
+  PENDING_INVITE: "pending_invite",
+  REVOKED: "revoked",
 } as const;
 
 export type TPropertyInviteStatus =
   (typeof PropertyInviteStatus)[keyof typeof PropertyInviteStatus];
 
 export interface IPropertyInvite {
+  acceptedAt: string | null;
   createdAt: string;
+  declinedAt: string | null;
   email: string;
   emailError: string | null;
   expiresAt: string;
   id: string;
+  invitedAt: string;
   invitedBy: string;
   propertyId: string;
+  revokedAt: string | null;
   role: TPropertyRole;
   status: TPropertyInviteStatus;
+  updatedAt: string;
+}
+
+export interface IPropertyMemberInviteSummary {
+  inviterEmail: string;
+  inviterName: string;
+  propertyAddress: string;
+  propertyName: string;
+  role: TPropertyRole;
+  roleLabel: string;
+}
+
+export interface IPropertyInvitePreviewResponse {
+  hasExistingAccount: boolean;
+  inviteEmail: string;
+  inviteId: string;
+  status: TPropertyInviteStatus;
+  summary: IPropertyMemberInviteSummary;
+}
+
+export interface ICreatePropertyMemberInviteResult {
+  emailError?: string;
+  emailSent: boolean;
+  invite: IPropertyInvite;
+}
+
+export type IResendPropertyMemberInviteResponse = ICreatePropertyMemberInviteResult;
+
+export interface IRevokePropertyMemberInviteResponse {
+  invite: IPropertyInvite;
+}
+
+export interface IPropertyPendingMemberInvite {
+  expiresAt: string;
+  inviteId: string;
+  propertyId: string;
+  propertyName: string;
+  role: TPropertyRole;
+  roleLabel: string;
+  status: TPropertyInviteStatus;
+  summary: IPropertyMemberInviteSummary;
+}
+
+export interface IPropertyPendingMemberInvitesResponse {
+  invites: IPropertyPendingMemberInvite[];
+}
+
+export interface IPropertyMemberInviteActionResponse {
+  invite: IPropertyInvite;
+  member?: IPropertyMember;
+}
+
+export interface IPropertyInviteRedeemBody {
+  token: string;
+}
+
+export interface IPropertyInviteRegisterBody {
+  name: string;
+  password: string;
+  token: string;
+}
+
+export interface IPropertyInviteRegisterGoogleBody {
+  idToken: string;
+  token: string;
+}
+
+export interface IPropertyInviteRedeemResponse {
+  invite: IPropertyInvite;
+  member: IPropertyMember;
+  session?: IPlatformAuthSessionResponse;
 }
 
 export type TAddPropertyMemberResponse =
-  | { member: IPropertyMember; type: "member_added" }
   | { invite: IPropertyInvite; type: "invite_sent" }
   | { invite: IPropertyInvite; type: "invite_email_failed" };

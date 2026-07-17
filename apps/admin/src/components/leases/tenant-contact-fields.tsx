@@ -10,13 +10,14 @@ import type { TTenantContactFormValues } from "./tenant-contact-form-schema";
 
 interface TenantContactFieldsProps {
   control: Control<TTenantContactFormValues>;
+  emailDisabled?: boolean;
   errors: FieldErrors<TTenantContactFormValues>;
   idPrefix: string;
   register: UseFormRegister<TTenantContactFormValues>;
 }
 
 export const TenantContactFields = memo(
-  ({ control, errors, idPrefix, register }: TenantContactFieldsProps) => (
+  ({ control, emailDisabled = false, errors, idPrefix, register }: TenantContactFieldsProps) => (
     <>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${idPrefix}-name`}>Name</Label>
@@ -27,7 +28,17 @@ export const TenantContactFields = memo(
         <FieldLabel htmlFor={`${idPrefix}-email`} optional>
           Email
         </FieldLabel>
-        <Input id={`${idPrefix}-email`} type="email" {...register("tenantEmail")} />
+        <Input
+          disabled={emailDisabled}
+          id={`${idPrefix}-email`}
+          type="email"
+          {...register("tenantEmail")}
+        />
+        {emailDisabled ? (
+          <p className="text-muted-foreground text-xs">
+            Email is managed by the linked portal account.
+          </p>
+        ) : null}
       </div>
       <Controller
         control={control}

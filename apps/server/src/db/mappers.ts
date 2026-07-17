@@ -1,5 +1,6 @@
 import {
   type IAppConfig,
+  type ILeaseTenantMembership,
   type IProperty,
   type IPropertyChannelCommission,
   type IPropertyExpense,
@@ -17,6 +18,7 @@ import {
   type IPropertyTaxRate,
   type IPropertyUnit,
   type ISupportRequest,
+  type ITenantUser,
   type IUser,
   type SupportCategory,
   type SupportRequestStatus,
@@ -24,6 +26,8 @@ import {
   type TPropertyInviteStatus,
   type TPropertyRole,
   type TReservationStatus,
+  type TTenantMembershipRole,
+  type TTenantMembershipStatus,
   type TUnitRentalType,
   UserType,
 } from "@/packages/shared";
@@ -90,15 +94,21 @@ export const mapPropertyMemberRow = (row: Record<string, unknown>): IPropertyMem
 });
 
 export const mapPropertyInviteRow = (row: Record<string, unknown>): IPropertyInvite => ({
+  acceptedAt: toIso(row.accepted_at),
   createdAt: (row.created_at as Date).toISOString(),
+  declinedAt: toIso(row.declined_at),
   email: row.email as string,
   emailError: (row.email_error as string) ?? null,
   expiresAt: (row.expires_at as Date).toISOString(),
   id: row.id as string,
+  invitedAt: toIso(row.invited_at) ?? (row.created_at as Date).toISOString(),
   invitedBy: row.invited_by as string,
   propertyId: row.property_id as string,
+  revokedAt: toIso(row.revoked_at),
   role: row.role as TPropertyRole,
   status: row.status as TPropertyInviteStatus,
+  updatedAt:
+    toIso(row.updated_at) ?? toIso(row.created_at) ?? (row.created_at as Date).toISOString(),
 });
 
 export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit => ({
@@ -296,8 +306,10 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
       : null,
   refundedAt: toIso(row.refunded_at),
   refundedBy: (row.refunded_by as string | null) ?? null,
+  rentPeriodMonth: typeof row.rent_period_month === "string" ? row.rent_period_month : null,
   reservationId: (row.reservation_id as string) ?? null,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
+  tenantRentPaymentId: (row.tenant_rent_payment_id as string | null) ?? null,
   transactionDate: formatDateColumn(row.transaction_date),
   unitId: (row.unit_id as string | null) ?? null,
   updatedAt: toRequiredIso(row.updated_at),
@@ -316,5 +328,37 @@ export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyEx
   isDeleted: (row.is_deleted as boolean) ?? false,
   propertyId: row.property_id as string,
   taxFree: row.tax_free as boolean,
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+export const mapTenantUserRow = (row: Record<string, unknown>): ITenantUser => ({
+  createdAt: (row.created_at as Date).toISOString(),
+  email: row.email as string,
+  emailVerifiedAt: toIso(row.email_verified_at),
+  id: row.id as string,
+  name: row.name as string,
+  phone: (row.phone as string) ?? null,
+  phoneVerifiedAt: toIso(row.phone_verified_at),
+  updatedAt: (row.updated_at as Date).toISOString(),
+});
+
+export const mapLeaseTenantMembershipRow = (
+  row: Record<string, unknown>
+): ILeaseTenantMembership => ({
+  acceptedAt: toIso(row.accepted_at),
+  createdAt: (row.created_at as Date).toISOString(),
+  declinedAt: toIso(row.declined_at),
+  displayName: row.display_name as string,
+  endedAt: toIso(row.ended_at),
+  expiresAt: (row.expires_at as Date).toISOString(),
+  id: row.id as string,
+  invitedAt: (row.invited_at as Date).toISOString(),
+  invitedBy: row.invited_by as string,
+  inviteEmail: row.invite_email as string,
+  leaseId: row.lease_id as string,
+  revokedAt: toIso(row.revoked_at),
+  role: row.role as TTenantMembershipRole,
+  status: row.status as TTenantMembershipStatus,
+  tenantUserId: (row.tenant_user_id as string) ?? null,
   updatedAt: (row.updated_at as Date).toISOString(),
 });

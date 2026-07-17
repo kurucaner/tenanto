@@ -4,9 +4,15 @@ import { type IPropertyLongStay } from "@/packages/shared";
 
 import {
   getExpectedRentForScheduleMonth,
+  getRemainingRentForScheduleMonth,
   type TLeaseRentScheduleMonthAmount,
 } from "./lease-rent-schedule-display";
 
+/**
+ * Prefill for Record Rent on a lease schedule month.
+ * Each submission creates a new income line; partial payments for the same
+ * `rentPeriodMonth` are additive and roll up to `paidRent` on the schedule.
+ */
 export function buildLeaseRecordRentPrefill(
   lease: Pick<IPropertyLongStay, "guestName" | "id" | "monthlyRent" | "unitId">,
   incomeLineTypeId: string,
@@ -21,7 +27,8 @@ export function buildLeaseRecordRentPrefill(
   const monthDate = month ? `${month}-01` : maxDate;
   const scheduleAmount =
     month && options?.rentSchedule
-      ? getExpectedRentForScheduleMonth(options.rentSchedule, month)
+      ? (getRemainingRentForScheduleMonth(options.rentSchedule, month) ??
+        getExpectedRentForScheduleMonth(options.rentSchedule, month))
       : options?.expectedAmount;
 
   return {
@@ -29,6 +36,7 @@ export function buildLeaseRecordRentPrefill(
     guestName: lease.guestName,
     incomeLineTypeId,
     longStayId: lease.id,
+    rentPeriodMonth: month,
     transactionDate: clampToMaxLocalIsoDate(monthDate, maxDate),
     unitId: lease.unitId,
   };

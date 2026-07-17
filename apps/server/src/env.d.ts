@@ -17,6 +17,8 @@ declare global {
       DB_USER: string;
       /** Discord webhook URL for support requests. Create via Server Settings > Integrations > Webhooks */
       DISCORD_SUPPORT_WEBHOOK_URL: string;
+      /** Optional Discord webhook for tenant rent payment disputes */
+      DISCORD_TENANT_PAYMENTS_WEBHOOK_URL?: string;
       /** Google Credentials */
       GOOGLE_ANDROID_CLIENT_ID: string;
       GOOGLE_IOS_CLIENT_ID: string;
@@ -39,6 +41,20 @@ declare global {
       SNS_SMS_ORIGINATION_NUMBER?: string;
       /** Optional SNS SMS sender ID shown on supported carriers */
       SNS_SMS_SENDER_ID?: string;
+      /** Stripe Connect OAuth client id (optional for Express Account Links) */
+      STRIPE_CONNECT_CLIENT_ID?: string;
+      /** Enable Stripe Connect + tenant online rent payments (default off) */
+      STRIPE_CONNECT_ENABLED?: string;
+      /** Stripe publishable key (pk_…) — documented for ops; Checkout hosted page may not need it server-side */
+      STRIPE_PUBLISHABLE_KEY?: string;
+      /** Stripe secret key (sk_…) — required when rent payments / Connect is enabled */
+      STRIPE_SECRET_KEY?: string;
+      /** Stripe webhook signing secret (whsec_…) */
+      STRIPE_WEBHOOK_SECRET?: string;
+      /** Base URL for the tenant portal app (e.g. https://tenant.propertyos.app) - used for portal invite links */
+      TENANT_APP_URL: string;
+      /** Optional — enables tenant lease/rent/portal-invite transactional emails */
+      TENANT_EMAIL_NOTIFICATIONS_ENABLED?: string;
       /** Base URL for the web app (e.g. https://propertyos.app) - used for magic links in emails */
       WEB_APP_URL: string;
     }

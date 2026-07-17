@@ -2476,4 +2476,406 @@ export const migrations: IMigration[] = [
     },
     version: 56,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS tenant_refresh_tokens CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS lease_tenant_memberships CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS tenant_users CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS tenant_membership_status CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS tenant_membership_role CASCADE;`);
+    },
+    name: "create_tenant_portal_tables",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE tenant_membership_role AS ENUM ('primary', 'secondary');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE tenant_membership_status AS ENUM (
+            'pending_invite',
+            'pending_acceptance',
+            'active',
+            'declined',
+            'revoked',
+            'ended',
+            'expired'
+          );
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE tenant_users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          password_hash VARCHAR(255),
+          phone VARCHAR(50),
+          email_verified_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX tenant_users_email_lower_idx
+          ON tenant_users (LOWER(TRIM(email)));
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_tenant_users_updated_at
+          BEFORE UPDATE ON tenant_users
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        CREATE TABLE lease_tenant_memberships (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          lease_id UUID NOT NULL REFERENCES property_long_stays(id) ON DELETE CASCADE,
+          tenant_user_id UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
+          role tenant_membership_role NOT NULL,
+          invite_email VARCHAR(255) NOT NULL,
+          display_name VARCHAR(255) NOT NULL,
+          status tenant_membership_status NOT NULL,
+          invited_by UUID NOT NULL REFERENCES users(id),
+          invite_token_hash VARCHAR(64),
+          invited_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          accepted_at TIMESTAMP WITH TIME ZONE,
+          declined_at TIMESTAMP WITH TIME ZONE,
+          revoked_at TIMESTAMP WITH TIME ZONE,
+          ended_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_lease_id
+          ON lease_tenant_memberships (lease_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_tenant_user_id
+          ON lease_tenant_memberships (tenant_user_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_invite_email
+          ON lease_tenant_memberships (LOWER(TRIM(invite_email)));
+      `);
+      await client.query(`
+        CREATE INDEX idx_lease_tenant_memberships_status
+          ON lease_tenant_memberships (status);
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX lease_tenant_memberships_non_terminal_uniq
+          ON lease_tenant_memberships (lease_id, LOWER(TRIM(invite_email)), role)
+          WHERE status NOT IN ('declined', 'revoked', 'ended', 'expired');
+      `);
+
+      await client.query(`
+        CREATE TRIGGER update_lease_tenant_memberships_updated_at
+          BEFORE UPDATE ON lease_tenant_memberships
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        CREATE TABLE tenant_refresh_tokens (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          tenant_user_id UUID NOT NULL REFERENCES tenant_users(id) ON DELETE CASCADE,
+          token_hash VARCHAR(64) NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          revoked BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await client.query(`
+        CREATE INDEX idx_tenant_refresh_tokens_tenant_user
+          ON tenant_refresh_tokens (tenant_user_id);
+      `);
+      await client.query(`
+        CREATE INDEX idx_tenant_refresh_tokens_hash
+          ON tenant_refresh_tokens (token_hash);
+      `);
+    },
+    version: 57,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS auth_phone_otps CASCADE;`);
+      await client.query(`DROP INDEX IF EXISTS tenant_users_phone_e164_uniq;`);
+      await client.query(`DROP INDEX IF EXISTS tenant_users_apple_id_uniq;`);
+      await client.query(`DROP INDEX IF EXISTS tenant_users_google_id_uniq;`);
+      await client.query(`
+        ALTER TABLE tenant_users
+          DROP COLUMN IF EXISTS phone_verified_at,
+          DROP COLUMN IF EXISTS apple_id,
+          DROP COLUMN IF EXISTS google_id;
+      `);
+    },
+    name: "tenant_users_social_phone_auth_foundation",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          ADD COLUMN IF NOT EXISTS google_id VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS apple_id VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP WITH TIME ZONE;
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_google_id_uniq
+          ON tenant_users (google_id)
+          WHERE google_id IS NOT NULL;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_apple_id_uniq
+          ON tenant_users (apple_id)
+          WHERE apple_id IS NOT NULL;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_phone_e164_uniq
+          ON tenant_users (phone)
+          WHERE phone IS NOT NULL;
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS auth_phone_otps (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          phone VARCHAR(32) NOT NULL,
+          code_hash VARCHAR(255) NOT NULL,
+          purpose VARCHAR(50) NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_auth_phone_otps_phone_purpose
+          ON auth_phone_otps (phone, purpose);
+      `);
+    },
+    version: 58,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP TABLE IF EXISTS stripe_webhook_events CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS tenant_rent_payment_allocations CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS tenant_rent_payments CASCADE;`);
+      await client.query(`DROP TABLE IF EXISTS property_stripe_accounts CASCADE;`);
+      await client.query(`DROP TYPE IF EXISTS tenant_rent_payment_status CASCADE;`);
+    },
+    name: "tenant_stripe_rent_payments_foundation",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE tenant_rent_payment_status AS ENUM (
+            'pending',
+            'requires_action',
+            'processing',
+            'succeeded',
+            'failed',
+            'canceled',
+            'refunded'
+          );
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS property_stripe_accounts (
+          property_id UUID PRIMARY KEY REFERENCES properties(id) ON DELETE CASCADE,
+          stripe_account_id VARCHAR(255) NOT NULL,
+          charges_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+          payouts_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+          onboarding_complete BOOLEAN NOT NULL DEFAULT FALSE,
+          details_submitted BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT property_stripe_accounts_stripe_account_id_uniq UNIQUE (stripe_account_id)
+        );
+      `);
+      await client.query(`
+        CREATE TRIGGER update_property_stripe_accounts_updated_at
+          BEFORE UPDATE ON property_stripe_accounts
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tenant_rent_payments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          lease_id UUID NOT NULL REFERENCES property_long_stays(id) ON DELETE CASCADE,
+          property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+          tenant_user_id UUID NOT NULL REFERENCES tenant_users(id) ON DELETE CASCADE,
+          status tenant_rent_payment_status NOT NULL DEFAULT 'pending',
+          currency VARCHAR(3) NOT NULL DEFAULT 'usd',
+          amount_cents INTEGER NOT NULL,
+          stripe_checkout_session_id VARCHAR(255),
+          stripe_payment_intent_id VARCHAR(255),
+          idempotency_key VARCHAR(255) NOT NULL,
+          connected_account_id VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT tenant_rent_payments_amount_cents_positive CHECK (amount_cents > 0),
+          CONSTRAINT tenant_rent_payments_idempotency_key_uniq UNIQUE (idempotency_key),
+          CONSTRAINT tenant_rent_payments_checkout_session_uniq UNIQUE (stripe_checkout_session_id),
+          CONSTRAINT tenant_rent_payments_payment_intent_uniq UNIQUE (stripe_payment_intent_id)
+        );
+      `);
+      await client.query(`
+        CREATE TRIGGER update_tenant_rent_payments_updated_at
+          BEFORE UPDATE ON tenant_rent_payments
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_rent_payments_lease_id
+          ON tenant_rent_payments (lease_id);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_rent_payments_tenant_user_id
+          ON tenant_rent_payments (tenant_user_id);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_rent_payments_property_status
+          ON tenant_rent_payments (property_id, status);
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tenant_rent_payment_allocations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          payment_id UUID NOT NULL REFERENCES tenant_rent_payments(id) ON DELETE CASCADE,
+          period_month CHAR(7) NOT NULL,
+          allocated_cents INTEGER NOT NULL,
+          expected_cents_snapshot INTEGER NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT tenant_rent_payment_allocations_allocated_positive
+            CHECK (allocated_cents > 0),
+          CONSTRAINT tenant_rent_payment_allocations_expected_nonneg
+            CHECK (expected_cents_snapshot >= 0),
+          CONSTRAINT tenant_rent_payment_allocations_period_month_fmt
+            CHECK (period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+          CONSTRAINT tenant_rent_payment_allocations_payment_month_uniq
+            UNIQUE (payment_id, period_month)
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_rent_payment_allocations_period
+          ON tenant_rent_payment_allocations (period_month);
+      `);
+
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+          stripe_event_id VARCHAR(255) PRIMARY KEY,
+          type VARCHAR(255) NOT NULL,
+          processed_at TIMESTAMP WITH TIME ZONE,
+          payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_stripe_webhook_events_type
+          ON stripe_webhook_events (type);
+      `);
+    },
+    version: 59,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_long_stay_rent_period_month;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN IF EXISTS rent_period_month;
+      `);
+    },
+    name: "property_income_lines_rent_period_month",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS rent_period_month VARCHAR(7);
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_rent_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_rent_period_month_fmt
+            CHECK (
+              rent_period_month IS NULL
+              OR rent_period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'
+            );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_long_stay_rent_period_month
+          ON property_income_lines (long_stay_id, rent_period_month)
+          WHERE is_deleted = false AND long_stay_id IS NOT NULL;
+      `);
+    },
+    version: 60,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_tenant_rent_payment_id;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP COLUMN IF EXISTS tenant_rent_payment_id;
+      `);
+    },
+    name: "property_income_lines_tenant_rent_payment_id",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD COLUMN IF NOT EXISTS tenant_rent_payment_id UUID NULL
+            REFERENCES tenant_rent_payments(id) ON DELETE SET NULL;
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_tenant_rent_payment_id
+          ON property_income_lines (tenant_rent_payment_id)
+          WHERE is_deleted = false AND tenant_rent_payment_id IS NOT NULL;
+      `);
+    },
+    version: 61,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships DROP COLUMN IF EXISTS contact_phone;
+      `);
+    },
+    name: "secondary_tenant_membership_listed_and_contact_phone",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE tenant_membership_status ADD VALUE IF NOT EXISTS 'listed';
+      `);
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(32);
+      `);
+    },
+    version: 62,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS secondary_tenants JSONB NOT NULL DEFAULT '[]';
+      `);
+    },
+    name: "drop_property_long_stays_secondary_tenants",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays DROP COLUMN IF EXISTS secondary_tenants;
+      `);
+    },
+    version: 63,
+  },
 ];

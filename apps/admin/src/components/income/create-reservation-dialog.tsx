@@ -31,6 +31,7 @@ import {
   isValidStayDateRange,
   shouldClearCheckOutOnCheckInChange,
 } from "@/lib/reservation-date-utils";
+import { createPersonNameSchema } from "@/packages/app-ui";
 import { ReservationStatus, UnitRentalType } from "@/packages/shared";
 
 const createReservationSchema = z
@@ -39,7 +40,7 @@ const createReservationSchema = z
     checkIn: z.string().min(1, "Check-in is required"),
     checkOut: z.string().min(1, "Check-out is required"),
     cleaningFee: optionalNonNegativeMoneyField("Cleaning fee must be a non-negative number"),
-    guestName: z.string().trim().min(1, "Guest name is required"),
+    guestName: createPersonNameSchema({ requiredMessage: "Guest name is required" }),
     reservationNumber: z.string(),
     roomTotal: optionalNonNegativeMoneyField("Room total must be a non-negative number"),
     status: z.enum([
@@ -135,7 +136,7 @@ export const CreateReservationDialog = memo(
           checkIn: values.checkIn,
           checkOut: values.checkOut,
           cleaningFee: Number(values.cleaningFee) || 0,
-          guestName: values.guestName.trim(),
+          guestName: values.guestName,
           reservationNumber: values.reservationNumber.trim() || undefined,
           roomTotal: Number(values.roomTotal) || 0,
           status: values.status,

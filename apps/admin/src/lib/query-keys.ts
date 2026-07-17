@@ -18,9 +18,11 @@ export const queryKeys = {
   auditLog: (filters: Omit<IAdminAuditEventsListQuery, "cursor" | "limit">) =>
     ["activity", filters] as const,
   homeFinancialOverview: () => ["home", "financial-overview"] as const,
+  invitePreview: (token: string) => ["invite-preview", token] as const,
   notificationBroadcastHistory: () => ["notification-broadcasts", "history"] as const,
   notificationsList: () => ["notifications", "list"] as const,
   notificationsUnreadCount: () => ["notifications", "unread-count"] as const,
+  pendingMemberInvites: () => ["property-member-invites", "pending"] as const,
   platformStats: () => ["platform-stats"] as const,
   portfolioReportSummary: (filters: IPropertyReportsQuery) =>
     ["portfolio", "reports", filters] as const,
@@ -47,6 +49,8 @@ export const queryKeys = {
   ) => ["property", propertyId, "income-lines", filters] as const,
   propertyLongStay: (propertyId: string, longStayId: string) =>
     ["property", propertyId, "long-stays", longStayId] as const,
+  propertyLongStayPortalAccess: (propertyId: string, longStayId: string) =>
+    ["property", propertyId, "long-stays", longStayId, "portal-access"] as const,
   propertyLongStays: (propertyId: string, filters: IPropertyLongStaysListQuery = {}) =>
     ["property", propertyId, "long-stays", filters] as const,
   propertyReportSummary: (propertyId: string, filters: IPropertyReportsQuery) =>
@@ -58,6 +62,8 @@ export const queryKeys = {
     propertyId: string,
     filters: Omit<IPropertyReservationsListQuery, "cursor" | "limit"> = {}
   ) => ["property", propertyId, "short-stays", filters] as const,
+  propertyStripeConnectStatus: (propertyId: string) =>
+    ["property", propertyId, "stripe-connect", "status"] as const,
   propertyTenantEmailCampaign: (propertyId: string, campaignId: string) =>
     ["property", propertyId, "tenant-email-campaigns", campaignId] as const,
   propertyTenantEmailCampaigns: (

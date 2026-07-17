@@ -32,9 +32,27 @@ function showCampaignCompletedNotificationToast(notification: IUserNotification)
   });
 }
 
+function showPropertyMemberInviteReceivedToast(notification: IUserNotification): void {
+  toast.info(notification.title, {
+    action: {
+      label: "Review invitation",
+      onClick: () => {
+        router.navigate(getNotificationHref(notification));
+      },
+    },
+    description: notification.body,
+    id: notification.id,
+  });
+}
+
 export function showNotificationToast(notification: IUserNotification): void {
   if (notification.type === "tenant_email_campaign_completed") {
     showCampaignCompletedNotificationToast(notification);
+    return;
+  }
+
+  if (notification.type === "property_member_invite_received") {
+    showPropertyMemberInviteReceivedToast(notification);
     return;
   }
 

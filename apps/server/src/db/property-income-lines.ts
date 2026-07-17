@@ -106,7 +106,9 @@ export const propertyIncomeLinesDb = {
       guestName: string | null;
       incomeLineTypeId: ICreatePropertyIncomeLineBody["incomeLineTypeId"];
       longStayId: string | null;
+      rentPeriodMonth: string | null;
       reservationId: string | null;
+      tenantRentPaymentId?: string | null;
       transactionDate: string;
       unitId: string | null;
     },
@@ -126,10 +128,12 @@ export const propertyIncomeLinesDb = {
          gross_income,
          tax_breakdown,
          channel_commission,
-         net_income
+         net_income,
+         rent_period_month,
+         tenant_rent_payment_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9,
-         $10, $11::jsonb, $12, $13
+         $10, $11::jsonb, $12, $13, $14, $15
        )
        RETURNING *`,
       [
@@ -146,6 +150,8 @@ export const propertyIncomeLinesDb = {
         JSON.stringify(computed.taxBreakdown),
         computed.channelCommission,
         computed.netIncome,
+        input.rentPeriodMonth,
+        input.tenantRentPaymentId ?? null,
       ]
     );
     const created = await propertyIncomeLinesDb.findById(result.rows[0].id as string);
@@ -290,6 +296,20 @@ export const propertyIncomeLinesDb = {
     return (result.rowCount ?? 0) > 0;
   },
 
+  async refundAllLinkedToTenantRentPayment(tenantRentPaymentId: string): Promise<number> {
+    const result = await pool.query(
+      `UPDATE property_income_lines
+       SET refunded_at = NOW(),
+           refunded_by = NULL,
+           refunded_amount = amount
+       WHERE tenant_rent_payment_id = $1
+         AND is_deleted = false
+         AND refunded_at IS NULL`,
+      [tenantRentPaymentId]
+    );
+    return result.rowCount ?? 0;
+  },
+
   async restore(id: string): Promise<boolean> {
     const result = await pool.query(
       `UPDATE property_income_lines SET is_deleted = false, deleted_at = NULL WHERE id = $1`,
@@ -358,6 +378,10 @@ export const propertyIncomeLinesDb = {
     if (input.amount !== undefined) {
       setClauses.push(`amount = $${param++}`);
       values.push(input.amount);
+    }
+    if (input.rentPeriodMonth !== undefined) {
+      setClauses.push(`rent_period_month = $${param++}`);
+      values.push(input.rentPeriodMonth);
     }
 
     setClauses.push(`gross_income = $${param++}`);

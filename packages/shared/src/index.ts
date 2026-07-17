@@ -1,7 +1,16 @@
 // Re-export all types from organized modules
 
 // Status Codes
-export { AccountError, HttpStatus, JwtError } from "./status-enums";
+export { AccountError, HttpStatus, JwtAudience, JwtError } from "./status-enums";
+
+// Auth types
+export { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "./auth-constants";
+export type {
+  IAuthRefreshResponse,
+  IPlatformAuthRefreshResponse,
+  IPlatformAuthSessionResponse,
+  ITenantAuthRefreshResponse,
+} from "./auth-types";
 
 // User Types
 export type { IUser } from "./user";
@@ -87,6 +96,14 @@ export type {
 
 // Property Types
 export {
+  canTransitionPropertyMemberInviteStatus,
+  isPendingPropertyMemberInviteStatus,
+  isTerminalPropertyMemberInviteStatus,
+  PENDING_PROPERTY_MEMBER_INVITE_STATUSES,
+  pickCanonicalPropertyMemberInvitesForAdmin,
+  TERMINAL_PROPERTY_MEMBER_INVITE_STATUSES,
+} from "./property-member-invite-transitions";
+export {
   type IAdminAddPropertyMemberBody,
   type IAdminCreatePropertyBody,
   type IAdminPropertiesListQuery,
@@ -94,15 +111,27 @@ export {
   type IAdminSetPropertyFavoriteBody,
   type IAdminUpdatePropertyBody,
   type IAdminUpdatePropertyMemberBody,
+  type ICreatePropertyMemberInviteResult,
   type ICreatePropertyUnitBody,
   type IProperty,
   type IPropertyDetail,
   type IPropertyInvite,
+  type IPropertyInvitePreviewResponse,
+  type IPropertyInviteRedeemBody,
+  type IPropertyInviteRedeemResponse,
+  type IPropertyInviteRegisterBody,
+  type IPropertyInviteRegisterGoogleBody,
   type IPropertyMember,
+  type IPropertyMemberInviteActionResponse,
+  type IPropertyMemberInviteSummary,
   type IPropertyMemberUser,
+  type IPropertyPendingMemberInvite,
+  type IPropertyPendingMemberInvitesResponse,
   type IPropertyUnit,
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
+  type IResendPropertyMemberInviteResponse,
+  type IRevokePropertyMemberInviteResponse,
   type IUpdatePropertyUnitBody,
   PropertyInviteStatus,
   PropertyRole,
@@ -165,11 +194,24 @@ export {
 export {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
   isActiveLeaseInHoldover,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
+export {
+  LEASE_UPCOMING_RENT_PERIOD_ERROR,
+  resolveLeaseIncomeRentPeriodMonth,
+} from "./lease-income-rent-period";
+export {
+  type ILeasePrimaryTenantContact,
+  type ILeasePrimaryTenantContactLeaseInput,
+  type IResolvePrimaryTenantContactInput,
+  resolvePrimaryTenantContact,
+  selectPrimaryMembershipForContact,
+  type TPrimaryTenantContactSource,
+} from "./lease-primary-tenant-contact";
 export {
   calculateExpectedRentForLeaseMonth,
   formatProratedDaysLabel,
@@ -180,6 +222,20 @@ export {
   isProratedLeaseMonth,
 } from "./lease-proration-utils";
 export {
+  isLeaseRentMonthFullyPaid,
+  isLeaseRentPeriodFullyPaidCents,
+  LEASE_RENT_PAID_TOLERANCE_CENTS,
+  LEASE_RENT_PAID_TOLERANCE_DOLLARS,
+} from "./lease-rent-paid-tolerance";
+export {
+  getEffectiveRentPeriodMonth,
+  type ILeaseRentPeriodAllocationInput,
+  type ILeaseRentPeriodIncomeLineInput,
+  type ILeaseRentPeriodRollupMonth,
+  type ILeaseRentPeriodScheduleMonth,
+  rollupLeaseRentByPeriod,
+} from "./lease-rent-period-rollup";
+export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
   getFirstExtensionMonth,
@@ -189,6 +245,13 @@ export {
   validateExtendLease,
 } from "./lease-rent-utils";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
+export {
+  deriveLeaseTermsEditability,
+  getLeaseTermsEditBlockMessage,
+  hasRentPeriodHistory,
+  MAX_LEASE_TERM_MONTHS,
+  validateEditLeaseTerms,
+} from "./lease-terms-edit-utils";
 export {
   type IPropertyExpensesListMeta,
   type IPropertyExportsListMeta,
@@ -211,8 +274,13 @@ export {
 } from "./property-long-stay-list-constants";
 export {
   type ICreatePropertyLongStayBody,
+  type ICreatePropertyLongStayResponse,
+  type IEditPropertyLongStayTermsBody,
+  type IEditPropertyLongStayTermsResponse,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
+  type ILeaseTermsEditability,
+  type ILeaseTermsEditSignals,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStayRentMonth,
@@ -221,7 +289,9 @@ export {
   type IPropertyLongStaysListQuery,
   type IPropertyLongStaysListResponse,
   type IUpdatePropertyLongStayBody,
+  LeaseTermsEditBlockReason,
   PropertyLongStayStatus,
+  type TLeaseTermsEditBlockReason,
   type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
@@ -452,6 +522,14 @@ export { formatPropertyUnitSelectLabel, formatUnitRentalTypeLabel } from "./prop
 // Helpers
 export { sleep, toIso } from "./helpers";
 
+// Person name utilities
+export {
+  getPersonNameValidationError,
+  normalizePersonName,
+  PERSON_NAME_MAX_LENGTH,
+  validatePersonName,
+} from "./person-name-utils";
+
 // Phone utilities
 export {
   type CountryCode,
@@ -507,6 +585,94 @@ export {
   normalizeTenantEmail,
   resolveTenantEmailRecipients,
 } from "./tenant-email-recipient-resolver";
+export {
+  canTransitionTenantMembershipStatus,
+  isTerminalTenantMembershipStatus,
+  TERMINAL_TENANT_MEMBERSHIP_STATUSES,
+} from "./tenant-membership-transitions";
+export {
+  isPhoneOwnedByOtherUser,
+  resolveOauthProviderLinkDecision,
+  type TOauthProviderLinkDecision,
+} from "./tenant-oauth-link-utils";
+export {
+  type ICreateLeasePortalInviteBody,
+  type ICreateLeasePortalInviteResponse,
+  type ICreateLeasePortalInviteResult,
+  type ICreateLeasePortalInvitesResponse,
+  type ILeasePortalAccessResponse,
+  type ILeaseTenantMembership,
+  type IResendLeasePortalInviteResponse,
+  type IRevokeLeasePortalInviteResponse,
+  type ITenantAppleAuthBody,
+  type ITenantAuthLoginBody,
+  type ITenantAuthLogoutBody,
+  type ITenantAuthRefreshBody,
+  type ITenantAuthRegisterStartBody,
+  type ITenantAuthRegisterVerifyBody,
+  type ITenantAuthSessionResponse,
+  type ITenantGoogleAuthBody,
+  type ITenantInviteLeaseSummary,
+  type ITenantInvitePreviewResponse,
+  type ITenantInviteRedeemBody,
+  type ITenantInviteRedeemResponse,
+  type ITenantInviteRegisterBody,
+  type ITenantInviteRegisterGoogleBody,
+  type ITenantLeaseDetailResponse,
+  type ITenantLeaseListItem,
+  type ITenantLeasesListResponse,
+  type ITenantMembershipActionResponse,
+  type ITenantMeResponse,
+  type ITenantPendingInvite,
+  type ITenantPendingInvitesResponse,
+  type ITenantPhoneAuthStartBody,
+  type ITenantPhoneAuthVerifyBody,
+  type ITenantPhoneBindStartBody,
+  type ITenantPhoneBindVerifyBody,
+  type ITenantUser,
+  TenantLeaseListStatus,
+  TenantMembershipRole,
+  TenantMembershipStatus,
+  type TTenantDisconnectResponse,
+  type TTenantLeaseListStatus,
+  type TTenantMembershipRole,
+  type TTenantMembershipStatus,
+} from "./tenant-portal-types";
+export {
+  computeTenantBalanceFromRentSchedule,
+  type ITenantRentScheduleBalance,
+  type TTenantRentScheduleBalanceMonth,
+} from "./tenant-rent-balance-from-schedule";
+export {
+  type IPropertyStripeConnectOnboardingLinkResponse,
+  type IPropertyStripeConnectStatusResponse,
+  isTerminalTenantRentPaymentStatus,
+  type ITenantCreateRentCheckoutBody,
+  type ITenantCreateRentCheckoutResponse,
+  type ITenantLeaseBalancePeriod,
+  type ITenantLeaseBalanceResponse,
+  type ITenantRentPaymentStatusResponse,
+  type ITenantRentSummaryLease,
+  type ITenantRentSummaryResponse,
+  TenantRentPaymentStatus,
+  type TTenantRentPaymentStatus,
+} from "./tenant-rent-payment-types";
+export {
+  allocateFifo,
+  buildRentCheckoutIdempotencyKey,
+  centsToDollars,
+  computePeriodRemainingCents,
+  computeRemainingByMonth,
+  dollarsToCents,
+  type IRentAllocation,
+  type IRentPeriodInput,
+  isValidPeriodMonth,
+  selectDuePeriodMonths,
+  STRIPE_MIN_CHARGE_CENTS_USD,
+  sumAmountDueCents,
+  type TValidateRentCheckoutResult,
+  validateCreateRentCheckoutBody,
+} from "./tenant-rent-payment-utils";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

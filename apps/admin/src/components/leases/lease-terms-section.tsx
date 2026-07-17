@@ -1,12 +1,15 @@
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, SquarePen } from "lucide-react";
 import { memo, useState } from "react";
 
+import { EditLeaseTermsDialog } from "@/components/leases/edit-lease-terms-dialog";
 import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
 import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
 import {
+  getLeaseTermsEditBlockMessage,
+  type ILeaseTermsEditability,
   type IPropertyLongStay,
   type IPropertyLongStayRentPeriod,
   PropertyLongStayStatus,
@@ -17,32 +20,75 @@ interface LeaseTermsSectionProps {
   lease: IPropertyLongStay;
   propertyId: string;
   rentPeriods: IPropertyLongStayRentPeriod[];
+  termsEditability: ILeaseTermsEditability;
+}
+
+function getLeaseTermsBlockedCopy(termsEditability: ILeaseTermsEditability): string {
+  if (termsEditability.reason) {
+    return getLeaseTermsEditBlockMessage(termsEditability.reason);
+  }
+
+  return "Lease terms cannot be edited.";
 }
 
 export const LeaseTermsSection = memo(
-  ({ canManage, lease, propertyId, rentPeriods }: LeaseTermsSectionProps) => {
+  ({ canManage, lease, propertyId, rentPeriods, termsEditability }: LeaseTermsSectionProps) => {
+    const [editOpen, setEditOpen] = useState(false);
     const [extendOpen, setExtendOpen] = useState(false);
-    const canExtend = canManage && lease.status === PropertyLongStayStatus.ACTIVE;
+    const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
+    const canExtend = canManage && isActive;
+    const canEditTerms = canManage && isActive && termsEditability.editable;
+    const showBlockedCopy = isActive && !termsEditability.editable;
+    const showTermsDivider = canEditTerms || showBlockedCopy;
 
     return (
       <>
         <Card>
           <CardContent className="space-y-4 p-6">
-            {canExtend ? (
+            {isActive ? (
               <>
-                <p className="text-muted-foreground text-sm">
-                  Extend the lease term by adding months. You can optionally set a new monthly rent
-                  effective from a month in the extension period.
-                </p>
-                <Button
-                  className="gap-1.5"
-                  onClick={() => setExtendOpen(true)}
-                  type="button"
-                  variant="outline"
-                >
-                  <CalendarPlus className="size-3.5" />
-                  Extend lease
-                </Button>
+                {canEditTerms ? (
+                  <div className="space-y-3">
+                    <p className="text-muted-foreground text-sm">
+                      Correct the lease start date, term, or base monthly rent before any rent is
+                      recorded.
+                    </p>
+                    <Button
+                      className="gap-1.5"
+                      onClick={() => setEditOpen(true)}
+                      type="button"
+                      variant="outline"
+                    >
+                      <SquarePen className="size-3.5" />
+                      Edit terms
+                    </Button>
+                  </div>
+                ) : null}
+
+                {showBlockedCopy ? (
+                  <p className="text-muted-foreground text-sm">
+                    {getLeaseTermsBlockedCopy(termsEditability)} Use Extend lease or End lease
+                    instead.
+                  </p>
+                ) : null}
+
+                {canExtend ? (
+                  <div className={showTermsDivider ? "space-y-3 border-t pt-4" : "space-y-3"}>
+                    <p className="text-muted-foreground text-sm">
+                      Extend the lease term by adding months. You can optionally set a new monthly
+                      rent effective from a month in the extension period.
+                    </p>
+                    <Button
+                      className="gap-1.5"
+                      onClick={() => setExtendOpen(true)}
+                      type="button"
+                      variant="outline"
+                    >
+                      <CalendarPlus className="size-3.5" />
+                      Extend lease
+                    </Button>
+                  </div>
+                ) : null}
               </>
             ) : (
               <p className="text-muted-foreground text-sm">
@@ -68,6 +114,16 @@ export const LeaseTermsSection = memo(
             ) : null}
           </CardContent>
         </Card>
+
+        {editOpen ? (
+          <EditLeaseTermsDialog
+            key={`${lease.id}-edit-terms`}
+            lease={lease}
+            onOpenChange={setEditOpen}
+            open={true}
+            propertyId={propertyId}
+          />
+        ) : null}
 
         {extendOpen ? (
           <ExtendLeaseDialog
