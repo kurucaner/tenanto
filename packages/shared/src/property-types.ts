@@ -149,23 +149,34 @@ export interface IPropertyUnitsListResponse {
 
 export const PropertyInviteStatus = {
   ACCEPTED: "accepted",
+  DECLINED: "declined",
   EMAIL_FAILED: "email_failed",
+  EXPIRED: "expired",
+  /** Legacy value — migrated to pending_invite / pending_acceptance in v62+ */
   PENDING: "pending",
+  PENDING_ACCEPTANCE: "pending_acceptance",
+  PENDING_INVITE: "pending_invite",
+  REVOKED: "revoked",
 } as const;
 
 export type TPropertyInviteStatus =
   (typeof PropertyInviteStatus)[keyof typeof PropertyInviteStatus];
 
 export interface IPropertyInvite {
+  acceptedAt: string | null;
   createdAt: string;
+  declinedAt: string | null;
   email: string;
   emailError: string | null;
   expiresAt: string;
   id: string;
+  invitedAt: string;
   invitedBy: string;
   propertyId: string;
+  revokedAt: string | null;
   role: TPropertyRole;
   status: TPropertyInviteStatus;
+  updatedAt: string;
 }
 
 export type TAddPropertyMemberResponse =

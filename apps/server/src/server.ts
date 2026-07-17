@@ -46,6 +46,7 @@ import { tenantLeaseRoutes } from "./routes/tenant/tenant-lease-routes";
 import { tenantRentPaymentRoutes } from "./routes/tenant/tenant-rent-payment-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
+import { startPropertyMemberInviteExpiryCron } from "./scheduler/property-member-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
 import { startRefreshTokenCleanupCron } from "./scheduler/refresh-token-cleanup-cron";
 import { startTenantRentPaymentReconcileCron } from "./scheduler/tenant-rent-payment-reconcile-cron";
@@ -190,6 +191,7 @@ const start = async () => {
       startRefreshTokenCleanupCron();
       startPropertyExportExpiryCron();
       startPortalInviteExpiryCron();
+      startPropertyMemberInviteExpiryCron();
       startTenantRentPaymentReconcileCron();
     }
 

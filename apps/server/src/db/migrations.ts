@@ -2845,4 +2845,89 @@ export const migrations: IMigration[] = [
     },
     version: 61,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`DROP INDEX IF EXISTS property_invites_pending_property_email_idx;`);
+      await client.query(`
+        ALTER TABLE property_invites
+          DROP COLUMN IF EXISTS invite_token_hash,
+          DROP COLUMN IF EXISTS invited_at,
+          DROP COLUMN IF EXISTS accepted_at,
+          DROP COLUMN IF EXISTS declined_at,
+          DROP COLUMN IF EXISTS revoked_at,
+          DROP COLUMN IF EXISTS updated_at;
+      `);
+    },
+    name: "property_member_invite_v2_foundation",
+    up: async (client: TDBClient) => {
+      for (const value of [
+        "pending_invite",
+        "pending_acceptance",
+        "declined",
+        "revoked",
+        "expired",
+      ]) {
+        await client.query(`
+          ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS '${value}';
+        `);
+      }
+
+      await client.query(`
+        ALTER TABLE property_invites
+          ADD COLUMN IF NOT EXISTS invite_token_hash TEXT,
+          ADD COLUMN IF NOT EXISTS invited_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS declined_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+      `);
+
+      await client.query(`
+        UPDATE property_invites
+        SET invited_at = created_at
+        WHERE invited_at IS NULL;
+      `);
+
+      await client.query(`
+        UPDATE property_invites pi
+        SET status = CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(pi.email))
+              AND u.is_deleted = false
+          ) THEN 'pending_acceptance'::property_invite_status
+          ELSE 'pending_invite'::property_invite_status
+        END
+        WHERE pi.status = 'pending'::property_invite_status;
+      `);
+
+      await client.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+      await client.query(`
+        UPDATE property_invites
+        SET invite_token_hash = encode(digest(gen_random_uuid()::text || id::text, 'sha256'), 'hex')
+        WHERE invite_token_hash IS NULL
+          AND status IN (
+            'pending_invite'::property_invite_status,
+            'pending_acceptance'::property_invite_status
+          );
+      `);
+
+      await client.query(`
+        ALTER TABLE property_invites
+          DROP CONSTRAINT IF EXISTS property_invites_property_id_email_key;
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS property_invites_pending_property_email_idx
+          ON property_invites (property_id, LOWER(TRIM(email)))
+          WHERE status IN (
+            'pending'::property_invite_status,
+            'pending_invite'::property_invite_status,
+            'pending_acceptance'::property_invite_status
+          );
+      `);
+    },
+    version: 62,
+  },
 ];

@@ -94,15 +94,23 @@ export const mapPropertyMemberRow = (row: Record<string, unknown>): IPropertyMem
 });
 
 export const mapPropertyInviteRow = (row: Record<string, unknown>): IPropertyInvite => ({
+  acceptedAt: toIso(row.accepted_at),
   createdAt: (row.created_at as Date).toISOString(),
+  declinedAt: toIso(row.declined_at),
   email: row.email as string,
   emailError: (row.email_error as string) ?? null,
   expiresAt: (row.expires_at as Date).toISOString(),
   id: row.id as string,
+  invitedAt: toIso(row.invited_at) ?? (row.created_at as Date).toISOString(),
   invitedBy: row.invited_by as string,
   propertyId: row.property_id as string,
+  revokedAt: toIso(row.revoked_at),
   role: row.role as TPropertyRole,
   status: row.status as TPropertyInviteStatus,
+  updatedAt:
+    toIso(row.updated_at) ??
+    toIso(row.created_at) ??
+    (row.created_at as Date).toISOString(),
 });
 
 export const mapPropertyUnitRow = (row: Record<string, unknown>): IPropertyUnit => ({

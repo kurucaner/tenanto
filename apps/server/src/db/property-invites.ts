@@ -1,9 +1,20 @@
-import type { IPropertyInvite, TPropertyInviteStatus, TPropertyRole } from "@/packages/shared";
+import {
+  type IPropertyInvite,
+  PropertyInviteStatus,
+  type TPropertyInviteStatus,
+  type TPropertyRole,
+} from "@/packages/shared";
 
 import { mapPropertyInviteRow } from "./mappers";
 import { pool } from "./pool";
 
 const INVITE_EXPIRY_DAYS = 30;
+
+const PENDING_INVITE_STATUSES: TPropertyInviteStatus[] = [
+  PropertyInviteStatus.PENDING,
+  PropertyInviteStatus.PENDING_INVITE,
+  PropertyInviteStatus.PENDING_ACCEPTANCE,
+];
 
 export interface CreatePropertyInviteInput {
   email: string;
@@ -26,6 +37,18 @@ export const propertyInvitesDb = {
     return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async expirePendingInvites(): Promise<number> {
+    const result = await pool.query(
+      `UPDATE property_invites
+       SET status = $1::property_invite_status,
+           updated_at = NOW()
+       WHERE status = ANY($2::property_invite_status[])
+         AND expires_at <= NOW()`,
+      [PropertyInviteStatus.EXPIRED, PENDING_INVITE_STATUSES]
+    );
+    return result.rowCount ?? 0;
+  },
+
   async findByProperty(propertyId: string): Promise<IPropertyInvite[]> {
     const result = await pool.query(
       `SELECT * FROM property_invites WHERE property_id = $1 ORDER BY created_at DESC`,
@@ -37,7 +60,9 @@ export const propertyInvitesDb = {
   async findByPropertyAndEmail(propertyId: string, email: string): Promise<IPropertyInvite | null> {
     const result = await pool.query(
       `SELECT * FROM property_invites
-       WHERE property_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))`,
+       WHERE property_id = $1 AND LOWER(TRIM(email)) = LOWER(TRIM($2))
+       ORDER BY created_at DESC
+       LIMIT 1`,
       [propertyId, email]
     );
     if (result.rows.length === 0) return null;
@@ -48,11 +73,29 @@ export const propertyInvitesDb = {
     const result = await pool.query(
       `SELECT * FROM property_invites
        WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
-         AND status = 'pending'
+         AND status = ANY($2::property_invite_status[])
          AND expires_at > NOW()`,
-      [email]
+      [email, PENDING_INVITE_STATUSES]
     );
     return result.rows.map((row) => mapPropertyInviteRow(row as Record<string, unknown>));
+  },
+
+  async findPendingByPropertyAndEmail(
+    propertyId: string,
+    email: string
+  ): Promise<IPropertyInvite | null> {
+    const result = await pool.query(
+      `SELECT * FROM property_invites
+       WHERE property_id = $1
+         AND LOWER(TRIM(email)) = LOWER(TRIM($2))
+         AND status = ANY($3::property_invite_status[])
+         AND expires_at > NOW()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [propertyId, email, PENDING_INVITE_STATUSES]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
   },
 
   async updateStatus(
@@ -62,7 +105,9 @@ export const propertyInvitesDb = {
   ): Promise<IPropertyInvite | null> {
     const result = await pool.query(
       `UPDATE property_invites
-       SET status = $1::property_invite_status, email_error = $2
+       SET status = $1::property_invite_status,
+           email_error = $2,
+           updated_at = NOW()
        WHERE id = $3
        RETURNING *`,
       [status, emailError ?? null, id]

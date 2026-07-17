@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyInvite } from "@/packages/shared";
-import { PropertyRole } from "@/packages/shared";
+import { PropertyInviteStatus, PropertyRole } from "@/packages/shared";
 
 const mockFindPendingByEmail = mock(() => Promise.resolve([] as IPropertyInvite[]));
 const mockFindOneMember = mock(() => Promise.resolve(null));
@@ -27,15 +27,20 @@ const { acceptPendingPropertyInvitesForUser } =
 
 function makeInvite(overrides: Partial<IPropertyInvite> = {}): IPropertyInvite {
   return {
+    acceptedAt: null,
     createdAt: "2026-01-01T00:00:00.000Z",
+    declinedAt: null,
     email: "jane@example.com",
     emailError: null,
     expiresAt: "2026-02-01T00:00:00.000Z",
     id: "invite-1",
+    invitedAt: "2026-01-01T00:00:00.000Z",
     invitedBy: "owner-1",
     propertyId: "property-1",
+    revokedAt: null,
     role: PropertyRole.MANAGER,
-    status: "pending",
+    status: PropertyInviteStatus.PENDING_INVITE,
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }

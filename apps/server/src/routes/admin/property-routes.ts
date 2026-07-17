@@ -10,6 +10,7 @@ import { userDb } from "@/db/users";
 import {
   AdminAuditAction,
   HttpStatus,
+  isPendingPropertyMemberInviteStatus,
   type IAdminAddPropertyMemberBody,
   type IAdminCreatePropertyBody,
   type IAdminSetPropertyFavoriteBody,
@@ -284,8 +285,8 @@ async function sendPropertyMemberInvite(
   email: string,
   role: TPropertyRole
 ) {
-  const existingInvite = await propertyInvitesDb.findByPropertyAndEmail(propertyId, email);
-  if (existingInvite?.status === "pending") {
+  const existingInvite = await propertyInvitesDb.findPendingByPropertyAndEmail(propertyId, email);
+  if (existingInvite && isPendingPropertyMemberInviteStatus(existingInvite.status)) {
     return reply
       .status(HttpStatus.CONFLICT)
       .send({ error: "An invitation has already been sent to this email" });
