@@ -41,6 +41,10 @@ describe("formatPropertyMemberInviteAdminStatus", () => {
       "Email failed"
     );
   });
+
+  test("maps expired to Expired", () => {
+    expect(formatPropertyMemberInviteAdminStatus(PropertyInviteStatus.EXPIRED)).toBe("Expired");
+  });
 });
 
 describe("getPropertyMemberInviteStatusTone", () => {
@@ -48,13 +52,39 @@ describe("getPropertyMemberInviteStatusTone", () => {
     expect(getPropertyMemberInviteStatusTone("Pending")).toBe("pending");
     expect(getPropertyMemberInviteStatusTone("Email failed")).toBe("warning");
     expect(getPropertyMemberInviteStatusTone("Declined")).toBe("muted");
+    expect(getPropertyMemberInviteStatusTone("Expired")).toBe("muted");
   });
 });
 
 describe("getPropertyMemberInviteRowState", () => {
-  test("returns pending label and tone for pending invite", () => {
+  test("returns resend and revoke for pending invite", () => {
     const state = getPropertyMemberInviteRowState(invite);
     expect(state.statusLabel).toBe("Pending");
     expect(state.statusTone).toBe("pending");
+    expect(state.actions).toEqual(["resend", "revoke"]);
+  });
+
+  test("returns resend and revoke for email_failed invite", () => {
+    const state = getPropertyMemberInviteRowState({
+      ...invite,
+      status: PropertyInviteStatus.EMAIL_FAILED,
+    });
+    expect(state.actions).toEqual(["resend", "revoke"]);
+  });
+
+  test("returns invite-again for declined invite", () => {
+    const state = getPropertyMemberInviteRowState({
+      ...invite,
+      status: PropertyInviteStatus.DECLINED,
+    });
+    expect(state.actions).toEqual(["invite-again"]);
+  });
+
+  test("returns invite-again for expired invite", () => {
+    const state = getPropertyMemberInviteRowState({
+      ...invite,
+      status: PropertyInviteStatus.EXPIRED,
+    });
+    expect(state.actions).toEqual(["invite-again"]);
   });
 });

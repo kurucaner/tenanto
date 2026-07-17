@@ -79,6 +79,9 @@ mock.module("@/db/property-invites", () => ({
     expireInviteIfPastTtl: mockExpireInviteIfPastTtl,
     findById: mock(() => Promise.resolve(makeInvite())),
     findByInviteToken: mockFindByInviteToken,
+    transitionStatus: mock(() =>
+      Promise.resolve({ ...makeInvite(), status: PropertyInviteStatus.REVOKED })
+    ),
     updateInviteToken: mock(() => Promise.resolve(makeInvite())),
     updateStatus: mock(() => Promise.resolve(makeInvite())),
   },
@@ -113,5 +116,16 @@ describe("propertyMemberInviteService.previewInvite", () => {
     expect(preview.summary.propertyName).toBe("Sunset Apartments");
     expect(preview.summary.roleLabel).toBe("Manager");
     expect(preview.hasExistingAccount).toBe(false);
+  });
+});
+
+describe("propertyMemberInviteService.revokeInvite", () => {
+  test("revokes a pending invite", async () => {
+    const result = await propertyMemberInviteService.revokeInvite({
+      inviteId: "invite-1",
+      propertyId: "property-1",
+    });
+
+    expect(result.invite.status).toBe(PropertyInviteStatus.REVOKED);
   });
 });

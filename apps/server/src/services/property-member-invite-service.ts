@@ -21,6 +21,12 @@ import {
   sendPropertyMemberInviteNewEmail,
 } from "@/ses/transactional-emails";
 
+import {
+  logPropertyMemberInviteInvited,
+  logPropertyMemberInviteResent,
+  logPropertyMemberInviteRevoked,
+} from "./property-member-invite-observability";
+
 export class PropertyMemberInviteNotFoundError extends Error {
   constructor(message = "Property member invite not found") {
     super(message);
@@ -131,16 +137,20 @@ async function createAndSendInvite(input: {
       PropertyInviteStatus.EMAIL_FAILED,
       emailResult.emailError
     );
+    const resultInvite = failed ?? {
+      ...invite,
+      emailError: emailResult.emailError ?? null,
+      status: PropertyInviteStatus.EMAIL_FAILED,
+    };
+    logPropertyMemberInviteInvited(resultInvite, { emailSent: false });
     return {
       emailError: emailResult.emailError,
       emailSent: false,
-      invite: failed ?? {
-        ...invite,
-        emailError: emailResult.emailError ?? null,
-        status: PropertyInviteStatus.EMAIL_FAILED,
-      },
+      invite: resultInvite,
     };
   }
+
+  logPropertyMemberInviteInvited(invite, { emailSent: true });
 
   return {
     emailSent: true,
@@ -259,14 +269,16 @@ export const propertyMemberInviteService = {
         PropertyInviteStatus.EMAIL_FAILED,
         emailResult.emailError
       );
+      const resultInvite = failed ?? {
+        ...updated,
+        emailError: emailResult.emailError ?? null,
+        status: PropertyInviteStatus.EMAIL_FAILED,
+      };
+      logPropertyMemberInviteResent(resultInvite, { emailSent: false });
       return {
         emailError: emailResult.emailError,
         emailSent: false,
-        invite: failed ?? {
-          ...updated,
-          emailError: emailResult.emailError ?? null,
-          status: PropertyInviteStatus.EMAIL_FAILED,
-        },
+        invite: resultInvite,
       };
     }
 
@@ -275,16 +287,50 @@ export const propertyMemberInviteService = {
         ? PropertyInviteStatus.PENDING_ACCEPTANCE
         : PropertyInviteStatus.PENDING_INVITE;
       const restored = await propertyInvitesDb.updateStatus(updated.id, restoredStatus);
+      const resultInvite = restored ?? { ...updated, emailError: null, status: restoredStatus };
+      logPropertyMemberInviteResent(resultInvite, { emailSent: true });
       return {
         emailSent: true,
-        invite: restored ?? { ...updated, emailError: null, status: restoredStatus },
+        invite: resultInvite,
       };
     }
+
+    logPropertyMemberInviteResent(updated, { emailSent: true });
 
     return {
       emailSent: true,
       invite: updated,
     };
+  },
+
+  async revokeInvite(input: {
+    inviteId: string;
+    propertyId: string;
+  }): Promise<{ invite: IPropertyInvite }> {
+    const invite = await propertyInvitesDb.findById(input.inviteId);
+    if (!invite || invite.propertyId !== input.propertyId) {
+      throw new PropertyMemberInviteMismatchError();
+    }
+
+    if (
+      !isPendingPropertyMemberInviteStatus(invite.status) &&
+      invite.status !== PropertyInviteStatus.EMAIL_FAILED
+    ) {
+      throw new PropertyMemberInviteInvalidStateError(
+        "Only pending property member invites can be revoked"
+      );
+    }
+
+    const updated = await propertyInvitesDb.transitionStatus(
+      invite.id,
+      PropertyInviteStatus.REVOKED
+    );
+    if (!updated) {
+      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+    }
+
+    logPropertyMemberInviteRevoked(updated);
+    return { invite: updated };
   },
 };
 

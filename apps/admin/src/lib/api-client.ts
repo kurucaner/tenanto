@@ -75,6 +75,7 @@ import {
   type IResendLeasePortalInviteResponse,
   type IResendPropertyMemberInviteResponse,
   type IRevokeLeasePortalInviteResponse,
+  type IRevokePropertyMemberInviteResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
   type ISupportCloseResponse,
@@ -466,6 +467,12 @@ export const propertiesApi = {
   resendMemberInvite: (propertyId: string, inviteId: string) =>
     authenticatedRequest<IResendPropertyMemberInviteResponse>(
       `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/resend`,
+      { method: "POST", omitDefaultContentType: true }
+    ),
+
+  revokeMemberInvite: (propertyId: string, inviteId: string) =>
+    authenticatedRequest<IRevokePropertyMemberInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/revoke`,
       { method: "POST", omitDefaultContentType: true }
     ),
 

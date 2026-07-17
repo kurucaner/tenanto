@@ -674,6 +674,57 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
     }
   );
 
+  server.post<{ Params: IPropertyMemberInviteParams }>(
+    "/properties/:propertyId/member-invites/:inviteId/revoke",
+    { preHandler: authPre },
+    async (
+      request: FastifyRequest<{ Params: IPropertyMemberInviteParams }>,
+      reply: FastifyReply
+    ) => {
+      const propertyId = parseUuidParam(request.params.propertyId);
+      if (propertyId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
+      }
+      const inviteId = parseUuidParam(request.params.inviteId);
+      if (inviteId === null) {
+        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid inviteId" });
+      }
+
+      const propertyExists = await assertPropertyAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply
+      );
+      if (!propertyExists) return;
+
+      const canManageMembers = await assertPropertyStructureAccess(
+        propertyId,
+        request.user.userId,
+        request.user.userType,
+        reply,
+        "Only property owners can manage members"
+      );
+      if (!canManageMembers) return;
+
+      try {
+        const result = await propertyMemberInviteService.revokeInvite({ inviteId, propertyId });
+        return reply.send(result);
+      } catch (error) {
+        if (error instanceof PropertyMemberInviteMismatchError) {
+          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        }
+        if (
+          error instanceof PropertyMemberInviteNotFoundError ||
+          error instanceof PropertyMemberInviteInvalidStateError
+        ) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
+        }
+        throw error;
+      }
+    }
+  );
+
   server.patch<{ Params: IPropertyMemberParams }>(
     "/properties/:propertyId/members/:userId",
     { preHandler: authPre },

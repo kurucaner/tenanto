@@ -128,6 +128,7 @@ export {
   type IPropertyUnitsListQuery,
   type IPropertyUnitsListResponse,
   type IResendPropertyMemberInviteResponse,
+  type IRevokePropertyMemberInviteResponse,
   type IUpdatePropertyUnitBody,
   PropertyInviteStatus,
   PropertyRole,

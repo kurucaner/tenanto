@@ -206,6 +206,10 @@ export interface ICreatePropertyMemberInviteResult {
 
 export type IResendPropertyMemberInviteResponse = ICreatePropertyMemberInviteResult;
 
+export interface IRevokePropertyMemberInviteResponse {
+  invite: IPropertyInvite;
+}
+
 export interface IPropertyPendingMemberInvite {
   expiresAt: string;
   inviteId: string;

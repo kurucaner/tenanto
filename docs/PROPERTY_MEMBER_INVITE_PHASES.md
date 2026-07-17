@@ -296,11 +296,11 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 **Goal:** Explicit accept/decline; remove silent auto-join.
 
-- [ ] `GET /me/invites/pending`, `POST /me/invites/:inviteId/accept`, `POST /me/invites/:inviteId/decline`
-- [ ] `POST /invites/redeem` (token + session)
-- [ ] Accept page: Accept / Decline when authenticated; signup/register path calls redeem
-- [ ] Remove `acceptPendingPropertyInvitesForUser` from register, login, Google, Apple
-- [ ] Idempotent accept service (extend or replace `property-invite-acceptance-service.ts`)
+- [x] `GET /me/invites/pending`, `POST /me/invites/:inviteId/accept`, `POST /me/invites/:inviteId/decline`
+- [x] `POST /invites/redeem` (token + session)
+- [x] Accept page: Accept / Decline when authenticated; signup/register path calls redeem
+- [x] Remove `acceptPendingPropertyInvitesForUser` from register, login, Google, Apple
+- [x] Idempotent accept service (extend or replace `property-invite-acceptance-service.ts`)
 
 **Exit criteria:** User must Accept to appear in members; Decline shows in admin; auto-accept does not run.
 
@@ -310,11 +310,11 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 **Goal:** Resend, revoke, re-invite after terminal states — parity with lease portal admin.
 
-- [ ] `POST .../member-invites/:inviteId/resend` and `.../revoke`
-- [ ] Property detail: Resend / Revoke on pending rows; Invite again after declined/expired
-- [ ] Update `add-property-member-dialog.tsx` result handling for v2 response shapes
-- [ ] 409 on duplicate non-terminal invite (same email + property)
-- [ ] Observability: structured logs for invite sent / accepted / declined / revoked
+- [x] `POST .../member-invites/:inviteId/resend` and `.../revoke`
+- [x] Property detail: Resend / Revoke on pending rows; Invite again after declined/expired
+- [x] Update `add-property-member-dialog.tsx` result handling for v2 response shapes
+- [x] 409 on duplicate non-terminal invite (same email + property)
+- [x] Observability: structured logs for invite sent / accepted / declined / revoked
 
 **Exit criteria:** Operator manages full invite lifecycle from property detail without DB access.
 

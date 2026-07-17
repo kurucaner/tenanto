@@ -16,6 +16,10 @@ import {
 import { notifyUser } from "@/services/user-notifications";
 
 import {
+  logPropertyMemberInviteAccepted,
+  logPropertyMemberInviteDeclined,
+} from "./property-member-invite-observability";
+import {
   PropertyMemberInviteInvalidStateError,
   PropertyMemberInviteNotFoundError,
 } from "./property-member-invite-service";
@@ -124,6 +128,8 @@ async function acceptInviteForUser(
     updatedInvite = transitioned;
   }
 
+  logPropertyMemberInviteAccepted(updatedInvite);
+
   const property = await propertiesDb.findById(invite.propertyId);
   if (property) {
     notifyUser({
@@ -167,6 +173,7 @@ export const propertyMemberInviteActionService = {
     if (!updated) {
       throw new PropertyMemberInviteNotFoundError("Property member invite not found");
     }
+    logPropertyMemberInviteDeclined(updated);
     return updated;
   },
 

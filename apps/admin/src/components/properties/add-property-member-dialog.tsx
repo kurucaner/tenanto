@@ -15,6 +15,7 @@ import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { propertiesApi } from "@/lib/api-client";
+import { handlePropertyMemberInviteMutationSuccess } from "@/lib/property-member-invite-mutation-toast";
 import { queryKeys } from "@/lib/query-keys";
 import { PropertyRole, type TPropertyRole } from "@/packages/shared";
 
@@ -52,12 +53,16 @@ export const AddPropertyMemberDialog = memo(
       },
       onSuccess: (data) => {
         if (data.type === "member_added") {
-          toast.success("Member added");
+          handlePropertyMemberInviteMutationSuccess("Member added");
         } else if (data.type === "invite_sent") {
-          toast.success(`Invitation sent to ${data.invite.email}`);
+          handlePropertyMemberInviteMutationSuccess(`Invitation sent to ${data.invite.email}`);
         } else if (data.type === "invite_email_failed") {
-          toast.warning(
-            `Member invited but email failed to send: ${data.invite.emailError ?? "Unknown error"}`
+          handlePropertyMemberInviteMutationSuccess(
+            "Invitation saved but email failed to send",
+            {
+              emailError: data.invite.emailError ?? "Unknown error",
+              emailSent: false,
+            }
           );
         }
         queryClient.invalidateQueries({
