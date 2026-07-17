@@ -46,10 +46,8 @@ function connectDescription(uiStatus: ReturnType<typeof getStripeConnectUiStatus
 }
 
 export const PropertyStripeConnectSection = memo(function PropertyStripeConnectSection({
-  canManage,
   propertyId,
 }: {
-  canManage: boolean;
   propertyId: string;
 }) {
   const queryClient = useQueryClient();
@@ -136,19 +134,13 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
           ) : null}
         </dl>
 
-        {canManage ? (
-          <Button
-            disabled={onboardingMutation.isPending}
-            onClick={() => onboardingMutation.mutate()}
-            type="button"
-          >
-            {onboardingMutation.isPending ? "Opening Stripe…" : onboardingButtonLabel(uiStatus)}
-          </Button>
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            Only property owners can manage Stripe Connect for this property.
-          </p>
-        )}
+        <Button
+          disabled={onboardingMutation.isPending}
+          onClick={() => onboardingMutation.mutate()}
+          type="button"
+        >
+          {onboardingMutation.isPending ? "Opening Stripe…" : onboardingButtonLabel(uiStatus)}
+        </Button>
       </CardContent>
     </Card>
   );

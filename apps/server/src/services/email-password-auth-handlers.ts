@@ -180,6 +180,8 @@ export async function handleEmailLogin<TUser, TSession>(
     return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Invalid email or password" });
   }
 
+  await realm.afterAuthenticated?.(user);
+
   const session = await realm.issueSession(server, user);
   return reply.send(session);
 }

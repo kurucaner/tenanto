@@ -125,21 +125,51 @@ describe("derivePropertyPermissions", () => {
     expect(permissions.canSendTenantNotifications).toBe(true);
   });
 
-  test("manager cannot send tenant notifications", () => {
+  test("manager cannot send tenant notifications or manage Stripe Connect", () => {
     const permissions = derivePropertyPermissions(
       makeProperty([makeMember(managerId, PropertyRole.MANAGER)]),
       makeUser(managerId, UserType.USER)
     );
 
     expect(permissions.canSendTenantNotifications).toBe(false);
+    expect(permissions.canManageStripeConnect).toBe(false);
   });
 
-  test("owner can send tenant notifications", () => {
+  test("accountant cannot manage Stripe Connect", () => {
+    const permissions = derivePropertyPermissions(
+      makeProperty([makeMember(accountantId, PropertyRole.ACCOUNTANT)]),
+      makeUser(accountantId, UserType.USER)
+    );
+
+    expect(permissions.canManageStripeConnect).toBe(false);
+  });
+
+  test("creator without owner membership cannot manage Stripe Connect", () => {
+    const permissions = derivePropertyPermissions(
+      makeProperty([]),
+      makeUser(creatorId, UserType.USER)
+    );
+
+    expect(permissions.canManageStructure).toBe(true);
+    expect(permissions.canManageStripeConnect).toBe(false);
+  });
+
+  test("owner can send tenant notifications and manage Stripe Connect", () => {
     const permissions = derivePropertyPermissions(
       makeProperty([makeMember(ownerId, PropertyRole.OWNER)]),
       makeUser(ownerId, UserType.USER)
     );
 
     expect(permissions.canSendTenantNotifications).toBe(true);
+    expect(permissions.canManageStripeConnect).toBe(true);
+  });
+
+  test("platform admin can manage Stripe Connect", () => {
+    const permissions = derivePropertyPermissions(
+      makeProperty([]),
+      makeUser(adminId, UserType.ADMIN)
+    );
+
+    expect(permissions.canManageStripeConnect).toBe(true);
   });
 });

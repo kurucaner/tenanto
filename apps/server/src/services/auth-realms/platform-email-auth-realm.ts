@@ -1,12 +1,11 @@
 import { hashToken } from "@/auth/jwt";
 import { pool } from "@/db/pool";
-import { propertyInvitesDb } from "@/db/property-invites";
-import { propertyMembersDb } from "@/db/property-members";
 import { pushTokenDb } from "@/db/push-tokens";
 import { refreshTokenDb } from "@/db/refresh-tokens";
 import { userDb } from "@/db/users";
 import type { IPlatformAuthSessionResponse, IUser } from "@/packages/shared";
 import { issuePlatformAccessToken, issuePlatformSession } from "@/services/platform-auth-service";
+import { acceptPendingPropertyInvitesForUser } from "@/services/property-invite-acceptance-service";
 
 import type { IEmailPasswordAuthRealm } from "./email-password-auth-realm";
 
@@ -14,14 +13,12 @@ export const platformEmailPasswordAuthRealm: IEmailPasswordAuthRealm<
   IUser,
   IPlatformAuthSessionResponse
 > = {
+  async afterAuthenticated(user) {
+    await acceptPendingPropertyInvitesForUser(user.id, user.email);
+  },
+
   async afterRegisterVerified(user, email) {
-    const pendingInvites = await propertyInvitesDb.findPendingByEmail(email);
-    await Promise.all(
-      pendingInvites.map(async (invite) => {
-        await propertyMembersDb.add(invite.propertyId, user.id, invite.role, invite.invitedBy);
-        await propertyInvitesDb.updateStatus(invite.id, "accepted");
-      })
-    );
+    await acceptPendingPropertyInvitesForUser(user.id, email);
   },
 
   async createRegisteredUser(input) {
