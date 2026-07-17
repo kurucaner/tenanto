@@ -1,5 +1,6 @@
 import type { OtpPurpose } from "@/db/auth-otps";
 import { OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
+import { isTenantEmailNotificationsEnabled } from "@/lib/tenant-email-notifications-config";
 import { APP_NAME } from "@/packages/shared";
 
 import { renderTemplate } from "./email-templates";
@@ -165,7 +166,11 @@ export async function sendSupportReplyEmail(
 export async function sendRentPaymentRecordedEmail(
   to: string,
   opts: RentPaymentRecordedEmailOptions
-): Promise<void> {
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `Rent payment received — ${opts.propertyName}`;
   const text = [
     `Hi ${opts.tenantName},`,
@@ -192,9 +197,17 @@ export async function sendRentPaymentRecordedEmail(
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
-export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptions): Promise<void> {
+export async function sendLeaseEndedEmail(
+  to: string,
+  opts: LeaseEndedEmailOptions
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `Your lease at ${opts.propertyName} has ended`;
   const text = [
     `Hi ${opts.tenantName},`,
@@ -232,12 +245,17 @@ export async function sendLeaseEndedEmail(to: string, opts: LeaseEndedEmailOptio
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
 export async function sendTenantPortalInviteNewEmail(
   to: string,
   opts: TenantPortalInviteEmailOptions
-): Promise<void> {
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `View your lease at ${opts.propertyName} on ${APP_NAME}`;
   const text = [
     `Hi ${opts.displayName},`,
@@ -259,12 +277,17 @@ export async function sendTenantPortalInviteNewEmail(
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
 export async function sendTenantPortalInviteExistingEmail(
   to: string,
   opts: TenantPortalInviteEmailOptions
-): Promise<void> {
+): Promise<boolean> {
+  if (!isTenantEmailNotificationsEnabled()) {
+    return false;
+  }
+
   const subject = `Accept your lease invite for ${opts.propertyName}`;
   const text = [
     `Hi ${opts.displayName},`,
@@ -286,6 +309,7 @@ export async function sendTenantPortalInviteExistingEmail(
   });
 
   await sendTransactionalEmail({ html, subject, text, to });
+  return true;
 }
 
 export interface TenantCampaignEmailOptions {

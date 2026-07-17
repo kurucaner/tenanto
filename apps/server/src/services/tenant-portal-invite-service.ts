@@ -105,22 +105,20 @@ async function sendPortalInviteEmail(
 ): Promise<{ emailError?: string; emailSent: boolean }> {
   const acceptUrl = buildPortalInviteAcceptUrl(rawToken);
   try {
-    if (hasExistingAccount) {
-      await sendTenantPortalInviteExistingEmail(membership.inviteEmail, {
-        acceptUrl,
-        displayName: summary.displayName,
-        propertyName: summary.propertyName,
-        unitLabel: summary.unitLabel,
-      });
-    } else {
-      await sendTenantPortalInviteNewEmail(membership.inviteEmail, {
-        acceptUrl,
-        displayName: summary.displayName,
-        propertyName: summary.propertyName,
-        unitLabel: summary.unitLabel,
-      });
-    }
-    return { emailSent: true };
+    const emailSent = hasExistingAccount
+      ? await sendTenantPortalInviteExistingEmail(membership.inviteEmail, {
+          acceptUrl,
+          displayName: summary.displayName,
+          propertyName: summary.propertyName,
+          unitLabel: summary.unitLabel,
+        })
+      : await sendTenantPortalInviteNewEmail(membership.inviteEmail, {
+          acceptUrl,
+          displayName: summary.displayName,
+          propertyName: summary.propertyName,
+          unitLabel: summary.unitLabel,
+        });
+    return { emailSent };
   } catch (error) {
     const emailError = error instanceof Error ? error.message : "Failed to send invite email";
     return { emailError, emailSent: false };
