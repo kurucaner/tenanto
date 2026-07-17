@@ -254,7 +254,7 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 **Goal:** Schema, shared types, token utilities, transition rules — legacy behavior unchanged until later phases.
 
-- [x] Migration v62+: extend `property_invite_status` enum; add `invite_token_hash`, lifecycle timestamps; relax/replace `UNIQUE (property_id, email)` if needed
+- [x] Migration v64: extend `property_invite_status` enum; add `invite_token_hash`, lifecycle timestamps; relax/replace `UNIQUE (property_id, email)` if needed
 - [x] Backfill migration: legacy `pending` → `pending_invite` / `pending_acceptance`; generate token hashes for existing pending rows (or mark `expired` + require resend)
 - [x] `packages/shared`: status enum, invite types, transition helpers + tests
 - [x] `property-member-invite-token.ts`: generate, hash, verify, `buildPropertyInviteAcceptUrl`
