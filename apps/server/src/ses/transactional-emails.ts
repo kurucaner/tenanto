@@ -53,6 +53,13 @@ export interface TenantPortalInviteEmailOptions {
   unitLabel: string;
 }
 
+export interface PropertyMemberInviteEmailOptions {
+  acceptUrl: string;
+  inviterName: string;
+  propertyName: string;
+  roleLabel: string;
+}
+
 function buildSupportTicketUrl(supportRequestId: string): string {
   const base = (PLATFORM_APP_URL ?? "").replace(/\/$/, "");
   return `${base}/support-requests/${encodeURIComponent(supportRequestId)}`;
@@ -306,6 +313,58 @@ export async function sendTenantPortalInviteExistingEmail(
     displayName: escapeHtml(opts.displayName),
     propertyName: escapeHtml(opts.propertyName),
     unitLabel: escapeHtml(opts.unitLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+  return true;
+}
+
+export async function sendPropertyMemberInviteNewEmail(
+  to: string,
+  opts: PropertyMemberInviteEmailOptions
+): Promise<boolean> {
+  const subject = `Join ${opts.propertyName} on ${APP_NAME}`;
+  const text = [
+    `${opts.inviterName} invited you to join ${opts.propertyName} as ${opts.roleLabel}.`,
+    "",
+    `Create your account and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("property-invite-new.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (PLATFORM_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    inviterName: escapeHtml(opts.inviterName),
+    propertyName: escapeHtml(opts.propertyName),
+    roleLabel: escapeHtml(opts.roleLabel),
+  });
+
+  await sendTransactionalEmail({ html, subject, text, to });
+  return true;
+}
+
+export async function sendPropertyMemberInviteExistingEmail(
+  to: string,
+  opts: PropertyMemberInviteEmailOptions
+): Promise<boolean> {
+  const subject = `Accept your invite to ${opts.propertyName}`;
+  const text = [
+    `${opts.inviterName} invited you to join ${opts.propertyName} as ${opts.roleLabel}.`,
+    "",
+    `Sign in and accept the invite: ${opts.acceptUrl}`,
+    "",
+    "This invitation expires in 30 days.",
+  ].join("\n");
+
+  const html = renderTemplate("property-invite-existing.html", {
+    acceptUrl: opts.acceptUrl,
+    appName: APP_NAME,
+    baseUrl: (PLATFORM_APP_URL ?? WEB_APP_URL ?? "").replace(/\/$/, ""),
+    inviterName: escapeHtml(opts.inviterName),
+    propertyName: escapeHtml(opts.propertyName),
+    roleLabel: escapeHtml(opts.roleLabel),
   });
 
   await sendTransactionalEmail({ html, subject, text, to });

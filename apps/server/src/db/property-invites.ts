@@ -5,6 +5,10 @@ import {
   type TPropertyInviteStatus,
   type TPropertyRole,
 } from "@/packages/shared";
+import {
+  hashPropertyMemberInviteToken,
+  propertyMemberInviteTokenMatchesHash,
+} from "@/ses/property-member-invite-token";
 
 import { mapPropertyInviteRow } from "./mappers";
 import { pool } from "./pool";
@@ -20,22 +24,67 @@ const PENDING_INVITE_STATUSES: TPropertyInviteStatus[] = [
 export interface CreatePropertyInviteInput {
   email: string;
   invitedBy: string;
+  inviteTokenHash: string;
   propertyId: string;
   role: TPropertyRole;
+  status: TPropertyInviteStatus;
+}
+
+export class DuplicatePropertyMemberInviteError extends Error {
+  constructor(message = "A pending property member invite already exists for this email") {
+    super(message);
+    this.name = "DuplicatePropertyMemberInviteError";
+  }
 }
 
 export const propertyInvitesDb = {
   async create(input: CreatePropertyInviteInput): Promise<IPropertyInvite> {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+    const normalizedEmail = input.email.trim().toLowerCase();
+
+    const existingPending = await propertyInvitesDb.findPendingByPropertyAndEmail(
+      input.propertyId,
+      normalizedEmail
+    );
+    if (existingPending) {
+      throw new DuplicatePropertyMemberInviteError();
+    }
 
     const result = await pool.query(
-      `INSERT INTO property_invites (property_id, email, role, invited_by, expires_at)
-       VALUES ($1, $2, $3::property_role, $4, $5)
+      `INSERT INTO property_invites (
+         property_id,
+         email,
+         role,
+         invited_by,
+         expires_at,
+         status,
+         invite_token_hash,
+         invited_at
+       )
+       VALUES ($1, $2, $3::property_role, $4, $5, $6::property_invite_status, $7, NOW())
        RETURNING *`,
-      [input.propertyId, input.email.trim().toLowerCase(), input.role, input.invitedBy, expiresAt]
+      [
+        input.propertyId,
+        normalizedEmail,
+        input.role,
+        input.invitedBy,
+        expiresAt,
+        input.status,
+        input.inviteTokenHash,
+      ]
     );
     return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async expireInviteIfPastTtl(invite: IPropertyInvite): Promise<IPropertyInvite | null> {
+    if (new Date(invite.expiresAt) > new Date()) {
+      return null;
+    }
+    if (!PENDING_INVITE_STATUSES.includes(invite.status)) {
+      return null;
+    }
+    return propertyInvitesDb.updateStatus(invite.id, PropertyInviteStatus.EXPIRED);
   },
 
   async expirePendingInvites(): Promise<number> {
@@ -48,6 +97,34 @@ export const propertyInvitesDb = {
       [PropertyInviteStatus.EXPIRED, PENDING_INVITE_STATUSES]
     );
     return result.rowCount ?? 0;
+  },
+
+  async findById(id: string): Promise<IPropertyInvite | null> {
+    const result = await pool.query(`SELECT * FROM property_invites WHERE id = $1`, [id]);
+    if (result.rows.length === 0) return null;
+    return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async findByInviteToken(rawToken: string): Promise<IPropertyInvite | null> {
+    const inviteTokenHash = hashPropertyMemberInviteToken(rawToken);
+    const result = await pool.query(
+      `SELECT * FROM property_invites
+       WHERE invite_token_hash = $1
+         AND invite_token_hash IS NOT NULL`,
+      [inviteTokenHash]
+    );
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    if (!row) return null;
+
+    const storedHash = row["invite_token_hash"];
+    if (
+      typeof storedHash !== "string" ||
+      !propertyMemberInviteTokenMatchesHash(rawToken, storedHash)
+    ) {
+      return null;
+    }
+
+    return mapPropertyInviteRow(row);
   },
 
   async findByProperty(propertyId: string): Promise<IPropertyInvite[]> {
@@ -105,6 +182,25 @@ export const propertyInvitesDb = {
        ORDER BY created_at DESC
        LIMIT 1`,
       [propertyId, email, PENDING_INVITE_STATUSES]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async updateInviteToken(id: string, inviteTokenHash: string): Promise<IPropertyInvite | null> {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + INVITE_EXPIRY_DAYS);
+
+    const result = await pool.query(
+      `UPDATE property_invites
+       SET invite_token_hash = $1,
+           expires_at = $2,
+           invited_at = NOW(),
+           updated_at = NOW(),
+           email_error = NULL
+       WHERE id = $3
+       RETURNING *`,
+      [inviteTokenHash, expiresAt, id]
     );
     if (result.rows.length === 0) return null;
     return mapPropertyInviteRow(result.rows[0] as Record<string, unknown>);

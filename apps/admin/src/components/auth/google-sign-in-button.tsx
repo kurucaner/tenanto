@@ -8,7 +8,7 @@ import { getGoogleClientId } from "@/lib/google-auth-client-id";
 import { GoogleSignInButton as GoogleSignInButtonBase } from "@/packages/app-ui";
 import { useAuthStore } from "@/stores/auth-store";
 
-export const GoogleSignInButton = memo(() => {
+export const GoogleSignInButton = memo(({ returnTo }: { returnTo?: string | null }) => {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -27,7 +27,7 @@ export const GoogleSignInButton = memo(() => {
             user: res.user,
           });
           toast.success("Signed in");
-          navigate("/home", { replace: true });
+          navigate(returnTo ?? "/home", { replace: true });
         } catch (error) {
           toast.error(getAuthApiErrorMessage(error, "Google sign-in failed"));
         } finally {

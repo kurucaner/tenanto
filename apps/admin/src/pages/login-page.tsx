@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { memo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { AuthCardBody, AuthCardFooter, AuthPageShell } from "@/components/auth/auth-page-shell";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { authApi } from "@/lib/api-client";
 import { getAuthApiErrorMessage } from "@/lib/auth-api-errors";
 import { loginSchema, type TLoginFormValues } from "@/lib/auth-form-schemas";
+import { parseSafeReturnTo } from "@/lib/invite-return-url";
 import { getWebAppUrl } from "@/lib/web-app-url";
 import { AuthTermsNotice } from "@/packages/app-ui";
 import { useAuthStore } from "@/stores/auth-store";
@@ -20,6 +21,8 @@ import { useAuthStore } from "@/stores/auth-store";
 const LoginPageInner = memo(() => {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = parseSafeReturnTo(searchParams.get("returnTo"));
   const [submitting, setSubmitting] = useState(false);
 
   const form = useForm<TLoginFormValues>({
@@ -37,7 +40,7 @@ const LoginPageInner = memo(() => {
         user: res.user,
       });
       toast.success("Signed in");
-      navigate("/home", { replace: true });
+      navigate(returnTo ?? "/home", { replace: true });
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Sign-in failed"));
     } finally {
@@ -53,7 +56,7 @@ const LoginPageInner = memo(() => {
       subtitle="Sign in to your workspace."
     >
       <AuthCardBody>
-        <GoogleSignInButton />
+        <GoogleSignInButton returnTo={returnTo} />
         <AuthProviderDivider />
         <div className="flex flex-col gap-2">
           <Label htmlFor="admin-email">Email</Label>

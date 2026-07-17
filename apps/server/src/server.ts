@@ -30,6 +30,7 @@ import { propertyLongStayRoutes } from "./routes/admin/property-long-stay-routes
 import { propertyReportRoutes } from "./routes/admin/property-report-routes";
 import { propertyReservationRoutes } from "./routes/admin/property-reservation-routes";
 import { propertyRoutes } from "./routes/admin/property-routes";
+import { propertyInviteRoutes } from "./routes/property-invite-routes";
 import { propertySettingsRoutes } from "./routes/admin/property-settings-routes";
 import { propertyStripeConnectRoutes } from "./routes/admin/property-stripe-connect-routes";
 import { propertyTenantEmailCampaignRoutes } from "./routes/admin/property-tenant-email-campaign-routes";
@@ -102,6 +103,7 @@ server.register(jwtAuthPlugin);
 server.register(tenantJwtAuthPlugin);
 server.register(initRoutes);
 server.register(authRoutes);
+server.register(propertyInviteRoutes);
 server.register(tenantAuthRoutes);
 server.register(tenantLeaseRoutes);
 server.register(tenantRentPaymentRoutes);

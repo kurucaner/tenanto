@@ -181,6 +181,31 @@ export interface IPropertyInvite {
   updatedAt: string;
 }
 
+export interface IPropertyMemberInviteSummary {
+  inviterEmail: string;
+  inviterName: string;
+  propertyAddress: string;
+  propertyName: string;
+  role: TPropertyRole;
+  roleLabel: string;
+}
+
+export interface IPropertyInvitePreviewResponse {
+  hasExistingAccount: boolean;
+  inviteEmail: string;
+  inviteId: string;
+  status: TPropertyInviteStatus;
+  summary: IPropertyMemberInviteSummary;
+}
+
+export interface ICreatePropertyMemberInviteResult {
+  emailError?: string;
+  emailSent: boolean;
+  invite: IPropertyInvite;
+}
+
+export type IResendPropertyMemberInviteResponse = ICreatePropertyMemberInviteResult;
+
 export type TAddPropertyMemberResponse =
   | { member: IPropertyMember; type: "member_added" }
   | { invite: IPropertyInvite; type: "invite_sent" }

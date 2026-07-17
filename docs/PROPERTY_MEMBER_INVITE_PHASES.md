@@ -61,14 +61,14 @@ Stack: **Postgres** (`property_invites`, `property_members`, `users`) + **SES** 
 
 ## Today vs target
 
-| | **Legacy (today)** | **Target (v2)** |
-|---|---|---|
-| Storage | `property_invites` | Extended `property_invites` (or successor with same role) |
-| Statuses | `pending`, `accepted`, `email_failed` | `pending_invite`, `pending_acceptance`, `accepted`, `declined`, `revoked`, `expired`, `email_failed` |
-| Email link | `PLATFORM_APP_URL/signup` | `PLATFORM_APP_URL/accept-invite?token=…` |
-| Acceptance | Auto via `property-invite-acceptance-service` | Manual accept/decline + token redeem |
-| Admin UI | Members table only | Members + pending invite rows, badges, resend/revoke |
-| Invitee UI | None | Admin app `/accept-invite`, optional `/me/invites/pending` |
+|            | **Legacy (today)**                            | **Target (v2)**                                                                                      |
+| ---------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Storage    | `property_invites`                            | Extended `property_invites` (or successor with same role)                                            |
+| Statuses   | `pending`, `accepted`, `email_failed`         | `pending_invite`, `pending_acceptance`, `accepted`, `declined`, `revoked`, `expired`, `email_failed` |
+| Email link | `PLATFORM_APP_URL/signup`                     | `PLATFORM_APP_URL/accept-invite?token=…`                                                             |
+| Acceptance | Auto via `property-invite-acceptance-service` | Manual accept/decline + token redeem                                                                 |
+| Admin UI   | Members table only                            | Members + pending invite rows, badges, resend/revoke                                                 |
+| Invitee UI | None                                          | Admin app `/accept-invite`, optional `/me/invites/pending`                                           |
 
 ---
 
@@ -124,32 +124,32 @@ sequenceDiagram
 
 ### Extend `property_invites`
 
-| Column | Notes |
-| --- | --- |
-| `id` | UUID (existing) |
-| `property_id` | FK → `properties` (existing) |
-| `email` | Normalized invite email (existing) |
-| `role` | `property_role` (existing) |
-| `invited_by` | FK → `users` (existing) |
-| `status` | Expand enum — see below |
-| `invite_token_hash` | SHA-256 hex of raw token (new) |
-| `expires_at` | TTL, default 30 days (existing) |
-| `email_error` | SES failure message (existing) |
-| `invited_at` | Optional; default `created_at` |
-| `accepted_at`, `declined_at`, `revoked_at` | Lifecycle timestamps (new) |
-| `created_at`, `updated_at` | Timestamps |
+| Column                                     | Notes                              |
+| ------------------------------------------ | ---------------------------------- |
+| `id`                                       | UUID (existing)                    |
+| `property_id`                              | FK → `properties` (existing)       |
+| `email`                                    | Normalized invite email (existing) |
+| `role`                                     | `property_role` (existing)         |
+| `invited_by`                               | FK → `users` (existing)            |
+| `status`                                   | Expand enum — see below            |
+| `invite_token_hash`                        | SHA-256 hex of raw token (new)     |
+| `expires_at`                               | TTL, default 30 days (existing)    |
+| `email_error`                              | SES failure message (existing)     |
+| `invited_at`                               | Optional; default `created_at`     |
+| `accepted_at`, `declined_at`, `revoked_at` | Lifecycle timestamps (new)         |
+| `created_at`, `updated_at`                 | Timestamps                         |
 
 **Status enum (target):**
 
-| Status | Meaning |
-| --- | --- |
-| `pending_invite` | No `users` row for email — must register then accept |
-| `pending_acceptance` | `users` row exists — must log in and accept |
-| `accepted` | Member added to `property_members` |
-| `declined` | Invitee declined |
-| `revoked` | Operator revoked |
-| `expired` | Past `expires_at` (cron) |
-| `email_failed` | SES send failed (existing) |
+| Status               | Meaning                                              |
+| -------------------- | ---------------------------------------------------- |
+| `pending_invite`     | No `users` row for email — must register then accept |
+| `pending_acceptance` | `users` row exists — must log in and accept          |
+| `accepted`           | Member added to `property_members`                   |
+| `declined`           | Invitee declined                                     |
+| `revoked`            | Operator revoked                                     |
+| `expired`            | Past `expires_at` (cron)                             |
+| `email_failed`       | SES send failed (existing)                           |
 
 **Migration note:** Map legacy `pending` → `pending_invite` or `pending_acceptance` based on `users` lookup at migration time; `accepted` unchanged.
 
@@ -163,16 +163,16 @@ Created only on **accept** or when inviting an **existing** platform user (`addE
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `PropertyMemberInviteStatus` | Lifecycle enum (mirror `TenantMembershipStatus` subset) |
-| `IPropertyMemberInvite` | Invite row for admin + accept preview |
-| `IPropertyInvitePreviewResponse` | Public preview by token |
-| `IPropertyMemberInviteSummary` | Property name, role label for accept screen |
-| `ICreatePropertyMemberInviteResult` | Admin invite/resend result (`emailSent`, `emailError`) |
-| `IPropertyPendingMemberInvite` | Logged-in user pending list item |
-| `canTransitionPropertyMemberInviteStatus` | Server-enforced transitions |
-| Extend `IPropertyDetail` | Optional `invites: IPropertyMemberInvite[]` |
+| Type                                      | Purpose                                                 |
+| ----------------------------------------- | ------------------------------------------------------- |
+| `PropertyMemberInviteStatus`              | Lifecycle enum (mirror `TenantMembershipStatus` subset) |
+| `IPropertyMemberInvite`                   | Invite row for admin + accept preview                   |
+| `IPropertyInvitePreviewResponse`          | Public preview by token                                 |
+| `IPropertyMemberInviteSummary`            | Property name, role label for accept screen             |
+| `ICreatePropertyMemberInviteResult`       | Admin invite/resend result (`emailSent`, `emailError`)  |
+| `IPropertyPendingMemberInvite`            | Logged-in user pending list item                        |
+| `canTransitionPropertyMemberInviteStatus` | Server-enforced transitions                             |
+| Extend `IPropertyDetail`                  | Optional `invites: IPropertyMemberInvite[]`             |
 
 ---
 
@@ -180,37 +180,37 @@ Created only on **accept** or when inviting an **existing** platform user (`addE
 
 ### Admin — operator (extend `property-routes.ts` or dedicated module)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `POST` | `/properties/:propertyId/members` | Existing; v2 creates token + sends accept URL email |
-| `GET` | `/properties/:propertyId` | Include `invites[]` or nested in detail |
-| `GET` | `/properties/:propertyId/member-invites` | Optional dedicated list |
-| `POST` | `/properties/:propertyId/member-invites/:inviteId/resend` | New token + email |
-| `POST` | `/properties/:propertyId/member-invites/:inviteId/revoke` | → `revoked` |
+| Method | Path                                                      | Notes                                               |
+| ------ | --------------------------------------------------------- | --------------------------------------------------- |
+| `POST` | `/properties/:propertyId/members`                         | Existing; v2 creates token + sends accept URL email |
+| `GET`  | `/properties/:propertyId`                                 | Include `invites[]` or nested in detail             |
+| `GET`  | `/properties/:propertyId/member-invites`                  | Optional dedicated list                             |
+| `POST` | `/properties/:propertyId/member-invites/:inviteId/resend` | New token + email                                   |
+| `POST` | `/properties/:propertyId/member-invites/:inviteId/revoke` | → `revoked`                                         |
 
 ### Public invite redemption (platform, not tenant)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/invites/preview?token=` | Property summary; no auth |
-| `POST` | `/invites/redeem` | Token + platform session → accept |
+| Method | Path                      | Notes                             |
+| ------ | ------------------------- | --------------------------------- |
+| `GET`  | `/invites/preview?token=` | Property summary; no auth         |
+| `POST` | `/invites/redeem`         | Token + platform session → accept |
 
 ### Authenticated platform user
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/me/invites/pending` | Pending property invites for `request.user.email` |
-| `POST` | `/me/invites/:inviteId/accept` | → `property_members` + `accepted` |
-| `POST` | `/me/invites/:inviteId/decline` | → `declined` |
+| Method | Path                            | Notes                                             |
+| ------ | ------------------------------- | ------------------------------------------------- |
+| `GET`  | `/me/invites/pending`           | Pending property invites for `request.user.email` |
+| `POST` | `/me/invites/:inviteId/accept`  | → `property_members` + `accepted`                 |
+| `POST` | `/me/invites/:inviteId/decline` | → `declined`                                      |
 
 ---
 
 ## Email
 
-| Template | When |
-| --- | --- |
-| `property-invite-new.html` | No `users` row — signup + accept CTA |
-| `property-invite-existing.html` | Account exists — login + accept CTA |
+| Template                        | When                                 |
+| ------------------------------- | ------------------------------------ |
+| `property-invite-new.html`      | No `users` row — signup + accept CTA |
+| `property-invite-existing.html` | Account exists — login + accept CTA  |
 
 Link target: `PLATFORM_APP_URL/accept-invite?token=…` (new helper in `property-member-invite-token.ts`, mirror `tenant-portal-invite-token.ts`).
 
@@ -222,27 +222,27 @@ Update or retire misleading copy in `property-invite.html` (“membership will b
 
 ### `apps/admin` (operator + invitee)
 
-| Surface | Phase |
-| --- | --- |
-| Property detail — pending invite rows + status badges | 1 |
-| Property detail — Resend / Revoke actions | 4 |
-| `/accept-invite` public route + preview + register/login inline | 2–3 |
-| Optional home banner / settings for pending property invites | 3 |
-| Add member dialog — unchanged entry; result toasts reference invite status | 4 |
+| Surface                                                                    | Phase |
+| -------------------------------------------------------------------------- | ----- |
+| Property detail — pending invite rows + status badges                      | 1     |
+| Property detail — Resend / Revoke actions                                  | 4     |
+| `/accept-invite` public route + preview + register/login inline            | 2–3   |
+| Optional home banner / settings for pending property invites               | 3     |
+| Add member dialog — unchanged entry; result toasts reference invite status | 4     |
 
 Reuse `@/packages/app-ui` patterns from tenant accept page where possible (auth shells, summary card component for **property** context).
 
 ### Admin status labels (convention — match lease portal)
 
-| Status | Label | Tone |
-| --- | --- | --- |
-| `pending_invite`, `pending_acceptance` | Pending | pending |
-| `accepted` / member row | Active | active |
-| `declined` | Declined | muted |
-| `revoked` | Revoked | muted |
-| `expired` | Expired | muted |
-| `email_failed` | Email failed | muted |
-| (no invite) | Not invited | neutral |
+| Status                                 | Label        | Tone    |
+| -------------------------------------- | ------------ | ------- |
+| `pending_invite`, `pending_acceptance` | Pending      | pending |
+| `accepted` / member row                | Active       | active  |
+| `declined`                             | Declined     | muted   |
+| `revoked`                              | Revoked      | muted   |
+| `expired`                              | Expired      | muted   |
+| `email_failed`                         | Email failed | muted   |
+| (no invite)                            | Not invited  | neutral |
 
 Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `lease-portal-access-display.ts`).
 
@@ -268,11 +268,11 @@ Display helper: `apps/admin/src/lib/property-member-invite-display.ts` (mirror `
 
 **Goal:** Operators see pending invites on property detail; fix “invite sent but not in members” confusion without changing acceptance.
 
-- [ ] `propertiesDb.findDetailById` (or parallel query): attach non-terminal `property_invites` for property
-- [ ] Extend `IPropertyDetail` + admin API client
-- [ ] Property detail Members card: render invite rows (email, role, status badge) alongside members
-- [ ] `property-member-invite-display.ts` for labels/tones
-- [ ] Keep legacy email + `property-invite-acceptance-service` auto-accept
+- [x] `propertiesDb.findDetailById` (or parallel query): attach non-terminal `property_invites` for property
+- [x] Extend `IPropertyDetail` + admin API client
+- [x] Property detail Members card: render invite rows (email, role, status badge) alongside members
+- [x] `property-member-invite-display.ts` for labels/tones
+- [x] Keep legacy email + `property-invite-acceptance-service` auto-accept
 
 **Exit criteria:** After inviting unknown email, admin sees Pending row; after legacy auto-accept, member appears and invite shows Accepted (or invite row hidden).
 

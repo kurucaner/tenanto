@@ -51,6 +51,7 @@ import {
   type IPropertyIncomeLine,
   type IPropertyIncomeLinesListQuery,
   type IPropertyIncomeLinesListResponse,
+  type IPropertyInvitePreviewResponse,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   type IPropertyLongStaysListQuery,
@@ -69,6 +70,7 @@ import {
   type IPropertyUnitsListResponse,
   type IRefundLedgerEntryBody,
   type IResendLeasePortalInviteResponse,
+  type IResendPropertyMemberInviteResponse,
   type IRevokeLeasePortalInviteResponse,
   type ISupportAttachmentPresignBody,
   type ISupportAttachmentPresignResponse,
@@ -397,6 +399,11 @@ export const adminApi = {
     ),
 };
 
+export const propertyInvitesApi = {
+  previewInvite: (token: string) =>
+    request<IPropertyInvitePreviewResponse>(`/invites/preview?token=${encodeURIComponent(token)}`),
+};
+
 export const propertiesApi = {
   addMember: (propertyId: string, body: IAdminAddPropertyMemberBody) =>
     authenticatedRequest<TAddPropertyMemberResponse>(
@@ -430,6 +437,12 @@ export const propertiesApi = {
     authenticatedRequest<void>(
       `/properties/${encodeURIComponent(propertyId)}/members/${encodeURIComponent(userId)}`,
       { method: "DELETE", omitDefaultContentType: true }
+    ),
+
+  resendMemberInvite: (propertyId: string, inviteId: string) =>
+    authenticatedRequest<IResendPropertyMemberInviteResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/member-invites/${encodeURIComponent(inviteId)}/resend`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   setFavorite: (propertyId: string, body: IAdminSetPropertyFavoriteBody) =>
