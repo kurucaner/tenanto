@@ -5,7 +5,26 @@ import {
   buildTenantSmsOptInConfirmationMessage,
   buildTenantSmsOptOutConfirmationMessage,
   canReceiveSms,
+  getTenantSmsSubscriptionStatus,
+  type ITenantUser,
+  TenantSmsSubscriptionStatus,
 } from "./tenant-sms-utils";
+
+function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
+  return {
+    createdAt: "2026-01-01T00:00:00.000Z",
+    email: "tenant@example.com",
+    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
+    id: "tenant-1",
+    name: "Jane Tenant",
+    phone: "+13055550100",
+    phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
+    smsConsentedAt: "2026-01-01T00:00:00.000Z",
+    smsOptedOutAt: null,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 describe("canReceiveSms", () => {
   test("returns true when phone is verified, consented, and not opted out", () => {
@@ -46,6 +65,27 @@ describe("canReceiveSms", () => {
         smsOptedOutAt: "2026-01-03T00:00:00.000Z",
       })
     ).toBe(false);
+  });
+});
+
+describe("getTenantSmsSubscriptionStatus", () => {
+  test("returns subscribed when tenant can receive SMS", () => {
+    expect(getTenantSmsSubscriptionStatus(makeTenantUser())).toBe(
+      TenantSmsSubscriptionStatus.SUBSCRIBED
+    );
+  });
+
+  test("returns opted_out when tenant opted out", () => {
+    expect(
+      getTenantSmsSubscriptionStatus(
+        makeTenantUser({
+          phone: null,
+          phoneVerifiedAt: null,
+          smsConsentedAt: null,
+          smsOptedOutAt: "2026-01-03T00:00:00.000Z",
+        })
+      )
+    ).toBe(TenantSmsSubscriptionStatus.OPTED_OUT);
   });
 });
 

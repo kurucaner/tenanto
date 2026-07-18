@@ -221,11 +221,11 @@ After Phase 2 lands on staging, capture Settings showing phone field, **unchecke
 
 **Goal:** First shippable tenant surface for SMS opt-in/opt-out.
 
-- [ ] Extract `PhoneInput` + `Checkbox` to `packages/app-ui`; update admin imports
-- [ ] Build `TenantSmsSettingsSection` wired to bind + opt-out APIs
-- [ ] Extend tenant API client with bind/start, bind/verify, opt-out
-- [ ] Gate section with `isTenantPhoneAuthEnabled()`
-- [ ] Invalidate `queryKeys.me()` after bind/opt-out; sync auth store user
+- [x] Extract `PhoneInput` + `Checkbox` to `packages/app-ui`; update admin imports
+- [x] Build `TenantSmsSettingsSection` wired to bind + opt-out APIs
+- [x] Extend tenant API client with bind/start, bind/verify, opt-out
+- [x] Gate section with `isTenantPhoneAuthEnabled()`
+- [x] Invalidate `queryKeys.me()` after bind/opt-out; sync auth store user
 - [ ] Capture staging screenshot for AWS campaign resubmission
 
 **Exit criteria:** Tenant completes enable → OTP → subscribed flow and disable flow in staging; screenshot matches campaign workflow description.

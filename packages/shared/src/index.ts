@@ -716,7 +716,10 @@ export {
   buildTenantSmsOptInConfirmationMessage,
   buildTenantSmsOptOutConfirmationMessage,
   canReceiveSms,
+  getTenantSmsSubscriptionStatus,
   type ITenantSmsEligibilityInput,
+  TenantSmsSubscriptionStatus,
+  type TTenantSmsSubscriptionStatus,
 } from "./tenant-sms-utils";
 
 // Brand Constants
