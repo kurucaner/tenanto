@@ -323,10 +323,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** UI reflects backend; still one onboarding button.
 
-- [ ] `api-client`: optional rename `createExpressOnboardingLink`; status includes `accountType`
-- [ ] Badge/utils: show **Express** / **Standard** when connected
-- [ ] Relabel single button → **Set up new Stripe account** (Express only for now)
-- [ ] Hide Standard button until backend exposes Standard OAuth as enabled
+- [x] `api-client`: optional rename `createExpressOnboardingLink`; status includes `accountType`
+- [x] Badge/utils: show **Express** / **Standard** when connected
+- [x] Relabel single button → **Set up new Stripe account** (Express only for now)
+- [x] Hide Standard button until backend exposes Standard OAuth as enabled
 
 **Exit criteria:** Connected Express shows type; disconnected users see clearer Express label only.
 

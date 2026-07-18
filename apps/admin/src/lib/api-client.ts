@@ -762,14 +762,21 @@ export const settingsApi = {
 };
 
 export const propertyStripeConnectApi = {
-  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+  createExpressOnboardingLink: (
+    propertyId: string,
+    body?: { refreshUrl?: string; returnUrl?: string }
+  ) =>
     authenticatedRequest<IPropertyStripeConnectOnboardingLinkResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/onboarding-link`,
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/express/onboarding-link`,
       {
         body: JSON.stringify(body ?? {}),
         method: "POST",
       }
     ),
+
+  /** @deprecated Use createExpressOnboardingLink */
+  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+    propertyStripeConnectApi.createExpressOnboardingLink(propertyId, body),
 
   getStatus: (propertyId: string) =>
     authenticatedRequest<IPropertyStripeConnectStatusResponse>(

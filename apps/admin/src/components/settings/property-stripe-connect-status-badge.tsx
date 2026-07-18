@@ -3,6 +3,7 @@ import { memo } from "react";
 
 import { Badge, type badgeVariants } from "@/components/ui/badge";
 import {
+  getStripeConnectAccountTypeLabel,
   getStripeConnectUiStatus,
   type TStripeConnectUiStatus,
 } from "@/lib/property-stripe-connect-utils";
@@ -40,6 +41,13 @@ export const PropertyStripeConnectStatusBadge = memo(function PropertyStripeConn
   status: IPropertyStripeConnectStatusResponse;
 }) {
   const uiStatus = getStripeConnectUiStatus(status);
-  return <Badge variant={getBadgeVariant(uiStatus)}>{getBadgeLabel(uiStatus)}</Badge>;
+  const accountTypeLabel = getStripeConnectAccountTypeLabel(status.accountType);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant={getBadgeVariant(uiStatus)}>{getBadgeLabel(uiStatus)}</Badge>
+      {accountTypeLabel ? <Badge variant="outline">{accountTypeLabel}</Badge> : null}
+    </div>
+  );
 });
 PropertyStripeConnectStatusBadge.displayName = "PropertyStripeConnectStatusBadge";
