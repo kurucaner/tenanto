@@ -1,34 +1,35 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreditCard, ExternalLink } from "lucide-react";
-import { type ComponentProps, memo, useState } from "react";
+import { CheckCircle2, ExternalLink, Link2, Sparkles, Wallet } from "lucide-react";
+import { memo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
+import { StripeConnectChoiceCard } from "@/components/settings/property-stripe-connect-choice-card";
+import { StripeConnectProgressSteps } from "@/components/settings/property-stripe-connect-progress-steps";
 import { PropertyStripeConnectStatusBadge } from "@/components/settings/property-stripe-connect-status-badge";
+import { StripeConnectTechnicalDetails } from "@/components/settings/property-stripe-connect-technical-details";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { propertyStripeConnectApi } from "@/lib/api-client";
 import {
-  EXPRESS_CONNECT_HELPER,
   expressOnboardingButtonLabel,
   getStripeConnectUiStatus,
   isStripeConnectTypeSwitch,
-  shouldShowExpressOnboardingButton,
   shouldShowStandardDashboardLink,
   shouldShowStandardOAuthButton,
   showDualConnectOptions,
-  STANDARD_CONNECT_HELPER,
-  STANDARD_INCOMPLETE_HELPER,
+  STANDARD_OAUTH_UNAVAILABLE_NOTE,
   STANDARD_STRIPE_DASHBOARD_URL,
   standardOAuthButtonLabel,
+  STRIPE_CONNECT_RETURN_HINT,
   stripeConnectSectionDescription,
   type TStripeConnectUiStatus,
 } from "@/lib/property-stripe-connect-utils";
 import { queryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 import {
   type IPropertyStripeConnectStatusResponse,
   PropertyStripeAccountType,
-  type TPropertyStripeAccountType,
 } from "@/packages/shared";
 
 type TStripeConnectSwitchTarget = "express" | "standard";
@@ -84,155 +85,6 @@ function usePropertyStripeConnectMutations(propertyId: string) {
   };
 }
 
-type TStripeConnectOptionProps = {
-  disabled: boolean;
-  helper: string;
-  label: string;
-  loadingLabel: string;
-  onClick: () => void;
-  pending: boolean;
-  variant: ComponentProps<typeof Button>["variant"];
-};
-
-const StripeConnectOption = memo(function StripeConnectOption({
-  disabled,
-  helper,
-  label,
-  loadingLabel,
-  onClick,
-  pending,
-  variant,
-}: TStripeConnectOptionProps) {
-  return (
-    <div className="flex flex-1 flex-col gap-2">
-      <Button disabled={disabled} onClick={onClick} type="button" variant={variant}>
-        {pending ? loadingLabel : label}
-      </Button>
-      <p className="text-muted-foreground text-sm">{helper}</p>
-    </div>
-  );
-});
-StripeConnectOption.displayName = "StripeConnectOption";
-
-const StripeConnectStatusDetails = memo(function StripeConnectStatusDetails({
-  status,
-}: {
-  status: IPropertyStripeConnectStatusResponse;
-}) {
-  return (
-    <dl className="grid gap-2 text-sm sm:grid-cols-2">
-      <div className="flex justify-between gap-3 sm:block sm:space-y-0.5">
-        <dt className="text-muted-foreground">Charges enabled</dt>
-        <dd className="font-medium">{status.chargesEnabled ? "Yes" : "No"}</dd>
-      </div>
-      <div className="flex justify-between gap-3 sm:block sm:space-y-0.5">
-        <dt className="text-muted-foreground">Details submitted</dt>
-        <dd className="font-medium">{status.detailsSubmitted ? "Yes" : "No"}</dd>
-      </div>
-      <div className="flex justify-between gap-3 sm:block sm:space-y-0.5">
-        <dt className="text-muted-foreground">Payouts enabled</dt>
-        <dd className="font-medium">{status.payoutsEnabled ? "Yes" : "No"}</dd>
-      </div>
-      {status.stripeAccountId ? (
-        <div className="flex justify-between gap-3 sm:block sm:space-y-0.5 sm:col-span-2">
-          <dt className="text-muted-foreground">Account</dt>
-          <dd className="font-mono text-xs font-medium">{status.stripeAccountId}</dd>
-        </div>
-      ) : null}
-    </dl>
-  );
-});
-StripeConnectStatusDetails.displayName = "StripeConnectStatusDetails";
-
-type TStripeConnectActionsProps = {
-  accountType: TPropertyStripeAccountType | null;
-  connectPending: boolean;
-  dualOptions: boolean;
-  expressPending: boolean;
-  onExpressClick: () => void;
-  onStandardOAuthClick: () => void;
-  showExpressOnboarding: boolean;
-  showStandardIncompleteOAuth: boolean;
-  showStandardOAuthButton: boolean;
-  standardOAuthPending: boolean;
-  uiStatus: TStripeConnectUiStatus;
-};
-
-const StripeConnectActions = memo(function StripeConnectActions({
-  accountType,
-  connectPending,
-  dualOptions,
-  expressPending,
-  onExpressClick,
-  onStandardOAuthClick,
-  showExpressOnboarding,
-  showStandardIncompleteOAuth,
-  showStandardOAuthButton,
-  standardOAuthPending,
-  uiStatus,
-}: TStripeConnectActionsProps) {
-  if (dualOptions) {
-    return (
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <StripeConnectOption
-          disabled={connectPending}
-          helper={EXPRESS_CONNECT_HELPER}
-          label={expressOnboardingButtonLabel(uiStatus, accountType)}
-          loadingLabel="Opening Stripe…"
-          onClick={onExpressClick}
-          pending={expressPending}
-          variant="default"
-        />
-        <StripeConnectOption
-          disabled={connectPending}
-          helper={STANDARD_CONNECT_HELPER}
-          label={standardOAuthButtonLabel(uiStatus, accountType)}
-          loadingLabel="Redirecting to Stripe…"
-          onClick={onStandardOAuthClick}
-          pending={standardOAuthPending}
-          variant="outline"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {showExpressOnboarding ? (
-        <Button disabled={connectPending} onClick={onExpressClick} type="button">
-          {expressPending
-            ? "Opening Stripe…"
-            : expressOnboardingButtonLabel(uiStatus, accountType)}
-        </Button>
-      ) : null}
-      {showStandardIncompleteOAuth ? (
-        <StripeConnectOption
-          disabled={connectPending}
-          helper={STANDARD_INCOMPLETE_HELPER}
-          label={standardOAuthButtonLabel(uiStatus, accountType)}
-          loadingLabel="Redirecting to Stripe…"
-          onClick={onStandardOAuthClick}
-          pending={standardOAuthPending}
-          variant="outline"
-        />
-      ) : null}
-      {showStandardOAuthButton ? (
-        <Button
-          disabled={connectPending}
-          onClick={onStandardOAuthClick}
-          type="button"
-          variant="outline"
-        >
-          {standardOAuthPending
-            ? "Redirecting to Stripe…"
-            : standardOAuthButtonLabel(uiStatus, accountType)}
-        </Button>
-      ) : null}
-    </>
-  );
-});
-StripeConnectActions.displayName = "StripeConnectActions";
-
 const StripeConnectDashboardButton = memo(function StripeConnectDashboardButton() {
   return (
     <Button asChild type="button" variant="outline">
@@ -244,6 +96,163 @@ const StripeConnectDashboardButton = memo(function StripeConnectDashboardButton(
   );
 });
 StripeConnectDashboardButton.displayName = "StripeConnectDashboardButton";
+
+type TConnectViewSharedProps = {
+  connectPending: boolean;
+  expressPending: boolean;
+  onExpressClick: () => void;
+  onStandardOAuthClick: () => void;
+  onSwitchToExpress: () => void;
+  onSwitchToStandard: () => void;
+  standardOAuthPending: boolean;
+  status: IPropertyStripeConnectStatusResponse;
+  uiStatus: TStripeConnectUiStatus;
+};
+
+const NotConnectedConnectView = memo(function NotConnectedConnectView({
+  connectPending,
+  expressPending,
+  onExpressClick,
+  onStandardOAuthClick,
+  standardOAuthPending,
+  status,
+}: Omit<TConnectViewSharedProps, "onSwitchToExpress" | "onSwitchToStandard" | "uiStatus">) {
+  const showStandard = shouldShowStandardOAuthButton(status);
+
+  return (
+    <div className="space-y-3">
+      <div className={cn("grid gap-3", showStandard ? "sm:grid-cols-2" : "sm:grid-cols-1")}>
+        <StripeConnectChoiceCard
+          bullets={["Guided Stripe setup", "About 5–10 minutes"]}
+          disabled={connectPending}
+          icon={Sparkles}
+          label={expressOnboardingButtonLabel("not_connected")}
+          loadingLabel="Opening Stripe…"
+          onClick={onExpressClick}
+          pending={expressPending}
+          title="I’m new to Stripe"
+          variant="default"
+        />
+        {showStandard ? (
+          <StripeConnectChoiceCard
+            bullets={["Link your existing account", "Payouts stay in your Stripe"]}
+            disabled={connectPending}
+            icon={Link2}
+            label={standardOAuthButtonLabel("not_connected")}
+            loadingLabel="Redirecting to Stripe…"
+            onClick={onStandardOAuthClick}
+            pending={standardOAuthPending}
+            title="I already have Stripe"
+            variant="outline"
+          />
+        ) : null}
+      </div>
+      {!showStandard ? (
+        <p className="text-muted-foreground text-sm">{STANDARD_OAUTH_UNAVAILABLE_NOTE}</p>
+      ) : null}
+      {connectPending ? (
+        <p className="text-muted-foreground text-sm">{STRIPE_CONNECT_RETURN_HINT}</p>
+      ) : null}
+    </div>
+  );
+});
+NotConnectedConnectView.displayName = "NotConnectedConnectView";
+
+const IncompleteConnectView = memo(function IncompleteConnectView({
+  connectPending,
+  expressPending,
+  onExpressClick,
+  onStandardOAuthClick,
+  onSwitchToExpress,
+  onSwitchToStandard,
+  standardOAuthPending,
+  status,
+  uiStatus,
+}: TConnectViewSharedProps) {
+  const canSwitch = showDualConnectOptions(status);
+  const isExpress = status.accountType === PropertyStripeAccountType.EXPRESS;
+  const isStandard = status.accountType === PropertyStripeAccountType.STANDARD;
+  const primaryPending = isExpress ? expressPending : standardOAuthPending;
+  const primaryLabel = isExpress
+    ? expressOnboardingButtonLabel(uiStatus, status.accountType)
+    : standardOAuthButtonLabel(uiStatus, status.accountType);
+  const primaryLoadingLabel = isExpress ? "Opening Stripe…" : "Redirecting to Stripe…";
+  const onPrimaryClick = isExpress ? onExpressClick : onStandardOAuthClick;
+
+  return (
+    <div className="space-y-4">
+      <StripeConnectProgressSteps />
+      <div className="space-y-2">
+        <Button disabled={connectPending} onClick={onPrimaryClick} type="button">
+          {primaryPending ? primaryLoadingLabel : primaryLabel}
+        </Button>
+        {connectPending ? (
+          <p className="text-muted-foreground text-sm">{STRIPE_CONNECT_RETURN_HINT}</p>
+        ) : null}
+      </div>
+      {canSwitch ? (
+        <Button
+          className="h-auto px-0 text-sm"
+          disabled={connectPending}
+          onClick={isExpress ? onSwitchToStandard : onSwitchToExpress}
+          type="button"
+          variant="link"
+        >
+          Use a different connection method
+        </Button>
+      ) : null}
+      {isStandard && !canSwitch ? (
+        <p className="text-muted-foreground text-sm">
+          Complete any remaining requirements in Stripe Dashboard, then return here.
+        </p>
+      ) : null}
+      <StripeConnectTechnicalDetails status={status} />
+    </div>
+  );
+});
+IncompleteConnectView.displayName = "IncompleteConnectView";
+
+const ReadyConnectView = memo(function ReadyConnectView({
+  connectPending,
+  expressPending,
+  onExpressClick,
+  status,
+}: Pick<
+  TConnectViewSharedProps,
+  "connectPending" | "expressPending" | "onExpressClick" | "status"
+>) {
+  const showDashboard = shouldShowStandardDashboardLink(status);
+  const showExpressUpdate = status.accountType === PropertyStripeAccountType.EXPRESS;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="bg-background text-foreground flex size-10 shrink-0 items-center justify-center rounded-lg border">
+          <CheckCircle2 className="size-5" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-medium leading-snug">Rent payments are live</p>
+          <p className="text-muted-foreground text-sm">
+            Tenants can pay from their portal; funds settle to your Stripe account.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {showExpressUpdate ? (
+          <Button disabled={connectPending} onClick={onExpressClick} type="button" variant="outline">
+            {expressPending ? "Opening Stripe…" : "Update Stripe details"}
+          </Button>
+        ) : null}
+        {showDashboard ? <StripeConnectDashboardButton /> : null}
+      </div>
+      {expressPending ? (
+        <p className="text-muted-foreground text-sm">{STRIPE_CONNECT_RETURN_HINT}</p>
+      ) : null}
+      <StripeConnectTechnicalDetails status={status} />
+    </div>
+  );
+});
+ReadyConnectView.displayName = "ReadyConnectView";
 
 export const PropertyStripeConnectSection = memo(function PropertyStripeConnectSection({
   propertyId,
@@ -257,16 +266,6 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
     usePropertyStripeConnectMutations(propertyId);
 
   const uiStatus = getStripeConnectUiStatus(status);
-  const dualOptions = showDualConnectOptions(status);
-  const showExpressOnboarding = shouldShowExpressOnboardingButton(status) && !dualOptions;
-  const showStandardOAuth = shouldShowStandardOAuthButton(status);
-  const showStandardDashboard = shouldShowStandardDashboardLink(status);
-  const showStandardIncompleteOAuth =
-    !dualOptions &&
-    showStandardOAuth &&
-    status.accountType === PropertyStripeAccountType.STANDARD &&
-    uiStatus === "setup_incomplete";
-  const showStandardOAuthButton = showStandardOAuth && !dualOptions && !showStandardIncompleteOAuth;
 
   const runExpressConnect = () => {
     expressOnboardingMutation.mutate();
@@ -292,6 +291,14 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
     runStandardConnect();
   };
 
+  const handleSwitchToExpress = () => {
+    setSwitchTarget("express");
+  };
+
+  const handleSwitchToStandard = () => {
+    setSwitchTarget("standard");
+  };
+
   const handleConfirmSwitch = () => {
     if (switchTarget === "express") {
       runExpressConnect();
@@ -302,35 +309,59 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
   };
 
   return (
-    <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
+    <Card
+      className={cn(
+        "border-border/80 bg-card/80 border-l-4 shadow-sm backdrop-blur-sm",
+        uiStatus === "ready" && "border-l-emerald-600/70",
+        uiStatus === "setup_incomplete" && "border-l-primary",
+        uiStatus === "not_connected" && "border-l-transparent"
+      )}
+    >
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CreditCard className="text-muted-foreground size-4" />
-          <CardTitle className="text-lg">Rent payments (Stripe)</CardTitle>
+          <Wallet className="text-muted-foreground size-4" />
+          <CardTitle className="text-lg">Online rent payments</CardTitle>
           <PropertyStripeConnectStatusBadge status={status} />
         </div>
         <CardDescription>{stripeConnectSectionDescription(status, uiStatus)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <StripeConnectStatusDetails status={status} />
-        <StripeConnectActions
-          accountType={status.accountType}
-          connectPending={connectPending}
-          dualOptions={dualOptions}
-          expressPending={expressOnboardingMutation.isPending}
-          onExpressClick={handleExpressClick}
-          onStandardOAuthClick={handleStandardOAuthClick}
-          showExpressOnboarding={showExpressOnboarding}
-          showStandardIncompleteOAuth={showStandardIncompleteOAuth}
-          showStandardOAuthButton={showStandardOAuthButton}
-          standardOAuthPending={standardOAuthMutation.isPending}
-          uiStatus={uiStatus}
-        />
-        {showStandardDashboard ? <StripeConnectDashboardButton /> : null}
+        {uiStatus === "not_connected" ? (
+          <NotConnectedConnectView
+            connectPending={connectPending}
+            expressPending={expressOnboardingMutation.isPending}
+            onExpressClick={handleExpressClick}
+            onStandardOAuthClick={handleStandardOAuthClick}
+            standardOAuthPending={standardOAuthMutation.isPending}
+            status={status}
+          />
+        ) : null}
+        {uiStatus === "setup_incomplete" ? (
+          <IncompleteConnectView
+            connectPending={connectPending}
+            expressPending={expressOnboardingMutation.isPending}
+            onExpressClick={handleExpressClick}
+            onStandardOAuthClick={handleStandardOAuthClick}
+            onSwitchToExpress={handleSwitchToExpress}
+            onSwitchToStandard={handleSwitchToStandard}
+            standardOAuthPending={standardOAuthMutation.isPending}
+            status={status}
+            uiStatus={uiStatus}
+          />
+        ) : null}
+        {uiStatus === "ready" ? (
+          <ReadyConnectView
+            connectPending={connectPending}
+            expressPending={expressOnboardingMutation.isPending}
+            onExpressClick={handleExpressClick}
+            status={status}
+          />
+        ) : null}
       </CardContent>
       <DeleteConfirmationDialog
         cancelLabel="Cancel"
         confirmLabel="Switch"
+        confirmVariant="default"
         description="Your incomplete Stripe setup will be discarded and you'll start connecting a different way."
         isPending={connectPending}
         onConfirm={handleConfirmSwitch}

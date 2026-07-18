@@ -7,15 +7,20 @@ import {
 export type TStripeConnectUiStatus = "not_connected" | "ready" | "setup_incomplete";
 
 export const EXPRESS_CONNECT_HELPER =
-  "Use this if you don't have Stripe yet. Stripe will guide you through a quick setup.";
+  "We’ll open Stripe and walk you through a quick setup.";
 
 export const STANDARD_CONNECT_HELPER =
-  "Use this if you already manage a Stripe account and want rent paid into it.";
+  "Link the Stripe account you already use for business banking.";
 
 export const STANDARD_STRIPE_DASHBOARD_URL = "https://dashboard.stripe.com";
 
 export const STANDARD_INCOMPLETE_HELPER =
   "Complete any remaining requirements in Stripe Dashboard, or reconnect your account below.";
+
+export const STRIPE_CONNECT_RETURN_HINT = "You’ll return here when you’re done.";
+
+export const STANDARD_OAUTH_UNAVAILABLE_NOTE =
+  "Linking an existing Stripe account isn’t available in this environment.";
 
 export type TStripeConnectConnectedState =
   "express_incomplete" | "express_ready" | "standard_incomplete" | "standard_ready";
@@ -55,6 +60,18 @@ export function getStripeConnectAccountTypeLabel(
     return "Standard";
   }
   return null;
+}
+
+export function getStripeConnectUiStatusBadgeLabel(uiStatus: TStripeConnectUiStatus): string {
+  switch (uiStatus) {
+    case "ready":
+      return "Live";
+    case "setup_incomplete":
+      return "Finish setup";
+    case "not_connected":
+    default:
+      return "Not set up";
+  }
 }
 
 export function showDualConnectOptions(status: IPropertyStripeConnectStatusResponse): boolean {
@@ -141,7 +158,7 @@ export function expressOnboardingButtonLabel(
       return "Continue Stripe setup";
     case "not_connected":
     default:
-      return "Set up new Stripe account";
+      return "Set up with Stripe";
   }
 }
 
@@ -155,35 +172,21 @@ export function standardOAuthButtonLabel(
   if (uiStatus === "setup_incomplete") {
     return "Finish connecting Stripe account";
   }
-  return "Connect existing Stripe account";
+  return "Connect existing account";
 }
 
 export function stripeConnectSectionDescription(
   status: IPropertyStripeConnectStatusResponse,
   uiStatus: TStripeConnectUiStatus
 ): string {
-  if (showDualConnectOptions(status)) {
-    if (uiStatus === "setup_incomplete") {
-      return "Setup isn't finished yet. Continue with your current option or connect a different way.";
-    }
-    return "Connect Stripe so tenants can pay rent to this property.";
+  if (uiStatus === "not_connected") {
+    return "Let tenants pay rent online — money goes to your Stripe account.";
   }
-  if (shouldShowStandardDashboardLink(status)) {
-    return "Connected to your existing Stripe account. Tenants can pay rent to this property.";
+  if (uiStatus === "ready") {
+    return "Rent payments are live. Tenants can pay from their portal.";
   }
-  if (
-    status.accountType === PropertyStripeAccountType.STANDARD &&
-    uiStatus === "setup_incomplete"
-  ) {
-    return "Your Stripe account is linked but not fully enabled for charges yet. Finish connecting in Stripe to accept rent payments.";
+  if (showDualConnectOptions(status) || status.standardOAuthEnabled) {
+    return "You’re almost ready. Finish setup, or switch to a different connection method.";
   }
-  switch (uiStatus) {
-    case "ready":
-      return "Tenants can pay rent to this property. Funds settle to the connected Stripe account after checkout.";
-    case "setup_incomplete":
-      return "Stripe Connect is started but not fully enabled for charges yet. Continue setup so tenants can pay rent.";
-    case "not_connected":
-    default:
-      return `${EXPRESS_CONNECT_HELPER} Funds settle to the connected account after checkout.`;
-  }
+  return "You’re almost ready. Finish Stripe setup so tenants can pay rent.";
 }

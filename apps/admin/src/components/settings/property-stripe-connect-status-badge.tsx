@@ -5,6 +5,7 @@ import { Badge, type badgeVariants } from "@/components/ui/badge";
 import {
   getStripeConnectAccountTypeLabel,
   getStripeConnectUiStatus,
+  getStripeConnectUiStatusBadgeLabel,
   type TStripeConnectUiStatus,
 } from "@/lib/property-stripe-connect-utils";
 import type { IPropertyStripeConnectStatusResponse } from "@/packages/shared";
@@ -23,18 +24,6 @@ function getBadgeVariant(uiStatus: TStripeConnectUiStatus): TBadgeVariant {
   }
 }
 
-function getBadgeLabel(uiStatus: TStripeConnectUiStatus): string {
-  switch (uiStatus) {
-    case "ready":
-      return "Ready";
-    case "setup_incomplete":
-      return "Setup incomplete";
-    case "not_connected":
-    default:
-      return "Not connected";
-  }
-}
-
 export const PropertyStripeConnectStatusBadge = memo(function PropertyStripeConnectStatusBadge({
   status,
 }: {
@@ -45,7 +34,7 @@ export const PropertyStripeConnectStatusBadge = memo(function PropertyStripeConn
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Badge variant={getBadgeVariant(uiStatus)}>{getBadgeLabel(uiStatus)}</Badge>
+      <Badge variant={getBadgeVariant(uiStatus)}>{getStripeConnectUiStatusBadgeLabel(uiStatus)}</Badge>
       {accountTypeLabel ? <Badge variant="outline">{accountTypeLabel}</Badge> : null}
     </div>
   );

@@ -360,9 +360,7 @@ describe("connected-state actions", () => {
     expect(standardOAuthButtonLabel(uiStatus, status.accountType)).toBe(
       "Finish connecting Stripe account"
     );
-    expect(stripeConnectSectionDescription(status, uiStatus)).toContain(
-      "Continue with your current option"
-    );
+    expect(stripeConnectSectionDescription(status, uiStatus)).toContain("You’re almost ready");
   });
 
   test("Standard ready shows dashboard link and hides onboarding buttons", () => {
@@ -378,21 +376,19 @@ describe("connected-state actions", () => {
     expect(shouldShowExpressOnboardingButton(status)).toBe(false);
     expect(shouldShowStandardOAuthButton(status)).toBe(false);
     expect(shouldShowStandardDashboardLink(status)).toBe(true);
-    expect(stripeConnectSectionDescription(status, uiStatus)).toContain(
-      "Connected to your existing Stripe account"
-    );
+    expect(stripeConnectSectionDescription(status, uiStatus)).toContain("Rent payments are live");
   });
 });
 
 describe("onboarding copy", () => {
   test("uses Express button labels", () => {
-    expect(expressOnboardingButtonLabel("not_connected")).toBe("Set up new Stripe account");
+    expect(expressOnboardingButtonLabel("not_connected")).toBe("Set up with Stripe");
     expect(expressOnboardingButtonLabel("setup_incomplete")).toBe("Continue Stripe setup");
     expect(expressOnboardingButtonLabel("ready")).toBe("Update Stripe details");
   });
 
   test("uses Standard button labels", () => {
-    expect(standardOAuthButtonLabel("not_connected")).toBe("Connect existing Stripe account");
+    expect(standardOAuthButtonLabel("not_connected")).toBe("Connect existing account");
     expect(standardOAuthButtonLabel("setup_incomplete")).toBe("Finish connecting Stripe account");
     expect(standardOAuthButtonLabel("setup_incomplete", PropertyStripeAccountType.EXPRESS)).toBe(
       "Connect existing Stripe account"
@@ -405,16 +401,16 @@ describe("onboarding copy", () => {
     ).toBe("Set up new Stripe account");
   });
 
-  test("uses dual-option section description", () => {
+  test("uses not-connected section description", () => {
     expect(
       stripeConnectSectionDescription(
         { ...baseStatus, standardOAuthEnabled: true },
         "not_connected"
       )
-    ).toContain("Connect Stripe so tenants can pay rent");
+    ).toContain("Let tenants pay rent online");
   });
 
-  test("uses Standard ready section description", () => {
+  test("uses ready section description", () => {
     expect(
       stripeConnectSectionDescription(
         {
@@ -425,6 +421,6 @@ describe("onboarding copy", () => {
         },
         "ready"
       )
-    ).toContain("Connected to your existing Stripe account");
+    ).toContain("Rent payments are live");
   });
 });
