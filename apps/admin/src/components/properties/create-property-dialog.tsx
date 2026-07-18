@@ -14,8 +14,8 @@ import {
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
+import { PhoneInput } from "@/packages/app-ui";
 
 interface CreatePropertyDialogProps {
   onOpenChange: (open: boolean) => void;

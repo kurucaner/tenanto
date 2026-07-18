@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { memo } from "react";
 
 import { TenantSmsSettingsSection } from "@/components/settings/tenant-sms-settings-section";
+import { getTenantSmsSettingsSectionKey } from "@/components/settings/use-tenant-sms-settings-form";
 import { useTenantLogout } from "@/hooks/use-tenant-logout";
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
@@ -73,7 +74,10 @@ export const SettingsPage = memo(function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <TenantSmsSettingsSection user={meQuery.data.user} />
+            <TenantSmsSettingsSection
+              key={getTenantSmsSettingsSectionKey(meQuery.data.user)}
+              user={meQuery.data.user}
+            />
           </CardContent>
         </Card>
       ) : null}
