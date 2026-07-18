@@ -157,24 +157,25 @@ describe("resolveSecondaryTenantContact", () => {
 });
 
 describe("resolveSecondaryTenantContactsForLease", () => {
-  test("merges memberships with unmatched legacy JSONB orphans", () => {
+  test("resolves contacts from non-terminal secondary memberships", () => {
     const listed = makeMembership({
       id: "listed",
       inviteEmail: "listed@example.com",
       status: TenantMembershipStatus.LISTED,
     });
+    const active = makeMembership({
+      id: "active",
+      inviteEmail: "active@example.com",
+      status: TenantMembershipStatus.ACTIVE,
+      tenantUserId: "tenant-user-1",
+    });
 
     expect(
       resolveSecondaryTenantContactsForLease({
-        jsonbOrphans: [
-          {
-            email: "legacy@example.com",
-            name: "Legacy Secondary",
-            phone: "+15556667777",
-          },
-        ],
-        memberships: [listed],
-        tenantUsersById: {},
+        memberships: [listed, active],
+        tenantUsersById: {
+          "tenant-user-1": makeTenantUser({ email: "linked@example.com" }),
+        },
       })
     ).toEqual([
       {
@@ -187,35 +188,14 @@ describe("resolveSecondaryTenantContactsForLease", () => {
         tenantUserId: null,
       },
       {
-        effectiveEmail: "legacy@example.com",
-        effectiveName: "Legacy Secondary",
-        effectivePhone: "+15556667777",
-        membershipId: null,
-        source: "legacy_jsonb",
-        status: null,
-        tenantUserId: null,
+        effectiveEmail: "linked@example.com",
+        effectiveName: "Linked Secondary",
+        effectivePhone: "+15559998888",
+        membershipId: "active",
+        source: "linked_user",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-user-1",
       },
     ]);
-  });
-
-  test("skips JSONB orphan when email already matched a membership", () => {
-    const listed = makeMembership({
-      inviteEmail: "shared@example.com",
-      status: TenantMembershipStatus.LISTED,
-    });
-
-    expect(
-      resolveSecondaryTenantContactsForLease({
-        jsonbOrphans: [
-          {
-            email: "shared@example.com",
-            name: "Legacy Duplicate",
-            phone: null,
-          },
-        ],
-        memberships: [listed],
-        tenantUsersById: {},
-      })
-    ).toHaveLength(1);
   });
 });

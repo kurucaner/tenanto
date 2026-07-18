@@ -1,35 +1,18 @@
-import { loadSecondaryMembershipsByLeaseIds } from "@/db/lease-tenant-memberships";
 import { tenantUsersDb } from "@/db/tenant-users";
 import {
   type ILeaseSecondaryTenantContact,
   type ILeaseTenantMembership,
   type IPropertyLongStay,
   resolveSecondaryTenantContact,
-  resolveSecondaryTenantContactsForLease,
 } from "@/packages/shared";
 
-import {
-  loadSecondaryTenantContactsByLeaseIds,
-  loadTenantUsersByIdForMemberships,
-} from "./load-secondary-tenant-contacts-by-lease-ids";
+import { loadSecondaryTenantContactsByLeaseIds } from "./load-secondary-tenant-contacts-by-lease-ids";
 
 export async function resolveSecondaryTenantContactsForLongStay(
   longStay: IPropertyLongStay
 ): Promise<ILeaseSecondaryTenantContact[]> {
-  if (longStay.secondaryTenants.length === 0) {
-    const contactsByLeaseId = await loadSecondaryTenantContactsByLeaseIds([longStay.id]);
-    return contactsByLeaseId.get(longStay.id) ?? [];
-  }
-
-  const membershipsByLeaseId = await loadSecondaryMembershipsByLeaseIds([longStay.id]);
-  const memberships = membershipsByLeaseId.get(longStay.id) ?? [];
-  const tenantUsersById = await loadTenantUsersByIdForMemberships(memberships);
-
-  return resolveSecondaryTenantContactsForLease({
-    jsonbOrphans: longStay.secondaryTenants,
-    memberships,
-    tenantUsersById,
-  });
+  const contactsByLeaseId = await loadSecondaryTenantContactsByLeaseIds([longStay.id]);
+  return contactsByLeaseId.get(longStay.id) ?? [];
 }
 
 export async function buildSecondaryOccupantMutationResponse(

@@ -247,7 +247,6 @@ export {
 export {
   type ILeaseSecondaryTenantContact,
   type IResolveSecondaryTenantContactsForLeaseInput,
-  mapLegacyJsonbSecondaryTenantToContact,
   resolveSecondaryTenantContact,
   resolveSecondaryTenantContactsForLease,
   selectSecondaryMembershipForContact,

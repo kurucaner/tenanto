@@ -2,28 +2,15 @@ import {
   type ILeaseSecondaryTenantContact,
   type ILeaseTenantMembership,
   type IPropertyLongStay,
-  mapLegacyJsonbSecondaryTenantToContact,
   TenantMembershipRole,
 } from "@/packages/shared";
 
 import { findLeasePortalMembership } from "./lease-portal-access-display";
 
-/**
- * Prefer API-resolved contacts; fall back to legacy JSONB on the lease when the field
- * is absent (old server) or empty while JSONB rows still exist.
- */
 export function resolveSecondaryTenantContactsForDisplay(
-  lease: IPropertyLongStay,
+  _lease: IPropertyLongStay,
   apiContacts: ILeaseSecondaryTenantContact[] | undefined
 ): ILeaseSecondaryTenantContact[] {
-  if (apiContacts != null && apiContacts.length > 0) {
-    return apiContacts;
-  }
-
-  if (lease.secondaryTenants.length > 0) {
-    return lease.secondaryTenants.map((tenant) => mapLegacyJsonbSecondaryTenantToContact(tenant));
-  }
-
   return apiContacts ?? [];
 }
 

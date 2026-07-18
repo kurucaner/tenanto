@@ -1,4 +1,3 @@
-import type { IPropertyLongStaySecondaryTenant } from "./property-long-stay-types";
 import { normalizeTenantEmail } from "./tenant-email-recipient-resolver";
 import { isTerminalTenantMembershipStatus } from "./tenant-membership-transitions";
 import {
@@ -10,7 +9,7 @@ import {
 } from "./tenant-portal-types";
 
 export type TSecondaryTenantContactSource =
-  "legacy_jsonb" | "linked_user" | "membership_listed" | "membership_pending";
+  "linked_user" | "membership_listed" | "membership_pending";
 
 export interface ILeaseSecondaryTenantContact {
   effectiveEmail: string | null;
@@ -23,24 +22,8 @@ export interface ILeaseSecondaryTenantContact {
 }
 
 export interface IResolveSecondaryTenantContactsForLeaseInput {
-  jsonbOrphans?: readonly IPropertyLongStaySecondaryTenant[];
   memberships: readonly ILeaseTenantMembership[];
   tenantUsersById: ReadonlyMap<string, ITenantUser> | Readonly<Record<string, ITenantUser>>;
-}
-
-/** Map one legacy JSONB secondary tenant row to a display contact (transition / admin fallback). */
-export function mapLegacyJsonbSecondaryTenantToContact(
-  tenant: IPropertyLongStaySecondaryTenant
-): ILeaseSecondaryTenantContact {
-  return {
-    effectiveEmail: tenant.email?.trim() ?? null,
-    effectiveName: tenant.name,
-    effectivePhone: tenant.phone,
-    membershipId: null,
-    source: "legacy_jsonb",
-    status: null,
-    tenantUserId: null,
-  };
 }
 
 function membershipInviteEmail(membership: ILeaseTenantMembership): string | null {
@@ -154,10 +137,7 @@ export function selectSecondaryMembershipForContact(
   );
 }
 
-/**
- * Resolve all secondary tenant contacts for a lease from memberships, optional linked users,
- * and optional legacy JSONB orphans during transition.
- */
+/** Resolve all secondary tenant contacts for a lease from memberships and linked users. */
 export function resolveSecondaryTenantContactsForLease(
   input: IResolveSecondaryTenantContactsForLeaseInput
 ): ILeaseSecondaryTenantContact[] {
@@ -168,7 +148,6 @@ export function resolveSecondaryTenantContactsForLease(
   );
 
   const contacts: ILeaseSecondaryTenantContact[] = [];
-  const matchedEmails = new Set<string>();
 
   for (const membership of secondaryMemberships) {
     const tenantUser =
@@ -179,22 +158,6 @@ export function resolveSecondaryTenantContactsForLease(
     if (!contact) continue;
 
     contacts.push(contact);
-    if (contact.effectiveEmail) {
-      matchedEmails.add(normalizeTenantEmail(contact.effectiveEmail));
-    }
-  }
-
-  for (const orphan of input.jsonbOrphans ?? []) {
-    const email = orphan.email?.trim();
-    if (email && matchedEmails.has(normalizeTenantEmail(email))) {
-      continue;
-    }
-
-    contacts.push(mapLegacyJsonbSecondaryTenantToContact(orphan));
-
-    if (email) {
-      matchedEmails.add(normalizeTenantEmail(email));
-    }
   }
 
   return contacts;

@@ -1,34 +1,14 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type {
-  ILeaseSecondaryTenantContact,
-  ILeaseTenantMembership,
-  IPropertyLongStay,
-  ITenantUser,
-} from "@/packages/shared";
-import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import type { ILeaseSecondaryTenantContact, IPropertyLongStay } from "@/packages/shared";
+import { TenantMembershipStatus } from "@/packages/shared";
 
-const mockLoadSecondaryMembershipsByLeaseIds = mock(() =>
-  Promise.resolve(new Map<string, ILeaseTenantMembership[]>())
-);
 const mockLoadSecondaryTenantContactsByLeaseIds = mock(() =>
   Promise.resolve(new Map<string, ILeaseSecondaryTenantContact[]>())
 );
-const mockFindTenantUserById = mock(() => Promise.resolve(null as ITenantUser | null));
-
-mock.module("@/db/lease-tenant-memberships", () => ({
-  loadSecondaryMembershipsByLeaseIds: mockLoadSecondaryMembershipsByLeaseIds,
-}));
 
 mock.module("@/services/load-secondary-tenant-contacts-by-lease-ids", () => ({
   loadSecondaryTenantContactsByLeaseIds: mockLoadSecondaryTenantContactsByLeaseIds,
-  loadTenantUsersByIdForMemberships: mock(async () => ({})),
-}));
-
-mock.module("@/db/tenant-users", () => ({
-  tenantUsersDb: {
-    findById: mockFindTenantUserById,
-  },
 }));
 
 const { resolveSecondaryTenantContactsForLongStay } =
@@ -57,18 +37,14 @@ function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongSta
 
 describe("resolveSecondaryTenantContactsForLongStay", () => {
   beforeEach(() => {
-    mockLoadSecondaryMembershipsByLeaseIds.mockReset();
     mockLoadSecondaryTenantContactsByLeaseIds.mockReset();
-    mockFindTenantUserById.mockReset();
   });
 
   afterEach(() => {
-    mockLoadSecondaryMembershipsByLeaseIds.mockReset();
     mockLoadSecondaryTenantContactsByLeaseIds.mockReset();
-    mockFindTenantUserById.mockReset();
   });
 
-  test("uses batch loader when lease has no legacy JSONB secondaries", async () => {
+  test("delegates to batch loader for lease contacts", async () => {
     mockLoadSecondaryTenantContactsByLeaseIds.mockResolvedValueOnce(
       new Map([
         [
@@ -93,55 +69,13 @@ describe("resolveSecondaryTenantContactsForLongStay", () => {
     expect(contacts).toHaveLength(1);
     expect(contacts[0]?.source).toBe("membership_listed");
     expect(mockLoadSecondaryTenantContactsByLeaseIds).toHaveBeenCalledWith(["lease-1"]);
-    expect(mockLoadSecondaryMembershipsByLeaseIds).not.toHaveBeenCalled();
   });
 
-  test("merges listed memberships with unmatched legacy JSONB orphans", async () => {
-    mockLoadSecondaryMembershipsByLeaseIds.mockResolvedValueOnce(
-      new Map([
-        [
-          "lease-1",
-          [
-            {
-              acceptedAt: null,
-              contactPhone: "+15551112222",
-              createdAt: "2026-01-01T00:00:00.000Z",
-              declinedAt: null,
-              displayName: "Listed Secondary",
-              endedAt: null,
-              expiresAt: "2026-02-01T00:00:00.000Z",
-              id: "membership-listed",
-              invitedAt: "2026-01-01T00:00:00.000Z",
-              invitedBy: "operator-1",
-              inviteEmail: "listed@example.com",
-              leaseId: "lease-1",
-              revokedAt: null,
-              role: TenantMembershipRole.SECONDARY,
-              status: TenantMembershipStatus.LISTED,
-              tenantUserId: null,
-              updatedAt: "2026-01-01T00:00:00.000Z",
-            },
-          ],
-        ],
-      ])
-    );
+  test("returns empty array when lease has no secondary contacts", async () => {
+    mockLoadSecondaryTenantContactsByLeaseIds.mockResolvedValueOnce(new Map());
 
-    const contacts = await resolveSecondaryTenantContactsForLongStay(
-      makeLease({
-        secondaryTenants: [
-          {
-            email: "legacy@example.com",
-            name: "Legacy Secondary",
-            phone: "+15556667777",
-          },
-        ],
-      })
-    );
+    const contacts = await resolveSecondaryTenantContactsForLongStay(makeLease());
 
-    expect(contacts).toHaveLength(2);
-    expect(contacts[0]?.source).toBe("membership_listed");
-    expect(contacts[1]?.source).toBe("legacy_jsonb");
-    expect(contacts[1]?.membershipId).toBeNull();
-    expect(mockLoadSecondaryTenantContactsByLeaseIds).not.toHaveBeenCalled();
+    expect(contacts).toEqual([]);
   });
 });

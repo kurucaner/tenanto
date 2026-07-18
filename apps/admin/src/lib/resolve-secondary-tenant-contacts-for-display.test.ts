@@ -48,22 +48,12 @@ describe("resolveSecondaryTenantContactsForDisplay", () => {
     expect(resolveSecondaryTenantContactsForDisplay(lease, apiContacts)).toEqual(apiContacts);
   });
 
-  test("falls back to legacy JSONB when API contacts are absent", () => {
-    expect(resolveSecondaryTenantContactsForDisplay(lease, undefined)).toEqual([
-      {
-        effectiveEmail: "legacy@example.com",
-        effectiveName: "Legacy Secondary",
-        effectivePhone: "+15556667777",
-        membershipId: null,
-        source: "legacy_jsonb",
-        status: null,
-        tenantUserId: null,
-      },
-    ]);
+  test("returns empty array when API contacts are absent", () => {
+    expect(resolveSecondaryTenantContactsForDisplay(lease, undefined)).toEqual([]);
   });
 
-  test("falls back to legacy JSONB when API contacts are empty", () => {
-    expect(resolveSecondaryTenantContactsForDisplay(lease, [])).toHaveLength(1);
+  test("returns empty array when API contacts are empty", () => {
+    expect(resolveSecondaryTenantContactsForDisplay(lease, [])).toEqual([]);
   });
 });
 
@@ -105,7 +95,7 @@ describe("resolveSecondaryPortalMembershipForContact", () => {
     ).toEqual(membership);
   });
 
-  test("matches legacy JSONB contact by email", () => {
+  test("matches secondary contact by email when membership id is absent", () => {
     const membership = {
       acceptedAt: null,
       contactPhone: null,
@@ -133,8 +123,8 @@ describe("resolveSecondaryPortalMembershipForContact", () => {
           effectiveName: "Legacy Secondary",
           effectivePhone: null,
           membershipId: null,
-          source: "legacy_jsonb",
-          status: null,
+          source: "membership_listed",
+          status: TenantMembershipStatus.LISTED,
           tenantUserId: null,
         },
         [membership]

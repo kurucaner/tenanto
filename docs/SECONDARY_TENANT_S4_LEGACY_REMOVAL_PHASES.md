@@ -176,19 +176,19 @@ No route or response shape changes.
 
 **Update:** [`packages/shared/src/lease-secondary-tenant-contact.ts`](packages/shared/src/lease-secondary-tenant-contact.ts)
 
-- [ ] Remove `jsonbOrphans` from input interface
-- [ ] Remove orphan merge loop in `resolveSecondaryTenantContactsForLease`
-- [ ] Remove `mapLegacyJsonbSecondaryTenantToContact`
-- [ ] Remove `"legacy_jsonb"` from `TSecondaryTenantContactSource`
+- [x] Remove `jsonbOrphans` from input interface
+- [x] Remove orphan merge loop in `resolveSecondaryTenantContactsForLease`
+- [x] Remove `mapLegacyJsonbSecondaryTenantToContact`
+- [x] Remove `"legacy_jsonb"` from `TSecondaryTenantContactSource`
 
 **Update:** [`resolve-secondary-tenant-contacts-service.ts`](apps/server/src/services/resolve-secondary-tenant-contacts-service.ts)
 
-- [ ] Stop passing `longStay.secondaryTenants`
+- [x] Stop passing `longStay.secondaryTenants`
 
 **Tests:**
 
-- [ ] [`packages/shared/src/lease-secondary-tenant-contact.test.ts`](packages/shared/src/lease-secondary-tenant-contact.test.ts) — delete legacy JSONB cases
-- [ ] [`apps/server/src/services/resolve-secondary-tenant-contacts-service.test.ts`](apps/server/src/services/resolve-secondary-tenant-contacts-service.test.ts) — delete orphan merge expectations
+- [x] [`packages/shared/src/lease-secondary-tenant-contact.test.ts`](packages/shared/src/lease-secondary-tenant-contact.test.ts) — delete legacy JSONB cases
+- [x] [`apps/server/src/services/resolve-secondary-tenant-contacts-service.test.ts`](apps/server/src/services/resolve-secondary-tenant-contacts-service.test.ts) — delete orphan merge expectations
 
 **Exit criteria:** `rg legacy_jsonb|jsonbOrphans|mapLegacyJsonb` returns no production code (tests/docs except historical notes).
 
