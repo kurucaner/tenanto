@@ -357,8 +357,8 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Return URLs feel finished.
 
-- [ ] Handle `?stripe_connect=error&reason=…` on `property-settings-page.tsx`
-- [ ] Toasts for return / refresh / error; invalidate status query on all outcomes
+- [x] Handle `?stripe_connect=error&reason=…` on `property-settings-page.tsx`
+- [x] Toasts for return / refresh / error; invalidate status query on all outcomes
 
 **Exit criteria:** OAuth cancel/failure shows helpful message; success path unchanged.
 

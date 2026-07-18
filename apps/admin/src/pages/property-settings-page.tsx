@@ -9,6 +9,7 @@ import { usePropertySettingsForm } from "@/hooks/use-property-settings-form";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { propertyStripeConnectApi, settingsApi } from "@/lib/api-client";
+import { resolveStripeConnectSettingsReturn } from "@/lib/property-stripe-connect-return-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { type IPropertySettings } from "@/packages/shared";
 
@@ -65,8 +66,11 @@ export const PropertySettingsPage = memo(() => {
       return;
     }
 
-    const stripeConnect = searchParams.get("stripe_connect");
-    if (stripeConnect !== "return" && stripeConnect !== "refresh") {
+    const returnOutcome = resolveStripeConnectSettingsReturn({
+      reason: searchParams.get("reason"),
+      stripeConnect: searchParams.get("stripe_connect"),
+    });
+    if (!returnOutcome) {
       return;
     }
 
@@ -74,18 +78,24 @@ export const PropertySettingsPage = memo(() => {
       queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
     });
 
-    if (stripeConnect === "return") {
-      toast.success("Stripe Connect updated", {
-        description: "Refreshing account status from Stripe.",
+    const { toast: returnToast } = returnOutcome;
+    if (returnToast.type === "success") {
+      toast.success(returnToast.title, {
+        description: returnToast.description,
+      });
+    } else if (returnToast.type === "error") {
+      toast.error(returnToast.title, {
+        description: returnToast.description,
       });
     } else {
-      toast.message("Stripe onboarding incomplete", {
-        description: "Continue setup when you’re ready.",
+      toast.message(returnToast.title, {
+        description: returnToast.description,
       });
     }
 
     const next = new URLSearchParams(searchParams);
     next.delete("stripe_connect");
+    next.delete("reason");
     setSearchParams(next, { replace: true });
   }, [
     canManageStripeConnect,
