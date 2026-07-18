@@ -3042,4 +3042,22 @@ export const migrations: IMigration[] = [
     },
     version: 66,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          DROP COLUMN IF EXISTS sms_consented_at,
+          DROP COLUMN IF EXISTS sms_opted_out_at;
+      `);
+    },
+    name: "tenant_users_sms_consent",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          ADD COLUMN IF NOT EXISTS sms_consented_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS sms_opted_out_at TIMESTAMP WITH TIME ZONE;
+      `);
+    },
+    version: 67,
+  },
 ];

@@ -28,6 +28,8 @@ export interface ITenantUser {
   name: string;
   phone: string | null;
   phoneVerifiedAt: string | null;
+  smsConsentedAt: string | null;
+  smsOptedOutAt: string | null;
   updatedAt: string;
 }
 

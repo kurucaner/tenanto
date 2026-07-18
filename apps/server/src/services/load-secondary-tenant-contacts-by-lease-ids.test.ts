@@ -119,6 +119,8 @@ describe("loadSecondaryTenantContactsByLeaseIds", () => {
       name: "Portal Secondary",
       phone: "+15559998888",
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -177,6 +179,8 @@ describe("loadTenantUsersByIdForMemberships", () => {
       name: "Portal Secondary",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 

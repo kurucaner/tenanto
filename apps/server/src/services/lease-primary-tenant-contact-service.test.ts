@@ -75,6 +75,8 @@ function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
     name: "Linked Tenant",
     phone: "+15559876543",
     phoneVerifiedAt: "2026-01-02T00:00:00.000Z",
+    smsConsentedAt: null,
+    smsOptedOutAt: null,
     updatedAt: "2026-01-02T00:00:00.000Z",
     ...overrides,
   };

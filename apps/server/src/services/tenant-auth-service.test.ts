@@ -38,6 +38,8 @@ function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
     name: "Jane Tenant",
     phone: null,
     phoneVerifiedAt: null,
+    smsConsentedAt: null,
+    smsOptedOutAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };

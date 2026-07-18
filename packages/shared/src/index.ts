@@ -710,6 +710,13 @@ export {
   type TValidateRentCheckoutResult,
   validateCreateRentCheckoutBody,
 } from "./tenant-rent-payment-utils";
+export {
+  buildTenantPhoneOtpSmsMessage,
+  buildTenantSmsOptInConfirmationMessage,
+  buildTenantSmsOptOutConfirmationMessage,
+  canReceiveSms,
+  type ITenantSmsEligibilityInput,
+} from "./tenant-sms-utils";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

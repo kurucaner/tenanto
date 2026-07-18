@@ -17,6 +17,8 @@ const mockCreateUser = mock((_input: unknown): Promise<ITenantUser> =>
     name: "Jane Doe",
     phone: null,
     phoneVerifiedAt: null,
+    smsConsentedAt: null,
+    smsOptedOutAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
@@ -30,6 +32,8 @@ const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: ITenant
       name: "Jane Doe",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
   })
@@ -38,6 +42,7 @@ const mockRedeemInvite = mock(
   (_token: string, _user: ITenantUser): Promise<ILeaseTenantMembership> =>
     Promise.resolve({
       acceptedAt: "2026-01-02T00:00:00.000Z",
+      contactPhone: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       declinedAt: null,
       displayName: "Jane Doe",
@@ -67,6 +72,8 @@ const mockIssueTenantSession = mock(() =>
       name: "Jane Doe",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
   })
@@ -126,6 +133,7 @@ const { registerTenantWithInviteGoogle, registerTenantWithInvitePassword } =
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
     acceptedAt: null,
+    contactPhone: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     declinedAt: null,
     displayName: "Jane Doe",
@@ -200,6 +208,8 @@ describe("registerTenantWithInvitePassword", () => {
       name: "Jane",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 

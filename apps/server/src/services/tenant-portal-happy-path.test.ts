@@ -85,6 +85,8 @@ function makeTenant(overrides: Partial<ITenantUser> = {}): ITenantUser {
     name: "Jane Tenant",
     phone: null,
     phoneVerifiedAt: null,
+    smsConsentedAt: null,
+    smsOptedOutAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
@@ -93,6 +95,7 @@ function makeTenant(overrides: Partial<ITenantUser> = {}): ITenantUser {
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
     acceptedAt: null,
+    contactPhone: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     declinedAt: null,
     displayName: "Jane Tenant",

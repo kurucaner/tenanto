@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { CreateLeaseTenantMembershipInput } from "@/db/lease-tenant-memberships";
+import { duplicatePortalInviteError, PortalInviteErrorCode } from "@/errors/portal-invite-errors";
 import type {
+  ILeaseSecondaryTenantContact,
   ILeaseTenantMembership,
   IProperty,
   IPropertyLongStay,
@@ -14,10 +16,6 @@ import {
   TenantMembershipStatus,
   UnitRentalType,
 } from "@/packages/shared";
-import {
-  duplicatePortalInviteError,
-  PortalInviteErrorCode,
-} from "@/errors/portal-invite-errors";
 import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));
@@ -40,7 +38,9 @@ const mockLinkTenantUser = mock(
   (_id: string, _tenantUserId: string): Promise<ILeaseTenantMembership | null> =>
     Promise.resolve(null)
 );
-const mockResolveSecondaryContacts = mock(() => Promise.resolve([]));
+const mockResolveSecondaryContacts = mock(
+  (): Promise<ILeaseSecondaryTenantContact[]> => Promise.resolve([])
+);
 const mockExpireMembershipIfPastTtl = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
 );
@@ -256,6 +256,8 @@ describe("tenantPortalInviteService.createInvites", () => {
       name: "Jane Tenant",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -350,6 +352,8 @@ describe("tenantPortalInviteService.createInvites", () => {
       name: "Alex Secondary",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     mockFindByIdMembership.mockResolvedValue(listedSecondary);
