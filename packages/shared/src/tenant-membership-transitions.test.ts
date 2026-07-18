@@ -65,4 +65,46 @@ describe("tenant membership transitions", () => {
       )
     ).toBe(false);
   });
+
+  test("listed can become pending_invite or ended", () => {
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.PENDING_INVITE
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.PENDING_ACCEPTANCE
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.ENDED
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.ACTIVE
+      )
+    ).toBe(false);
+  });
+
+  test("expired and revoked secondaries can be re-invited to pending", () => {
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.EXPIRED,
+        TenantMembershipStatus.PENDING_INVITE
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.REVOKED,
+        TenantMembershipStatus.PENDING_ACCEPTANCE
+      )
+    ).toBe(true);
+  });
 });

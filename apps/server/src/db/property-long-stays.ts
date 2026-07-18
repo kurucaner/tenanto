@@ -76,9 +76,19 @@ function buildPropertyLongStayListParts(
       OR pls.tenant_email ILIKE $${p + 1}
       OR pu.unit_number ILIKE $${p + 2}
       OR EXISTS (
-        SELECT 1 FROM jsonb_array_elements(pls.secondary_tenants) AS st
-        WHERE st->>'name' ILIKE $${p + 3}
-           OR COALESCE(st->>'email', '') ILIKE $${p + 4}
+        SELECT 1 FROM lease_tenant_memberships ltm
+        WHERE ltm.lease_id = pls.id
+          AND ltm.role = 'secondary'::tenant_membership_role
+          AND ltm.status NOT IN (
+            'declined'::tenant_membership_status,
+            'revoked'::tenant_membership_status,
+            'ended'::tenant_membership_status,
+            'expired'::tenant_membership_status
+          )
+          AND (
+            ltm.display_name ILIKE $${p + 3}
+            OR ltm.invite_email ILIKE $${p + 4}
+          )
       )
     )`);
     values.push(pattern, pattern, pattern, pattern, pattern);
@@ -141,8 +151,8 @@ export const propertyLongStaysDb = {
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, monthly_rent,
-          lease_end_date, tenant_email, tenant_phone, status, secondary_tenants)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status, '[]'::jsonb)
+          lease_end_date, tenant_email, tenant_phone, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status)
        RETURNING *`,
       [
         propertyId,
@@ -530,10 +540,6 @@ export const propertyLongStaysDb = {
     if (patch.tenantPhone !== undefined) {
       setClauses.push(`tenant_phone = $${paramIndex++}`);
       values.push(patch.tenantPhone?.trim() || null);
-    }
-    if (patch.secondaryTenants !== undefined) {
-      setClauses.push(`secondary_tenants = $${paramIndex++}::jsonb`);
-      values.push(JSON.stringify(patch.secondaryTenants));
     }
 
     values.push(PropertyLongStayStatus.ACTIVE);

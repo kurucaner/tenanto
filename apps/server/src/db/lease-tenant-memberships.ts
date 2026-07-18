@@ -4,6 +4,7 @@ import {
   canTransitionTenantMembershipStatus,
   type ILeaseTenantMembership,
   selectPrimaryMembershipForContact,
+  TenantMembershipRole,
   TenantMembershipStatus,
   type TTenantMembershipRole,
   type TTenantMembershipStatus,
@@ -63,7 +64,65 @@ function statusTimestampColumn(status: TTenantMembershipStatus): string | null {
   }
 }
 
+const LISTED_MEMBERSHIP_PLACEHOLDER_EXPIRES_AT = new Date("2099-12-31T23:59:59.000Z");
+
+export interface CreateListedSecondaryInput {
+  contactPhone: string | null;
+  displayName: string;
+  invitedBy: string;
+  inviteEmail: string;
+  leaseId: string;
+}
+
+export class MaxSecondaryOccupantsError extends Error {
+  constructor(public readonly max: number) {
+    super(`A lease can have at most ${max} secondary occupants`);
+    this.name = "MaxSecondaryOccupantsError";
+  }
+}
+
+export class SecondaryOccupantNotFoundError extends Error {
+  constructor() {
+    super("Secondary occupant not found");
+    this.name = "SecondaryOccupantNotFoundError";
+  }
+}
+
+export class SecondaryOccupantLeaseMismatchError extends Error {
+  constructor() {
+    super("Secondary occupant does not belong to this lease");
+    this.name = "SecondaryOccupantLeaseMismatchError";
+  }
+}
+
 export const leaseTenantMembershipsDb = {
+  async countNonTerminalSecondariesForLease(
+    leaseId: string,
+    db: DbQueryable = pool
+  ): Promise<number> {
+    const result = await db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM lease_tenant_memberships
+       WHERE lease_id = $1
+         AND role = $2::tenant_membership_role
+         AND status NOT IN (
+           $3::tenant_membership_status,
+           $4::tenant_membership_status,
+           $5::tenant_membership_status,
+           $6::tenant_membership_status
+         )`,
+      [
+        leaseId,
+        TenantMembershipRole.SECONDARY,
+        TenantMembershipStatus.DECLINED,
+        TenantMembershipStatus.REVOKED,
+        TenantMembershipStatus.ENDED,
+        TenantMembershipStatus.EXPIRED,
+      ]
+    );
+    return Number(result.rows[0]?.["count"] ?? 0);
+  },
+
   async create(
     input: CreateLeaseTenantMembershipInput,
     db: DbQueryable = pool
@@ -111,6 +170,62 @@ export const leaseTenantMembershipsDb = {
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async createListedSecondary(
+    input: CreateListedSecondaryInput,
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership> {
+    const existing = await leaseTenantMembershipsDb.findNonTerminalByLeaseEmailRole(
+      input.leaseId,
+      input.inviteEmail,
+      TenantMembershipRole.SECONDARY,
+      db
+    );
+    if (existing) {
+      throw new DuplicatePortalInviteError(existing);
+    }
+
+    const result = await db.query(
+      `INSERT INTO lease_tenant_memberships (
+         lease_id,
+         tenant_user_id,
+         role,
+         invite_email,
+         display_name,
+         contact_phone,
+         status,
+         invited_by,
+         invite_token_hash,
+         invited_at,
+         expires_at
+       )
+       VALUES (
+         $1,
+         NULL,
+         $2::tenant_membership_role,
+         LOWER(TRIM($3)),
+         $4,
+         $5,
+         $6::tenant_membership_status,
+         $7,
+         NULL,
+         NOW(),
+         $8
+       )
+       RETURNING *`,
+      [
+        input.leaseId,
+        TenantMembershipRole.SECONDARY,
+        input.inviteEmail,
+        input.displayName.trim(),
+        input.contactPhone,
+        TenantMembershipStatus.LISTED,
+        input.invitedBy,
+        LISTED_MEMBERSHIP_PLACEHOLDER_EXPIRES_AT,
+      ]
+    );
+    return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
+  },
+
   async endAllNonTerminalForLease(
     leaseId: string,
     db: DbQueryable = pool
@@ -123,7 +238,8 @@ export const leaseTenantMembershipsDb = {
          AND status IN (
            $3::tenant_membership_status,
            $4::tenant_membership_status,
-           $5::tenant_membership_status
+           $5::tenant_membership_status,
+           $6::tenant_membership_status
          )
        RETURNING *`,
       [
@@ -132,6 +248,7 @@ export const leaseTenantMembershipsDb = {
         TenantMembershipStatus.ACTIVE,
         TenantMembershipStatus.PENDING_INVITE,
         TenantMembershipStatus.PENDING_ACCEPTANCE,
+        TenantMembershipStatus.LISTED,
       ]
     );
     return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
@@ -436,6 +553,50 @@ export const leaseTenantMembershipsDb = {
     if (result.rows.length === 0) return null;
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
+
+  async updateSecondaryContact(
+    membershipId: string,
+    patch: { contactPhone?: string | null; displayName?: string; inviteEmail?: string },
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership | null> {
+    const setClauses: string[] = [];
+    const values: unknown[] = [membershipId];
+    let paramIndex = 2;
+
+    if (patch.displayName !== undefined) {
+      setClauses.push(`display_name = $${paramIndex++}`);
+      values.push(patch.displayName.trim());
+    }
+    if (patch.inviteEmail !== undefined) {
+      setClauses.push(`invite_email = LOWER(TRIM($${paramIndex++}))`);
+      values.push(patch.inviteEmail);
+    }
+    if (patch.contactPhone !== undefined) {
+      setClauses.push(`contact_phone = $${paramIndex++}`);
+      values.push(patch.contactPhone);
+    }
+
+    if (setClauses.length === 0) {
+      return leaseTenantMembershipsDb.findById(membershipId, db);
+    }
+
+    const result = await db.query(
+      `UPDATE lease_tenant_memberships
+       SET ${setClauses.join(", ")},
+           updated_at = NOW()
+       WHERE id = $1
+         AND role = 'secondary'::tenant_membership_role
+         AND status IN (
+           'listed'::tenant_membership_status,
+           'pending_invite'::tenant_membership_status,
+           'pending_acceptance'::tenant_membership_status
+         )
+       RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return null;
+    return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
+  },
 };
 
 /** Primary membership row for effective tenant contact resolution (Phase 1+). */
@@ -445,4 +606,32 @@ export async function loadPrimaryMembershipForLease(
 ): Promise<ILeaseTenantMembership | null> {
   const memberships = await leaseTenantMembershipsDb.findByLeaseId(leaseId, db);
   return selectPrimaryMembershipForContact(memberships);
+}
+
+/** Non-terminal secondary membership rows for a lease (includes `listed`). */
+export async function loadSecondaryMembershipsForLease(
+  leaseId: string,
+  db: DbQueryable = pool
+): Promise<ILeaseTenantMembership[]> {
+  const result = await db.query(
+    `SELECT * FROM lease_tenant_memberships
+     WHERE lease_id = $1
+       AND role = $2::tenant_membership_role
+       AND status NOT IN (
+         $3::tenant_membership_status,
+         $4::tenant_membership_status,
+         $5::tenant_membership_status,
+         $6::tenant_membership_status
+       )
+     ORDER BY created_at ASC, invited_at ASC`,
+    [
+      leaseId,
+      TenantMembershipRole.SECONDARY,
+      TenantMembershipStatus.DECLINED,
+      TenantMembershipStatus.REVOKED,
+      TenantMembershipStatus.ENDED,
+      TenantMembershipStatus.EXPIRED,
+    ]
+  );
+  return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
 }

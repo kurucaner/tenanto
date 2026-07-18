@@ -11,6 +11,7 @@ export const TenantMembershipStatus = {
   DECLINED: "declined",
   ENDED: "ended",
   EXPIRED: "expired",
+  LISTED: "listed",
   PENDING_ACCEPTANCE: "pending_acceptance",
   PENDING_INVITE: "pending_invite",
   REVOKED: "revoked",
@@ -32,6 +33,7 @@ export interface ITenantUser {
 
 export interface ILeaseTenantMembership {
   acceptedAt: string | null;
+  contactPhone: string | null;
   createdAt: string;
   declinedAt: string | null;
   displayName: string;
@@ -102,8 +104,13 @@ export interface ICreateLeasePortalInviteResponse {
 export interface ICreateLeasePortalInviteBody {
   /** When true, invite the lease primary tenant (`tenantEmail`). */
   invitePrimary?: boolean;
-  /** Zero-based indexes into `lease.secondaryTenants` to invite. */
+  /**
+   * @deprecated Use `secondaryMembershipIds`. Removed in S5b.
+   * Zero-based indexes into resolved secondary contacts (legacy one-release fallback).
+   */
   secondaryIndexes?: number[];
+  /** Secondary occupant membership ids to invite (listed → pending). */
+  secondaryMembershipIds?: string[];
 }
 
 export interface ICreateLeasePortalInviteResult {

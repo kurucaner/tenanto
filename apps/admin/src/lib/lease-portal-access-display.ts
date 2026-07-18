@@ -1,4 +1,5 @@
 import {
+  type ILeaseSecondaryTenantContact,
   type ILeaseTenantMembership,
   type IPropertyLongStay,
   normalizeTenantEmail,
@@ -12,7 +13,7 @@ import {
 export type TLeasePortalRowAction = "invite" | "resend" | "revoke";
 
 export type TLeasePortalActingTarget =
-  { kind: "invite-all" } | { kind: "primary" } | { index: number; kind: "secondary" };
+  { kind: "invite-all" } | { kind: "primary" } | { kind: "secondary"; membershipId: string };
 
 export type TLeasePortalStatusTone = "active" | "muted" | "neutral" | "pending";
 
@@ -31,7 +32,7 @@ export function isSameLeasePortalActingTarget(
     return false;
   }
   if (actingTarget.kind === "secondary" && rowTarget.kind === "secondary") {
-    return actingTarget.index === rowTarget.index;
+    return actingTarget.membershipId === rowTarget.membershipId;
   }
   return true;
 }
@@ -61,12 +62,14 @@ export function formatLeasePortalAdminStatus(membership: ILeaseTenantMembership 
       return "Active";
     case TenantMembershipStatus.DECLINED:
       return "Declined";
-    case TenantMembershipStatus.REVOKED:
-      return "Revoked";
     case TenantMembershipStatus.ENDED:
       return "Ended";
     case TenantMembershipStatus.EXPIRED:
       return "Expired";
+    case TenantMembershipStatus.LISTED:
+      return "Not invited";
+    case TenantMembershipStatus.REVOKED:
+      return "Revoked";
     default:
       return membership.status;
   }
@@ -121,6 +124,7 @@ export function getLeasePortalRowState(
 
   if (
     !membership ||
+    membership.status === TenantMembershipStatus.LISTED ||
     membership.status === TenantMembershipStatus.EXPIRED ||
     isTerminalStatus(membership.status)
   ) {
@@ -140,10 +144,11 @@ export function getLeasePortalRowState(
 
 export function getLeasePortalInviteAllTargets(
   lease: IPropertyLongStay,
-  memberships: readonly ILeaseTenantMembership[]
+  memberships: readonly ILeaseTenantMembership[],
+  secondaryContacts: readonly ILeaseSecondaryTenantContact[] = []
 ): {
   invitePrimary: boolean;
-  secondaryIndexes: number[];
+  secondaryMembershipIds: string[];
 } {
   const primaryMembership = findLeasePortalMembership(
     memberships,
@@ -155,20 +160,30 @@ export function getLeasePortalInviteAllTargets(
     Boolean(lease.tenantEmail?.trim())
   );
 
-  const secondaryIndexes = lease.secondaryTenants
-    .map((tenant, index) => {
-      const rowMembership = findLeasePortalMembership(
-        memberships,
-        TenantMembershipRole.SECONDARY,
-        tenant.email
+  const secondaryMembershipIds = secondaryContacts
+    .map((contact) => {
+      const rowMembership =
+        (contact.membershipId
+          ? memberships.find((membership) => membership.id === contact.membershipId)
+          : null) ??
+        findLeasePortalMembership(
+          memberships,
+          TenantMembershipRole.SECONDARY,
+          contact.effectiveEmail
+        );
+      const rowState = getLeasePortalRowState(
+        rowMembership,
+        Boolean(contact.effectiveEmail?.trim())
       );
-      const rowState = getLeasePortalRowState(rowMembership, Boolean(tenant.email?.trim()));
-      return rowState.actions.includes("invite") ? index : null;
+      if (!rowState.actions.includes("invite") || !contact.membershipId) {
+        return null;
+      }
+      return contact.membershipId;
     })
-    .filter((index): index is number => index !== null);
+    .filter((membershipId): membershipId is string => membershipId !== null);
 
   return {
     invitePrimary: primaryState.actions.includes("invite"),
-    secondaryIndexes,
+    secondaryMembershipIds,
   };
 }

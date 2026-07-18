@@ -55,6 +55,7 @@ export const PropertyLeaseDetailPage = memo(() => {
     primaryTenantContact,
     rentPeriods,
     rentSchedule,
+    secondaryTenantContacts,
     termsEditability,
   } = usePropertyLongStayDetail(propertyId, leaseId);
 
@@ -181,6 +182,7 @@ export const PropertyLeaseDetailPage = memo(() => {
               lease={lease}
               primaryTenantContact={primaryTenantContact}
               propertyId={propertyId}
+              secondaryTenantContacts={secondaryTenantContacts}
             />
           </TabsContent>
 

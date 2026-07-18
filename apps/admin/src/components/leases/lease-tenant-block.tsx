@@ -186,11 +186,12 @@ interface ILeaseSecondaryTenantRowProps {
   index: number;
   isDeletePending: boolean;
   isQuickDeleteActive: boolean;
+  membershipId: string;
   onDelete: (index: number, event: MouseEvent<HTMLButtonElement>) => void;
   onEdit: (index: number) => void;
-  onInvite: (index: number) => void;
-  onResend: (index: number) => void;
-  onRevoke: (index: number) => void;
+  onInvite: (membershipId: string) => void;
+  onResend: (membershipId: string) => void;
+  onRevoke: (membershipId: string) => void;
   portalMutationPending: boolean;
   portalState: ILeasePortalRowState;
   showPortalRow: boolean;
@@ -204,6 +205,7 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   index,
   isDeletePending,
   isQuickDeleteActive,
+  membershipId,
   onDelete,
   onEdit,
   onInvite,
@@ -215,16 +217,16 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   tenant,
 }: ILeaseSecondaryTenantRowProps) {
   const handleInvite = useCallback(() => {
-    onInvite(index);
-  }, [index, onInvite]);
+    onInvite(membershipId);
+  }, [membershipId, onInvite]);
 
   const handleResend = useCallback(() => {
-    onResend(index);
-  }, [index, onResend]);
+    onResend(membershipId);
+  }, [membershipId, onResend]);
 
   const handleRevoke = useCallback(() => {
-    onRevoke(index);
-  }, [index, onRevoke]);
+    onRevoke(membershipId);
+  }, [membershipId, onRevoke]);
 
   const handleEdit = useCallback(() => {
     onEdit(index);
@@ -259,7 +261,7 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
         onRevoke={handleRevoke}
         portalMutationPending={portalMutationPending}
         portalState={portalState}
-        rowTarget={{ index, kind: "secondary" }}
+        rowTarget={{ kind: "secondary", membershipId }}
         showDelete
         showPortalRow={showPortalRow}
       />
