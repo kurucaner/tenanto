@@ -30,7 +30,7 @@ Add **Standard Connect OAuth** alongside the existing **Express Account Links** 
 
 ## Non-goals (initial release)
 
-- Switching account type after connect (Express ↔ Standard) without support/offboarding
+- Switching account type **after** connect is complete (`charges_enabled`) — Express ↔ Standard without support/offboarding
 - Disconnect / “change connected account” self-service
 - Manager/accountant Connect management (owners + platform admins only, same as today)
 - ACH, application fees, multi-currency
@@ -41,12 +41,25 @@ Add **Standard Connect OAuth** alongside the existing **Express Account Links** 
 
 ## Guiding principles
 
-1. **One connected account per property** — `property_stripe_accounts.property_id` stays PK; first successful path wins; block the other path once connected.
+1. **One connected account per property** — `property_stripe_accounts.property_id` stays PK; block cross-type switching once `charges_enabled` is true.
 2. **Checkout stays account-type agnostic** — only `stripe_account_id` + capability flags matter for `createCheckout`.
 3. **OAuth state is single-use and bound** — state token includes `propertyId`, initiating `userId`, nonce; reject reuse/expiry/mismatch.
 4. **Secrets stay server-side** — OAuth code exchange uses `STRIPE_SECRET_KEY`; client never sees authorization codes.
 5. **Label clarity over brevity** — button text must tell users _which path_ they’re on; helper text under each button explains when to use it.
 6. **Feature-gate Standard OAuth** — show “Connect existing Stripe account” only when `STRIPE_CONNECT_CLIENT_ID` is configured (and flag on).
+7. **Allow path changes during incomplete setup** — while `charges_enabled` is false, owners may switch between Express and Standard with a confirmation dialog; server clears the incomplete link (best-effort Stripe cleanup) before starting the other path.
+
+---
+
+## Incomplete setup switching
+
+While Stripe Connect is **not fully enabled for charges** (`charges_enabled === false`):
+
+- Admin settings shows **both** onboarding buttons again (when Standard OAuth is enabled).
+- Clicking the **other** path prompts “Switch connection method?” — confirming discards the incomplete setup and starts the selected flow.
+- Server: `resetIncompleteConnect` deletes `property_stripe_accounts` for the property and best-effort deauthorizes/deletes the orphaned Stripe account.
+
+Once **`charges_enabled` is true**, switching paths or connected accounts remains **support-only** (see Non-goals).
 
 ---
 

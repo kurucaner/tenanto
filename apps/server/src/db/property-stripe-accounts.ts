@@ -72,6 +72,13 @@ export function toConnectStatusResponse(
 }
 
 export const propertyStripeAccountsDb = {
+  async deleteByPropertyId(propertyId: string): Promise<boolean> {
+    const result = await pool.query(`DELETE FROM property_stripe_accounts WHERE property_id = $1`, [
+      propertyId,
+    ]);
+    return (result.rowCount ?? 0) > 0;
+  },
+
   async findByPropertyId(propertyId: string): Promise<IPropertyStripeAccount | null> {
     const result = await pool.query(
       `SELECT * FROM property_stripe_accounts WHERE property_id = $1`,
@@ -146,6 +153,7 @@ export const propertyStripeAccountsDb = {
          payouts_enabled = EXCLUDED.payouts_enabled,
          onboarding_complete = EXCLUDED.onboarding_complete,
          details_submitted = EXCLUDED.details_submitted,
+         account_type = EXCLUDED.account_type,
          updated_at = CURRENT_TIMESTAMP
        RETURNING *`,
       [

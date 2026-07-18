@@ -9,6 +9,7 @@ import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/moc
 const mockFindByPropertyId = mockResolvedNull<IPropertyStripeAccount>();
 const mockUpdateFlags = mockResolvedNull<IPropertyStripeAccount>();
 const mockUpsert = mockResolvedNull<IPropertyStripeAccount>();
+const mockDeleteByPropertyId = mockAsyncFn(() => Promise.resolve(true));
 const mockAccountsCreate = mockAsyncFn(() =>
   Promise.resolve({
     charges_enabled: false,
@@ -17,6 +18,7 @@ const mockAccountsCreate = mockAsyncFn(() =>
     payouts_enabled: false,
   })
 );
+const mockAccountsDel = mockAsyncFn(() => Promise.resolve({ deleted: true }));
 const mockAccountsRetrieve = mockAsyncFn(() =>
   Promise.resolve({
     charges_enabled: true,
@@ -30,6 +32,9 @@ const mockConsumeOAuthState = mockAsyncFn((): Promise<IStripeConnectOAuthState |
   Promise.resolve({ propertyId: "property-1", userId: "user-1" })
 );
 const mockOauthToken = mockAsyncFn(() => Promise.resolve({ stripe_user_id: "acct_standard" }));
+const mockOauthDeauthorize = mockAsyncFn(() =>
+  Promise.resolve({ stripe_user_id: "acct_standard" })
+);
 
 mock.module("@/lib/stripe-connect-oauth-state", () => ({
   consumeStripeConnectOAuthState: mockConsumeOAuthState,
@@ -38,6 +43,7 @@ mock.module("@/lib/stripe-connect-oauth-state", () => ({
 
 mock.module("@/db/property-stripe-accounts", () => ({
   propertyStripeAccountsDb: {
+    deleteByPropertyId: mockDeleteByPropertyId,
     findByPropertyId: mockFindByPropertyId,
     updateFlags: mockUpdateFlags,
     upsert: mockUpsert,
@@ -61,9 +67,11 @@ mock.module("@/stripe/stripe-client", () => ({
     },
     accounts: {
       create: mockAccountsCreate,
+      del: mockAccountsDel,
       retrieve: mockAccountsRetrieve,
     },
     oauth: {
+      deauthorize: mockOauthDeauthorize,
       token: mockOauthToken,
     },
   }),
@@ -81,10 +89,14 @@ describe("propertyStripeConnectService.createExpressOnboardingLink", () => {
     process.env.STRIPE_CONNECT_ENABLED = "true";
     process.env.STRIPE_SECRET_KEY = "sk_test";
     process.env.PLATFORM_APP_URL = "https://app.test";
+    process.env.STRIPE_CONNECT_CLIENT_ID = "ca_test_client";
     mockFindByPropertyId.mockReset();
     mockUpsert.mockReset();
     mockAccountsCreate.mockReset();
     mockAccountLinksCreate.mockReset();
+    mockDeleteByPropertyId.mockReset();
+    mockAccountsDel.mockReset();
+    mockOauthDeauthorize.mockReset();
     mockFindByPropertyId.mockResolvedValue(null);
     mockUpsert.mockResolvedValue({
       accountType: PropertyStripeAccountType.EXPRESS,
@@ -171,7 +183,7 @@ describe("propertyStripeConnectService.createExpressOnboardingLink", () => {
     );
   });
 
-  test("throws conflict when property is connected via Standard", async () => {
+  test("throws conflict when property is connected via ready Standard", async () => {
     mockFindByPropertyId.mockResolvedValue({
       accountType: PropertyStripeAccountType.STANDARD,
       chargesEnabled: true,
@@ -189,6 +201,32 @@ describe("propertyStripeConnectService.createExpressOnboardingLink", () => {
 
     expect(mockAccountsCreate).not.toHaveBeenCalled();
     expect(mockAccountLinksCreate).not.toHaveBeenCalled();
+    expect(mockDeleteByPropertyId).not.toHaveBeenCalled();
+  });
+
+  test("resets incomplete Standard and creates Express onboarding link", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      onboardingComplete: false,
+      payoutsEnabled: false,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.createExpressOnboardingLink("property-1");
+
+    expect(result).toEqual({ url: "https://stripe.test/onboard" });
+    expect(mockDeleteByPropertyId).toHaveBeenCalledWith("property-1");
+    expect(mockOauthDeauthorize).toHaveBeenCalled();
+    expect(mockAccountsCreate).toHaveBeenCalled();
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountType: PropertyStripeAccountType.EXPRESS,
+      })
+    );
   });
 });
 
@@ -209,6 +247,9 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
     process.env.JWT_SECRET = "jwt-test-secret";
     mockFindByPropertyId.mockReset();
     mockCreateOAuthState.mockReset();
+    mockDeleteByPropertyId.mockReset();
+    mockAccountsDel.mockReset();
+    mockOauthDeauthorize.mockReset();
     mockFindByPropertyId.mockResolvedValue(null);
     mockCreateOAuthState.mockResolvedValue("signed-oauth-state");
   });
@@ -268,7 +309,7 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
     expect(parsed.searchParams.get("scope")).toBe("read_write");
   });
 
-  test("throws express conflict when property already has Express account", async () => {
+  test("throws express conflict when property already has ready Express account", async () => {
     mockFindByPropertyId.mockResolvedValue({
       accountType: PropertyStripeAccountType.EXPRESS,
       chargesEnabled: true,
@@ -285,6 +326,33 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
     ).rejects.toThrow("This property uses a Stripe Express account");
 
     expect(mockCreateOAuthState).not.toHaveBeenCalled();
+    expect(mockDeleteByPropertyId).not.toHaveBeenCalled();
+  });
+
+  test("resets incomplete Express and returns Standard OAuth authorize URL", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.EXPRESS,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      onboardingComplete: false,
+      payoutsEnabled: false,
+      propertyId: "property-1",
+      stripeAccountId: "acct_existing",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.createStandardOAuthAuthorizeUrl(
+      "property-1",
+      "user-1"
+    );
+
+    expect(mockDeleteByPropertyId).toHaveBeenCalledWith("property-1");
+    expect(mockAccountsDel).toHaveBeenCalledWith("acct_existing");
+    expect(mockCreateOAuthState).toHaveBeenCalledWith({
+      propertyId: "property-1",
+      userId: "user-1",
+    });
+    expect(result.url).toContain("https://connect.stripe.com/oauth/authorize");
   });
 
   test("throws standard conflict when property already has ready Standard account", async () => {
@@ -358,6 +426,9 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
     mockConsumeOAuthState.mockReset();
     mockOauthToken.mockReset();
     mockAccountsRetrieve.mockReset();
+    mockDeleteByPropertyId.mockReset();
+    mockAccountsDel.mockReset();
+    mockOauthDeauthorize.mockReset();
     mockFindByPropertyId.mockResolvedValue(null);
     mockConsumeOAuthState.mockResolvedValue({ propertyId: "property-1", userId: "user-1" });
     mockOauthToken.mockResolvedValue({ stripe_user_id: "acct_standard" });
@@ -477,7 +548,7 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
     expect(mockOauthToken).not.toHaveBeenCalled();
   });
 
-  test("redirects with express_connected when property has an Express account", async () => {
+  test("redirects with express_connected when property has a ready Express account", async () => {
     mockFindByPropertyId.mockResolvedValue({
       accountType: PropertyStripeAccountType.EXPRESS,
       chargesEnabled: true,
@@ -498,6 +569,42 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
       `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED}`
     );
     expect(mockOauthToken).not.toHaveBeenCalled();
+  });
+
+  test("resets incomplete Express and completes Standard OAuth callback", async () => {
+    mockFindByPropertyId
+      .mockResolvedValueOnce({
+        accountType: PropertyStripeAccountType.EXPRESS,
+        chargesEnabled: false,
+        detailsSubmitted: false,
+        onboardingComplete: false,
+        payoutsEnabled: false,
+        propertyId: "property-1",
+        stripeAccountId: "acct_existing",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      })
+      .mockResolvedValueOnce({
+        accountType: PropertyStripeAccountType.STANDARD,
+        chargesEnabled: false,
+        detailsSubmitted: false,
+        onboardingComplete: false,
+        payoutsEnabled: false,
+        propertyId: "property-1",
+        stripeAccountId: "acct_standard",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(mockDeleteByPropertyId).toHaveBeenCalledWith("property-1");
+    expect(mockAccountsDel).toHaveBeenCalledWith("acct_existing");
+    expect(mockOauthToken).toHaveBeenCalled();
+    expect(result.redirectUrl).toBe(
+      "https://app.test/properties/property-1/settings?stripe_connect=return"
+    );
   });
 
   test("redirects to return URL when Standard account already exists (idempotent retry)", async () => {

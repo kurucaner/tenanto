@@ -58,20 +58,43 @@ export function getStripeConnectAccountTypeLabel(
 }
 
 export function showDualConnectOptions(status: IPropertyStripeConnectStatusResponse): boolean {
-  return getStripeConnectUiStatus(status) === "not_connected" && status.standardOAuthEnabled;
+  if (!status.standardOAuthEnabled) {
+    return false;
+  }
+  const uiStatus = getStripeConnectUiStatus(status);
+  return uiStatus === "not_connected" || uiStatus === "setup_incomplete";
 }
 
-/** Express Account Links onboarding — hidden for Standard-connected properties. */
+export function isStripeConnectTypeSwitch(
+  status: IPropertyStripeConnectStatusResponse,
+  target: "express" | "standard"
+): boolean {
+  if (getStripeConnectUiStatus(status) !== "setup_incomplete") {
+    return false;
+  }
+  if (target === "express") {
+    return status.accountType === PropertyStripeAccountType.STANDARD;
+  }
+  return status.accountType === PropertyStripeAccountType.EXPRESS;
+}
+
+/** Express Account Links onboarding — hidden for ready Standard-connected properties. */
 export function shouldShowExpressOnboardingButton(
   status: IPropertyStripeConnectStatusResponse
 ): boolean {
   if (!status.stripeAccountId) {
     return true;
   }
+  if (
+    status.accountType === PropertyStripeAccountType.STANDARD &&
+    getStripeConnectUiStatus(status) === "setup_incomplete"
+  ) {
+    return true;
+  }
   return status.accountType === PropertyStripeAccountType.EXPRESS;
 }
 
-/** Standard OAuth — when disconnected (dual buttons) or finishing Standard setup. */
+/** Standard OAuth — when disconnected, finishing Standard setup, or switching from Express. */
 export function shouldShowStandardOAuthButton(
   status: IPropertyStripeConnectStatusResponse
 ): boolean {
@@ -81,6 +104,13 @@ export function shouldShowStandardOAuthButton(
     getStripeConnectUiStatus(status) === "setup_incomplete"
   ) {
     return true;
+  }
+  if (
+    status.stripeAccountId &&
+    status.accountType === PropertyStripeAccountType.EXPRESS &&
+    getStripeConnectUiStatus(status) === "setup_incomplete"
+  ) {
+    return status.standardOAuthEnabled;
   }
   if (!status.standardOAuthEnabled) {
     return false;
@@ -97,7 +127,13 @@ export function shouldShowStandardDashboardLink(
   );
 }
 
-export function expressOnboardingButtonLabel(uiStatus: TStripeConnectUiStatus): string {
+export function expressOnboardingButtonLabel(
+  uiStatus: TStripeConnectUiStatus,
+  accountType: TPropertyStripeAccountType | null = null
+): string {
+  if (uiStatus === "setup_incomplete" && accountType === PropertyStripeAccountType.STANDARD) {
+    return "Set up new Stripe account";
+  }
   switch (uiStatus) {
     case "ready":
       return "Update Stripe details";
@@ -109,7 +145,13 @@ export function expressOnboardingButtonLabel(uiStatus: TStripeConnectUiStatus): 
   }
 }
 
-export function standardOAuthButtonLabel(uiStatus: TStripeConnectUiStatus): string {
+export function standardOAuthButtonLabel(
+  uiStatus: TStripeConnectUiStatus,
+  accountType: TPropertyStripeAccountType | null = null
+): string {
+  if (uiStatus === "setup_incomplete" && accountType === PropertyStripeAccountType.EXPRESS) {
+    return "Connect existing Stripe account";
+  }
   if (uiStatus === "setup_incomplete") {
     return "Finish connecting Stripe account";
   }
@@ -121,6 +163,9 @@ export function stripeConnectSectionDescription(
   uiStatus: TStripeConnectUiStatus
 ): string {
   if (showDualConnectOptions(status)) {
+    if (uiStatus === "setup_incomplete") {
+      return "Setup isn't finished yet. Continue with your current option or connect a different way.";
+    }
     return "Connect Stripe so tenants can pay rent to this property.";
   }
   if (shouldShowStandardDashboardLink(status)) {

@@ -1,4 +1,8 @@
-import { propertyStripeAccountsDb, toConnectStatusResponse } from "@/db/property-stripe-accounts";
+import {
+  type IPropertyStripeAccount,
+  propertyStripeAccountsDb,
+  toConnectStatusResponse,
+} from "@/db/property-stripe-accounts";
 import {
   stripeConnectExpressAccountConflictError,
   stripeConnectStandardAccountConflictError,
@@ -32,6 +36,8 @@ import {
   logPropertyStripeConnectOAuthCompleted,
   logPropertyStripeConnectOAuthFailed,
   logPropertyStripeConnectOAuthStarted,
+  logPropertyStripeConnectResetCleanupFailed,
+  logPropertyStripeConnectResetCompleted,
 } from "@/services/property-stripe-connect-observability";
 import { getStripeClient } from "@/stripe/stripe-client";
 
@@ -70,6 +76,45 @@ function logOAuthFailure(input: {
     err: input.err,
     propertyId: input.propertyId,
     reason: input.reason,
+  });
+}
+
+async function resetIncompleteConnect(local: IPropertyStripeAccount): Promise<void> {
+  if (local.chargesEnabled) {
+    if (local.accountType === PropertyStripeAccountType.STANDARD) {
+      throw stripeConnectStandardAccountConflictError();
+    }
+    throw stripeConnectExpressAccountConflictError();
+  }
+
+  try {
+    const stripe = getStripeClient();
+    if (local.accountType === PropertyStripeAccountType.STANDARD) {
+      const clientId = process.env.STRIPE_CONNECT_CLIENT_ID?.trim();
+      if (clientId) {
+        await stripe.oauth.deauthorize({
+          client_id: clientId,
+          stripe_user_id: local.stripeAccountId,
+        });
+      }
+    } else {
+      await stripe.accounts.del(local.stripeAccountId);
+    }
+  } catch (error) {
+    logPropertyStripeConnectResetCleanupFailed({
+      accountType: local.accountType,
+      err: error,
+      propertyId: local.propertyId,
+      stripeAccountId: local.stripeAccountId,
+    });
+  }
+
+  await propertyStripeAccountsDb.deleteByPropertyId(local.propertyId);
+
+  logPropertyStripeConnectResetCompleted({
+    accountType: local.accountType,
+    propertyId: local.propertyId,
+    stripeAccountId: local.stripeAccountId,
   });
 }
 
@@ -144,13 +189,16 @@ export const propertyStripeConnectService = {
       });
       return redirect(propertyId, "return");
     }
-    if (existing) {
-      logOAuthFailure({
-        accountType: PropertyStripeAccountType.EXPRESS,
-        propertyId,
-        reason: StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED,
-      });
-      return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED);
+    if (existing?.accountType === PropertyStripeAccountType.EXPRESS) {
+      if (existing.chargesEnabled) {
+        logOAuthFailure({
+          accountType: PropertyStripeAccountType.EXPRESS,
+          propertyId,
+          reason: StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED,
+        });
+        return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED);
+      }
+      await resetIncompleteConnect(existing);
     }
 
     try {
@@ -214,7 +262,11 @@ export const propertyStripeConnectService = {
 
     let local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
     if (local?.accountType === PropertyStripeAccountType.STANDARD) {
-      throw stripeConnectStandardAccountConflictError();
+      if (local.chargesEnabled) {
+        throw stripeConnectStandardAccountConflictError();
+      }
+      await resetIncompleteConnect(local);
+      local = null;
     }
 
     if (!local) {
@@ -263,9 +315,11 @@ export const propertyStripeConnectService = {
 
     const local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
     if (local?.accountType === PropertyStripeAccountType.EXPRESS) {
-      throw stripeConnectExpressAccountConflictError();
-    }
-    if (local?.accountType === PropertyStripeAccountType.STANDARD && local.chargesEnabled) {
+      if (local.chargesEnabled) {
+        throw stripeConnectExpressAccountConflictError();
+      }
+      await resetIncompleteConnect(local);
+    } else if (local?.accountType === PropertyStripeAccountType.STANDARD && local.chargesEnabled) {
       throw stripeConnectStandardAccountConflictError();
     }
 

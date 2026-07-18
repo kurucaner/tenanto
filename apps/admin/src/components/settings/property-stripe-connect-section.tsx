@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink } from "lucide-react";
-import { type ComponentProps, memo } from "react";
+import { type ComponentProps, memo, useState } from "react";
 import { toast } from "sonner";
 
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
 import { PropertyStripeConnectStatusBadge } from "@/components/settings/property-stripe-connect-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import {
   EXPRESS_CONNECT_HELPER,
   expressOnboardingButtonLabel,
   getStripeConnectUiStatus,
+  isStripeConnectTypeSwitch,
   shouldShowExpressOnboardingButton,
   shouldShowStandardDashboardLink,
   shouldShowStandardOAuthButton,
@@ -26,7 +28,10 @@ import { queryKeys } from "@/lib/query-keys";
 import {
   type IPropertyStripeConnectStatusResponse,
   PropertyStripeAccountType,
+  type TPropertyStripeAccountType,
 } from "@/packages/shared";
+
+type TStripeConnectSwitchTarget = "express" | "standard";
 
 function openStripeOnboardingUrl(url: string): void {
   const link = document.createElement("a");
@@ -140,6 +145,7 @@ const StripeConnectStatusDetails = memo(function StripeConnectStatusDetails({
 StripeConnectStatusDetails.displayName = "StripeConnectStatusDetails";
 
 type TStripeConnectActionsProps = {
+  accountType: TPropertyStripeAccountType | null;
   connectPending: boolean;
   dualOptions: boolean;
   expressPending: boolean;
@@ -153,6 +159,7 @@ type TStripeConnectActionsProps = {
 };
 
 const StripeConnectActions = memo(function StripeConnectActions({
+  accountType,
   connectPending,
   dualOptions,
   expressPending,
@@ -170,7 +177,7 @@ const StripeConnectActions = memo(function StripeConnectActions({
         <StripeConnectOption
           disabled={connectPending}
           helper={EXPRESS_CONNECT_HELPER}
-          label={expressOnboardingButtonLabel(uiStatus)}
+          label={expressOnboardingButtonLabel(uiStatus, accountType)}
           loadingLabel="Opening Stripe…"
           onClick={onExpressClick}
           pending={expressPending}
@@ -179,7 +186,7 @@ const StripeConnectActions = memo(function StripeConnectActions({
         <StripeConnectOption
           disabled={connectPending}
           helper={STANDARD_CONNECT_HELPER}
-          label={standardOAuthButtonLabel(uiStatus)}
+          label={standardOAuthButtonLabel(uiStatus, accountType)}
           loadingLabel="Redirecting to Stripe…"
           onClick={onStandardOAuthClick}
           pending={standardOAuthPending}
@@ -193,14 +200,16 @@ const StripeConnectActions = memo(function StripeConnectActions({
     <>
       {showExpressOnboarding ? (
         <Button disabled={connectPending} onClick={onExpressClick} type="button">
-          {expressPending ? "Opening Stripe…" : expressOnboardingButtonLabel(uiStatus)}
+          {expressPending
+            ? "Opening Stripe…"
+            : expressOnboardingButtonLabel(uiStatus, accountType)}
         </Button>
       ) : null}
       {showStandardIncompleteOAuth ? (
         <StripeConnectOption
           disabled={connectPending}
           helper={STANDARD_INCOMPLETE_HELPER}
-          label={standardOAuthButtonLabel(uiStatus)}
+          label={standardOAuthButtonLabel(uiStatus, accountType)}
           loadingLabel="Redirecting to Stripe…"
           onClick={onStandardOAuthClick}
           pending={standardOAuthPending}
@@ -214,7 +223,9 @@ const StripeConnectActions = memo(function StripeConnectActions({
           type="button"
           variant="outline"
         >
-          {standardOAuthPending ? "Redirecting to Stripe…" : standardOAuthButtonLabel(uiStatus)}
+          {standardOAuthPending
+            ? "Redirecting to Stripe…"
+            : standardOAuthButtonLabel(uiStatus, accountType)}
         </Button>
       ) : null}
     </>
@@ -241,19 +252,54 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
   propertyId: string;
   status: IPropertyStripeConnectStatusResponse;
 }) {
+  const [switchTarget, setSwitchTarget] = useState<TStripeConnectSwitchTarget | null>(null);
   const { connectPending, expressOnboardingMutation, standardOAuthMutation } =
     usePropertyStripeConnectMutations(propertyId);
 
   const uiStatus = getStripeConnectUiStatus(status);
   const dualOptions = showDualConnectOptions(status);
-  const showExpressOnboarding = shouldShowExpressOnboardingButton(status);
+  const showExpressOnboarding = shouldShowExpressOnboardingButton(status) && !dualOptions;
   const showStandardOAuth = shouldShowStandardOAuthButton(status);
   const showStandardDashboard = shouldShowStandardDashboardLink(status);
   const showStandardIncompleteOAuth =
+    !dualOptions &&
     showStandardOAuth &&
     status.accountType === PropertyStripeAccountType.STANDARD &&
     uiStatus === "setup_incomplete";
-  const showStandardOAuthButton = showStandardOAuth && !showStandardIncompleteOAuth;
+  const showStandardOAuthButton = showStandardOAuth && !dualOptions && !showStandardIncompleteOAuth;
+
+  const runExpressConnect = () => {
+    expressOnboardingMutation.mutate();
+  };
+
+  const runStandardConnect = () => {
+    standardOAuthMutation.mutate();
+  };
+
+  const handleExpressClick = () => {
+    if (isStripeConnectTypeSwitch(status, "express")) {
+      setSwitchTarget("express");
+      return;
+    }
+    runExpressConnect();
+  };
+
+  const handleStandardOAuthClick = () => {
+    if (isStripeConnectTypeSwitch(status, "standard")) {
+      setSwitchTarget("standard");
+      return;
+    }
+    runStandardConnect();
+  };
+
+  const handleConfirmSwitch = () => {
+    if (switchTarget === "express") {
+      runExpressConnect();
+    } else if (switchTarget === "standard") {
+      runStandardConnect();
+    }
+    setSwitchTarget(null);
+  };
 
   return (
     <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
@@ -268,11 +314,12 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
       <CardContent className="space-y-4">
         <StripeConnectStatusDetails status={status} />
         <StripeConnectActions
+          accountType={status.accountType}
           connectPending={connectPending}
           dualOptions={dualOptions}
           expressPending={expressOnboardingMutation.isPending}
-          onExpressClick={() => expressOnboardingMutation.mutate()}
-          onStandardOAuthClick={() => standardOAuthMutation.mutate()}
+          onExpressClick={handleExpressClick}
+          onStandardOAuthClick={handleStandardOAuthClick}
           showExpressOnboarding={showExpressOnboarding}
           showStandardIncompleteOAuth={showStandardIncompleteOAuth}
           showStandardOAuthButton={showStandardOAuthButton}
@@ -281,6 +328,20 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
         />
         {showStandardDashboard ? <StripeConnectDashboardButton /> : null}
       </CardContent>
+      <DeleteConfirmationDialog
+        cancelLabel="Cancel"
+        confirmLabel="Switch"
+        description="Your incomplete Stripe setup will be discarded and you'll start connecting a different way."
+        isPending={connectPending}
+        onConfirm={handleConfirmSwitch}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSwitchTarget(null);
+          }
+        }}
+        open={switchTarget !== null}
+        title="Switch connection method?"
+      />
     </Card>
   );
 });

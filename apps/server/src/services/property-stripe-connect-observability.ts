@@ -1,8 +1,5 @@
 import type { TStripeConnectOAuthCallbackReason } from "@/lib/stripe-connect-oauth-callback";
-import {
-  PropertyStripeAccountType,
-  type TPropertyStripeAccountType,
-} from "@/packages/shared";
+import { PropertyStripeAccountType, type TPropertyStripeAccountType } from "@/packages/shared";
 
 import { WinstonLogger } from "./winston";
 
@@ -66,5 +63,31 @@ export function logPropertyStripeConnectOAuthCallbackUnhandledError(error: unkno
   WinstonLogger.error({
     err: error,
     msg: "tenant_payments.connect_oauth_callback_failed",
+  });
+}
+
+export function logPropertyStripeConnectResetCompleted(input: {
+  accountType: TPropertyStripeAccountType;
+  propertyId: string;
+  stripeAccountId: string;
+}): void {
+  WinstonLogger.info({
+    ...buildPropertyStripeConnectOAuthLogContext(input),
+    msg: "tenant_payments.connect_reset_completed",
+    stripeAccountId: input.stripeAccountId,
+  });
+}
+
+export function logPropertyStripeConnectResetCleanupFailed(input: {
+  accountType: TPropertyStripeAccountType;
+  err: unknown;
+  propertyId: string;
+  stripeAccountId: string;
+}): void {
+  WinstonLogger.warn({
+    err: input.err,
+    ...buildPropertyStripeConnectOAuthLogContext(input),
+    msg: "tenant_payments.connect_reset_cleanup_failed",
+    stripeAccountId: input.stripeAccountId,
   });
 }
