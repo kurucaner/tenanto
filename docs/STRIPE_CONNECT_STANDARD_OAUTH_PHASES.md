@@ -287,10 +287,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Edge cases polished before UI.
 
-- [ ] Map Stripe OAuth errors to stable `reason` codes
-- [ ] Reject Standard if Express connected (and vice versa) with clear 409/message
-- [ ] Idempotent callback (safe refresh/retry)
-- [ ] Expand service tests
+- [x] Map Stripe OAuth errors to stable `reason` codes
+- [x] Reject Standard if Express connected (and vice versa) with clear 409/message
+- [x] Idempotent callback (safe refresh/retry)
+- [x] Expand service tests
 
 **Exit criteria:** Denied OAuth, invalid grant, duplicate connect behave predictably.
 

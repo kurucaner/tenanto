@@ -184,7 +184,7 @@ describe("propertyStripeConnectService.createExpressOnboardingLink", () => {
 
     await expect(
       propertyStripeConnectService.createExpressOnboardingLink("property-1")
-    ).rejects.toThrow("This property is connected via an existing Stripe account");
+    ).rejects.toThrow("This property is already connected to an existing Stripe account");
 
     expect(mockAccountsCreate).not.toHaveBeenCalled();
     expect(mockAccountLinksCreate).not.toHaveBeenCalled();
@@ -267,7 +267,7 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
     expect(parsed.searchParams.get("scope")).toBe("read_write");
   });
 
-  test("throws conflict when property already has a Connect account", async () => {
+  test("throws express conflict when property already has Express account", async () => {
     mockFindByPropertyId.mockResolvedValue({
       accountType: PropertyStripeAccountType.EXPRESS,
       chargesEnabled: true,
@@ -281,7 +281,26 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
 
     await expect(
       propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
-    ).rejects.toThrow("This property already has a Stripe account connected");
+    ).rejects.toThrow("This property uses a Stripe Express account");
+
+    expect(mockCreateOAuthState).not.toHaveBeenCalled();
+  });
+
+  test("throws standard conflict when property already has Standard account", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    await expect(
+      propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
+    ).rejects.toThrow("This property is already connected to an existing Stripe account");
 
     expect(mockCreateOAuthState).not.toHaveBeenCalled();
   });
@@ -433,7 +452,7 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
     expect(mockOauthToken).not.toHaveBeenCalled();
   });
 
-  test("redirects with already_connected when property has a Connect account", async () => {
+  test("redirects with express_connected when property has an Express account", async () => {
     mockFindByPropertyId.mockResolvedValue({
       accountType: PropertyStripeAccountType.EXPRESS,
       chargesEnabled: true,
@@ -451,9 +470,59 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
     });
 
     expect(result.redirectUrl).toBe(
-      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.ALREADY_CONNECTED}`
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED}`
     );
     expect(mockOauthToken).not.toHaveBeenCalled();
+  });
+
+  test("redirects to return URL when Standard account already exists (idempotent retry)", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      "https://app.test/properties/property-1/settings?stripe_connect=return"
+    );
+    expect(mockOauthToken).not.toHaveBeenCalled();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockAccountsRetrieve).toHaveBeenCalled();
+  });
+
+  test("redirects with invalid_grant when Stripe rejects reused authorization code", async () => {
+    mockFindByPropertyId.mockResolvedValueOnce(null);
+    mockOauthToken.mockRejectedValueOnce({ code: "invalid_grant" });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.INVALID_GRANT}`
+    );
+  });
+
+  test("redirects with invalid_scope when Stripe authorize returns invalid_scope", async () => {
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      error: "invalid_scope",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.INVALID_SCOPE}`
+    );
   });
 });
 

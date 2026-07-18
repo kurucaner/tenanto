@@ -28,3 +28,15 @@ export function stripeConnectConflictError(
 ): DomainError {
   return createDomainError(StripeConnectErrorCode.ALREADY_CONNECTED, message, HttpStatus.CONFLICT);
 }
+
+export function stripeConnectExpressAccountConflictError(): DomainError {
+  return stripeConnectConflictError(
+    "This property uses a Stripe Express account. Continue or update Express setup from settings."
+  );
+}
+
+export function stripeConnectStandardAccountConflictError(): DomainError {
+  return stripeConnectConflictError(
+    "This property is already connected to an existing Stripe account."
+  );
+}

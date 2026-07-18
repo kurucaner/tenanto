@@ -1,6 +1,8 @@
 export const StripeConnectOAuthCallbackReason = {
-  ALREADY_CONNECTED: "already_connected",
   DENIED: "denied",
+  EXPRESS_CONNECTED: "express_connected",
+  INVALID_GRANT: "invalid_grant",
+  INVALID_SCOPE: "invalid_scope",
   INVALID_STATE: "invalid_state",
   MISSING_CODE: "missing_code",
   NOT_CONFIGURED: "not_configured",
@@ -29,11 +31,35 @@ export function buildPropertyStripeConnectSettingsRedirectUrl(input: {
   return url.toString();
 }
 
+/** Maps Stripe OAuth authorize redirect `error` query params to stable callback reasons. */
 export function mapStripeOAuthCallbackErrorReason(
   stripeError: string | undefined
 ): TStripeConnectOAuthCallbackReason {
-  if (stripeError === "access_denied") {
-    return StripeConnectOAuthCallbackReason.DENIED;
+  switch (stripeError) {
+    case "access_denied":
+      return StripeConnectOAuthCallbackReason.DENIED;
+    case "invalid_scope":
+      return StripeConnectOAuthCallbackReason.INVALID_SCOPE;
+    default:
+      return StripeConnectOAuthCallbackReason.STRIPE_ERROR;
   }
-  return StripeConnectOAuthCallbackReason.STRIPE_ERROR;
+}
+
+function readStripeErrorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
+
+/** Maps Stripe `oauth.token` failures to stable callback reasons. */
+export function mapStripeOAuthTokenExchangeReason(
+  error: unknown
+): TStripeConnectOAuthCallbackReason {
+  const code = readStripeErrorCode(error);
+  if (code === "invalid_grant") {
+    return StripeConnectOAuthCallbackReason.INVALID_GRANT;
+  }
+  return StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED;
 }

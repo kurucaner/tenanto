@@ -1,5 +1,8 @@
 import { propertyStripeAccountsDb, toConnectStatusResponse } from "@/db/property-stripe-accounts";
-import { stripeConnectConflictError } from "@/errors/stripe-connect-errors";
+import {
+  stripeConnectExpressAccountConflictError,
+  stripeConnectStandardAccountConflictError,
+} from "@/errors/stripe-connect-errors";
 import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
@@ -8,6 +11,7 @@ import {
 import {
   buildPropertyStripeConnectSettingsRedirectUrl,
   mapStripeOAuthCallbackErrorReason,
+  mapStripeOAuthTokenExchangeReason,
   StripeConnectOAuthCallbackReason,
 } from "@/lib/stripe-connect-oauth-callback";
 import {
@@ -126,8 +130,12 @@ export const propertyStripeConnectService = {
 
     const { propertyId } = oauthState;
     const existing = await propertyStripeAccountsDb.findByPropertyId(propertyId);
+    if (existing?.accountType === PropertyStripeAccountType.STANDARD) {
+      await propertyStripeConnectService.syncAccountStatus(propertyId);
+      return redirect(propertyId, "return");
+    }
     if (existing) {
-      return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.ALREADY_CONNECTED);
+      return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED);
     }
 
     try {
@@ -171,7 +179,7 @@ export const propertyStripeConnectService = {
         msg: "tenant_payments.connect_oauth_failed",
         propertyId,
       });
-      return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED);
+      return redirect(propertyId, "error", mapStripeOAuthTokenExchangeReason(error));
     }
   },
 
@@ -191,9 +199,7 @@ export const propertyStripeConnectService = {
 
     let local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
     if (local?.accountType === PropertyStripeAccountType.STANDARD) {
-      throw stripeConnectConflictError(
-        "This property is connected via an existing Stripe account. Use Standard OAuth to reconnect."
-      );
+      throw stripeConnectStandardAccountConflictError();
     }
 
     if (!local) {
@@ -241,8 +247,11 @@ export const propertyStripeConnectService = {
     requireStripeConnectStandardOAuthConfigured();
 
     const local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
+    if (local?.accountType === PropertyStripeAccountType.EXPRESS) {
+      throw stripeConnectExpressAccountConflictError();
+    }
     if (local) {
-      throw stripeConnectConflictError();
+      throw stripeConnectStandardAccountConflictError();
     }
 
     const state = await createStripeConnectOAuthState({ propertyId, userId });
