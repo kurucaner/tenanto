@@ -207,6 +207,7 @@ export interface ITenantPhoneAuthVerifyBody {
 
 export interface ITenantPhoneBindStartBody {
   phone: string;
+  smsConsent: boolean;
 }
 
 export interface ITenantPhoneBindVerifyBody {
@@ -215,6 +216,10 @@ export interface ITenantPhoneBindVerifyBody {
 }
 
 export interface ITenantMeResponse {
+  user: ITenantUser;
+}
+
+export interface ITenantSmsOptOutResponse {
   user: ITenantUser;
 }
 

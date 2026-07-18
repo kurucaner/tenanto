@@ -50,8 +50,11 @@ describe("auth-phone-otp-service", () => {
     );
   });
 
-  test("buildTenantPhoneOtpSmsMessage includes code", () => {
+  test("buildTenantPhoneOtpSmsMessage includes code and STOP/HELP footer", () => {
     expect(buildTenantPhoneOtpSmsMessage("123456")).toContain("123456");
+    expect(buildTenantPhoneOtpSmsMessage("123456")).toContain(
+      "Reply STOP to opt out or HELP for help."
+    );
   });
 
   test("sendPhoneOtpWithCooldown stores hash and sends SMS", async () => {

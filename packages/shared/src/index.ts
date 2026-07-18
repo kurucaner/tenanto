@@ -666,6 +666,7 @@ export {
   type ITenantPhoneAuthVerifyBody,
   type ITenantPhoneBindStartBody,
   type ITenantPhoneBindVerifyBody,
+  type ITenantSmsOptOutResponse,
   type ITenantUser,
   TenantLeaseListStatus,
   TenantMembershipRole,

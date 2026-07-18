@@ -223,6 +223,60 @@ export const tenantUsersDb = {
     };
   },
 
+  async grantVerifiedPhoneWithSmsConsent(
+    tenantUserId: string,
+    phone: string
+  ): Promise<{ newlySubscribed: boolean; user: ITenantUser }> {
+    const e164 = requireE164Phone(phone);
+    const current = await tenantUsersDb.findById(tenantUserId);
+    if (!current) {
+      throw new Error("grantVerifiedPhoneWithSmsConsent failed: tenant user not found");
+    }
+
+    const existing = await tenantUsersDb.findByPhone(e164);
+    if (
+      existing &&
+      isPhoneOwnedByOtherUser({
+        candidateOwnerId: tenantUserId,
+        existingOwnerId: existing.id,
+      })
+    ) {
+      throw createIdentityConflictError("This phone number is already linked to another account");
+    }
+
+    const alreadySubscribed =
+      current.phone === e164 &&
+      current.phoneVerifiedAt != null &&
+      current.smsConsentedAt != null &&
+      current.smsOptedOutAt == null;
+
+    try {
+      const result = await pool.query(
+        `UPDATE tenant_users
+         SET phone = $1,
+             phone_verified_at = NOW(),
+             sms_consented_at = NOW(),
+             sms_opted_out_at = NULL,
+             updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [e164, tenantUserId]
+      );
+      if (result.rows.length === 0) {
+        throw new Error("grantVerifiedPhoneWithSmsConsent failed: tenant user not found");
+      }
+      return {
+        newlySubscribed: !alreadySubscribed,
+        user: mapTenantUserRow(result.rows[0] as Record<string, unknown>),
+      };
+    } catch (error) {
+      if (isPostgresUniqueViolation(error)) {
+        throw createIdentityConflictError("This phone number is already linked to another account");
+      }
+      throw error;
+    }
+  },
+
   async linkAppleId(tenantUserId: string, appleId: string): Promise<ITenantUser> {
     const ids = await tenantUsersDb.getOauthProviderIds(tenantUserId);
     if (!ids) {
@@ -301,6 +355,23 @@ export const tenantUsersDb = {
       }
       throw error;
     }
+  },
+
+  async optOutOfSms(tenantUserId: string): Promise<ITenantUser | null> {
+    const result = await pool.query(
+      `UPDATE tenant_users
+       SET phone = NULL,
+           phone_verified_at = NULL,
+           sms_opted_out_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [tenantUserId]
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
   },
 
   /**

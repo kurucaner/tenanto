@@ -206,12 +206,12 @@ After Phase 2 lands on staging, capture Settings showing phone field, **unchecke
 
 **Goal:** End-to-end consent-aware bind and opt-out without UI.
 
-- [ ] Require `smsConsent: true` on bind/start in `tenant-phone-auth-service.ts`
-- [ ] On bind/verify: `grantSmsConsent` + send opt-in confirmation SMS (once per subscription)
-- [ ] Add `POST /tenant/me/sms/opt-out` route + service
-- [ ] Gate login OTP: only send when target user `canReceiveSms`
-- [ ] Route tenant SMS through consent-aware send wrapper
-- [ ] Integration tests: bind-with-consent, opt-out blocks OTP, confirmation sent once
+- [x] Require `smsConsent: true` on bind/start in `tenant-phone-auth-service.ts`
+- [x] On bind/verify: `grantSmsConsent` + send opt-in confirmation SMS (once per subscription)
+- [x] Add `POST /tenant/me/sms/opt-out` route + service
+- [x] Gate login OTP: only send when target user `canReceiveSms`
+- [x] Route tenant SMS through consent-aware send wrapper
+- [x] Integration tests: bind-with-consent, opt-out blocks OTP, confirmation sent once
 
 **Exit criteria:** Manual verification via API/script; opted-out users never receive OTP; opt-in confirmation matches campaign sample 2.
 
