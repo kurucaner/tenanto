@@ -64,7 +64,7 @@ describe("createStripeConnectOAuthState", () => {
     });
 
     expect(set).toHaveBeenCalledTimes(1);
-    const [key, value, expiryMode, ttlSec] = set.mock.calls[0] as [
+    const [key, value, expiryMode, ttlSec] = set.mock.calls[0] as unknown as [
       string,
       string,
       string,

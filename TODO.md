@@ -11,3 +11,4 @@
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
 - A dialog when the users log in to the app for the first time.
+- Phone number country selection list virtualization
