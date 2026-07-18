@@ -5,7 +5,15 @@ import {
   requireStripeConnectOperational,
   requireStripeConnectStandardOAuthConfigured,
 } from "@/lib/stripe-connect-config";
-import { createStripeConnectOAuthState } from "@/lib/stripe-connect-oauth-state";
+import {
+  buildPropertyStripeConnectSettingsRedirectUrl,
+  mapStripeOAuthCallbackErrorReason,
+  StripeConnectOAuthCallbackReason,
+} from "@/lib/stripe-connect-oauth-callback";
+import {
+  consumeStripeConnectOAuthState,
+  createStripeConnectOAuthState,
+} from "@/lib/stripe-connect-oauth-state";
 import { buildStripeConnectStandardOAuthAuthorizeUrl } from "@/lib/stripe-connect-oauth-url";
 import {
   type IPropertyStripeConnectAuthorizeUrlResponse,
@@ -13,6 +21,7 @@ import {
   type IPropertyStripeConnectStatusResponse,
   PropertyStripeAccountType,
 } from "@/packages/shared";
+import { WinstonLogger } from "@/services/winston";
 import { getStripeClient } from "@/stripe/stripe-client";
 
 function flagsFromStripeAccount(account: {
@@ -61,6 +70,111 @@ function stripeConnectClientId(): string {
 }
 
 export const propertyStripeConnectService = {
+  async completeStandardOAuthCallback(query: {
+    code?: string;
+    error?: string;
+    state?: string;
+  }): Promise<{ redirectUrl: string }> {
+    const platformAppUrl = platformAppBaseUrl();
+    const redirect = (
+      propertyId: string | undefined,
+      stripeConnect: "error" | "return",
+      reason?: (typeof StripeConnectOAuthCallbackReason)[keyof typeof StripeConnectOAuthCallbackReason]
+    ) => ({
+      redirectUrl: buildPropertyStripeConnectSettingsRedirectUrl({
+        platformAppUrl,
+        propertyId,
+        reason,
+        stripeConnect,
+      }),
+    });
+
+    try {
+      requireStripeConnectStandardOAuthConfigured();
+    } catch {
+      return redirect(undefined, "error", StripeConnectOAuthCallbackReason.NOT_CONFIGURED);
+    }
+
+    const stateToken = query.state?.trim();
+
+    if (query.error) {
+      const oauthState = stateToken ? await consumeStripeConnectOAuthState(stateToken) : null;
+      return redirect(
+        oauthState?.propertyId,
+        "error",
+        mapStripeOAuthCallbackErrorReason(query.error)
+      );
+    }
+
+    if (!query.code?.trim()) {
+      const oauthState = stateToken ? await consumeStripeConnectOAuthState(stateToken) : null;
+      return redirect(
+        oauthState?.propertyId,
+        "error",
+        StripeConnectOAuthCallbackReason.MISSING_CODE
+      );
+    }
+
+    if (!stateToken) {
+      return redirect(undefined, "error", StripeConnectOAuthCallbackReason.INVALID_STATE);
+    }
+
+    const oauthState = await consumeStripeConnectOAuthState(stateToken);
+    if (!oauthState) {
+      return redirect(undefined, "error", StripeConnectOAuthCallbackReason.INVALID_STATE);
+    }
+
+    const { propertyId } = oauthState;
+    const existing = await propertyStripeAccountsDb.findByPropertyId(propertyId);
+    if (existing) {
+      return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.ALREADY_CONNECTED);
+    }
+
+    try {
+      const stripe = getStripeClient();
+      const tokenResponse = await stripe.oauth.token({
+        code: query.code.trim(),
+        grant_type: "authorization_code",
+      });
+      const stripeAccountId = tokenResponse.stripe_user_id;
+      if (!stripeAccountId) {
+        return redirect(
+          propertyId,
+          "error",
+          StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED
+        );
+      }
+
+      await propertyStripeAccountsDb.upsert({
+        accountType: PropertyStripeAccountType.STANDARD,
+        chargesEnabled: false,
+        detailsSubmitted: false,
+        onboardingComplete: false,
+        payoutsEnabled: false,
+        propertyId,
+        stripeAccountId,
+      });
+
+      await propertyStripeConnectService.syncAccountStatus(propertyId);
+
+      WinstonLogger.info({
+        accountType: PropertyStripeAccountType.STANDARD,
+        msg: "tenant_payments.connect_oauth_completed",
+        propertyId,
+        stripeAccountId,
+      });
+
+      return redirect(propertyId, "return");
+    } catch (error) {
+      WinstonLogger.error({
+        err: error,
+        msg: "tenant_payments.connect_oauth_failed",
+        propertyId,
+      });
+      return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED);
+    }
+  },
+
   async createExpressOnboardingLink(
     propertyId: string,
     options?: { refreshUrl?: string; returnUrl?: string }

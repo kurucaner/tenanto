@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
+import { StripeConnectOAuthCallbackReason } from "@/lib/stripe-connect-oauth-callback";
 import { PropertyStripeAccountType } from "@/packages/shared";
 import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
@@ -24,8 +25,13 @@ const mockAccountsRetrieve = mockAsyncFn(() =>
 );
 const mockAccountLinksCreate = mockResolved({ url: "https://stripe.test/onboard" });
 const mockCreateOAuthState = mockAsyncFn(() => Promise.resolve("signed-oauth-state"));
+const mockConsumeOAuthState = mockAsyncFn(() =>
+  Promise.resolve({ propertyId: "property-1", userId: "user-1" })
+);
+const mockOauthToken = mockAsyncFn(() => Promise.resolve({ stripe_user_id: "acct_standard" }));
 
 mock.module("@/lib/stripe-connect-oauth-state", () => ({
+  consumeStripeConnectOAuthState: mockConsumeOAuthState,
   createStripeConnectOAuthState: mockCreateOAuthState,
 }));
 
@@ -55,6 +61,9 @@ mock.module("@/stripe/stripe-client", () => ({
     accounts: {
       create: mockAccountsCreate,
       retrieve: mockAccountsRetrieve,
+    },
+    oauth: {
+      token: mockOauthToken,
     },
   }),
   isStripeSecretConfigured: () => true,
@@ -283,6 +292,168 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
     await expect(
       propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
     ).rejects.toThrow("Stripe Connect Standard OAuth is not configured");
+  });
+});
+
+describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
+  const originalConnectFlag = process.env.STRIPE_CONNECT_ENABLED;
+  const originalStandardOAuthFlag = process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED;
+  const originalClientId = process.env.STRIPE_CONNECT_CLIENT_ID;
+  const originalSecret = process.env.STRIPE_SECRET_KEY;
+  const originalPlatformUrl = process.env.PLATFORM_APP_URL;
+
+  beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
+    process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED = "true";
+    process.env.STRIPE_CONNECT_CLIENT_ID = "ca_test_client";
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    process.env.PLATFORM_APP_URL = "https://app.test";
+    mockFindByPropertyId.mockReset();
+    mockUpsert.mockReset();
+    mockUpdateFlags.mockReset();
+    mockConsumeOAuthState.mockReset();
+    mockOauthToken.mockReset();
+    mockAccountsRetrieve.mockReset();
+    mockFindByPropertyId.mockResolvedValue(null);
+    mockConsumeOAuthState.mockResolvedValue({ propertyId: "property-1", userId: "user-1" });
+    mockOauthToken.mockResolvedValue({ stripe_user_id: "acct_standard" });
+    mockUpsert.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      onboardingComplete: false,
+      payoutsEnabled: false,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    mockUpdateFlags.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    mockAccountsRetrieve.mockResolvedValue({
+      charges_enabled: true,
+      details_submitted: true,
+      payouts_enabled: true,
+    });
+  });
+
+  afterEach(() => {
+    if (originalConnectFlag === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalConnectFlag;
+    }
+    if (originalStandardOAuthFlag === undefined) {
+      delete process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED = originalStandardOAuthFlag;
+    }
+    if (originalClientId === undefined) {
+      delete process.env.STRIPE_CONNECT_CLIENT_ID;
+    } else {
+      process.env.STRIPE_CONNECT_CLIENT_ID = originalClientId;
+    }
+    if (originalSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalSecret;
+    }
+    if (originalPlatformUrl === undefined) {
+      delete process.env.PLATFORM_APP_URL;
+    } else {
+      process.env.PLATFORM_APP_URL = originalPlatformUrl;
+    }
+  });
+
+  test("exchanges code, upserts standard account, syncs status, and redirects to return URL", async () => {
+    mockFindByPropertyId.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      onboardingComplete: false,
+      payoutsEnabled: false,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(mockConsumeOAuthState).toHaveBeenCalledWith("signed-state");
+    expect(mockOauthToken).toHaveBeenCalledWith({
+      code: "auth_code",
+      grant_type: "authorization_code",
+    });
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountType: PropertyStripeAccountType.STANDARD,
+        propertyId: "property-1",
+        stripeAccountId: "acct_standard",
+      })
+    );
+    expect(mockAccountsRetrieve).toHaveBeenCalled();
+    expect(result.redirectUrl).toBe(
+      "https://app.test/properties/property-1/settings?stripe_connect=return"
+    );
+  });
+
+  test("redirects with denied reason when Stripe returns access_denied", async () => {
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      error: "access_denied",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.DENIED}`
+    );
+    expect(mockOauthToken).not.toHaveBeenCalled();
+  });
+
+  test("redirects with invalid_state when OAuth state cannot be consumed", async () => {
+    mockConsumeOAuthState.mockResolvedValue(null);
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.INVALID_STATE}`
+    );
+    expect(mockOauthToken).not.toHaveBeenCalled();
+  });
+
+  test("redirects with already_connected when property has a Connect account", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.EXPRESS,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_existing",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.ALREADY_CONNECTED}`
+    );
+    expect(mockOauthToken).not.toHaveBeenCalled();
   });
 });
 

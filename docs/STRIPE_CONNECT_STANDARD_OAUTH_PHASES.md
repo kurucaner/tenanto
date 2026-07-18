@@ -276,10 +276,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Full Standard path works end-to-end (no admin UI).
 
-- [ ] `GET /stripe/connect/oauth/callback` (public; register in `server.ts`)
-- [ ] Validate state → `stripe.oauth.token` → upsert `account_type = standard`
-- [ ] `syncAccountStatus(propertyId)` → redirect to settings `?stripe_connect=return`
-- [ ] Error redirects: `?stripe_connect=error&reason=…`
+- [x] `GET /stripe/connect/oauth/callback` (public; register in `server.ts`)
+- [x] Validate state → `stripe.oauth.token` → upsert `account_type = standard`
+- [x] `syncAccountStatus(propertyId)` → redirect to settings `?stripe_connect=return`
+- [x] Error redirects: `?stripe_connect=error&reason=…`
 
 **Exit criteria:** Manual Stripe test-mode OAuth completes; DB + status flags correct.
 
