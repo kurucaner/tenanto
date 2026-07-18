@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ITenantUser } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
 const mockSignTenantAccessToken = mock(() => "access-token");
 const mockGenerateRefreshToken = mock(() => "refresh-token");
@@ -29,21 +29,6 @@ const { issueTenantAccessToken, issueTenantSession } = await import("./tenant-au
 
 const mockServer = {} as import("fastify").FastifyInstance;
 
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
-    phoneVerifiedAt: null,
-    smsConsentedAt: null,
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("issueTenantSession", () => {
   beforeEach(() => {

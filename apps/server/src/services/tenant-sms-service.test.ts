@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import type { ITenantUser } from "@/packages/shared";
 import { buildTenantSmsOptInConfirmationMessage, type ITenantUser } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
 const mockSendSms = mock(() => Promise.resolve({}));
 
@@ -10,21 +12,6 @@ mock.module("@/sns/sns", () => ({
 
 const { sendTenantOptInConfirmationSms, sendTenantSms } = await import("./tenant-sms-service");
 
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: "+13055550100",
-    phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
-    smsConsentedAt: "2026-01-01T00:00:00.000Z",
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("sendTenantSms", () => {
   beforeEach(() => {
@@ -35,7 +22,7 @@ describe("sendTenantSms", () => {
     await sendTenantSms({
       message: "PropertyOS: test",
       phoneNumber: "+13055550100",
-      tenantUser: makeTenantUser(),
+      tenantUser: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
     });
 
     expect(mockSendSms).toHaveBeenCalledWith({
@@ -63,7 +50,7 @@ describe("sendTenantOptInConfirmationSms", () => {
   test("sends campaign opt-in confirmation copy", async () => {
     await sendTenantOptInConfirmationSms({
       phoneNumber: "+13055550100",
-      tenantUser: makeTenantUser(),
+      tenantUser: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
     });
 
     expect(mockSendSms).toHaveBeenCalledWith({

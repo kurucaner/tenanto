@@ -2,24 +2,9 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { createIdentityConflictError } from "@/constants/account";
 import { AccountError, type ITenantUser } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
 import { type CreateTenantUserInput, tenantUsersDb } from "./tenant-users";
-
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
-    phoneVerifiedAt: null,
-    smsConsentedAt: null,
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 /** Minimal store shape for exercising findOrCreate* via `this`. */
 type TOauthStubDb = {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
+import { makePayment } from "@/test-fixtures/domain";
 
 const mockFindById = mock(() => Promise.resolve(null as unknown));
 const mockTryInsert = mock(() => Promise.resolve(null as unknown));
@@ -71,24 +72,6 @@ mock.module("@/stripe/stripe-client", () => ({
 const { processStripeEventNotification, processStripeWebhookEvent } =
   await import("./stripe-webhook-service");
 
-function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
-  return {
-    amountCents: 100_00,
-    connectedAccountId: "acct_1",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    currency: "usd",
-    id: "payment-1",
-    idempotencyKey: "key-1",
-    leaseId: "lease-1",
-    propertyId: "property-1",
-    status: TenantRentPaymentStatus.PENDING,
-    stripeCheckoutSessionId: "cs_test_1",
-    stripePaymentIntentId: null,
-    tenantUserId: "tenant-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("processStripeWebhookEvent", () => {
   beforeEach(() => {
@@ -141,7 +124,7 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_2",
       type: "checkout.session.completed",
     });
-    const payment = makePayment();
+    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_test_1", stripePaymentIntentId: null });
     mockFindPaymentById.mockResolvedValueOnce(payment);
     mockUpdateStripeIds.mockResolvedValueOnce(payment);
     mockMarkSucceeded.mockResolvedValueOnce(payment);
@@ -176,7 +159,7 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_3",
       type: "checkout.session.expired",
     });
-    const payment = makePayment();
+    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_test_1", stripePaymentIntentId: null });
     mockFindByCheckoutSessionId.mockResolvedValueOnce(payment);
 
     await processStripeWebhookEvent({
@@ -206,7 +189,7 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_4",
       type: "payment_intent.payment_failed",
     });
-    const payment = makePayment();
+    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_test_1", stripePaymentIntentId: null });
     mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
 
     await processStripeWebhookEvent({

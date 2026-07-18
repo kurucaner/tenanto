@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
-import { buildRentCheckoutIdempotencyKey, TenantRentPaymentStatus } from "@/packages/shared";
+import { makePayment, makeRentScheduleRow } from "@/test-fixtures/domain";
 
 const mockAssertLeaseTenantAccess = mock(() => Promise.resolve({}));
 const mockFindLeaseById = mock(() =>
@@ -12,28 +12,8 @@ const mockFindLeaseById = mock(() =>
     unitId: "unit-1",
   } as { id: string; propertyId: string; unitId: string } | null)
 );
-function scheduleRow(overrides: {
-  expectedRent: number;
-  isPaid: boolean;
-  month: string;
-  paidRent?: number;
-  remainingRent?: number;
-}) {
-  const paidRent = overrides.paidRent ?? (overrides.isPaid ? overrides.expectedRent : 0);
-  const remainingRent =
-    overrides.remainingRent ?? (overrides.isPaid ? 0 : overrides.expectedRent - paidRent);
-
-  return {
-    expectedRent: overrides.expectedRent,
-    isPaid: overrides.isPaid,
-    month: overrides.month,
-    paidRent,
-    remainingRent,
-  };
-}
-
 const mockGetRentSchedule = mock(() =>
-  Promise.resolve([scheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" })])
+  Promise.resolve([makeRentScheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" })])
 );
 const mockFindStripeAccount = mock(() =>
   Promise.resolve({
@@ -133,30 +113,6 @@ mock.module("@/services/winston", () => ({
 
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
-function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
-  return {
-    amountCents: 200_00,
-    connectedAccountId: "acct_1",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    currency: "usd",
-    id: "payment-1",
-    idempotencyKey: buildRentCheckoutIdempotencyKey({
-      amountCents: 200_00,
-      leaseId: "lease-1",
-      periodMonths: ["2026-01"],
-      tenantUserId: "tenant-1",
-    }),
-    leaseId: "lease-1",
-    propertyId: "property-1",
-    status: TenantRentPaymentStatus.PENDING,
-    stripeCheckoutSessionId: "cs_existing",
-    stripePaymentIntentId: "pi_existing",
-    tenantUserId: "tenant-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
 describe("tenantRentPaymentService.createCheckout idempotency", () => {
   const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
 
@@ -180,7 +136,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
       unitId: "unit-1",
     });
     mockGetRentSchedule.mockResolvedValue([
-      scheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" }),
+      makeRentScheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" }),
     ]);
     mockFindStripeAccount.mockResolvedValue({
       chargesEnabled: true,
@@ -239,7 +195,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
 
   test("rejects checkout when nothing is due", async () => {
     mockGetRentSchedule.mockResolvedValueOnce([
-      scheduleRow({ expectedRent: 200, isPaid: true, month: "2026-01" }),
+      makeRentScheduleRow({ expectedRent: 200, isPaid: true, month: "2026-01" }),
     ]);
 
     await expect(tenantRentPaymentService.createCheckout("lease-1", "tenant-1")).rejects.toThrow(
@@ -250,7 +206,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
 
   test("uses schedule paidRent for partial balance without double-counting allocations", async () => {
     mockGetRentSchedule.mockResolvedValueOnce([
-      scheduleRow({
+      makeRentScheduleRow({
         expectedRent: 200,
         isPaid: false,
         month: "2026-01",
@@ -305,7 +261,7 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
 
   test("createCheckout charges only remaining cents after partial payment", async () => {
     mockGetRentSchedule.mockResolvedValueOnce([
-      scheduleRow({
+      makeRentScheduleRow({
         expectedRent: 1500,
         isPaid: false,
         month: "2026-01",
@@ -334,7 +290,7 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
 
   test("getBalance returns zero due when schedule month is fully paid", async () => {
     mockGetRentSchedule.mockResolvedValueOnce([
-      scheduleRow({ expectedRent: 1500, isPaid: true, month: "2026-01", paidRent: 1500 }),
+      makeRentScheduleRow({ expectedRent: 1500, isPaid: true, month: "2026-01", paidRent: 1500 }),
     ]);
 
     const balance = await tenantRentPaymentService.getBalance("lease-1", "tenant-1");

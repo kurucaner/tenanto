@@ -4,22 +4,9 @@ import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import {
   type ITenantLeaseListItem,
   TenantLeaseListStatus,
-  TenantMembershipRole,
   TenantMembershipStatus,
 } from "@/packages/shared";
-
-function makeLeaseListItem(
-  overrides: Pick<ITenantLeaseListItem, "leaseId" | "propertyName" | "unitLabel"> &
-    Partial<ITenantLeaseListItem>
-): ITenantLeaseListItem {
-  return {
-    leaseEndDate: "2026-12-31",
-    leaseStartDate: "2026-01-01",
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.ACTIVE,
-    ...overrides,
-  };
-}
+import { makeLeaseListItem } from "@/test-fixtures/domain";
 
 const mockListLeases = mock(
   (_tenantUserId: string, _status: string): Promise<ITenantLeaseListItem[]> => Promise.resolve([])

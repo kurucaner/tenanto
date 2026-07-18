@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
-import { buildRentCheckoutIdempotencyKey, TenantRentPaymentStatus } from "@/packages/shared";
+import { TenantRentPaymentStatus } from "@/packages/shared";
+import { makePayment } from "@/test-fixtures/domain";
 
 const mockUpdateStatus = mock(() => Promise.resolve(null as ITenantRentPayment | null));
 const mockRefundAllLinked = mock(() => Promise.resolve(0));
@@ -30,29 +31,6 @@ mock.module("@/services/winston", () => ({
 
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
-function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
-  return {
-    amountCents: 200_00,
-    connectedAccountId: "acct_1",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    currency: "usd",
-    id: "payment-1",
-    idempotencyKey: buildRentCheckoutIdempotencyKey({
-      amountCents: 200_00,
-      leaseId: "lease-1",
-      periodMonths: ["2026-01"],
-      tenantUserId: "tenant-1",
-    }),
-    leaseId: "lease-1",
-    propertyId: "property-1",
-    status: TenantRentPaymentStatus.SUCCEEDED,
-    stripeCheckoutSessionId: "cs_1",
-    stripePaymentIntentId: "pi_1",
-    tenantUserId: "tenant-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("tenantRentPaymentService.markRefunded", () => {
   beforeEach(() => {
@@ -76,7 +54,7 @@ describe("tenantRentPaymentService.markRefunded", () => {
   });
 
   test("marks refunded and refunds linked income on full refund", async () => {
-    const payment = makePayment();
+    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" });
     const updated = makePayment({ status: TenantRentPaymentStatus.REFUNDED });
     mockUpdateStatus.mockResolvedValueOnce(updated);
     mockRefundAllLinked.mockResolvedValueOnce(1);
@@ -92,7 +70,7 @@ describe("tenantRentPaymentService.markRefunded", () => {
   });
 
   test("marks refunded but skips income refund on partial refund", async () => {
-    const payment = makePayment();
+    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" });
     const updated = makePayment({ status: TenantRentPaymentStatus.REFUNDED });
     mockUpdateStatus.mockResolvedValueOnce(updated);
 

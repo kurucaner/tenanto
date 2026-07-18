@@ -1,30 +1,17 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import type { ITenantUser } from "@/packages/shared";
 import {
   buildTenantSmsHelpMessage,
   buildTenantSmsOptOutConfirmationMessage,
   type ITenantUser,
   TenantSmsInboundKeyword,
 } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: "+13055550100",
-    phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
-    smsConsentedAt: "2026-01-01T00:00:00.000Z",
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 const mockIsPhoneAuthEnabled = mock(() => true);
-const mockFindByPhone = mock(() => Promise.resolve(makeTenantUser()));
+const mockFindByPhone = mock(() => Promise.resolve(makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" })));
 const mockOptOutOfSms = mock(() =>
   Promise.resolve(makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" }))
 );
@@ -73,7 +60,7 @@ describe("handleTenantInboundSms", () => {
     mockInsertKeywordEvent.mockClear();
     mockSendSms.mockClear();
     mockIsPhoneAuthEnabled.mockReturnValue(true);
-    mockFindByPhone.mockResolvedValue(makeTenantUser());
+    mockFindByPhone.mockResolvedValue(makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }));
     mockOptOutOfSms.mockResolvedValue(
       makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" })
     );

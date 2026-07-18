@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { ReservationStatus } from "@/packages/shared";
+import { buildRefundableReservationRow } from "@/test-fixtures/db-rows";
 
 interface ICapturedQuery {
   sql: string;
@@ -8,38 +9,6 @@ interface ICapturedQuery {
 }
 
 const capturedQueries: ICapturedQuery[] = [];
-
-function buildReservationRow(id: string, refundedAt: Date | null, refundedBy: string | null) {
-  return {
-    channel_commission: "0.00",
-    channel_commission_id: "00000000-0000-4000-8000-000000000021",
-    channel_commission_rate: "0.00000",
-    channel_name: "Booking.com",
-    check_in: "2026-02-07",
-    check_out: "2026-02-08",
-    cleaning_fee: "0.00",
-    created_at: new Date("2026-02-08T12:00:00.000Z"),
-    deleted_at: null,
-    exclude_cleaning_from_commission_base: false,
-    exclude_resort_tax_from_payout: false,
-    gross_income: "0.00",
-    guest_name: "Refund Guest",
-    id,
-    is_deleted: false,
-    net_income: "0.00",
-    nights: 1,
-    property_id: "00000000-0000-4000-8000-000000000001",
-    refunded_amount: refundedAt ? "0.00" : null,
-    refunded_at: refundedAt,
-    refunded_by: refundedBy,
-    reservation_number: null,
-    room_total: "0.00",
-    status: ReservationStatus.STAYED,
-    tax_breakdown: "[]",
-    unit_id: "00000000-0000-4000-8000-000000000010",
-    updated_at: new Date("2026-02-08T12:00:00.000Z"),
-  };
-}
 
 const mockClientQuery = mock((sql: string, values?: unknown[]) => {
   capturedQueries.push({ sql, values: values ?? [] });
@@ -52,7 +21,7 @@ const mockClientQuery = mock((sql: string, values?: unknown[]) => {
     const refunded = values?.[16] === true;
     return Promise.resolve({
       rows: [
-        buildReservationRow(
+        buildRefundableReservationRow(
           "00000000-0000-4000-8000-000000000099",
           refunded ? new Date("2026-02-08T12:00:00.000Z") : null,
           refunded ? (values?.[17] as string) : null

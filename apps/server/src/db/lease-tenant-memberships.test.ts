@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import { makeMembership } from "@/test-fixtures/domain";
 
 type MockQueryResult = {
   rowCount: number;
@@ -24,29 +25,6 @@ mock.module("@/db/pool", () => ({
 }));
 
 const { leaseTenantMembershipsDb } = await import("./lease-tenant-memberships");
-
-function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
-  return {
-    acceptedAt: null,
-    contactPhone: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    displayName: "Jane Tenant",
-    endedAt: null,
-    expiresAt: "2026-02-01T00:00:00.000Z",
-    id: "membership-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    inviteEmail: "jane@example.com",
-    leaseId: "lease-1",
-    revokedAt: null,
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.PENDING_INVITE,
-    tenantUserId: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("leaseTenantMembershipsDb.transitionStatus", () => {
   beforeEach(() => {

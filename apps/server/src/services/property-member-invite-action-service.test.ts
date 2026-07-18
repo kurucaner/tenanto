@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
-import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
+import type { IPropertyInvite, IPropertyMember } from "@/packages/shared";
+import { PropertyInviteStatus } from "@/packages/shared";
+import { makeInvite, makeMember, makeUser } from "@/test-fixtures/domain";
 
 const mockFindByIdInvite = mock(() => Promise.resolve(null as IPropertyInvite | null));
 const mockFindByInviteToken = mock(() => Promise.resolve(null as IPropertyInvite | null));
@@ -11,53 +12,6 @@ const mockAddMember = mock(() => Promise.resolve(null as IPropertyMember | null)
 const mockTransitionStatus = mock(() => Promise.resolve(null as IPropertyInvite | null));
 const mockExpireInviteIfPastTtl = mock(() => Promise.resolve(null as IPropertyInvite | null));
 const mockFindByIdProperty = mock(() => Promise.resolve(null));
-
-function makeInvite(overrides: Partial<IPropertyInvite> = {}): IPropertyInvite {
-  return {
-    acceptedAt: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    email: "invitee@example.com",
-    emailError: null,
-    expiresAt: "2026-02-01T00:00:00.000Z",
-    id: "invite-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "owner-1",
-    propertyId: "property-1",
-    revokedAt: null,
-    role: PropertyRole.MANAGER,
-    status: PropertyInviteStatus.PENDING_INVITE,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
-function makeUser(): IUser {
-  return {
-    appleId: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "invitee@example.com",
-    googleId: null,
-    id: "user-1",
-    name: "Invitee",
-    onboardingCompletedAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    userType: UserType.USER,
-  };
-}
-
-function makeMember(): IPropertyMember {
-  return {
-    addedBy: "owner-1",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    id: "member-1",
-    propertyId: "property-1",
-    role: PropertyRole.MANAGER,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    user: { email: "invitee@example.com", id: "user-1", name: "Invitee" },
-    userId: "user-1",
-  };
-}
 
 mock.module("@/db/property-invites", () => ({
   propertyInvitesDb: {

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { AppleUserPayload } from "@/auth/apple";
-import { AccountError, HttpStatus, type ITenantUser } from "@/packages/shared";
+import { AccountError, HttpStatus } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
 const mockVerifyGoogleToken = mock(() =>
   Promise.resolve({
@@ -37,22 +38,6 @@ const mockIssueTenantSession = mock(() =>
     user: makeTenantUser(),
   })
 );
-
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
-    phoneVerifiedAt: null,
-    smsConsentedAt: null,
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 mock.module("@/auth/google", () => ({
   verifyGoogleToken: mockVerifyGoogleToken,

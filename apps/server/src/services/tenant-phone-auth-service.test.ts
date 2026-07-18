@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import type { ITenantUser } from "@/packages/shared";
 import {
   AccountError,
   buildTenantSmsOptInConfirmationMessage,
@@ -7,22 +8,8 @@ import {
   type ITenantUser,
 } from "@/packages/shared";
 import type { TPhoneOtpVerifyResult } from "@/services/auth-phone-otp-service";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: "+13055550100",
-    phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
-    smsConsentedAt: "2026-01-01T00:00:00.000Z",
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 type TRateLimitResult = { allowed: true } | { allowed: false; retryAfterSec: number };
 
@@ -32,7 +19,7 @@ const mockFindByPhone = mock(() => Promise.resolve(null as ITenantUser | null));
 const mockGrantVerifiedPhoneWithSmsConsent = mock(() =>
   Promise.resolve({
     newlySubscribed: true,
-    user: makeTenantUser(),
+    user: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
   })
 );
 const mockSendPhoneOtp = mock(() => Promise.resolve("+13055550100"));
@@ -47,7 +34,7 @@ const mockIssueTenantSession = mock(() =>
   Promise.resolve({
     accessToken: "access",
     refreshToken: "refresh",
-    user: makeTenantUser(),
+    user: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
   })
 );
 const mockSendSms = mock(() => Promise.resolve({}));
@@ -152,7 +139,7 @@ describe("startTenantPhoneLogin", () => {
   });
 
   test("sends SMS when verified phone exists with SMS consent", async () => {
-    mockFindByVerifiedPhone.mockResolvedValue(makeTenantUser());
+    mockFindByVerifiedPhone.mockResolvedValue(makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }));
     const result = await startTenantPhoneLogin({
       body: { phone: "+13055550100" },
       ip: "127.0.0.1",
@@ -170,7 +157,7 @@ describe("verifyTenantPhoneLogin", () => {
     mockIsPhoneAuthEnabled.mockReturnValue(true);
     mockPhoneRateLimit.mockResolvedValue({ allowed: true });
     mockVerifyPhoneOtp.mockResolvedValue({ ok: true, otpRowId: "otp-1" });
-    mockFindByVerifiedPhone.mockResolvedValue(makeTenantUser());
+    mockFindByVerifiedPhone.mockResolvedValue(makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }));
     mockDeletePhoneOtp.mockClear();
     mockIssueTenantSession.mockClear();
   });
@@ -211,7 +198,7 @@ describe("tenant phone bind", () => {
     mockVerifyPhoneOtp.mockResolvedValue({ ok: true, otpRowId: "otp-bind" });
     mockGrantVerifiedPhoneWithSmsConsent.mockResolvedValue({
       newlySubscribed: true,
-      user: makeTenantUser(),
+      user: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
     });
   });
 
@@ -283,7 +270,7 @@ describe("tenant phone bind", () => {
   });
 
   test("bind verify skips opt-in confirmation when already subscribed", async () => {
-    const subscribedUser = makeTenantUser();
+    const subscribedUser = makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" });
     mockGrantVerifiedPhoneWithSmsConsent.mockResolvedValue({
       newlySubscribed: false,
       user: subscribedUser,

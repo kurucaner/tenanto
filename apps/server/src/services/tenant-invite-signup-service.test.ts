@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
-import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import type { ITenantUser } from "@/packages/shared";
+import { TenantMembershipStatus } from "@/packages/shared";
+import { makeMembership } from "@/test-fixtures/domain";
 
 const mockFindByInviteToken = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
 const mockExpireMembershipIfPastTtl = mock(() =>
@@ -130,28 +131,6 @@ mock.module("@/lib/redis-fixed-window-rate-limit", () => ({
 const { registerTenantWithInviteGoogle, registerTenantWithInvitePassword } =
   await import("./tenant-invite-signup-service");
 
-function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
-  return {
-    acceptedAt: null,
-    contactPhone: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    displayName: "Jane Doe",
-    endedAt: null,
-    expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
-    id: "membership-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    inviteEmail: "jane@example.com",
-    leaseId: "lease-1",
-    revokedAt: null,
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.PENDING_INVITE,
-    tenantUserId: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 const fakeServer = {} as import("fastify").FastifyInstance;
 
@@ -166,7 +145,7 @@ describe("registerTenantWithInvitePassword", () => {
     mockIpAllowed.mockClear();
     mockEmailAllowed.mockClear();
 
-    mockFindByInviteToken.mockResolvedValue(makeMembership());
+    mockFindByInviteToken.mockResolvedValue(makeMembership({ displayName: "Jane Doe" }));
     mockExpireMembershipIfPastTtl.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue(null);
     mockIpAllowed.mockResolvedValue({ allowed: true });
@@ -272,7 +251,7 @@ describe("registerTenantWithInviteGoogle", () => {
     mockIpAllowed.mockClear();
     mockEmailAllowed.mockClear();
 
-    mockFindByInviteToken.mockResolvedValue(makeMembership());
+    mockFindByInviteToken.mockResolvedValue(makeMembership({ displayName: "Jane Doe" }));
     mockExpireMembershipIfPastTtl.mockResolvedValue(null);
     mockVerifyGoogleToken.mockResolvedValue({
       email: "jane@example.com",

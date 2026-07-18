@@ -8,13 +8,8 @@ import type {
   ITenantUser,
   TTenantMembershipStatus,
 } from "@/packages/shared";
-import {
-  PropertyLongStayStatus,
-  TenantLeaseListStatus,
-  TenantMembershipRole,
-  TenantMembershipStatus,
-  UnitRentalType,
-} from "@/packages/shared";
+import { TenantLeaseListStatus, TenantMembershipStatus } from "@/packages/shared";
+import { makeLease, makeMembership, makeProperty, makeTenant, makeUnit } from "@/test-fixtures/domain";
 
 const mockFindByIdMembership = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
 const mockFindByTokenHash = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
@@ -76,98 +71,10 @@ mock.module("@/db/tenant-users", () => ({
 
 const { tenantPortalMembershipService } = await import("./tenant-portal-membership-service");
 
-function makeTenant(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "jane@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
-    phoneVerifiedAt: null,
-    smsConsentedAt: null,
-    smsOptedOutAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
-  return {
-    acceptedAt: null,
-    contactPhone: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    displayName: "Jane Tenant",
-    endedAt: null,
-    expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
-    id: "membership-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    inviteEmail: "jane@example.com",
-    leaseId: "lease-1",
-    revokedAt: null,
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.PENDING_INVITE,
-    tenantUserId: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
-  return {
-    actualEndDate: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    guestName: "Jane Tenant",
-    id: "lease-1",
-    leaseEndDate: "2026-12-31",
-    leaseStartDate: "2026-01-01",
-    monthlyRent: 1500,
-    propertyId: "property-1",
-    secondaryTenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenantEmail: "jane@example.com",
-    tenantPhone: null,
-    termMonths: 12,
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeProperty(overrides: Partial<IProperty> = {}): IProperty {
-  return {
-    address: "123 Main",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    createdBy: "operator-1",
-    favoritedAt: null,
-    id: "property-1",
-    isFavorite: false,
-    legalName: null,
-    memberCount: 1,
-    name: "Oak Apartments",
-    phoneNumber: null,
-    unitCount: 1,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeUnit(overrides: Partial<IPropertyUnit> = {}): IPropertyUnit {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
-    id: "unit-1",
-    isDeleted: false,
-    layout: "1BR",
-    propertyId: "property-1",
-    rentalType: UnitRentalType.LONG_TERM,
-    unitNumber: "101",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("tenant portal happy path (Phase 1.3)", () => {
   beforeEach(() => {

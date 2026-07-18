@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
 import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
+import { makeInvite } from "@/test-fixtures/domain";
 
 const mockFindByInviteToken = mock(() => Promise.resolve(null as IPropertyInvite | null));
 const mockExpireInviteIfPastTtl = mock(() => Promise.resolve(null as IPropertyInvite | null));
@@ -78,26 +79,6 @@ const mockVerifyGoogleToken = mock(() =>
     name: "Jane Doe",
   })
 );
-
-function makeInvite(overrides: Partial<IPropertyInvite> = {}): IPropertyInvite {
-  return {
-    acceptedAt: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    email: "invitee@example.com",
-    emailError: null,
-    expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
-    id: "invite-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    propertyId: "property-1",
-    revokedAt: null,
-    role: PropertyRole.MANAGER,
-    status: PropertyInviteStatus.PENDING_INVITE,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 mock.module("@/db/property-invites", () => ({
   propertyInvitesDb: {

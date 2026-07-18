@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IUser } from "@/packages/shared";
-import { UserType } from "@/packages/shared";
+import { makeUser } from "@/test-fixtures/domain";
 
 const mockSignAccessToken = mock(() => "access-token");
 const mockGenerateRefreshToken = mock(() => "refresh-token");
@@ -25,21 +24,6 @@ mock.module("@/db/refresh-tokens", () => ({
 const { issuePlatformAccessToken, issuePlatformSession } = await import("./platform-auth-service");
 
 const mockServer = {} as import("fastify").FastifyInstance;
-
-function makeUser(overrides: Partial<IUser> = {}): IUser {
-  return {
-    appleId: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "operator@example.com",
-    googleId: null,
-    id: "user-1",
-    name: "Operator",
-    onboardingCompletedAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    userType: UserType.USER,
-    ...overrides,
-  };
-}
 
 describe("issuePlatformSession", () => {
   beforeEach(() => {

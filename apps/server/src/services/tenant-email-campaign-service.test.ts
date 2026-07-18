@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ILeaseSecondaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 import { PropertyLongStayStatus, TenantMembershipStatus } from "@/packages/shared";
+import { makeLease } from "@/test-fixtures/domain";
 
 const mockListByProperty = mock(() => Promise.resolve([] as IPropertyLongStay[]));
 const mockLoadSecondaryTenantContactsByLeaseIds = mock(() =>
@@ -20,26 +21,12 @@ mock.module("@/services/load-secondary-tenant-contacts-by-lease-ids", () => ({
 
 const { buildTenantEmailCampaignPreview } = await import("./tenant-email-campaign-service");
 
-function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
-  return {
-    actualEndDate: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    guestName: "Primary Tenant",
-    id: "lease-1",
-    leaseEndDate: "2027-01-01",
-    leaseStartDate: "2026-01-01",
-    monthlyRent: 1500,
-    propertyId: "property-1",
-    secondaryTenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenantEmail: "primary@example.com",
-    tenantPhone: null,
-    termMonths: 12,
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
+const campaignLease = makeLease({
+  guestName: "Primary Tenant",
+  id: "lease-1",
+  leaseEndDate: "2027-01-01",
+  tenantEmail: "primary@example.com",
+});
 
 describe("buildTenantEmailCampaignPreview", () => {
   beforeEach(() => {
@@ -50,7 +37,7 @@ describe("buildTenantEmailCampaignPreview", () => {
   });
 
   test("loads secondary contacts for active leases before resolving recipients", async () => {
-    mockListByProperty.mockResolvedValueOnce([makeLease({ id: "lease-1" })]);
+    mockListByProperty.mockResolvedValueOnce([campaignLease]);
 
     await buildTenantEmailCampaignPreview("property-1");
 
@@ -61,7 +48,7 @@ describe("buildTenantEmailCampaignPreview", () => {
   });
 
   test("includes secondary recipients from membership contacts", async () => {
-    mockListByProperty.mockResolvedValueOnce([makeLease({ id: "lease-1" })]);
+    mockListByProperty.mockResolvedValueOnce([campaignLease]);
     mockLoadSecondaryTenantContactsByLeaseIds.mockResolvedValueOnce(
       new Map([
         [
@@ -103,7 +90,7 @@ describe("buildTenantEmailCampaignPreview", () => {
   });
 
   test("returns primary-only preview when no secondary contacts exist", async () => {
-    mockListByProperty.mockResolvedValueOnce([makeLease({ id: "lease-1" })]);
+    mockListByProperty.mockResolvedValueOnce([campaignLease]);
 
     const preview = await buildTenantEmailCampaignPreview("property-1");
 

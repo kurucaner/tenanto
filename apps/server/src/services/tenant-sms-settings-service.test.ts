@@ -1,25 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { HttpStatus, type ITenantUser } from "@/packages/shared";
+import { HttpStatus } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
 
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
-    phoneVerifiedAt: null,
-    smsConsentedAt: null,
-    smsOptedOutAt: "2026-01-02T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 const mockIsPhoneAuthEnabled = mock(() => true);
-const mockOptOutOfSms = mock(() => Promise.resolve(makeTenantUser()));
+const mockOptOutOfSms = mock(() => Promise.resolve(makeTenantUser({ email: "tenant@example.com", smsOptedOutAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" })));
 
 mock.module("@/lib/tenant-auth-expansion-config", () => ({
   isTenantPhoneAuthEnabled: mockIsPhoneAuthEnabled,
@@ -38,7 +24,7 @@ describe("optOutTenantSms", () => {
     mockIsPhoneAuthEnabled.mockClear();
     mockOptOutOfSms.mockClear();
     mockIsPhoneAuthEnabled.mockReturnValue(true);
-    mockOptOutOfSms.mockResolvedValue(makeTenantUser());
+    mockOptOutOfSms.mockResolvedValue(makeTenantUser({ email: "tenant@example.com", smsOptedOutAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" }));
   });
 
   test("returns 404 when phone auth flag is off", async () => {
