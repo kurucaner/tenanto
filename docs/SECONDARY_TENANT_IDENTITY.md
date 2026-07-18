@@ -4,7 +4,7 @@ overview: "Mirror the primary tenant identity consolidation pattern for secondar
 todos:
   - id: s0-schema-resolver
     content: "Migration: `listed` status + `contact_phone`; shared resolver, transitions, tests; extend `ILeaseTenantMembership.contactPhone`"
-    status: pending
+    status: completed
   - id: s1-read-path
     content: GET lease detail `secondaryTenantContacts` with legacy JSONB merge; admin display + linked badge + fallback
     status: pending
@@ -148,12 +148,12 @@ Option B (backfill-first): S0 → S1b backfill → S1 server+admin (merge option
 
 ### S0 — Foundation (no behavior change)
 
-- Migration: `listed` status + `contact_phone` column
-- Add `contactPhone` to `ILeaseTenantMembership` + mapper
-- Resolver + transitions for `listed` in shared package
-- Server: `loadSecondaryMembershipsForLease(leaseId)` (all `role = secondary`, non-terminal incl. `listed`)
-- Extend `endAllNonTerminalForLease` to end `listed` rows on lease end
-- Tests only; no API/UI change
+- [x] Migration: `listed` status + `contact_phone` column (v62)
+- [x] Add `contactPhone` to `ILeaseTenantMembership` + mapper
+- [x] Resolver + transitions for `listed` in shared package
+- [x] Server: `loadSecondaryMembershipsForLease(leaseId)` (all `role = secondary`, non-terminal incl. `listed`)
+- [x] Extend `endAllNonTerminalForLease` to end `listed` rows on lease end
+- [x] Tests only; no API/UI change
 - **Exit:** resolver tests pass; `listed` in enum + transitions; lease-end ends listed rows
 
 ### S1 — Read path (API + admin display)

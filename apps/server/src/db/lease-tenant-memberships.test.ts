@@ -28,6 +28,7 @@ const { InvalidTenantMembershipTransitionError, leaseTenantMembershipsDb } =
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
     acceptedAt: null,
+    contactPhone: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     declinedAt: null,
     displayName: "Jane Tenant",
@@ -131,6 +132,52 @@ describe("leaseTenantMembershipsDb.expirePendingPortalInvites", () => {
       TenantMembershipStatus.PENDING_INVITE,
       TenantMembershipStatus.PENDING_ACCEPTANCE,
     ]);
+  });
+});
+
+describe("leaseTenantMembershipsDb.endAllNonTerminalForLease", () => {
+  beforeEach(() => {
+    mockQuery.mockClear();
+  });
+
+  test("ends active, pending, and listed memberships for a lease", async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 2, rows: [] });
+
+    await leaseTenantMembershipsDb.endAllNonTerminalForLease("lease-1");
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("ended_at = NOW()"), [
+      TenantMembershipStatus.ENDED,
+      "lease-1",
+      TenantMembershipStatus.ACTIVE,
+      TenantMembershipStatus.PENDING_INVITE,
+      TenantMembershipStatus.PENDING_ACCEPTANCE,
+      TenantMembershipStatus.LISTED,
+    ]);
+  });
+});
+
+describe("loadSecondaryMembershipsForLease", () => {
+  beforeEach(() => {
+    mockQuery.mockClear();
+  });
+
+  test("loads non-terminal secondary memberships for a lease", async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    const { loadSecondaryMembershipsForLease } = await import("./lease-tenant-memberships");
+    await loadSecondaryMembershipsForLease("lease-1");
+
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("role = $2::tenant_membership_role"),
+      [
+        "lease-1",
+        TenantMembershipRole.SECONDARY,
+        TenantMembershipStatus.DECLINED,
+        TenantMembershipStatus.REVOKED,
+        TenantMembershipStatus.ENDED,
+        TenantMembershipStatus.EXPIRED,
+      ]
+    );
   });
 });
 

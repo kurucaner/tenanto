@@ -213,6 +213,14 @@ export {
   type TPrimaryTenantContactSource,
 } from "./lease-primary-tenant-contact";
 export {
+  type ILeaseSecondaryTenantContact,
+  type IResolveSecondaryTenantContactsForLeaseInput,
+  resolveSecondaryTenantContact,
+  resolveSecondaryTenantContactsForLease,
+  selectSecondaryMembershipForContact,
+  type TSecondaryTenantContactSource,
+} from "./lease-secondary-tenant-contact";
+export {
   calculateExpectedRentForLeaseMonth,
   formatProratedDaysLabel,
   getDaysInMonth,

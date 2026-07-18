@@ -65,4 +65,25 @@ describe("tenant membership transitions", () => {
       )
     ).toBe(false);
   });
+
+  test("listed can become pending_invite or ended", () => {
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.PENDING_INVITE
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.ENDED
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.ACTIVE
+      )
+    ).toBe(false);
+  });
 });

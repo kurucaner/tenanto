@@ -14,6 +14,10 @@ const ALLOWED_TRANSITIONS: Readonly<
   [TenantMembershipStatus.DECLINED]: [],
   [TenantMembershipStatus.ENDED]: [],
   [TenantMembershipStatus.EXPIRED]: [],
+  [TenantMembershipStatus.LISTED]: [
+    TenantMembershipStatus.ENDED,
+    TenantMembershipStatus.PENDING_INVITE,
+  ],
   [TenantMembershipStatus.PENDING_ACCEPTANCE]: [
     TenantMembershipStatus.ACTIVE,
     TenantMembershipStatus.DECLINED,

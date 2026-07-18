@@ -4,6 +4,7 @@ import {
   canTransitionTenantMembershipStatus,
   type ILeaseTenantMembership,
   selectPrimaryMembershipForContact,
+  TenantMembershipRole,
   TenantMembershipStatus,
   type TTenantMembershipRole,
   type TTenantMembershipStatus,
@@ -123,7 +124,8 @@ export const leaseTenantMembershipsDb = {
          AND status IN (
            $3::tenant_membership_status,
            $4::tenant_membership_status,
-           $5::tenant_membership_status
+           $5::tenant_membership_status,
+           $6::tenant_membership_status
          )
        RETURNING *`,
       [
@@ -132,6 +134,7 @@ export const leaseTenantMembershipsDb = {
         TenantMembershipStatus.ACTIVE,
         TenantMembershipStatus.PENDING_INVITE,
         TenantMembershipStatus.PENDING_ACCEPTANCE,
+        TenantMembershipStatus.LISTED,
       ]
     );
     return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
@@ -445,4 +448,32 @@ export async function loadPrimaryMembershipForLease(
 ): Promise<ILeaseTenantMembership | null> {
   const memberships = await leaseTenantMembershipsDb.findByLeaseId(leaseId, db);
   return selectPrimaryMembershipForContact(memberships);
+}
+
+/** Non-terminal secondary membership rows for a lease (includes `listed`). */
+export async function loadSecondaryMembershipsForLease(
+  leaseId: string,
+  db: DbQueryable = pool
+): Promise<ILeaseTenantMembership[]> {
+  const result = await db.query(
+    `SELECT * FROM lease_tenant_memberships
+     WHERE lease_id = $1
+       AND role = $2::tenant_membership_role
+       AND status NOT IN (
+         $3::tenant_membership_status,
+         $4::tenant_membership_status,
+         $5::tenant_membership_status,
+         $6::tenant_membership_status
+       )
+     ORDER BY created_at ASC, invited_at ASC`,
+    [
+      leaseId,
+      TenantMembershipRole.SECONDARY,
+      TenantMembershipStatus.DECLINED,
+      TenantMembershipStatus.REVOKED,
+      TenantMembershipStatus.ENDED,
+      TenantMembershipStatus.EXPIRED,
+    ]
+  );
+  return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
 }

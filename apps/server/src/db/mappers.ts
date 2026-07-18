@@ -346,6 +346,7 @@ export const mapLeaseTenantMembershipRow = (
   row: Record<string, unknown>
 ): ILeaseTenantMembership => ({
   acceptedAt: toIso(row.accepted_at),
+  contactPhone: (row.contact_phone as string | null) ?? null,
   createdAt: (row.created_at as Date).toISOString(),
   declinedAt: toIso(row.declined_at),
   displayName: row.display_name as string,
