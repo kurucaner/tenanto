@@ -8,7 +8,7 @@ import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
   tenantContactFormDefaults,
   tenantContactFormSchema,
-  toSecondaryTenant,
+  toSecondaryOccupantPatch,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
 import { Button } from "@/components/ui/button";
@@ -21,34 +21,39 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import type { IPropertyLongStay, IPropertyLongStaySecondaryTenant } from "@/packages/shared";
+import {
+  invalidatePropertyLongStayCaches,
+  invalidatePropertyLongStayPortalCaches,
+} from "@/lib/invalidate-property-long-stay-caches";
+import { type ILeaseSecondaryTenantContact, type IPropertyLongStay } from "@/packages/shared";
 
 interface EditSecondaryTenantDialogProps {
+  contact: ILeaseSecondaryTenantContact;
+  isPortalLinked: boolean;
   lease: IPropertyLongStay;
+  membershipId: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
-  tenant: IPropertyLongStaySecondaryTenant;
-  tenantIndex: number;
 }
 
 export const EditSecondaryTenantDialog = memo(
   ({
+    contact,
+    isPortalLinked,
     lease,
+    membershipId,
     onOpenChange,
     open,
     propertyId,
-    tenant,
-    tenantIndex,
   }: EditSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
     const form = useForm<TTenantContactFormValues>({
       defaultValues: tenantContactFormDefaults({
-        email: tenant.email,
-        name: tenant.name,
-        phone: tenant.phone,
+        email: contact.effectiveEmail,
+        name: contact.effectiveName,
+        phone: contact.effectivePhone,
       }),
       resolver: zodResolver(tenantContactFormSchema),
     });
@@ -57,29 +62,29 @@ export const EditSecondaryTenantDialog = memo(
       if (open) {
         form.reset(
           tenantContactFormDefaults({
-            email: tenant.email,
-            name: tenant.name,
-            phone: tenant.phone,
+            email: contact.effectiveEmail,
+            name: contact.effectiveName,
+            phone: contact.effectivePhone,
           })
         );
       }
-    }, [form, open, tenant.email, tenant.name, tenant.phone]);
+    }, [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, open]);
 
     const mutation = useMutation({
-      mutationFn: (values: TTenantContactFormValues) => {
-        const nextTenants = lease.secondaryTenants.map((item, index) =>
-          index === tenantIndex ? toSecondaryTenant(values) : item
-        );
-        return longStaysApi.update(propertyId, lease.id, {
-          secondaryTenants: nextTenants,
-        });
-      },
+      mutationFn: (values: TTenantContactFormValues) =>
+        longStaysApi.updateSecondaryOccupant(
+          propertyId,
+          lease.id,
+          membershipId,
+          toSecondaryOccupantPatch(values)
+        ),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update secondary tenant");
       },
       onSuccess: () => {
         toast.success("Secondary tenant updated");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
+        invalidatePropertyLongStayPortalCaches(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });
@@ -89,15 +94,15 @@ export const EditSecondaryTenantDialog = memo(
         if (!nextOpen) {
           form.reset(
             tenantContactFormDefaults({
-              email: tenant.email,
-              name: tenant.name,
-              phone: tenant.phone,
+              email: contact.effectiveEmail,
+              name: contact.effectiveName,
+              phone: contact.effectivePhone,
             })
           );
         }
         onOpenChange(nextOpen);
       },
-      [form, onOpenChange, tenant.email, tenant.name, tenant.phone]
+      [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, onOpenChange]
     );
 
     const onSubmit = form.handleSubmit((values) => {
@@ -120,6 +125,7 @@ export const EditSecondaryTenantDialog = memo(
             <div className="flex flex-col gap-4 px-6 py-5">
               <TenantContactFields
                 control={form.control}
+                emailDisabled={isPortalLinked}
                 errors={errors}
                 idPrefix="edit-secondary-tenant"
                 register={form.register}

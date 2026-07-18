@@ -14,8 +14,11 @@ todos:
   - id: s2-accept-sync
     content: Extend accept phone sync for secondary role from membership.contact_phone
     status: pending
-  - id: s3-write-invite
-    content: Secondary occupant CRUD, linked write branch, invite transitions listed→pending (no INSERT), admin dialog migration
+  - id: s3a-secondary-crud
+    content: Secondary-occupant CRUD routes + service (listed membership); admin add/edit/delete dialogs; max-10 on membership count
+    status: completed
+  - id: s3b-portal-invites
+    content: Invite by secondaryMembershipIds; listed→pending transition (no INSERT); admin portal acting targets + deprecate secondaryIndexes
     status: pending
   - id: s4-downstream
     content: Campaigns, occupancy names, unit search; drift check; remove legacy merge once backfill clean
@@ -119,21 +122,24 @@ These are **hard ordering requirements** — skipping them causes missing second
 
 | Gate   | Deploy                     | Must happen before           | Why                                                                                                                |
 | ------ | -------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **G1** | S0 server                  | S1, S2, S3, S1b backfill     | Migration adds `listed` enum + `contact_phone`; resolver/transitions depend on it                                  |
+| **G1** | S0 server                  | S1, S2, S3a, S3b, S1b backfill | Migration adds `listed` enum + `contact_phone`; resolver/transitions depend on it                               |
 | **G2** | S1 server                  | S1 admin                     | Admin reads `secondaryTenantContacts`; old admin + new server is OK (field absent → fallback)                      |
 | **G3** | S1 admin                   | —                            | Requires G2. Resolver **must merge legacy JSONB orphans** (`source: legacy_jsonb`) unless G4 already ran           |
 | **G4** | S1b backfill (script)      | S5; removing S1 legacy merge | Without backfill **or** merge, JSONB-only secondaries vanish from admin. Backfill is required before S5 regardless |
 | **G5** | S2 server                  | —                            | Independent of admin. Extends accept phone sync for new secondary accepts                                          |
-| **G6** | S3 server                  | S3 admin                     | New CRUD routes + invite-by-`membershipId` + **listed→pending transition** (not INSERT)                            |
-| **G7** | S3 admin                   | —                            | Requires G6. Sends `secondaryMembershipIds`; must not ship before server invite transition exists                  |
+| **G6a** | S3a server                 | S3a admin                    | Secondary-occupant CRUD routes; membership-only writes (no JSONB PATCH)                                            |
+| **G6b** | S3a admin                  | —                            | Requires G6a. Admin add/edit/delete uses new routes; fixes prod PATCH 42703 without touching invite flow            |
+| **G7a** | S3b server                 | S3b admin                    | `secondaryMembershipIds` + **listed→pending transition** (not INSERT); deprecate `secondaryIndexes` for one release  |
+| **G7b** | S3b admin                  | —                            | Requires G7a. Portal invite UI keys by `membershipId`; must not ship before server invite transition exists         |
 | **G8** | S4 downstream              | S5                           | Campaigns/search must read memberships; drift check zero in staging                                                |
 | **G9** | S5 server + admin together | —                            | Drop JSONB column + remove fallbacks/`secondaryIndexes` in one release                                             |
 
 **Safe minimum deploy sequences:**
 
 ```
-Option A (recommended):  S0 → S1 server+admin (with merge) → S1b backfill → S2 → S3 server+admin → S4 → S5
-Option B (backfill-first): S0 → S1b backfill → S1 server+admin (merge optional) → S2 → S3 → S4 → S5
+Option A (recommended):  S0 → S1 server+admin (with merge) → S1b backfill → S2 → S3a server+admin → S3b server+admin → S4 → S5
+Option B (backfill-first): S0 → S1b backfill → S1 server+admin (merge optional) → S2 → S3a → S3b → S4 → S5
+Post-v63 prod fix:       S0 → S3a server+admin (membership CRUD only) → S1 read → S3b invites → S4 → S5b app cleanup
 ```
 
 **Can deploy independently (no paired release):** S0 alone, S2 alone (after S0), S1b alone (after S0).
@@ -176,7 +182,7 @@ Option B (backfill-first): S0 → S1b backfill → S1 server+admin (merge option
 
 ### S1b — Data backfill (script; no feature flag)
 
-Run after S0 (needs schema). **Required before S5 (G4).** Should run in staging before production S3 if operators will invite existing JSONB-only secondaries via new UI.
+Run after S0 (needs schema). **Required before S5 (G4).** Should run in staging before production S3b if operators will invite existing JSONB-only secondaries via new UI.
 
 **Backfill buckets (idempotent; safe to re-run):**
 
@@ -204,33 +210,77 @@ Run after S0 (needs schema). **Required before S5 (G4).** Should run in staging 
 - Extend [`sync-lease-phone-to-tenant-on-accept.ts`](apps/server/src/services/sync-lease-phone-to-tenant-on-accept.ts): **secondary role**; copy `membership.contact_phone` → `tenant_users.phone` when user phone null (same rules as primary; update test that currently expects secondary skip)
 - **Exit:** accept secondary invite with phone on membership → `/tenant/me` has phone
 
-### S3 — Write path (CRUD + invites)
+### S3 — Write path (split for safe rollout)
 
-**New API surface** (prefer dedicated routes over JSONB PATCH):
+S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired server + admin release. Do not combine — invite logic depends on `listed` rows created by CRUD, and CRUD alone unblocks prod without touching portal invite code.
+
+> **Post-v63 note:** JSONB `secondary_tenants` is already dropped in prod (v63). S3a/S3b are **membership-only** — no dual-write, no JSONB snapshot, no `secondaryTenants` PATCH. Max-10 enforced on non-terminal secondary membership count only.
+
+---
+
+#### S3a — Secondary occupant CRUD (server + admin)
+
+**Goal:** Replace broken JSONB PATCH with membership CRUD. No invite API changes in this release.
+
+**Shared contract**
+
+- [x] Request/response types for create/update secondary occupant (name, email, phone → `display_name`, `invite_email`, `contact_phone`)
+- [x] Reuse existing `ILeaseSecondaryTenantContact` / resolver for response shaping where helpful
+
+**Server**
 
 | Method   | Path                                                   | Behavior                                                                                                                                                                                                                  |
 | -------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST`   | `.../long-stays/:id/secondary-occupants`               | Create `listed` membership; dual-write JSONB snapshot; enforce max-10 on **membership count**                                                                                                                             |
-| `PATCH`  | `.../long-stays/:id/secondary-occupants/:membershipId` | Branch linked vs unlinked (same rules as [`update-primary-tenant-contact-service.ts`](apps/server/src/services/update-primary-tenant-contact-service.ts)); sync pending `display_name` / `invite_email` / `contact_phone` |
-| `DELETE` | `.../long-stays/:id/secondary-occupants/:membershipId` | Terminal transition (`ended`); remove JSONB snapshot entry                                                                                                                                                                |
+| `POST`   | `.../long-stays/:id/secondary-occupants`               | Create `listed` secondary membership; enforce max-10 on **non-terminal secondary membership count**; require email (same as today)                                                                                        |
+| `PATCH`  | `.../long-stays/:id/secondary-occupants/:membershipId` | Branch linked vs unlinked (same rules as [`update-primary-tenant-contact-service.ts`](apps/server/src/services/update-primary-tenant-contact-service.ts)); sync `display_name` / `invite_email` / `contact_phone` on unlinked or pending rows |
+| `DELETE` | `.../long-stays/:id/secondary-occupants/:membershipId` | Terminal transition (`ended`) on membership row                                                                                                                                                                           |
 
-**Dual-write cap:** during transition, enforce max-10 on both membership count and JSONB length so snapshots cannot diverge.
+- [x] Service: [`secondary-occupant-service.ts`](apps/server/src/services/secondary-occupant-service.ts) + [`resolve-secondary-tenant-contacts-service.ts`](apps/server/src/services/resolve-secondary-tenant-contacts-service.ts)
+- [x] DB helpers on [`lease-tenant-memberships.ts`](apps/server/src/db/lease-tenant-memberships.ts): `createListedSecondary`, `updateSecondaryContact`, `countNonTerminalSecondariesForLease`
+- [x] GET detail includes `secondaryTenantContacts[]` (minimal read path for admin)
+- [x] Reject `secondaryTenants` on legacy PATCH with clear error
+- [x] Tests: create listed row, linked edit guards, max-10, delete → `ended`
 
-**Invite API migration**
+**Admin**
 
-- [`ICreateLeasePortalInviteBody`](packages/shared/src/tenant-portal-types.ts): add `secondaryMembershipIds?: string[]`; deprecate `secondaryIndexes`
-- **Deprecation window:** server accepts **both** `secondaryMembershipIds` and `secondaryIndexes` for one release; admin migrates to `membershipId` first; remove `secondaryIndexes` in S5
-- [`tenant-portal-invite-service.ts`](apps/server/src/services/tenant-portal-invite-service.ts):
-  - **Critical:** for secondaries, **transition existing `listed` row** → `pending_invite` / `pending_acceptance` + set token — **do not INSERT** a new membership (would hit `DuplicatePortalInviteError` after backfill)
-  - `secondaryIndexes` path (deprecated): resolve index → find or create `listed` row → transition
-  - `secondaryMembershipIds` path: load row by id → assert `listed` or re-invite policy → transition
-- Admin [`lease-portal-access-display.ts`](apps/admin/src/lib/lease-portal-access-display.ts): acting target `{ kind: 'secondary', membershipId }` instead of `index`
+- [x] [`add-secondary-tenant-dialog.tsx`](apps/admin/src/components/leases/add-secondary-tenant-dialog.tsx) → `POST .../secondary-occupants`
+- [x] [`edit-secondary-tenant-dialog.tsx`](apps/admin/src/components/leases/edit-secondary-tenant-dialog.tsx) → `PATCH .../secondary-occupants/:membershipId`
+- [x] [`lease-tenants-section.tsx`](apps/admin/src/components/leases/lease-tenants-section.tsx) delete → `DELETE .../secondary-occupants/:membershipId`
+- [x] Disable email when `source === 'linked_user'`
+- [x] Invalidate lease detail + portal-access caches on success
 
-**Admin dialogs**
+**Deploy:** server + admin together (G6a + G6b).
 
-- [`add-secondary-tenant-dialog.tsx`](apps/admin/src/components/leases/add-secondary-tenant-dialog.tsx), [`edit-secondary-tenant-dialog.tsx`](apps/admin/src/components/leases/edit-secondary-tenant-dialog.tsx) → new API; disable email when linked; invalidate detail + portal caches
+**Exit:** operators can add, edit, and remove secondary occupants on active leases without JSONB; prod PATCH 42703 resolved; portal invite flow unchanged (still uses legacy index path until S3b).
 
-**Exit:** add/edit/delete + invite work without JSONB as write source; linked edit updates `/tenant/me`; invite never duplicates membership rows
+---
+
+#### S3b — Portal invites by `membershipId` (server + admin)
+
+**Goal:** Invite existing `listed` (or re-invite eligible) secondary rows without INSERTing duplicate memberships.
+
+**Prerequisite:** S3a deployed — every secondary occupant the operator can invite has a `listed` (or pending) membership row with a stable `membershipId`.
+
+**Shared contract**
+
+- [`ICreateLeasePortalInviteBody`](packages/shared/src/tenant-portal-types.ts): add `secondaryMembershipIds?: string[]`; deprecate `secondaryIndexes` (JSDoc)
+- **Deprecation window:** server accepts **both** for one release; remove `secondaryIndexes` in S5b
+
+**Server** — [`tenant-portal-invite-service.ts`](apps/server/src/services/tenant-portal-invite-service.ts)
+
+- **Critical:** for secondaries, **transition existing row** → `pending_invite` / `pending_acceptance` + set token — **do not INSERT**
+- `secondaryMembershipIds` path (new): load by id → assert `role = secondary`, lease match, status `listed` (or re-invite policy for expired/revoked) → transition
+- `secondaryIndexes` path (deprecated, one release): resolve JSONB index → find membership by email or error if no row — **do not create listed row on invite** (CRUD owns creation)
+- Tests: listed → pending transition, duplicate invite rejected, wrong lease/membership 404, deprecated index path still works when membership exists
+
+**Admin**
+
+- [`lease-portal-access-display.ts`](apps/admin/src/lib/lease-portal-access-display.ts): acting target `{ kind: 'secondary', membershipId }` instead of `index`
+- Portal invite UI sends `secondaryMembershipIds`; row actions keyed by `membershipId` from S1 `secondaryTenantContacts` or portal-access list
+
+**Deploy:** server + admin together (G7a + G7b). Safe to deploy after S3a without waiting for S1/S2 if admin keys invites off portal-access memberships; prefer S1 first for consistent occupant list UI.
+
+**Exit:** invite never duplicates membership rows; linked secondary edit (S3a) updates `/tenant/me`; `secondaryIndexes` unused in admin
 
 ### S4 — Downstream readers + remove legacy merge
 
@@ -277,8 +327,9 @@ Run after S0 (needs schema). **Required before S5 (G4).** Should run in staging 
 | -------------------------------------------------- | ----------------------------------------------------------------------------- |
 | JSONB-only secondaries vanish on S1 read flip      | G3 merge resolver + G4 backfill; admin JSONB fallback until S4                |
 | Email change on listed row breaks invite targeting | Block email change when linked; re-invite policy for pending                  |
-| Duplicate JSONB + membership during transition     | Dual-write + drift script in S4; max-10 on both layers in S3                  |
+| Duplicate JSONB + membership during transition     | N/A post-v63; max-10 on membership count only in S3a                          |
 | Duplicate JSONB emails block backfill              | Detect in S1b; log + pick canonical row                                       |
-| Invite INSERT after backfill                       | S3 transition-only invite path (G6)                                           |
+| Invite INSERT after backfill                       | S3b transition-only invite path (G7a)                                         |
+| Prod PATCH 42703 (JSONB column gone)               | Ship S3a before S3b; do not wait for invite migration to fix CRUD              |
 | `listed` rows orphaned on lease end                | Include `listed` in `endAllNonTerminalForLease` (S0)                          |
 | `listed` rows without valid email                  | Require email on create (same as today for invite); allow optional phone only |

@@ -16,7 +16,6 @@ import {
   type IEditPropertyLongStayTermsBody,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
-  type IPropertyLongStaySecondaryTenant,
   type IUpdatePropertyLongStayBody,
   LEASES_LIST_LIMIT,
   LEASES_LIST_MAX_LIMIT,
@@ -40,6 +39,7 @@ import {
   LeaseTermsNotEditableError,
   LeaseTermsValidationError,
 } from "@/services/lease-terms-edit-service";
+import { resolveSecondaryTenantContactsForLongStay } from "@/services/resolve-secondary-tenant-contacts-service";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
 import {
@@ -64,7 +64,6 @@ import { replyLeaseTermsNotEditable } from "./reply-lease-terms-not-editable";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const MAX_TERM_MONTHS = 60;
-const MAX_SECONDARY_TENANTS = 10;
 
 function parseDateString(raw: unknown): string | null {
   if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
@@ -256,37 +255,6 @@ function parseExtendLongStayBody(
   return { body, ok: true };
 }
 
-function parseSecondaryTenant(
-  raw: unknown
-): { ok: true; tenant: IPropertyLongStaySecondaryTenant } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { error: "Each secondary tenant must have a non-empty name", ok: false };
-  }
-  const r = raw as Record<string, unknown>;
-  if (typeof r["name"] !== "string" || r["name"].trim() === "") {
-    return { error: "Each secondary tenant must have a non-empty name", ok: false };
-  }
-
-  const email = parseOptionalString(r["email"]);
-  if (r["email"] !== undefined && r["email"] !== null && email === null) {
-    return { error: "Each secondary tenant email must be a string", ok: false };
-  }
-
-  const phoneResult = parseNullablePhoneNumber(r["phone"], "phone");
-  if (!phoneResult.ok) {
-    return phoneResult;
-  }
-
-  return {
-    ok: true,
-    tenant: {
-      email,
-      name: r["name"].trim(),
-      phone: phoneResult.phoneNumber,
-    },
-  };
-}
-
 function parseNullableContactField(
   raw: unknown,
   fieldName: string
@@ -301,6 +269,17 @@ function parseNullableContactField(
   return { ok: true, value: trimmed === "" ? null : trimmed };
 }
 
+function applyUpdateLongStaySecondaryTenants(
+  r: Record<string, unknown>
+): { error: string; ok: false } | null {
+  if (!("secondaryTenants" in r)) return null;
+  return {
+    error:
+      "secondaryTenants is no longer supported; use /secondary-occupants to manage secondary tenants",
+    ok: false,
+  };
+}
+
 function parseUpdateLongStayBody(
   raw: unknown
 ): { body: IUpdatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -308,6 +287,9 @@ function parseUpdateLongStayBody(
   if (!r) {
     return { error: "Body must be a JSON object", ok: false };
   }
+
+  const secondaryTenantsError = applyUpdateLongStaySecondaryTenants(r);
+  if (secondaryTenantsError) return secondaryTenantsError;
 
   const body: IUpdatePropertyLongStayBody = {};
   const guestNameError = applyUpdateLongStayGuestName(r, body);
@@ -318,9 +300,6 @@ function parseUpdateLongStayBody(
 
   const tenantPhoneError = applyUpdateLongStayTenantPhone(r, body);
   if (tenantPhoneError) return tenantPhoneError;
-
-  const secondaryTenantsError = applyUpdateLongStaySecondaryTenants(r, body);
-  if (secondaryTenantsError) return secondaryTenantsError;
 
   if (Object.keys(body).length === 0) {
     return { error: "At least one updatable field is required", ok: false };
@@ -360,31 +339,6 @@ function applyUpdateLongStayTenantPhone(
   const parsedPhone = parseNullablePhoneNumber(r["tenantPhone"], "tenantPhone");
   if (!parsedPhone.ok) return parsedPhone;
   body.tenantPhone = parsedPhone.phoneNumber;
-  return null;
-}
-
-function applyUpdateLongStaySecondaryTenants(
-  r: Record<string, unknown>,
-  body: IUpdatePropertyLongStayBody
-): { error: string; ok: false } | null {
-  if (!("secondaryTenants" in r)) return null;
-  if (!Array.isArray(r["secondaryTenants"])) {
-    return { error: "secondaryTenants must be an array", ok: false };
-  }
-  if (r["secondaryTenants"].length > MAX_SECONDARY_TENANTS) {
-    return {
-      error: `secondaryTenants cannot exceed ${MAX_SECONDARY_TENANTS} items`,
-      ok: false,
-    };
-  }
-
-  const secondaryTenants: IPropertyLongStaySecondaryTenant[] = [];
-  for (const item of r["secondaryTenants"]) {
-    const tenantResult = parseSecondaryTenant(item);
-    if (!tenantResult.ok) return tenantResult;
-    secondaryTenants.push(tenantResult.tenant);
-  }
-  body.secondaryTenants = secondaryTenants;
   return null;
 }
 
@@ -585,12 +539,14 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       const rentSchedule = await propertyLongStaysDb.getRentSchedule(longStayId);
       const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
       const primaryTenantContact = await resolvePrimaryTenantContactForLongStay(longStay);
+      const secondaryTenantContacts = await resolveSecondaryTenantContactsForLongStay(longStay);
       const termsEditability = await getLeaseTermsEditability(longStayId);
       return reply.send({
         longStay,
         primaryTenantContact,
         rentPeriods,
         rentSchedule,
+        secondaryTenantContacts,
         termsEditability: termsEditability ?? { editable: false },
       });
     }
@@ -691,21 +647,12 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       }
 
       try {
-        const { guestName, secondaryTenants, tenantEmail, tenantPhone } = parsed.body;
-        const hasPrimaryPatch =
-          guestName !== undefined || tenantEmail !== undefined || tenantPhone !== undefined;
-
-        let longStay = existing;
-        if (hasPrimaryPatch) {
-          longStay = await updatePrimaryTenantContact(existing, {
-            guestName,
-            tenantEmail,
-            tenantPhone,
-          });
-        }
-        if (secondaryTenants !== undefined) {
-          longStay = await propertyLongStaysDb.updateLease(longStayId, { secondaryTenants });
-        }
+        const { guestName, tenantEmail, tenantPhone } = parsed.body;
+        const longStay = await updatePrimaryTenantContact(existing, {
+          guestName,
+          tenantEmail,
+          tenantPhone,
+        });
 
         return reply.send({ longStay });
       } catch (error) {

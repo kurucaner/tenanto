@@ -2,8 +2,10 @@ import { z } from "zod";
 
 import { personNameSchema } from "@/packages/app-ui";
 import {
+  type ICreateSecondaryOccupantBody,
   type IPropertyLongStaySecondaryTenant,
   isValidE164,
+  type IUpdateSecondaryOccupantBody,
   normalizeToE164,
 } from "@/packages/shared";
 
@@ -21,6 +23,26 @@ export type TTenantContactFormValues = z.infer<typeof tenantContactFormSchema>;
 
 function normalizeTenantPhone(value: string): string | null {
   return normalizeToE164(value.trim()) ?? null;
+}
+
+export function toSecondaryOccupantBody(
+  values: TTenantContactFormValues
+): ICreateSecondaryOccupantBody {
+  return {
+    email: values.tenantEmail.trim(),
+    name: values.name,
+    phone: normalizeTenantPhone(values.tenantPhone),
+  };
+}
+
+export function toSecondaryOccupantPatch(
+  values: TTenantContactFormValues
+): IUpdateSecondaryOccupantBody {
+  return {
+    email: values.tenantEmail.trim() || null,
+    name: values.name,
+    phone: normalizeTenantPhone(values.tenantPhone),
+  };
 }
 
 export function toSecondaryTenant(

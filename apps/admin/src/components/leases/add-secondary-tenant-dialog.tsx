@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
   tenantContactFormSchema,
-  toSecondaryTenant,
+  toSecondaryOccupantBody,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
 import { Button } from "@/components/ui/button";
@@ -20,20 +20,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import type { IPropertyLongStay } from "@/packages/shared";
-
-const MAX_SECONDARY_TENANTS = 10;
+import {
+  invalidatePropertyLongStayCaches,
+  invalidatePropertyLongStayPortalCaches,
+} from "@/lib/invalidate-property-long-stay-caches";
+import { type IPropertyLongStay, MAX_SECONDARY_OCCUPANTS } from "@/packages/shared";
 
 interface AddSecondaryTenantDialogProps {
   lease: IPropertyLongStay;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
+  secondaryOccupantCount: number;
 }
 
 export const AddSecondaryTenantDialog = memo(
-  ({ lease, onOpenChange, open, propertyId }: AddSecondaryTenantDialogProps) => {
+  ({
+    lease,
+    onOpenChange,
+    open,
+    propertyId,
+    secondaryOccupantCount,
+  }: AddSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
     const form = useForm<TTenantContactFormValues>({
@@ -43,13 +51,15 @@ export const AddSecondaryTenantDialog = memo(
 
     const mutation = useMutation({
       mutationFn: (values: TTenantContactFormValues) => {
-        if (lease.secondaryTenants.length >= MAX_SECONDARY_TENANTS) {
-          throw new Error(`A lease can have at most ${MAX_SECONDARY_TENANTS} secondary tenants`);
+        if (secondaryOccupantCount >= MAX_SECONDARY_OCCUPANTS) {
+          throw new Error(`A lease can have at most ${MAX_SECONDARY_OCCUPANTS} secondary tenants`);
         }
 
-        return longStaysApi.update(propertyId, lease.id, {
-          secondaryTenants: [...lease.secondaryTenants, toSecondaryTenant(values)],
-        });
+        return longStaysApi.createSecondaryOccupant(
+          propertyId,
+          lease.id,
+          toSecondaryOccupantBody(values)
+        );
       },
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to add secondary tenant");
@@ -57,6 +67,7 @@ export const AddSecondaryTenantDialog = memo(
       onSuccess: () => {
         toast.success("Secondary tenant added");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
+        invalidatePropertyLongStayPortalCaches(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });

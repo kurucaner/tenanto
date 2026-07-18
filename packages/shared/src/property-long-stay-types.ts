@@ -1,4 +1,5 @@
 import type { ILeasePrimaryTenantContact } from "./lease-primary-tenant-contact";
+import type { ILeaseSecondaryTenantContact } from "./lease-secondary-tenant-contact";
 import type { IPropertyLongStaysListMeta } from "./list-meta-types";
 import type {
   TPropertyLongStaysListSortBy,
@@ -85,6 +86,8 @@ export interface IPropertyLongStayDetailResponse {
   primaryTenantContact: ILeasePrimaryTenantContact;
   rentPeriods: IPropertyLongStayRentPeriod[];
   rentSchedule: IPropertyLongStayRentMonth[];
+  /** Effective secondary occupant contacts from membership rows. */
+  secondaryTenantContacts: ILeaseSecondaryTenantContact[];
   termsEditability: ILeaseTermsEditability;
 }
 

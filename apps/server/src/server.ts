@@ -30,6 +30,7 @@ import { propertyLongStayRoutes } from "./routes/admin/property-long-stay-routes
 import { propertyReportRoutes } from "./routes/admin/property-report-routes";
 import { propertyReservationRoutes } from "./routes/admin/property-reservation-routes";
 import { propertyRoutes } from "./routes/admin/property-routes";
+import { propertySecondaryOccupantRoutes } from "./routes/admin/property-secondary-occupant-routes";
 import { propertySettingsRoutes } from "./routes/admin/property-settings-routes";
 import { propertyStripeConnectRoutes } from "./routes/admin/property-stripe-connect-routes";
 import { propertyTenantEmailCampaignRoutes } from "./routes/admin/property-tenant-email-campaign-routes";
@@ -116,6 +117,7 @@ server.register(propertyReservationRoutes);
 server.register(propertyIncomeLineRoutes);
 server.register(propertyIncomeEntriesRoutes);
 server.register(propertyLongStayRoutes);
+server.register(propertySecondaryOccupantRoutes);
 server.register(propertyLongStayPortalRoutes);
 server.register(propertyTenantEmailCampaignRoutes);
 server.register(propertyExpenseRoutes);

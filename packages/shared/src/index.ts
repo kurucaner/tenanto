@@ -213,14 +213,6 @@ export {
   type TPrimaryTenantContactSource,
 } from "./lease-primary-tenant-contact";
 export {
-  type ILeaseSecondaryTenantContact,
-  type IResolveSecondaryTenantContactsForLeaseInput,
-  resolveSecondaryTenantContact,
-  resolveSecondaryTenantContactsForLease,
-  selectSecondaryMembershipForContact,
-  type TSecondaryTenantContactSource,
-} from "./lease-secondary-tenant-contact";
-export {
   calculateExpectedRentForLeaseMonth,
   formatProratedDaysLabel,
   getDaysInMonth,
@@ -252,6 +244,14 @@ export {
   MAX_TOTAL_LEASE_TERM_MONTHS,
   validateExtendLease,
 } from "./lease-rent-utils";
+export {
+  type ILeaseSecondaryTenantContact,
+  type IResolveSecondaryTenantContactsForLeaseInput,
+  resolveSecondaryTenantContact,
+  resolveSecondaryTenantContactsForLease,
+  selectSecondaryMembershipForContact,
+  type TSecondaryTenantContactSource,
+} from "./lease-secondary-tenant-contact";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
   deriveLeaseTermsEditability,
@@ -554,6 +554,15 @@ export {
   PHONE_DEFAULT_COUNTRY,
   toE164,
 } from "./phone";
+export {
+  type ICreateSecondaryOccupantBody,
+  type ICreateSecondaryOccupantResponse,
+  type IDeleteSecondaryOccupantResponse,
+  type ISecondaryOccupantMutationResponse,
+  type IUpdateSecondaryOccupantBody,
+  type IUpdateSecondaryOccupantResponse,
+  MAX_SECONDARY_OCCUPANTS,
+} from "./secondary-occupant-types";
 
 // Tenant email campaigns
 export {
