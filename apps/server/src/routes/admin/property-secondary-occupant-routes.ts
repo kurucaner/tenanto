@@ -148,7 +148,7 @@ async function loadWritableLongStay(
 }
 
 export async function propertySecondaryOccupantRoutes(server: FastifyInstance): Promise<void> {
-  const authPre = [server.authenticate, server.requireAdmin];
+  const authPre = [server.authenticate];
 
   server.post<{ Params: ISecondaryOccupantParams }>(
     "/properties/:propertyId/long-stays/:longStayId/secondary-occupants",
