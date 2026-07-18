@@ -1,4 +1,7 @@
-import { isStripeConnectEnabled } from "@/lib/stripe-connect-config";
+import {
+  isStripeConnectEnabled,
+  isStripeConnectStandardOAuthEnabled,
+} from "@/lib/stripe-connect-config";
 import {
   type IPropertyStripeConnectStatusResponse,
   PropertyStripeAccountType,
@@ -42,6 +45,8 @@ export function toConnectStatusResponse(
   account: IPropertyStripeAccount | null,
   platformEnabled = isStripeConnectEnabled()
 ): IPropertyStripeConnectStatusResponse {
+  const standardOAuthEnabled = isStripeConnectStandardOAuthEnabled();
+
   if (!account) {
     return {
       accountType: null,
@@ -50,6 +55,7 @@ export function toConnectStatusResponse(
       onboardingComplete: false,
       payoutsEnabled: false,
       platformEnabled,
+      standardOAuthEnabled,
       stripeAccountId: null,
     };
   }
@@ -60,6 +66,7 @@ export function toConnectStatusResponse(
     onboardingComplete: account.onboardingComplete,
     payoutsEnabled: account.payoutsEnabled,
     platformEnabled,
+    standardOAuthEnabled,
     stripeAccountId: account.stripeAccountId,
   };
 }

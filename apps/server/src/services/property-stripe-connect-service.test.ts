@@ -23,6 +23,11 @@ const mockAccountsRetrieve = mockAsyncFn(() =>
   })
 );
 const mockAccountLinksCreate = mockResolved({ url: "https://stripe.test/onboard" });
+const mockCreateOAuthState = mockAsyncFn(() => Promise.resolve("signed-oauth-state"));
+
+mock.module("@/lib/stripe-connect-oauth-state", () => ({
+  createStripeConnectOAuthState: mockCreateOAuthState,
+}));
 
 mock.module("@/db/property-stripe-accounts", () => ({
   propertyStripeAccountsDb: {
@@ -37,6 +42,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     onboardingComplete: account?.onboardingComplete ?? false,
     payoutsEnabled: account?.payoutsEnabled ?? false,
     platformEnabled,
+    standardOAuthEnabled: false,
     stripeAccountId: account?.stripeAccountId ?? null,
   }),
 }));
@@ -173,6 +179,110 @@ describe("propertyStripeConnectService.createExpressOnboardingLink", () => {
 
     expect(mockAccountsCreate).not.toHaveBeenCalled();
     expect(mockAccountLinksCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
+  const originalConnectFlag = process.env.STRIPE_CONNECT_ENABLED;
+  const originalStandardOAuthFlag = process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED;
+  const originalClientId = process.env.STRIPE_CONNECT_CLIENT_ID;
+  const originalSecret = process.env.STRIPE_SECRET_KEY;
+  const originalApiPublicUrl = process.env.API_PUBLIC_URL;
+  const originalJwtSecret = process.env.JWT_SECRET;
+
+  beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
+    process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED = "true";
+    process.env.STRIPE_CONNECT_CLIENT_ID = "ca_test_client";
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    process.env.API_PUBLIC_URL = "https://api.test";
+    process.env.JWT_SECRET = "jwt-test-secret";
+    mockFindByPropertyId.mockReset();
+    mockCreateOAuthState.mockReset();
+    mockFindByPropertyId.mockResolvedValue(null);
+    mockCreateOAuthState.mockResolvedValue("signed-oauth-state");
+  });
+
+  afterEach(() => {
+    if (originalConnectFlag === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalConnectFlag;
+    }
+    if (originalStandardOAuthFlag === undefined) {
+      delete process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED = originalStandardOAuthFlag;
+    }
+    if (originalClientId === undefined) {
+      delete process.env.STRIPE_CONNECT_CLIENT_ID;
+    } else {
+      process.env.STRIPE_CONNECT_CLIENT_ID = originalClientId;
+    }
+    if (originalSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalSecret;
+    }
+    if (originalApiPublicUrl === undefined) {
+      delete process.env.API_PUBLIC_URL;
+    } else {
+      process.env.API_PUBLIC_URL = originalApiPublicUrl;
+    }
+    if (originalJwtSecret === undefined) {
+      delete process.env.JWT_SECRET;
+    } else {
+      process.env.JWT_SECRET = originalJwtSecret;
+    }
+  });
+
+  test("returns Stripe OAuth authorize URL and stores OAuth state", async () => {
+    const result = await propertyStripeConnectService.createStandardOAuthAuthorizeUrl(
+      "property-1",
+      "user-1"
+    );
+
+    expect(mockCreateOAuthState).toHaveBeenCalledWith({
+      propertyId: "property-1",
+      userId: "user-1",
+    });
+
+    const parsed = new URL(result.url);
+    expect(parsed.origin + parsed.pathname).toBe("https://connect.stripe.com/oauth/authorize");
+    expect(parsed.searchParams.get("client_id")).toBe("ca_test_client");
+    expect(parsed.searchParams.get("redirect_uri")).toBe(
+      "https://api.test/stripe/connect/oauth/callback"
+    );
+    expect(parsed.searchParams.get("state")).toBe("signed-oauth-state");
+    expect(parsed.searchParams.get("response_type")).toBe("code");
+    expect(parsed.searchParams.get("scope")).toBe("read_write");
+  });
+
+  test("throws conflict when property already has a Connect account", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.EXPRESS,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_existing",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    await expect(
+      propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
+    ).rejects.toThrow("This property already has a Stripe account connected");
+
+    expect(mockCreateOAuthState).not.toHaveBeenCalled();
+  });
+
+  test("throws when Standard OAuth is not configured", async () => {
+    delete process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED;
+
+    await expect(
+      propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
+    ).rejects.toThrow("Stripe Connect Standard OAuth is not configured");
   });
 });
 

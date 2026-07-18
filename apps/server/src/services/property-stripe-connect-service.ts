@@ -1,10 +1,14 @@
 import { propertyStripeAccountsDb, toConnectStatusResponse } from "@/db/property-stripe-accounts";
+import { stripeConnectConflictError } from "@/errors/stripe-connect-errors";
 import {
   isStripeConnectEnabled,
-  PropertyStripeConnectConflictError,
   requireStripeConnectOperational,
+  requireStripeConnectStandardOAuthConfigured,
 } from "@/lib/stripe-connect-config";
+import { createStripeConnectOAuthState } from "@/lib/stripe-connect-oauth-state";
+import { buildStripeConnectStandardOAuthAuthorizeUrl } from "@/lib/stripe-connect-oauth-url";
 import {
+  type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   PropertyStripeAccountType,
@@ -40,6 +44,22 @@ function platformAppBaseUrl(): string {
   return base;
 }
 
+function apiPublicBaseUrl(): string {
+  const base = process.env.API_PUBLIC_URL?.trim().replace(/\/$/, "");
+  if (!base) {
+    throw new Error("API_PUBLIC_URL is not configured");
+  }
+  return base;
+}
+
+function stripeConnectClientId(): string {
+  const clientId = process.env.STRIPE_CONNECT_CLIENT_ID?.trim();
+  if (!clientId) {
+    throw new Error("STRIPE_CONNECT_CLIENT_ID is not configured");
+  }
+  return clientId;
+}
+
 export const propertyStripeConnectService = {
   async createExpressOnboardingLink(
     propertyId: string,
@@ -57,7 +77,7 @@ export const propertyStripeConnectService = {
 
     let local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
     if (local?.accountType === PropertyStripeAccountType.STANDARD) {
-      throw new PropertyStripeConnectConflictError(
+      throw stripeConnectConflictError(
         "This property is connected via an existing Stripe account. Use Standard OAuth to reconnect."
       );
     }
@@ -98,6 +118,27 @@ export const propertyStripeConnectService = {
     options?: { refreshUrl?: string; returnUrl?: string }
   ): Promise<IPropertyStripeConnectOnboardingLinkResponse> {
     return propertyStripeConnectService.createExpressOnboardingLink(propertyId, options);
+  },
+
+  async createStandardOAuthAuthorizeUrl(
+    propertyId: string,
+    userId: string
+  ): Promise<IPropertyStripeConnectAuthorizeUrlResponse> {
+    requireStripeConnectStandardOAuthConfigured();
+
+    const local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
+    if (local) {
+      throw stripeConnectConflictError();
+    }
+
+    const state = await createStripeConnectOAuthState({ propertyId, userId });
+    const url = buildStripeConnectStandardOAuthAuthorizeUrl({
+      clientId: stripeConnectClientId(),
+      redirectUri: `${apiPublicBaseUrl()}/stripe/connect/oauth/callback`,
+      state,
+    });
+
+    return { url };
   },
 
   async getStatus(propertyId: string): Promise<IPropertyStripeConnectStatusResponse> {

@@ -265,10 +265,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Owner can get a Stripe OAuth URL; callback not implemented yet.
 
-- [ ] `createStandardOAuthAuthorizeUrl(propertyId, userId)` using state from 0c
-- [ ] `POST …/oauth/authorize-url` (owner-only, gated by 0b)
-- [ ] Optional: expose `standardOAuthEnabled` on status response for UI gating
-- [ ] Service + route tests (mock URL build; no token exchange)
+- [x] `createStandardOAuthAuthorizeUrl(propertyId, userId)` using state from 0c
+- [x] `POST …/oauth/authorize-url` (owner-only, gated by 0b)
+- [x] Optional: expose `standardOAuthEnabled` on status response for UI gating
+- [x] Service + route tests (mock URL build; no token exchange)
 
 **Exit criteria:** Postman returns `{ url }`; Stripe authorize page opens; callback 404/501 expected until 1c.
 

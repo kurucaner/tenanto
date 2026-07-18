@@ -1,12 +1,25 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
+import { isStripeConnectDomainError, StripeConnectErrorCode } from "@/errors/stripe-connect-errors";
+
 import {
   isStripeConnectEnabled,
   isStripeConnectStandardOAuthEnabled,
   requireStripeConnectOperational,
   requireStripeConnectStandardOAuthConfigured,
-  StripeConnectNotConfiguredError,
 } from "./stripe-connect-config";
+
+function expectStripeConnectNotConfiguredError(fn: () => unknown): void {
+  expect(fn).toThrow();
+  try {
+    fn();
+  } catch (error) {
+    expect(isStripeConnectDomainError(error)).toBe(true);
+    if (isStripeConnectDomainError(error)) {
+      expect(error.code).toBe(StripeConnectErrorCode.NOT_CONFIGURED);
+    }
+  }
+}
 
 describe("stripe-connect-config", () => {
   const originalConnectFlag = process.env.STRIPE_CONNECT_ENABLED;
@@ -63,13 +76,13 @@ describe("stripe-connect-config", () => {
   test("requireStripeConnectOperational throws when flag off", () => {
     process.env.STRIPE_CONNECT_ENABLED = "false";
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
-    expect(() => requireStripeConnectOperational()).toThrow(StripeConnectNotConfiguredError);
+    expectStripeConnectNotConfiguredError(() => requireStripeConnectOperational());
   });
 
   test("requireStripeConnectOperational throws when secret missing", () => {
     process.env.STRIPE_CONNECT_ENABLED = "true";
     delete process.env.STRIPE_SECRET_KEY;
-    expect(() => requireStripeConnectOperational()).toThrow(StripeConnectNotConfiguredError);
+    expectStripeConnectNotConfiguredError(() => requireStripeConnectOperational());
   });
 });
 
@@ -171,9 +184,7 @@ describe("requireStripeConnectStandardOAuthConfigured", () => {
     process.env.STRIPE_CONNECT_CLIENT_ID = "ca_test_client";
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
     delete process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED;
-    expect(() => requireStripeConnectStandardOAuthConfigured()).toThrow(
-      StripeConnectNotConfiguredError
-    );
+    expectStripeConnectNotConfiguredError(() => requireStripeConnectStandardOAuthConfigured());
   });
 
   test("throws when Connect client id is missing", () => {
@@ -181,9 +192,7 @@ describe("requireStripeConnectStandardOAuthConfigured", () => {
     process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED = "true";
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
     delete process.env.STRIPE_CONNECT_CLIENT_ID;
-    expect(() => requireStripeConnectStandardOAuthConfigured()).toThrow(
-      StripeConnectNotConfiguredError
-    );
+    expectStripeConnectNotConfiguredError(() => requireStripeConnectStandardOAuthConfigured());
   });
 
   test("throws when secret key is missing", () => {
@@ -191,9 +200,7 @@ describe("requireStripeConnectStandardOAuthConfigured", () => {
     process.env.STRIPE_CONNECT_STANDARD_OAUTH_ENABLED = "true";
     process.env.STRIPE_CONNECT_CLIENT_ID = "ca_test_client";
     delete process.env.STRIPE_SECRET_KEY;
-    expect(() => requireStripeConnectStandardOAuthConfigured()).toThrow(
-      StripeConnectNotConfiguredError
-    );
+    expectStripeConnectNotConfiguredError(() => requireStripeConnectStandardOAuthConfigured());
   });
 
   test("does not throw when fully configured", () => {

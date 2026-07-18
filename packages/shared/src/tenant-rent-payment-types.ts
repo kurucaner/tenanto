@@ -98,9 +98,15 @@ export interface IPropertyStripeConnectStatusResponse {
   payoutsEnabled: boolean;
   /** False when deployment has STRIPE_CONNECT_ENABLED off. */
   platformEnabled: boolean;
+  /** False when Standard OAuth is not configured for this deployment. */
+  standardOAuthEnabled: boolean;
   stripeAccountId: string | null;
 }
 
 export interface IPropertyStripeConnectOnboardingLinkResponse {
+  url: string;
+}
+
+export interface IPropertyStripeConnectAuthorizeUrlResponse {
   url: string;
 }

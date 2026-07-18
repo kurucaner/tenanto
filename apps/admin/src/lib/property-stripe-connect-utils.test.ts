@@ -13,6 +13,7 @@ describe("getStripeConnectUiStatus", () => {
         onboardingComplete: false,
         payoutsEnabled: false,
         platformEnabled: true,
+        standardOAuthEnabled: false,
         stripeAccountId: null,
       })
     ).toBe("not_connected");
@@ -27,6 +28,7 @@ describe("getStripeConnectUiStatus", () => {
         onboardingComplete: true,
         payoutsEnabled: true,
         platformEnabled: true,
+        standardOAuthEnabled: false,
         stripeAccountId: "acct_123",
       })
     ).toBe("ready");
@@ -41,6 +43,7 @@ describe("getStripeConnectUiStatus", () => {
         onboardingComplete: false,
         payoutsEnabled: false,
         platformEnabled: true,
+        standardOAuthEnabled: false,
         stripeAccountId: "acct_123",
       })
     ).toBe("setup_incomplete");

@@ -682,6 +682,7 @@ export {
   type TTenantRentScheduleBalanceMonth,
 } from "./tenant-rent-balance-from-schedule";
 export {
+  type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   isTerminalTenantRentPaymentStatus,
