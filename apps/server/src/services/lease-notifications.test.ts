@@ -4,10 +4,16 @@ import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/s
 import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
 import { makeLease } from "@/test-fixtures/domain";
+import {
+  mockAsyncFn,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockResolvedVoid,
+} from "@/test-fixtures/mocks";
 
-const mockFindLongStayById = mock(() => Promise.resolve(null as IPropertyLongStay | null));
-const mockGetRentSchedule = mock(() => Promise.resolve([] as IPropertyLongStayRentMonth[]));
-const mockFindPropertyById = mock(() =>
+const mockFindLongStayById = mockResolvedNull<IPropertyLongStay>();
+const mockGetRentSchedule = mockResolvedEmpty<IPropertyLongStayRentMonth>();
+const mockFindPropertyById = mockAsyncFn(() =>
   Promise.resolve({
     address: "123 Main St",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -18,7 +24,7 @@ const mockFindPropertyById = mock(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockFindUnitById = mock(() =>
+const mockFindUnitById = mockAsyncFn(() =>
   Promise.resolve({
     createdAt: "2026-01-01T00:00:00.000Z",
     deletedAt: null,
@@ -31,8 +37,8 @@ const mockFindUnitById = mock(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockSendRentPaymentRecordedEmail = mock(() => Promise.resolve());
-const mockSendLeaseEndedEmail = mock(() => Promise.resolve());
+const mockSendRentPaymentRecordedEmail = mockResolvedVoid();
+const mockSendLeaseEndedEmail = mockResolvedVoid();
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: {

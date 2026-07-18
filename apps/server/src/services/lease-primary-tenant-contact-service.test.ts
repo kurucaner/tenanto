@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
 import { TenantMembershipStatus } from "@/packages/shared";
 import { makeLease, makeMembership, makeTenantUser } from "@/test-fixtures/domain";
+import { mockResolvedNull } from "@/test-fixtures/mocks";
 
-const mockLoadPrimaryMembershipForLease = mock((): Promise<ILeaseTenantMembership | null> =>
-  Promise.resolve(null)
-);
-const mockFindTenantById = mock((): Promise<ITenantUser | null> => Promise.resolve(null));
+const mockLoadPrimaryMembershipForLease = mockResolvedNull<ILeaseTenantMembership>();
+const mockFindTenantById = mockResolvedNull<ITenantUser>();
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   loadPrimaryMembershipForLease: mockLoadPrimaryMembershipForLease,

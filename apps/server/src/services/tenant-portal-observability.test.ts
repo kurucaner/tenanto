@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { TenantMembershipStatus } from "@/packages/shared";
 import { makeMembership } from "@/test-fixtures/domain";
 
 const mockInfo = mock((_event: string, _context?: Record<string, unknown>) => undefined);

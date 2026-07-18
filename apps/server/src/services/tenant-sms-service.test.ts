@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ITenantUser } from "@/packages/shared";
-import { buildTenantSmsOptInConfirmationMessage, type ITenantUser } from "@/packages/shared";
+import { buildTenantSmsOptInConfirmationMessage } from "@/packages/shared";
 import { makeTenantUser } from "@/test-fixtures/domain";
+import { mockResolved } from "@/test-fixtures/mocks";
 
-const mockSendSms = mock(() => Promise.resolve({}));
+const mockSendSms = mockResolved({});
 
 mock.module("@/sns/sns", () => ({
   sendSms: mockSendSms,

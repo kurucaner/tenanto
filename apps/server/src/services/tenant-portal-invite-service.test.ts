@@ -13,37 +13,42 @@ import type {
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
 import { makeLease, makeMembership, makeProperty, makeUnit } from "@/test-fixtures/domain";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));
-const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
-const mockFindByIdUnit = mock(() => Promise.resolve(null as IPropertyUnit | null));
-const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockFindByTokenHash = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockFindByIdMembership = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockCreateMembership = mock(
+const mockFindByIdLease = mockResolvedNull<IPropertyLongStay>();
+const mockFindByIdProperty = mockResolvedNull<IProperty>();
+const mockFindByIdUnit = mockResolvedNull<IPropertyUnit>();
+const mockFindByEmail = mockResolvedNull<ITenantUser>();
+const mockFindByTokenHash = mockResolvedNull<ILeaseTenantMembership>();
+const mockFindByIdMembership = mockResolvedNull<ILeaseTenantMembership>();
+const mockCreateMembership = mockAsyncFn(
   (_input: CreateLeaseTenantMembershipInput): Promise<ILeaseTenantMembership> =>
     Promise.resolve(makeMembership({ expiresAt: "2026-02-01T00:00:00.000Z" }))
 );
-const mockTransitionStatus = mock(
+const mockTransitionStatus = mockAsyncFn(
   (_id: string, _status: string): Promise<ILeaseTenantMembership | null> => Promise.resolve(null)
 );
-const mockUpdateInviteToken = mock(
+const mockUpdateInviteToken = mockAsyncFn(
   (_id: string, _hash: string): Promise<ILeaseTenantMembership | null> => Promise.resolve(null)
 );
-const mockLinkTenantUser = mock(
+const mockLinkTenantUser = mockAsyncFn(
   (_id: string, _tenantUserId: string): Promise<ILeaseTenantMembership | null> =>
     Promise.resolve(null)
 );
-const mockResolveSecondaryContacts = mock(
+const mockResolveSecondaryContacts = mockAsyncFn(
   (): Promise<ILeaseSecondaryTenantContact[]> => Promise.resolve([])
 );
-const mockExpireMembershipIfPastTtl = mock(() =>
-  Promise.resolve(null as ILeaseTenantMembership | null)
-);
-const mockExpirePendingPortalInvites = mock(() => Promise.resolve(0));
-const mockSendNewEmail = mock(() => Promise.resolve(true));
-const mockSendExistingEmail = mock(() => Promise.resolve(true));
-const mockWinstonError = mock(() => {});
+const mockExpireMembershipIfPastTtl = mockResolvedNull<ILeaseTenantMembership>();
+const mockExpirePendingPortalInvites = mockResolved(0);
+const mockSendNewEmail = mockResolved(true);
+const mockSendExistingEmail = mockResolved(true);
+const mockWinstonError = mockSyncVoid();
 
 mock.module("@/db/property-long-stays", () => ({
   LongStayNotActiveError: class LongStayNotActiveError extends Error {},
@@ -74,14 +79,14 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     transitionStatus: mockTransitionStatus,
     updateInviteToken: mockUpdateInviteToken,
   },
-  loadPrimaryMembershipForLease: mock(() => Promise.resolve(null)),
-  loadSecondaryMembershipsForLease: mock(() => Promise.resolve([])),
+  loadPrimaryMembershipForLease: mockResolvedNull(),
+  loadSecondaryMembershipsForLease: mockResolvedEmpty(),
   MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
   SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
 }));
 
 mock.module("@/services/resolve-secondary-tenant-contacts-service", () => ({
-  buildSecondaryOccupantMutationResponse: mock(() => Promise.resolve(null)),
+  buildSecondaryOccupantMutationResponse: mockResolvedNull(),
   resolveSecondaryTenantContactsForLongStay: mockResolveSecondaryContacts,
 }));
 
@@ -94,8 +99,8 @@ mock.module("@/ses/transactional-emails", () => ({
 mock.module("./winston", () => ({
   WinstonLogger: {
     error: mockWinstonError,
-    info: mock(() => {}),
-    warn: mock(() => {}),
+    info: mockSyncVoid(),
+    warn: mockSyncVoid(),
   },
 }));
 

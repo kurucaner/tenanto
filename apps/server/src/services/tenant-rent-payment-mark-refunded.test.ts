@@ -3,11 +3,16 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
+import {
+  mockResolved,
+  mockResolvedNull,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockUpdateStatus = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockRefundAllLinked = mock(() => Promise.resolve(0));
-const mockLoggerInfo = mock(() => undefined);
-const mockLoggerWarn = mock(() => undefined);
+const mockUpdateStatus = mockResolvedNull<ITenantRentPayment>();
+const mockRefundAllLinked = mockResolved(0);
+const mockLoggerInfo = mockSyncVoid();
+const mockLoggerWarn = mockSyncVoid();
 
 mock.module("@/db/tenant-rent-payments", () => ({
   tenantRentPaymentsDb: {
@@ -23,7 +28,7 @@ mock.module("@/db/property-income-lines", () => ({
 
 mock.module("@/services/winston", () => ({
   WinstonLogger: {
-    error: mock(() => undefined),
+    error: mockSyncVoid(),
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
   },

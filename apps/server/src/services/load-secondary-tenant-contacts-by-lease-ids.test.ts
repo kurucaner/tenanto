@@ -3,11 +3,12 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
 import { TenantMembershipStatus } from "@/packages/shared";
 import { makeListedMembership } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolvedNull } from "@/test-fixtures/mocks";
 
-const mockLoadSecondaryMembershipsByLeaseIds = mock(() =>
+const mockLoadSecondaryMembershipsByLeaseIds = mockAsyncFn(() =>
   Promise.resolve(new Map<string, ILeaseTenantMembership[]>())
 );
-const mockFindTenantUserById = mock(() => Promise.resolve(null as ITenantUser | null));
+const mockFindTenantUserById = mockResolvedNull<ITenantUser>();
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   loadSecondaryMembershipsByLeaseIds: mockLoadSecondaryMembershipsByLeaseIds,

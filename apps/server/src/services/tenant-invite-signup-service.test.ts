@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ITenantUser } from "@/packages/shared";
-import { TenantMembershipStatus } from "@/packages/shared";
+import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
+import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import { makeMembership } from "@/test-fixtures/domain";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedNull,
+} from "@/test-fixtures/mocks";
 
-const mockFindByInviteToken = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockExpireMembershipIfPastTtl = mock(() =>
-  Promise.resolve(null as ILeaseTenantMembership | null)
-);
-const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockCreateUser = mock((_input: unknown): Promise<ITenantUser> =>
+const mockFindByInviteToken = mockResolvedNull<ILeaseTenantMembership>();
+const mockExpireMembershipIfPastTtl = mockResolvedNull<ILeaseTenantMembership>();
+const mockFindByEmail = mockResolvedNull<ITenantUser>();
+const mockCreateUser = mockAsyncFn((_input: unknown): Promise<ITenantUser> =>
   Promise.resolve({
     createdAt: "2026-01-01T00:00:00.000Z",
     email: "jane@example.com",
@@ -23,7 +26,7 @@ const mockCreateUser = mock((_input: unknown): Promise<ITenantUser> =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: ITenantUser }> =>
+const mockFindOrCreateByGoogle = mockAsyncFn((_input: unknown): Promise<{ user: ITenantUser }> =>
   Promise.resolve({
     user: {
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -39,7 +42,7 @@ const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: ITenant
     },
   })
 );
-const mockRedeemInvite = mock(
+const mockRedeemInvite = mockAsyncFn(
   (_token: string, _user: ITenantUser): Promise<ILeaseTenantMembership> =>
     Promise.resolve({
       acceptedAt: "2026-01-02T00:00:00.000Z",
@@ -61,7 +64,7 @@ const mockRedeemInvite = mock(
       updatedAt: "2026-01-02T00:00:00.000Z",
     })
 );
-const mockIssueTenantSession = mock(() =>
+const mockIssueTenantSession = mockAsyncFn(() =>
   Promise.resolve({
     accessToken: "access",
     refreshToken: "refresh",
@@ -79,15 +82,15 @@ const mockIssueTenantSession = mock(() =>
     },
   })
 );
-const mockVerifyGoogleToken = mock(() =>
+const mockVerifyGoogleToken = mockAsyncFn(() =>
   Promise.resolve({
     email: "jane@example.com",
     googleId: "google-1",
     name: "Jane Doe",
   })
 );
-const mockIpAllowed = mock(() => Promise.resolve({ allowed: true as const }));
-const mockEmailAllowed = mock(() => Promise.resolve({ allowed: true as const }));
+const mockIpAllowed = mockResolved({ allowed: true as const });
+const mockEmailAllowed = mockResolved({ allowed: true as const });
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   leaseTenantMembershipsDb: {

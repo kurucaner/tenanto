@@ -4,12 +4,10 @@
     "noEmit": false,
     "target": "ES2022",
     "module": "CommonJS",
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "lib": ["ESNext"],
     "outDir": "./dist",
     "rootDir": "../../",
-    "baseUrl": ".",
     "paths": {
       "@/packages/shared": ["../../packages/shared/src"],
       "@/packages/*": ["../../packages/*"],
@@ -34,5 +32,5 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", ".dist", "src/**/*.test.ts"]
+  "exclude": ["node_modules", "dist", ".dist", "src/**/*.test.ts", "src/test-fixtures/**"]
 }

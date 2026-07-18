@@ -1,9 +1,10 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { PropertyInviteStatus, PropertyRole } from "@/packages/shared";
+import { PropertyInviteStatus } from "@/packages/shared";
 import { makeInvite, makeProperty, makeUser } from "@/test-fixtures/domain";
+import { mockResolvedVoid } from "@/test-fixtures/mocks";
 
-const mockNotifyUser = mock(() => Promise.resolve());
+const mockNotifyUser = mockResolvedVoid();
 
 mock.module("@/services/user-notifications", () => ({
   notifyUser: mockNotifyUser,

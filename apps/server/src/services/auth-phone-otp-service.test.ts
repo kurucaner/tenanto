@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { OtpCooldownActiveError } from "@/services/auth-otp-service";
+import { mockResolved, mockResolvedNull, mockResolvedVoid } from "@/test-fixtures/mocks";
 
-const mockFindMostRecent = mock(() => Promise.resolve(null as Date | null));
-const mockDeleteByPhone = mock(() => Promise.resolve());
-const mockCreate = mock(() => Promise.resolve());
-const mockFindValid = mock(() => Promise.resolve(null as { codeHash: string; id: string } | null));
-const mockDeleteById = mock(() => Promise.resolve());
-const mockSendSms = mock(() => Promise.resolve({}));
+const mockFindMostRecent = mockResolvedNull<Date>();
+const mockDeleteByPhone = mockResolvedVoid();
+const mockCreate = mockResolvedVoid();
+const mockFindValid = mockResolvedNull<{ codeHash: string; id: string }>();
+const mockDeleteById = mockResolvedVoid();
+const mockSendSms = mockResolved({});
 
 mock.module("@/db/auth-phone-otps", () => ({
   authPhoneOtpsDb: {

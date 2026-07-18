@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { HttpStatus } from "@/packages/shared";
+import type { ITenantUser } from "@/packages/shared";
 import { makeTenantUser } from "@/test-fixtures/domain";
-
+import { mockResolvedNull } from "@/test-fixtures/mocks";
 
 const mockIsPhoneAuthEnabled = mock(() => true);
-const mockOptOutOfSms = mock(() => Promise.resolve(makeTenantUser({ email: "tenant@example.com", smsOptedOutAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" })));
+const mockOptOutOfSms = mockResolvedNull<ITenantUser>();
 
 mock.module("@/lib/tenant-auth-expansion-config", () => ({
   isTenantPhoneAuthEnabled: mockIsPhoneAuthEnabled,

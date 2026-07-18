@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolved } from "@/test-fixtures/mocks";
 
-const mockListAllocations = mock(() =>
+const mockListAllocations = mockAsyncFn(() =>
   Promise.resolve(
     [] as Array<{
       allocatedCents: number;
@@ -13,15 +13,15 @@ const mockListAllocations = mock(() =>
     }>
   )
 );
-const mockSumSucceededAllocatedCents = mock(() => Promise.resolve(0));
-const mockFindLeaseById = mock(() =>
+const mockSumSucceededAllocatedCents = mockResolved(0);
+const mockFindLeaseById = mockAsyncFn(() =>
   Promise.resolve({
     id: "lease-1",
     propertyId: "property-1",
     unitId: "unit-1",
   } as { id: string; propertyId: string; unitId: string } | null)
 );
-const mockGetRentSchedule = mock(() =>
+const mockGetRentSchedule = mockAsyncFn(() =>
   Promise.resolve([
     {
       expectedRent: 200,
@@ -32,10 +32,10 @@ const mockGetRentSchedule = mock(() =>
     },
   ])
 );
-const mockFindIncomeLineTypes = mock(() =>
+const mockFindIncomeLineTypes = mockAsyncFn(() =>
   Promise.resolve([{ id: "type-rent", name: "Rent" }] as Array<{ id: string; name: string }>)
 );
-const mockCreateIncomeLine = mock(() =>
+const mockCreateIncomeLine = mockAsyncFn(() =>
   Promise.resolve({
     id: "line-1",
     tenantRentPaymentId: "payment-1",

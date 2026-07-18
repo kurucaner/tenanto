@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
 import { TenantEmailCampaignStatus } from "@/packages/shared";
+import { mockResolvedVoid } from "@/test-fixtures/mocks";
 
-const notifyUserMock = mock(() => Promise.resolve());
+const notifyUserMock = mockResolvedVoid();
 
 mock.module("@/services/user-notifications", () => ({
   notifyUser: notifyUserMock,

@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedNull,
+} from "@/test-fixtures/mocks";
 
-const mockFindByPropertyId = mock(() => Promise.resolve(null as IPropertyStripeAccount | null));
-const mockUpdateFlags = mock(() => Promise.resolve(null as IPropertyStripeAccount | null));
-const mockUpsert = mock(() => Promise.resolve(null as IPropertyStripeAccount | null));
-const mockAccountsCreate = mock(() =>
+const mockFindByPropertyId = mockResolvedNull<IPropertyStripeAccount>();
+const mockUpdateFlags = mockResolvedNull<IPropertyStripeAccount>();
+const mockUpsert = mockResolvedNull<IPropertyStripeAccount>();
+const mockAccountsCreate = mockAsyncFn(() =>
   Promise.resolve({
     charges_enabled: false,
     details_submitted: false,
@@ -13,14 +18,14 @@ const mockAccountsCreate = mock(() =>
     payouts_enabled: false,
   })
 );
-const mockAccountsRetrieve = mock(() =>
+const mockAccountsRetrieve = mockAsyncFn(() =>
   Promise.resolve({
     charges_enabled: true,
     details_submitted: true,
     payouts_enabled: true,
   })
 );
-const mockAccountLinksCreate = mock(() => Promise.resolve({ url: "https://stripe.test/onboard" }));
+const mockAccountLinksCreate = mockResolved({ url: "https://stripe.test/onboard" });
 
 mock.module("@/db/property-stripe-accounts", () => ({
   propertyStripeAccountsDb: {

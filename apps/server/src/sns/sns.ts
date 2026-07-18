@@ -1,5 +1,6 @@
 import { PublishCommand, SNSClient } from "@aws-sdk/client-sns";
 
+import { awsStaticCredentials } from "@/lib/aws-static-credentials";
 import {
   APP_NAME,
   isValidE164,
@@ -9,10 +10,7 @@ import {
 } from "@/packages/shared";
 
 const sns = new SNSClient({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+  credentials: awsStaticCredentials(),
   region: process.env.AWS_REGION ?? "us-east-1",
 });
 

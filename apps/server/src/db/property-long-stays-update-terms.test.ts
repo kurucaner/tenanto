@@ -49,7 +49,7 @@ const mockClient = {
   release: mock(() => {}),
 };
 
-const mockQuery = mock((sql: string, params?: unknown[]) => {
+const mockQuery = mock((sql: string, _params?: unknown[]) => {
   if (sql.includes("FROM property_income_lines")) {
     return Promise.resolve({ rows: [] });
   }

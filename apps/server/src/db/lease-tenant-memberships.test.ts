@@ -4,14 +4,15 @@ import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import { makeMembership } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolvedNull } from "@/test-fixtures/mocks";
 
 type MockQueryResult = {
   rowCount: number;
   rows: Record<string, unknown>[];
 };
 
-const mockFindById = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockQuery = mock((): Promise<MockQueryResult> =>
+const mockFindById = mockResolvedNull<ILeaseTenantMembership>();
+const mockQuery = mockAsyncFn((): Promise<MockQueryResult> =>
   Promise.resolve({
     rowCount: 1,
     rows: [],

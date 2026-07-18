@@ -5,39 +5,39 @@ import {
   AccountError,
   buildTenantSmsOptInConfirmationMessage,
   HttpStatus,
-  type ITenantUser,
 } from "@/packages/shared";
 import type { TPhoneOtpVerifyResult } from "@/services/auth-phone-otp-service";
 import { makeTenantUser } from "@/test-fixtures/domain";
-
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedNull,
+  mockResolvedVoid,
+} from "@/test-fixtures/mocks";
 
 type TRateLimitResult = { allowed: true } | { allowed: false; retryAfterSec: number };
 
 const mockIsPhoneAuthEnabled = mock(() => true);
-const mockFindByVerifiedPhone = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockFindByPhone = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockGrantVerifiedPhoneWithSmsConsent = mock(() =>
-  Promise.resolve({
+const mockFindByVerifiedPhone = mockResolvedNull<ITenantUser>();
+const mockFindByPhone = mockResolvedNull<ITenantUser>();
+const mockGrantVerifiedPhoneWithSmsConsent = mockResolved({
     newlySubscribed: true,
     user: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
-  })
-);
-const mockSendPhoneOtp = mock(() => Promise.resolve("+13055550100"));
-const mockVerifyPhoneOtp = mock(
+});
+const mockSendPhoneOtp = mockResolved("+13055550100");
+const mockVerifyPhoneOtp = mockAsyncFn(
   (): Promise<TPhoneOtpVerifyResult> => Promise.resolve({ ok: false })
 );
-const mockDeletePhoneOtp = mock(() => Promise.resolve());
-const mockPhoneRateLimit = mock((): Promise<TRateLimitResult> =>
+const mockDeletePhoneOtp = mockResolvedVoid();
+const mockPhoneRateLimit = mockAsyncFn((): Promise<TRateLimitResult> =>
   Promise.resolve({ allowed: true })
 );
-const mockIssueTenantSession = mock(() =>
-  Promise.resolve({
+const mockIssueTenantSession = mockResolved({
     accessToken: "access",
     refreshToken: "refresh",
     user: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
-  })
-);
-const mockSendSms = mock(() => Promise.resolve({}));
+});
+const mockSendSms = mockResolved({});
 
 mock.module("@/lib/tenant-auth-expansion-config", () => ({
   isTenantPhoneAuthEnabled: mockIsPhoneAuthEnabled,

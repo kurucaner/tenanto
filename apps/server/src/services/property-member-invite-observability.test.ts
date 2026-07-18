@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { PropertyInviteStatus, PropertyRole } from "@/packages/shared";
+import { PropertyInviteStatus } from "@/packages/shared";
 import { makeInvite } from "@/test-fixtures/domain";
 
 const mockInfo = mock((_event: string, _context?: Record<string, unknown>) => undefined);
@@ -26,7 +26,9 @@ describe("property-member-invite-observability", () => {
   });
 
   test("normalizes invite email in log context", () => {
-    expect(buildPropertyMemberInviteLogContext(makeInvite({ email: "  Invitee@Example.COM " }))).toEqual({
+    expect(
+      buildPropertyMemberInviteLogContext(makeInvite({ email: "  Invitee@Example.COM " }))
+    ).toEqual({
       inviteEmail: "invitee@example.com",
       inviteId: "invite-1",
       propertyId: "property-1",
@@ -43,7 +45,7 @@ describe("property-member-invite-observability", () => {
     logPropertyMemberInviteAccepted(invite);
     logPropertyMemberInviteDeclined(invite);
 
-    expect(mockInfo.mock.calls.map((call) => call[0])).toEqual([
+    expect(mockInfo.mock.calls.map((call) => call[0]) as unknown as string[]).toEqual([
       "property_member_invite.invited",
       "property_member_invite.resent",
       "property_member_invite.revoked",

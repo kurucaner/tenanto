@@ -1,27 +1,23 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { LeaseErrorCode } from "@/errors/lease-errors";
+import type { ILeaseTenantMembership, IPropertyLongStay, ITenantUser } from "@/packages/shared";
 import { TenantMembershipStatus } from "@/packages/shared";
 import { makeLease, makeMembership, makeTenant } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolvedNull } from "@/test-fixtures/mocks";
 
-const mockLoadPrimaryMembershipForLease = mock((): Promise<ILeaseTenantMembership | null> =>
-  Promise.resolve(null)
-);
-const mockFindTenantById = mock((): Promise<ITenantUser | null> => Promise.resolve(null));
-const mockUpdateName = mock((_tenantUserId: string, name: string): Promise<ITenantUser> =>
+const mockLoadPrimaryMembershipForLease = mockResolvedNull<ILeaseTenantMembership>();
+const mockFindTenantById = mockResolvedNull<ITenantUser>();
+const mockUpdateName = mockAsyncFn((_tenantUserId: string, name: string) =>
   Promise.resolve(makeTenant({ name }))
 );
-const mockUpdateUnverifiedPhone = mock(
-  (_tenantUserId: string, phone: string | null): Promise<ITenantUser> =>
-    Promise.resolve(makeTenant({ phone }))
+const mockUpdateUnverifiedPhone = mockAsyncFn((_tenantUserId: string, phone: string | null) =>
+  Promise.resolve(makeTenant({ phone }))
 );
-const mockUpdateLease = mock(
-  (_id: string, patch: Partial<IPropertyLongStay>): Promise<IPropertyLongStay> =>
-    Promise.resolve(makeLease(patch))
+const mockUpdateLease = mockAsyncFn((_id: string, patch: Partial<IPropertyLongStay>) =>
+  Promise.resolve(makeLease(patch))
 );
-const mockUpdatePendingPrimaryContact = mock((): Promise<ILeaseTenantMembership | null> =>
-  Promise.resolve(null)
-);
+const mockUpdatePendingPrimaryContact = mockResolvedNull<ILeaseTenantMembership>();
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   leaseTenantMembershipsDb: {

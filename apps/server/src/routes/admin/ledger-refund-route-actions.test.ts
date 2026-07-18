@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { HttpStatus } from "@/packages/shared";
+import { mockResolved, mockSyncVoid } from "@/test-fixtures/mocks";
 
 import {
   executeLedgerRefund,
@@ -10,7 +11,7 @@ import {
 } from "./ledger-refund-route-actions";
 
 function makeReply() {
-  const send = mock((_payload: unknown) => undefined);
+  const send = mockSyncVoid();
   const status = mock((_code: number) => ({ send }));
   return { reply: { status } as never, send, status };
 }
@@ -65,10 +66,10 @@ describe("parseRefundLedgerEntryBody", () => {
 describe("executeLedgerRefund", () => {
   test("returns 404 when entity is missing", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: null,
       ...baseRefundOptions,
     });
@@ -80,10 +81,10 @@ describe("executeLedgerRefund", () => {
 
   test("returns 400 when entity is deleted", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: makeEntity({ isDeleted: true }),
       ...baseRefundOptions,
     });
@@ -95,10 +96,10 @@ describe("executeLedgerRefund", () => {
 
   test("returns 409 when entity is already refunded", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: makeEntity({ refundedAt: "2026-03-01T00:00:00.000Z" }),
       ...baseRefundOptions,
     });
@@ -110,11 +111,11 @@ describe("executeLedgerRefund", () => {
 
   test("returns 400 when partial amount exceeds cap", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
       body: { amount: 500.01 },
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: makeEntity(),
       ...baseRefundOptions,
     });
@@ -126,11 +127,11 @@ describe("executeLedgerRefund", () => {
 
   test("returns 400 when partial amount is zero", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
       body: { amount: 0 },
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: makeEntity(),
       ...baseRefundOptions,
     });
@@ -142,10 +143,10 @@ describe("executeLedgerRefund", () => {
 
   test("refunds full amount and returns 204 when body is omitted", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: makeEntity(),
       ...baseRefundOptions,
     });
@@ -157,11 +158,11 @@ describe("executeLedgerRefund", () => {
 
   test("refunds partial amount and returns 204", async () => {
     const { reply, send, status } = makeReply();
-    const refund = mock(() => Promise.resolve(true));
+    const refund = mockResolved(true);
 
     await executeLedgerRefund(reply, {
       body: { amount: 125 },
-      db: { refund, unrefund: mock(() => Promise.resolve(true)) },
+      db: { refund, unrefund: mockResolved(true) },
       entity: makeEntity(),
       ...baseRefundOptions,
     });
@@ -175,10 +176,10 @@ describe("executeLedgerRefund", () => {
 describe("executeLedgerUnrefund", () => {
   test("returns 409 when entity is not refunded", async () => {
     const { reply, send, status } = makeReply();
-    const unrefund = mock(() => Promise.resolve(true));
+    const unrefund = mockResolved(true);
 
     await executeLedgerUnrefund(reply, {
-      db: { refund: mock(() => Promise.resolve(true)), unrefund },
+      db: { refund: mockResolved(true), unrefund },
       entity: makeEntity(),
       entityId: "entry-1",
       entityName: "Income line",
@@ -193,10 +194,10 @@ describe("executeLedgerUnrefund", () => {
 
   test("unrefunds and returns 204 on success", async () => {
     const { reply, send, status } = makeReply();
-    const unrefund = mock(() => Promise.resolve(true));
+    const unrefund = mockResolved(true);
 
     await executeLedgerUnrefund(reply, {
-      db: { refund: mock(() => Promise.resolve(true)), unrefund },
+      db: { refund: mockResolved(true), unrefund },
       entity: makeEntity({ refundedAt: "2026-03-01T00:00:00.000Z" }),
       entityId: "entry-1",
       entityName: "Income line",

@@ -3,19 +3,20 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { makePayment, makeRentScheduleRow } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolved, mockResolvedNull, mockSyncVoid } from "@/test-fixtures/mocks";
 
-const mockAssertLeaseTenantAccess = mock(() => Promise.resolve({}));
-const mockFindLeaseById = mock(() =>
+const mockAssertLeaseTenantAccess = mockResolved({});
+const mockFindLeaseById = mockAsyncFn(() =>
   Promise.resolve({
     id: "lease-1",
     propertyId: "property-1",
     unitId: "unit-1",
   } as { id: string; propertyId: string; unitId: string } | null)
 );
-const mockGetRentSchedule = mock(() =>
+const mockGetRentSchedule = mockAsyncFn(() =>
   Promise.resolve([makeRentScheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" })])
 );
-const mockFindStripeAccount = mock(() =>
+const mockFindStripeAccount = mockAsyncFn(() =>
   Promise.resolve({
     chargesEnabled: true,
     detailsSubmitted: true,
@@ -26,18 +27,18 @@ const mockFindStripeAccount = mock(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   } as IPropertyStripeAccount | null)
 );
-const mockSumSucceededByMonths = mock(() => Promise.resolve(new Map<string, number>()));
-const mockCreateWithAllocations = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockFindByIdempotencyKey = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockUpdateStripeIds = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockSessionsCreate = mock(() =>
+const mockSumSucceededByMonths = mockResolved(new Map<string, number>());
+const mockCreateWithAllocations = mockResolvedNull<ITenantRentPayment>();
+const mockFindByIdempotencyKey = mockResolvedNull<ITenantRentPayment>();
+const mockUpdateStripeIds = mockResolvedNull<ITenantRentPayment>();
+const mockSessionsCreate = mockAsyncFn(() =>
   Promise.resolve({
     id: "cs_new",
     payment_intent: "pi_new",
     url: "https://checkout.stripe.test/pay/cs_new",
   })
 );
-const mockSessionsRetrieve = mock(() =>
+const mockSessionsRetrieve = mockAsyncFn(() =>
   Promise.resolve({
     id: "cs_existing",
     status: "open",
@@ -105,9 +106,9 @@ mock.module("@/stripe/stripe-client", () => ({
 
 mock.module("@/services/winston", () => ({
   WinstonLogger: {
-    error: mock(() => undefined),
-    info: mock(() => undefined),
-    warn: mock(() => undefined),
+    error: mockSyncVoid(),
+    info: mockSyncVoid(),
+    warn: mockSyncVoid(),
   },
 }));
 

@@ -3,22 +3,27 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
+import {
+  mockResolvedNull,
+  mockResolvedVoid,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockFindById = mock(() => Promise.resolve(null as unknown));
-const mockTryInsert = mock(() => Promise.resolve(null as unknown));
-const mockMarkProcessed = mock(() => Promise.resolve());
-const mockFindPaymentById = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockFindByCheckoutSessionId = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockFindByPaymentIntentId = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockUpdateStripeIds = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockMarkSucceeded = mock(() => Promise.resolve(null as unknown));
-const mockMarkFailed = mock(() => Promise.resolve(null as unknown));
-const mockMarkCanceled = mock(() => Promise.resolve(null as unknown));
-const mockMarkRefunded = mock(() => Promise.resolve(null as unknown));
-const mockPostDiscordWebhook = mock(() => Promise.resolve());
-const mockLoggerInfo = mock(() => undefined);
-const mockLoggerWarn = mock(() => undefined);
-const mockLoggerError = mock(() => undefined);
+const mockFindById = mockResolvedNull<unknown>();
+const mockTryInsert = mockResolvedNull<unknown>();
+const mockMarkProcessed = mockResolvedVoid();
+const mockFindPaymentById = mockResolvedNull<ITenantRentPayment>();
+const mockFindByCheckoutSessionId = mockResolvedNull<ITenantRentPayment>();
+const mockFindByPaymentIntentId = mockResolvedNull<ITenantRentPayment>();
+const mockUpdateStripeIds = mockResolvedNull<ITenantRentPayment>();
+const mockMarkSucceeded = mockResolvedNull<unknown>();
+const mockMarkFailed = mockResolvedNull<unknown>();
+const mockMarkCanceled = mockResolvedNull<unknown>();
+const mockMarkRefunded = mockResolvedNull<unknown>();
+const mockPostDiscordWebhook = mockResolvedVoid();
+const mockLoggerInfo = mockSyncVoid();
+const mockLoggerWarn = mockSyncVoid();
+const mockLoggerError = mockSyncVoid();
 
 mock.module("@/db/stripe-webhook-events", () => ({
   stripeWebhookEventsDb: {

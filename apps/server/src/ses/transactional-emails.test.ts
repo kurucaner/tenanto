@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-const mockSendTransactionalEmail = mock(() => Promise.resolve());
+import { mockResolvedVoid } from "@/test-fixtures/mocks";
+
+const mockSendTransactionalEmail = mockResolvedVoid();
 
 mock.module("./ses", () => ({
-  sendSesEmail: mock(() => Promise.resolve()),
+  sendSesEmail: mockResolvedVoid(),
   sendTransactionalEmail: mockSendTransactionalEmail,
 }));
 

@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ILeaseSecondaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 import { PropertyLongStayStatus, TenantMembershipStatus } from "@/packages/shared";
 import { makeLease } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolvedEmpty } from "@/test-fixtures/mocks";
 
-const mockListByProperty = mock(() => Promise.resolve([] as IPropertyLongStay[]));
-const mockLoadSecondaryTenantContactsByLeaseIds = mock(() =>
+const mockListByProperty = mockResolvedEmpty<IPropertyLongStay>();
+const mockLoadSecondaryTenantContactsByLeaseIds = mockAsyncFn(() =>
   Promise.resolve(new Map<string, ILeaseSecondaryTenantContact[]>())
 );
 

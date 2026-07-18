@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-const mockSnsSend = mock(() => Promise.resolve({ MessageId: "msg-123" }));
+import { mockAsyncFn } from "@/test-fixtures/mocks";
+
+const mockSnsSend = mockAsyncFn((_cmd: { input: Record<string, unknown> }) =>
+  Promise.resolve({ MessageId: "msg-123" })
+);
 
 mock.module("@aws-sdk/client-sns", () => ({
   PublishCommand: class PublishCommand {
@@ -52,7 +56,7 @@ describe("sendSms", () => {
     });
 
     expect(mockSnsSend).toHaveBeenCalledTimes(1);
-    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    const command = mockSnsSend.mock.calls[0]![0] as { input: Record<string, unknown> };
     expect(command.input.PhoneNumber).toBe("+14155552671");
     expect(command.input.Message).toBe("Rent payment received.");
     expect(command.input.MessageAttributes).toEqual({
@@ -74,7 +78,7 @@ describe("sendSms", () => {
       phoneNumber: "+14155552671",
     });
 
-    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    const command = mockSnsSend.mock.calls[0]![0] as { input: Record<string, unknown> };
     expect(command.input.MessageAttributes).toMatchObject({
       "AWS.MM.SMS.OriginationNumber": {
         DataType: "String",
@@ -91,7 +95,7 @@ describe("sendSms", () => {
       phoneNumber: "+14155552671",
     });
 
-    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    const command = mockSnsSend.mock.calls[0]![0] as { input: Record<string, unknown> };
     expect(command.input.MessageAttributes).toMatchObject({
       "AWS.MM.SMS.OriginationNumber": {
         DataType: "String",
@@ -109,7 +113,7 @@ describe("sendSms", () => {
       phoneNumber: "+14155552671",
     });
 
-    const command = mockSnsSend.mock.calls[0]?.[0] as { input: Record<string, unknown> };
+    const command = mockSnsSend.mock.calls[0]![0] as { input: Record<string, unknown> };
     expect(command.input.MessageAttributes).toMatchObject({
       "AWS.MM.SMS.OriginationNumber": {
         DataType: "String",

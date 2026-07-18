@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
 import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
 import { makeInvite } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolvedNull, resetMocks } from "@/test-fixtures/mocks";
 
-const mockFindByInviteToken = mock(() => Promise.resolve(null as IPropertyInvite | null));
-const mockExpireInviteIfPastTtl = mock(() => Promise.resolve(null as IPropertyInvite | null));
-const mockFindByEmail = mock(() => Promise.resolve(null as IUser | null));
-const mockCreateWithEmail = mock((_input: unknown): Promise<IUser> =>
+const mockFindByInviteToken = mockResolvedNull<IPropertyInvite>();
+const mockExpireInviteIfPastTtl = mockResolvedNull<IPropertyInvite>();
+const mockFindByEmail = mockResolvedNull<IUser>();
+const mockCreateWithEmail = mockAsyncFn((_input: unknown): Promise<IUser> =>
   Promise.resolve({
     appleId: null,
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -20,7 +21,7 @@ const mockCreateWithEmail = mock((_input: unknown): Promise<IUser> =>
     userType: UserType.USER,
   })
 );
-const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: IUser }> =>
+const mockFindOrCreateByGoogle = mockAsyncFn((_input: unknown): Promise<{ user: IUser }> =>
   Promise.resolve({
     user: {
       appleId: null,
@@ -35,7 +36,7 @@ const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: IUser }
     },
   })
 );
-const mockRedeemInvite = mock(
+const mockRedeemInvite = mockAsyncFn(
   (_token: string, _user: IUser): Promise<{ invite: IPropertyInvite; member: IPropertyMember }> =>
     Promise.resolve({
       invite: makeInvite({ status: PropertyInviteStatus.ACCEPTED }),
@@ -55,7 +56,7 @@ const mockRedeemInvite = mock(
       },
     })
 );
-const mockIssuePlatformSession = mock(() =>
+const mockIssuePlatformSession = mockAsyncFn(() =>
   Promise.resolve({
     accessToken: "access",
     refreshToken: "refresh",
@@ -72,7 +73,7 @@ const mockIssuePlatformSession = mock(() =>
     },
   })
 );
-const mockVerifyGoogleToken = mock(() =>
+const mockVerifyGoogleToken = mockAsyncFn(() =>
   Promise.resolve({
     email: "invitee@example.com",
     googleId: "google-1",
@@ -116,9 +117,7 @@ const fakeServer = {} as import("fastify").FastifyInstance;
 
 describe("registerPlatformUserWithInvitePassword", () => {
   beforeEach(() => {
-    mockFindByInviteToken.mockReset();
-    mockExpireInviteIfPastTtl.mockReset();
-    mockFindByEmail.mockReset();
+    resetMocks(mockFindByInviteToken, mockExpireInviteIfPastTtl, mockFindByEmail);
     mockCreateWithEmail.mockClear();
     mockRedeemInvite.mockClear();
     mockIssuePlatformSession.mockClear();
@@ -215,9 +214,7 @@ describe("registerPlatformUserWithInvitePassword", () => {
 
 describe("registerPlatformUserWithInviteGoogle", () => {
   beforeEach(() => {
-    mockFindByInviteToken.mockReset();
-    mockExpireInviteIfPastTtl.mockReset();
-    mockVerifyGoogleToken.mockReset();
+    resetMocks(mockFindByInviteToken, mockExpireInviteIfPastTtl, mockVerifyGoogleToken);
     mockFindOrCreateByGoogle.mockClear();
     mockRedeemInvite.mockClear();
     mockIssuePlatformSession.mockClear();

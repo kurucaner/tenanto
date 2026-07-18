@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { makeUser } from "@/test-fixtures/domain";
+import { mockResolvedVoid } from "@/test-fixtures/mocks";
 
 const mockSignAccessToken = mock(() => "access-token");
 const mockGenerateRefreshToken = mock(() => "refresh-token");
 const mockHashToken = mock((token: string) => `hash:${token}`);
 const mockGetRefreshTokenExpiresAt = mock(() => new Date("2026-02-01T00:00:00.000Z"));
-const mockCreateRefreshToken = mock(() => Promise.resolve());
+const mockCreateRefreshToken = mockResolvedVoid();
 
 mock.module("@/auth/jwt", () => ({
   generateRefreshToken: mockGenerateRefreshToken,

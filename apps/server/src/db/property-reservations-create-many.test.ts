@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { ReservationStatus } from "@/packages/shared";
 import { buildRefundableReservationRow } from "@/test-fixtures/db-rows";
+import { mockAsyncFn, mockResolved, mockSyncVoid } from "@/test-fixtures/mocks";
 
 interface ICapturedQuery {
   sql: string;
@@ -10,7 +11,7 @@ interface ICapturedQuery {
 
 const capturedQueries: ICapturedQuery[] = [];
 
-const mockClientQuery = mock((sql: string, values?: unknown[]) => {
+const mockClientQuery = mockAsyncFn((sql: string, values?: unknown[]) => {
   capturedQueries.push({ sql, values: values ?? [] });
 
   if (sql === "BEGIN" || sql === "COMMIT") {
@@ -35,12 +36,12 @@ const mockClientQuery = mock((sql: string, values?: unknown[]) => {
 
 const mockClient = {
   query: mockClientQuery,
-  release: mock(() => {}),
+  release: mockSyncVoid(),
 };
 
 mock.module("./pool", () => ({
   pool: {
-    connect: mock(() => Promise.resolve(mockClient)),
+    connect: mockResolved(mockClient),
   },
 }));
 

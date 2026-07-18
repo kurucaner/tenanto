@@ -3,16 +3,22 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
+import {
+  mockResolved,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockListReconcileCandidatesSince = mock(() => Promise.resolve([] as ITenantRentPayment[]));
-const mockFindById = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockMarkSucceeded = mock(() => Promise.resolve(null as unknown));
-const mockMarkCanceled = mock(() => Promise.resolve(null as unknown));
-const mockRetrievePi = mock(() => Promise.resolve({ id: "pi_1", status: "succeeded" }));
-const mockListPi = mock(() => Promise.resolve({ data: [] as unknown[] }));
+const mockListReconcileCandidatesSince = mockResolvedEmpty<ITenantRentPayment>();
+const mockFindById = mockResolvedNull<ITenantRentPayment>();
+const mockMarkSucceeded = mockResolvedNull<unknown>();
+const mockMarkCanceled = mockResolvedNull<unknown>();
+const mockRetrievePi = mockResolved({ id: "pi_1", status: "succeeded" });
+const mockListPi = mockResolved({ data: [] as unknown[] });
 const mockIsStripeConfigured = mock(() => true);
-const mockWinstonInfo = mock(() => undefined);
-const mockWinstonWarn = mock(() => undefined);
+const mockWinstonInfo = mockSyncVoid();
+const mockWinstonWarn = mockSyncVoid();
 
 mock.module("@/db/tenant-rent-payments", () => ({
   tenantRentPaymentsDb: {
@@ -43,7 +49,7 @@ mock.module("@/stripe/stripe-client", () => ({
 
 mock.module("@/services/winston", () => ({
   WinstonLogger: {
-    error: mock(() => undefined),
+    error: mockSyncVoid(),
     info: mockWinstonInfo,
     warn: mockWinstonWarn,
   },

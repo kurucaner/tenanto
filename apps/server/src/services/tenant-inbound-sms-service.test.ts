@@ -4,18 +4,17 @@ import type { ITenantUser } from "@/packages/shared";
 import {
   buildTenantSmsHelpMessage,
   buildTenantSmsOptOutConfirmationMessage,
-  type ITenantUser,
   TenantSmsInboundKeyword,
 } from "@/packages/shared";
 import { makeTenantUser } from "@/test-fixtures/domain";
-
+import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
 const mockIsPhoneAuthEnabled = mock(() => true);
-const mockFindByPhone = mock(() => Promise.resolve(makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" })));
-const mockOptOutOfSms = mock(() =>
-  Promise.resolve(makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" }))
+const mockFindByPhone = mockResolvedNull<ITenantUser>();
+const mockOptOutOfSms = mockResolved(
+  makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" })
 );
-const mockInsertKeywordEvent = mock(() =>
+const mockInsertKeywordEvent = mockAsyncFn(() =>
   Promise.resolve({
     createdAt: "2026-01-02T00:00:00.000Z",
     id: "event-1",
@@ -25,7 +24,7 @@ const mockInsertKeywordEvent = mock(() =>
     tenantUserId: "tenant-1",
   })
 );
-const mockSendSms = mock(() => Promise.resolve({}));
+const mockSendSms = mockResolved({});
 
 mock.module("@/lib/tenant-auth-expansion-config", () => ({
   isTenantPhoneAuthEnabled: mockIsPhoneAuthEnabled,

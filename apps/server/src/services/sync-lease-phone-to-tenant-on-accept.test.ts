@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { TenantMembershipStatus } from "@/packages/shared";
+import type { IPropertyLongStay, ITenantUser } from "@/packages/shared";
+import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import { makeLease, makeMembership, makeTenant } from "@/test-fixtures/domain";
+import { mockResolvedNull } from "@/test-fixtures/mocks";
 
-const mockFindByIdLease = mock((): Promise<IPropertyLongStay | null> => Promise.resolve(null));
-const mockSetUnverifiedPhoneIfNull = mock((): Promise<ITenantUser | null> => Promise.resolve(null));
+const mockFindByIdLease = mockResolvedNull<IPropertyLongStay>();
+const mockSetUnverifiedPhoneIfNull = mockResolvedNull<ITenantUser>();
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: { findById: mockFindByIdLease },
