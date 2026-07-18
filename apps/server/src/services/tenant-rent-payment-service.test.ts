@@ -2,8 +2,20 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
+import { PropertyStripeAccountType } from "@/packages/shared";
 import { makePayment, makeRentScheduleRow } from "@/test-fixtures/domain";
 import { mockAsyncFn, mockResolved, mockResolvedNull, mockSyncVoid } from "@/test-fixtures/mocks";
+
+const connectedStripeAccount: IPropertyStripeAccount = {
+  accountType: PropertyStripeAccountType.EXPRESS,
+  chargesEnabled: true,
+  detailsSubmitted: true,
+  onboardingComplete: true,
+  payoutsEnabled: true,
+  propertyId: "property-1",
+  stripeAccountId: "acct_1",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+};
 
 const mockAssertLeaseTenantAccess = mockResolved({});
 const mockFindLeaseById = mockAsyncFn(() =>
@@ -16,17 +28,7 @@ const mockFindLeaseById = mockAsyncFn(() =>
 const mockGetRentSchedule = mockAsyncFn(() =>
   Promise.resolve([makeRentScheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" })])
 );
-const mockFindStripeAccount = mockAsyncFn(() =>
-  Promise.resolve({
-    chargesEnabled: true,
-    detailsSubmitted: true,
-    onboardingComplete: true,
-    payoutsEnabled: true,
-    propertyId: "property-1",
-    stripeAccountId: "acct_1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  } as IPropertyStripeAccount | null)
-);
+const mockFindStripeAccount = mockAsyncFn(() => Promise.resolve(connectedStripeAccount));
 const mockSumSucceededByMonths = mockResolved(new Map<string, number>());
 const mockCreateWithAllocations = mockResolvedNull<ITenantRentPayment>();
 const mockFindByIdempotencyKey = mockResolvedNull<ITenantRentPayment>();
@@ -140,15 +142,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
     mockGetRentSchedule.mockResolvedValue([
       makeRentScheduleRow({ expectedRent: 200, isPaid: false, month: "2026-01" }),
     ]);
-    mockFindStripeAccount.mockResolvedValue({
-      chargesEnabled: true,
-      detailsSubmitted: true,
-      onboardingComplete: true,
-      payoutsEnabled: true,
-      propertyId: "property-1",
-      stripeAccountId: "acct_1",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
+    mockFindStripeAccount.mockResolvedValue(connectedStripeAccount);
     mockSumSucceededByMonths.mockResolvedValue(new Map());
   });
 
@@ -242,15 +236,7 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
     mockCreateWithAllocations.mockClear();
     mockUpdateStripeIds.mockClear();
     mockSessionsCreate.mockClear();
-    mockFindStripeAccount.mockResolvedValue({
-      chargesEnabled: true,
-      detailsSubmitted: true,
-      onboardingComplete: true,
-      payoutsEnabled: true,
-      propertyId: "property-1",
-      stripeAccountId: "acct_1",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    });
+    mockFindStripeAccount.mockResolvedValue(connectedStripeAccount);
   });
 
   afterEach(() => {
