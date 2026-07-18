@@ -128,11 +128,7 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
       role: TenantMembershipRole.SECONDARY,
     } as const;
 
-    await syncLeasePhoneToTenantUserOnAccept(
-      makeMembership(secondary),
-      tenant,
-      makeLease()
-    );
+    await syncLeasePhoneToTenantUserOnAccept(makeMembership(secondary), tenant, makeLease());
     await syncLeasePhoneToTenantUserOnAccept(
       makeMembership({ ...secondary, contactPhone: "not-e164" }),
       tenant,
