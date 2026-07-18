@@ -1,16 +1,20 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  expressConnectDescription,
   expressOnboardingButtonLabel,
   getStripeConnectAccountTypeLabel,
   getStripeConnectUiStatus,
   shouldShowExpressOnboardingButton,
+  shouldShowStandardDashboardLink,
   shouldShowStandardOAuthButton,
+  showDualConnectOptions,
+  standardOAuthButtonLabel,
+  stripeConnectSectionDescription,
 } from "@/lib/property-stripe-connect-utils";
 import { PropertyStripeAccountType } from "@/packages/shared";
 
 const baseStatus = {
+  accountType: null as (typeof PropertyStripeAccountType)[keyof typeof PropertyStripeAccountType] | null,
   chargesEnabled: false,
   detailsSubmitted: false,
   onboardingComplete: false,
@@ -18,7 +22,6 @@ const baseStatus = {
   platformEnabled: true,
   standardOAuthEnabled: false,
   stripeAccountId: null as string | null,
-  accountType: null as (typeof PropertyStripeAccountType)[keyof typeof PropertyStripeAccountType] | null,
 };
 
 describe("getStripeConnectUiStatus", () => {
@@ -93,31 +96,110 @@ describe("shouldShowStandardOAuthButton", () => {
     );
   });
 
-  test("hidden when already connected", () => {
+  test("hidden when Express is connected", () => {
     expect(
       shouldShowStandardOAuthButton({
         ...baseStatus,
+        accountType: PropertyStripeAccountType.EXPRESS,
         standardOAuthEnabled: true,
-        stripeAccountId: "acct_1",
+        stripeAccountId: "acct_express",
       })
     ).toBe(false);
   });
 
   test("shown when Standard OAuth enabled and not connected", () => {
+    expect(shouldShowStandardOAuthButton({ ...baseStatus, standardOAuthEnabled: true })).toBe(
+      true
+    );
+  });
+
+  test("shown when Standard setup is incomplete", () => {
     expect(
-      shouldShowStandardOAuthButton({ ...baseStatus, standardOAuthEnabled: true })
+      shouldShowStandardOAuthButton({
+        ...baseStatus,
+        accountType: PropertyStripeAccountType.STANDARD,
+        standardOAuthEnabled: true,
+        stripeAccountId: "acct_standard",
+      })
     ).toBe(true);
+  });
+
+  test("hidden when Standard is ready", () => {
+    expect(
+      shouldShowStandardOAuthButton({
+        ...baseStatus,
+        accountType: PropertyStripeAccountType.STANDARD,
+        chargesEnabled: true,
+        standardOAuthEnabled: true,
+        stripeAccountId: "acct_standard",
+      })
+    ).toBe(false);
   });
 });
 
-describe("express onboarding copy", () => {
-  test("uses Phase 3a Express button labels", () => {
+describe("showDualConnectOptions", () => {
+  test("shows dual buttons when disconnected and Standard OAuth enabled", () => {
+    expect(showDualConnectOptions({ ...baseStatus, standardOAuthEnabled: true })).toBe(true);
+  });
+
+  test("hides dual buttons when Standard OAuth disabled", () => {
+    expect(showDualConnectOptions({ ...baseStatus })).toBe(false);
+  });
+});
+
+describe("shouldShowStandardDashboardLink", () => {
+  test("shows for ready Standard accounts", () => {
+    expect(
+      shouldShowStandardDashboardLink({
+        ...baseStatus,
+        accountType: PropertyStripeAccountType.STANDARD,
+        chargesEnabled: true,
+        stripeAccountId: "acct_standard",
+      })
+    ).toBe(true);
+  });
+
+  test("hides for Express accounts", () => {
+    expect(
+      shouldShowStandardDashboardLink({
+        ...baseStatus,
+        accountType: PropertyStripeAccountType.EXPRESS,
+        chargesEnabled: true,
+        stripeAccountId: "acct_express",
+      })
+    ).toBe(false);
+  });
+});
+
+describe("onboarding copy", () => {
+  test("uses Express button labels", () => {
     expect(expressOnboardingButtonLabel("not_connected")).toBe("Set up new Stripe account");
     expect(expressOnboardingButtonLabel("setup_incomplete")).toBe("Continue Stripe setup");
     expect(expressOnboardingButtonLabel("ready")).toBe("Update Stripe details");
   });
 
-  test("uses helper description when not connected", () => {
-    expect(expressConnectDescription("not_connected")).toContain("don't have Stripe yet");
+  test("uses Standard button labels", () => {
+    expect(standardOAuthButtonLabel("not_connected")).toBe("Connect existing Stripe account");
+    expect(standardOAuthButtonLabel("setup_incomplete")).toBe("Finish connecting Stripe account");
+  });
+
+  test("uses dual-option section description", () => {
+    expect(
+      stripeConnectSectionDescription({ ...baseStatus, standardOAuthEnabled: true }, "not_connected")
+    ).toContain("Connect Stripe so tenants can pay rent");
+  });
+
+  test("uses Standard ready section description", () => {
+    expect(
+      stripeConnectSectionDescription(
+        {
+          ...baseStatus,
+          accountType: PropertyStripeAccountType.STANDARD,
+          chargesEnabled: true,
+          stripeAccountId: "acct_standard",
+        },
+        "ready"
+      )
+    ).toContain("Connected to your existing Stripe account");
   });
 });

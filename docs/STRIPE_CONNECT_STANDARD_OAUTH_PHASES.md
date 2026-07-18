@@ -334,9 +334,9 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Two clear entry points.
 
-- [ ] `createStandardOAuthAuthorizeUrl` in API client + second mutation
-- [ ] When `not_connected` + Standard enabled: both buttons + helper text from spec
-- [ ] When connected: hide the other path’s button
+- [x] `createStandardOAuthAuthorizeUrl` in API client + second mutation
+- [x] When `not_connected` + Standard enabled: both buttons + helper text from spec
+- [x] When connected: hide the other path’s button
 
 **Exit criteria:** Both paths launch from UI in test mode; labels match spec table.
 
