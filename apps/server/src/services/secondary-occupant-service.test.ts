@@ -43,7 +43,6 @@ const mockBuildSecondaryOccupantMutationResponse = mock((membership: ILeaseTenan
 );
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {},
   leaseTenantMembershipsDb: {
     countNonTerminalSecondariesForLease: mockCountNonTerminalSecondariesForLease,
     createListedSecondary: mockCreateListedSecondary,

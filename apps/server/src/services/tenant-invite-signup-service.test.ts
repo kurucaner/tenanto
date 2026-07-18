@@ -82,13 +82,6 @@ const mockIpAllowed = mock(() => Promise.resolve({ allowed: true as const }));
 const mockEmailAllowed = mock(() => Promise.resolve({ allowed: true as const }));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
-    membership: ILeaseTenantMembership;
-    constructor(membership: ILeaseTenantMembership) {
-      super("duplicate");
-      this.membership = membership;
-    }
-  },
   leaseTenantMembershipsDb: {
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
     findByInviteToken: mockFindByInviteToken,
@@ -254,6 +247,7 @@ describe("registerTenantWithInvitePassword", () => {
     }
     expect(result.statusCode).toBe(400);
     expect(result.body.error).toContain("expired");
+    expect(result.body.code).toBe("PORTAL_INVITE_INVALID_STATE");
   });
 });
 

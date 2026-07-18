@@ -1,13 +1,13 @@
 import type { PoolClient } from "pg";
 
 import {
-  DuplicatePortalInviteError,
   leaseTenantMembershipsDb,
   loadSecondaryMembershipsForLease,
 } from "@/db/lease-tenant-memberships";
 import { parseSecondaryTenants } from "@/db/mappers";
 import { pool } from "@/db/pool";
 import { tenantUsersDb } from "@/db/tenant-users";
+import { isDuplicatePortalInviteError } from "@/errors/portal-invite-errors";
 import {
   type ISecondaryBackfillPlannedAction,
   type ISecondaryBackfillVerificationGap,
@@ -119,7 +119,7 @@ async function applyPlannedAction(
         });
         return "inserted";
       } catch (error) {
-        if (error instanceof DuplicatePortalInviteError) {
+        if (isDuplicatePortalInviteError(error)) {
           return "skipped";
         }
         throw error;

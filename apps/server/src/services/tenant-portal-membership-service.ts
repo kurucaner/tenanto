@@ -8,6 +8,10 @@ import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
 import { tenantUsersDb } from "@/db/tenant-users";
 import {
+  portalInviteInvalidStateError,
+  portalInviteNotFoundError,
+} from "@/errors/portal-invite-errors";
+import {
   buildTenantInviteLeaseSummary,
   formatUnitLabel,
 } from "@/lib/build-tenant-invite-lease-summary";
@@ -33,10 +37,6 @@ import { syncLeasePhoneToTenantUserOnAccept } from "@/services/sync-lease-phone-
 import { issueTenantSession } from "@/services/tenant-auth-service";
 
 import { assertLeaseTenantReadAccess } from "./tenant-portal-access";
-import {
-  PortalInviteInvalidStateError,
-  PortalInviteNotFoundError,
-} from "./tenant-portal-invite-service";
 import { logTenantPortalAccepted, logTenantPortalDeclined } from "./tenant-portal-observability";
 
 export class TenantMembershipNotFoundError extends Error {
@@ -58,11 +58,11 @@ function assertMembershipMatchesTenant(
   if (
     requireMembershipInviteEmail(membership.inviteEmail) !== normalizeTenantEmail(tenantUser.email)
   ) {
-    throw new PortalInviteInvalidStateError("This invite was sent to a different email address");
+    throw portalInviteInvalidStateError("This invite was sent to a different email address");
   }
 
   if (membership.tenantUserId != null && membership.tenantUserId !== tenantUser.id) {
-    throw new PortalInviteInvalidStateError("This invite belongs to another account");
+    throw portalInviteInvalidStateError("This invite belongs to another account");
   }
 }
 
@@ -71,18 +71,18 @@ async function assertMembershipActionable(membership: ILeaseTenantMembership): P
     membership.status === TenantMembershipStatus.DECLINED ||
     membership.status === TenantMembershipStatus.EXPIRED
   ) {
-    throw new PortalInviteInvalidStateError(
+    throw portalInviteInvalidStateError(
       "This invite is no longer available. Ask your property manager to resend."
     );
   }
 
   if (!ACCEPTABLE_STATUSES.has(membership.status)) {
-    throw new PortalInviteInvalidStateError("This invite is no longer available");
+    throw portalInviteInvalidStateError("This invite is no longer available");
   }
 
   const expired = await leaseTenantMembershipsDb.expireMembershipIfPastTtl(membership);
   if (expired) {
-    throw new PortalInviteInvalidStateError("This invite has expired");
+    throw portalInviteInvalidStateError("This invite has expired");
   }
 }
 
@@ -97,7 +97,7 @@ async function acceptMembershipForTenant(
   if (current.tenantUserId == null) {
     const linked = await leaseTenantMembershipsDb.linkTenantUser(current.id, tenantUser.id);
     if (!linked) {
-      throw new PortalInviteNotFoundError("Portal invite not found");
+      throw portalInviteNotFoundError("Portal invite not found");
     }
     current = linked;
   }
@@ -107,7 +107,7 @@ async function acceptMembershipForTenant(
     TenantMembershipStatus.ACTIVE
   );
   if (!updated) {
-    throw new PortalInviteNotFoundError("Portal invite not found");
+    throw portalInviteNotFoundError("Portal invite not found");
   }
   logTenantPortalAccepted(updated);
   await syncLeasePhoneToTenantUserOnAccept(updated, tenantUser);
@@ -268,7 +268,7 @@ export const tenantPortalMembershipService = {
   async redeemInvite(token: string, tenantUser: ITenantUser): Promise<ILeaseTenantMembership> {
     const membership = await leaseTenantMembershipsDb.findByInviteToken(token);
     if (!membership) {
-      throw new PortalInviteNotFoundError("Invalid or expired invite link");
+      throw portalInviteNotFoundError("Invalid or expired invite link");
     }
     return acceptMembershipForTenant(membership, tenantUser);
   },

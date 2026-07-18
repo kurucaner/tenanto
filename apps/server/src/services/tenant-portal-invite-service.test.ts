@@ -14,6 +14,10 @@ import {
   TenantMembershipStatus,
   UnitRentalType,
 } from "@/packages/shared";
+import {
+  duplicatePortalInviteError,
+  PortalInviteErrorCode,
+} from "@/errors/portal-invite-errors";
 import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));
@@ -46,6 +50,7 @@ const mockSendExistingEmail = mock(() => Promise.resolve(true));
 const mockWinstonError = mock(() => {});
 
 mock.module("@/db/property-long-stays", () => ({
+  LongStayNotActiveError: class LongStayNotActiveError extends Error {},
   propertyLongStaysDb: { findById: mockFindByIdLease },
 }));
 
@@ -62,14 +67,7 @@ mock.module("@/db/tenant-users", () => ({
 }));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
-    membership: ILeaseTenantMembership;
-    constructor(membership: ILeaseTenantMembership) {
-      super("A pending portal invite already exists for this lease occupant");
-      this.name = "DuplicatePortalInviteError";
-      this.membership = membership;
-    }
-  },
+  InvalidTenantMembershipTransitionError: class InvalidTenantMembershipTransitionError extends Error {},
   leaseTenantMembershipsDb: {
     create: mockCreateMembership,
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
@@ -80,9 +78,14 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     transitionStatus: mockTransitionStatus,
     updateInviteToken: mockUpdateInviteToken,
   },
+  loadPrimaryMembershipForLease: mock(() => Promise.resolve(null)),
+  loadSecondaryMembershipsForLease: mock(() => Promise.resolve([])),
+  MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
+  SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
 }));
 
 mock.module("@/services/resolve-secondary-tenant-contacts-service", () => ({
+  buildSecondaryOccupantMutationResponse: mock(() => Promise.resolve(null)),
   resolveSecondaryTenantContactsForLongStay: mockResolveSecondaryContacts,
 }));
 
@@ -100,8 +103,7 @@ mock.module("./winston", () => ({
   },
 }));
 
-const { DuplicatePortalInviteError, tenantPortalInviteService } =
-  await import("./tenant-portal-invite-service");
+const { tenantPortalInviteService } = await import("./tenant-portal-invite-service");
 
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
@@ -278,7 +280,7 @@ describe("tenantPortalInviteService.createInvites", () => {
   test("rejects duplicate pending invite (409 path)", async () => {
     const existing = makeMembership({ status: TenantMembershipStatus.PENDING_INVITE });
     mockCreateMembership.mockImplementation(async () => {
-      throw new DuplicatePortalInviteError(existing);
+      throw duplicatePortalInviteError(existing);
     });
 
     await expect(
@@ -288,7 +290,7 @@ describe("tenantPortalInviteService.createInvites", () => {
         leaseId: "lease-1",
         propertyId: "property-1",
       })
-    ).rejects.toBeInstanceOf(DuplicatePortalInviteError);
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.DUPLICATE });
   });
 
   test("transitions listed secondary membership to pending_invite without inserting", async () => {
@@ -405,7 +407,7 @@ describe("tenantPortalInviteService.createInvites", () => {
         propertyId: "property-1",
         secondaryMembershipIds: ["secondary-1"],
       })
-    ).rejects.toBeInstanceOf(DuplicatePortalInviteError);
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.DUPLICATE });
     expect(mockCreateMembership).not.toHaveBeenCalled();
     expect(mockTransitionStatus).not.toHaveBeenCalled();
   });
@@ -427,7 +429,7 @@ describe("tenantPortalInviteService.createInvites", () => {
         propertyId: "property-1",
         secondaryMembershipIds: ["secondary-1"],
       })
-    ).rejects.toMatchObject({ name: "PortalInviteLeaseMismatchError" });
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.LEASE_MISMATCH });
   });
 
   test("deprecated secondaryIndexes path transitions existing membership without insert", async () => {

@@ -42,13 +42,6 @@ const mockFindTenantById = mock(() => Promise.resolve(null as ITenantUser | null
 const mockSetUnverifiedPhoneIfNull = mock((): Promise<ITenantUser | null> => Promise.resolve(null));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
-    membership: ILeaseTenantMembership;
-    constructor(membership: ILeaseTenantMembership) {
-      super("duplicate");
-      this.membership = membership;
-    }
-  },
   leaseTenantMembershipsDb: {
     endAllNonTerminalForLease: mockEndAllNonTerminalForLease,
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,

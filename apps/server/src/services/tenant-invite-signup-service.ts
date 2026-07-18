@@ -5,6 +5,11 @@ import { verifyGoogleToken } from "@/auth/google";
 import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import { tenantUsersDb } from "@/db/tenant-users";
+import {
+  isPortalInviteDomainError,
+  portalInviteInvalidStateError,
+  portalInviteNotFoundError,
+} from "@/errors/portal-invite-errors";
 import { TENANT_AUTH_RATE_LIMIT_WINDOW_MS } from "@/lib/tenant-portal-rate-limit-config";
 import {
   HttpStatus,
@@ -27,10 +32,6 @@ import {
   getTenantAuthRateLimitErrorMessage,
 } from "@/services/tenant-auth-rate-limit";
 import { issueTenantSession } from "@/services/tenant-auth-service";
-import {
-  PortalInviteInvalidStateError,
-  PortalInviteNotFoundError,
-} from "@/services/tenant-portal-invite-service";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 
 export class TenantInviteSignupAccountExistsError extends Error {
@@ -97,25 +98,25 @@ async function loadRedeemableInviteMembership(token: string): Promise<ILeaseTena
 
   const membership = await leaseTenantMembershipsDb.findByInviteToken(trimmed);
   if (!membership) {
-    throw new PortalInviteNotFoundError("Invalid or expired invite link");
+    throw portalInviteNotFoundError("Invalid or expired invite link");
   }
 
   if (
     membership.status === TenantMembershipStatus.DECLINED ||
     membership.status === TenantMembershipStatus.EXPIRED
   ) {
-    throw new PortalInviteInvalidStateError(
+    throw portalInviteInvalidStateError(
       "This invite is no longer available. Ask your property manager to resend."
     );
   }
 
   if (!ACCEPTABLE_STATUSES.has(membership.status)) {
-    throw new PortalInviteInvalidStateError("This invite is no longer available");
+    throw portalInviteInvalidStateError("This invite is no longer available");
   }
 
   const expired = await leaseTenantMembershipsDb.expireMembershipIfPastTtl(membership);
   if (expired) {
-    throw new PortalInviteInvalidStateError("This invite has expired");
+    throw portalInviteInvalidStateError("This invite has expired");
   }
 
   return membership;
@@ -167,18 +168,11 @@ function mapSignupDomainError(error: unknown): TTenantInviteSignupFailure | null
       statusCode: HttpStatus.FORBIDDEN,
     };
   }
-  if (error instanceof PortalInviteNotFoundError) {
+  if (isPortalInviteDomainError(error)) {
     return {
-      body: { error: error.message },
+      body: { code: error.code, error: error.message },
       status: "error",
-      statusCode: HttpStatus.NOT_FOUND,
-    };
-  }
-  if (error instanceof PortalInviteInvalidStateError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.BAD_REQUEST,
+      statusCode: error.httpStatus,
     };
   }
   if (isIdentityConflictError(error)) {

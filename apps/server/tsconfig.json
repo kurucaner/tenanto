@@ -9,6 +9,7 @@
       "@/auth/*": ["./src/auth/*"],
       "@/constants/*": ["./src/constants/*"],
       "@/db/*": ["./src/db/*"],
+      "@/errors/*": ["./src/errors/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/email": ["./src/email"],
       "@/routes/*": ["./src/routes/*"],

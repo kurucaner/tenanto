@@ -1,5 +1,4 @@
 import {
-  DuplicatePortalInviteError,
   leaseTenantMembershipsDb,
   MaxSecondaryOccupantsError,
   SecondaryOccupantNotFoundError,
@@ -240,9 +239,4 @@ export async function deleteSecondaryOccupant(input: {
   return updated;
 }
 
-export {
-  DuplicatePortalInviteError,
-  LinkedTenantContactError,
-  MaxSecondaryOccupantsError,
-  SecondaryOccupantNotFoundError,
-};
+export { LinkedTenantContactError, MaxSecondaryOccupantsError, SecondaryOccupantNotFoundError };

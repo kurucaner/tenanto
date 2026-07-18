@@ -12,18 +12,12 @@ import {
   type IResendLeasePortalInviteResponse,
   type IRevokeLeasePortalInviteResponse,
 } from "@/packages/shared";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   assertTenantPortalInviteCreateAllowed,
   getTenantPortalInviteCreateRateLimitErrorMessage,
 } from "@/services/tenant-portal-invite-create-rate-limit";
-import {
-  DuplicatePortalInviteError,
-  PortalInviteInvalidStateError,
-  PortalInviteLeaseMismatchError,
-  PortalInviteNotFoundError,
-  PortalInviteTargetError,
-  tenantPortalInviteService,
-} from "@/services/tenant-portal-invite-service";
+import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -112,17 +106,8 @@ function parseCreateInviteBody(
 }
 
 function handlePortalInviteError(error: unknown, reply: FastifyReply): FastifyReply {
-  if (error instanceof DuplicatePortalInviteError) {
-    return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-  }
-  if (error instanceof PortalInviteTargetError || error instanceof PortalInviteInvalidStateError) {
-    return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
-  }
-  if (error instanceof PortalInviteLeaseMismatchError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: (error as Error).message });
-  }
-  if (error instanceof PortalInviteNotFoundError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: (error as Error).message });
+  if (replyFromDomainError(reply, error)) {
+    return reply;
   }
   throw error;
 }

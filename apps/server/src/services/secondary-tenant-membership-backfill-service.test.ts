@@ -27,14 +27,15 @@ mock.module("@/db/pool", () => ({
 }));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
-    name = "DuplicatePortalInviteError";
-  },
+  InvalidTenantMembershipTransitionError: class InvalidTenantMembershipTransitionError extends Error {},
   leaseTenantMembershipsDb: {
     createListedSecondary: mockCreateListedSecondary,
     updateSecondaryContact: mockUpdateSecondaryContact,
   },
+  loadPrimaryMembershipForLease: mock(() => Promise.resolve(null)),
   loadSecondaryMembershipsForLease: mockLoadSecondaryMemberships,
+  MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
+  SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
 }));
 
 mock.module("@/db/tenant-users", () => ({

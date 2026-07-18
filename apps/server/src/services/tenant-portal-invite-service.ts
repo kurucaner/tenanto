@@ -1,11 +1,15 @@
-import {
-  DuplicatePortalInviteError,
-  leaseTenantMembershipsDb,
-} from "@/db/lease-tenant-memberships";
+import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import { propertiesDb } from "@/db/properties";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
 import { tenantUsersDb } from "@/db/tenant-users";
+import {
+  duplicatePortalInviteError,
+  portalInviteInvalidStateError,
+  portalInviteLeaseMismatchError,
+  portalInviteNotFoundError,
+  portalInviteTargetError,
+} from "@/errors/portal-invite-errors";
 import { buildTenantInviteLeaseSummary } from "@/lib/build-tenant-invite-lease-summary";
 import {
   type ICreateLeasePortalInviteResult,
@@ -38,34 +42,6 @@ import {
   logTenantPortalRevoked,
 } from "./tenant-portal-observability";
 import { WinstonLogger } from "./winston";
-
-export class PortalInviteNotFoundError extends Error {
-  constructor(message = "Portal invite not found") {
-    super(message);
-    this.name = "PortalInviteNotFoundError";
-  }
-}
-
-export class PortalInviteLeaseMismatchError extends Error {
-  constructor(message = "Portal invite does not belong to this lease") {
-    super(message);
-    this.name = "PortalInviteLeaseMismatchError";
-  }
-}
-
-export class PortalInviteInvalidStateError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PortalInviteInvalidStateError";
-  }
-}
-
-export class PortalInviteTargetError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PortalInviteTargetError";
-  }
-}
 
 const PENDING_PREVIEW_STATUSES = new Set<string>([
   TenantMembershipStatus.PENDING_INVITE,
@@ -150,7 +126,7 @@ async function createAndSendInvite(input: {
 }): Promise<ICreateLeasePortalInviteResult> {
   const context = await loadLeaseContext(input.leaseId, input.propertyId);
   if (!context) {
-    throw new PortalInviteNotFoundError("Long stay not found");
+    throw portalInviteNotFoundError("Long stay not found");
   }
 
   const status = await resolveInitialStatus(input.inviteEmail);
@@ -197,7 +173,7 @@ function resolvePrimaryInviteTarget(lease: IPropertyLongStay): {
 } {
   const email = lease.tenantEmail?.trim() ?? "";
   if (!email || !isValidTenantEmail(email)) {
-    throw new PortalInviteTargetError("Primary tenant email is missing or invalid");
+    throw portalInviteTargetError("Primary tenant email is missing or invalid");
   }
   return {
     displayName: lease.guestName.trim(),
@@ -212,16 +188,16 @@ async function resolveSecondaryMembershipIdFromIndex(
 ): Promise<string> {
   const context = await loadLeaseContext(leaseId, propertyId);
   if (!context) {
-    throw new PortalInviteNotFoundError("Long stay not found");
+    throw portalInviteNotFoundError("Long stay not found");
   }
 
   const contacts = await resolveSecondaryTenantContactsForLongStay(context.lease);
   const contact = contacts[index];
   if (!contact) {
-    throw new PortalInviteTargetError(`secondaryIndexes contains invalid index ${index}`);
+    throw portalInviteTargetError(`secondaryIndexes contains invalid index ${index}`);
   }
   if (!contact.membershipId) {
-    throw new PortalInviteTargetError(
+    throw portalInviteTargetError(
       `Secondary tenant at index ${index} has no membership; add the occupant before inviting`
     );
   }
@@ -235,31 +211,31 @@ async function transitionAndSendSecondaryInvite(input: {
 }): Promise<ICreateLeasePortalInviteResult> {
   const context = await loadLeaseContext(input.leaseId, input.propertyId);
   if (!context) {
-    throw new PortalInviteNotFoundError("Long stay not found");
+    throw portalInviteNotFoundError("Long stay not found");
   }
 
   const membership = await leaseTenantMembershipsDb.findById(input.membershipId);
   if (!membership || membership.leaseId !== input.leaseId) {
-    throw new PortalInviteLeaseMismatchError();
+    throw portalInviteLeaseMismatchError();
   }
 
   if (membership.role !== TenantMembershipRole.SECONDARY) {
-    throw new PortalInviteTargetError("Membership is not a secondary occupant");
+    throw portalInviteTargetError("Membership is not a secondary occupant");
   }
 
   if (PENDING_INVITE_STATUSES.has(membership.status)) {
-    throw new DuplicatePortalInviteError(membership);
+    throw duplicatePortalInviteError(membership);
   }
 
   if (!SECONDARY_INVITE_ELIGIBLE_STATUSES.has(membership.status)) {
-    throw new PortalInviteInvalidStateError(
+    throw portalInviteInvalidStateError(
       "Only listed or previously expired/revoked secondary occupants can be invited"
     );
   }
 
   const inviteEmail = membership.inviteEmail?.trim() ?? "";
   if (!inviteEmail || !isValidTenantEmail(inviteEmail)) {
-    throw new PortalInviteTargetError("Secondary occupant has no valid email");
+    throw portalInviteTargetError("Secondary occupant has no valid email");
   }
 
   const status = await resolveInitialStatus(inviteEmail);
@@ -267,7 +243,7 @@ async function transitionAndSendSecondaryInvite(input: {
 
   let updated = await leaseTenantMembershipsDb.transitionStatus(membership.id, status);
   if (!updated) {
-    throw new PortalInviteNotFoundError("Portal invite not found");
+    throw portalInviteNotFoundError("Portal invite not found");
   }
 
   if (status === TenantMembershipStatus.PENDING_ACCEPTANCE && existingUser) {
@@ -338,7 +314,7 @@ export const tenantPortalInviteService = {
   }): Promise<ICreateLeasePortalInviteResult[]> {
     const context = await loadLeaseContext(input.leaseId, input.propertyId);
     if (!context) {
-      throw new PortalInviteNotFoundError("Long stay not found");
+      throw portalInviteNotFoundError("Long stay not found");
     }
 
     const invitePrimary = input.invitePrimary === true;
@@ -350,7 +326,7 @@ export const tenantPortalInviteService = {
     }
 
     if (!invitePrimary && secondaryMembershipIds.length === 0) {
-      throw new PortalInviteTargetError(
+      throw portalInviteTargetError(
         "At least one of invitePrimary, secondaryMembershipIds, or secondaryIndexes is required"
       );
     }
@@ -387,7 +363,7 @@ export const tenantPortalInviteService = {
   async listPortalAccess(leaseId: string, propertyId: string): Promise<ILeaseTenantMembership[]> {
     const context = await loadLeaseContext(leaseId, propertyId);
     if (!context) {
-      throw new PortalInviteNotFoundError("Long stay not found");
+      throw portalInviteNotFoundError("Long stay not found");
     }
     // Lazy TTL sweep so admin Tenants tab status matches DB without waiting for cron.
     await leaseTenantMembershipsDb.expirePendingPortalInvites();
@@ -397,21 +373,21 @@ export const tenantPortalInviteService = {
   async previewInvite(token: string): Promise<ITenantInvitePreviewResponse> {
     const membership = await leaseTenantMembershipsDb.findByInviteToken(token);
     if (!membership) {
-      throw new PortalInviteNotFoundError("Invalid or expired invite link");
+      throw portalInviteNotFoundError("Invalid or expired invite link");
     }
 
     if (!PENDING_PREVIEW_STATUSES.has(membership.status)) {
-      throw new PortalInviteInvalidStateError("This invite is no longer available");
+      throw portalInviteInvalidStateError("This invite is no longer available");
     }
 
     const expired = await leaseTenantMembershipsDb.expireMembershipIfPastTtl(membership);
     if (expired) {
-      throw new PortalInviteInvalidStateError("This invite has expired");
+      throw portalInviteInvalidStateError("This invite has expired");
     }
 
     const lease = await propertyLongStaysDb.findById(membership.leaseId);
     if (!lease) {
-      throw new PortalInviteNotFoundError("Lease not found");
+      throw portalInviteNotFoundError("Lease not found");
     }
 
     const [property, unit] = await Promise.all([
@@ -419,7 +395,7 @@ export const tenantPortalInviteService = {
       propertyUnitsDb.findById(lease.unitId),
     ]);
     if (!property || !unit) {
-      throw new PortalInviteNotFoundError("Lease not found");
+      throw portalInviteNotFoundError("Lease not found");
     }
 
     const inviteEmail = requireMembershipInviteEmail(membership.inviteEmail);
@@ -441,19 +417,19 @@ export const tenantPortalInviteService = {
   }): Promise<ICreateLeasePortalInviteResult> {
     const context = await loadLeaseContext(input.leaseId, input.propertyId);
     if (!context) {
-      throw new PortalInviteNotFoundError("Long stay not found");
+      throw portalInviteNotFoundError("Long stay not found");
     }
 
     const membership = await leaseTenantMembershipsDb.findById(input.membershipId);
     if (!membership || membership.leaseId !== input.leaseId) {
-      throw new PortalInviteLeaseMismatchError();
+      throw portalInviteLeaseMismatchError();
     }
 
     if (
       membership.status !== TenantMembershipStatus.PENDING_INVITE &&
       membership.status !== TenantMembershipStatus.PENDING_ACCEPTANCE
     ) {
-      throw new PortalInviteInvalidStateError("Only pending portal invites can be resent");
+      throw portalInviteInvalidStateError("Only pending portal invites can be resent");
     }
 
     const rawToken = generatePortalInviteToken();
@@ -462,7 +438,7 @@ export const tenantPortalInviteService = {
       hashPortalInviteToken(rawToken)
     );
     if (!updated) {
-      throw new PortalInviteNotFoundError("Portal invite not found");
+      throw portalInviteNotFoundError("Portal invite not found");
     }
 
     const summary = buildTenantInviteLeaseSummary(
@@ -493,12 +469,12 @@ export const tenantPortalInviteService = {
   }): Promise<ILeaseTenantMembership> {
     const context = await loadLeaseContext(input.leaseId, input.propertyId);
     if (!context) {
-      throw new PortalInviteNotFoundError("Long stay not found");
+      throw portalInviteNotFoundError("Long stay not found");
     }
 
     const membership = await leaseTenantMembershipsDb.findById(input.membershipId);
     if (!membership || membership.leaseId !== input.leaseId) {
-      throw new PortalInviteLeaseMismatchError();
+      throw portalInviteLeaseMismatchError();
     }
 
     if (
@@ -506,7 +482,7 @@ export const tenantPortalInviteService = {
       membership.status !== TenantMembershipStatus.PENDING_INVITE &&
       membership.status !== TenantMembershipStatus.PENDING_ACCEPTANCE
     ) {
-      throw new PortalInviteInvalidStateError("This portal invite cannot be revoked");
+      throw portalInviteInvalidStateError("This portal invite cannot be revoked");
     }
 
     const updated = await leaseTenantMembershipsDb.transitionStatus(
@@ -514,12 +490,10 @@ export const tenantPortalInviteService = {
       TenantMembershipStatus.REVOKED
     );
     if (!updated) {
-      throw new PortalInviteNotFoundError("Portal invite not found");
+      throw portalInviteNotFoundError("Portal invite not found");
     }
 
     logTenantPortalRevoked(updated);
     return updated;
   },
 };
-
-export { DuplicatePortalInviteError };

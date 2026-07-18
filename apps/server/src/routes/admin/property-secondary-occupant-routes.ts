@@ -1,11 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import {
-  DuplicatePortalInviteError,
   MaxSecondaryOccupantsError,
   SecondaryOccupantNotFoundError,
 } from "@/db/lease-tenant-memberships";
 import { LongStayNotActiveError, propertyLongStaysDb } from "@/db/property-long-stays";
+import { isDuplicatePortalInviteError } from "@/errors/portal-invite-errors";
 import {
   HttpStatus,
   ICreateSecondaryOccupantBody,
@@ -197,8 +197,12 @@ export async function propertySecondaryOccupantRoutes(server: FastifyInstance): 
         if (error instanceof MaxSecondaryOccupantsError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }
-        if (error instanceof DuplicatePortalInviteError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
+        if (isDuplicatePortalInviteError(error)) {
+          return reply.status(HttpStatus.CONFLICT).send({
+            code: error.code,
+            error: error.message,
+            ...(error.body ?? {}),
+          });
         }
         if (error instanceof LongStayNotActiveError) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });

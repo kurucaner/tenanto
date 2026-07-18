@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 
+import { duplicatePortalInviteError } from "@/errors/portal-invite-errors";
 import {
   canTransitionTenantMembershipStatus,
   type ILeaseTenantMembership,
@@ -30,13 +31,6 @@ export interface CreateLeaseTenantMembershipInput {
   role: TTenantMembershipRole;
   status: TTenantMembershipStatus;
   tenantUserId?: string | null;
-}
-
-export class DuplicatePortalInviteError extends Error {
-  constructor(public readonly membership: ILeaseTenantMembership) {
-    super("A pending portal invite already exists for this lease occupant");
-    this.name = "DuplicatePortalInviteError";
-  }
 }
 
 export class InvalidTenantMembershipTransitionError extends Error {
@@ -134,7 +128,7 @@ export const leaseTenantMembershipsDb = {
       db
     );
     if (existing) {
-      throw new DuplicatePortalInviteError(existing);
+      throw duplicatePortalInviteError(existing);
     }
 
     const expiresAt = new Date();
@@ -182,7 +176,7 @@ export const leaseTenantMembershipsDb = {
         db
       );
       if (existing) {
-        throw new DuplicatePortalInviteError(existing);
+        throw duplicatePortalInviteError(existing);
       }
     }
 

@@ -255,7 +255,7 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
 
 **Tasks**
 
-- [ ] Add [`apps/server/src/errors/portal-invite-errors.ts`](apps/server/src/errors/portal-invite-errors.ts) — factory functions or constants:
+- [x] Add [`apps/server/src/errors/portal-invite-errors.ts`](apps/server/src/errors/portal-invite-errors.ts) — factory functions or constants:
 
   | Legacy class | Code | HTTP |
   | --- | --- | --- |
@@ -265,12 +265,12 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
   | `PortalInviteTargetError` | `PORTAL_INVITE_TARGET` | 400 |
   | `DuplicatePortalInviteError` | `PORTAL_INVITE_DUPLICATE` | 409 |
 
-- [ ] Migrate [`tenant-portal-invite-service.ts`](apps/server/src/services/tenant-portal-invite-service.ts) throws
-- [ ] Migrate [`lease-tenant-memberships.ts`](apps/server/src/db/lease-tenant-memberships.ts) `DuplicatePortalInviteError` throws (or re-export from portal-invite-errors)
-- [ ] Replace `handlePortalInviteError` in [`property-long-stay-portal-routes.ts`](apps/server/src/routes/admin/property-long-stay-portal-routes.ts) with `replyFromDomainError` + portal code registry
-- [ ] Update [`tenant-lease-routes.ts`](apps/server/src/routes/tenant/tenant-lease-routes.ts) portal-related catches
-- [ ] Update [`property-secondary-occupant-routes.ts`](apps/server/src/routes/admin/property-secondary-occupant-routes.ts) for `DuplicatePortalInviteError`
-- [ ] Delete legacy classes once grep clean; update service tests
+- [x] Migrate [`tenant-portal-invite-service.ts`](apps/server/src/services/tenant-portal-invite-service.ts) throws
+- [x] Migrate [`lease-tenant-memberships.ts`](apps/server/src/db/lease-tenant-memberships.ts) `DuplicatePortalInviteError` throws (or re-export from portal-invite-errors)
+- [x] Replace `handlePortalInviteError` in [`property-long-stay-portal-routes.ts`](apps/server/src/routes/admin/property-long-stay-portal-routes.ts) with `replyFromDomainError` + portal code registry
+- [x] Update [`tenant-lease-routes.ts`](apps/server/src/routes/tenant/tenant-lease-routes.ts) portal-related catches
+- [x] Update [`property-secondary-occupant-routes.ts`](apps/server/src/routes/admin/property-secondary-occupant-routes.ts) for `DuplicatePortalInviteError`
+- [x] Delete legacy classes once grep clean; update service tests
 
 **Exit criteria:** Portal invite/resend/revoke flows return same statuses as before; no `PortalInvite*Error` classes remain; route files have no portal-specific `instanceof` chain.
 
