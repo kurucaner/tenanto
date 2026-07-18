@@ -2,7 +2,7 @@ export const PERSON_NAME_MAX_LENGTH = 255;
 
 const PERSON_NAME_CHAR_REGEX = /^[\p{L}\p{M} .'-]+$/u;
 const DOUBLED_PUNCTUATION_REGEX = /(--|''|\.\.)/;
-const EDGE_PUNCTUATION_REGEX = /^[-'.]|[-'.]$/;
+const EDGE_PUNCTUATION_REGEX = /(^[-'.])|([-'.]$)/;
 
 export function normalizePersonName(value: string): string {
   return value.trim().replace(/\s+/g, " ").normalize("NFC");
