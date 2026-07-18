@@ -8,7 +8,7 @@ import {
 } from "@/components/income/create-income-line-dialog";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
-import { LeaseDetailHeader } from "@/components/leases/lease-detail-header";
+import { LeaseDetailActions, LeaseDetailHeader } from "@/components/leases/lease-detail-header";
 import { LeaseOverviewSection } from "@/components/leases/lease-overview-section";
 import { LeasePaymentsSection } from "@/components/leases/lease-payments-section";
 import { LeaseTenantsSection } from "@/components/leases/lease-tenants-section";
@@ -146,21 +146,22 @@ export const PropertyLeaseDetailPage = memo(() => {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <Link
-          className="text-muted-foreground w-fit text-sm hover:underline"
-          to={`/properties/${propertyId}/leases`}
-        >
-          ← Back to leases
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            className="text-muted-foreground w-fit text-sm hover:underline"
+            to={`/properties/${propertyId}/leases`}
+          >
+            ← Back to leases
+          </Link>
+          <LeaseDetailActions
+            canManage={canManage}
+            lease={lease}
+            onEndLease={() => setEndLeaseOpen(true)}
+            onExtendLease={() => setExtendLeaseOpen(true)}
+          />
+        </div>
 
-        <LeaseDetailHeader
-          canManage={canManage}
-          currentRent={currentRent}
-          lease={lease}
-          onEndLease={() => setEndLeaseOpen(true)}
-          onExtendLease={() => setExtendLeaseOpen(true)}
-          unitLabel={unitLabel}
-        />
+        <LeaseDetailHeader currentRent={currentRent} lease={lease} unitLabel={unitLabel} />
 
         <Tabs onValueChange={handleTabChange} value={activeTab}>
           <TabsList>
