@@ -234,9 +234,9 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** State create/consume works in isolation (no HTTP routes).
 
-- [ ] Redis (or PG) store: `createOAuthState(propertyId, userId)`, `consumeOAuthState(nonce)`
-- [ ] HMAC/signed `state` param helper
-- [ ] Unit tests: TTL, single-use, wrong signature, wrong user
+- [x] Redis (or PG) store: `createOAuthState(propertyId, userId)`, `consumeOAuthState(nonce)`
+- [x] HMAC/signed `state` param helper
+- [x] Unit tests: TTL, single-use, wrong signature, wrong user
 
 **Exit criteria:** Pure lib tests green; nothing callable from HTTP yet.
 
