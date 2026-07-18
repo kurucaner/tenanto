@@ -16,6 +16,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -107,7 +108,7 @@ export const EditIncomeLineDialog = memo(
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+          <DialogFormFields>
             <IncomeLineTypeField
               fieldIdPrefix={FIELD_ID_PREFIX}
               onChange={setIncomeLineTypeId}
@@ -148,7 +149,7 @@ export const EditIncomeLineDialog = memo(
               onChange={setDescription}
               value={description}
             />
-          </div>
+          </DialogFormFields>
 
           <DialogFooter>
             <Button

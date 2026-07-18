@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -115,7 +116,7 @@ export const EditReservationDialog = memo(
             <DialogDescription>Update stay details and amounts.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+          <DialogFormFields>
             <FormSelectField
               id="edit-reservation-unit"
               label="Unit"
@@ -221,7 +222,7 @@ export const EditReservationDialog = memo(
               Current totals: Gross {formatMoney(reservation.grossIncome)} · Net{" "}
               {formatMoney(reservation.netIncome)} (recalculated on save)
             </p>
-          </div>
+          </DialogFormFields>
 
           <DialogFooter>
             <Button

@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -152,7 +153,7 @@ export const EndLeaseDialog = memo(
           </DialogHeader>
 
           <form onSubmit={onSubmit}>
-            <div className="flex flex-col gap-4 px-6 py-5">
+            <DialogFormFields>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="end-lease-date">Move-out Date</Label>
                 {isSingleMoveOutDate ? (
@@ -180,7 +181,7 @@ export const EndLeaseDialog = memo(
                   <p className="text-xs text-destructive">{errors.actualEndDate.message}</p>
                 ) : null}
               </div>
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button

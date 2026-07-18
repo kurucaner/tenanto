@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -81,32 +82,34 @@ export const PropertyExpenseCategoryDialog = memo(function PropertyExpenseCatego
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit expense category" : "Add expense category"}</DialogTitle>
           <DialogDescription>
-            Categories available when adding expenses. Annual categories are spread across months
-            in reports.
+            Categories available when adding expenses. Annual categories are spread across months in
+            reports.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="expense-category-name">Name</Label>
-            <Input id="expense-category-name" {...form.register("name")} disabled={isPending} />
-            {form.formState.errors.name ? (
-              <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
-            ) : null}
-          </div>
-          <Controller
-            control={form.control}
-            name="isAnnualAmount"
-            render={({ field }) => (
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={field.value}
-                  disabled={isPending}
-                  onCheckedChange={(checked) => field.onChange(checked === true)}
-                />
-                Annual amount (spread across months in reports)
-              </label>
-            )}
-          />
+        <form onSubmit={handleSubmit}>
+          <DialogFormFields>
+            <div className="space-y-2">
+              <Label htmlFor="expense-category-name">Name</Label>
+              <Input id="expense-category-name" {...form.register("name")} disabled={isPending} />
+              {form.formState.errors.name ? (
+                <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
+              ) : null}
+            </div>
+            <Controller
+              control={form.control}
+              name="isAnnualAmount"
+              render={({ field }) => (
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={field.value}
+                    disabled={isPending}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                  />
+                  Annual amount (spread across months in reports)
+                </label>
+              )}
+            />
+          </DialogFormFields>
           <DialogFooter>
             <Button
               disabled={isPending}

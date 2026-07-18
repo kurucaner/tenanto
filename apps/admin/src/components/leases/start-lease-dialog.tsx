@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -192,7 +193,7 @@ const StartLeaseDialogForm = memo(
     onSubmit,
   }: StartLeaseDialogFormProps) => (
     <form onSubmit={onSubmit}>
-      <div className="flex flex-col gap-5 px-6 py-5">
+      <DialogFormFields>
         {!lockedUnit ? (
           <StartLeaseUnitSelectField
             availableUnits={availableUnits}
@@ -268,7 +269,7 @@ const StartLeaseDialogForm = memo(
         {firstMonthRentPreview ? (
           <p className="text-sm font-medium">{firstMonthRentPreview}</p>
         ) : null}
-      </div>
+      </DialogFormFields>
 
       <DialogFooter>
         <Button disabled={mutationPending} onClick={onCancel} type="button" variant="outline">

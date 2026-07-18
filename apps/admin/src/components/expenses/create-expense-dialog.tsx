@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -108,7 +109,7 @@ export const CreateExpenseDialog = memo(
               <DialogDescription>Record an operational cost for this property.</DialogDescription>
             </DialogHeader>
 
-            <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+            <DialogFormFields>
               <ExpenseFormFields
                 amount={amount}
                 amountError={errors.amount?.message}
@@ -128,7 +129,7 @@ export const CreateExpenseDialog = memo(
                 onTaxFreeChange={(value) => form.setValue("taxFree", value)}
                 taxFree={taxFree}
               />
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button

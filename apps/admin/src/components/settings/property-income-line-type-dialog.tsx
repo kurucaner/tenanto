@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -79,14 +80,16 @@ export const PropertyIncomeLineTypeDialog = memo(function PropertyIncomeLineType
             Types available when adding other income and filtering the income table.
           </DialogDescription>
         </DialogHeader>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-2">
-            <Label htmlFor="income-type-name">Name</Label>
-            <Input id="income-type-name" {...form.register("name")} disabled={isPending} />
-            {form.formState.errors.name ? (
-              <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
-            ) : null}
-          </div>
+        <form onSubmit={handleSubmit}>
+          <DialogFormFields>
+            <div className="space-y-2">
+              <Label htmlFor="income-type-name">Name</Label>
+              <Input id="income-type-name" {...form.register("name")} disabled={isPending} />
+              {form.formState.errors.name ? (
+                <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
+              ) : null}
+            </div>
+          </DialogFormFields>
           <DialogFooter>
             <Button
               disabled={isPending}

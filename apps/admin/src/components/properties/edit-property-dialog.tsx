@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -77,7 +78,7 @@ export const EditPropertyDialog = memo(
             <DialogDescription>Update the details for this property.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-5 px-6 py-5">
+            <DialogFormFields>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-property-name">Name</Label>
                 <Input
@@ -114,7 +115,7 @@ export const EditPropertyDialog = memo(
                 optional
                 value={phoneNumber}
               />
-            </div>
+            </DialogFormFields>
             <DialogFooter>
               <Button
                 disabled={mutation.isPending}

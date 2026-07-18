@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -63,7 +64,7 @@ export const EditExpenseDialog = memo(
             <DialogDescription>Update expense details and amount.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+          <DialogFormFields>
             <ExpenseFormFields
               amount={amount}
               categoryId={categoryId}
@@ -82,7 +83,7 @@ export const EditExpenseDialog = memo(
             <p className="text-muted-foreground text-xs">
               Current amount: {formatMoney(expense.amount)}
             </p>
-          </div>
+          </DialogFormFields>
 
           <DialogFooter>
             <Button

@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -36,7 +37,7 @@ import { ReservationStatus, UnitRentalType } from "@/packages/shared";
 
 const createReservationSchema = z
   .object({
-    channelCommissionId: z.string().uuid("Channel is required"),
+    channelCommissionId: z.uuid("Channel is required"),
     checkIn: z.string().min(1, "Check-in is required"),
     checkOut: z.string().min(1, "Check-out is required"),
     cleaningFee: optionalNonNegativeMoneyField("Cleaning fee must be a non-negative number"),
@@ -177,7 +178,7 @@ export const CreateReservationDialog = memo(
           </DialogHeader>
 
           <form onSubmit={onSubmit}>
-            <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+            <DialogFormFields>
               <FormSelectField
                 error={errors.unitId?.message}
                 id="reservation-unit"
@@ -313,7 +314,7 @@ export const CreateReservationDialog = memo(
                   ) : null}
                 </div>
               </div>
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button

@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -101,28 +102,25 @@ export const RefundEntryDialog = memo(
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>
 
-          <RadioGroupFieldset
-            legend="Refund type"
-            onValueChange={handleModeChange}
-            value={mode}
-            className="p-6"
-          >
-            <RadioOption label="Full refund" value="full" />
-            <RadioOption label="Partial refund" value="partial">
-              <div className="ml-6 space-y-1.5">
-                <Label htmlFor={amountInputId}>Refund amount</Label>
-                <Input
-                  autoFocus
-                  id={amountInputId}
-                  inputMode="decimal"
-                  onChange={(event) => handlePartialAmountChange(event.target.value)}
-                  placeholder="0.00"
-                  value={partialAmount}
-                />
-                <p className="text-muted-foreground text-xs">Max refund: {formatMoney(cap)}</p>
-              </div>
-            </RadioOption>
-          </RadioGroupFieldset>
+          <DialogFormFields>
+            <RadioGroupFieldset legend="Refund type" onValueChange={handleModeChange} value={mode}>
+              <RadioOption label="Full refund" value="full" />
+              <RadioOption label="Partial refund" value="partial">
+                <div className="ml-6 space-y-1.5">
+                  <Label htmlFor={amountInputId}>Refund amount</Label>
+                  <Input
+                    autoFocus
+                    id={amountInputId}
+                    inputMode="decimal"
+                    onChange={(event) => handlePartialAmountChange(event.target.value)}
+                    placeholder="0.00"
+                    value={partialAmount}
+                  />
+                  <p className="text-muted-foreground text-xs">Max refund: {formatMoney(cap)}</p>
+                </div>
+              </RadioOption>
+            </RadioGroupFieldset>
+          </DialogFormFields>
 
           <DialogFooter>
             <Button

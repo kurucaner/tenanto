@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -96,7 +97,7 @@ export const CreateUnitDialog = memo(
           </DialogHeader>
 
           <form onSubmit={onSubmit}>
-            <div className="flex flex-col gap-5 px-6 py-5">
+            <DialogFormFields>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="unit-number">Unit Number</Label>
                 <Input
@@ -136,7 +137,7 @@ export const CreateUnitDialog = memo(
                   />
                 )}
               />
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button

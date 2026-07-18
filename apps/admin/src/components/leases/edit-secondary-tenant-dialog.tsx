@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -122,7 +123,7 @@ export const EditSecondaryTenantDialog = memo(
           </DialogHeader>
 
           <form onSubmit={onSubmit}>
-            <div className="flex flex-col gap-4 px-6 py-5">
+            <DialogFormFields>
               <TenantContactFields
                 control={form.control}
                 emailDisabled={isPortalLinked}
@@ -130,7 +131,7 @@ export const EditSecondaryTenantDialog = memo(
                 idPrefix="edit-secondary-tenant"
                 register={form.register}
               />
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button
