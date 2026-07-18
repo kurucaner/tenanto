@@ -2,6 +2,7 @@ import { exportJobsDb } from "@/db/export-jobs";
 import { propertyExpensesDb } from "@/db/property-expenses";
 import { propertyIncomeEntriesDb } from "@/db/property-income-entries";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
+import { exportJobPermanentError, isExportPermanentFailure } from "@/errors/export-errors";
 import {
   ExportFormat,
   ExportResourceType,
@@ -15,7 +16,6 @@ import { putObjectStream } from "@/s3/s3-commands";
 import {
   buildExpensesExportFileName,
   createExpensesCsvReadable,
-  ExportRowLimitExceededError,
 } from "@/services/property-export/expenses-csv-export";
 import { uploadExpensesXlsxExport } from "@/services/property-export/expenses-xlsx-export";
 import {
@@ -41,13 +41,6 @@ import { WinstonLogger } from "../winston";
  * - Processing timeout (stale `updated_at`) → `failed` via maintenance sweep
  * - Completed past `expires_at` → `expired` via expiry cron (download blocked)
  */
-
-export class ExportJobPermanentError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ExportJobPermanentError";
-  }
-}
 
 function buildExportS3Key(propertyId: string, jobId: string, format: IExportJob["format"]): string {
   return `exports/${propertyId}/${jobId}.${format}`;
@@ -131,7 +124,7 @@ async function completeExportJob(job: IExportJob, startedAtMs: number): Promise<
   });
 
   if (completed == null) {
-    throw new ExportJobPermanentError("Export job is no longer processing");
+    throw exportJobPermanentError("Export job is no longer processing");
   }
 
   WinstonLogger.info("property_export.completed", {
@@ -172,7 +165,7 @@ export async function processPropertyExportJob(jobId: string): Promise<void> {
   try {
     await completeExportJob(job, startedAtMs);
   } catch (error) {
-    if (error instanceof ExportRowLimitExceededError || error instanceof ExportJobPermanentError) {
+    if (isExportPermanentFailure(error)) {
       await exportJobsDb.markFailed(jobId, error.message);
       await maybePublishExportJobUpdated(jobId);
       WinstonLogger.warn("property_export.failed", {

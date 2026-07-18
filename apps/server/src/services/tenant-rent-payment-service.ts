@@ -5,6 +5,11 @@ import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
 import {
+  rentPaymentConnectNotReadyError,
+  rentPaymentNotFoundError,
+  rentPaymentValidationError,
+} from "@/errors/rent-payment-errors";
+import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
 } from "@/lib/stripe-connect-config";
@@ -31,27 +36,6 @@ import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 import { WinstonLogger } from "@/services/winston";
 import { getStripeClient } from "@/stripe/stripe-client";
-
-export class RentPaymentConnectNotReadyError extends Error {
-  constructor(message = "Property Stripe Connect account is not ready to accept payments") {
-    super(message);
-    this.name = "RentPaymentConnectNotReadyError";
-  }
-}
-
-export class RentPaymentValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RentPaymentValidationError";
-  }
-}
-
-export class RentPaymentNotFoundError extends Error {
-  constructor(message = "Payment not found") {
-    super(message);
-    this.name = "RentPaymentNotFoundError";
-  }
-}
 
 function tenantAppBaseUrl(): string {
   const base = process.env.TENANT_APP_URL?.trim().replace(/\/$/, "");
@@ -168,18 +152,18 @@ export const tenantRentPaymentService = {
 
     const lease = await propertyLongStaysDb.findById(leaseId);
     if (!lease) {
-      throw new RentPaymentNotFoundError("Lease not found");
+      throw rentPaymentNotFoundError("Lease not found");
     }
 
     const connect = await propertyStripeAccountsDb.findByPropertyId(lease.propertyId);
     if (!connect?.chargesEnabled) {
-      throw new RentPaymentConnectNotReadyError();
+      throw rentPaymentConnectNotReadyError();
     }
 
     const balance = await loadTenantBalanceFromSchedule(leaseId);
 
     if (balance.amountDueCents <= 0 || balance.periodMonths.length === 0) {
-      throw new RentPaymentValidationError("Nothing is due right now");
+      throw rentPaymentValidationError("Nothing is due right now");
     }
 
     const validated = validateCreateRentCheckoutBody({
@@ -189,7 +173,7 @@ export const tenantRentPaymentService = {
       periods: balance.periods,
     });
     if (!validated.ok) {
-      throw new RentPaymentValidationError(validated.error);
+      throw rentPaymentValidationError(validated.error);
     }
 
     const idempotencyKey = buildRentCheckoutIdempotencyKey({
@@ -230,7 +214,7 @@ export const tenantRentPaymentService = {
         }
       }
       if (existing.status === TenantRentPaymentStatus.SUCCEEDED) {
-        throw new RentPaymentValidationError("This rent payment was already completed");
+        throw rentPaymentValidationError("This rent payment was already completed");
       }
       payment = existing;
     }
@@ -307,7 +291,7 @@ export const tenantRentPaymentService = {
     await assertLeaseTenantAccess(leaseId, tenantUserId);
     const lease = await propertyLongStaysDb.findById(leaseId);
     if (!lease) {
-      throw new RentPaymentNotFoundError("Lease not found");
+      throw rentPaymentNotFoundError("Lease not found");
     }
 
     const { amountDueCents, paymentsEnabled, periods } = await computeLeaseBalanceFields(
@@ -329,7 +313,7 @@ export const tenantRentPaymentService = {
   ): Promise<ITenantRentPaymentStatusResponse> {
     const payment = await tenantRentPaymentsDb.findById(paymentId);
     if (!payment || payment.tenantUserId !== tenantUserId) {
-      throw new RentPaymentNotFoundError();
+      throw rentPaymentNotFoundError();
     }
     await assertLeaseTenantAccess(payment.leaseId, tenantUserId);
     return toStatusResponse(payment);
@@ -422,7 +406,7 @@ export const tenantRentPaymentService = {
       TenantRentPaymentStatus.REFUNDED
     );
     if (!updated) {
-      throw new RentPaymentNotFoundError();
+      throw rentPaymentNotFoundError();
     }
 
     if (isFullRefund) {
@@ -448,7 +432,7 @@ export const tenantRentPaymentService = {
         { stripePaymentIntentId: stripePaymentIntentId ?? undefined }
       );
       if (!next) {
-        throw new RentPaymentNotFoundError();
+        throw rentPaymentNotFoundError();
       }
       updated = next;
     } else if (stripePaymentIntentId && !payment.stripePaymentIntentId) {

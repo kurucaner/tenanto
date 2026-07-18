@@ -1,14 +1,8 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 
-import { StripeConnectNotConfiguredError } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
-import {
-  RentPaymentConnectNotReadyError,
-  RentPaymentNotFoundError,
-  RentPaymentValidationError,
-  tenantRentPaymentService,
-} from "@/services/tenant-rent-payment-service";
+import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,18 +10,6 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 function mapRentPaymentError(error: unknown, reply: FastifyReply): FastifyReply | null {
   if (replyFromDomainError(reply, error)) {
     return reply;
-  }
-  if (error instanceof RentPaymentValidationError) {
-    return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-  }
-  if (error instanceof RentPaymentConnectNotReadyError) {
-    return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-  }
-  if (error instanceof RentPaymentNotFoundError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-  }
-  if (error instanceof StripeConnectNotConfiguredError) {
-    return reply.status(HttpStatus.SERVICE_UNAVAILABLE).send({ error: error.message });
   }
   return null;
 }

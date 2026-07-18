@@ -1,6 +1,7 @@
 import { type Job, Worker } from "bullmq";
 
 import { exportJobsDb } from "@/db/export-jobs";
+import { isExportPermanentFailure } from "@/errors/export-errors";
 import {
   PROPERTY_EXPORT_JOB_ATTEMPTS,
   PROPERTY_EXPORT_QUEUE_NAME,
@@ -10,11 +11,7 @@ import {
   type IPropertyExportJobData,
 } from "@/queues/property-export-queue";
 import { getRedisConnectionOptions } from "@/queues/redis-connection";
-import { ExportRowLimitExceededError } from "@/services/property-export/expenses-csv-export";
-import {
-  ExportJobPermanentError,
-  processPropertyExportJob,
-} from "@/services/property-export/process-export-job";
+import { processPropertyExportJob } from "@/services/property-export/process-export-job";
 import { maybePublishExportJobUpdated } from "@/services/property-export/property-export-stream";
 
 import { WinstonLogger } from "./winston";
@@ -44,10 +41,7 @@ export function startPropertyExportWorker(): Worker<IPropertyExportJobData> {
         return;
       }
 
-      if (
-        error instanceof ExportRowLimitExceededError ||
-        error instanceof ExportJobPermanentError
-      ) {
+      if (isExportPermanentFailure(error)) {
         return;
       }
 

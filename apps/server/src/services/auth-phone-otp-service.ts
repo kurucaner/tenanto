@@ -1,14 +1,13 @@
 import bcrypt from "bcrypt";
 
 import { authPhoneOtpsDb, type PhoneOtpPurpose } from "@/db/auth-phone-otps";
+import {
+  otpAlreadySendingError,
+  otpCooldownActiveError,
+} from "@/errors/auth-otp-errors";
 import { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
 import { APP_NAME } from "@/packages/shared";
-import {
-  buildOtpExpiresAt,
-  generateOtp,
-  OtpAlreadySendingError,
-  OtpCooldownActiveError,
-} from "@/services/auth-otp-service";
+import { buildOtpExpiresAt, generateOtp } from "@/services/auth-otp-service";
 import { resolveSmsPhoneNumber, sendSms } from "@/sns/sns";
 
 const phoneOtpSendInProgress = new Set<string>();
@@ -30,7 +29,7 @@ export async function sendPhoneOtpWithCooldown(input: {
   const inProgressKey = buildPhoneOtpInProgressKey(input.purpose, e164);
 
   if (phoneOtpSendInProgress.has(inProgressKey)) {
-    throw new OtpAlreadySendingError(input.inProgressMessage);
+    throw otpAlreadySendingError(input.inProgressMessage);
   }
 
   phoneOtpSendInProgress.add(inProgressKey);
@@ -38,7 +37,7 @@ export async function sendPhoneOtpWithCooldown(input: {
     const lastSent = await authPhoneOtpsDb.findMostRecentCreatedAt(e164, input.purpose);
     const lastSentTime = lastSent ? lastSent.getTime() : 0;
     if (lastSentTime > 0 && Date.now() - lastSentTime < OTP_COOLDOWN_SECONDS * 1000) {
-      throw new OtpCooldownActiveError();
+      throw otpCooldownActiveError();
     }
 
     const otp = generateOtp();

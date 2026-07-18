@@ -2,6 +2,7 @@ import Stripe from "stripe";
 
 import { stripeWebhookEventsDb } from "@/db/stripe-webhook-events";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { stripeWebhookSignatureError } from "@/errors/stripe-errors";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
@@ -326,21 +327,14 @@ export function verifyAndParseStripeWebhook(
   signatureHeader: string | string[] | undefined
 ): TVerifiedStripeWebhook {
   if (typeof signatureHeader !== "string" || !signatureHeader) {
-    throw new StripeWebhookSignatureError("Missing Stripe-Signature header");
+    throw stripeWebhookSignatureError("Invalid signature");
   }
   try {
     return verifyStripeWebhookPayload(rawBody, signatureHeader);
   } catch (error) {
     if (error instanceof Stripe.errors.StripeSignatureVerificationError) {
-      throw new StripeWebhookSignatureError(error.message);
+      throw stripeWebhookSignatureError("Invalid signature");
     }
     throw error;
-  }
-}
-
-export class StripeWebhookSignatureError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "StripeWebhookSignatureError";
   }
 }

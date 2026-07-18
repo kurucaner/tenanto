@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
+import { exportRowLimitExceededError } from "@/errors/export-errors";
 import { csvRow } from "@/lib/csv-utils";
 import { PROPERTY_EXPORT_BATCH_SIZE } from "@/lib/property-export-config";
 import {
@@ -11,7 +12,6 @@ import {
   type TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 
-import { ExportRowLimitExceededError } from "./expenses-csv-export";
 import { type TExportSpreadsheetRow, uploadXlsxFromRowIterator } from "./property-export-xlsx";
 
 const LEASE_EXPORT_HEADERS = [
@@ -83,7 +83,7 @@ export async function* iterateLeasesExportRows(
     for (const lease of page.longStays) {
       rowCount += 1;
       if (rowCount > maxRows) {
-        throw new ExportRowLimitExceededError(rowCount, maxRows);
+        throw exportRowLimitExceededError(rowCount, maxRows);
       }
       yield mapLeaseToExportRow(lease, unitLabelById);
     }

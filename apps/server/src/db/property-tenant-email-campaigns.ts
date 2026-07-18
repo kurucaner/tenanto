@@ -1,3 +1,4 @@
+import { tenantEmailCampaignIdempotencyConflictError } from "@/errors/tenant-email-campaign-errors";
 import { didTenantEmailCampaignTransitionToTerminal } from "@/lib/tenant-email-campaign-limits";
 import type {
   ITenantEmailCampaign,
@@ -128,13 +129,6 @@ function mapRecipientRow(row: Record<string, unknown>): ITenantEmailCampaignReci
   };
 }
 
-export class TenantEmailCampaignIdempotencyConflictError extends Error {
-  constructor(public readonly existingCampaignId: string) {
-    super("Tenant email campaign idempotency conflict");
-    this.name = "TenantEmailCampaignIdempotencyConflictError";
-  }
-}
-
 export const propertyTenantEmailCampaignsDb = {
   async createCampaignWithRecipients(
     input: ICreateTenantEmailCampaignInput
@@ -220,7 +214,7 @@ export const propertyTenantEmailCampaignsDb = {
           input.idempotencyKey
         );
         if (existing) {
-          throw new TenantEmailCampaignIdempotencyConflictError(existing.id);
+          throw tenantEmailCampaignIdempotencyConflictError(existing.id);
         }
       }
 

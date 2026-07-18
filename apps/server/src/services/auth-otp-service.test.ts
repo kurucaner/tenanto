@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { AuthOtpErrorCode } from "@/errors/auth-otp-errors";
+
 const mockFindMostRecentCreatedAt = mock(() => Promise.resolve(null as Date | null));
 const mockDeleteByEmailAndPurpose = mock(() => Promise.resolve());
 const mockCreate = mock(() => Promise.resolve());
@@ -26,8 +28,6 @@ mock.module("@/ses/ses", () => ({
 const {
   buildOtpInProgressKey,
   generateOtp,
-  OtpAlreadySendingError,
-  OtpCooldownActiveError,
   sendOtpWithCooldown,
   verifyOtpCode,
 } = await import("./auth-otp-service");
@@ -69,7 +69,7 @@ describe("sendOtpWithCooldown", () => {
 
     await expect(
       sendOtpWithCooldown({ email: "user@example.com", purpose: "register" })
-    ).rejects.toBeInstanceOf(OtpCooldownActiveError);
+    ).rejects.toMatchObject({ code: AuthOtpErrorCode.COOLDOWN_ACTIVE });
   });
 
   test("allows parallel purposes for the same email", async () => {
@@ -90,7 +90,7 @@ describe("sendOtpWithCooldown", () => {
     const first = sendOtpWithCooldown({ email: "user@example.com", purpose: "register" });
     await expect(
       sendOtpWithCooldown({ email: "user@example.com", purpose: "register" })
-    ).rejects.toBeInstanceOf(OtpAlreadySendingError);
+    ).rejects.toMatchObject({ code: AuthOtpErrorCode.ALREADY_SENDING });
     await first;
   });
 });

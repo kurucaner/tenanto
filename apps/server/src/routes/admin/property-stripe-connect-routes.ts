@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
 
-import { StripeConnectNotConfiguredError } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
 import {
   assertPropertyMemberAccess,
   assertPropertyStructureAccess,
 } from "@/routes/admin/property-route-access";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { propertyStripeConnectService } from "@/services/property-stripe-connect-service";
 import { WinstonLogger } from "@/services/winston";
 
@@ -64,8 +64,8 @@ export const propertyStripeConnectRoutes = async (server: FastifyInstance): Prom
         });
         return reply.status(HttpStatus.OK).send(result);
       } catch (error) {
-        if (error instanceof StripeConnectNotConfiguredError) {
-          return reply.status(HttpStatus.SERVICE_UNAVAILABLE).send({ error: error.message });
+        if (replyFromDomainError(reply, error)) {
+          return reply;
         }
         WinstonLogger.error({
           err: error,

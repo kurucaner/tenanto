@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 
 import { propertyExpensesDb } from "@/db/property-expenses";
+import { exportRowLimitExceededError } from "@/errors/export-errors";
 import { csvRow } from "@/lib/csv-utils";
 import { PROPERTY_EXPORT_BATCH_SIZE } from "@/lib/property-export-config";
 import {
@@ -8,18 +9,6 @@ import {
   PROPERTY_EXPORT_MAX_ROWS,
   type TPropertyExpensesListFilters,
 } from "@/packages/shared";
-
-export class ExportRowLimitExceededError extends Error {
-  readonly matchedCount: number;
-
-  constructor(matchedCount: number, maxRows: number) {
-    super(
-      `Export exceeded the maximum of ${maxRows.toLocaleString()} rows (found ${matchedCount.toLocaleString()}). Narrow your date range or filters and try again.`
-    );
-    this.name = "ExportRowLimitExceededError";
-    this.matchedCount = matchedCount;
-  }
-}
 
 const EXPENSE_CSV_HEADERS = [
   "Date",
@@ -85,7 +74,7 @@ export async function* iterateExpenseExportRows(
     for (const expense of page.expenses) {
       rowCount += 1;
       if (rowCount > maxRows) {
-        throw new ExportRowLimitExceededError(rowCount, maxRows);
+        throw exportRowLimitExceededError(rowCount, maxRows);
       }
       yield mapExpenseToCsvValues(expense);
     }

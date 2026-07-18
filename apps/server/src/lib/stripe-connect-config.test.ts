@@ -1,10 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  isStripeConnectEnabled,
-  requireStripeConnectOperational,
-  StripeConnectNotConfiguredError,
-} from "./stripe-connect-config";
+import { StripeErrorCode } from "@/errors/stripe-errors";
+
+import { isStripeConnectEnabled, requireStripeConnectOperational } from "./stripe-connect-config";
 
 describe("stripe-connect-config", () => {
   const originalFlag = process.env.STRIPE_CONNECT_ENABLED;
@@ -48,14 +46,18 @@ describe("stripe-connect-config", () => {
   test("requireStripeConnectOperational throws when flag off", () => {
     process.env.STRIPE_CONNECT_ENABLED = "false";
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
-    expect(() => requireStripeConnectOperational()).toThrow(StripeConnectNotConfiguredError);
+    expect(() => requireStripeConnectOperational()).toThrow(
+      expect.objectContaining({ code: StripeErrorCode.CONNECT_NOT_CONFIGURED })
+    );
     restore();
   });
 
   test("requireStripeConnectOperational throws when secret missing", () => {
     process.env.STRIPE_CONNECT_ENABLED = "true";
     delete process.env.STRIPE_SECRET_KEY;
-    expect(() => requireStripeConnectOperational()).toThrow(StripeConnectNotConfiguredError);
+    expect(() => requireStripeConnectOperational()).toThrow(expect.objectContaining({
+      code: StripeErrorCode.CONNECT_NOT_CONFIGURED,
+    }));
     restore();
   });
 });

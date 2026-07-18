@@ -8,10 +8,9 @@ import { accountEventsDb } from "@/db/account-events";
 import { refreshTokenDb } from "@/db/refresh-tokens";
 import { userDb } from "@/db/users";
 import { HttpStatus, TPlatform } from "@/packages/shared";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   deleteOtpById,
-  OtpAlreadySendingError,
-  OtpCooldownActiveError,
   sendOtpWithCooldown,
   verifyOtpCode,
 } from "@/services/auth-otp-service";
@@ -175,11 +174,8 @@ export const authRoutes = async (server: FastifyInstance) => {
         message: "If an account exists, you will receive an email",
       });
     } catch (error) {
-      if (error instanceof OtpAlreadySendingError) {
-        return reply.status(HttpStatus.TOO_MANY_REQUESTS).send({ error: error.message });
-      }
-      if (error instanceof OtpCooldownActiveError) {
-        return reply.status(HttpStatus.TOO_MANY_REQUESTS).send({ error: error.message });
+      if (replyFromDomainError(reply, error)) {
+        return reply;
       }
       throw error;
     }
