@@ -565,12 +565,12 @@ export {
   MAX_SECONDARY_OCCUPANTS,
 } from "./secondary-occupant-types";
 export {
+  canonicalizeJsonbSecondaryTenants,
   type ISecondaryBackfillJsonbTenant,
   type ISecondaryBackfillLeasePlan,
   type ISecondaryBackfillPlannedAction,
   type ISecondaryBackfillVerificationGap,
   type ISecondaryBackfillVerificationResult,
-  canonicalizeJsonbSecondaryTenants,
   planSecondaryTenantBackfillForLease,
   summarizeSecondaryBackfillVerification,
   type TSecondaryBackfillActionKind,
@@ -612,6 +612,7 @@ export {
 } from "./tenant-email-campaign-types";
 export {
   isValidTenantEmail,
+  type ITenantEmailSecondaryContact,
   normalizeOptionalInviteEmail,
   normalizeTenantEmail,
   requireMembershipInviteEmail,

@@ -83,14 +83,21 @@ describe("requireMembershipInviteEmail", () => {
 });
 
 describe("resolveTenantEmailRecipients", () => {
-  test("includes primary and secondary tenants from active leases", () => {
-    const result = resolveTenantEmailRecipients([
-      makeLease({
-        id: "lease-1",
-        secondaryTenants: [{ email: "secondary@example.com", name: "Secondary", phone: null }],
-        tenantEmail: "primary@example.com",
-      }),
-    ]);
+  test("includes primary and secondary contacts from active leases", () => {
+    const result = resolveTenantEmailRecipients(
+      [
+        makeLease({
+          id: "lease-1",
+          tenantEmail: "primary@example.com",
+        }),
+      ],
+      new Map([
+        [
+          "lease-1",
+          [{ effectiveEmail: "secondary@example.com", effectiveName: "Secondary Tenant" }],
+        ],
+      ])
+    );
 
     expect(result.recipients).toEqual([
       {
@@ -102,11 +109,72 @@ describe("resolveTenantEmailRecipients", () => {
       {
         email: "secondary@example.com",
         leaseId: "lease-1",
-        tenantName: "Secondary",
+        tenantName: "Secondary Tenant",
         tenantRole: "secondary",
       },
     ]);
     expect(result.skipped).toEqual([]);
+  });
+
+  test("includes secondary from listed membership invite email", () => {
+    const result = resolveTenantEmailRecipients(
+      [makeLease({ id: "lease-1" })],
+      new Map([
+        ["lease-1", [{ effectiveEmail: "listed@example.com", effectiveName: "Listed Secondary" }]],
+      ])
+    );
+
+    expect(result.recipients).toEqual([
+      {
+        email: "primary@example.com",
+        leaseId: "lease-1",
+        tenantName: "Primary Tenant",
+        tenantRole: "primary",
+      },
+      {
+        email: "listed@example.com",
+        leaseId: "lease-1",
+        tenantName: "Listed Secondary",
+        tenantRole: "secondary",
+      },
+    ]);
+  });
+
+  test("includes secondary from linked active user email", () => {
+    const result = resolveTenantEmailRecipients(
+      [makeLease({ id: "lease-1" })],
+      new Map([
+        ["lease-1", [{ effectiveEmail: "portal@example.com", effectiveName: "Portal Secondary" }]],
+      ])
+    );
+
+    expect(result.recipients).toContainEqual({
+      email: "portal@example.com",
+      leaseId: "lease-1",
+      tenantName: "Portal Secondary",
+      tenantRole: "secondary",
+    });
+  });
+
+  test("returns primary-only audience when secondary contact map is empty", () => {
+    const result = resolveTenantEmailRecipients([makeLease({ id: "lease-1" })], new Map());
+
+    expect(result.recipients).toEqual([
+      {
+        email: "primary@example.com",
+        leaseId: "lease-1",
+        tenantName: "Primary Tenant",
+        tenantRole: "primary",
+      },
+    ]);
+    expect(result.skipped).toEqual([]);
+  });
+
+  test("returns primary-only audience when secondary contact map is omitted", () => {
+    const result = resolveTenantEmailRecipients([makeLease({ id: "lease-1" })]);
+
+    expect(result.recipients).toHaveLength(1);
+    expect(result.recipients[0]?.tenantRole).toBe("primary");
   });
 
   test("skips ended leases", () => {
@@ -140,6 +208,26 @@ describe("resolveTenantEmailRecipients", () => {
     ]);
   });
 
+  test("dedupes duplicate secondary email across leases", () => {
+    const result = resolveTenantEmailRecipients(
+      [makeLease({ id: "lease-1" }), makeLease({ guestName: "Other Primary", id: "lease-2" })],
+      new Map([
+        ["lease-1", [{ effectiveEmail: "shared@example.com", effectiveName: "Secondary One" }]],
+        ["lease-2", [{ effectiveEmail: "Shared@Example.com", effectiveName: "Secondary Two" }]],
+      ])
+    );
+
+    expect(
+      result.recipients.filter((recipient) => recipient.tenantRole === "secondary")
+    ).toHaveLength(1);
+    expect(result.skipped).toContainEqual({
+      leaseId: "lease-2",
+      reason: "Duplicate email address in campaign audience",
+      tenantName: "Secondary Two",
+      tenantRole: "secondary",
+    });
+  });
+
   test("resolves 500 unique recipients for load-test sizing", () => {
     const leases = Array.from({ length: 500 }, (_, index) =>
       makeLease({
@@ -157,13 +245,23 @@ describe("resolveTenantEmailRecipients", () => {
   });
 
   test("records skipped tenants with missing or invalid emails", () => {
-    const result = resolveTenantEmailRecipients([
-      makeLease({
-        id: "lease-1",
-        secondaryTenants: [{ email: "bad-email", name: "Bad Secondary", phone: null }],
-        tenantEmail: null,
-      }),
-    ]);
+    const result = resolveTenantEmailRecipients(
+      [
+        makeLease({
+          id: "lease-1",
+          tenantEmail: null,
+        }),
+      ],
+      new Map([
+        [
+          "lease-1",
+          [
+            { effectiveEmail: null, effectiveName: "Name Only Secondary" },
+            { effectiveEmail: "bad-email", effectiveName: "Bad Secondary" },
+          ],
+        ],
+      ])
+    );
 
     expect(result.recipients).toEqual([]);
     expect(result.skipped).toEqual([
@@ -172,6 +270,12 @@ describe("resolveTenantEmailRecipients", () => {
         reason: "Missing email address",
         tenantName: "Primary Tenant",
         tenantRole: "primary",
+      },
+      {
+        leaseId: "lease-1",
+        reason: "Missing email address",
+        tenantName: "Name Only Secondary",
+        tenantRole: "secondary",
       },
       {
         leaseId: "lease-1",

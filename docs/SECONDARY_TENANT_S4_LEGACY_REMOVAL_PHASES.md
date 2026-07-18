@@ -77,23 +77,23 @@ N/A — behavior fix, not a new surface.
 
 No schema changes.
 
-| Source | Secondary recipient email |
-| --- | --- |
-| Listed / pending membership | `invite_email` on row |
-| Active linked secondary | Verified `tenant_users.email` (via existing `resolveSecondaryTenantContact`) |
-| Name-only secondary (null email) | Skipped with reason `"Missing email address"` |
+| Source                           | Secondary recipient email                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| Listed / pending membership      | `invite_email` on row                                                        |
+| Active linked secondary          | Verified `tenant_users.email` (via existing `resolveSecondaryTenantContact`) |
+| Name-only secondary (null email) | Skipped with reason `"Missing email address"`                                |
 
 ---
 
 ## Shared contract (`packages/shared`)
 
-| Change | Purpose |
-| --- | --- |
+| Change                                                              | Purpose                                                                                                               |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `resolveTenantEmailRecipients(leases, secondaryContactsByLeaseId?)` | Second arg: `ReadonlyMap<string, readonly Pick<ILeaseSecondaryTenantContact, "effectiveEmail" \| "effectiveName">[]>` |
-| Remove `secondaryTenants` from `leases` pick type | Resolver no longer reads JSONB field |
-| `IResolveSecondaryTenantContactsForLeaseInput` | Remove `jsonbOrphans` |
-| `TSecondaryTenantContactSource` | Remove `"legacy_jsonb"` |
-| Delete `mapLegacyJsonbSecondaryTenantToContact` | No callers after admin fallback removal |
+| Remove `secondaryTenants` from `leases` pick type                   | Resolver no longer reads JSONB field                                                                                  |
+| `IResolveSecondaryTenantContactsForLeaseInput`                      | Remove `jsonbOrphans`                                                                                                 |
+| `TSecondaryTenantContactSource`                                     | Remove `"legacy_jsonb"`                                                                                               |
+| Delete `mapLegacyJsonbSecondaryTenantToContact`                     | No callers after admin fallback removal                                                                               |
 
 ---
 
@@ -101,10 +101,10 @@ No schema changes.
 
 No route or response shape changes.
 
-| Path | Notes |
-| --- | --- |
+| Path                                      | Notes                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------- |
 | `POST .../tenant-email-campaigns/preview` | Secondary recipients appear when memberships have deliverable email |
-| `POST .../tenant-email-campaigns` | Same resolution at create time |
+| `POST .../tenant-email-campaigns`         | Same resolution at create time                                      |
 
 ---
 
@@ -137,19 +137,19 @@ No route or response shape changes.
 
 **Update:** [`packages/shared/src/tenant-email-recipient-resolver.ts`](packages/shared/src/tenant-email-recipient-resolver.ts)
 
-- [ ] Add optional `secondaryContactsByLeaseId` parameter
-- [ ] For each active lease, iterate contacts from map (default empty array)
-- [ ] Use `effectiveEmail` and `effectiveName` in `pushRecipient`
-- [ ] Remove `secondaryTenants` loop and from lease pick type
-- [ ] Keep primary path, dedupe, skip reasons unchanged
+- [x] Add optional `secondaryContactsByLeaseId` parameter
+- [x] For each active lease, iterate contacts from map (default empty array)
+- [x] Use `effectiveEmail` and `effectiveName` in `pushRecipient`
+- [x] Remove `secondaryTenants` loop and from lease pick type
+- [x] Keep primary path, dedupe, skip reasons unchanged
 
 **Tests:** [`packages/shared/src/tenant-email-recipient-resolver.test.ts`](packages/shared/src/tenant-email-recipient-resolver.test.ts)
 
-- [ ] Secondary from membership listed email
-- [ ] Secondary from linked active user email (contacts pre-built with `effectiveEmail` from user)
-- [ ] Name-only secondary → skipped
-- [ ] Duplicate email across leases → second skipped
-- [ ] Empty map → primary-only audience (regression)
+- [x] Secondary from membership listed email
+- [x] Secondary from linked active user email (contacts pre-built with `effectiveEmail` from user)
+- [x] Name-only secondary → skipped
+- [x] Duplicate email across leases → second skipped
+- [x] Empty map → primary-only audience (regression)
 
 **Exit criteria:** Shared tests green; no references to `secondaryTenants` in resolver.
 
@@ -249,14 +249,14 @@ No migration. No coordinated flag.
 
 ## Verification checklist
 
-| Scenario | Expected |
-| --- | --- |
-| Active lease, listed secondary with email | Campaign preview includes secondary recipient |
-| Active lease, linked secondary (portal user) | Campaign uses linked user email |
-| Secondary with no email | Appears in **skipped**, not recipients |
-| Duplicate email (primary + secondary or two secondaries) | Second entry skipped with dedupe reason |
-| Lease detail tenants section | Same contacts as before for membership-only data |
-| Grep for `legacy_jsonb`, `jsonbOrphans` | Zero hits in `apps/` and `packages/` (excluding this doc / parent history) |
+| Scenario                                                 | Expected                                                                   |
+| -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Active lease, listed secondary with email                | Campaign preview includes secondary recipient                              |
+| Active lease, linked secondary (portal user)             | Campaign uses linked user email                                            |
+| Secondary with no email                                  | Appears in **skipped**, not recipients                                     |
+| Duplicate email (primary + secondary or two secondaries) | Second entry skipped with dedupe reason                                    |
+| Lease detail tenants section                             | Same contacts as before for membership-only data                           |
+| Grep for `legacy_jsonb`, `jsonbOrphans`                  | Zero hits in `apps/` and `packages/` (excluding this doc / parent history) |
 
 **Commands:**
 
