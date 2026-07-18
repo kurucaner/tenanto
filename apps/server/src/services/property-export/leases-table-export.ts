@@ -6,6 +6,7 @@ import { csvRow } from "@/lib/csv-utils";
 import { PROPERTY_EXPORT_BATCH_SIZE } from "@/lib/property-export-config";
 import {
   type IPropertyLongStay,
+  getLeaseOccupancyNames,
   PROPERTY_EXPORT_MAX_ROWS,
   type TPropertyLongStaysListFilters,
 } from "@/packages/shared";
@@ -38,7 +39,7 @@ function mapLeaseToExportRow(
 ): TExportSpreadsheetRow {
   return [
     unitLabelById.get(lease.unitId) ?? lease.unitId,
-    lease.guestName,
+    getLeaseOccupancyNames(lease).join(", "),
     lease.leaseStartDate,
     resolveLeaseEndDate(lease),
     formatMoney(lease.monthlyRent),

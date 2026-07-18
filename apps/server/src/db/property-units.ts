@@ -86,9 +86,19 @@ function buildUnitListParts(
             pls.guest_name ILIKE $${p + 1}
             OR pls.tenant_email ILIKE $${p + 2}
             OR EXISTS (
-              SELECT 1 FROM jsonb_array_elements(pls.secondary_tenants) AS st
-              WHERE st->>'name' ILIKE $${p + 3}
-                 OR COALESCE(st->>'email', '') ILIKE $${p + 4}
+              SELECT 1 FROM lease_tenant_memberships ltm
+              WHERE ltm.lease_id = pls.id
+                AND ltm.role = 'secondary'::tenant_membership_role
+                AND ltm.status NOT IN (
+                  'declined'::tenant_membership_status,
+                  'revoked'::tenant_membership_status,
+                  'ended'::tenant_membership_status,
+                  'expired'::tenant_membership_status
+                )
+                AND (
+                  ltm.display_name ILIKE $${p + 3}
+                  OR ltm.invite_email ILIKE $${p + 4}
+                )
             )
           )
       )

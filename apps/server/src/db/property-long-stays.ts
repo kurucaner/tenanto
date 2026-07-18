@@ -23,6 +23,7 @@ import {
 import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
+import { hydrateLongStaysSecondaryOccupantNames } from "@/services/hydrate-long-stays-secondary-occupant-names";
 
 import {
   mapPropertyIncomeLineRow,
@@ -505,8 +506,12 @@ export const propertyLongStaysDb = {
       })
     );
 
+    const longStays = await hydrateLongStaysSecondaryOccupantNames(
+      pageRows.map((row) => mapPropertyLongStayRow(row))
+    );
+
     return {
-      longStays: pageRows.map((row) => mapPropertyLongStayRow(row)),
+      longStays,
       nextCursor,
     };
   },

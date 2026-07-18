@@ -30,6 +30,8 @@ export interface IPropertyLongStay {
   leaseStartDate: string;
   monthlyRent: number;
   propertyId: string;
+  /** Populated on list/export reads from non-terminal secondary memberships. */
+  secondaryOccupantNames?: string[];
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
   status: TPropertyLongStayStatus;
   /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */

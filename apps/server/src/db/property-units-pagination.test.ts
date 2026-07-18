@@ -201,6 +201,8 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
 
     expect(listSql).toContain("unit_number ILIKE");
     expect(listSql).toContain("pls.guest_name ILIKE");
+    expect(listSql).toContain("lease_tenant_memberships ltm");
+    expect(listSql).not.toContain("jsonb_array_elements");
     expect(countSql).toContain("unit_number ILIKE");
     expect(countSql).toContain("pls.guest_name ILIKE");
   });

@@ -641,3 +641,60 @@ export async function loadSecondaryMembershipsForLease(
   );
   return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
 }
+
+/** Batch-load display names for non-terminal secondary occupants keyed by lease id. */
+export async function loadSecondaryOccupancyNamesByLeaseIds(
+  leaseIds: readonly string[],
+  db: DbQueryable = pool
+): Promise<Map<string, string[]>> {
+  if (leaseIds.length === 0) {
+    return new Map();
+  }
+
+  const result = await db.query(
+    `SELECT ltm.lease_id,
+            CASE
+              WHEN ltm.status = $7::tenant_membership_status
+                AND ltm.tenant_user_id IS NOT NULL
+                AND NULLIF(TRIM(tu.name), '') IS NOT NULL
+              THEN TRIM(tu.name)
+              ELSE NULLIF(TRIM(ltm.display_name), '')
+            END AS occupant_name
+     FROM lease_tenant_memberships ltm
+     LEFT JOIN tenant_users tu ON tu.id = ltm.tenant_user_id
+     WHERE ltm.lease_id = ANY($1::uuid[])
+       AND ltm.role = $2::tenant_membership_role
+       AND ltm.status NOT IN (
+         $3::tenant_membership_status,
+         $4::tenant_membership_status,
+         $5::tenant_membership_status,
+         $6::tenant_membership_status
+       )
+     ORDER BY ltm.lease_id ASC, ltm.created_at ASC`,
+    [
+      leaseIds,
+      TenantMembershipRole.SECONDARY,
+      TenantMembershipStatus.DECLINED,
+      TenantMembershipStatus.REVOKED,
+      TenantMembershipStatus.ENDED,
+      TenantMembershipStatus.EXPIRED,
+      TenantMembershipStatus.ACTIVE,
+    ]
+  );
+
+  const namesByLeaseId = new Map<string, string[]>();
+  for (const row of result.rows as Array<{ lease_id: string; occupant_name: string | null }>) {
+    const name = row.occupant_name?.trim();
+    if (!name) {
+      continue;
+    }
+    const existing = namesByLeaseId.get(row.lease_id);
+    if (existing) {
+      existing.push(name);
+    } else {
+      namesByLeaseId.set(row.lease_id, [name]);
+    }
+  }
+
+  return namesByLeaseId;
+}

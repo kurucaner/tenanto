@@ -302,10 +302,15 @@ S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired se
 | Reader                                                                                         | Action                                                                                                      |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [`tenant-email-recipient-resolver.ts`](packages/shared/src/tenant-email-recipient-resolver.ts) | Resolve secondary recipients via membership + linked user (server pre-join or shared helper)                |
-| [`lease-tenant-utils.ts`](packages/shared/src/lease-tenant-utils.ts)                           | Occupancy names from effective contacts                                                                     |
+| [`lease-tenant-utils.ts`](packages/shared/src/lease-tenant-utils.ts)                           | Occupancy names from membership hydration on list reads (`secondaryOccupantNames`)                          |
 | [`property-units.ts`](apps/server/src/db/property-units.ts)                                    | Replace JSONB ILIKE with membership JOIN for secondary search                                               |
 | Drift check                                                                                    | Log leases where JSONB ≠ membership snapshot (name/email/phone)                                             |
 | S1 merge removal                                                                               | After S1b verification green in prod, remove `legacy_jsonb` merge path from resolver + admin JSONB fallback |
+
+- [x] List/export occupancy names via `secondaryOccupantNames` + [`getLeaseOccupancyNames`](packages/shared/src/lease-tenant-utils.ts)
+- [x] Unit list search uses secondary membership rows (not JSONB)
+- [ ] Campaign secondary recipients via memberships
+- [ ] Drift check + legacy merge removal
 
 **Exit:** campaigns and search use memberships; drift zero in staging; legacy merge removed
 

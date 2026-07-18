@@ -4,8 +4,10 @@ import { getLeaseOccupancyNames } from "./lease-tenant-utils";
 import type { IPropertyLongStay } from "./property-long-stay-types";
 
 function makeLease(
-  overrides: Partial<Pick<IPropertyLongStay, "guestName" | "secondaryTenants">> = {}
-): Pick<IPropertyLongStay, "guestName" | "secondaryTenants"> {
+  overrides: Partial<
+    Pick<IPropertyLongStay, "guestName" | "secondaryOccupantNames" | "secondaryTenants">
+  > = {}
+): Pick<IPropertyLongStay, "guestName" | "secondaryOccupantNames" | "secondaryTenants"> {
   return {
     guestName: "John Doe",
     secondaryTenants: [],
@@ -29,5 +31,16 @@ describe("getLeaseOccupancyNames", () => {
         })
       )
     ).toEqual(["John Doe", "Jane Doe", "Alex Kim"]);
+  });
+
+  test("prefers secondaryOccupantNames over legacy secondaryTenants", () => {
+    expect(
+      getLeaseOccupancyNames(
+        makeLease({
+          secondaryOccupantNames: ["Membership Secondary"],
+          secondaryTenants: [{ email: null, name: "Legacy Secondary", phone: null }],
+        })
+      )
+    ).toEqual(["John Doe", "Membership Secondary"]);
   });
 });
