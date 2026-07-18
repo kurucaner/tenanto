@@ -1,6 +1,7 @@
 import { propertyStripeAccountsDb, toConnectStatusResponse } from "@/db/property-stripe-accounts";
 import {
   isStripeConnectEnabled,
+  PropertyStripeConnectConflictError,
   requireStripeConnectOperational,
 } from "@/lib/stripe-connect-config";
 import {
@@ -40,7 +41,7 @@ function platformAppBaseUrl(): string {
 }
 
 export const propertyStripeConnectService = {
-  async createOnboardingLink(
+  async createExpressOnboardingLink(
     propertyId: string,
     options?: { refreshUrl?: string; returnUrl?: string }
   ): Promise<IPropertyStripeConnectOnboardingLinkResponse> {
@@ -55,6 +56,12 @@ export const propertyStripeConnectService = {
       `${base}/properties/${propertyId}/settings?stripe_connect=return`;
 
     let local = await propertyStripeAccountsDb.findByPropertyId(propertyId);
+    if (local?.accountType === PropertyStripeAccountType.STANDARD) {
+      throw new PropertyStripeConnectConflictError(
+        "This property is connected via an existing Stripe account. Use Standard OAuth to reconnect."
+      );
+    }
+
     if (!local) {
       const account = await stripe.accounts.create({
         capabilities: {
@@ -83,6 +90,14 @@ export const propertyStripeConnectService = {
     });
 
     return { url: link.url };
+  },
+
+  /** @deprecated Use createExpressOnboardingLink — kept for route alias during rollout. */
+  createOnboardingLink(
+    propertyId: string,
+    options?: { refreshUrl?: string; returnUrl?: string }
+  ): Promise<IPropertyStripeConnectOnboardingLinkResponse> {
+    return propertyStripeConnectService.createExpressOnboardingLink(propertyId, options);
   },
 
   async getStatus(propertyId: string): Promise<IPropertyStripeConnectStatusResponse> {

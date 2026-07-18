@@ -254,10 +254,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Express flow explicit; safe rename before adding Standard.
 
-- [ ] Rename route to `POST …/express/onboarding-link`; keep old `/onboarding-link` as alias
-- [ ] Ensure new Express accounts persist `account_type = 'express'`
-- [ ] 409 if property already connected and user tries Express again
-- [ ] Update service tests
+- [x] Rename route to `POST …/express/onboarding-link`; keep old `/onboarding-link` as alias
+- [x] Ensure new Express accounts persist `account_type = 'express'`
+- [x] 409 if property already connected and user tries Express again
+- [x] Update service tests
 
 **Exit criteria:** Existing admin “Connect with Stripe” still works via alias; status shows `accountType`.
 

@@ -9,6 +9,13 @@ export class StripeConnectNotConfiguredError extends Error {
   }
 }
 
+export class PropertyStripeConnectConflictError extends Error {
+  constructor(message = "This property already has a Stripe account connected") {
+    super(message);
+    this.name = "PropertyStripeConnectConflictError";
+  }
+}
+
 /** Gates Stripe Connect onboarding and tenant online rent payments. */
 export function isStripeConnectEnabled(): boolean {
   return isEnvFlagEnabled("STRIPE_CONNECT_ENABLED");

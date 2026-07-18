@@ -1,6 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { StripeConnectNotConfiguredError } from "@/lib/stripe-connect-config";
+import {
+  PropertyStripeConnectConflictError,
+  StripeConnectNotConfiguredError,
+} from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
 import {
   assertPropertyMemberAccess,
@@ -8,6 +11,66 @@ import {
 } from "@/routes/admin/property-route-access";
 import { propertyStripeConnectService } from "@/services/property-stripe-connect-service";
 import { WinstonLogger } from "@/services/winston";
+
+type TExpressOnboardingLinkBody = { refreshUrl?: string; returnUrl?: string };
+type TExpressOnboardingLinkParams = { propertyId: string };
+type TExpressOnboardingLinkRoute = {
+  Body: TExpressOnboardingLinkBody;
+  Params: TExpressOnboardingLinkParams;
+};
+
+async function handleExpressOnboardingLink(
+  request: FastifyRequest<{
+    Body: TExpressOnboardingLinkBody;
+    Params: TExpressOnboardingLinkParams;
+  }>,
+  reply: FastifyReply
+): Promise<void> {
+  const { propertyId } = request.params;
+  const userId = request.user?.userId;
+  const userType = request.user?.userType;
+  if (!userId || !userType) {
+    void reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Unauthorized" });
+    return;
+  }
+  if (
+    !(await assertPropertyStructureAccess(
+      propertyId,
+      userId,
+      userType,
+      reply,
+      "Only property owners can manage Stripe Connect"
+    ))
+  ) {
+    return;
+  }
+
+  try {
+    const body = request.body ?? {};
+    const result = await propertyStripeConnectService.createExpressOnboardingLink(propertyId, {
+      refreshUrl: typeof body.refreshUrl === "string" ? body.refreshUrl : undefined,
+      returnUrl: typeof body.returnUrl === "string" ? body.returnUrl : undefined,
+    });
+    void reply.status(HttpStatus.OK).send(result);
+  } catch (error) {
+    if (error instanceof StripeConnectNotConfiguredError) {
+      void reply.status(HttpStatus.SERVICE_UNAVAILABLE).send({ error: error.message });
+      return;
+    }
+    if (error instanceof PropertyStripeConnectConflictError) {
+      void reply.status(HttpStatus.CONFLICT).send({ error: error.message });
+      return;
+    }
+    WinstonLogger.error({
+      err: error,
+      msg: "tenant_payments.connect_onboarding_failed",
+      propertyId,
+    });
+    void reply
+      .status(HttpStatus.INTERNAL_SERVER_ERROR)
+      .send({ error: "Failed to create Stripe Connect onboarding link" });
+  }
+}
 
 export const propertyStripeConnectRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
@@ -31,51 +94,15 @@ export const propertyStripeConnectRoutes = async (server: FastifyInstance): Prom
     }
   );
 
-  server.post<{
-    Body: { refreshUrl?: string; returnUrl?: string };
-    Params: { propertyId: string };
-  }>(
+  server.post<TExpressOnboardingLinkRoute>(
+    "/properties/:propertyId/stripe/connect/express/onboarding-link",
+    { preHandler: authPre },
+    handleExpressOnboardingLink
+  );
+
+  server.post<TExpressOnboardingLinkRoute>(
     "/properties/:propertyId/stripe/connect/onboarding-link",
     { preHandler: authPre },
-    async (request, reply) => {
-      const { propertyId } = request.params;
-      const userId = request.user?.userId;
-      const userType = request.user?.userType;
-      if (!userId || !userType) {
-        return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Unauthorized" });
-      }
-      if (
-        !(await assertPropertyStructureAccess(
-          propertyId,
-          userId,
-          userType,
-          reply,
-          "Only property owners can manage Stripe Connect"
-        ))
-      ) {
-        return;
-      }
-
-      try {
-        const body = request.body ?? {};
-        const result = await propertyStripeConnectService.createOnboardingLink(propertyId, {
-          refreshUrl: typeof body.refreshUrl === "string" ? body.refreshUrl : undefined,
-          returnUrl: typeof body.returnUrl === "string" ? body.returnUrl : undefined,
-        });
-        return reply.status(HttpStatus.OK).send(result);
-      } catch (error) {
-        if (error instanceof StripeConnectNotConfiguredError) {
-          return reply.status(HttpStatus.SERVICE_UNAVAILABLE).send({ error: error.message });
-        }
-        WinstonLogger.error({
-          err: error,
-          msg: "tenant_payments.connect_onboarding_failed",
-          propertyId,
-        });
-        return reply
-          .status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .send({ error: "Failed to create Stripe Connect onboarding link" });
-      }
-    }
+    handleExpressOnboardingLink
   );
 };

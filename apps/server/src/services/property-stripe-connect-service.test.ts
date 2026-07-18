@@ -56,6 +56,126 @@ mock.module("@/stripe/stripe-client", () => ({
 
 const { propertyStripeConnectService } = await import("./property-stripe-connect-service");
 
+describe("propertyStripeConnectService.createExpressOnboardingLink", () => {
+  const originalFlag = process.env.STRIPE_CONNECT_ENABLED;
+  const originalSecret = process.env.STRIPE_SECRET_KEY;
+  const originalPlatformUrl = process.env.PLATFORM_APP_URL;
+
+  beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    process.env.PLATFORM_APP_URL = "https://app.test";
+    mockFindByPropertyId.mockReset();
+    mockUpsert.mockReset();
+    mockAccountsCreate.mockReset();
+    mockAccountLinksCreate.mockReset();
+    mockFindByPropertyId.mockResolvedValue(null);
+    mockUpsert.mockResolvedValue({
+      accountType: PropertyStripeAccountType.EXPRESS,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      onboardingComplete: false,
+      payoutsEnabled: false,
+      propertyId: "property-1",
+      stripeAccountId: "acct_new",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    mockAccountsCreate.mockResolvedValue({
+      charges_enabled: false,
+      details_submitted: false,
+      id: "acct_new",
+      payouts_enabled: false,
+    });
+    mockAccountLinksCreate.mockResolvedValue({ url: "https://stripe.test/onboard" });
+  });
+
+  afterEach(() => {
+    if (originalFlag === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalFlag;
+    }
+    if (originalSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalSecret;
+    }
+    if (originalPlatformUrl === undefined) {
+      delete process.env.PLATFORM_APP_URL;
+    } else {
+      process.env.PLATFORM_APP_URL = originalPlatformUrl;
+    }
+  });
+
+  test("creates Express account with account_type express when none exists", async () => {
+    const result = await propertyStripeConnectService.createExpressOnboardingLink("property-1");
+
+    expect(result).toEqual({ url: "https://stripe.test/onboard" });
+    expect(mockAccountsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "express",
+      })
+    );
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountType: PropertyStripeAccountType.EXPRESS,
+        propertyId: "property-1",
+        stripeAccountId: "acct_new",
+      })
+    );
+    expect(mockAccountLinksCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: "acct_new",
+        type: "account_onboarding",
+      })
+    );
+  });
+
+  test("reuses existing Express account for onboarding link", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.EXPRESS,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_existing",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.createExpressOnboardingLink("property-1");
+
+    expect(result).toEqual({ url: "https://stripe.test/onboard" });
+    expect(mockAccountsCreate).not.toHaveBeenCalled();
+    expect(mockUpsert).not.toHaveBeenCalled();
+    expect(mockAccountLinksCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: "acct_existing",
+      })
+    );
+  });
+
+  test("throws conflict when property is connected via Standard", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    await expect(
+      propertyStripeConnectService.createExpressOnboardingLink("property-1")
+    ).rejects.toThrow("This property is connected via an existing Stripe account");
+
+    expect(mockAccountsCreate).not.toHaveBeenCalled();
+    expect(mockAccountLinksCreate).not.toHaveBeenCalled();
+  });
+});
+
 describe("propertyStripeConnectService.getStatus", () => {
   const originalFlag = process.env.STRIPE_CONNECT_ENABLED;
   const originalSecret = process.env.STRIPE_SECRET_KEY;
