@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import {
   type IRecentProperty,
+  clearRecentProperties,
   parseRecentProperties,
   readRecentProperties,
   RECENT_PROPERTIES_MAX,
@@ -98,5 +99,16 @@ describe("readRecentProperties", () => {
     recordRecentProperty(property("a", "Alpha"));
 
     expect(readRecentProperties()).toBe(readRecentProperties());
+  });
+});
+
+describe("clearRecentProperties", () => {
+  test("removes persisted entries", () => {
+    recordRecentProperty(property("a", "Alpha"));
+
+    clearRecentProperties();
+
+    expect(readRecentProperties()).toEqual([]);
+    expect(storage.has(RECENT_PROPERTIES_STORAGE_KEY)).toBe(false);
   });
 });
