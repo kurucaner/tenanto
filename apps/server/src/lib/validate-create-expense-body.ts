@@ -1,5 +1,9 @@
 import type { ICreatePropertyExpenseBody } from "@/packages/shared";
 
+import { getTodayUtcIsoDate } from "./date-utils";
+
+export { getTodayUtcIsoDate };
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -8,11 +12,6 @@ export function parseDateString(raw: unknown): string | null {
   const date = Date.parse(`${raw.trim()}T00:00:00Z`);
   if (!Number.isFinite(date)) return null;
   return raw.trim();
-}
-
-export function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 function parseOptionalDateString(raw: unknown): string | null | undefined {

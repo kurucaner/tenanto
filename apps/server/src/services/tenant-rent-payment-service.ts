@@ -4,11 +4,11 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
 } from "@/lib/stripe-connect-config";
-import { getTodayUtcIsoDate } from "@/lib/validate-create-expense-body";
 import {
   buildRentCheckoutIdempotencyKey,
   calculateMiscIncomeLine,

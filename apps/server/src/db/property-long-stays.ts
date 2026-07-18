@@ -1,10 +1,11 @@
-import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
 import {
   activeLongStayConflictError,
   invalidExtendLeaseError,
   longStayNotActiveError,
   longStayNotFoundError,
 } from "@/errors/lease-errors";
+import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import type {
   ICreatePropertyLongStayBody,
   IEditPropertyLongStayTermsBody,
@@ -109,11 +110,6 @@ function ensureUnitJoin(joinUnits: string): string {
     return joinUnits;
   }
   return "LEFT JOIN property_units pu ON pu.id = pls.unit_id";
-}
-
-function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 export const propertyLongStaysDb = {

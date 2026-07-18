@@ -3,46 +3,47 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { propertyChannelCommissionsDb } from "@/db/property-channel-commissions";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { propertySettingsDb } from "@/db/property-settings";
-import { propertyUnitsDb } from "@/db/property-units";
 import {
   getStayRefundableCap,
   HttpStatus,
   type ICreatePropertyReservationBody,
   type IPropertyReservation,
-  type IPropertyReservationsListQuery,
   type IRefundLedgerEntryBody,
   type IUpdatePropertyReservationBody,
   ReservationStatus,
   type TReservationStatus,
-  type TUnitRentalType,
   UnitRentalType,
-  UserType,
 } from "@/packages/shared";
-import { decodeReservationKeysetCursor } from "@/pagination/keyset-cursor";
 import { calculateNights, calculateStayIncome } from "@/services/property-income-calculator";
 
-import { parseDateString, parseIncomeEntriesListLimit, parseUuidParam } from "./admin-query-utils";
+import { parseDateString, parseUuidParam } from "./admin-query-utils";
 import {
   executeLedgerRefund,
   executeLedgerUnrefund,
   parseRefundLedgerEntryBody,
 } from "./ledger-refund-route-actions";
-import { parseJsonObject, parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
+import { parseMoney, parseNullableTrimmedStringField } from "./parse-body-utils";
 import {
-  applyOptionalQueryDateFilter,
-  applyOptionalQueryRefundStatusFilter,
-  applyOptionalQuerySearchFilter,
-  applyOptionalQueryUuidFilter,
-} from "./parse-list-query-filters";
+  buildPaginatedListResponse,
+  shouldIncludeDeletedListItems,
+} from "./parse-list-query-pagination";
+import { parsePatchBody } from "./parse-patch-body";
+import { parsePropertyReservationsListQuery } from "./parse-property-reservations-list-query";
+import {
+  executeLedgerSoftDelete,
+  requirePropertyLedgerEntityIds,
+} from "./property-ledger-route-actions";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
+  requirePropertyMemberAccess,
 } from "./property-route-access";
+import { type IPropertyParams } from "./property-route-params";
 import { rejectIfDeleted } from "./reject-if-deleted";
 import { rejectIfRefunded } from "./reject-if-refunded";
+import { resolvePropertyUnit } from "./resolve-property-unit";
 
 const RESERVATION_STATUSES = new Set<TReservationStatus>(Object.values(ReservationStatus));
-const UNIT_RENTAL_TYPES = new Set<TUnitRentalType>(Object.values(UnitRentalType));
 
 function parseReservationStatus(raw: unknown): TReservationStatus | null {
   if (typeof raw !== "string") return null;
@@ -262,150 +263,17 @@ function applyUpdateReservationField(
 function parseUpdateReservationBody(
   raw: unknown
 ): { body: IUpdatePropertyReservationBody; ok: true } | { error: string; ok: false } {
-  const r = parseJsonObject(raw);
-  if (!r) {
-    return { error: "Body must be a JSON object", ok: false };
-  }
-
-  const unknownKeys = Object.keys(r).filter(
-    (key) => !UPDATE_FIELDS.includes(key as (typeof UPDATE_FIELDS)[number])
-  );
-  if (unknownKeys.length > 0) {
-    return { error: `Unknown fields: ${unknownKeys.join(", ")}`, ok: false };
-  }
-
-  const body: IUpdatePropertyReservationBody = {};
-  for (const field of UPDATE_FIELDS) {
-    const fieldError = applyUpdateReservationField(r, body, field);
-    if (fieldError) {
-      return { error: fieldError, ok: false };
-    }
-  }
-
-  if (Object.keys(body).length === 0) {
-    return { error: "At least one field is required", ok: false };
-  }
-
-  return { body, ok: true };
-}
-
-function parseReservationRentalTypeFilter(
-  query: Record<string, unknown>,
-  filters: IPropertyReservationsListQuery
-): { error: string; ok: false } | { ok: true } {
-  if (query["rentalType"] === undefined || query["rentalType"] === "") {
-    return { ok: true };
-  }
-  if (typeof query["rentalType"] !== "string") {
-    return { error: "rentalType must be a string", ok: false };
-  }
-  if (!UNIT_RENTAL_TYPES.has(query["rentalType"] as TUnitRentalType)) {
-    return {
-      error: `rentalType must be one of: ${[...UNIT_RENTAL_TYPES].join(", ")}`,
-      ok: false,
-    };
-  }
-  filters.rentalType = query["rentalType"] as TUnitRentalType;
-  return { ok: true };
-}
-
-type TReservationListRouteFilters = Omit<IPropertyReservationsListQuery, "cursor" | "limit">;
-
-function parseReservationsListQuery(
-  query: Record<string, unknown>
-):
-  | { cursor?: string; filters: TReservationListRouteFilters; limit: number; ok: true }
-  | { error: string; ok: false } {
-  const filters: TReservationListRouteFilters = {};
-
-  const filterSteps = [
-    () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
-    () => applyOptionalQueryDateFilter(query, "to", filters, "to must be a YYYY-MM-DD date"),
-    () =>
-      applyOptionalQueryDateFilter(
-        query,
-        "checkOutFrom",
-        filters,
-        "checkOutFrom must be a YYYY-MM-DD date"
-      ),
-    () =>
-      applyOptionalQueryDateFilter(
-        query,
-        "checkInTo",
-        filters,
-        "checkInTo must be a YYYY-MM-DD date"
-      ),
-    () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
-    () =>
-      applyOptionalQueryUuidFilter(
-        query,
-        "includeReservationId",
-        filters,
-        "includeReservationId must be a valid UUID"
-      ),
-    () => parseReservationRentalTypeFilter(query, filters),
-    () => applyOptionalQuerySearchFilter(query, filters),
-    () => applyOptionalQueryRefundStatusFilter(query, filters),
-  ];
-
-  for (const applyFilter of filterSteps) {
-    const result = applyFilter();
-    if (!result.ok) return result;
-  }
-
-  if (query["channelCommissionId"] !== undefined && query["channelCommissionId"] !== "") {
-    const channelCommissionId = parseReservationChannelCommissionId(query["channelCommissionId"]);
-    if (channelCommissionId === null) {
-      return {
-        error: "channelCommissionId must be a valid UUID",
-        ok: false,
-      };
-    }
-    filters.channelCommissionId = channelCommissionId;
-  }
-
-  if (query["status"] !== undefined && query["status"] !== "") {
-    const status = parseReservationStatus(query["status"]);
-    if (status === null) {
-      return {
-        error: `status must be one of: ${[...RESERVATION_STATUSES].join(", ")}`,
-        ok: false,
-      };
-    }
-    filters.status = status;
-  }
-
-  const limit = parseIncomeEntriesListLimit(query["limit"]);
-  const cursor =
-    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
-
-  return { cursor, filters, limit, ok: true };
-}
-
-interface IPropertyParams {
-  propertyId: string;
+  return parsePatchBody<IUpdatePropertyReservationBody>({
+    allowedFields: UPDATE_FIELDS,
+    applyField: (record, body, field) =>
+      applyUpdateReservationField(record, body, field as TUpdateReservationField),
+    raw,
+  });
 }
 
 interface IPropertyShortStayParams {
   propertyId: string;
   shortStayId: string;
-}
-
-async function resolveRentableUnitForProperty(
-  unitId: string,
-  propertyId: string,
-  reply: FastifyReply
-) {
-  const unit = await propertyUnitsDb.findById(unitId);
-  if (!unit || unit.propertyId !== propertyId) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
-    return null;
-  }
-  if (unit.isDeleted) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit has been deleted" });
-    return null;
-  }
-  return unit;
 }
 
 async function buildComputedFields(
@@ -421,7 +289,7 @@ async function buildComputedFields(
   reply: FastifyReply,
   options?: { requireShortTermUnit?: boolean }
 ) {
-  const unit = await resolveRentableUnitForProperty(input.unitId, propertyId, reply);
+  const unit = await resolvePropertyUnit(input.unitId, propertyId, reply);
   if (!unit) return null;
 
   if (options?.requireShortTermUnit && unit.rentalType !== UnitRentalType.SHORT_TERM) {
@@ -495,39 +363,21 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
       request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
       reply: FastifyReply
     ) => {
-      const propertyId = parseUuidParam(request.params.propertyId);
-      if (propertyId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
-      }
+      const propertyId = await requirePropertyMemberAccess(request, reply);
+      if (propertyId === null) return;
 
-      const hasAccess = await assertPropertyMemberAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
-        reply
-      );
-      if (!hasAccess) return;
-
-      const parsed = parseReservationsListQuery(request.query);
+      const parsed = parsePropertyReservationsListQuery(request.query);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      if (parsed.cursor != null) {
-        try {
-          decodeReservationKeysetCursor(parsed.cursor);
-        } catch {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-        }
-      }
-
-      const includeDeleted = request.user.userType === UserType.ADMIN;
+      const includeDeleted = shouldIncludeDeletedListItems(request.user.userType);
       const { meta, nextCursor, shortStays } = await propertyReservationsDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
         { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
-      return reply.send(meta ? { meta, nextCursor, shortStays } : { nextCursor, shortStays });
+      return reply.send(buildPaginatedListResponse("shortStays", shortStays, meta, nextCursor));
     }
   );
 
@@ -628,41 +478,25 @@ export const propertyReservationRoutes = async (server: FastifyInstance): Promis
     "/properties/:propertyId/short-stays/:shortStayId",
     { preHandler: authPre },
     async (request: FastifyRequest<{ Params: IPropertyShortStayParams }>, reply: FastifyReply) => {
-      const propertyId = parseUuidParam(request.params.propertyId);
-      if (propertyId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
-      }
-      const shortStayId = parseUuidParam(request.params.shortStayId);
-      if (shortStayId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid shortStayId" });
-      }
-
-      const hasAccess = await assertPropertyMemberAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
-        reply
-      );
-      if (!hasAccess) return;
-
-      const isOwner = await assertPropertyLedgerWriteAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
+      const ids = await requirePropertyLedgerEntityIds(
+        request,
         reply,
-        "Only property owners and managers can manage income entries"
+        "shortStayId",
+        "shortStayId"
       );
-      if (!isOwner) return;
+      if (!ids) return;
 
-      const existing = await propertyReservationsDb.findById(shortStayId);
-      if (!existing || existing.propertyId !== propertyId) {
-        return reply.status(HttpStatus.NOT_FOUND).send({ error: "Short stay not found" });
-      }
-
-      if (rejectIfDeleted(existing, reply, "short stay")) return;
-
-      await propertyReservationsDb.softDelete(shortStayId);
-      return reply.status(HttpStatus.NO_CONTENT).send();
+      const existing = await propertyReservationsDb.findById(ids.entityId);
+      await executeLedgerSoftDelete(reply, {
+        entity: existing,
+        entityId: ids.entityId,
+        label: "short stay",
+        notFoundError: "Short stay not found",
+        propertyId: ids.propertyId,
+        softDelete: async (id) => {
+          await propertyReservationsDb.softDelete(id);
+        },
+      });
     }
   );
 

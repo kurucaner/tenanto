@@ -1,6 +1,6 @@
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
-import type { ILeaseTenantMembership } from "@/packages/shared";
 import { tenantLeaseAccessDeniedError } from "@/errors/lease-errors";
+import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipStatus } from "@/packages/shared";
 
 export async function assertLeaseTenantAccess(

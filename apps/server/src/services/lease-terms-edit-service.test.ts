@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IPropertyLongStay } from "@/packages/shared";
 import { LeaseErrorCode } from "@/errors/lease-errors";
+import type { IPropertyLongStay } from "@/packages/shared";
 import { LeaseTermsEditBlockReason, PropertyLongStayStatus } from "@/packages/shared";
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
@@ -120,8 +120,8 @@ describe("assertLeaseTermsEditable", () => {
     });
 
     await expect(assertLeaseTermsEditable("lease-1")).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
@@ -210,8 +210,8 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
@@ -233,8 +233,8 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
@@ -256,8 +256,8 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_RENT_PERIOD_HISTORY },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
