@@ -9,30 +9,34 @@ export const runMigrations = async (pool: Pool): Promise<void> => {
       await migrationsTableMigration.up(client);
     }
 
-    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_lock($1)", [8_424_242]);
 
-    const result = await client.query("SELECT version FROM migrations ORDER BY version FOR UPDATE");
-    const appliedVersions = new Set(result.rows.map((row) => row.version));
+    const result = await client.query("SELECT version FROM migrations ORDER BY version");
+    const appliedVersions = new Set(result.rows.map((row) => row.version as number));
 
     for (const migration of migrations) {
       if (migration.name === "create_migrations_table") continue;
 
       if (!appliedVersions.has(migration.version)) {
-        await migration.up(client);
+        await client.query("BEGIN");
+        try {
+          await migration.up(client);
 
-        await client.query("INSERT INTO migrations (version, name) VALUES ($1, $2)", [
-          migration.version,
-          migration.name,
-        ]);
+          await client.query("INSERT INTO migrations (version, name) VALUES ($1, $2)", [
+            migration.version,
+            migration.name,
+          ]);
+
+          await client.query("COMMIT");
+        } catch (error) {
+          await client.query("ROLLBACK");
+          console.error(`[DB] Migration v${migration.version} (${migration.name}) failed:`, error);
+          throw error;
+        }
       }
     }
-
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("[DB] Migration failed. All changes rolled back:", error);
-    throw error;
   } finally {
+    await client.query("SELECT pg_advisory_unlock($1)", [8_424_242]).catch(() => undefined);
     client.release();
   }
 };
@@ -2879,6 +2883,30 @@ export const migrations: IMigration[] = [
     version: 63,
   },
   {
+    down: async () => {
+      // Postgres cannot remove enum values safely.
+    },
+    name: "property_invite_status_lifecycle_enum",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'pending_invite';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'pending_acceptance';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'declined';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'revoked';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'expired';
+      `);
+    },
+    version: 64,
+  },
+  {
     down: async (client: TDBClient) => {
       await client.query(`
         DROP TRIGGER IF EXISTS update_property_invites_updated_at ON property_invites;
@@ -2902,22 +2930,6 @@ export const migrations: IMigration[] = [
     },
     name: "property_member_invite_lifecycle",
     up: async (client: TDBClient) => {
-      await client.query(`
-        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'pending_invite';
-      `);
-      await client.query(`
-        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'pending_acceptance';
-      `);
-      await client.query(`
-        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'declined';
-      `);
-      await client.query(`
-        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'revoked';
-      `);
-      await client.query(`
-        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'expired';
-      `);
-
       await client.query(`
         ALTER TABLE property_invites
           ADD COLUMN IF NOT EXISTS invite_token_hash VARCHAR(64),
@@ -2989,6 +3001,6 @@ export const migrations: IMigration[] = [
           FOR EACH ROW EXECUTE FUNCTION update_updated_at();
       `);
     },
-    version: 64,
+    version: 65,
   },
 ];
