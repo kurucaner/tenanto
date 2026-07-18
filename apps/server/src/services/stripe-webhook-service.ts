@@ -1,7 +1,9 @@
 import Stripe from "stripe";
 
+import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { stripeWebhookEventsDb } from "@/db/stripe-webhook-events";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { stripeConnectAccountFlagsFromStripeAccount } from "@/lib/stripe-connect-account-flags";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
@@ -220,6 +222,28 @@ async function handleChargeDisputeClosed(dispute: Stripe.Dispute): Promise<void>
   await tenantRentPaymentService.markRefunded(payment);
 }
 
+async function handleAccountUpdated(account: Stripe.Account): Promise<void> {
+  const local = await propertyStripeAccountsDb.findByStripeAccountId(account.id);
+  if (!local) {
+    WinstonLogger.info({
+      msg: "tenant_payments.connect_account_updated_unknown",
+      stripeAccountId: account.id,
+    });
+    return;
+  }
+
+  const flags = stripeConnectAccountFlagsFromStripeAccount(account);
+  await propertyStripeAccountsDb.updateFlags(local.propertyId, flags);
+
+  WinstonLogger.info({
+    accountType: local.accountType,
+    msg: "tenant_payments.connect_account_updated",
+    propertyId: local.propertyId,
+    stripeAccountId: account.id,
+    ...flags,
+  });
+}
+
 async function recordAndProcessEvent(input: {
   payload: Record<string, unknown>;
   stripeEventId: string;
@@ -269,6 +293,9 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
           break;
         case "charge.dispute.closed":
           await handleChargeDisputeClosed(event.data.object as Stripe.Dispute);
+          break;
+        case "account.updated":
+          await handleAccountUpdated(event.data.object as Stripe.Account);
           break;
         default:
           WinstonLogger.info({

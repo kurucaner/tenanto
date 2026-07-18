@@ -302,10 +302,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Capability flags stay accurate without relying on return URL alone.
 
-- [ ] Handle Stripe webhook `account.updated` in `stripe-webhook-service.ts`
-- [ ] Resolve `property_stripe_accounts` by `stripe_account_id`; update flags
-- [ ] Register `account.updated` in Stripe Dashboard webhook config (document in ops notes)
-- [ ] Tests: webhook updates `charges_enabled` / `details_submitted`
+- [x] Handle Stripe webhook `account.updated` in `stripe-webhook-service.ts`
+- [x] Resolve `property_stripe_accounts` by `stripe_account_id`; update flags
+- [x] Register `account.updated` in Stripe Dashboard webhook config (document in ops notes)
+- [x] Tests: webhook updates `charges_enabled` / `details_submitted`
 
 **Exit criteria:** Simulated `account.updated` event updates property status; Express + Standard both supported.
 

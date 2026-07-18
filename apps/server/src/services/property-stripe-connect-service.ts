@@ -3,6 +3,7 @@ import {
   stripeConnectExpressAccountConflictError,
   stripeConnectStandardAccountConflictError,
 } from "@/errors/stripe-connect-errors";
+import { stripeConnectAccountFlagsFromStripeAccount } from "@/lib/stripe-connect-account-flags";
 import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
@@ -27,27 +28,6 @@ import {
 } from "@/packages/shared";
 import { WinstonLogger } from "@/services/winston";
 import { getStripeClient } from "@/stripe/stripe-client";
-
-function flagsFromStripeAccount(account: {
-  charges_enabled: boolean | null;
-  details_submitted: boolean | null;
-  payouts_enabled: boolean | null;
-}): {
-  chargesEnabled: boolean;
-  detailsSubmitted: boolean;
-  onboardingComplete: boolean;
-  payoutsEnabled: boolean;
-} {
-  const chargesEnabled = Boolean(account.charges_enabled);
-  const detailsSubmitted = Boolean(account.details_submitted);
-  const payoutsEnabled = Boolean(account.payouts_enabled);
-  return {
-    chargesEnabled,
-    detailsSubmitted,
-    onboardingComplete: chargesEnabled && detailsSubmitted,
-    payoutsEnabled,
-  };
-}
 
 function platformAppBaseUrl(): string {
   const base = process.env.PLATFORM_APP_URL?.trim().replace(/\/$/, "");
@@ -292,7 +272,7 @@ export const propertyStripeConnectService = {
 
     const stripe = getStripeClient();
     const account = await stripe.accounts.retrieve(local.stripeAccountId);
-    const flags = flagsFromStripeAccount(account);
+    const flags = stripeConnectAccountFlagsFromStripeAccount(account);
     const updated = await propertyStripeAccountsDb.updateFlags(propertyId, flags);
     return toConnectStatusResponse(updated, true);
   },

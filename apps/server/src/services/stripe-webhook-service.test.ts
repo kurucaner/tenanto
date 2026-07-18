@@ -1,13 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
-import { TenantRentPaymentStatus } from "@/packages/shared";
+import { PropertyStripeAccountType, TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
-import {
-  mockResolvedNull,
-  mockResolvedVoid,
-  mockSyncVoid,
-} from "@/test-fixtures/mocks";
+import { mockResolvedNull, mockResolvedVoid, mockSyncVoid } from "@/test-fixtures/mocks";
 
 const mockFindById = mockResolvedNull<unknown>();
 const mockTryInsert = mockResolvedNull<unknown>();
@@ -40,6 +36,21 @@ mock.module("@/db/tenant-rent-payments", () => ({
     findByPaymentIntentId: mockFindByPaymentIntentId,
     updateStripeIds: mockUpdateStripeIds,
   },
+}));
+
+const mockFindConnectAccountByStripeId = mockResolvedNull<{
+  accountType: string;
+  propertyId: string;
+  stripeAccountId: string;
+}>();
+const mockUpdateConnectFlags = mockResolvedNull<unknown>();
+
+mock.module("@/db/property-stripe-accounts", () => ({
+  propertyStripeAccountsDb: {
+    findByStripeAccountId: mockFindConnectAccountByStripeId,
+    updateFlags: mockUpdateConnectFlags,
+  },
+  toConnectStatusResponse: () => ({}),
 }));
 
 mock.module("@/services/tenant-rent-payment-service", () => ({
@@ -77,7 +88,6 @@ mock.module("@/stripe/stripe-client", () => ({
 const { processStripeEventNotification, processStripeWebhookEvent } =
   await import("./stripe-webhook-service");
 
-
 describe("processStripeWebhookEvent", () => {
   beforeEach(() => {
     mockFindById.mockReset();
@@ -95,6 +105,8 @@ describe("processStripeWebhookEvent", () => {
     mockLoggerInfo.mockReset();
     mockLoggerWarn.mockReset();
     mockLoggerError.mockReset();
+    mockFindConnectAccountByStripeId.mockReset();
+    mockUpdateConnectFlags.mockReset();
   });
 
   test("skips already-processed events (double webhook)", async () => {
@@ -129,7 +141,12 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_2",
       type: "checkout.session.completed",
     });
-    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_test_1", stripePaymentIntentId: null });
+    const payment = makePayment({
+      amountCents: 100_00,
+      idempotencyKey: "key-1",
+      stripeCheckoutSessionId: "cs_test_1",
+      stripePaymentIntentId: null,
+    });
     mockFindPaymentById.mockResolvedValueOnce(payment);
     mockUpdateStripeIds.mockResolvedValueOnce(payment);
     mockMarkSucceeded.mockResolvedValueOnce(payment);
@@ -164,7 +181,12 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_3",
       type: "checkout.session.expired",
     });
-    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_test_1", stripePaymentIntentId: null });
+    const payment = makePayment({
+      amountCents: 100_00,
+      idempotencyKey: "key-1",
+      stripeCheckoutSessionId: "cs_test_1",
+      stripePaymentIntentId: null,
+    });
     mockFindByCheckoutSessionId.mockResolvedValueOnce(payment);
 
     await processStripeWebhookEvent({
@@ -194,7 +216,12 @@ describe("processStripeWebhookEvent", () => {
       stripeEventId: "evt_4",
       type: "payment_intent.payment_failed",
     });
-    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_test_1", stripePaymentIntentId: null });
+    const payment = makePayment({
+      amountCents: 100_00,
+      idempotencyKey: "key-1",
+      stripeCheckoutSessionId: "cs_test_1",
+      stripePaymentIntentId: null,
+    });
     mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
 
     await processStripeWebhookEvent({
@@ -382,6 +409,90 @@ describe("processStripeWebhookEvent", () => {
     );
     expect(mockMarkRefunded).not.toHaveBeenCalled();
     expect(mockFindByPaymentIntentId).not.toHaveBeenCalled();
+  });
+
+  test("updates connect flags on account.updated", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_9",
+      type: "account.updated",
+    });
+    mockFindConnectAccountByStripeId.mockResolvedValueOnce({
+      accountType: PropertyStripeAccountType.STANDARD,
+      propertyId: "property-1",
+      stripeAccountId: "acct_1",
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          charges_enabled: true,
+          details_submitted: true,
+          id: "acct_1",
+          object: "account",
+          payouts_enabled: true,
+        },
+      },
+      id: "evt_9",
+      livemode: false,
+      object: "event",
+      type: "account.updated",
+    } as never);
+
+    expect(mockUpdateConnectFlags).toHaveBeenCalledWith("property-1", {
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+    });
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountType: PropertyStripeAccountType.STANDARD,
+        msg: "tenant_payments.connect_account_updated",
+        propertyId: "property-1",
+        stripeAccountId: "acct_1",
+      })
+    );
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_9");
+  });
+
+  test("ignores account.updated for unknown connect accounts", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_10",
+      type: "account.updated",
+    });
+    mockFindConnectAccountByStripeId.mockResolvedValueOnce(null);
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "acct_unknown",
+          object: "account",
+        },
+      },
+      id: "evt_10",
+      livemode: false,
+      object: "event",
+      type: "account.updated",
+    } as never);
+
+    expect(mockUpdateConnectFlags).not.toHaveBeenCalled();
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: "tenant_payments.connect_account_updated_unknown",
+        stripeAccountId: "acct_unknown",
+      })
+    );
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_10");
   });
 });
 
