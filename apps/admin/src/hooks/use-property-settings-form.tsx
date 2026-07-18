@@ -3,28 +3,29 @@ import { Settings2 } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { PropertyChannelCommissionsEditor } from "@/components/settings/property-channel-commissions-editor";
-import { PropertyExpenseCategoryTypesEditor } from "@/components/settings/property-expense-category-types-editor";
-import { PropertyIncomeLineTypesEditor } from "@/components/settings/property-income-line-types-editor";
-import { PropertyTaxRatesEditor } from "@/components/settings/property-tax-rates-editor";
+import { PropertyChannelCommissionsCatalog } from "@/components/settings/property-channel-commissions-catalog";
+import { PropertyExpenseCategoriesCatalog } from "@/components/settings/property-expense-categories-catalog";
+import { PropertyIncomeLineTypesCatalog } from "@/components/settings/property-income-line-types-catalog";
+import { PropertyTaxRatesCatalog } from "@/components/settings/property-tax-rates-catalog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePropertySettingsListRowDelete } from "@/hooks/use-property-settings-list-row-delete";
 import { settingsApi } from "@/lib/api-client";
 import {
+  type PropertyChannelCommissionFormRow,
+  type PropertyExpenseCategoryTypeFormRow,
+  type PropertyIncomeLineTypeFormRow,
+  type PropertyTaxRateFormRow,
+} from "@/lib/property-settings-form-types";
+import {
   buildSectionPatchBody,
-  channelCommissionsDiffer,
-  expenseCategoryTypesDiffer,
-  formStateToBody,
-  hasNewRows,
   mergeSavedSectionIntoForm,
   sectionSaveSuccessMessage,
   settingsToFormState,
-  taxRatesDiffer,
   type TPropertySettingsFormState,
   type TPropertySettingsListSection,
-  validatePropertySettingsForm,
   validatePropertySettingsSection,
 } from "@/lib/property-settings-form-utils";
 import { queryKeys } from "@/lib/query-keys";
@@ -40,6 +41,19 @@ interface UsePropertySettingsFormOptions {
   settings: IPropertySettings;
 }
 
+type TSectionSaveVariables = {
+  nextForm: TPropertySettingsFormState;
+  section: TPropertySettingsListSection;
+};
+
+function upsertNamedRow<T extends { clientId: string }>(rows: T[], row: T): T[] {
+  const exists = rows.some((candidate) => candidate.clientId === row.clientId);
+  if (exists) {
+    return rows.map((candidate) => (candidate.clientId === row.clientId ? row : candidate));
+  }
+  return [...rows, row];
+}
+
 export const usePropertySettingsForm = ({
   canEdit,
   propertyId,
@@ -48,28 +62,6 @@ export const usePropertySettingsForm = ({
   const queryClient = useQueryClient();
   const savedForm = useMemo(() => settingsToFormState(settings), [settings]);
   const [form, setForm] = useState<TPropertySettingsFormState>(savedForm);
-
-  const hasChanges = useMemo(
-    () => JSON.stringify(form) !== JSON.stringify(savedForm),
-    [form, savedForm]
-  );
-
-  const hasExpenseSectionChanges = useMemo(
-    () => expenseCategoryTypesDiffer(form.expenseCategoryTypes, savedForm.expenseCategoryTypes),
-    [form.expenseCategoryTypes, savedForm.expenseCategoryTypes]
-  );
-  const hasNewIncomeTypeRows = useMemo(
-    () => hasNewRows(form.incomeLineTypes),
-    [form.incomeLineTypes]
-  );
-  const hasChannelSectionChanges = useMemo(
-    () => channelCommissionsDiffer(form.channelCommissions, savedForm.channelCommissions),
-    [form.channelCommissions, savedForm.channelCommissions]
-  );
-  const hasTaxSectionChanges = useMemo(
-    () => taxRatesDiffer(form.taxRates, savedForm.taxRates),
-    [form.taxRates, savedForm.taxRates]
-  );
 
   const parsePercent = (value: string): number | null => {
     const parsed = Number(value);
@@ -86,18 +78,6 @@ export const usePropertySettingsForm = ({
     }
     return total;
   }, [form.taxRates]);
-
-  const saveMutation = useMutation({
-    mutationFn: () => settingsApi.update(propertyId, formStateToBody(form)),
-    onError: (e) => {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-    },
-    onSuccess: (res) => {
-      toast.success("Settings saved");
-      queryClient.setQueryData(queryKeys.propertySettings(propertyId), res);
-      setForm(settingsToFormState(res.settings));
-    },
-  });
 
   const resetMutation = useMutation({
     mutationFn: () =>
@@ -126,92 +106,177 @@ export const usePropertySettingsForm = ({
   });
 
   const sectionSaveMutation = useMutation({
-    mutationFn: (section: TPropertySettingsListSection) => {
-      const validation = validatePropertySettingsSection(section, form);
+    mutationFn: ({ nextForm, section }: TSectionSaveVariables) => {
+      const validation = validatePropertySettingsSection(section, nextForm);
       if (!validation.ok) {
         throw new Error(validation.error);
       }
-      return settingsApi.update(propertyId, buildSectionPatchBody(section, form));
+      return settingsApi.update(propertyId, buildSectionPatchBody(section, nextForm));
     },
     onError: (e) => {
       toast.error(e instanceof Error ? e.message : "Save failed");
+      setForm(settingsToFormState(settings));
     },
-    onSuccess: (res, section) => {
+    onSuccess: (res, { section }) => {
       toast.success(sectionSaveSuccessMessage[section]);
       queryClient.setQueryData(queryKeys.propertySettings(propertyId), res);
       setForm((prev) => mergeSavedSectionIntoForm(prev, res.settings, section));
     },
   });
 
-  const validateForm = useCallback((): boolean => {
-    const result = validatePropertySettingsForm(form);
-    if (!result.ok) {
-      toast.error(result.error);
-      return false;
-    }
-    return true;
-  }, [form]);
+  const isPending = resetMutation.isPending || sectionSaveMutation.isPending;
 
-  const handleSave = useCallback(() => {
-    if (!validateForm()) return;
-    saveMutation.mutate();
-  }, [saveMutation, validateForm]);
-
-  const handleSectionSave = useCallback(
-    (section: TPropertySettingsListSection) => {
-      sectionSaveMutation.mutate(section);
+  const upsertExpenseCategory = useCallback(
+    (row: PropertyExpenseCategoryTypeFormRow) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          expenseCategoryTypes: upsertNamedRow(prev.expenseCategoryTypes, row),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "expenseCategoryTypes" });
+        });
+        return nextForm;
+      });
     },
     [sectionSaveMutation]
   );
 
-  const isPending =
-    saveMutation.isPending || resetMutation.isPending || sectionSaveMutation.isPending;
+  const upsertIncomeLineType = useCallback(
+    (row: PropertyIncomeLineTypeFormRow) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          incomeLineTypes: upsertNamedRow(prev.incomeLineTypes, row),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "incomeLineTypes" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
 
-  const removeExpenseCategory = useCallback((clientId: string) => {
-    setForm((prev) => ({
-      ...prev,
-      expenseCategoryTypes: prev.expenseCategoryTypes.filter((row) => row.clientId !== clientId),
-    }));
-  }, []);
+  const upsertTaxRate = useCallback(
+    (row: PropertyTaxRateFormRow) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          taxRates: upsertNamedRow(prev.taxRates, row),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "taxRates" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
 
-  const removeIncomeLineType = useCallback((clientId: string) => {
-    setForm((prev) => ({
-      ...prev,
-      incomeLineTypes: prev.incomeLineTypes.filter((row) => row.clientId !== clientId),
-    }));
-  }, []);
+  const upsertChannelCommission = useCallback(
+    (row: PropertyChannelCommissionFormRow) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          channelCommissions: upsertNamedRow(prev.channelCommissions, row),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "channelCommissions" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
 
-  const removeTaxRate = useCallback((clientId: string) => {
-    setForm((prev) => ({
-      ...prev,
-      taxRates: prev.taxRates.filter((row) => row.clientId !== clientId),
-    }));
-  }, []);
+  const removeExpenseCategory = useCallback(
+    (clientId: string) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          expenseCategoryTypes: prev.expenseCategoryTypes.filter(
+            (row) => row.clientId !== clientId
+          ),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "expenseCategoryTypes" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
 
-  const removeChannelCommission = useCallback((clientId: string) => {
-    setForm((prev) => ({
-      ...prev,
-      channelCommissions: prev.channelCommissions.filter((row) => row.clientId !== clientId),
-    }));
-  }, []);
+  const removeIncomeLineType = useCallback(
+    (clientId: string) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          incomeLineTypes: prev.incomeLineTypes.filter((row) => row.clientId !== clientId),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "incomeLineTypes" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
+
+  const removeTaxRate = useCallback(
+    (clientId: string) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          taxRates: prev.taxRates.filter((row) => row.clientId !== clientId),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "taxRates" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
+
+  const removeChannelCommission = useCallback(
+    (clientId: string) => {
+      setForm((prev) => {
+        const nextForm = {
+          ...prev,
+          channelCommissions: prev.channelCommissions.filter((row) => row.clientId !== clientId),
+        };
+        queueMicrotask(() => {
+          sectionSaveMutation.mutate({ nextForm, section: "channelCommissions" });
+        });
+        return nextForm;
+      });
+    },
+    [sectionSaveMutation]
+  );
 
   const expenseDelete = usePropertySettingsListRowDelete({
     entityLabel: "expense category",
+    isPending,
     onRemove: removeExpenseCategory,
   });
 
   const incomeDelete = usePropertySettingsListRowDelete({
     entityLabel: "income type",
+    isPending,
     onRemove: removeIncomeLineType,
   });
 
   const taxDelete = usePropertySettingsListRowDelete({
     entityLabel: "tax rate",
+    isPending,
     onRemove: removeTaxRate,
   });
 
   const channelDelete = usePropertySettingsListRowDelete({
     entityLabel: "channel",
+    isPending,
     onRemove: removeChannelCommission,
   });
 
@@ -221,32 +286,26 @@ export const usePropertySettingsForm = ({
     taxDelete.isQuickDeleteActive ||
     channelDelete.isQuickDeleteActive;
 
+  const taxDescription =
+    totalTaxPercent === null
+      ? "Applied to net room rate + cleaning fee for short-term stays."
+      : `Applied to net room rate + cleaning fee for short-term stays. Total tax: ${totalTaxPercent.toFixed(1)}%`;
+
   const headerActions: ReactNode = useMemo(
     () =>
       canEdit ? (
-        <>
-          <Button
-            className="gap-1.5"
-            disabled={!hasChanges || isPending}
-            onClick={handleSave}
-            size="sm"
-            type="button"
-          >
-            {saveMutation.isPending ? "Saving…" : "Save changes"}
-          </Button>
-          <Button
-            className="gap-1.5"
-            disabled={isPending}
-            onClick={() => resetMutation.mutate()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {resetMutation.isPending ? "Resetting…" : "Reset to defaults"}
-          </Button>
-        </>
+        <Button
+          className="gap-1.5"
+          disabled={isPending}
+          onClick={() => resetMutation.mutate()}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {resetMutation.isPending ? "Resetting…" : "Reset to defaults"}
+        </Button>
       ) : undefined,
-    [canEdit, handleSave, hasChanges, isPending, resetMutation, saveMutation.isPending]
+    [canEdit, isPending, resetMutation]
   );
 
   const formContent = (
@@ -258,103 +317,66 @@ export const usePropertySettingsForm = ({
             <CardTitle className="text-lg">Property settings</CardTitle>
           </div>
           <CardDescription>
-            Tax, other income types, and channel commission rates used for income calculations.
+            Manage catalogs used for income and expenses. Changes save when you add or edit an
+            item.
           </CardDescription>
           <p className="text-muted-foreground text-xs">
             Last updated: {new Date(settings.updatedAt).toLocaleString()}
           </p>
         </CardHeader>
         <Separator />
-        <CardContent className="space-y-8 pt-2">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">Expense categories</h3>
-              <p className="text-muted-foreground text-xs">
-                Categories available when adding expenses. Annual categories are spread across
-                months in reports. Commission categories are tracked for commission analysis.
-              </p>
-            </div>
-            <PropertyExpenseCategoryTypesEditor
-              disabled={!canEdit || isPending}
-              expenseCategoryTypes={form.expenseCategoryTypes}
-              isQuickDeleteActive={isQuickDeleteActive}
-              isSavingExpenses={sectionSaveMutation.isPending}
-              onChange={(expenseCategoryTypes) =>
-                setForm((prev) => ({ ...prev, expenseCategoryTypes }))
-              }
-              onDeleteRow={expenseDelete.handleDelete}
-              onSaveExpenses={() => handleSectionSave("expenseCategoryTypes")}
-              showSaveExpenses={hasExpenseSectionChanges}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">Other income types</h3>
-              <p className="text-muted-foreground text-xs">
-                Types available when adding other income and filtering the income table.
-              </p>
-            </div>
-            <PropertyIncomeLineTypesEditor
-              disabled={!canEdit || isPending}
-              incomeLineTypes={form.incomeLineTypes}
-              isQuickDeleteActive={isQuickDeleteActive}
-              isSavingIncomeType={sectionSaveMutation.isPending}
-              onChange={(incomeLineTypes) => setForm((prev) => ({ ...prev, incomeLineTypes }))}
-              onDeleteRow={incomeDelete.handleDelete}
-              onSaveIncomeType={() => handleSectionSave("incomeLineTypes")}
-              showSaveIncomeType={hasNewIncomeTypeRows}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">Tax rates</h3>
-              <p className="text-muted-foreground text-xs">
-                Applied to net room rate + cleaning fee for short-term stays.
-                {totalTaxPercent === null ? (
-                  <> Enter valid percentages to see total.</>
-                ) : (
-                  <> Total tax: {totalTaxPercent.toFixed(1)}%</>
-                )}
-              </p>
-            </div>
-            <PropertyTaxRatesEditor
-              disabled={!canEdit || isPending}
-              isQuickDeleteActive={isQuickDeleteActive}
-              isSavingTaxRates={sectionSaveMutation.isPending}
-              onChange={(taxRates) => setForm((prev) => ({ ...prev, taxRates }))}
-              onDeleteRow={taxDelete.handleDelete}
-              onSaveTaxRates={() => handleSectionSave("taxRates")}
-              showSaveTaxRates={hasTaxSectionChanges}
-              taxRates={form.taxRates}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium">Channel commissions</h3>
-              <p className="text-muted-foreground text-xs">
-                Booking channels available when adding stays. Use the rules to match each
-                channel&apos;s commission base and payout treatment.
-              </p>
-            </div>
-            <PropertyChannelCommissionsEditor
-              channelCommissions={form.channelCommissions}
-              disabled={!canEdit || isPending}
-              isQuickDeleteActive={isQuickDeleteActive}
-              isSavingChannelCommissions={sectionSaveMutation.isPending}
-              onChange={(channelCommissions) =>
-                setForm((prev) => ({ ...prev, channelCommissions }))
-              }
-              onDeleteRow={channelDelete.handleDelete}
-              onSaveChannelCommissions={() => handleSectionSave("channelCommissions")}
-              showSaveChannelCommissions={hasChannelSectionChanges}
-            />
-          </div>
-
+        <CardContent className="pt-4">
+          <Tabs defaultValue="expenses">
+            <TabsList>
+              <TabsTrigger value="expenses">Expenses</TabsTrigger>
+              <TabsTrigger value="income">Income</TabsTrigger>
+              <TabsTrigger value="taxes">Taxes</TabsTrigger>
+              <TabsTrigger value="channels">Channels</TabsTrigger>
+            </TabsList>
+            <TabsContent className="mt-4" value="expenses">
+              <PropertyExpenseCategoriesCatalog
+                disabled={!canEdit}
+                expenseCategoryTypes={form.expenseCategoryTypes}
+                isPending={isPending}
+                isQuickDeleteActive={isQuickDeleteActive}
+                onDeleteRow={expenseDelete.handleDelete}
+                onUpsertRow={upsertExpenseCategory}
+              />
+            </TabsContent>
+            <TabsContent className="mt-4" value="income">
+              <PropertyIncomeLineTypesCatalog
+                disabled={!canEdit}
+                incomeLineTypes={form.incomeLineTypes}
+                isPending={isPending}
+                isQuickDeleteActive={isQuickDeleteActive}
+                onDeleteRow={incomeDelete.handleDelete}
+                onUpsertRow={upsertIncomeLineType}
+              />
+            </TabsContent>
+            <TabsContent className="mt-4" value="taxes">
+              <PropertyTaxRatesCatalog
+                description={taxDescription}
+                disabled={!canEdit}
+                isPending={isPending}
+                isQuickDeleteActive={isQuickDeleteActive}
+                onDeleteRow={taxDelete.handleDelete}
+                onUpsertRow={upsertTaxRate}
+                taxRates={form.taxRates}
+              />
+            </TabsContent>
+            <TabsContent className="mt-4" value="channels">
+              <PropertyChannelCommissionsCatalog
+                channelCommissions={form.channelCommissions}
+                disabled={!canEdit}
+                isPending={isPending}
+                isQuickDeleteActive={isQuickDeleteActive}
+                onDeleteRow={channelDelete.handleDelete}
+                onUpsertRow={upsertChannelCommission}
+              />
+            </TabsContent>
+          </Tabs>
           {canEdit ? null : (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground mt-4 text-sm">
               Only property owners can edit these settings.
             </p>
           )}

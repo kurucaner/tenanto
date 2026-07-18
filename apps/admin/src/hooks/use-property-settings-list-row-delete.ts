@@ -9,11 +9,13 @@ type TPropertySettingsListRow = {
 
 type TUsePropertySettingsListRowDeleteOptions = {
   entityLabel: string;
+  isPending?: boolean;
   onRemove: (clientId: string) => void;
 };
 
 export function usePropertySettingsListRowDelete<T extends TPropertySettingsListRow>({
   entityLabel,
+  isPending = false,
   onRemove,
 }: TUsePropertySettingsListRowDeleteOptions) {
   const deleteFn = useCallback(
@@ -26,7 +28,7 @@ export function usePropertySettingsListRowDelete<T extends TPropertySettingsList
 
   const getConfirmationOptions = useCallback(
     (row: T) => ({
-      description: `Remove "${row.name || entityLabel}"? Save changes to apply.`,
+      description: `This will remove "${row.name || entityLabel}" from settings.`,
       target: row,
       title: `Remove ${entityLabel}`,
     }),
@@ -36,6 +38,6 @@ export function usePropertySettingsListRowDelete<T extends TPropertySettingsList
   return useQuickDelete<T>({
     deleteFn,
     getConfirmationOptions,
-    isPending: false,
+    isPending,
   });
 }

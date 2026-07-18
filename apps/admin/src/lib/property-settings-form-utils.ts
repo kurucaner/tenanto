@@ -1,7 +1,10 @@
-import { type PropertyChannelCommissionFormRow } from "@/components/settings/property-channel-commissions-editor";
-import { type PropertyExpenseCategoryTypeFormRow } from "@/components/settings/property-expense-category-types-editor";
-import { type PropertyIncomeLineTypeFormRow } from "@/components/settings/property-income-line-types-editor";
-import { type PropertyTaxRateFormRow } from "@/components/settings/property-tax-rates-editor";
+import {
+  PROPERTY_SETTINGS_NAME_MAX_LENGTH,
+  type PropertyChannelCommissionFormRow,
+  type PropertyExpenseCategoryTypeFormRow,
+  type PropertyIncomeLineTypeFormRow,
+  type PropertyTaxRateFormRow,
+} from "@/lib/property-settings-form-types";
 import {
   formatRateAsPercent,
   type IPropertyChannelCommission,
@@ -17,6 +20,13 @@ import {
   percentToRate,
 } from "@/packages/shared";
 
+export type {
+  PropertyChannelCommissionFormRow,
+  PropertyExpenseCategoryTypeFormRow,
+  PropertyIncomeLineTypeFormRow,
+  PropertyTaxRateFormRow,
+} from "@/lib/property-settings-form-types";
+
 export type TPropertySettingsFormState = {
   channelCommissions: PropertyChannelCommissionFormRow[];
   expenseCategoryTypes: PropertyExpenseCategoryTypeFormRow[];
@@ -27,10 +37,10 @@ export type TPropertySettingsFormState = {
 export type TPropertySettingsListSection =
   "channelCommissions" | "expenseCategoryTypes" | "incomeLineTypes" | "taxRates";
 
-const MAX_TAX_NAME_LENGTH = 80;
-const MAX_INCOME_TYPE_NAME_LENGTH = 80;
-const MAX_EXPENSE_CATEGORY_NAME_LENGTH = 80;
-const MAX_CHANNEL_NAME_LENGTH = 80;
+const MAX_TAX_NAME_LENGTH = PROPERTY_SETTINGS_NAME_MAX_LENGTH;
+const MAX_INCOME_TYPE_NAME_LENGTH = PROPERTY_SETTINGS_NAME_MAX_LENGTH;
+const MAX_EXPENSE_CATEGORY_NAME_LENGTH = PROPERTY_SETTINGS_NAME_MAX_LENGTH;
+const MAX_CHANNEL_NAME_LENGTH = PROPERTY_SETTINGS_NAME_MAX_LENGTH;
 
 const parsePercent = (value: string): number | null => {
   const parsed = Number(value);
