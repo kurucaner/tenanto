@@ -13,7 +13,9 @@ const mockCreateListedSecondary = mock((): Promise<ILeaseTenantMembership> =>
   Promise.resolve(makeMembership())
 );
 const mockFindById = mock((): Promise<ILeaseTenantMembership | null> => Promise.resolve(null));
-const mockTransitionStatus = mock((): Promise<ILeaseTenantMembership | null> => Promise.resolve(null));
+const mockTransitionStatus = mock((): Promise<ILeaseTenantMembership | null> =>
+  Promise.resolve(null)
+);
 const mockUpdateSecondaryContact = mock((): Promise<ILeaseTenantMembership | null> =>
   Promise.resolve(null)
 );
@@ -25,20 +27,19 @@ const mockUpdateUnverifiedPhone = mock(
   (_tenantUserId: string, phone: string | null): Promise<ITenantUser> =>
     Promise.resolve(makeTenant({ phone }))
 );
-const mockBuildSecondaryOccupantMutationResponse = mock(
-  (membership: ILeaseTenantMembership) =>
-    Promise.resolve({
-      contact: {
-        effectiveEmail: membership.inviteEmail,
-        effectiveName: membership.displayName,
-        effectivePhone: membership.contactPhone,
-        membershipId: membership.id,
-        source: "membership_listed" as const,
-        status: membership.status,
-        tenantUserId: membership.tenantUserId,
-      },
-      membership,
-    })
+const mockBuildSecondaryOccupantMutationResponse = mock((membership: ILeaseTenantMembership) =>
+  Promise.resolve({
+    contact: {
+      effectiveEmail: membership.inviteEmail,
+      effectiveName: membership.displayName,
+      effectivePhone: membership.contactPhone,
+      membershipId: membership.id,
+      source: "membership_listed" as const,
+      status: membership.status,
+      tenantUserId: membership.tenantUserId,
+    },
+    membership,
+  })
 );
 
 mock.module("@/db/lease-tenant-memberships", () => ({
@@ -239,9 +240,6 @@ describe("deleteSecondaryOccupant", () => {
       membershipId: "membership-1",
     });
 
-    expect(mockTransitionStatus).toHaveBeenCalledWith(
-      "membership-1",
-      TenantMembershipStatus.ENDED
-    );
+    expect(mockTransitionStatus).toHaveBeenCalledWith("membership-1", TenantMembershipStatus.ENDED);
   });
 });
