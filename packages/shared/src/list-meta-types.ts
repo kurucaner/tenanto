@@ -1,35 +1,25 @@
-export interface IPropertyUnitsListMeta {
+export interface IListTotalCountMeta {
+  totalCount: number;
+}
+
+export interface IPropertyUnitsListMeta extends IListTotalCountMeta {
   longTermCount: number;
   shortTermCount: number;
-  totalCount: number;
 }
 
-export interface IPropertyLongStaysListMeta {
+export interface IPropertyLongStaysListMeta extends IListTotalCountMeta {
   activeCount: number;
   endedCount: number;
-  totalCount: number;
 }
 
-export interface IPropertyExpensesListMeta {
-  totalCount: number;
-}
+export type IPropertyExpensesListMeta = IListTotalCountMeta;
 
-export interface IPropertyIncomeEntriesListMeta {
-  totalCount: number;
-}
+export type IPropertyIncomeEntriesListMeta = IListTotalCountMeta;
 
-export interface IPropertyIncomeLinesListMeta {
-  totalCount: number;
-}
+export type IPropertyIncomeLinesListMeta = IListTotalCountMeta;
 
-export interface IPropertyShortStaysListMeta {
-  totalCount: number;
-}
+export type IPropertyShortStaysListMeta = IListTotalCountMeta;
 
-export interface ITenantEmailCampaignsListMeta {
-  totalCount: number;
-}
+export type ITenantEmailCampaignsListMeta = IListTotalCountMeta;
 
-export interface IPropertyExportsListMeta {
-  totalCount: number;
-}
+export type IPropertyExportsListMeta = IListTotalCountMeta;

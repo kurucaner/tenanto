@@ -1,3 +1,4 @@
+import { type TSecondaryTenantContactSource } from "./tenant-contact-source-types";
 import { normalizeTenantEmail } from "./tenant-email-recipient-resolver";
 import { isTerminalTenantMembershipStatus } from "./tenant-membership-transitions";
 import {
@@ -8,8 +9,7 @@ import {
   type TTenantMembershipStatus,
 } from "./tenant-portal-types";
 
-export type TSecondaryTenantContactSource =
-  "linked_user" | "membership_listed" | "membership_pending";
+export type { TSecondaryTenantContactSource } from "./tenant-contact-source-types";
 
 export interface ILeaseSecondaryTenantContact {
   effectiveEmail: string | null;

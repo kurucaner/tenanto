@@ -210,7 +210,6 @@ export {
   type IResolvePrimaryTenantContactInput,
   resolvePrimaryTenantContact,
   selectPrimaryMembershipForContact,
-  type TPrimaryTenantContactSource,
 } from "./lease-primary-tenant-contact";
 export {
   calculateExpectedRentForLeaseMonth,
@@ -250,7 +249,6 @@ export {
   resolveSecondaryTenantContact,
   resolveSecondaryTenantContactsForLease,
   selectSecondaryMembershipForContact,
-  type TSecondaryTenantContactSource,
 } from "./lease-secondary-tenant-contact";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
@@ -261,6 +259,7 @@ export {
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
 export {
+  type IListTotalCountMeta,
   type IPropertyExpensesListMeta,
   type IPropertyExportsListMeta,
   type IPropertyIncomeEntriesListMeta,
@@ -303,6 +302,12 @@ export {
   type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
+export {
+  type TPrimaryTenantContactSource,
+  type TSecondaryTenantContactSource,
+  type TTenantContactLinkedUserSource,
+  type TTenantContactMembershipPendingSource,
+} from "./tenant-contact-source-types";
 
 // Property Income Refund Filter
 export {

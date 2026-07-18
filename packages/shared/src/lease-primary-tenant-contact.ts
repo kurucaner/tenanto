@@ -1,4 +1,5 @@
 import type { IPropertyLongStay } from "./property-long-stay-types";
+import { type TPrimaryTenantContactSource } from "./tenant-contact-source-types";
 import { isTerminalTenantMembershipStatus } from "./tenant-membership-transitions";
 import {
   type ILeaseTenantMembership,
@@ -8,7 +9,7 @@ import {
   type TTenantMembershipStatus,
 } from "./tenant-portal-types";
 
-export type TPrimaryTenantContactSource = "linked_user" | "membership_pending" | "lease";
+export type { TPrimaryTenantContactSource } from "./tenant-contact-source-types";
 
 export interface ILeasePrimaryTenantContact {
   effectiveEmail: string | null;
