@@ -13,7 +13,7 @@ export function buildTenantPortalMembershipLogContext(
   membership: Pick<ILeaseTenantMembership, "id" | "inviteEmail" | "leaseId">
 ): ITenantPortalMembershipLogContext {
   return {
-    inviteEmail: normalizeTenantEmail(membership.inviteEmail),
+    inviteEmail: membership.inviteEmail?.trim() ? normalizeTenantEmail(membership.inviteEmail) : "",
     leaseId: membership.leaseId,
     membershipId: membership.id,
   };

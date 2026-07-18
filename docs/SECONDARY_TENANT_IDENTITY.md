@@ -246,7 +246,7 @@ S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired se
 
 | Method   | Path                                                   | Behavior                                                                                                                                                                                                                  |
 | -------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST`   | `.../long-stays/:id/secondary-occupants`               | Create `listed` secondary membership; enforce max-10 on **non-terminal secondary membership count**; require email (same as today)                                                                                        |
+| `POST`   | `.../long-stays/:id/secondary-occupants`               | Create `listed` secondary membership; enforce max-10 on **non-terminal secondary membership count**; email optional (name required; phone optional); valid email required only to send portal invite later                                                                                        |
 | `PATCH`  | `.../long-stays/:id/secondary-occupants/:membershipId` | Branch linked vs unlinked (same rules as [`update-primary-tenant-contact-service.ts`](apps/server/src/services/update-primary-tenant-contact-service.ts)); sync `display_name` / `invite_email` / `contact_phone` on unlinked or pending rows |
 | `DELETE` | `.../long-stays/:id/secondary-occupants/:membershipId` | Terminal transition (`ended`) on membership row                                                                                                                                                                           |
 
@@ -347,4 +347,4 @@ S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired se
 | Invite INSERT after backfill                       | S3b transition-only invite path (G7a)                                         |
 | Prod PATCH 42703 (JSONB column gone)               | Ship S3a before S3b; do not wait for invite migration to fix CRUD              |
 | `listed` rows orphaned on lease end                | Include `listed` in `endAllNonTerminalForLease` (S0)                          |
-| `listed` rows without valid email                  | Require email on create (same as today for invite); allow optional phone only |
+| `listed` rows without valid email                  | Allow null email on listed rows; portal invite gated by valid email on membership |

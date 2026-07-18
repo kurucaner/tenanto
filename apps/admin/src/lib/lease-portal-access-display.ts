@@ -100,7 +100,9 @@ export function findLeasePortalMembership(
   const normalizedEmail = normalizeTenantEmail(email.trim());
   const matches = memberships.filter(
     (membership) =>
-      membership.role === role && normalizeTenantEmail(membership.inviteEmail) === normalizedEmail
+      membership.role === role &&
+      membership.inviteEmail != null &&
+      normalizeTenantEmail(membership.inviteEmail) === normalizedEmail
   );
   if (matches.length === 0) {
     return null;

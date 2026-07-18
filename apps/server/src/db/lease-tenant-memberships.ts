@@ -70,7 +70,7 @@ export interface CreateListedSecondaryInput {
   contactPhone: string | null;
   displayName: string;
   invitedBy: string;
-  inviteEmail: string;
+  inviteEmail: string | null;
   leaseId: string;
 }
 
@@ -174,14 +174,16 @@ export const leaseTenantMembershipsDb = {
     input: CreateListedSecondaryInput,
     db: DbQueryable = pool
   ): Promise<ILeaseTenantMembership> {
-    const existing = await leaseTenantMembershipsDb.findNonTerminalByLeaseEmailRole(
-      input.leaseId,
-      input.inviteEmail,
-      TenantMembershipRole.SECONDARY,
-      db
-    );
-    if (existing) {
-      throw new DuplicatePortalInviteError(existing);
+    if (input.inviteEmail != null) {
+      const existing = await leaseTenantMembershipsDb.findNonTerminalByLeaseEmailRole(
+        input.leaseId,
+        input.inviteEmail,
+        TenantMembershipRole.SECONDARY,
+        db
+      );
+      if (existing) {
+        throw new DuplicatePortalInviteError(existing);
+      }
     }
 
     const result = await db.query(
@@ -202,7 +204,7 @@ export const leaseTenantMembershipsDb = {
          $1,
          NULL,
          $2::tenant_membership_role,
-         LOWER(TRIM($3)),
+         CASE WHEN $3::text IS NULL THEN NULL ELSE LOWER(TRIM($3::text)) END,
          $4,
          $5,
          $6::tenant_membership_status,
@@ -556,7 +558,7 @@ export const leaseTenantMembershipsDb = {
 
   async updateSecondaryContact(
     membershipId: string,
-    patch: { contactPhone?: string | null; displayName?: string; inviteEmail?: string },
+    patch: { contactPhone?: string | null; displayName?: string; inviteEmail?: string | null },
     db: DbQueryable = pool
   ): Promise<ILeaseTenantMembership | null> {
     const setClauses: string[] = [];
@@ -568,8 +570,12 @@ export const leaseTenantMembershipsDb = {
       values.push(patch.displayName.trim());
     }
     if (patch.inviteEmail !== undefined) {
-      setClauses.push(`invite_email = LOWER(TRIM($${paramIndex++}))`);
-      values.push(patch.inviteEmail);
+      if (patch.inviteEmail === null) {
+        setClauses.push("invite_email = NULL");
+      } else {
+        setClauses.push(`invite_email = LOWER(TRIM($${paramIndex++}))`);
+        values.push(patch.inviteEmail);
+      }
     }
     if (patch.contactPhone !== undefined) {
       setClauses.push(`contact_phone = $${paramIndex++}`);

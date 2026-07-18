@@ -4,7 +4,7 @@ import type { ILeaseTenantMembership } from "./tenant-portal-types";
 export const MAX_SECONDARY_OCCUPANTS = 10;
 
 export interface ICreateSecondaryOccupantBody {
-  email: string;
+  email?: string | null;
   name: string;
   phone?: string | null;
 }

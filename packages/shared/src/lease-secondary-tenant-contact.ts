@@ -43,6 +43,14 @@ export function mapLegacyJsonbSecondaryTenantToContact(
   };
 }
 
+function membershipInviteEmail(membership: ILeaseTenantMembership): string | null {
+  return membership.inviteEmail?.trim() || null;
+}
+
+function membershipDisplayName(membership: ILeaseTenantMembership): string {
+  return membership.displayName.trim() || membershipInviteEmail(membership) || "";
+}
+
 const PENDING_MEMBERSHIP_STATUSES = new Set<TTenantMembershipStatus>([
   TenantMembershipStatus.PENDING_ACCEPTANCE,
   TenantMembershipStatus.PENDING_INVITE,
@@ -97,8 +105,8 @@ export function resolveSecondaryTenantContact(
   if (membership.status === TenantMembershipStatus.LISTED) {
     return {
       ...membershipMeta,
-      effectiveEmail: membership.inviteEmail,
-      effectiveName: membership.displayName.trim() || membership.inviteEmail,
+      effectiveEmail: membershipInviteEmail(membership),
+      effectiveName: membershipDisplayName(membership),
       effectivePhone: membership.contactPhone,
       source: "membership_listed",
     };
@@ -107,8 +115,8 @@ export function resolveSecondaryTenantContact(
   if (PENDING_MEMBERSHIP_STATUSES.has(membership.status)) {
     return {
       ...membershipMeta,
-      effectiveEmail: membership.inviteEmail,
-      effectiveName: membership.displayName.trim() || membership.inviteEmail,
+      effectiveEmail: membershipInviteEmail(membership),
+      effectiveName: membershipDisplayName(membership),
       effectivePhone: membership.contactPhone,
       source: "membership_pending",
     };
@@ -117,8 +125,8 @@ export function resolveSecondaryTenantContact(
   if (membership.status === TenantMembershipStatus.ACTIVE) {
     return {
       ...membershipMeta,
-      effectiveEmail: membership.inviteEmail,
-      effectiveName: membership.displayName.trim() || membership.inviteEmail,
+      effectiveEmail: membershipInviteEmail(membership),
+      effectiveName: membershipDisplayName(membership),
       effectivePhone: membership.contactPhone,
       source: "membership_pending",
     };
@@ -140,6 +148,7 @@ export function selectSecondaryMembershipForContact(
       (membership) =>
         membership.role === TenantMembershipRole.SECONDARY &&
         !isTerminalTenantMembershipStatus(membership.status) &&
+        membership.inviteEmail != null &&
         normalizeTenantEmail(membership.inviteEmail) === normalizedEmail
     ) ?? null
   );

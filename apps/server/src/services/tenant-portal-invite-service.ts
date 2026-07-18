@@ -15,6 +15,7 @@ import {
   type ITenantInviteLeaseSummary,
   type ITenantInvitePreviewResponse,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   TenantMembershipRole,
   TenantMembershipStatus,
   type TTenantMembershipRole,
@@ -116,16 +117,17 @@ async function sendPortalInviteEmail(
   rawToken: string,
   hasExistingAccount: boolean
 ): Promise<{ emailError?: string; emailSent: boolean }> {
+  const inviteEmail = requireMembershipInviteEmail(membership.inviteEmail);
   const acceptUrl = buildPortalInviteAcceptUrl(rawToken);
   try {
     const emailSent = hasExistingAccount
-      ? await sendTenantPortalInviteExistingEmail(membership.inviteEmail, {
+      ? await sendTenantPortalInviteExistingEmail(inviteEmail, {
           acceptUrl,
           displayName: summary.displayName,
           propertyName: summary.propertyName,
           unitLabel: summary.unitLabel,
         })
-      : await sendTenantPortalInviteNewEmail(membership.inviteEmail, {
+      : await sendTenantPortalInviteNewEmail(inviteEmail, {
           acceptUrl,
           displayName: summary.displayName,
           propertyName: summary.propertyName,
@@ -420,11 +422,12 @@ export const tenantPortalInviteService = {
       throw new PortalInviteNotFoundError("Lease not found");
     }
 
-    const hasExistingAccount = (await tenantUsersDb.findByEmail(membership.inviteEmail)) != null;
+    const inviteEmail = requireMembershipInviteEmail(membership.inviteEmail);
+    const hasExistingAccount = (await tenantUsersDb.findByEmail(inviteEmail)) != null;
 
     return {
       hasExistingAccount,
-      inviteEmail: membership.inviteEmail,
+      inviteEmail,
       membershipId: membership.id,
       status: membership.status,
       summary: buildTenantInviteLeaseSummary(membership, lease, property, unit),
@@ -468,9 +471,10 @@ export const tenantPortalInviteService = {
       context.property,
       context.unit
     );
+    const inviteEmail = requireMembershipInviteEmail(updated.inviteEmail);
     const hasExistingAccount =
       updated.status === TenantMembershipStatus.PENDING_ACCEPTANCE ||
-      (await tenantUsersDb.findByEmail(updated.inviteEmail)) != null;
+      (await tenantUsersDb.findByEmail(inviteEmail)) != null;
     const emailResult = await sendPortalInviteEmail(updated, summary, rawToken, hasExistingAccount);
 
     logTenantPortalResent(updated);

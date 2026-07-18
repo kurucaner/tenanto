@@ -355,7 +355,7 @@ export const mapLeaseTenantMembershipRow = (
   id: row.id as string,
   invitedAt: (row.invited_at as Date).toISOString(),
   invitedBy: row.invited_by as string,
-  inviteEmail: row.invite_email as string,
+  inviteEmail: (row.invite_email as string | null) ?? null,
   leaseId: row.lease_id as string,
   revokedAt: toIso(row.revoked_at),
   role: row.role as TTenantMembershipRole,

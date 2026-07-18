@@ -22,13 +22,13 @@ export type TSecondaryBackfillActionKind =
 export interface ISecondaryBackfillJsonbTenant {
   contactPhone: string | null;
   displayName: string;
-  email: string;
+  email: string | null;
 }
 
 export interface ISecondaryBackfillPlannedAction {
   contactPhone: string | null;
   displayName: string;
-  email: string;
+  email: string | null;
   kind: TSecondaryBackfillActionKind;
   membershipId: string | null;
   message: string | null;
@@ -86,17 +86,19 @@ export function canonicalizeJsonbSecondaryTenants(
   for (const tenant of jsonbTenants) {
     const displayName = tenant.name?.trim() ?? "";
     const normalizedEmail = normalizeJsonbEmail(tenant.email);
-    if (!displayName || !normalizedEmail) {
+    if (!displayName) {
       invalidEntries += 1;
       continue;
     }
 
-    if (seenEmails.has(normalizedEmail)) {
+    if (normalizedEmail && seenEmails.has(normalizedEmail)) {
       duplicateEmails.push(normalizedEmail);
       continue;
     }
 
-    seenEmails.add(normalizedEmail);
+    if (normalizedEmail) {
+      seenEmails.add(normalizedEmail);
+    }
     canonical.push({
       contactPhone: tenant.phone?.trim() ? tenant.phone.trim() : null,
       displayName,
@@ -140,7 +142,7 @@ export function planSecondaryTenantBackfillForLease(input: {
       email: "",
       kind: "skip_invalid_jsonb",
       membershipId: null,
-      message: `Skipped ${invalidEntries} JSONB row(s) without a valid name/email`,
+      message: `Skipped ${invalidEntries} JSONB row(s) without a valid name`,
     });
   }
 
@@ -156,7 +158,9 @@ export function planSecondaryTenantBackfillForLease(input: {
   }
 
   for (const jsonbTenant of canonical) {
-    const membership = selectSecondaryMembershipForContact(secondaryMemberships, jsonbTenant.email);
+    const membership = jsonbTenant.email
+      ? selectSecondaryMembershipForContact(secondaryMemberships, jsonbTenant.email)
+      : null;
 
     if (!membership) {
       actions.push({
@@ -170,16 +174,18 @@ export function planSecondaryTenantBackfillForLease(input: {
       continue;
     }
 
-    const membershipEmail = normalizeTenantEmail(membership.inviteEmail);
-    if (membershipEmail !== jsonbTenant.email) {
-      actions.push({
-        contactPhone: jsonbTenant.contactPhone,
-        displayName: jsonbTenant.displayName,
-        email: jsonbTenant.email,
-        kind: "log_email_drift",
-        membershipId: membership.id,
-        message: `Membership invite_email ${membershipEmail} differs from JSONB ${jsonbTenant.email}; kept membership email`,
-      });
+    if (jsonbTenant.email && membership.inviteEmail) {
+      const membershipEmail = normalizeTenantEmail(membership.inviteEmail);
+      if (membershipEmail !== jsonbTenant.email) {
+        actions.push({
+          contactPhone: jsonbTenant.contactPhone,
+          displayName: jsonbTenant.displayName,
+          email: jsonbTenant.email,
+          kind: "log_email_drift",
+          membershipId: membership.id,
+          message: `Membership invite_email ${membershipEmail} differs from JSONB ${jsonbTenant.email}; kept membership email`,
+        });
+      }
     }
 
     if (membership.status === TenantMembershipStatus.ACTIVE && membership.tenantUserId != null) {
@@ -244,16 +250,21 @@ export function verifySecondaryTenantBackfillForLease(input: {
   memberships: readonly ILeaseTenantMembership[];
 }): ISecondaryBackfillVerificationGap | null {
   const { canonical } = canonicalizeJsonbSecondaryTenants(input.jsonbTenants);
-  const jsonbEmails = new Set(canonical.map((tenant) => tenant.email));
+  const jsonbEmails = new Set(
+    canonical
+      .map((tenant) => tenant.email)
+      .filter((email): email is string => email != null)
+  );
 
   const membershipEmails = new Set(
     input.memberships
       .filter(
         (membership) =>
           membership.role === TenantMembershipRole.SECONDARY &&
-          !isTerminalTenantMembershipStatus(membership.status)
+          !isTerminalTenantMembershipStatus(membership.status) &&
+          membership.inviteEmail != null
       )
-      .map((membership) => normalizeTenantEmail(membership.inviteEmail))
+      .map((membership) => normalizeTenantEmail(membership.inviteEmail as string))
   );
 
   const unmatchedJsonbEmails = [...jsonbEmails].filter((email) => !membershipEmails.has(email));

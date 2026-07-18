@@ -111,6 +111,25 @@ describe("resolveSecondaryTenantContact", () => {
     });
   });
 
+  test("uses membership contact fields for listed secondary without email", () => {
+    const membership = makeMembership({
+      contactPhone: "+15553334444",
+      displayName: "Listed Secondary",
+      inviteEmail: null,
+      status: TenantMembershipStatus.LISTED,
+    });
+
+    expect(resolveSecondaryTenantContact(membership, null)).toEqual({
+      effectiveEmail: null,
+      effectiveName: "Listed Secondary",
+      effectivePhone: "+15553334444",
+      membershipId: "membership-1",
+      source: "membership_listed",
+      status: TenantMembershipStatus.LISTED,
+      tenantUserId: null,
+    });
+  });
+
   test("uses membership contact fields for pending invite", () => {
     const membership = makeMembership({
       contactPhone: "+15554445555",

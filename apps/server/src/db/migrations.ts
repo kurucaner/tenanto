@@ -3003,4 +3003,43 @@ export const migrations: IMigration[] = [
     },
     version: 65,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        DROP INDEX IF EXISTS lease_tenant_memberships_non_terminal_uniq;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX lease_tenant_memberships_non_terminal_uniq
+          ON lease_tenant_memberships (lease_id, LOWER(TRIM(invite_email)), role)
+          WHERE status NOT IN ('declined', 'revoked', 'ended', 'expired');
+      `);
+      await client.query(`
+        UPDATE lease_tenant_memberships
+        SET invite_email = display_name
+        WHERE invite_email IS NULL;
+      `);
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ALTER COLUMN invite_email SET NOT NULL;
+      `);
+    },
+    name: "nullable_secondary_invite_email",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ALTER COLUMN invite_email DROP NOT NULL;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS lease_tenant_memberships_non_terminal_uniq;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX lease_tenant_memberships_non_terminal_uniq
+          ON lease_tenant_memberships (lease_id, LOWER(TRIM(invite_email)), role)
+          WHERE status NOT IN ('declined', 'revoked', 'ended', 'expired')
+            AND invite_email IS NOT NULL
+            AND TRIM(invite_email) <> '';
+      `);
+    },
+    version: 66,
+  },
 ];

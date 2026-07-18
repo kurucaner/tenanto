@@ -3,7 +3,9 @@ import { describe, expect, test } from "bun:test";
 import type { IPropertyLongStay } from "./property-long-stay-types";
 import {
   isValidTenantEmail,
+  normalizeOptionalInviteEmail,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   resolveTenantEmailRecipients,
 } from "./tenant-email-recipient-resolver";
 
@@ -46,6 +48,37 @@ describe("isValidTenantEmail", () => {
     expect(isValidTenantEmail("user@domain")).toBe(false);
     expect(isValidTenantEmail("@example.com")).toBe(false);
     expect(isValidTenantEmail("user@.com")).toBe(false);
+  });
+});
+
+describe("normalizeOptionalInviteEmail", () => {
+  test("returns null for empty values", () => {
+    expect(normalizeOptionalInviteEmail(null)).toBeNull();
+    expect(normalizeOptionalInviteEmail(undefined)).toBeNull();
+    expect(normalizeOptionalInviteEmail("")).toBeNull();
+    expect(normalizeOptionalInviteEmail("   ")).toBeNull();
+  });
+
+  test("normalizes valid email", () => {
+    expect(normalizeOptionalInviteEmail(" Tenant@Example.com ")).toBe("tenant@example.com");
+  });
+
+  test("throws for invalid email", () => {
+    expect(() => normalizeOptionalInviteEmail("not-an-email")).toThrow(
+      "email must be a valid email address"
+    );
+  });
+});
+
+describe("requireMembershipInviteEmail", () => {
+  test("returns normalized email when present", () => {
+    expect(requireMembershipInviteEmail(" Tenant@Example.com ")).toBe("tenant@example.com");
+  });
+
+  test("throws when email is missing", () => {
+    expect(() => requireMembershipInviteEmail(null)).toThrow(
+      "Membership has no valid invite email"
+    );
   });
 });
 

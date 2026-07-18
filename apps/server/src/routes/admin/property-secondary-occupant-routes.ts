@@ -33,6 +33,26 @@ interface ISecondaryOccupantParams {
   propertyId: string;
 }
 
+function parseOptionalSecondaryEmail(
+  raw: unknown,
+  fieldPresent: boolean
+): { email: string | null; ok: true } | { error: string; ok: false } {
+  if (!fieldPresent) {
+    return { email: null, ok: true };
+  }
+  if (raw === null) {
+    return { email: null, ok: true };
+  }
+  if (typeof raw !== "string") {
+    return { error: "email must be a string or null", ok: false };
+  }
+  const trimmed = raw.trim();
+  if (trimmed !== "" && !isValidTenantEmail(trimmed)) {
+    return { error: "email must be a valid email address", ok: false };
+  }
+  return { email: trimmed === "" ? null : trimmed, ok: true };
+}
+
 function parseCreateSecondaryOccupantBody(
   raw: unknown
 ): { body: ICreateSecondaryOccupantBody; ok: true } | { error: string; ok: false } {
@@ -45,12 +65,13 @@ function parseCreateSecondaryOccupantBody(
     return { error: "name must be a non-empty string", ok: false };
   }
 
-  if (typeof record["email"] !== "string" || !isValidTenantEmail(record["email"].trim())) {
-    return { error: "email must be a valid email address", ok: false };
+  const parsedEmail = parseOptionalSecondaryEmail(record["email"], "email" in record);
+  if (!parsedEmail.ok) {
+    return parsedEmail;
   }
 
   const body: ICreateSecondaryOccupantBody = {
-    email: record["email"].trim(),
+    email: parsedEmail.email,
     name: record["name"].trim(),
   };
 
@@ -83,17 +104,11 @@ function parseUpdateSecondaryOccupantBody(
   }
 
   if ("email" in record) {
-    if (record["email"] === null) {
-      body.email = null;
-    } else if (typeof record["email"] === "string") {
-      const trimmed = record["email"].trim();
-      if (trimmed !== "" && !isValidTenantEmail(trimmed)) {
-        return { error: "email must be a valid email address", ok: false };
-      }
-      body.email = trimmed === "" ? null : trimmed;
-    } else {
-      return { error: "email must be a string or null", ok: false };
+    const parsedEmail = parseOptionalSecondaryEmail(record["email"], true);
+    if (!parsedEmail.ok) {
+      return parsedEmail;
     }
+    body.email = parsedEmail.email;
   }
 
   if ("phone" in record) {

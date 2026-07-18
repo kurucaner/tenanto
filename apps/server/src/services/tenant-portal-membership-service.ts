@@ -18,15 +18,16 @@ import type {
   ITenantLeaseListItem,
   ITenantPendingInvite,
   ITenantUser,
+  TTenantLeaseListStatus,
   TTenantMembershipStatus,
 } from "@/packages/shared";
 import {
   formatLeaseMonthLabel,
   JwtAudience,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   TenantLeaseListStatus,
   TenantMembershipStatus,
-  type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { syncLeasePhoneToTenantUserOnAccept } from "@/services/sync-lease-phone-to-tenant-on-accept";
 import { issueTenantSession } from "@/services/tenant-auth-service";
@@ -54,7 +55,9 @@ function assertMembershipMatchesTenant(
   membership: ILeaseTenantMembership,
   tenantUser: ITenantUser
 ): void {
-  if (normalizeTenantEmail(membership.inviteEmail) !== normalizeTenantEmail(tenantUser.email)) {
+  if (
+    requireMembershipInviteEmail(membership.inviteEmail) !== normalizeTenantEmail(tenantUser.email)
+  ) {
     throw new PortalInviteInvalidStateError("This invite was sent to a different email address");
   }
 

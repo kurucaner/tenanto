@@ -48,6 +48,24 @@ export function isValidTenantEmail(email: string): boolean {
   return isStructuredEmailAddress(normalized);
 }
 
+export function normalizeOptionalInviteEmail(email: string | null | undefined): string | null {
+  if (email == null || email.trim() === "") {
+    return null;
+  }
+  if (!isValidTenantEmail(email.trim())) {
+    throw new Error("email must be a valid email address");
+  }
+  return normalizeTenantEmail(email.trim());
+}
+
+export function requireMembershipInviteEmail(inviteEmail: string | null | undefined): string {
+  const normalized = normalizeOptionalInviteEmail(inviteEmail);
+  if (normalized == null) {
+    throw new Error("Membership has no valid invite email");
+  }
+  return normalized;
+}
+
 function pushSkipped(
   skipped: ITenantEmailSkippedRecipient[],
   entry: ITenantEmailSkippedRecipient

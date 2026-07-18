@@ -161,6 +161,39 @@ describe("createSecondaryOccupant", () => {
     });
   });
 
+  test("creates a listed secondary membership without email", async () => {
+    await createSecondaryOccupant({
+      body: {
+        email: null,
+        name: "Secondary Tenant",
+        phone: "+13055550111",
+      },
+      invitedBy: "operator-1",
+      lease: makeLease(),
+    });
+
+    expect(mockCreateListedSecondary).toHaveBeenCalledWith({
+      contactPhone: "+13055550111",
+      displayName: "Secondary Tenant",
+      invitedBy: "operator-1",
+      inviteEmail: null,
+      leaseId: "lease-1",
+    });
+  });
+
+  test("rejects invalid email on create", async () => {
+    await expect(
+      createSecondaryOccupant({
+        body: {
+          email: "not-an-email",
+          name: "Secondary Tenant",
+        },
+        invitedBy: "operator-1",
+        lease: makeLease(),
+      })
+    ).rejects.toThrow("email must be a valid email address");
+  });
+
   test("rejects when max secondary occupants reached", async () => {
     mockCountNonTerminalSecondariesForLease.mockResolvedValueOnce(MAX_SECONDARY_OCCUPANTS);
 
@@ -201,6 +234,21 @@ describe("updateSecondaryOccupant", () => {
 
     expect(mockUpdateSecondaryContact).toHaveBeenCalledWith("membership-1", {
       displayName: "Updated Secondary",
+    });
+  });
+
+  test("clears email on listed membership update", async () => {
+    mockFindById.mockResolvedValueOnce(makeMembership());
+    mockUpdateSecondaryContact.mockResolvedValueOnce(makeMembership({ inviteEmail: null }));
+
+    await updateSecondaryOccupant({
+      body: { email: null },
+      lease: makeLease(),
+      membershipId: "membership-1",
+    });
+
+    expect(mockUpdateSecondaryContact).toHaveBeenCalledWith("membership-1", {
+      inviteEmail: null,
     });
   });
 

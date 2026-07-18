@@ -612,7 +612,9 @@ export {
 } from "./tenant-email-campaign-types";
 export {
   isValidTenantEmail,
+  normalizeOptionalInviteEmail,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   resolveTenantEmailRecipients,
 } from "./tenant-email-recipient-resolver";
 export {

@@ -42,7 +42,7 @@ export interface ILeaseTenantMembership {
   id: string;
   invitedAt: string;
   invitedBy: string;
-  inviteEmail: string;
+  inviteEmail: string | null;
   leaseId: string;
   revokedAt: string | null;
   role: TTenantMembershipRole;

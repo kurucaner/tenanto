@@ -15,6 +15,7 @@ import {
   type ITenantUser,
   normalizePersonName,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   TenantMembershipStatus,
   type TPlatform,
   type TTenantMembershipStatus,
@@ -209,17 +210,18 @@ export async function registerTenantWithInvitePassword(
 ): Promise<TTenantInviteSignupResult> {
   try {
     const membership = await loadRedeemableInviteMembership(input.body.token);
+    const inviteEmail = requireMembershipInviteEmail(membership.inviteEmail);
 
     const rateLimited = await enforceSignupRateLimits({
       action: "register_start",
-      email: membership.inviteEmail,
+      email: inviteEmail,
       ip: input.ip,
     });
     if (rateLimited) {
       return rateLimited;
     }
 
-    const existing = await tenantUsersDb.findByEmail(membership.inviteEmail);
+    const existing = await tenantUsersDb.findByEmail(inviteEmail);
     if (existing) {
       throw new TenantInviteSignupAccountExistsError();
     }
@@ -242,7 +244,7 @@ export async function registerTenantWithInvitePassword(
 
     const passwordHash = await bcrypt.hash(input.body.password, 10);
     const user = await tenantUsersDb.create({
-      email: membership.inviteEmail,
+      email: inviteEmail,
       emailVerifiedAt: new Date(),
       name,
       passwordHash,
@@ -274,10 +276,11 @@ export async function registerTenantWithInviteGoogle(
     }
 
     const membership = await loadRedeemableInviteMembership(input.body.token);
+    const inviteEmail = requireMembershipInviteEmail(membership.inviteEmail);
 
     const rateLimited = await enforceSignupRateLimits({
       action: "google",
-      email: membership.inviteEmail,
+      email: inviteEmail,
       ip: input.ip,
     });
     if (rateLimited) {
@@ -296,12 +299,12 @@ export async function registerTenantWithInviteGoogle(
       };
     }
 
-    if (normalizeTenantEmail(googleUser.email) !== normalizeTenantEmail(membership.inviteEmail)) {
+    if (normalizeTenantEmail(googleUser.email) !== inviteEmail) {
       throw new TenantInviteSignupEmailMismatchError();
     }
 
     const { user } = await tenantUsersDb.findOrCreateByGoogle({
-      email: membership.inviteEmail,
+      email: inviteEmail,
       googleId: googleUser.googleId,
       name: googleUser.name?.trim() || membership.displayName,
     });

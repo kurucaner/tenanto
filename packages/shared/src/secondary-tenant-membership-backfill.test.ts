@@ -45,9 +45,39 @@ describe("canonicalizeJsonbSecondaryTenants", () => {
     expect(result.canonical).toHaveLength(1);
     expect(result.duplicateEmails).toEqual(["dup@example.com"]);
   });
+  test("accepts JSONB rows with name only", () => {
+    const result = canonicalizeJsonbSecondaryTenants([
+      { email: null, name: "Name Only", phone: "+15551112222" },
+    ]);
+
+    expect(result.canonical).toEqual([
+      {
+        contactPhone: "+15551112222",
+        displayName: "Name Only",
+        email: null,
+      },
+    ]);
+    expect(result.invalidEntries).toBe(0);
+  });
 });
 
 describe("planSecondaryTenantBackfillForLease", () => {
+  test("inserts listed row for name-only JSONB secondary", () => {
+    const plan = planSecondaryTenantBackfillForLease({
+      jsonbTenants: [{ email: null, name: "Name Only", phone: "+15551112222" }],
+      leaseId: "lease-1",
+      memberships: [],
+    });
+
+    expect(plan.actions).toContainEqual(
+      expect.objectContaining({
+        displayName: "Name Only",
+        email: null,
+        kind: "insert_listed",
+      })
+    );
+  });
+
   test("inserts listed row for JSONB-only secondary", () => {
     const plan = planSecondaryTenantBackfillForLease({
       jsonbTenants: [{ email: "new@example.com", name: "New Secondary", phone: "+15551112222" }],

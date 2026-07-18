@@ -5,6 +5,7 @@ import {
   type ICreateSecondaryOccupantBody,
   type IPropertyLongStaySecondaryTenant,
   isValidE164,
+  isValidTenantEmail,
   type IUpdateSecondaryOccupantBody,
   normalizeToE164,
 } from "@/packages/shared";
@@ -13,9 +14,15 @@ export const tenantPhoneFieldSchema = z.string().refine((value) => isValidE164(v
   message: "Enter a valid phone number",
 });
 
+export const tenantEmailFieldSchema = z
+  .string()
+  .refine((value) => value.trim() === "" || isValidTenantEmail(value.trim()), {
+    message: "Enter a valid email address",
+  });
+
 export const tenantContactFormSchema = z.object({
   name: personNameSchema,
-  tenantEmail: z.string(),
+  tenantEmail: tenantEmailFieldSchema,
   tenantPhone: tenantPhoneFieldSchema,
 });
 
@@ -29,7 +36,7 @@ export function toSecondaryOccupantBody(
   values: TTenantContactFormValues
 ): ICreateSecondaryOccupantBody {
   return {
-    email: values.tenantEmail.trim(),
+    email: values.tenantEmail.trim() || null,
     name: values.name,
     phone: normalizeTenantPhone(values.tenantPhone),
   };

@@ -447,7 +447,7 @@ export const LeaseTenantsSection = memo(
                     membership,
                     Boolean(contact.effectiveEmail?.trim())
                   );
-                  const canEditRow = canEditTenants && contact.membershipId != null;
+
                   const portalRowTarget = {
                     kind: "secondary" as const,
                     membershipId: getSecondaryPortalActingMembershipId(contact, index),
@@ -457,7 +457,7 @@ export const LeaseTenantsSection = memo(
                     <LeaseSecondaryTenantRow
                       actingAction={actingAction}
                       actingTarget={actingTarget}
-                      canEdit={canEditRow}
+                      canEdit={canEditTenants}
                       contact={contact}
                       index={index}
                       isDeletePending={removeMutation.isPending}
@@ -471,7 +471,7 @@ export const LeaseTenantsSection = memo(
                       portalMutationPending={portalMutationPending}
                       portalRowTarget={portalRowTarget}
                       portalState={rowPortalState}
-                      showDelete={canEditRow}
+                      showDelete={canEditTenants}
                       showPortalRow={showPortalRow}
                     />
                   );

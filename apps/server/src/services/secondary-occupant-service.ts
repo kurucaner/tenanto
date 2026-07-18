@@ -9,9 +9,9 @@ import { tenantUsersDb } from "@/db/tenant-users";
 import {
   type ICreateSecondaryOccupantBody,
   type IPropertyLongStay,
-  isValidTenantEmail,
   type IUpdateSecondaryOccupantBody,
   MAX_SECONDARY_OCCUPANTS,
+  normalizeOptionalInviteEmail,
   normalizeTenantEmail,
   normalizeToE164,
   PropertyLongStayStatus,
@@ -44,14 +44,6 @@ function normalizeNullablePhone(phone: string | null | undefined): string | null
     return null;
   }
   return normalizeToE164(phone.trim()) ?? null;
-}
-
-function normalizeRequiredEmail(email: string): string {
-  const trimmed = email.trim();
-  if (!isValidTenantEmail(trimmed)) {
-    throw new Error("A valid email is required for secondary occupants");
-  }
-  return normalizeTenantEmail(trimmed);
 }
 
 function hasSecondaryContactPatch(patch: IUpdateSecondaryOccupantBody): boolean {
@@ -134,17 +126,14 @@ async function updateUnlinkedSecondaryTenantContact(
   const membershipPatch: {
     contactPhone?: string | null;
     displayName?: string;
-    inviteEmail?: string;
+    inviteEmail?: string | null;
   } = {};
 
   if (patch.name !== undefined) {
     membershipPatch.displayName = patch.name;
   }
   if (patch.email !== undefined) {
-    if (patch.email == null || patch.email.trim() === "") {
-      throw new Error("A valid email is required for secondary occupants");
-    }
-    membershipPatch.inviteEmail = normalizeRequiredEmail(patch.email);
+    membershipPatch.inviteEmail = normalizeOptionalInviteEmail(patch.email);
   }
   if (patch.phone !== undefined) {
     membershipPatch.contactPhone = normalizeNullablePhone(patch.phone);
@@ -190,7 +179,7 @@ export async function createSecondaryOccupant(input: {
     throw new MaxSecondaryOccupantsError(MAX_SECONDARY_OCCUPANTS);
   }
 
-  const inviteEmail = normalizeRequiredEmail(input.body.email);
+  const inviteEmail = normalizeOptionalInviteEmail(input.body.email);
   const membership = await leaseTenantMembershipsDb.createListedSecondary({
     contactPhone: normalizeNullablePhone(input.body.phone),
     displayName: input.body.name.trim(),
