@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import { StripeConnectOAuthCallbackReason } from "@/lib/stripe-connect-oauth-callback";
+import type { IStripeConnectOAuthState } from "@/lib/stripe-connect-oauth-state";
 import { PropertyStripeAccountType } from "@/packages/shared";
 import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
@@ -25,7 +26,7 @@ const mockAccountsRetrieve = mockAsyncFn(() =>
 );
 const mockAccountLinksCreate = mockResolved({ url: "https://stripe.test/onboard" });
 const mockCreateOAuthState = mockAsyncFn(() => Promise.resolve("signed-oauth-state"));
-const mockConsumeOAuthState = mockAsyncFn(() =>
+const mockConsumeOAuthState = mockAsyncFn((): Promise<IStripeConnectOAuthState | null> =>
   Promise.resolve({ propertyId: "property-1", userId: "user-1" })
 );
 const mockOauthToken = mockAsyncFn(() => Promise.resolve({ stripe_user_id: "acct_standard" }));

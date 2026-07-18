@@ -2,6 +2,7 @@
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
     "module": "ESNext",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "types": ["bun", "node"]
   },
