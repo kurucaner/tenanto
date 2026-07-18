@@ -2,11 +2,14 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 
 import { verifyGoogleToken } from "@/auth/google";
-import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import { tenantUsersDb } from "@/db/tenant-users";
 import {
-  isPortalInviteDomainError,
+  inviteSignupAccountExistsError,
+  inviteSignupEmailMismatchError,
+  inviteSignupValidationError,
+} from "@/errors/invite-signup-errors";
+import {
   portalInviteInvalidStateError,
   portalInviteNotFoundError,
 } from "@/errors/portal-invite-errors";
@@ -27,6 +30,10 @@ import {
 } from "@/packages/shared";
 import { validateName, validatePassword } from "@/routes/auth/validators";
 import {
+  mapInviteSignupDomainError,
+  type TInviteSignupFailure,
+} from "@/services/map-invite-signup-domain-error";
+import {
   assertTenantAuthEmailAttemptAllowed,
   assertTenantAuthIpAttemptAllowed,
   getTenantAuthRateLimitErrorMessage,
@@ -34,40 +41,12 @@ import {
 import { issueTenantSession } from "@/services/tenant-auth-service";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 
-export class TenantInviteSignupAccountExistsError extends Error {
-  constructor(message = "Account already exists. Sign in to accept.") {
-    super(message);
-    this.name = "TenantInviteSignupAccountExistsError";
-  }
-}
-
-export class TenantInviteSignupEmailMismatchError extends Error {
-  constructor(
-    message = "Google account email must match the invited email address for this lease"
-  ) {
-    super(message);
-    this.name = "TenantInviteSignupEmailMismatchError";
-  }
-}
-
-export class TenantInviteSignupValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TenantInviteSignupValidationError";
-  }
-}
-
 export type TTenantInviteSignupSuccess = {
   response: ITenantInviteRedeemResponse;
   status: "ok";
 };
 
-export type TTenantInviteSignupFailure = {
-  body: { code?: string; error: string };
-  headers?: Record<string, string>;
-  status: "error";
-  statusCode: number;
-};
+export type TTenantInviteSignupFailure = TInviteSignupFailure;
 
 export type TTenantInviteSignupResult = TTenantInviteSignupFailure | TTenantInviteSignupSuccess;
 
@@ -93,7 +72,7 @@ function rateLimitedResult(retryAfterSec: number): TTenantInviteSignupFailure {
 async function loadRedeemableInviteMembership(token: string): Promise<ILeaseTenantMembership> {
   const trimmed = token.trim();
   if (!trimmed) {
-    throw new TenantInviteSignupValidationError("token is required");
+    throw inviteSignupValidationError("token is required");
   }
 
   const membership = await leaseTenantMembershipsDb.findByInviteToken(trimmed);
@@ -146,45 +125,6 @@ async function enforceSignupRateLimits(input: {
   return null;
 }
 
-function mapSignupDomainError(error: unknown): TTenantInviteSignupFailure | null {
-  if (error instanceof TenantInviteSignupValidationError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.BAD_REQUEST,
-    };
-  }
-  if (error instanceof TenantInviteSignupAccountExistsError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.CONFLICT,
-    };
-  }
-  if (error instanceof TenantInviteSignupEmailMismatchError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.FORBIDDEN,
-    };
-  }
-  if (isPortalInviteDomainError(error)) {
-    return {
-      body: { code: error.code, error: error.message },
-      status: "error",
-      statusCode: error.httpStatus,
-    };
-  }
-  if (isIdentityConflictError(error)) {
-    return {
-      body: { code: error.code, error: error.message },
-      status: "error",
-      statusCode: HttpStatus.CONFLICT,
-    };
-  }
-  return null;
-}
-
 async function completeSignup(
   server: FastifyInstance,
   token: string,
@@ -217,23 +157,23 @@ export async function registerTenantWithInvitePassword(
 
     const existing = await tenantUsersDb.findByEmail(inviteEmail);
     if (existing) {
-      throw new TenantInviteSignupAccountExistsError();
+      throw inviteSignupAccountExistsError();
     }
 
     const nameErr = validateName(input.body.name);
     if (nameErr) {
-      throw new TenantInviteSignupValidationError(nameErr);
+      throw inviteSignupValidationError(nameErr);
     }
     const passwordErr = validatePassword(input.body.password);
     if (passwordErr) {
-      throw new TenantInviteSignupValidationError(passwordErr);
+      throw inviteSignupValidationError(passwordErr);
     }
 
     const name =
       normalizePersonName(input.body.name).trim() ||
       normalizePersonName(membership.displayName).trim();
     if (!name) {
-      throw new TenantInviteSignupValidationError("Name is required");
+      throw inviteSignupValidationError("Name is required");
     }
 
     const passwordHash = await bcrypt.hash(input.body.password, 10);
@@ -247,7 +187,7 @@ export async function registerTenantWithInvitePassword(
     const response = await completeSignup(server, input.body.token.trim(), user);
     return { response, status: "ok" };
   } catch (error) {
-    const mapped = mapSignupDomainError(error);
+    const mapped = mapInviteSignupDomainError(error);
     if (mapped) {
       return mapped;
     }
@@ -266,7 +206,7 @@ export async function registerTenantWithInviteGoogle(
   try {
     const idToken = input.body.idToken?.trim();
     if (!idToken) {
-      throw new TenantInviteSignupValidationError("idToken is required");
+      throw inviteSignupValidationError("idToken is required");
     }
 
     const membership = await loadRedeemableInviteMembership(input.body.token);
@@ -294,7 +234,9 @@ export async function registerTenantWithInviteGoogle(
     }
 
     if (normalizeTenantEmail(googleUser.email) !== inviteEmail) {
-      throw new TenantInviteSignupEmailMismatchError();
+      throw inviteSignupEmailMismatchError(
+        "Google account email must match the invited email address for this lease"
+      );
     }
 
     const { user } = await tenantUsersDb.findOrCreateByGoogle({
@@ -306,7 +248,7 @@ export async function registerTenantWithInviteGoogle(
     const response = await completeSignup(server, input.body.token.trim(), user);
     return { response, status: "ok" };
   } catch (error) {
-    const mapped = mapSignupDomainError(error);
+    const mapped = mapInviteSignupDomainError(error);
     if (mapped) {
       return mapped;
     }

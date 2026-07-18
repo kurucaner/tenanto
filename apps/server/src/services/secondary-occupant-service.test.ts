@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership, IPropertyLongStay, ITenantUser } from "@/packages/shared";
 import {
   MAX_SECONDARY_OCCUPANTS,
@@ -51,8 +52,6 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     updateSecondaryContact: mockUpdateSecondaryContact,
   },
   loadPrimaryMembershipForLease: mock(() => Promise.resolve(null)),
-  MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
-  SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
 }));
 
 mock.module("@/db/tenant-users", () => ({
@@ -67,13 +66,8 @@ mock.module("./resolve-secondary-tenant-contacts-service", () => ({
   buildSecondaryOccupantMutationResponse: mockBuildSecondaryOccupantMutationResponse,
 }));
 
-const {
-  createSecondaryOccupant,
-  deleteSecondaryOccupant,
-  LinkedTenantContactError,
-  MaxSecondaryOccupantsError,
-  updateSecondaryOccupant,
-} = await import("./secondary-occupant-service");
+const { createSecondaryOccupant, deleteSecondaryOccupant, updateSecondaryOccupant } =
+  await import("./secondary-occupant-service");
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {
@@ -205,7 +199,7 @@ describe("createSecondaryOccupant", () => {
         invitedBy: "operator-1",
         lease: makeLease(),
       })
-    ).rejects.toBeInstanceOf(MaxSecondaryOccupantsError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.MAX_SECONDARY_OCCUPANTS });
   });
 });
 
@@ -266,7 +260,7 @@ describe("updateSecondaryOccupant", () => {
         lease: makeLease(),
         membershipId: "membership-1",
       })
-    ).rejects.toBeInstanceOf(LinkedTenantContactError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.LINKED_TENANT_CONTACT });
   });
 });
 

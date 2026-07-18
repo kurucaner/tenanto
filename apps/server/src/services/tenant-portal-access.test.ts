@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 
@@ -17,7 +18,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
   },
 }));
 
-const { assertLeaseTenantAccess, assertLeaseTenantReadAccess, TenantLeaseAccessDeniedError } =
+const { assertLeaseTenantAccess, assertLeaseTenantReadAccess } =
   await import("./tenant-portal-access");
 
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
@@ -60,9 +61,9 @@ describe("assertLeaseTenantAccess", () => {
   test("throws when no active membership exists", async () => {
     mockFindActiveByLeaseAndTenantUser.mockResolvedValueOnce(null);
 
-    await expect(assertLeaseTenantAccess("lease-1", "tenant-1")).rejects.toBeInstanceOf(
-      TenantLeaseAccessDeniedError
-    );
+    await expect(assertLeaseTenantAccess("lease-1", "tenant-1")).rejects.toMatchObject({
+      code: LeaseErrorCode.TENANT_LEASE_ACCESS_DENIED,
+    });
   });
 });
 
@@ -87,8 +88,8 @@ describe("assertLeaseTenantReadAccess", () => {
   test("throws when no active or ended membership exists", async () => {
     mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValueOnce(null);
 
-    await expect(assertLeaseTenantReadAccess("lease-1", "tenant-1")).rejects.toBeInstanceOf(
-      TenantLeaseAccessDeniedError
-    );
+    await expect(assertLeaseTenantReadAccess("lease-1", "tenant-1")).rejects.toMatchObject({
+      code: LeaseErrorCode.TENANT_LEASE_ACCESS_DENIED,
+    });
   });
 });

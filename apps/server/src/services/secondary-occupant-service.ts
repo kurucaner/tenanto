@@ -1,10 +1,11 @@
-import {
-  leaseTenantMembershipsDb,
-  MaxSecondaryOccupantsError,
-  SecondaryOccupantNotFoundError,
-} from "@/db/lease-tenant-memberships";
-import { LongStayNotActiveError } from "@/db/property-long-stays";
+import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import { tenantUsersDb } from "@/db/tenant-users";
+import {
+  linkedTenantContactError,
+  longStayNotActiveError,
+  maxSecondaryOccupantsError,
+  secondaryOccupantNotFoundError,
+} from "@/errors/lease-errors";
 import {
   type ICreateSecondaryOccupantBody,
   type IPropertyLongStay,
@@ -24,7 +25,6 @@ import { buildSecondaryOccupantMutationResponse } from "./resolve-secondary-tena
 import {
   LINKED_TENANT_EMAIL_CHANGE_MESSAGE,
   LINKED_TENANT_VERIFIED_PHONE_CHANGE_MESSAGE,
-  LinkedTenantContactError,
 } from "./update-primary-tenant-contact-service";
 
 const PENDING_MEMBERSHIP_STATUSES = new Set<TTenantMembershipStatus>([
@@ -34,7 +34,7 @@ const PENDING_MEMBERSHIP_STATUSES = new Set<TTenantMembershipStatus>([
 
 function assertLeaseActive(lease: IPropertyLongStay): void {
   if (lease.status !== PropertyLongStayStatus.ACTIVE) {
-    throw new LongStayNotActiveError();
+    throw longStayNotActiveError();
   }
 }
 
@@ -61,7 +61,7 @@ function assertLinkedEmailUnchanged(
   const currentEmail = normalizeTenantEmail(tenantEmail);
   const normalizedNext = nextEmail ? normalizeTenantEmail(nextEmail) : null;
   if (normalizedNext !== currentEmail) {
-    throw new LinkedTenantContactError(LINKED_TENANT_EMAIL_CHANGE_MESSAGE);
+    throw linkedTenantContactError(LINKED_TENANT_EMAIL_CHANGE_MESSAGE);
   }
 }
 
@@ -77,17 +77,17 @@ function assertVerifiedPhoneUnchanged(
   const nextPhone = normalizeNullablePhone(patch.phone);
   const currentPhone = normalizeNullablePhone(tenantPhone);
   if (nextPhone !== currentPhone) {
-    throw new LinkedTenantContactError(LINKED_TENANT_VERIFIED_PHONE_CHANGE_MESSAGE);
+    throw linkedTenantContactError(LINKED_TENANT_VERIFIED_PHONE_CHANGE_MESSAGE);
   }
 }
 
 async function loadSecondaryMembershipForLease(leaseId: string, membershipId: string) {
   const membership = await leaseTenantMembershipsDb.findById(membershipId);
   if (!membership || membership.leaseId !== leaseId) {
-    throw new SecondaryOccupantNotFoundError();
+    throw secondaryOccupantNotFoundError();
   }
   if (membership.role !== TenantMembershipRole.SECONDARY) {
-    throw new SecondaryOccupantNotFoundError();
+    throw secondaryOccupantNotFoundError();
   }
   return membership;
 }
@@ -147,7 +147,7 @@ async function updateUnlinkedSecondaryTenantContact(
       membershipPatch
     );
     if (!updated) {
-      throw new SecondaryOccupantNotFoundError();
+      throw secondaryOccupantNotFoundError();
     }
     return buildSecondaryOccupantMutationResponse(updated);
   }
@@ -158,12 +158,12 @@ async function updateUnlinkedSecondaryTenantContact(
       membershipPatch
     );
     if (!updated) {
-      throw new SecondaryOccupantNotFoundError();
+      throw secondaryOccupantNotFoundError();
     }
     return buildSecondaryOccupantMutationResponse(updated);
   }
 
-  throw new SecondaryOccupantNotFoundError();
+  throw secondaryOccupantNotFoundError();
 }
 
 export async function createSecondaryOccupant(input: {
@@ -175,7 +175,7 @@ export async function createSecondaryOccupant(input: {
 
   const count = await leaseTenantMembershipsDb.countNonTerminalSecondariesForLease(input.lease.id);
   if (count >= MAX_SECONDARY_OCCUPANTS) {
-    throw new MaxSecondaryOccupantsError(MAX_SECONDARY_OCCUPANTS);
+    throw maxSecondaryOccupantsError(MAX_SECONDARY_OCCUPANTS);
   }
 
   const inviteEmail = normalizeOptionalInviteEmail(input.body.email);
@@ -226,7 +226,7 @@ export async function deleteSecondaryOccupant(input: {
     membership.status === TenantMembershipStatus.REVOKED ||
     membership.status === TenantMembershipStatus.EXPIRED
   ) {
-    throw new SecondaryOccupantNotFoundError();
+    throw secondaryOccupantNotFoundError();
   }
 
   const updated = await leaseTenantMembershipsDb.transitionStatus(
@@ -234,9 +234,7 @@ export async function deleteSecondaryOccupant(input: {
     TenantMembershipStatus.ENDED
   );
   if (!updated) {
-    throw new SecondaryOccupantNotFoundError();
+    throw secondaryOccupantNotFoundError();
   }
   return updated;
 }
-
-export { LinkedTenantContactError, MaxSecondaryOccupantsError, SecondaryOccupantNotFoundError };

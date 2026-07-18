@@ -1,13 +1,7 @@
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import type { ILeaseTenantMembership } from "@/packages/shared";
+import { tenantLeaseAccessDeniedError } from "@/errors/lease-errors";
 import { TenantMembershipStatus } from "@/packages/shared";
-
-export class TenantLeaseAccessDeniedError extends Error {
-  constructor(message = "Access denied") {
-    super(message);
-    this.name = "TenantLeaseAccessDeniedError";
-  }
-}
 
 export async function assertLeaseTenantAccess(
   leaseId: string,
@@ -18,7 +12,7 @@ export async function assertLeaseTenantAccess(
     tenantUserId
   );
   if (!membership) {
-    throw new TenantLeaseAccessDeniedError();
+    throw tenantLeaseAccessDeniedError();
   }
   return membership;
 }
@@ -34,7 +28,7 @@ export async function assertLeaseTenantReadAccess(
     [TenantMembershipStatus.ACTIVE, TenantMembershipStatus.ENDED]
   );
   if (!membership) {
-    throw new TenantLeaseAccessDeniedError();
+    throw tenantLeaseAccessDeniedError();
   }
   return membership;
 }

@@ -2,11 +2,14 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 
 import { verifyGoogleToken } from "@/auth/google";
-import { isIdentityConflictError } from "@/constants/account";
 import { propertyInvitesDb } from "@/db/property-invites";
 import { userDb } from "@/db/users";
 import {
-  isPropertyMemberInviteDomainError,
+  inviteSignupAccountExistsError,
+  inviteSignupEmailMismatchError,
+  inviteSignupValidationError,
+} from "@/errors/invite-signup-errors";
+import {
   propertyMemberInviteInvalidStateError,
   propertyMemberInviteNotFoundError,
 } from "@/errors/property-member-invite-errors";
@@ -24,40 +27,17 @@ import {
 import { validateName, validatePassword } from "@/routes/auth/validators";
 import { issuePlatformSession } from "@/services/platform-auth-service";
 import { propertyMemberInviteActionService } from "@/services/property-member-invite-action-service";
-
-export class PropertyMemberInviteSignupAccountExistsError extends Error {
-  constructor(message = "Account already exists. Sign in to accept.") {
-    super(message);
-    this.name = "PropertyMemberInviteSignupAccountExistsError";
-  }
-}
-
-export class PropertyMemberInviteSignupEmailMismatchError extends Error {
-  constructor(
-    message = "Google account email must match the invited email address for this property"
-  ) {
-    super(message);
-    this.name = "PropertyMemberInviteSignupEmailMismatchError";
-  }
-}
-
-export class PropertyMemberInviteSignupValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PropertyMemberInviteSignupValidationError";
-  }
-}
+import {
+  mapInviteSignupDomainError,
+  type TInviteSignupFailure,
+} from "@/services/map-invite-signup-domain-error";
 
 export type TPropertyMemberInviteSignupSuccess = {
   response: IPropertyInviteRedeemResponse;
   status: "ok";
 };
 
-export type TPropertyMemberInviteSignupFailure = {
-  body: { code?: string; error: string };
-  status: "error";
-  statusCode: number;
-};
+export type TPropertyMemberInviteSignupFailure = TInviteSignupFailure;
 
 export type TPropertyMemberInviteSignupResult =
   TPropertyMemberInviteSignupFailure | TPropertyMemberInviteSignupSuccess;
@@ -75,7 +55,7 @@ function normalizeInviteEmail(email: string): string {
 async function loadRedeemableInviteForSignup(token: string): Promise<IPropertyInvite> {
   const trimmed = token.trim();
   if (!trimmed) {
-    throw new PropertyMemberInviteSignupValidationError("token is required");
+    throw inviteSignupValidationError("token is required");
   }
 
   const invite = await propertyInvitesDb.findByInviteToken(trimmed);
@@ -106,52 +86,13 @@ async function loadRedeemableInviteForSignup(token: string): Promise<IPropertyIn
 
 async function assertNewInviteSignupAllowed(invite: IPropertyInvite): Promise<void> {
   if (invite.status !== PropertyInviteStatus.PENDING_INVITE) {
-    throw new PropertyMemberInviteSignupAccountExistsError();
+    throw inviteSignupAccountExistsError();
   }
 
   const existing = await userDb.findByEmail(invite.email);
   if (existing) {
-    throw new PropertyMemberInviteSignupAccountExistsError();
+    throw inviteSignupAccountExistsError();
   }
-}
-
-function mapSignupDomainError(error: unknown): TPropertyMemberInviteSignupFailure | null {
-  if (error instanceof PropertyMemberInviteSignupValidationError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.BAD_REQUEST,
-    };
-  }
-  if (error instanceof PropertyMemberInviteSignupAccountExistsError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.CONFLICT,
-    };
-  }
-  if (error instanceof PropertyMemberInviteSignupEmailMismatchError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.FORBIDDEN,
-    };
-  }
-  if (isPropertyMemberInviteDomainError(error)) {
-    return {
-      body: { code: error.code, error: error.message },
-      status: "error",
-      statusCode: error.httpStatus,
-    };
-  }
-  if (isIdentityConflictError(error)) {
-    return {
-      body: { code: error.code, error: error.message },
-      status: "error",
-      statusCode: HttpStatus.CONFLICT,
-    };
-  }
-  return null;
 }
 
 async function completeSignup(
@@ -179,16 +120,16 @@ export async function registerPlatformUserWithInvitePassword(
 
     const nameErr = validateName(input.body.name);
     if (nameErr) {
-      throw new PropertyMemberInviteSignupValidationError(nameErr);
+      throw inviteSignupValidationError(nameErr);
     }
     const passwordErr = validatePassword(input.body.password);
     if (passwordErr) {
-      throw new PropertyMemberInviteSignupValidationError(passwordErr);
+      throw inviteSignupValidationError(passwordErr);
     }
 
     const name = normalizePersonName(input.body.name).trim();
     if (!name) {
-      throw new PropertyMemberInviteSignupValidationError("Name is required");
+      throw inviteSignupValidationError("Name is required");
     }
 
     const passwordHash = await bcrypt.hash(input.body.password, 10);
@@ -201,7 +142,7 @@ export async function registerPlatformUserWithInvitePassword(
     const response = await completeSignup(server, input.body.token.trim(), user);
     return { response, status: "ok" };
   } catch (error) {
-    const mapped = mapSignupDomainError(error);
+    const mapped = mapInviteSignupDomainError(error, { includePropertyMemberInviteErrors: true });
     if (mapped) {
       return mapped;
     }
@@ -222,7 +163,7 @@ export async function registerPlatformUserWithInviteGoogle(
   try {
     const idToken = input.body.idToken?.trim();
     if (!idToken) {
-      throw new PropertyMemberInviteSignupValidationError("idToken is required");
+      throw inviteSignupValidationError("idToken is required");
     }
 
     const invite = await loadRedeemableInviteForSignup(input.body.token);
@@ -241,7 +182,9 @@ export async function registerPlatformUserWithInviteGoogle(
     }
 
     if (normalizeInviteEmail(googleUser.email) !== normalizeInviteEmail(invite.email)) {
-      throw new PropertyMemberInviteSignupEmailMismatchError();
+      throw inviteSignupEmailMismatchError(
+        "Google account email must match the invited email address for this property"
+      );
     }
 
     const { user } = await userDb.findOrCreateByGoogle({
@@ -253,7 +196,7 @@ export async function registerPlatformUserWithInviteGoogle(
     const response = await completeSignup(server, input.body.token.trim(), user);
     return { response, status: "ok" };
   } catch (error) {
-    const mapped = mapSignupDomainError(error);
+    const mapped = mapInviteSignupDomainError(error, { includePropertyMemberInviteErrors: true });
     if (mapped) {
       return mapped;
     }

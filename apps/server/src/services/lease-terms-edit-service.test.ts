@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyLongStay } from "@/packages/shared";
+import { LeaseErrorCode } from "@/errors/lease-errors";
 import { LeaseTermsEditBlockReason, PropertyLongStayStatus } from "@/packages/shared";
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
@@ -55,8 +56,6 @@ const {
   assertLeaseTermsEditable,
   editLeaseTerms,
   getLeaseTermsEditability,
-  LeaseTermsNotEditableError,
-  LeaseTermsValidationError,
 } = await import("./lease-terms-edit-service");
 
 describe("getLeaseTermsEditability", () => {
@@ -121,8 +120,8 @@ describe("assertLeaseTermsEditable", () => {
     });
 
     await expect(assertLeaseTermsEditable("lease-1")).rejects.toMatchObject({
-      name: "LeaseTermsNotEditableError",
-      reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS,
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
+      body: { reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS },
     });
   });
 
@@ -190,7 +189,7 @@ describe("editLeaseTerms", () => {
         monthlyRent: 1800,
         termMonths: 7,
       })
-    ).rejects.toBeInstanceOf(LeaseTermsNotEditableError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE });
   });
 
   test("rejects leases with income lines", async () => {
@@ -211,7 +210,8 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES,
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
+      body: { reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES },
     });
   });
 
@@ -233,7 +233,8 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS,
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
+      body: { reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS },
     });
   });
 
@@ -255,7 +256,8 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      reason: LeaseTermsEditBlockReason.HAS_RENT_PERIOD_HISTORY,
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
+      body: { reason: LeaseTermsEditBlockReason.HAS_RENT_PERIOD_HISTORY },
     });
   });
 
@@ -269,6 +271,6 @@ describe("editLeaseTerms", () => {
         monthlyRent: lease.monthlyRent,
         termMonths: lease.termMonths,
       })
-    ).rejects.toBeInstanceOf(LeaseTermsValidationError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.LEASE_TERMS_VALIDATION });
   });
 });

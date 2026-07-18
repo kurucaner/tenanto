@@ -1,10 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import {
-  MaxSecondaryOccupantsError,
-  SecondaryOccupantNotFoundError,
-} from "@/db/lease-tenant-memberships";
-import { LongStayNotActiveError, propertyLongStaysDb } from "@/db/property-long-stays";
+import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { isDuplicatePortalInviteError } from "@/errors/portal-invite-errors";
 import {
   HttpStatus,
@@ -12,10 +8,10 @@ import {
   isValidTenantEmail,
   IUpdateSecondaryOccupantBody,
 } from "@/packages/shared";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   createSecondaryOccupant,
   deleteSecondaryOccupant,
-  LinkedTenantContactError,
   updateSecondaryOccupant,
 } from "@/services/secondary-occupant-service";
 
@@ -31,6 +27,20 @@ interface ISecondaryOccupantParams {
   longStayId: string;
   membershipId?: string;
   propertyId: string;
+}
+
+function handleSecondaryOccupantError(error: unknown, reply: FastifyReply): FastifyReply {
+  if (isDuplicatePortalInviteError(error)) {
+    return reply.status(HttpStatus.CONFLICT).send({
+      code: error.code,
+      error: error.message,
+      ...(error.body ?? {}),
+    });
+  }
+  if (replyFromDomainError(reply, error)) {
+    return reply;
+  }
+  throw error;
 }
 
 function parseOptionalSecondaryEmail(
@@ -194,23 +204,10 @@ export async function propertySecondaryOccupantRoutes(server: FastifyInstance): 
         });
         return reply.status(HttpStatus.CREATED).send({ secondaryOccupant });
       } catch (error) {
-        if (error instanceof MaxSecondaryOccupantsError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (isDuplicatePortalInviteError(error)) {
-          return reply.status(HttpStatus.CONFLICT).send({
-            code: error.code,
-            error: error.message,
-            ...(error.body ?? {}),
-          });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
         if (error instanceof Error && error.message.includes("valid email")) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }
-        throw error;
+        return handleSecondaryOccupantError(error, reply);
       }
     }
   );
@@ -251,19 +248,10 @@ export async function propertySecondaryOccupantRoutes(server: FastifyInstance): 
         });
         return reply.send({ secondaryOccupant });
       } catch (error) {
-        if (error instanceof LinkedTenantContactError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
-        if (error instanceof SecondaryOccupantNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
         if (error instanceof Error && error.message.includes("valid email")) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
         }
-        throw error;
+        return handleSecondaryOccupantError(error, reply);
       }
     }
   );
@@ -295,13 +283,7 @@ export async function propertySecondaryOccupantRoutes(server: FastifyInstance): 
         const membership = await deleteSecondaryOccupant({ lease: longStay, membershipId });
         return reply.send({ membership });
       } catch (error) {
-        if (error instanceof SecondaryOccupantNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        throw error;
+        return handleSecondaryOccupantError(error, reply);
       }
     }
   );

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { FastifyReply } from "fastify";
 
+import { leaseTermsNotEditableError } from "@/errors/lease-errors";
 import { HttpStatus, LeaseTermsEditBlockReason } from "@/packages/shared";
 
 import { replyLeaseTermsNotEditable } from "./reply-lease-terms-not-editable";
@@ -35,14 +36,14 @@ function createMockReply(): {
 
 describe("replyLeaseTermsNotEditable", () => {
   test("returns 409 with error message and block reason", async () => {
-    const { LeaseTermsNotEditableError } = await import("@/services/lease-terms-edit-service");
     const mock = createMockReply();
-    const error = new LeaseTermsNotEditableError(LeaseTermsEditBlockReason.HAS_INCOME_LINES);
+    const error = leaseTermsNotEditableError(LeaseTermsEditBlockReason.HAS_INCOME_LINES);
 
     replyLeaseTermsNotEditable(mock.reply, error);
 
     expect(mock.statusCode).toBe(HttpStatus.CONFLICT);
     expect(mock.body).toEqual({
+      code: error.code,
       error: error.message,
       reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES,
     });

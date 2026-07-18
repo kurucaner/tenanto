@@ -11,6 +11,7 @@ import {
   portalInviteInvalidStateError,
   portalInviteNotFoundError,
 } from "@/errors/portal-invite-errors";
+import { tenantMembershipNotFoundError } from "@/errors/lease-errors";
 import {
   buildTenantInviteLeaseSummary,
   formatUnitLabel,
@@ -38,13 +39,6 @@ import { issueTenantSession } from "@/services/tenant-auth-service";
 
 import { assertLeaseTenantReadAccess } from "./tenant-portal-access";
 import { logTenantPortalAccepted, logTenantPortalDeclined } from "./tenant-portal-observability";
-
-export class TenantMembershipNotFoundError extends Error {
-  constructor(message = "Portal invite not found") {
-    super(message);
-    this.name = "TenantMembershipNotFoundError";
-  }
-}
 
 const ACCEPTABLE_STATUSES = new Set<TTenantMembershipStatus>([
   TenantMembershipStatus.PENDING_INVITE,
@@ -176,7 +170,7 @@ export const tenantPortalMembershipService = {
   ): Promise<ILeaseTenantMembership> {
     const membership = await leaseTenantMembershipsDb.findById(membershipId);
     if (!membership) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
     return acceptMembershipForTenant(membership, tenantUser);
   },
@@ -187,7 +181,7 @@ export const tenantPortalMembershipService = {
   ): Promise<ILeaseTenantMembership> {
     const membership = await leaseTenantMembershipsDb.findById(membershipId);
     if (!membership) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
 
     await assertMembershipActionable(membership);
@@ -198,7 +192,7 @@ export const tenantPortalMembershipService = {
       TenantMembershipStatus.DECLINED
     );
     if (!updated) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
     logTenantPortalDeclined(updated);
     return updated;
@@ -208,7 +202,7 @@ export const tenantPortalMembershipService = {
     const membership = await assertLeaseTenantReadAccess(leaseId, tenantUserId);
     const lease = await propertyLongStaysDb.findById(leaseId);
     if (!lease) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
 
     const [property, unit, rentScheduleMonths] = await Promise.all([
@@ -219,7 +213,7 @@ export const tenantPortalMembershipService = {
         : propertyLongStaysDb.getRentSchedule(leaseId),
     ]);
     if (!property || !unit) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
 
     return {

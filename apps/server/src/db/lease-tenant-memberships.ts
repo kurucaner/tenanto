@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 
+import { invalidTenantMembershipTransitionError } from "@/errors/lease-errors";
 import { duplicatePortalInviteError } from "@/errors/portal-invite-errors";
 import {
   canTransitionTenantMembershipStatus,
@@ -33,14 +34,12 @@ export interface CreateLeaseTenantMembershipInput {
   tenantUserId?: string | null;
 }
 
-export class InvalidTenantMembershipTransitionError extends Error {
-  constructor(
-    public readonly from: TTenantMembershipStatus,
-    public readonly to: TTenantMembershipStatus
-  ) {
-    super(`Invalid tenant membership transition: ${from} → ${to}`);
-    this.name = "InvalidTenantMembershipTransitionError";
-  }
+export interface CreateListedSecondaryInput {
+  contactPhone: string | null;
+  displayName: string;
+  invitedBy: string;
+  inviteEmail: string | null;
+  leaseId: string;
 }
 
 function statusTimestampColumn(status: TTenantMembershipStatus): string | null {
@@ -59,35 +58,6 @@ function statusTimestampColumn(status: TTenantMembershipStatus): string | null {
 }
 
 const LISTED_MEMBERSHIP_PLACEHOLDER_EXPIRES_AT = new Date("2099-12-31T23:59:59.000Z");
-
-export interface CreateListedSecondaryInput {
-  contactPhone: string | null;
-  displayName: string;
-  invitedBy: string;
-  inviteEmail: string | null;
-  leaseId: string;
-}
-
-export class MaxSecondaryOccupantsError extends Error {
-  constructor(public readonly max: number) {
-    super(`A lease can have at most ${max} secondary occupants`);
-    this.name = "MaxSecondaryOccupantsError";
-  }
-}
-
-export class SecondaryOccupantNotFoundError extends Error {
-  constructor() {
-    super("Secondary occupant not found");
-    this.name = "SecondaryOccupantNotFoundError";
-  }
-}
-
-export class SecondaryOccupantLeaseMismatchError extends Error {
-  constructor() {
-    super("Secondary occupant does not belong to this lease");
-    this.name = "SecondaryOccupantLeaseMismatchError";
-  }
-}
 
 export const leaseTenantMembershipsDb = {
   async countNonTerminalSecondariesForLease(
@@ -473,7 +443,7 @@ export const leaseTenantMembershipsDb = {
     if (!current) return null;
 
     if (!canTransitionTenantMembershipStatus(current.status, toStatus)) {
-      throw new InvalidTenantMembershipTransitionError(current.status, toStatus);
+      throw invalidTenantMembershipTransitionError(current.status, toStatus);
     }
 
     const timestampColumn = statusTimestampColumn(toStatus);

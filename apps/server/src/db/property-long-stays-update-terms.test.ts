@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 
+import { LeaseErrorCode } from "@/errors/lease-errors";
 import { PropertyLongStayStatus } from "@/packages/shared";
 
 type TLeaseRow = Record<string, unknown>;
@@ -110,7 +111,7 @@ mock.module("./tenant-rent-payments", () => ({
   },
 }));
 
-const { ActiveLongStayConflictError, propertyLongStaysDb } = await import("./property-long-stays");
+const { propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.updateTerms", () => {
   test("updates lease fields in a transaction", async () => {
@@ -193,7 +194,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
         monthlyRent: 1800,
         termMonths: 6,
       })
-    ).rejects.toBeInstanceOf(ActiveLongStayConflictError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.ACTIVE_LONG_STAY_CONFLICT });
 
     expect(capturedClientSql.some((sql) => sql === "BEGIN")).toBe(false);
   });

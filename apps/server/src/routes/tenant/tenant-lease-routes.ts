@@ -23,12 +23,8 @@ import {
   registerTenantWithInvitePassword,
   type TTenantInviteSignupResult,
 } from "@/services/tenant-invite-signup-service";
-import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
-import {
-  TenantMembershipNotFoundError,
-  tenantPortalMembershipService,
-} from "@/services/tenant-portal-membership-service";
+import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 
 function parseRedeemBody(body: unknown): ITenantInviteRedeemBody | null {
   if (body == null || typeof body !== "object") {
@@ -100,10 +96,6 @@ async function sendInviteSignupResult(
 }
 
 function mapMembershipError(error: unknown, reply: FastifyReply): FastifyReply | null {
-  if (error instanceof TenantMembershipNotFoundError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-  }
-
   if (replyFromDomainError(reply, error)) {
     return reply;
   }
@@ -255,11 +247,8 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
         const lease = await tenantPortalMembershipService.getLeaseDetail(leaseId, tenantUserId);
         return reply.send(lease);
       } catch (error) {
-        if (error instanceof TenantLeaseAccessDeniedError) {
-          return reply.status(HttpStatus.FORBIDDEN).send({ error: error.message });
-        }
-        if (error instanceof TenantMembershipNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        if (replyFromDomainError(reply, error)) {
+          return reply;
         }
         throw error;
       }

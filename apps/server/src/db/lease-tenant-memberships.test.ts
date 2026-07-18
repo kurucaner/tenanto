@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 
@@ -22,8 +23,7 @@ mock.module("@/db/pool", () => ({
   },
 }));
 
-const { InvalidTenantMembershipTransitionError, leaseTenantMembershipsDb } =
-  await import("./lease-tenant-memberships");
+const { leaseTenantMembershipsDb } = await import("./lease-tenant-memberships");
 
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
@@ -60,7 +60,7 @@ describe("leaseTenantMembershipsDb.transitionStatus", () => {
 
     await expect(
       leaseTenantMembershipsDb.transitionStatus("membership-1", TenantMembershipStatus.ACTIVE)
-    ).rejects.toBeInstanceOf(InvalidTenantMembershipTransitionError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.INVALID_TENANT_MEMBERSHIP_TRANSITION });
   });
 
   test("returns null when membership does not exist", async () => {

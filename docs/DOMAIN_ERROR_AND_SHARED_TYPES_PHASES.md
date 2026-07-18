@@ -309,8 +309,8 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
 
 **Tasks**
 
-- [ ] Add [`apps/server/src/errors/invite-signup-errors.ts`](apps/server/src/errors/invite-signup-errors.ts) — shared signup validation/account-exists/email-mismatch errors (tenant + platform variants or unified codes with context)
-- [ ] Add [`apps/server/src/services/map-invite-signup-domain-error.ts`](apps/server/src/services/map-invite-signup-domain-error.ts):
+- [x] Add [`apps/server/src/errors/invite-signup-errors.ts`](apps/server/src/errors/invite-signup-errors.ts) — shared signup validation/account-exists/email-mismatch errors (tenant + platform variants or unified codes with context)
+- [x] Add [`apps/server/src/services/map-invite-signup-domain-error.ts`](apps/server/src/services/map-invite-signup-domain-error.ts):
 
   ```typescript
   export function mapInviteSignupDomainError(
@@ -319,10 +319,10 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
   ): TSignupFailure | null
   ```
 
-- [ ] Migrate [`tenant-invite-signup-service.ts`](apps/server/src/services/tenant-invite-signup-service.ts) — replace local classes + mapper
-- [ ] Migrate [`property-member-invite-signup-service.ts`](apps/server/src/services/property-member-invite-signup-service.ts)
-- [ ] Keep `isIdentityConflictError` branch — already uses `AccountError` codes from [`constants/account.ts`](apps/server/src/constants/account.ts)
-- [ ] Tests: table-driven cases for each error → status/body (port existing assertions)
+- [x] Migrate [`tenant-invite-signup-service.ts`](apps/server/src/services/tenant-invite-signup-service.ts) — replace local classes + mapper
+- [x] Migrate [`property-member-invite-signup-service.ts`](apps/server/src/services/property-member-invite-signup-service.ts)
+- [x] Keep `isIdentityConflictError` branch — already uses `AccountError` codes from [`constants/account.ts`](apps/server/src/constants/account.ts)
+- [x] Tests: table-driven cases for each error → status/body (port existing assertions)
 
 **Exit criteria:** One shared mapper; duplicate signup error classes removed; tenant + platform signup flows unchanged.
 
@@ -334,7 +334,7 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
 
 **Tasks**
 
-- [ ] Add [`apps/server/src/errors/lease-errors.ts`](apps/server/src/errors/lease-errors.ts):
+- [x] Add [`apps/server/src/errors/lease-errors.ts`](apps/server/src/errors/lease-errors.ts):
 
   | Legacy | Code | HTTP |
   | --- | --- | --- |
@@ -350,10 +350,10 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
   | `SecondaryOccupantLeaseMismatchError` | `SECONDARY_OCCUPANT_LEASE_MISMATCH` | 404 |
   | `InvalidTenantMembershipTransitionError` | `TENANT_MEMBERSHIP_INVALID_TRANSITION` | 400 |
 
-- [ ] Migrate [`property-long-stays.ts`](apps/server/src/db/property-long-stays.ts), [`lease-terms-edit-service.ts`](apps/server/src/services/lease-terms-edit-service.ts), [`update-primary-tenant-contact-service.ts`](apps/server/src/services/update-primary-tenant-contact-service.ts), remaining membership errors
-- [ ] Add `replyFromLeaseDomainError` or extend registry in `reply-from-domain-error.ts`
-- [ ] Refactor long-stay + secondary occupant routes to use central mapper(s)
-- [ ] Migrate `TenantLeaseAccessDeniedError`, `TenantMembershipNotFoundError` for tenant routes
+- [x] Migrate [`property-long-stays.ts`](apps/server/src/db/property-long-stays.ts), [`lease-terms-edit-service.ts`](apps/server/src/services/lease-terms-edit-service.ts), [`update-primary-tenant-contact-service.ts`](apps/server/src/services/update-primary-tenant-contact-service.ts), remaining membership errors
+- [x] Add `replyFromLeaseDomainError` or extend registry in `reply-from-domain-error.ts`
+- [x] Refactor long-stay + secondary occupant routes to use central mapper(s)
+- [x] Migrate `TenantLeaseAccessDeniedError`, `TenantMembershipNotFoundError` for tenant routes
 
 **Exit criteria:** Long-stay CRUD, terms edit, secondary occupant CRUD, primary contact edit return same errors; `property-long-stay-routes.ts` has no long `instanceof` ladder.
 

@@ -2,13 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
-import {
-  ActiveLongStayConflictError,
-  InvalidExtendLeaseError,
-  LongStayNotActiveError,
-  LongStayNotFoundError,
-  propertyLongStaysDb,
-} from "@/db/property-long-stays";
+import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
   HttpStatus,
@@ -31,21 +25,14 @@ import {
   validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
 import { resolvePrimaryTenantContactForLongStay } from "@/services/lease-primary-tenant-contact-service";
-import {
-  editLeaseTerms,
-  getLeaseTermsEditability,
-  LeaseTermsNotEditableError,
-  LeaseTermsValidationError,
-} from "@/services/lease-terms-edit-service";
+import { editLeaseTerms, getLeaseTermsEditability } from "@/services/lease-terms-edit-service";
 import { resolveSecondaryTenantContactsForLongStay } from "@/services/resolve-secondary-tenant-contacts-service";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
-import {
-  LinkedTenantContactError,
-  updatePrimaryTenantContact,
-} from "@/services/update-primary-tenant-contact-service";
+import { updatePrimaryTenantContact } from "@/services/update-primary-tenant-contact-service";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -59,7 +46,6 @@ import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
 } from "./property-route-access";
-import { replyLeaseTermsNotEditable } from "./reply-lease-terms-not-editable";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -465,6 +451,13 @@ interface IPropertyLongStayParams {
   propertyId: string;
 }
 
+function handleLeaseDomainError(error: unknown, reply: FastifyReply): FastifyReply {
+  if (replyFromDomainError(reply, error)) {
+    return reply;
+  }
+  throw error;
+}
+
 export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
@@ -598,10 +591,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
           ...(portalInvite ? { portalInvite } : {}),
         });
       } catch (error) {
-        if (error instanceof ActiveLongStayConflictError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -656,19 +646,10 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof LinkedTenantContactError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
         if (isIdentityConflictError(error)) {
           return reply.status(HttpStatus.CONFLICT).send({ code: error.code, error: error.message });
         }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -737,13 +718,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -792,23 +767,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         const longStay = await editLeaseTerms(longStayId, parsed.body);
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof LeaseTermsNotEditableError) {
-          replyLeaseTermsNotEditable(reply, error);
-          return;
-        }
-        if (error instanceof LeaseTermsValidationError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof ActiveLongStayConflictError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -857,16 +816,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         const longStay = await propertyLongStaysDb.extendLease(longStayId, parsed.body);
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof InvalidExtendLeaseError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );

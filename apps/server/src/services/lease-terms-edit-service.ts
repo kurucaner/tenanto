@@ -1,30 +1,16 @@
-import { LongStayNotFoundError, propertyLongStaysDb } from "@/db/property-long-stays";
+import { propertyLongStaysDb } from "@/db/property-long-stays";
+import {
+  leaseTermsNotEditableError,
+  leaseTermsValidationError,
+  longStayNotFoundError,
+} from "@/errors/lease-errors";
 import {
   deriveLeaseTermsEditability,
-  getLeaseTermsEditBlockMessage,
   type IEditPropertyLongStayTermsBody,
   type ILeaseTermsEditability,
   type IPropertyLongStay,
-  type TLeaseTermsEditBlockReason,
   validateEditLeaseTerms,
 } from "@/packages/shared";
-
-export class LeaseTermsNotEditableError extends Error {
-  readonly reason: TLeaseTermsEditBlockReason;
-
-  constructor(reason: TLeaseTermsEditBlockReason) {
-    super(getLeaseTermsEditBlockMessage(reason));
-    this.name = "LeaseTermsNotEditableError";
-    this.reason = reason;
-  }
-}
-
-export class LeaseTermsValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LeaseTermsValidationError";
-  }
-}
 
 function getTodayUtcIsoDate(): string {
   const date = new Date();
@@ -50,17 +36,17 @@ export async function getLeaseTermsEditability(
 export async function assertLeaseTermsEditable(longStayId: string): Promise<void> {
   const lease = await propertyLongStaysDb.findById(longStayId);
   if (!lease) {
-    throw new LongStayNotFoundError();
+    throw longStayNotFoundError();
   }
 
   const signalResult = await propertyLongStaysDb.getTermsEditSignals(longStayId);
   if (!signalResult) {
-    throw new LongStayNotFoundError();
+    throw longStayNotFoundError();
   }
 
   const editability = deriveLeaseTermsEditability(lease, signalResult.signals);
   if (!editability.editable && editability.reason) {
-    throw new LeaseTermsNotEditableError(editability.reason);
+    throw leaseTermsNotEditableError(editability.reason);
   }
 }
 
@@ -70,14 +56,14 @@ export async function editLeaseTerms(
 ): Promise<IPropertyLongStay> {
   const lease = await propertyLongStaysDb.findById(longStayId);
   if (!lease) {
-    throw new LongStayNotFoundError();
+    throw longStayNotFoundError();
   }
 
   await assertLeaseTermsEditable(longStayId);
 
   const validationError = validateEditLeaseTerms(body, lease, getTodayUtcIsoDate());
   if (validationError) {
-    throw new LeaseTermsValidationError(validationError);
+    throw leaseTermsValidationError(validationError);
   }
 
   return propertyLongStaysDb.updateTerms(longStayId, body);

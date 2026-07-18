@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
+import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership, IPropertyLongStay, ITenantUser } from "@/packages/shared";
 import {
   PropertyLongStayStatus,
@@ -45,8 +46,7 @@ mock.module("@/db/tenant-users", () => ({
   },
 }));
 
-const { LinkedTenantContactError, updatePrimaryTenantContact } =
-  await import("./update-primary-tenant-contact-service");
+const { updatePrimaryTenantContact } = await import("./update-primary-tenant-contact-service");
 
 function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {
@@ -150,7 +150,7 @@ describe("updatePrimaryTenantContact", () => {
 
     await expect(
       updatePrimaryTenantContact(makeLease(), { tenantEmail: "other@example.com" })
-    ).rejects.toBeInstanceOf(LinkedTenantContactError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.LINKED_TENANT_CONTACT });
     expect(mockUpdateLease).not.toHaveBeenCalled();
   });
 
@@ -165,7 +165,7 @@ describe("updatePrimaryTenantContact", () => {
 
     await expect(
       updatePrimaryTenantContact(makeLease(), { tenantPhone: "+13055550111" })
-    ).rejects.toBeInstanceOf(LinkedTenantContactError);
+    ).rejects.toMatchObject({ code: LeaseErrorCode.LINKED_TENANT_CONTACT });
     expect(mockUpdateUnverifiedPhone).not.toHaveBeenCalled();
   });
 

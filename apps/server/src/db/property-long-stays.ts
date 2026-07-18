@@ -1,4 +1,10 @@
 import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
+import {
+  activeLongStayConflictError,
+  invalidExtendLeaseError,
+  longStayNotActiveError,
+  longStayNotFoundError,
+} from "@/errors/lease-errors";
 import type {
   ICreatePropertyLongStayBody,
   IEditPropertyLongStayTermsBody,
@@ -105,34 +111,6 @@ function ensureUnitJoin(joinUnits: string): string {
   return "LEFT JOIN property_units pu ON pu.id = pls.unit_id";
 }
 
-export class ActiveLongStayConflictError extends Error {
-  constructor() {
-    super("Unit already has an active lease");
-    this.name = "ActiveLongStayConflictError";
-  }
-}
-
-export class LongStayNotFoundError extends Error {
-  constructor() {
-    super("Long stay not found");
-    this.name = "LongStayNotFoundError";
-  }
-}
-
-export class LongStayNotActiveError extends Error {
-  constructor() {
-    super("Long stay is not active");
-    this.name = "LongStayNotActiveError";
-  }
-}
-
-export class InvalidExtendLeaseError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidExtendLeaseError";
-  }
-}
-
 function getTodayUtcIsoDate(): string {
   const date = new Date();
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
@@ -142,7 +120,7 @@ export const propertyLongStaysDb = {
   async create(propertyId: string, input: ICreatePropertyLongStayBody): Promise<IPropertyLongStay> {
     const activeLease = await propertyLongStaysDb.findActiveByUnitId(input.unitId);
     if (activeLease) {
-      throw new ActiveLongStayConflictError();
+      throw activeLongStayConflictError();
     }
 
     const leaseEndDate = calculateLeaseEndDate(input.leaseStartDate, input.termMonths);
@@ -184,9 +162,9 @@ export const propertyLongStaysDb = {
     if (result.rows.length === 0) {
       const existing = await propertyLongStaysDb.findById(id);
       if (!existing) {
-        throw new LongStayNotFoundError();
+        throw longStayNotFoundError();
       }
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
@@ -194,15 +172,15 @@ export const propertyLongStaysDb = {
   async extendLease(id: string, body: IExtendPropertyLongStayBody): Promise<IPropertyLongStay> {
     const existing = await propertyLongStaysDb.findById(id);
     if (!existing) {
-      throw new LongStayNotFoundError();
+      throw longStayNotFoundError();
     }
     if (existing.status !== PropertyLongStayStatus.ACTIVE) {
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
 
     const validationError = validateExtendLease(body, existing, getTodayUtcIsoDate());
     if (validationError) {
-      throw new InvalidExtendLeaseError(validationError);
+      throw invalidExtendLeaseError(validationError);
     }
 
     const newTermMonths = existing.termMonths + body.additionalTermMonths;
@@ -265,7 +243,7 @@ export const propertyLongStaysDb = {
       );
 
       if (result.rows.length === 0) {
-        throw new LongStayNotActiveError();
+        throw longStayNotActiveError();
       }
 
       await client.query("COMMIT");
@@ -331,7 +309,7 @@ export const propertyLongStaysDb = {
   ): Promise<IPropertyLongStayRentMonth[]> {
     const longStay = await propertyLongStaysDb.findById(longStayId);
     if (!longStay) {
-      throw new LongStayNotFoundError();
+      throw longStayNotFoundError();
     }
 
     const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
@@ -561,9 +539,9 @@ export const propertyLongStaysDb = {
     if (result.rows.length === 0) {
       const existing = await propertyLongStaysDb.findById(id);
       if (!existing) {
-        throw new LongStayNotFoundError();
+        throw longStayNotFoundError();
       }
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
@@ -571,10 +549,10 @@ export const propertyLongStaysDb = {
   async updateTerms(id: string, body: IEditPropertyLongStayTermsBody): Promise<IPropertyLongStay> {
     const existing = await propertyLongStaysDb.findById(id);
     if (!existing) {
-      throw new LongStayNotFoundError();
+      throw longStayNotFoundError();
     }
     if (existing.status !== PropertyLongStayStatus.ACTIVE) {
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
 
     const scheduleChanged =
@@ -582,7 +560,7 @@ export const propertyLongStaysDb = {
     if (scheduleChanged) {
       const activeOnUnit = await propertyLongStaysDb.findActiveByUnitId(existing.unitId);
       if (activeOnUnit && activeOnUnit.id !== id) {
-        throw new ActiveLongStayConflictError();
+        throw activeLongStayConflictError();
       }
     }
 
@@ -631,7 +609,7 @@ export const propertyLongStaysDb = {
       );
 
       if (result.rows.length === 0) {
-        throw new LongStayNotActiveError();
+        throw longStayNotActiveError();
       }
 
       await client.query("COMMIT");
