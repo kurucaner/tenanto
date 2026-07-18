@@ -159,7 +159,6 @@ export const PropertyLeaseDetailPage = memo(() => {
           lease={lease}
           onEndLease={() => setEndLeaseOpen(true)}
           onExtendLease={() => setExtendLeaseOpen(true)}
-          onRecordRent={() => handleRecordRent()}
           unitLabel={unitLabel}
         />
 

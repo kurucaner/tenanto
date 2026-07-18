@@ -1,4 +1,4 @@
-import { CalendarPlus, CircleDollarSign, SquarePen } from "lucide-react";
+import { CalendarPlus, SquarePen } from "lucide-react";
 import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,6 @@ interface LeaseDetailHeaderProps {
   lease: IPropertyLongStay;
   onEndLease: () => void;
   onExtendLease: () => void;
-  onRecordRent: () => void;
   unitLabel: string;
 }
 
@@ -28,7 +27,6 @@ export const LeaseDetailHeader = memo(
     lease,
     onEndLease,
     onExtendLease,
-    onRecordRent,
     unitLabel,
   }: LeaseDetailHeaderProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
@@ -52,10 +50,6 @@ export const LeaseDetailHeader = memo(
 
         {canManage && isActive ? (
           <div className="flex flex-wrap gap-2">
-            <Button className="gap-1.5" onClick={onRecordRent} size="sm" type="button">
-              <CircleDollarSign className="size-3.5" />
-              Record Rent
-            </Button>
             <Button
               className="gap-1.5"
               onClick={onExtendLease}
