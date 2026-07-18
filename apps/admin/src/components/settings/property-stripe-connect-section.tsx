@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink } from "lucide-react";
-import { type ComponentProps,memo } from "react";
+import { type ComponentProps, memo } from "react";
 import { toast } from "sonner";
 
 import { PropertyStripeConnectStatusBadge } from "@/components/settings/property-stripe-connect-status-badge";
@@ -17,11 +17,13 @@ import {
   shouldShowStandardOAuthButton,
   showDualConnectOptions,
   STANDARD_CONNECT_HELPER,
+  STANDARD_INCOMPLETE_HELPER,
   STANDARD_STRIPE_DASHBOARD_URL,
   standardOAuthButtonLabel,
   stripeConnectSectionDescription,
 } from "@/lib/property-stripe-connect-utils";
 import { queryKeys } from "@/lib/query-keys";
+import { PropertyStripeAccountType } from "@/packages/shared";
 
 function openStripeOnboardingUrl(url: string): void {
   const link = document.createElement("a");
@@ -205,16 +207,29 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
               </Button>
             ) : null}
             {showStandardOAuth ? (
-              <Button
-                disabled={connectPending}
-                onClick={() => standardOAuthMutation.mutate()}
-                type="button"
-                variant="outline"
-              >
-                {standardOAuthMutation.isPending
-                  ? "Redirecting to Stripe…"
-                  : standardOAuthButtonLabel(uiStatus)}
-              </Button>
+              status.accountType === PropertyStripeAccountType.STANDARD &&
+              uiStatus === "setup_incomplete" ? (
+                <StripeConnectOption
+                  disabled={connectPending}
+                  helper={STANDARD_INCOMPLETE_HELPER}
+                  label={standardOAuthButtonLabel(uiStatus)}
+                  loadingLabel="Redirecting to Stripe…"
+                  onClick={() => standardOAuthMutation.mutate()}
+                  pending={standardOAuthMutation.isPending}
+                  variant="outline"
+                />
+              ) : (
+                <Button
+                  disabled={connectPending}
+                  onClick={() => standardOAuthMutation.mutate()}
+                  type="button"
+                  variant="outline"
+                >
+                  {standardOAuthMutation.isPending
+                    ? "Redirecting to Stripe…"
+                    : standardOAuthButtonLabel(uiStatus)}
+                </Button>
+              )
             ) : null}
           </>
         )}

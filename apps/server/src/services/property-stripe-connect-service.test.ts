@@ -279,14 +279,14 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    await expect(
+    expect(
       propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
     ).rejects.toThrow("This property uses a Stripe Express account");
 
     expect(mockCreateOAuthState).not.toHaveBeenCalled();
   });
 
-  test("throws standard conflict when property already has Standard account", async () => {
+  test("throws standard conflict when property already has ready Standard account", async () => {
     mockFindByPropertyId.mockResolvedValue({
       accountType: PropertyStripeAccountType.STANDARD,
       chargesEnabled: true,
@@ -298,11 +298,35 @@ describe("propertyStripeConnectService.createStandardOAuthAuthorizeUrl", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
-    await expect(
+    expect(
       propertyStripeConnectService.createStandardOAuthAuthorizeUrl("property-1", "user-1")
     ).rejects.toThrow("This property is already connected to an existing Stripe account");
 
     expect(mockCreateOAuthState).not.toHaveBeenCalled();
+  });
+
+  test("allows re-authorize when Standard account setup is incomplete", async () => {
+    mockFindByPropertyId.mockResolvedValue({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: false,
+      detailsSubmitted: false,
+      onboardingComplete: false,
+      payoutsEnabled: false,
+      propertyId: "property-1",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.createStandardOAuthAuthorizeUrl(
+      "property-1",
+      "user-1"
+    );
+
+    expect(mockCreateOAuthState).toHaveBeenCalledWith({
+      propertyId: "property-1",
+      userId: "user-1",
+    });
+    expect(result.url).toContain("https://connect.stripe.com/oauth/authorize");
   });
 
   test("throws when Standard OAuth is not configured", async () => {
@@ -439,7 +463,7 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
   });
 
   test("redirects with invalid_state when OAuth state cannot be consumed", async () => {
-    mockConsumeOAuthState.mockResolvedValue(null);
+    mockConsumeOAuthState.mockResolvedValue({ propertyId: "property-1", userId: "user-1" });
 
     const result = await propertyStripeConnectService.completeStandardOAuthCallback({
       code: "auth_code",

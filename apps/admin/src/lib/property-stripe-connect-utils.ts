@@ -14,6 +14,12 @@ export const STANDARD_CONNECT_HELPER =
 
 export const STANDARD_STRIPE_DASHBOARD_URL = "https://dashboard.stripe.com";
 
+export const STANDARD_INCOMPLETE_HELPER =
+  "Complete any remaining requirements in Stripe Dashboard, or reconnect your account below.";
+
+export type TStripeConnectConnectedState =
+  "express_incomplete" | "express_ready" | "standard_incomplete" | "standard_ready";
+
 export function getStripeConnectUiStatus(
   status: IPropertyStripeConnectStatusResponse
 ): TStripeConnectUiStatus {
@@ -24,6 +30,19 @@ export function getStripeConnectUiStatus(
     return "ready";
   }
   return "setup_incomplete";
+}
+
+export function getStripeConnectConnectedState(
+  status: IPropertyStripeConnectStatusResponse
+): TStripeConnectConnectedState | null {
+  const uiStatus = getStripeConnectUiStatus(status);
+  if (uiStatus === "not_connected") {
+    return null;
+  }
+  if (status.accountType === PropertyStripeAccountType.STANDARD) {
+    return uiStatus === "ready" ? "standard_ready" : "standard_incomplete";
+  }
+  return uiStatus === "ready" ? "express_ready" : "express_incomplete";
 }
 
 export function getStripeConnectAccountTypeLabel(
@@ -56,16 +75,17 @@ export function shouldShowExpressOnboardingButton(
 export function shouldShowStandardOAuthButton(
   status: IPropertyStripeConnectStatusResponse
 ): boolean {
+  if (
+    status.stripeAccountId &&
+    status.accountType === PropertyStripeAccountType.STANDARD &&
+    getStripeConnectUiStatus(status) === "setup_incomplete"
+  ) {
+    return true;
+  }
   if (!status.standardOAuthEnabled) {
     return false;
   }
-  if (!status.stripeAccountId) {
-    return true;
-  }
-  return (
-    status.accountType === PropertyStripeAccountType.STANDARD &&
-    getStripeConnectUiStatus(status) === "setup_incomplete"
-  );
+  return !status.stripeAccountId;
 }
 
 export function shouldShowStandardDashboardLink(
@@ -105,6 +125,12 @@ export function stripeConnectSectionDescription(
   }
   if (shouldShowStandardDashboardLink(status)) {
     return "Connected to your existing Stripe account. Tenants can pay rent to this property.";
+  }
+  if (
+    status.accountType === PropertyStripeAccountType.STANDARD &&
+    uiStatus === "setup_incomplete"
+  ) {
+    return "Your Stripe account is linked but not fully enabled for charges yet. Finish connecting in Stripe to accept rent payments.";
   }
   switch (uiStatus) {
     case "ready":

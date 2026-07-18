@@ -346,10 +346,10 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Correct follow-up actions per type.
 
-- [ ] Express incomplete: **Continue Stripe setup**; ready: **Update Stripe details**
-- [ ] Standard incomplete: **Finish connecting Stripe account** (re-OAuth)
-- [ ] Standard ready: copy + **Open Stripe Dashboard** (external link)
-- [ ] Status badge shows account type
+- [x] Express incomplete: **Continue Stripe setup**; ready: **Update Stripe details**
+- [x] Standard incomplete: **Finish connecting Stripe account** (re-OAuth)
+- [x] Standard ready: copy + **Open Stripe Dashboard** (external link)
+- [x] Status badge shows account type
 
 **Exit criteria:** All four states (express/standard × incomplete/ready) render correctly.
 

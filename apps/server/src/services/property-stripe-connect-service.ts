@@ -230,7 +230,7 @@ export const propertyStripeConnectService = {
     if (local?.accountType === PropertyStripeAccountType.EXPRESS) {
       throw stripeConnectExpressAccountConflictError();
     }
-    if (local) {
+    if (local?.accountType === PropertyStripeAccountType.STANDARD && local.chargesEnabled) {
       throw stripeConnectStandardAccountConflictError();
     }
 
