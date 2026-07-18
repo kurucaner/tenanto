@@ -11,9 +11,8 @@ mock.module("@/db/lease-tenant-memberships", () => ({
   loadSecondaryOccupancyNamesByLeaseIds: mockLoadSecondaryOccupancyNamesByLeaseIds,
 }));
 
-const { hydrateLongStaysSecondaryOccupantNames } = await import(
-  "./hydrate-long-stays-secondary-occupant-names"
-);
+const { hydrateLongStaysSecondaryOccupantNames } =
+  await import("./hydrate-long-stays-secondary-occupant-names");
 
 function makeLease(id: string): IPropertyLongStay {
   return {
