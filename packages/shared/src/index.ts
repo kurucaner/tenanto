@@ -564,6 +564,18 @@ export {
   type IUpdateSecondaryOccupantResponse,
   MAX_SECONDARY_OCCUPANTS,
 } from "./secondary-occupant-types";
+export {
+  type ISecondaryBackfillJsonbTenant,
+  type ISecondaryBackfillLeasePlan,
+  type ISecondaryBackfillPlannedAction,
+  type ISecondaryBackfillVerificationGap,
+  type ISecondaryBackfillVerificationResult,
+  canonicalizeJsonbSecondaryTenants,
+  planSecondaryTenantBackfillForLease,
+  summarizeSecondaryBackfillVerification,
+  type TSecondaryBackfillActionKind,
+  verifySecondaryTenantBackfillForLease,
+} from "./secondary-tenant-membership-backfill";
 
 // Tenant email campaigns
 export {

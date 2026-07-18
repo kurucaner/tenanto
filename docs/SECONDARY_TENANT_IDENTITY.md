@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: s1b-backfill
     content: "Idempotent JSONB→membership backfill script; staging verification query; optional retroactive phone sync"
-    status: pending
+    status: completed
   - id: s2-accept-sync
     content: Extend accept phone sync for secondary role from membership.contact_phone
     status: pending
@@ -184,6 +184,15 @@ Post-v63 prod fix:       S0 → S3a server+admin (membership CRUD only) → S1 r
 
 Run after S0 (needs schema). **Required before S5 (G4).** Should run in staging before production S3b if operators will invite existing JSONB-only secondaries via new UI.
 
+**Script:** [`apps/server/scripts/backfill-secondary-tenant-memberships.ts`](apps/server/scripts/backfill-secondary-tenant-memberships.ts)
+
+```bash
+bun apps/server/scripts/backfill-secondary-tenant-memberships.ts --dry-run
+bun apps/server/scripts/backfill-secondary-tenant-memberships.ts
+bun apps/server/scripts/backfill-secondary-tenant-memberships.ts --verify-only
+bun apps/server/scripts/backfill-secondary-tenant-memberships.ts --sync-phones
+```
+
 **Backfill buckets (idempotent; safe to re-run):**
 
 | Existing state                                    | Action                                                                                   |
@@ -204,6 +213,12 @@ Run after S0 (needs schema). **Required before S5 (G4).** Should run in staging 
 **Optional (same script or follow-up):** for `active` + linked secondaries where `tenant_users.phone` is null and membership/JSONB has valid E.164, copy phone once (null-only; no `phone_verified_at`) — helps existing linked accounts, not just future accepts.
 
 **Exit:** verification query zero gaps in staging; drift log reviewed
+
+- [x] Shared planner: [`secondary-tenant-membership-backfill.ts`](packages/shared/src/secondary-tenant-membership-backfill.ts) (canonicalize JSONB, bucket actions, verification)
+- [x] Executor: [`secondary-tenant-membership-backfill-service.ts`](apps/server/src/services/secondary-tenant-membership-backfill-service.ts)
+- [x] CLI: [`backfill-secondary-tenant-memberships.ts`](apps/server/scripts/backfill-secondary-tenant-memberships.ts) (`--dry-run`, `--verify-only`, `--sync-phones`)
+- [x] Detects absent `secondary_tenants` column (post-v63) and skips JSONB copy with warning
+- [x] Tests for planner + service
 
 ### S2 — Accept sync (secondary)
 

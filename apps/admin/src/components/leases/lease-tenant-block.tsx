@@ -3,7 +3,6 @@ import { memo, type MouseEvent, useCallback } from "react";
 
 import { LeaseTenantPortalRow } from "@/components/leases/lease-tenant-portal-row";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   type ILeasePortalRowState,
@@ -253,11 +252,6 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium">{tenant.name}</p>
-          {contact.source === "linked_user" ? (
-            <Badge className="text-[10px]" variant="secondary">
-              Portal account linked
-            </Badge>
-          ) : null}
         </div>
         <TenantContactLine label="email" value={tenant.email} />
         <TenantContactLine label="phone" value={tenant.phone} />
