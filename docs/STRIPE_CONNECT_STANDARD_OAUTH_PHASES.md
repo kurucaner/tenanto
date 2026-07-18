@@ -78,13 +78,13 @@ Tenant checkout (unchanged)
 
 ### Feature flags / env
 
-| Variable | Purpose |
-| --- | --- |
-| `STRIPE_CONNECT_ENABLED` | Master gate (existing) |
-| `STRIPE_SECRET_KEY` | API + OAuth token exchange (existing) |
-| `STRIPE_CONNECT_CLIENT_ID` | Standard OAuth client id (**required for Standard path**) |
-| `API_PUBLIC_URL` | OAuth redirect URI base (existing pattern for webhooks/unsubscribe) |
-| `PLATFORM_APP_URL` | Post-OAuth redirect back to admin settings (existing) |
+| Variable                   | Purpose                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| `STRIPE_CONNECT_ENABLED`   | Master gate (existing)                                              |
+| `STRIPE_SECRET_KEY`        | API + OAuth token exchange (existing)                               |
+| `STRIPE_CONNECT_CLIENT_ID` | Standard OAuth client id (**required for Standard path**)           |
+| `API_PUBLIC_URL`           | OAuth redirect URI base (existing pattern for webhooks/unsubscribe) |
+| `PLATFORM_APP_URL`         | Post-OAuth redirect back to admin settings (existing)               |
 
 Optional: `STRIPE_CONNECT_STANDARD_OAUTH_ENABLED=true` to dark-launch Standard path in prod before exposing the second button.
 
@@ -94,19 +94,19 @@ Optional: `STRIPE_CONNECT_STANDARD_OAUTH_ENABLED=true` to dark-launch Standard p
 
 ### Migration: extend `property_stripe_accounts`
 
-| Column | Notes |
-| --- | --- |
+| Column         | Notes                                                                            |
+| -------------- | -------------------------------------------------------------------------------- |
 | `account_type` | New enum/text: `express` \| `standard`, NOT NULL, default `express` for backfill |
-| (existing) | `stripe_account_id`, capability flags unchanged |
+| (existing)     | `stripe_account_id`, capability flags unchanged                                  |
 
 **Rule:** On OAuth success, upsert row with `account_type = 'standard'`. On Express create, `account_type = 'express'`.
 
 ### OAuth state (pick one in Phase 0)
 
-| Option | Table / key | Notes |
-| --- | --- | --- |
-| **A (recommended)** | Redis key `stripe:oauth:state:{nonce}` TTL 10m | Reuse `apps/server/src/queues/redis-connection.ts` |
-| B | Postgres `stripe_connect_oauth_states` | `nonce`, `property_id`, `user_id`, `expires_at`; delete on use |
+| Option              | Table / key                                    | Notes                                                          |
+| ------------------- | ---------------------------------------------- | -------------------------------------------------------------- |
+| **A (recommended)** | Redis key `stripe:oauth:state:{nonce}` TTL 10m | Reuse `apps/server/src/queues/redis-connection.ts`             |
+| B                   | Postgres `stripe_connect_oauth_states`         | `nonce`, `property_id`, `user_id`, `expires_at`; delete on use |
 
 Payload stored server-side; `state` query param = signed opaque nonce (HMAC with `JWT_SECRET` or dedicated pepper).
 
@@ -114,12 +114,12 @@ Payload stored server-side; `state` query param = signed opaque nonce (HMAC with
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| --- | --- |
-| `TPropertyStripeAccountType` | `"express" \| "standard"` |
-| `IPropertyStripeConnectStatusResponse` | Add `accountType: TPropertyStripeAccountType \| null` |
-| `IPropertyStripeConnectAuthorizeUrlResponse` | `{ url: string }` for Standard OAuth start |
-| `IPropertyStripeConnectOnboardingLinkResponse` | Keep `{ url: string }` (Express) |
+| Type                                           | Purpose                                               |
+| ---------------------------------------------- | ----------------------------------------------------- |
+| `TPropertyStripeAccountType`                   | `"express" \| "standard"`                             |
+| `IPropertyStripeConnectStatusResponse`         | Add `accountType: TPropertyStripeAccountType \| null` |
+| `IPropertyStripeConnectAuthorizeUrlResponse`   | `{ url: string }` for Standard OAuth start            |
+| `IPropertyStripeConnectOnboardingLinkResponse` | Keep `{ url: string }` (Express)                      |
 
 Rename route naming in API client for clarity (optional): `createExpressOnboardingLink` vs `createStandardOAuthUrl`.
 
@@ -127,13 +127,13 @@ Rename route naming in API client for clarity (optional): `createExpressOnboardi
 
 ## API (sketch)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `GET` | `/properties/:propertyId/stripe/connect/status` | Include `accountType`; sync from Stripe when connected |
-| `POST` | `/properties/:propertyId/stripe/connect/express/onboarding-link` | **Rename** from `/onboarding-link` (keep alias temporarily) |
-| `POST` | `/properties/:propertyId/stripe/connect/oauth/authorize-url` | Returns Stripe OAuth URL; 409 if already connected |
-| `GET` | `/stripe/connect/oauth/callback` | **Public** (no JWT); validates `state`, exchanges `code`, redirects to admin |
-| (existing) | Stripe webhooks | Add `account.updated` handler in Phase 2 |
+| Method     | Path                                                             | Notes                                                                        |
+| ---------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET`      | `/properties/:propertyId/stripe/connect/status`                  | Include `accountType`; sync from Stripe when connected                       |
+| `POST`     | `/properties/:propertyId/stripe/connect/express/onboarding-link` | **Rename** from `/onboarding-link` (keep alias temporarily)                  |
+| `POST`     | `/properties/:propertyId/stripe/connect/oauth/authorize-url`     | Returns Stripe OAuth URL; 409 if already connected                           |
+| `GET`      | `/stripe/connect/oauth/callback`                                 | **Public** (no JWT); validates `state`, exchanges `code`, redirects to admin |
+| (existing) | Stripe webhooks                                                  | Add `account.updated` handler in Phase 2                                     |
 
 **OAuth authorize URL params (server-built):**
 
@@ -159,24 +159,24 @@ N/A for v1. Status refresh on settings return + optional `account.updated` webho
 
 **When not connected** — show both options side by side (stack on mobile):
 
-| Button | Label | Helper (CardDescription or text below) |
-| --- | --- | --- |
-| Express | **Set up new Stripe account** | Use this if you don’t have Stripe yet. Stripe will guide you through a quick setup. |
-| Standard | **Connect existing Stripe account** | Use this if you already manage a Stripe account and want rent paid into it. |
+| Button   | Label                               | Helper (CardDescription or text below)                                              |
+| -------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
+| Express  | **Set up new Stripe account**       | Use this if you don’t have Stripe yet. Stripe will guide you through a quick setup. |
+| Standard | **Connect existing Stripe account** | Use this if you already manage a Stripe account and want rent paid into it.         |
 
 **When connected — Express**
 
-| Status | Button |
-| --- | --- |
+| Status           | Button                    |
+| ---------------- | ------------------------- |
 | Setup incomplete | **Continue Stripe setup** |
-| Ready | **Update Stripe details** |
+| Ready            | **Update Stripe details** |
 
 **When connected — Standard**
 
-| Status | Button / copy |
-| --- | --- |
-| Setup incomplete | **Finish connecting Stripe account** (re-run OAuth or link to Stripe Dashboard message) |
-| Ready | No onboarding button; show **Connected to your existing Stripe account** + link **Open Stripe Dashboard** (optional `accounts.createLoginLink` only works for Express — Standard users open stripe.com/dashboard directly) |
+| Status           | Button / copy                                                                                                                                                                                                              |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Setup incomplete | **Finish connecting Stripe account** (re-run OAuth or link to Stripe Dashboard message)                                                                                                                                    |
+| Ready            | No onboarding button; show **Connected to your existing Stripe account** + link **Open Stripe Dashboard** (optional `accounts.createLoginLink` only works for Express — Standard users open stripe.com/dashboard directly) |
 
 **Status badge additions**
 
@@ -224,9 +224,9 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Goal:** Server knows whether Standard OAuth is allowed.
 
-- [ ] `isStripeConnectStandardOAuthEnabled()` / `requireStripeConnectStandardOAuthConfigured()`
-- [ ] Optional `STRIPE_CONNECT_STANDARD_OAUTH_ENABLED` in `env.d.ts`
-- [ ] Unit tests for config matrix (flag off, client id missing, both set)
+- [x] `isStripeConnectStandardOAuthEnabled()` / `requireStripeConnectStandardOAuthConfigured()`
+- [x] Optional `STRIPE_CONNECT_STANDARD_OAUTH_ENABLED` in `env.d.ts`
+- [x] Unit tests for config matrix (flag off, client id missing, both set)
 
 **Exit criteria:** Config tests pass; no new routes; admin unchanged.
 
@@ -402,14 +402,14 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 **Order:** 4a–4d can parallelize after Phase 3; **4c** can start anytime.
 
-| Concern | Sub-phase |
-| --- | --- |
+| Concern                 | Sub-phase           |
+| ----------------------- | ------------------- |
 | CSRF / session fixation | 0c (+ verify in 4d) |
-| Idempotency | 1d |
-| Conflicts (409) | 1a, 1d |
-| Rate limits | 4a |
-| Observability | 4b |
-| Ops | 4c |
+| Idempotency             | 1d                  |
+| Conflicts (409)         | 1a, 1d              |
+| Rate limits             | 4a                  |
+| Observability           | 4b                  |
+| Ops                     | 4c                  |
 
 ---
 
@@ -424,14 +424,14 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 ### Approximate file counts (unique, cumulative)
 
-| Parent phase | Sub-phases | Approx. files | Notes |
-| --- | --- | --- | --- |
-| 0 | 0a, 0b, 0c | 8–11 | Server + shared only |
-| 1 | 1a–1d | 7–10 | No admin |
-| 2 | — | 3–5 | Webhook only |
-| 3 | 3a–3d | 6–8 | Admin only |
-| 4 | 4a–4d | 5–8 | Mostly edits to prior phases |
-| **0–4 total** | — | **~20–25** | Overlap across PRs |
+| Parent phase  | Sub-phases | Approx. files | Notes                        |
+| ------------- | ---------- | ------------- | ---------------------------- |
+| 0             | 0a, 0b, 0c | 8–11          | Server + shared only         |
+| 1             | 1a–1d      | 7–10          | No admin                     |
+| 2             | —          | 3–5           | Webhook only                 |
+| 3             | 3a–3d      | 6–8           | Admin only                   |
+| 4             | 4a–4d      | 5–8           | Mostly edits to prior phases |
+| **0–4 total** | —          | **~20–25**    | Overlap across PRs           |
 
 **Untouched in 0–4:** `tenant-rent-payment-service.ts`, tenant pay UI, payment webhook handlers (except `account.updated` in Phase 2).
 
