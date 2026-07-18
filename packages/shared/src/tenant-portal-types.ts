@@ -104,8 +104,13 @@ export interface ICreateLeasePortalInviteResponse {
 export interface ICreateLeasePortalInviteBody {
   /** When true, invite the lease primary tenant (`tenantEmail`). */
   invitePrimary?: boolean;
-  /** Zero-based indexes into `lease.secondaryTenants` to invite. */
+  /**
+   * @deprecated Use `secondaryMembershipIds`. Removed in S5b.
+   * Zero-based indexes into resolved secondary contacts (legacy one-release fallback).
+   */
   secondaryIndexes?: number[];
+  /** Secondary occupant membership ids to invite (listed → pending). */
+  secondaryMembershipIds?: string[];
 }
 
 export interface ICreateLeasePortalInviteResult {

@@ -59,6 +59,25 @@ function parseSecondaryIndexes(raw: unknown): number[] | null {
   return indexes;
 }
 
+function parseSecondaryMembershipIds(raw: unknown): string[] | null {
+  if (raw === undefined || raw === null) {
+    return [];
+  }
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+
+  const membershipIds: string[] = [];
+  for (const item of raw) {
+    const parsed = parseUuidParam(item);
+    if (parsed === null) {
+      return null;
+    }
+    membershipIds.push(parsed);
+  }
+  return membershipIds;
+}
+
 function parseCreateInviteBody(
   raw: unknown
 ): { body: ICreateLeasePortalInviteBody; ok: true } | { error: string; ok: false } {
@@ -72,6 +91,11 @@ function parseCreateInviteBody(
     return { error: "invitePrimary must be a boolean", ok: false };
   }
 
+  const secondaryMembershipIds = parseSecondaryMembershipIds(parsed["secondaryMembershipIds"]);
+  if (secondaryMembershipIds === null) {
+    return { error: "secondaryMembershipIds must be an array of UUIDs", ok: false };
+  }
+
   const secondaryIndexes = parseSecondaryIndexes(parsed["secondaryIndexes"]);
   if (secondaryIndexes === null) {
     return { error: "secondaryIndexes must be an array of non-negative integers", ok: false };
@@ -81,6 +105,7 @@ function parseCreateInviteBody(
     body: {
       invitePrimary: invitePrimaryRaw === true ? true : undefined,
       secondaryIndexes,
+      secondaryMembershipIds,
     },
     ok: true,
   };
@@ -195,6 +220,7 @@ export const propertyLongStayPortalRoutes = async (server: FastifyInstance): Pro
           leaseId: longStayId,
           propertyId,
           secondaryIndexes: parsed.body.secondaryIndexes,
+          secondaryMembershipIds: parsed.body.secondaryMembershipIds,
         });
         const response: ICreateLeasePortalInvitesResponse = { results };
         return reply.status(HttpStatus.CREATED).send(response);

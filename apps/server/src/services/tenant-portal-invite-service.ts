@@ -18,6 +18,7 @@ import {
   TenantMembershipRole,
   TenantMembershipStatus,
   type TTenantMembershipRole,
+  type TTenantMembershipStatus,
 } from "@/packages/shared";
 import {
   buildPortalInviteAcceptUrl,
@@ -29,6 +30,7 @@ import {
   sendTenantPortalInviteNewEmail,
 } from "@/ses/transactional-emails";
 
+import { resolveSecondaryTenantContactsForLongStay } from "./resolve-secondary-tenant-contacts-service";
 import {
   logTenantPortalInvited,
   logTenantPortalResent,
@@ -67,6 +69,17 @@ export class PortalInviteTargetError extends Error {
 const PENDING_PREVIEW_STATUSES = new Set<string>([
   TenantMembershipStatus.PENDING_INVITE,
   TenantMembershipStatus.PENDING_ACCEPTANCE,
+]);
+
+const PENDING_INVITE_STATUSES = new Set<TTenantMembershipStatus>([
+  TenantMembershipStatus.PENDING_INVITE,
+  TenantMembershipStatus.PENDING_ACCEPTANCE,
+]);
+
+const SECONDARY_INVITE_ELIGIBLE_STATUSES = new Set<TTenantMembershipStatus>([
+  TenantMembershipStatus.EXPIRED,
+  TenantMembershipStatus.LISTED,
+  TenantMembershipStatus.REVOKED,
 ]);
 
 async function loadLeaseContext(leaseId: string, propertyId: string) {
@@ -190,21 +203,97 @@ function resolvePrimaryInviteTarget(lease: IPropertyLongStay): {
   };
 }
 
-function resolveSecondaryInviteTarget(
-  lease: IPropertyLongStay,
+async function resolveSecondaryMembershipIdFromIndex(
+  leaseId: string,
+  propertyId: string,
   index: number
-): { displayName: string; email: string } {
-  const tenant = lease.secondaryTenants[index];
-  if (!tenant) {
+): Promise<string> {
+  const context = await loadLeaseContext(leaseId, propertyId);
+  if (!context) {
+    throw new PortalInviteNotFoundError("Long stay not found");
+  }
+
+  const contacts = await resolveSecondaryTenantContactsForLongStay(context.lease);
+  const contact = contacts[index];
+  if (!contact) {
     throw new PortalInviteTargetError(`secondaryIndexes contains invalid index ${index}`);
   }
-  const email = tenant.email?.trim() ?? "";
-  if (!email || !isValidTenantEmail(email)) {
-    throw new PortalInviteTargetError(`Secondary tenant at index ${index} has no valid email`);
+  if (!contact.membershipId) {
+    throw new PortalInviteTargetError(
+      `Secondary tenant at index ${index} has no membership; add the occupant before inviting`
+    );
   }
+  return contact.membershipId;
+}
+
+async function transitionAndSendSecondaryInvite(input: {
+  leaseId: string;
+  membershipId: string;
+  propertyId: string;
+}): Promise<ICreateLeasePortalInviteResult> {
+  const context = await loadLeaseContext(input.leaseId, input.propertyId);
+  if (!context) {
+    throw new PortalInviteNotFoundError("Long stay not found");
+  }
+
+  const membership = await leaseTenantMembershipsDb.findById(input.membershipId);
+  if (!membership || membership.leaseId !== input.leaseId) {
+    throw new PortalInviteLeaseMismatchError();
+  }
+
+  if (membership.role !== TenantMembershipRole.SECONDARY) {
+    throw new PortalInviteTargetError("Membership is not a secondary occupant");
+  }
+
+  if (PENDING_INVITE_STATUSES.has(membership.status)) {
+    throw new DuplicatePortalInviteError(membership);
+  }
+
+  if (!SECONDARY_INVITE_ELIGIBLE_STATUSES.has(membership.status)) {
+    throw new PortalInviteInvalidStateError(
+      "Only listed or previously expired/revoked secondary occupants can be invited"
+    );
+  }
+
+  const inviteEmail = membership.inviteEmail?.trim() ?? "";
+  if (!inviteEmail || !isValidTenantEmail(inviteEmail)) {
+    throw new PortalInviteTargetError("Secondary occupant has no valid email");
+  }
+
+  const status = await resolveInitialStatus(inviteEmail);
+  const existingUser = await tenantUsersDb.findByEmail(inviteEmail);
+
+  let updated = await leaseTenantMembershipsDb.transitionStatus(membership.id, status);
+  if (!updated) {
+    throw new PortalInviteNotFoundError("Portal invite not found");
+  }
+
+  if (status === TenantMembershipStatus.PENDING_ACCEPTANCE && existingUser) {
+    updated =
+      (await leaseTenantMembershipsDb.linkTenantUser(membership.id, existingUser.id)) ?? updated;
+  }
+
+  const rawToken = generatePortalInviteToken();
+  updated =
+    (await leaseTenantMembershipsDb.updateInviteToken(
+      membership.id,
+      hashPortalInviteToken(rawToken)
+    )) ?? updated;
+
+  const summary = buildTenantInviteLeaseSummary(
+    updated,
+    context.lease,
+    context.property,
+    context.unit
+  );
+  const emailResult = await sendPortalInviteEmail(updated, summary, rawToken, existingUser != null);
+
+  logTenantPortalInvited(updated);
+
   return {
-    displayName: tenant.name.trim(),
-    email: normalizeTenantEmail(email),
+    emailError: emailResult.emailError,
+    emailSent: emailResult.emailSent,
+    membership: updated,
   };
 }
 
@@ -243,6 +332,7 @@ export const tenantPortalInviteService = {
     leaseId: string;
     propertyId: string;
     secondaryIndexes?: number[];
+    secondaryMembershipIds?: string[];
   }): Promise<ICreateLeasePortalInviteResult[]> {
     const context = await loadLeaseContext(input.leaseId, input.propertyId);
     if (!context) {
@@ -250,10 +340,16 @@ export const tenantPortalInviteService = {
     }
 
     const invitePrimary = input.invitePrimary === true;
-    const secondaryIndexes = input.secondaryIndexes ?? [];
-    if (!invitePrimary && secondaryIndexes.length === 0) {
+    const secondaryMembershipIds = [...(input.secondaryMembershipIds ?? [])];
+    for (const index of input.secondaryIndexes ?? []) {
+      secondaryMembershipIds.push(
+        await resolveSecondaryMembershipIdFromIndex(input.leaseId, input.propertyId, index)
+      );
+    }
+
+    if (!invitePrimary && secondaryMembershipIds.length === 0) {
       throw new PortalInviteTargetError(
-        "At least one of invitePrimary or secondaryIndexes is required"
+        "At least one of invitePrimary, secondaryMembershipIds, or secondaryIndexes is required"
       );
     }
 
@@ -273,16 +369,12 @@ export const tenantPortalInviteService = {
       );
     }
 
-    for (const index of secondaryIndexes) {
-      const secondary = resolveSecondaryInviteTarget(context.lease, index);
+    for (const membershipId of secondaryMembershipIds) {
       results.push(
-        await createAndSendInvite({
-          displayName: secondary.displayName,
-          invitedBy: input.invitedBy,
-          inviteEmail: secondary.email,
+        await transitionAndSendSecondaryInvite({
           leaseId: input.leaseId,
+          membershipId,
           propertyId: input.propertyId,
-          role: TenantMembershipRole.SECONDARY,
         })
       );
     }

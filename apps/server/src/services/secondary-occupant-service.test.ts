@@ -25,19 +25,20 @@ const mockUpdateUnverifiedPhone = mock(
   (_tenantUserId: string, phone: string | null): Promise<ITenantUser> =>
     Promise.resolve(makeTenant({ phone }))
 );
-const mockBuildSecondaryOccupantMutationResponse = mock(() =>
-  Promise.resolve({
-    contact: {
-      effectiveEmail: "secondary@example.com",
-      effectiveName: "Secondary Tenant",
-      effectivePhone: "+13055550111",
-      membershipId: "membership-1",
-      source: "membership_listed" as const,
-      status: TenantMembershipStatus.LISTED,
-      tenantUserId: null,
-    },
-    membership: makeMembership(),
-  })
+const mockBuildSecondaryOccupantMutationResponse = mock(
+  (membership: ILeaseTenantMembership) =>
+    Promise.resolve({
+      contact: {
+        effectiveEmail: membership.inviteEmail,
+        effectiveName: membership.displayName,
+        effectivePhone: membership.contactPhone,
+        membershipId: membership.id,
+        source: "membership_listed" as const,
+        status: membership.status,
+        tenantUserId: membership.tenantUserId,
+      },
+      membership,
+    })
 );
 
 mock.module("@/db/lease-tenant-memberships", () => ({
@@ -49,6 +50,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     transitionStatus: mockTransitionStatus,
     updateSecondaryContact: mockUpdateSecondaryContact,
   },
+  loadPrimaryMembershipForLease: mock(() => Promise.resolve(null)),
   MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
   SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
 }));
@@ -182,18 +184,6 @@ describe("updateSecondaryOccupant", () => {
     mockUpdateName.mockReset();
     mockUpdateUnverifiedPhone.mockReset();
     mockBuildSecondaryOccupantMutationResponse.mockReset();
-    mockBuildSecondaryOccupantMutationResponse.mockImplementation(async (membership) => ({
-      contact: {
-        effectiveEmail: membership.inviteEmail,
-        effectiveName: membership.displayName,
-        effectivePhone: membership.contactPhone,
-        membershipId: membership.id,
-        source: "membership_listed" as const,
-        status: membership.status,
-        tenantUserId: membership.tenantUserId,
-      },
-      membership,
-    }));
   });
 
   test("updates listed membership contact fields", async () => {

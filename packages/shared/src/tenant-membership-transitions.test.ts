@@ -76,6 +76,12 @@ describe("tenant membership transitions", () => {
     expect(
       canTransitionTenantMembershipStatus(
         TenantMembershipStatus.LISTED,
+        TenantMembershipStatus.PENDING_ACCEPTANCE
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.LISTED,
         TenantMembershipStatus.ENDED
       )
     ).toBe(true);
@@ -85,5 +91,20 @@ describe("tenant membership transitions", () => {
         TenantMembershipStatus.ACTIVE
       )
     ).toBe(false);
+  });
+
+  test("expired and revoked secondaries can be re-invited to pending", () => {
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.EXPIRED,
+        TenantMembershipStatus.PENDING_INVITE
+      )
+    ).toBe(true);
+    expect(
+      canTransitionTenantMembershipStatus(
+        TenantMembershipStatus.REVOKED,
+        TenantMembershipStatus.PENDING_ACCEPTANCE
+      )
+    ).toBe(true);
   });
 });

@@ -251,7 +251,7 @@ S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired se
 
 **Deploy:** server + admin together (G6a + G6b).
 
-**Exit:** operators can add, edit, and remove secondary occupants on active leases without JSONB; prod PATCH 42703 resolved; portal invite flow unchanged (still uses legacy index path until S3b).
+**Exit:** operators can add, edit, and remove secondary occupants on active leases without JSONB; prod PATCH 42703 resolved.
 
 ---
 
@@ -263,20 +263,20 @@ S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired se
 
 **Shared contract**
 
-- [`ICreateLeasePortalInviteBody`](packages/shared/src/tenant-portal-types.ts): add `secondaryMembershipIds?: string[]`; deprecate `secondaryIndexes` (JSDoc)
-- **Deprecation window:** server accepts **both** for one release; remove `secondaryIndexes` in S5b
+- [x] [`ICreateLeasePortalInviteBody`](packages/shared/src/tenant-portal-types.ts): add `secondaryMembershipIds?: string[]`; deprecate `secondaryIndexes` (JSDoc)
+- [x] **Deprecation window:** server accepts **both** for one release; remove `secondaryIndexes` in S5b
 
 **Server** — [`tenant-portal-invite-service.ts`](apps/server/src/services/tenant-portal-invite-service.ts)
 
-- **Critical:** for secondaries, **transition existing row** → `pending_invite` / `pending_acceptance` + set token — **do not INSERT**
-- `secondaryMembershipIds` path (new): load by id → assert `role = secondary`, lease match, status `listed` (or re-invite policy for expired/revoked) → transition
-- `secondaryIndexes` path (deprecated, one release): resolve JSONB index → find membership by email or error if no row — **do not create listed row on invite** (CRUD owns creation)
-- Tests: listed → pending transition, duplicate invite rejected, wrong lease/membership 404, deprecated index path still works when membership exists
+- [x] **Critical:** for secondaries, **transition existing row** → `pending_invite` / `pending_acceptance` + set token — **do not INSERT**
+- [x] `secondaryMembershipIds` path (new): load by id → assert `role = secondary`, lease match, status `listed` (or re-invite policy for expired/revoked) → transition
+- [x] `secondaryIndexes` path (deprecated, one release): resolve JSONB index → find membership by email or error if no row — **do not create listed row on invite** (CRUD owns creation)
+- [x] Tests: listed → pending transition, duplicate invite rejected, wrong lease/membership 404, deprecated index path still works when membership exists
 
 **Admin**
 
-- [`lease-portal-access-display.ts`](apps/admin/src/lib/lease-portal-access-display.ts): acting target `{ kind: 'secondary', membershipId }` instead of `index`
-- Portal invite UI sends `secondaryMembershipIds`; row actions keyed by `membershipId` from S1 `secondaryTenantContacts` or portal-access list
+- [x] [`lease-portal-access-display.ts`](apps/admin/src/lib/lease-portal-access-display.ts): acting target `{ kind: 'secondary', membershipId }` instead of `index`
+- [x] Portal invite UI sends `secondaryMembershipIds`; row actions keyed by `membershipId` from S1 `secondaryTenantContacts` or portal-access list
 
 **Deploy:** server + admin together (G7a + G7b). Safe to deploy after S3a without waiting for S1/S2 if admin keys invites off portal-access memberships; prefer S1 first for consistent occupant list UI.
 

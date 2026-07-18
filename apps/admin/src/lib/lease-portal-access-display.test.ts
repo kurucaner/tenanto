@@ -76,17 +76,17 @@ describe("isSameLeasePortalActingTarget", () => {
     expect(isSameLeasePortalActingTarget(null, { kind: "primary" })).toBe(false);
   });
 
-  test("matches secondary targets by index", () => {
+  test("matches secondary targets by membershipId", () => {
     expect(
       isSameLeasePortalActingTarget(
-        { index: 1, kind: "secondary" },
-        { index: 1, kind: "secondary" }
+        { kind: "secondary", membershipId: "membership-2" },
+        { kind: "secondary", membershipId: "membership-2" }
       )
     ).toBe(true);
     expect(
       isSameLeasePortalActingTarget(
-        { index: 0, kind: "secondary" },
-        { index: 1, kind: "secondary" }
+        { kind: "secondary", membershipId: "membership-1" },
+        { kind: "secondary", membershipId: "membership-2" }
       )
     ).toBe(false);
   });

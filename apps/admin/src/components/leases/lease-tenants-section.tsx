@@ -120,7 +120,7 @@ export const LeaseTenantsSection = memo(
     );
 
     const inviteMutation = useMutation({
-      mutationFn: (body: { invitePrimary?: boolean; secondaryIndexes?: number[] }) =>
+      mutationFn: (body: { invitePrimary?: boolean; secondaryMembershipIds?: string[] }) =>
         longStayPortalApi.createInvites(propertyId, lease.id, body),
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to send portal invite");
@@ -165,7 +165,7 @@ export const LeaseTenantsSection = memo(
       async (
         action: TLeasePortalRowAction,
         membershipId: string | null,
-        body: { invitePrimary?: boolean; secondaryIndexes?: number[] },
+        body: { invitePrimary?: boolean; secondaryMembershipIds?: string[] },
         target: TLeasePortalActingTarget
       ) => {
         setActingAction(action);
@@ -208,7 +208,7 @@ export const LeaseTenantsSection = memo(
     );
     const canInviteAll =
       canEditTenants &&
-      (inviteAllTargets.invitePrimary || inviteAllTargets.secondaryIndexes.length > 0);
+      (inviteAllTargets.invitePrimary || inviteAllTargets.secondaryMembershipIds.length > 0);
 
     const removeMutation = useMutation({
       mutationFn: (membershipId: string) =>
@@ -329,40 +329,45 @@ export const LeaseTenantsSection = memo(
     );
 
     const handleInviteSecondary = useCallback(
-      (index: number) => {
-        const { membership } = findSecondaryMembership(index);
+      (membershipId: string) => {
         void runPortalAction(
           "invite",
-          membership?.id ?? null,
+          membershipId,
           {
-            secondaryIndexes: [index],
+            secondaryMembershipIds: [membershipId],
           },
-          { index, kind: "secondary" }
+          { kind: "secondary", membershipId }
         );
       },
-      [findSecondaryMembership, runPortalAction]
+      [runPortalAction]
     );
 
     const handleResendSecondary = useCallback(
-      (index: number) => {
-        const { membership } = findSecondaryMembership(index);
-        void runPortalAction("resend", membership?.id ?? null, {}, { index, kind: "secondary" });
+      (membershipId: string) => {
+        void runPortalAction("resend", membershipId, {}, { kind: "secondary", membershipId });
       },
-      [findSecondaryMembership, runPortalAction]
+      [runPortalAction]
     );
 
     const handleRevokeSecondary = useCallback(
-      (index: number) => {
-        const { contact, membership } = findSecondaryMembership(index);
+      (membershipId: string) => {
+        const contact = secondaryTenantContacts.find((row) => row.membershipId === membershipId);
         if (!contact) {
           return;
         }
-        requestRevokeConfirmation(membership?.id, contact.effectiveName, {
-          index,
+        const membership =
+          memberships.find((row) => row.id === membershipId) ??
+          findLeasePortalMembership(
+            memberships,
+            TenantMembershipRole.SECONDARY,
+            contact.effectiveEmail
+          );
+        requestRevokeConfirmation(membership?.id ?? membershipId, contact.effectiveName, {
           kind: "secondary",
+          membershipId,
         });
       },
-      [findSecondaryMembership, requestRevokeConfirmation]
+      [memberships, requestRevokeConfirmation, secondaryTenantContacts]
     );
 
     const handleEditSecondary = useCallback(
@@ -397,11 +402,11 @@ export const LeaseTenantsSection = memo(
         null,
         {
           invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
-          secondaryIndexes: inviteAllTargets.secondaryIndexes,
+          secondaryMembershipIds: inviteAllTargets.secondaryMembershipIds,
         },
         { kind: "invite-all" }
       );
-    }, [inviteAllTargets.invitePrimary, inviteAllTargets.secondaryIndexes, runPortalAction]);
+    }, [inviteAllTargets.invitePrimary, inviteAllTargets.secondaryMembershipIds, runPortalAction]);
 
     const handleEditSecondaryDialogOpenChange = useCallback((nextOpen: boolean) => {
       if (!nextOpen) {
@@ -448,6 +453,10 @@ export const LeaseTenantsSection = memo(
                   const tenant = contactToTenantRow(contact);
                   const canEditRow = canEditTenants && contact.membershipId != null;
 
+                  if (!contact.membershipId) {
+                    return null;
+                  }
+
                   return (
                     <LeaseSecondaryTenantRow
                       actingAction={actingAction}
@@ -456,7 +465,8 @@ export const LeaseTenantsSection = memo(
                       index={index}
                       isDeletePending={removeMutation.isPending}
                       isQuickDeleteActive={isQuickDeleteActive}
-                      key={contact.membershipId ?? `${contact.effectiveName}-${index}`}
+                      key={contact.membershipId}
+                      membershipId={contact.membershipId}
                       onDelete={handleDeleteSecondary}
                       onEdit={handleEditSecondary}
                       onInvite={handleInviteSecondary}

@@ -13,7 +13,7 @@ import {
 export type TLeasePortalRowAction = "invite" | "resend" | "revoke";
 
 export type TLeasePortalActingTarget =
-  { kind: "invite-all" } | { kind: "primary" } | { index: number; kind: "secondary" };
+  { kind: "invite-all" } | { kind: "primary" } | { kind: "secondary"; membershipId: string };
 
 export type TLeasePortalStatusTone = "active" | "muted" | "neutral" | "pending";
 
@@ -32,7 +32,7 @@ export function isSameLeasePortalActingTarget(
     return false;
   }
   if (actingTarget.kind === "secondary" && rowTarget.kind === "secondary") {
-    return actingTarget.index === rowTarget.index;
+    return actingTarget.membershipId === rowTarget.membershipId;
   }
   return true;
 }
@@ -148,7 +148,7 @@ export function getLeasePortalInviteAllTargets(
   secondaryContacts: readonly ILeaseSecondaryTenantContact[] = []
 ): {
   invitePrimary: boolean;
-  secondaryIndexes: number[];
+  secondaryMembershipIds: string[];
 } {
   const primaryMembership = findLeasePortalMembership(
     memberships,
@@ -160,23 +160,30 @@ export function getLeasePortalInviteAllTargets(
     Boolean(lease.tenantEmail?.trim())
   );
 
-  const secondaryIndexes = secondaryContacts
-    .map((contact, index) => {
+  const secondaryMembershipIds = secondaryContacts
+    .map((contact) => {
       const rowMembership =
         (contact.membershipId
           ? memberships.find((membership) => membership.id === contact.membershipId)
           : null) ??
-        findLeasePortalMembership(memberships, TenantMembershipRole.SECONDARY, contact.effectiveEmail);
+        findLeasePortalMembership(
+          memberships,
+          TenantMembershipRole.SECONDARY,
+          contact.effectiveEmail
+        );
       const rowState = getLeasePortalRowState(
         rowMembership,
         Boolean(contact.effectiveEmail?.trim())
       );
-      return rowState.actions.includes("invite") ? index : null;
+      if (!rowState.actions.includes("invite") || !contact.membershipId) {
+        return null;
+      }
+      return contact.membershipId;
     })
-    .filter((index): index is number => index !== null);
+    .filter((membershipId): membershipId is string => membershipId !== null);
 
   return {
     invitePrimary: primaryState.actions.includes("invite"),
-    secondaryIndexes,
+    secondaryMembershipIds,
   };
 }
