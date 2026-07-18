@@ -167,17 +167,42 @@ describe("loadSecondaryMembershipsForLease", () => {
     const { loadSecondaryMembershipsForLease } = await import("./lease-tenant-memberships");
     await loadSecondaryMembershipsForLease("lease-1");
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("role = $2::tenant_membership_role"),
-      [
-        "lease-1",
-        TenantMembershipRole.SECONDARY,
-        TenantMembershipStatus.DECLINED,
-        TenantMembershipStatus.REVOKED,
-        TenantMembershipStatus.ENDED,
-        TenantMembershipStatus.EXPIRED,
-      ]
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("lease_id = ANY($1::uuid[])"), [
+      ["lease-1"],
+      TenantMembershipRole.SECONDARY,
+      TenantMembershipStatus.DECLINED,
+      TenantMembershipStatus.REVOKED,
+      TenantMembershipStatus.ENDED,
+      TenantMembershipStatus.EXPIRED,
+    ]);
+  });
+});
+
+describe("loadSecondaryMembershipsByLeaseIds", () => {
+  beforeEach(() => {
+    mockQuery.mockClear();
+  });
+
+  test("returns empty map for empty lease id list", async () => {
+    const { loadSecondaryMembershipsByLeaseIds } = await import("./lease-tenant-memberships");
+    await expect(loadSecondaryMembershipsByLeaseIds([])).resolves.toEqual(new Map());
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  test("loads non-terminal secondary memberships for many leases", async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const { loadSecondaryMembershipsByLeaseIds } = await import("./lease-tenant-memberships");
+    await loadSecondaryMembershipsByLeaseIds(["lease-1", "lease-2"]);
+
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("lease_id = ANY($1::uuid[])"), [
+      ["lease-1", "lease-2"],
+      TenantMembershipRole.SECONDARY,
+      TenantMembershipStatus.DECLINED,
+      TenantMembershipStatus.REVOKED,
+      TenantMembershipStatus.ENDED,
+      TenantMembershipStatus.EXPIRED,
+    ]);
   });
 });
 

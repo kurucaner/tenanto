@@ -614,14 +614,18 @@ export async function loadPrimaryMembershipForLease(
   return selectPrimaryMembershipForContact(memberships);
 }
 
-/** Non-terminal secondary membership rows for a lease (includes `listed`). */
-export async function loadSecondaryMembershipsForLease(
-  leaseId: string,
+/** Non-terminal secondary membership rows for many leases (includes `listed`). */
+export async function loadSecondaryMembershipsByLeaseIds(
+  leaseIds: readonly string[],
   db: DbQueryable = pool
-): Promise<ILeaseTenantMembership[]> {
+): Promise<Map<string, ILeaseTenantMembership[]>> {
+  if (leaseIds.length === 0) {
+    return new Map();
+  }
+
   const result = await db.query(
     `SELECT * FROM lease_tenant_memberships
-     WHERE lease_id = $1
+     WHERE lease_id = ANY($1::uuid[])
        AND role = $2::tenant_membership_role
        AND status NOT IN (
          $3::tenant_membership_status,
@@ -629,9 +633,9 @@ export async function loadSecondaryMembershipsForLease(
          $5::tenant_membership_status,
          $6::tenant_membership_status
        )
-     ORDER BY created_at ASC, invited_at ASC`,
+     ORDER BY lease_id ASC, created_at ASC, invited_at ASC`,
     [
-      leaseId,
+      leaseIds,
       TenantMembershipRole.SECONDARY,
       TenantMembershipStatus.DECLINED,
       TenantMembershipStatus.REVOKED,
@@ -639,7 +643,28 @@ export async function loadSecondaryMembershipsForLease(
       TenantMembershipStatus.EXPIRED,
     ]
   );
-  return result.rows.map((row) => mapLeaseTenantMembershipRow(row as Record<string, unknown>));
+
+  const membershipsByLeaseId = new Map<string, ILeaseTenantMembership[]>();
+  for (const row of result.rows) {
+    const membership = mapLeaseTenantMembershipRow(row as Record<string, unknown>);
+    const existing = membershipsByLeaseId.get(membership.leaseId);
+    if (existing) {
+      existing.push(membership);
+    } else {
+      membershipsByLeaseId.set(membership.leaseId, [membership]);
+    }
+  }
+
+  return membershipsByLeaseId;
+}
+
+/** Non-terminal secondary membership rows for a lease (includes `listed`). */
+export async function loadSecondaryMembershipsForLease(
+  leaseId: string,
+  db: DbQueryable = pool
+): Promise<ILeaseTenantMembership[]> {
+  const membershipsByLeaseId = await loadSecondaryMembershipsByLeaseIds([leaseId], db);
+  return membershipsByLeaseId.get(leaseId) ?? [];
 }
 
 /** Batch-load display names for non-terminal secondary occupants keyed by lease id. */

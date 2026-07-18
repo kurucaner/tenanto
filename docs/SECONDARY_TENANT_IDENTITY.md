@@ -299,6 +299,8 @@ S3 is split into **S3a (CRUD)** then **S3b (invites)**. Ship each as a paired se
 
 ### S4 — Downstream readers + remove legacy merge
 
+Implementation plan: [`SECONDARY_TENANT_S4_LEGACY_REMOVAL_PHASES.md`](SECONDARY_TENANT_S4_LEGACY_REMOVAL_PHASES.md).
+
 | Reader                                                                                         | Action                                                                                                      |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [`tenant-email-recipient-resolver.ts`](packages/shared/src/tenant-email-recipient-resolver.ts) | Resolve secondary recipients via membership + linked user (server pre-join or shared helper)                |

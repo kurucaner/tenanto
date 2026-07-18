@@ -1,13 +1,28 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ILeaseTenantMembership, IPropertyLongStay, ITenantUser } from "@/packages/shared";
+import type {
+  ILeaseSecondaryTenantContact,
+  ILeaseTenantMembership,
+  IPropertyLongStay,
+  ITenantUser,
+} from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 
-const mockLoadSecondaryMemberships = mock(() => Promise.resolve([] as ILeaseTenantMembership[]));
+const mockLoadSecondaryMembershipsByLeaseIds = mock(() =>
+  Promise.resolve(new Map<string, ILeaseTenantMembership[]>())
+);
+const mockLoadSecondaryTenantContactsByLeaseIds = mock(() =>
+  Promise.resolve(new Map<string, ILeaseSecondaryTenantContact[]>())
+);
 const mockFindTenantUserById = mock(() => Promise.resolve(null as ITenantUser | null));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  loadSecondaryMembershipsForLease: mockLoadSecondaryMemberships,
+  loadSecondaryMembershipsByLeaseIds: mockLoadSecondaryMembershipsByLeaseIds,
+}));
+
+mock.module("@/services/load-secondary-tenant-contacts-by-lease-ids", () => ({
+  loadSecondaryTenantContactsByLeaseIds: mockLoadSecondaryTenantContactsByLeaseIds,
+  loadTenantUsersByIdForMemberships: mock(async () => ({})),
 }));
 
 mock.module("@/db/tenant-users", () => ({
@@ -42,37 +57,74 @@ function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongSta
 
 describe("resolveSecondaryTenantContactsForLongStay", () => {
   beforeEach(() => {
-    mockLoadSecondaryMemberships.mockReset();
+    mockLoadSecondaryMembershipsByLeaseIds.mockReset();
+    mockLoadSecondaryTenantContactsByLeaseIds.mockReset();
     mockFindTenantUserById.mockReset();
   });
 
   afterEach(() => {
-    mockLoadSecondaryMemberships.mockReset();
+    mockLoadSecondaryMembershipsByLeaseIds.mockReset();
+    mockLoadSecondaryTenantContactsByLeaseIds.mockReset();
     mockFindTenantUserById.mockReset();
   });
 
+  test("uses batch loader when lease has no legacy JSONB secondaries", async () => {
+    mockLoadSecondaryTenantContactsByLeaseIds.mockResolvedValueOnce(
+      new Map([
+        [
+          "lease-1",
+          [
+            {
+              effectiveEmail: "listed@example.com",
+              effectiveName: "Listed Secondary",
+              effectivePhone: "+15551112222",
+              membershipId: "membership-listed",
+              source: "membership_listed",
+              status: TenantMembershipStatus.LISTED,
+              tenantUserId: null,
+            },
+          ],
+        ],
+      ])
+    );
+
+    const contacts = await resolveSecondaryTenantContactsForLongStay(makeLease());
+
+    expect(contacts).toHaveLength(1);
+    expect(contacts[0]?.source).toBe("membership_listed");
+    expect(mockLoadSecondaryTenantContactsByLeaseIds).toHaveBeenCalledWith(["lease-1"]);
+    expect(mockLoadSecondaryMembershipsByLeaseIds).not.toHaveBeenCalled();
+  });
+
   test("merges listed memberships with unmatched legacy JSONB orphans", async () => {
-    mockLoadSecondaryMemberships.mockResolvedValue([
-      {
-        acceptedAt: null,
-        contactPhone: "+15551112222",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        declinedAt: null,
-        displayName: "Listed Secondary",
-        endedAt: null,
-        expiresAt: "2026-02-01T00:00:00.000Z",
-        id: "membership-listed",
-        invitedAt: "2026-01-01T00:00:00.000Z",
-        invitedBy: "operator-1",
-        inviteEmail: "listed@example.com",
-        leaseId: "lease-1",
-        revokedAt: null,
-        role: TenantMembershipRole.SECONDARY,
-        status: TenantMembershipStatus.LISTED,
-        tenantUserId: null,
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
-    ]);
+    mockLoadSecondaryMembershipsByLeaseIds.mockResolvedValueOnce(
+      new Map([
+        [
+          "lease-1",
+          [
+            {
+              acceptedAt: null,
+              contactPhone: "+15551112222",
+              createdAt: "2026-01-01T00:00:00.000Z",
+              declinedAt: null,
+              displayName: "Listed Secondary",
+              endedAt: null,
+              expiresAt: "2026-02-01T00:00:00.000Z",
+              id: "membership-listed",
+              invitedAt: "2026-01-01T00:00:00.000Z",
+              invitedBy: "operator-1",
+              inviteEmail: "listed@example.com",
+              leaseId: "lease-1",
+              revokedAt: null,
+              role: TenantMembershipRole.SECONDARY,
+              status: TenantMembershipStatus.LISTED,
+              tenantUserId: null,
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        ],
+      ])
+    );
 
     const contacts = await resolveSecondaryTenantContactsForLongStay(
       makeLease({
@@ -90,5 +142,6 @@ describe("resolveSecondaryTenantContactsForLongStay", () => {
     expect(contacts[0]?.source).toBe("membership_listed");
     expect(contacts[1]?.source).toBe("legacy_jsonb");
     expect(contacts[1]?.membershipId).toBeNull();
+    expect(mockLoadSecondaryTenantContactsByLeaseIds).not.toHaveBeenCalled();
   });
 });
