@@ -782,7 +782,7 @@ export const propertyStripeConnectApi = {
   createStandardOAuthAuthorizeUrl: (propertyId: string) =>
     authenticatedRequest<IPropertyStripeConnectAuthorizeUrlResponse>(
       `/properties/${encodeURIComponent(propertyId)}/stripe/connect/oauth/authorize-url`,
-      { method: "POST" }
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   getStatus: (propertyId: string) =>

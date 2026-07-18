@@ -14,6 +14,7 @@ import {
   mapStripeOAuthCallbackErrorReason,
   mapStripeOAuthTokenExchangeReason,
   StripeConnectOAuthCallbackReason,
+  type TStripeConnectOAuthCallbackReason,
 } from "@/lib/stripe-connect-oauth-callback";
 import {
   consumeStripeConnectOAuthState,
@@ -25,8 +26,13 @@ import {
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   PropertyStripeAccountType,
+  type TPropertyStripeAccountType,
 } from "@/packages/shared";
-import { WinstonLogger } from "@/services/winston";
+import {
+  logPropertyStripeConnectOAuthCompleted,
+  logPropertyStripeConnectOAuthFailed,
+  logPropertyStripeConnectOAuthStarted,
+} from "@/services/property-stripe-connect-observability";
 import { getStripeClient } from "@/stripe/stripe-client";
 
 function platformAppBaseUrl(): string {
@@ -53,6 +59,20 @@ function stripeConnectClientId(): string {
   return clientId;
 }
 
+function logOAuthFailure(input: {
+  accountType?: TPropertyStripeAccountType;
+  err?: unknown;
+  propertyId?: string;
+  reason: TStripeConnectOAuthCallbackReason;
+}): void {
+  logPropertyStripeConnectOAuthFailed({
+    accountType: input.accountType ?? PropertyStripeAccountType.STANDARD,
+    err: input.err,
+    propertyId: input.propertyId,
+    reason: input.reason,
+  });
+}
+
 export const propertyStripeConnectService = {
   async completeStandardOAuthCallback(query: {
     code?: string;
@@ -76,6 +96,7 @@ export const propertyStripeConnectService = {
     try {
       requireStripeConnectStandardOAuthConfigured();
     } catch {
+      logOAuthFailure({ reason: StripeConnectOAuthCallbackReason.NOT_CONFIGURED });
       return redirect(undefined, "error", StripeConnectOAuthCallbackReason.NOT_CONFIGURED);
     }
 
@@ -83,15 +104,17 @@ export const propertyStripeConnectService = {
 
     if (query.error) {
       const oauthState = stateToken ? await consumeStripeConnectOAuthState(stateToken) : null;
-      return redirect(
-        oauthState?.propertyId,
-        "error",
-        mapStripeOAuthCallbackErrorReason(query.error)
-      );
+      const reason = mapStripeOAuthCallbackErrorReason(query.error);
+      logOAuthFailure({ propertyId: oauthState?.propertyId, reason });
+      return redirect(oauthState?.propertyId, "error", reason);
     }
 
     if (!query.code?.trim()) {
       const oauthState = stateToken ? await consumeStripeConnectOAuthState(stateToken) : null;
+      logOAuthFailure({
+        propertyId: oauthState?.propertyId,
+        reason: StripeConnectOAuthCallbackReason.MISSING_CODE,
+      });
       return redirect(
         oauthState?.propertyId,
         "error",
@@ -100,11 +123,13 @@ export const propertyStripeConnectService = {
     }
 
     if (!stateToken) {
+      logOAuthFailure({ reason: StripeConnectOAuthCallbackReason.INVALID_STATE });
       return redirect(undefined, "error", StripeConnectOAuthCallbackReason.INVALID_STATE);
     }
 
     const oauthState = await consumeStripeConnectOAuthState(stateToken);
     if (!oauthState) {
+      logOAuthFailure({ reason: StripeConnectOAuthCallbackReason.INVALID_STATE });
       return redirect(undefined, "error", StripeConnectOAuthCallbackReason.INVALID_STATE);
     }
 
@@ -112,9 +137,19 @@ export const propertyStripeConnectService = {
     const existing = await propertyStripeAccountsDb.findByPropertyId(propertyId);
     if (existing?.accountType === PropertyStripeAccountType.STANDARD) {
       await propertyStripeConnectService.syncAccountStatus(propertyId);
+      logPropertyStripeConnectOAuthCompleted({
+        accountType: PropertyStripeAccountType.STANDARD,
+        propertyId,
+        stripeAccountId: existing.stripeAccountId,
+      });
       return redirect(propertyId, "return");
     }
     if (existing) {
+      logOAuthFailure({
+        accountType: PropertyStripeAccountType.EXPRESS,
+        propertyId,
+        reason: StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED,
+      });
       return redirect(propertyId, "error", StripeConnectOAuthCallbackReason.EXPRESS_CONNECTED);
     }
 
@@ -126,6 +161,10 @@ export const propertyStripeConnectService = {
       });
       const stripeAccountId = tokenResponse.stripe_user_id;
       if (!stripeAccountId) {
+        logOAuthFailure({
+          propertyId,
+          reason: StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED,
+        });
         return redirect(
           propertyId,
           "error",
@@ -145,21 +184,17 @@ export const propertyStripeConnectService = {
 
       await propertyStripeConnectService.syncAccountStatus(propertyId);
 
-      WinstonLogger.info({
+      logPropertyStripeConnectOAuthCompleted({
         accountType: PropertyStripeAccountType.STANDARD,
-        msg: "tenant_payments.connect_oauth_completed",
         propertyId,
         stripeAccountId,
       });
 
       return redirect(propertyId, "return");
     } catch (error) {
-      WinstonLogger.error({
-        err: error,
-        msg: "tenant_payments.connect_oauth_failed",
-        propertyId,
-      });
-      return redirect(propertyId, "error", mapStripeOAuthTokenExchangeReason(error));
+      const reason = mapStripeOAuthTokenExchangeReason(error);
+      logOAuthFailure({ err: error, propertyId, reason });
+      return redirect(propertyId, "error", reason);
     }
   },
 
@@ -240,6 +275,8 @@ export const propertyStripeConnectService = {
       redirectUri: `${apiPublicBaseUrl()}/stripe/connect/oauth/callback`,
       state,
     });
+
+    logPropertyStripeConnectOAuthStarted({ propertyId, userId });
 
     return { url };
   },

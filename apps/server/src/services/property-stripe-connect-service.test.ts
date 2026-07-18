@@ -463,7 +463,7 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
   });
 
   test("redirects with invalid_state when OAuth state cannot be consumed", async () => {
-    mockConsumeOAuthState.mockResolvedValue({ propertyId: "property-1", userId: "user-1" });
+    mockConsumeOAuthState.mockResolvedValue(null);
 
     const result = await propertyStripeConnectService.completeStandardOAuthCallback({
       code: "auth_code",

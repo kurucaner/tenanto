@@ -2,8 +2,8 @@ import type { FastifyInstance } from "fastify";
 
 import { isStripeConnectStandardOAuthEnabled } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
+import { logPropertyStripeConnectOAuthCallbackUnhandledError } from "@/services/property-stripe-connect-observability";
 import { propertyStripeConnectService } from "@/services/property-stripe-connect-service";
-import { WinstonLogger } from "@/services/winston";
 
 export async function stripeConnectOAuthCallbackRoutes(server: FastifyInstance): Promise<void> {
   server.get<{
@@ -26,10 +26,7 @@ export async function stripeConnectOAuthCallbackRoutes(server: FastifyInstance):
       });
       return reply.redirect(result.redirectUrl, 302);
     } catch (error) {
-      WinstonLogger.error({
-        err: error,
-        msg: "tenant_payments.connect_oauth_callback_failed",
-      });
+      logPropertyStripeConnectOAuthCallbackUnhandledError(error);
       return reply
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
         .send({ error: "OAuth callback failed" });

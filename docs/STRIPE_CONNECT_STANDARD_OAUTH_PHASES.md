@@ -374,15 +374,15 @@ Each parent phase below is split into **sub-phases** sized for **one PR each** (
 
 #### Phase 4a — Rate limits + abuse (~2–3 files)
 
-- [ ] Fixed-window limit on `authorize-url` and `express/onboarding-link` (reuse Redis limiter)
-- [ ] Tests for throttle
+- [x] Fixed-window limit on `authorize-url` and `express/onboarding-link` (reuse Redis limiter)
+- [x] Tests for throttle
 
 **Exit criteria:** Repeated clicks return 429; legitimate use unaffected.
 
 #### Phase 4b — Observability (~2 files)
 
-- [ ] Structured logs: `connect_oauth_started`, `completed`, `failed` with `propertyId`, `accountType`
-- [ ] No secrets in logs
+- [x] Structured logs: `connect_oauth_started`, `completed`, `failed` with `propertyId`, `accountType`
+- [x] No secrets in logs
 
 **Exit criteria:** Log lines appear in dev for happy and failed OAuth paths.
 

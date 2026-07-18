@@ -1,11 +1,19 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import {
+  STRIPE_CONNECT_LINK_RATE_LIMIT_MAX,
+  STRIPE_CONNECT_LINK_RATE_LIMIT_WINDOW_MS,
+} from "@/lib/stripe-connect-rate-limit-config";
 import { HttpStatus } from "@/packages/shared";
 import {
   assertPropertyMemberAccess,
   assertPropertyStructureAccess,
 } from "@/routes/admin/property-route-access";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
+import {
+  assertPropertyStripeConnectLinkAllowed,
+  getPropertyStripeConnectRateLimitErrorMessage,
+} from "@/services/property-stripe-connect-rate-limit";
 import { propertyStripeConnectService } from "@/services/property-stripe-connect-service";
 import { WinstonLogger } from "@/services/winston";
 
@@ -32,6 +40,28 @@ function replyConnectRouteError(
   void reply.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ error: input.fallbackMessage });
 }
 
+async function enforcePropertyStripeConnectLinkRateLimit(
+  reply: FastifyReply,
+  input: { propertyId: string; userId: string }
+): Promise<boolean> {
+  const rateLimit = await assertPropertyStripeConnectLinkAllowed(input.propertyId, input.userId);
+  if (rateLimit.allowed) {
+    return true;
+  }
+
+  void reply
+    .status(HttpStatus.TOO_MANY_REQUESTS)
+    .header("Retry-After", String(rateLimit.retryAfterSec))
+    .send({
+      error: getPropertyStripeConnectRateLimitErrorMessage({
+        limit: STRIPE_CONNECT_LINK_RATE_LIMIT_MAX,
+        retryAfterSec: rateLimit.retryAfterSec,
+        windowMs: STRIPE_CONNECT_LINK_RATE_LIMIT_WINDOW_MS,
+      }),
+    });
+  return false;
+}
+
 async function handleExpressOnboardingLink(
   request: FastifyRequest<{
     Body: TExpressOnboardingLinkBody;
@@ -55,6 +85,9 @@ async function handleExpressOnboardingLink(
       "Only property owners can manage Stripe Connect"
     ))
   ) {
+    return;
+  }
+  if (!(await enforcePropertyStripeConnectLinkRateLimit(reply, { propertyId, userId }))) {
     return;
   }
 
@@ -94,6 +127,9 @@ async function handleStandardOAuthAuthorizeUrl(
       "Only property owners can manage Stripe Connect"
     ))
   ) {
+    return;
+  }
+  if (!(await enforcePropertyStripeConnectLinkRateLimit(reply, { propertyId, userId }))) {
     return;
   }
 
