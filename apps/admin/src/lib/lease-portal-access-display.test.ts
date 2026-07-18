@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { type ILeaseTenantMembership } from "@/packages/shared";
+
 import {
   findLeasePortalMembership,
   formatLeasePortalAdminStatus,
@@ -8,9 +10,10 @@ import {
   isSameLeasePortalActingTarget,
 } from "./lease-portal-access-display";
 
-const memberships = [
+const memberships: ILeaseTenantMembership[] = [
   {
     acceptedAt: null,
+    contactPhone: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     declinedAt: null,
     displayName: "Alex",
