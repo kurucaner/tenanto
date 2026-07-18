@@ -277,10 +277,10 @@ export const propertyReservationsDb = {
                $1, $2, $3, $4, $5, $6, $7,
                $8::property_reservation_status,
                $9,
-               $10, $11, $12, $13::jsonb, $14, $15, $16,
+               $10, $11, $12::numeric, $13::jsonb, $14, $15, $16,
                CASE WHEN $17::boolean THEN NOW() ELSE NULL END,
                CASE WHEN $17::boolean THEN $18::uuid ELSE NULL END,
-               CASE WHEN $17::boolean THEN $12 ELSE NULL END
+               CASE WHEN $17::boolean THEN $12::numeric ELSE NULL::numeric END
              )
              RETURNING *
            )
