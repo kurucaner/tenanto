@@ -100,7 +100,6 @@ function makeInvite(overrides: Partial<IPropertyInvite> = {}): IPropertyInvite {
 }
 
 mock.module("@/db/property-invites", () => ({
-  DuplicatePropertyMemberInviteError: class DuplicatePropertyMemberInviteError extends Error {},
   propertyInvitesDb: {
     expireInviteIfPastTtl: mockExpireInviteIfPastTtl,
     findByInviteToken: mockFindByInviteToken,

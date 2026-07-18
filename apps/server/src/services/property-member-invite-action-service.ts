@@ -1,11 +1,12 @@
 import { isPostgresUniqueViolation } from "@/db/pg-errors";
 import { propertiesDb } from "@/db/properties";
-import {
-  InvalidPropertyMemberInviteTransitionError,
-  propertyInvitesDb,
-} from "@/db/property-invites";
+import { propertyInvitesDb } from "@/db/property-invites";
 import { propertyMembersDb } from "@/db/property-members";
 import { userDb } from "@/db/users";
+import {
+  propertyMemberInviteInvalidStateError,
+  propertyMemberInviteNotFoundError,
+} from "@/errors/property-member-invite-errors";
 import { buildPropertyMemberInviteSummary } from "@/lib/build-property-member-invite-summary";
 import { formatPropertyRoleLabel } from "@/lib/format-property-role-label";
 import {
@@ -21,10 +22,6 @@ import {
   logPropertyMemberInviteAccepted,
   logPropertyMemberInviteDeclined,
 } from "./property-member-invite-observability";
-import {
-  PropertyMemberInviteInvalidStateError,
-  PropertyMemberInviteNotFoundError,
-} from "./property-member-invite-service";
 
 const ACCEPTABLE_STATUSES = new Set<string>([
   PropertyInviteStatus.PENDING,
@@ -38,7 +35,7 @@ function normalizeInviteEmail(email: string): string {
 
 function assertInviteMatchesUser(invite: IPropertyInvite, user: IUser): void {
   if (normalizeInviteEmail(invite.email) !== normalizeInviteEmail(user.email)) {
-    throw new PropertyMemberInviteInvalidStateError(
+    throw propertyMemberInviteInvalidStateError(
       "This invite was sent to a different email address"
     );
   }
@@ -49,18 +46,18 @@ async function assertInviteActionable(invite: IPropertyInvite): Promise<void> {
     invite.status === PropertyInviteStatus.DECLINED ||
     invite.status === PropertyInviteStatus.EXPIRED
   ) {
-    throw new PropertyMemberInviteInvalidStateError(
+    throw propertyMemberInviteInvalidStateError(
       "This invite is no longer available. Ask the property owner to resend."
     );
   }
 
   if (!ACCEPTABLE_STATUSES.has(invite.status)) {
-    throw new PropertyMemberInviteInvalidStateError("This invite is no longer available");
+    throw propertyMemberInviteInvalidStateError("This invite is no longer available");
   }
 
   const expired = await propertyInvitesDb.expireInviteIfPastTtl(invite);
   if (expired) {
-    throw new PropertyMemberInviteInvalidStateError("This invite has expired");
+    throw propertyMemberInviteInvalidStateError("This invite has expired");
   }
 }
 
@@ -131,7 +128,7 @@ async function acceptInviteForUser(
       PropertyInviteStatus.ACCEPTED
     );
     if (!transitioned) {
-      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+      throw propertyMemberInviteNotFoundError("Property member invite not found");
     }
     updatedInvite = transitioned;
   }
@@ -160,7 +157,7 @@ export const propertyMemberInviteActionService = {
   ): Promise<{ invite: IPropertyInvite; member: IPropertyMember }> {
     const invite = await propertyInvitesDb.findById(inviteId);
     if (!invite) {
-      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+      throw propertyMemberInviteNotFoundError("Property member invite not found");
     }
     return acceptInviteForUser(invite, user);
   },
@@ -168,7 +165,7 @@ export const propertyMemberInviteActionService = {
   async declineInvite(inviteId: string, user: IUser): Promise<IPropertyInvite> {
     const invite = await propertyInvitesDb.findById(inviteId);
     if (!invite) {
-      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+      throw propertyMemberInviteNotFoundError("Property member invite not found");
     }
 
     await assertInviteActionable(invite);
@@ -179,7 +176,7 @@ export const propertyMemberInviteActionService = {
       PropertyInviteStatus.DECLINED
     );
     if (!updated) {
-      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+      throw propertyMemberInviteNotFoundError("Property member invite not found");
     }
     logPropertyMemberInviteDeclined(updated);
     return updated;
@@ -197,14 +194,8 @@ export const propertyMemberInviteActionService = {
   ): Promise<{ invite: IPropertyInvite; member: IPropertyMember }> {
     const invite = await propertyInvitesDb.findByInviteToken(token);
     if (!invite) {
-      throw new PropertyMemberInviteNotFoundError("Invalid or expired invite link");
+      throw propertyMemberInviteNotFoundError("Invalid or expired invite link");
     }
     return acceptInviteForUser(invite, user);
   },
-};
-
-export {
-  InvalidPropertyMemberInviteTransitionError,
-  PropertyMemberInviteInvalidStateError,
-  PropertyMemberInviteNotFoundError,
 };

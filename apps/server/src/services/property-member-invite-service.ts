@@ -1,7 +1,14 @@
 import { propertiesDb } from "@/db/properties";
-import { DuplicatePropertyMemberInviteError, propertyInvitesDb } from "@/db/property-invites";
+import { propertyInvitesDb } from "@/db/property-invites";
 import { propertyMembersDb } from "@/db/property-members";
 import { userDb } from "@/db/users";
+import {
+  duplicatePropertyMemberInviteError,
+  propertyMemberAlreadyMemberError,
+  propertyMemberInviteInvalidStateError,
+  propertyMemberInviteMismatchError,
+  propertyMemberInviteNotFoundError,
+} from "@/errors/property-member-invite-errors";
 import { buildPropertyMemberInviteSummary } from "@/lib/build-property-member-invite-summary";
 import {
   type ICreatePropertyMemberInviteResult,
@@ -29,34 +36,6 @@ import {
   logPropertyMemberInviteResent,
   logPropertyMemberInviteRevoked,
 } from "./property-member-invite-observability";
-
-export class PropertyMemberInviteNotFoundError extends Error {
-  constructor(message = "Property member invite not found") {
-    super(message);
-    this.name = "PropertyMemberInviteNotFoundError";
-  }
-}
-
-export class PropertyMemberInviteMismatchError extends Error {
-  constructor(message = "Property member invite does not belong to this property") {
-    super(message);
-    this.name = "PropertyMemberInviteMismatchError";
-  }
-}
-
-export class PropertyMemberInviteInvalidStateError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PropertyMemberInviteInvalidStateError";
-  }
-}
-
-export class PropertyMemberAlreadyMemberError extends Error {
-  constructor(message = "User is already a member of this property") {
-    super(message);
-    this.name = "PropertyMemberAlreadyMemberError";
-  }
-}
 
 const PENDING_PREVIEW_STATUSES = new Set<string>([
   PropertyInviteStatus.PENDING,
@@ -146,7 +125,7 @@ async function createAndSendInvite(input: {
 
   const inviter = await userDb.findById(input.invitedBy);
   if (!inviter) {
-    throw new PropertyMemberInviteNotFoundError("Inviter not found");
+    throw propertyMemberInviteNotFoundError("Inviter not found");
   }
 
   const emailResult = await sendPropertyMemberInviteEmail(
@@ -195,7 +174,7 @@ export const propertyMemberInviteService = {
   }): Promise<TAddPropertyMemberResponse> {
     const property = await propertiesDb.findById(input.propertyId);
     if (!property) {
-      throw new PropertyMemberInviteNotFoundError("Property not found");
+      throw propertyMemberInviteNotFoundError("Property not found");
     }
 
     const normalizedEmail = input.email.trim().toLowerCase();
@@ -203,7 +182,7 @@ export const propertyMemberInviteService = {
     if (existingUser) {
       const existingMember = await propertyMembersDb.findOne(input.propertyId, existingUser.id);
       if (existingMember) {
-        throw new PropertyMemberAlreadyMemberError();
+        throw propertyMemberAlreadyMemberError();
       }
     }
 
@@ -229,7 +208,7 @@ export const propertyMemberInviteService = {
   }): Promise<ICreatePropertyMemberInviteResult> {
     const property = await propertiesDb.findById(input.propertyId);
     if (!property) {
-      throw new PropertyMemberInviteNotFoundError("Property not found");
+      throw propertyMemberInviteNotFoundError("Property not found");
     }
 
     return createAndSendInvite({
@@ -244,26 +223,26 @@ export const propertyMemberInviteService = {
   async previewInvite(token: string): Promise<IPropertyInvitePreviewResponse> {
     const invite = await propertyInvitesDb.findByInviteToken(token);
     if (!invite) {
-      throw new PropertyMemberInviteNotFoundError("Invalid or expired invite link");
+      throw propertyMemberInviteNotFoundError("Invalid or expired invite link");
     }
 
     if (!PENDING_PREVIEW_STATUSES.has(invite.status)) {
-      throw new PropertyMemberInviteInvalidStateError("This invite is no longer available");
+      throw propertyMemberInviteInvalidStateError("This invite is no longer available");
     }
 
     const expired = await propertyInvitesDb.expireInviteIfPastTtl(invite);
     if (expired) {
-      throw new PropertyMemberInviteInvalidStateError("This invite has expired");
+      throw propertyMemberInviteInvalidStateError("This invite has expired");
     }
 
     const property = await propertiesDb.findById(invite.propertyId);
     if (!property) {
-      throw new PropertyMemberInviteNotFoundError("Property not found");
+      throw propertyMemberInviteNotFoundError("Property not found");
     }
 
     const inviter = await userDb.findById(invite.invitedBy);
     if (!inviter) {
-      throw new PropertyMemberInviteNotFoundError("Property not found");
+      throw propertyMemberInviteNotFoundError("Property not found");
     }
 
     const hasExistingAccount = (await userDb.findByEmail(invite.email)) != null;
@@ -283,21 +262,21 @@ export const propertyMemberInviteService = {
   }): Promise<ICreatePropertyMemberInviteResult> {
     const invite = await propertyInvitesDb.findById(input.inviteId);
     if (!invite || invite.propertyId !== input.propertyId) {
-      throw new PropertyMemberInviteMismatchError();
+      throw propertyMemberInviteMismatchError();
     }
 
     if (
       !isPendingPropertyMemberInviteStatus(invite.status) &&
       invite.status !== PropertyInviteStatus.EMAIL_FAILED
     ) {
-      throw new PropertyMemberInviteInvalidStateError(
+      throw propertyMemberInviteInvalidStateError(
         "Only pending property member invites can be resent"
       );
     }
 
     const property = await propertiesDb.findById(input.propertyId);
     if (!property) {
-      throw new PropertyMemberInviteNotFoundError("Property not found");
+      throw propertyMemberInviteNotFoundError("Property not found");
     }
 
     const rawToken = generatePropertyMemberInviteToken();
@@ -306,12 +285,12 @@ export const propertyMemberInviteService = {
       hashPropertyMemberInviteToken(rawToken)
     );
     if (!updated) {
-      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+      throw propertyMemberInviteNotFoundError("Property member invite not found");
     }
 
     const inviter = await userDb.findById(updated.invitedBy);
     if (!inviter) {
-      throw new PropertyMemberInviteNotFoundError("Inviter not found");
+      throw propertyMemberInviteNotFoundError("Inviter not found");
     }
 
     const hasExistingAccount =
@@ -374,14 +353,14 @@ export const propertyMemberInviteService = {
   }): Promise<{ invite: IPropertyInvite }> {
     const invite = await propertyInvitesDb.findById(input.inviteId);
     if (!invite || invite.propertyId !== input.propertyId) {
-      throw new PropertyMemberInviteMismatchError();
+      throw propertyMemberInviteMismatchError();
     }
 
     if (
       !isPendingPropertyMemberInviteStatus(invite.status) &&
       invite.status !== PropertyInviteStatus.EMAIL_FAILED
     ) {
-      throw new PropertyMemberInviteInvalidStateError(
+      throw propertyMemberInviteInvalidStateError(
         "Only pending property member invites can be revoked"
       );
     }
@@ -391,7 +370,7 @@ export const propertyMemberInviteService = {
       PropertyInviteStatus.REVOKED
     );
     if (!updated) {
-      throw new PropertyMemberInviteNotFoundError("Property member invite not found");
+      throw propertyMemberInviteNotFoundError("Property member invite not found");
     }
 
     logPropertyMemberInviteRevoked(updated);
@@ -399,4 +378,4 @@ export const propertyMemberInviteService = {
   },
 };
 
-export { DuplicatePropertyMemberInviteError };
+export { duplicatePropertyMemberInviteError };

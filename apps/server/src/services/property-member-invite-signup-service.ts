@@ -6,6 +6,11 @@ import { isIdentityConflictError } from "@/constants/account";
 import { propertyInvitesDb } from "@/db/property-invites";
 import { userDb } from "@/db/users";
 import {
+  isPropertyMemberInviteDomainError,
+  propertyMemberInviteInvalidStateError,
+  propertyMemberInviteNotFoundError,
+} from "@/errors/property-member-invite-errors";
+import {
   HttpStatus,
   type IPropertyInvite,
   type IPropertyInviteRedeemResponse,
@@ -19,10 +24,6 @@ import {
 import { validateName, validatePassword } from "@/routes/auth/validators";
 import { issuePlatformSession } from "@/services/platform-auth-service";
 import { propertyMemberInviteActionService } from "@/services/property-member-invite-action-service";
-import {
-  PropertyMemberInviteInvalidStateError,
-  PropertyMemberInviteNotFoundError,
-} from "@/services/property-member-invite-service";
 
 export class PropertyMemberInviteSignupAccountExistsError extends Error {
   constructor(message = "Account already exists. Sign in to accept.") {
@@ -79,25 +80,25 @@ async function loadRedeemableInviteForSignup(token: string): Promise<IPropertyIn
 
   const invite = await propertyInvitesDb.findByInviteToken(trimmed);
   if (!invite) {
-    throw new PropertyMemberInviteNotFoundError("Invalid or expired invite link");
+    throw propertyMemberInviteNotFoundError("Invalid or expired invite link");
   }
 
   if (
     invite.status === PropertyInviteStatus.DECLINED ||
     invite.status === PropertyInviteStatus.EXPIRED
   ) {
-    throw new PropertyMemberInviteInvalidStateError(
+    throw propertyMemberInviteInvalidStateError(
       "This invite is no longer available. Ask the property owner to resend."
     );
   }
 
   if (!ACCEPTABLE_STATUSES.has(invite.status)) {
-    throw new PropertyMemberInviteInvalidStateError("This invite is no longer available");
+    throw propertyMemberInviteInvalidStateError("This invite is no longer available");
   }
 
   const expired = await propertyInvitesDb.expireInviteIfPastTtl(invite);
   if (expired) {
-    throw new PropertyMemberInviteInvalidStateError("This invite has expired");
+    throw propertyMemberInviteInvalidStateError("This invite has expired");
   }
 
   return invite;
@@ -136,18 +137,11 @@ function mapSignupDomainError(error: unknown): TPropertyMemberInviteSignupFailur
       statusCode: HttpStatus.FORBIDDEN,
     };
   }
-  if (error instanceof PropertyMemberInviteNotFoundError) {
+  if (isPropertyMemberInviteDomainError(error)) {
     return {
-      body: { error: error.message },
+      body: { code: error.code, error: error.message },
       status: "error",
-      statusCode: HttpStatus.NOT_FOUND,
-    };
-  }
-  if (error instanceof PropertyMemberInviteInvalidStateError) {
-    return {
-      body: { error: error.message },
-      status: "error",
-      statusCode: HttpStatus.BAD_REQUEST,
+      statusCode: error.httpStatus,
     };
   }
   if (isIdentityConflictError(error)) {

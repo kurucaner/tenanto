@@ -284,7 +284,7 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
 
 **Tasks**
 
-- [ ] Add [`apps/server/src/errors/property-member-invite-errors.ts`](apps/server/src/errors/property-member-invite-errors.ts)
+- [x] Add [`apps/server/src/errors/property-member-invite-errors.ts`](apps/server/src/errors/property-member-invite-errors.ts)
 
   | Legacy class | Code | HTTP |
   | --- | --- | --- |
@@ -295,9 +295,9 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
   | `DuplicatePropertyMemberInviteError` | `PROPERTY_MEMBER_INVITE_DUPLICATE` | 409 |
   | `InvalidPropertyMemberInviteTransitionError` | `PROPERTY_MEMBER_INVITE_INVALID_TRANSITION` | 400 |
 
-- [ ] Migrate [`property-member-invite-service.ts`](apps/server/src/services/property-member-invite-service.ts)
-- [ ] Migrate [`property-invites.ts`](apps/server/src/db/property-invites.ts) throws
-- [ ] Consolidate handlers in [`property-routes.ts`](apps/server/src/routes/admin/property-routes.ts) and [`property-invite-routes.ts`](apps/server/src/routes/property-invite-routes.ts)
+- [x] Migrate [`property-member-invite-service.ts`](apps/server/src/services/property-member-invite-service.ts)
+- [x] Migrate [`property-invites.ts`](apps/server/src/db/property-invites.ts) throws
+- [x] Consolidate handlers in [`property-routes.ts`](apps/server/src/routes/admin/property-routes.ts) and [`property-invite-routes.ts`](apps/server/src/routes/property-invite-routes.ts)
 
 **Exit criteria:** Property invite create/resend/revoke/public redeem unchanged; no `PropertyMemberInvite*Error` classes in services/db.
 

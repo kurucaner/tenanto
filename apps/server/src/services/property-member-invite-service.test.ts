@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IProperty, IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
 import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
+import {
+  duplicatePropertyMemberInviteError,
+  PropertyMemberInviteErrorCode,
+} from "@/errors/property-member-invite-errors";
 
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
 const mockFindByEmail = mock(() => Promise.resolve(null as IUser | null));
@@ -83,7 +87,6 @@ mock.module("@/db/property-members", () => ({
 }));
 
 mock.module("@/db/property-invites", () => ({
-  DuplicatePropertyMemberInviteError: class DuplicatePropertyMemberInviteError extends Error {},
   propertyInvitesDb: {
     create: mockCreateInvite,
     expireInviteIfPastTtl: mockExpireInviteIfPastTtl,
@@ -108,11 +111,7 @@ mock.module("@/services/user-notifications", () => ({
   notifyUser: mockNotifyUser,
 }));
 
-const {
-  DuplicatePropertyMemberInviteError,
-  PropertyMemberAlreadyMemberError,
-  propertyMemberInviteService,
-} = await import("@/services/property-member-invite-service");
+const { propertyMemberInviteService } = await import("@/services/property-member-invite-service");
 
 describe("propertyMemberInviteService.previewInvite", () => {
   beforeEach(() => {
@@ -249,14 +248,14 @@ describe("propertyMemberInviteService.addMemberViaInvite", () => {
         propertyId: "property-1",
         role: PropertyRole.MANAGER,
       })
-    ).rejects.toBeInstanceOf(PropertyMemberAlreadyMemberError);
+    ).rejects.toMatchObject({ code: PropertyMemberInviteErrorCode.ALREADY_MEMBER });
 
     expect(mockCreateInvite).not.toHaveBeenCalled();
   });
 
   test("propagates duplicate pending invite errors", async () => {
     mockFindByEmail.mockResolvedValue(null);
-    mockCreateInvite.mockRejectedValueOnce(new DuplicatePropertyMemberInviteError());
+    mockCreateInvite.mockRejectedValueOnce(duplicatePropertyMemberInviteError());
 
     await expect(
       propertyMemberInviteService.addMemberViaInvite({
@@ -265,6 +264,6 @@ describe("propertyMemberInviteService.addMemberViaInvite", () => {
         propertyId: "property-1",
         role: PropertyRole.MANAGER,
       })
-    ).rejects.toBeInstanceOf(DuplicatePropertyMemberInviteError);
+    ).rejects.toMatchObject({ code: PropertyMemberInviteErrorCode.DUPLICATE });
   });
 });

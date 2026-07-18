@@ -60,8 +60,6 @@ function makeMember(): IPropertyMember {
 }
 
 mock.module("@/db/property-invites", () => ({
-  DuplicatePropertyMemberInviteError: class DuplicatePropertyMemberInviteError extends Error {},
-  InvalidPropertyMemberInviteTransitionError: class InvalidPropertyMemberInviteTransitionError extends Error {},
   propertyInvitesDb: {
     expireInviteIfPastTtl: mockExpireInviteIfPastTtl,
     findById: mockFindByIdInvite,
