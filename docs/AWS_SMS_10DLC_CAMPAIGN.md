@@ -208,6 +208,33 @@ Samples must match **actual** message content sent in production.
 
 ---
 
+## Inbound SMS (STOP / HELP) — two-way setup
+
+Outbound SMS uses SNS `Publish`. Inbound replies require separate AWS wiring in **us-east-1**:
+
+```text
+Tenant texts STOP/HELP
+  → 10DLC origination number (two-way enabled)
+  → SNS topic (standard, e.g. propertyos-sms-inbound)
+  → Lambda forwarder (lambda/sms-inbound)
+  → POST /webhooks/sms/inbound on API (X-Internal-Secret)
+```
+
+### Console checklist
+
+1. **SNS topic** — Standard (not FIFO), e.g. `propertyos-sms-inbound`
+2. **Origination number** — End User Messaging → Phone numbers → enable **two-way SMS** → inbound destination = SNS topic above
+3. **Lambda** — Deploy [`lambda/sms-inbound`](../lambda/sms-inbound/README.md):
+   - Handler: `index.handler`
+   - Env: `API_PUBLIC_URL`, `AWS_INTERNAL_SECRET` (match API server)
+   - Role: CloudWatch Logs + outbound HTTPS only
+4. **SNS subscription** — Topic → Create subscription → AWS Lambda → select sms-inbound function
+5. **Verify** — Text STOP/HELP from a sandbox-verified phone; check CloudWatch + `tenant_sms_keyword_events`
+
+Local API testing (no Lambda): see Phase 3a `curl` in [`TENANT_SMS_OPT_IN_PHASES.md`](./TENANT_SMS_OPT_IN_PHASES.md).
+
+---
+
 ## Node.js / server setup
 
 Implementation lives in:

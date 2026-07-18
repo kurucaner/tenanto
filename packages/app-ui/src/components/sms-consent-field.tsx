@@ -61,7 +61,7 @@ export const SmsConsentField = memo(function SmsConsentField({
         >
           Privacy Policy
         </a>
-        .
+        {"."}
       </Label>
     </div>
   );

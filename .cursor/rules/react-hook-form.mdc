@@ -1,0 +1,20 @@
+---
+description: Admin and tenant forms must use react-hook-form + Zod
+globs: apps/admin/**/*.tsx, apps/tenant/**/*.tsx
+alwaysApply: false
+---
+
+# Forms: react-hook-form + Zod
+
+In `apps/admin` and `apps/tenant`, any **submit form** ( `<form>` or multiple validated fields + submit ) must use:
+
+- `useForm` + `zodResolver(schema)` — schema in `*-form-schema.ts` or colocated
+- `register` for plain inputs; `Controller` for `PhoneInput`, selects, checkboxes
+- Inline errors: `{errors.field?.message}` under the field
+- Submit via `handleSubmit` or `trigger([...fields])` — prefer **enabled submit buttons**; block API calls with validation, not `disabled={!valid}`
+
+**Do not** wire forms with `useState` per field + manual `if (!valid) return`.
+
+**Exceptions:** single action with no inputs (e.g. opt-out button); DataTable URL-backed filters; third-party widgets that own form state.
+
+**Reference:** `apps/tenant/src/pages/login-page.tsx`, `apps/tenant/src/components/settings/tenant-sms-settings-form-schema.ts`.

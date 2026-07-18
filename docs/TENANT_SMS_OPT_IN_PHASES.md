@@ -254,7 +254,7 @@ sequenceDiagram
   API->>SNS: Stop or help confirmation reply
 ```
 
-**Pattern:** Reuse the S3 notification approach — `lambda/s3-notification` forwards to `POST /s3-notification` with `AWS_INTERNAL_SECRET`. Phase 3b adds `lambda/sms-inbound` (or equivalent) → `POST /webhooks/sms/inbound`.
+**Pattern:** Reuse the S3 notification approach — `lambda/s3-notification` forwards to `POST /s3-notification` with `AWS_INTERNAL_SECRET`. Phase 3b uses [`lambda/sms-inbound`](../lambda/sms-inbound/README.md) → `POST /webhooks/sms/inbound`.
 
 ---
 
@@ -290,9 +290,9 @@ curl -X POST http://localhost:3001/webhooks/sms/inbound \
 **Goal:** Connect production/staging origination number to the Phase 3a handler; prove real handset STOP/HELP.
 
 - [ ] Enable **two-way SMS** on PropertyOS origination number (End User Messaging / us-east-1)
-- [ ] Route inbound messages → SNS topic → Lambda forwarder (mirror `lambda/s3-notification` + `docs/LAMBDA_SETUP.md`)
+- [ ] Route inbound messages → SNS topic → Lambda forwarder ([`lambda/sms-inbound`](../lambda/sms-inbound/README.md))
 - [ ] Lambda env: `API_PUBLIC_URL`, `AWS_INTERNAL_SECRET` (same as API server)
-- [ ] Document setup in [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) (two-way + inbound section)
+- [x] Document setup in [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) (two-way + inbound section)
 - [ ] Manual STOP/HELP test on sandbox-verified handset against staging API
 
 **Exit criteria:** Real SMS STOP suppresses future OTP/alerts; HELP returns registered help copy; [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) checklist items for STOP/HELP checked.

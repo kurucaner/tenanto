@@ -1,5 +1,7 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { memo, useEffect, useId, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { tenantPortalApi } from "@/lib/api-client";
@@ -16,12 +18,18 @@ import {
 import {
   formatPhoneDisplay,
   getTenantSmsSubscriptionStatus,
-  isValidE164,
   type ITenantUser,
+  normalizeToE164,
   OTP_EXPIRY_MINUTES,
   TenantSmsSubscriptionStatus,
 } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
+
+import {
+  tenantSmsSettingsFormDefaults,
+  tenantSmsSettingsFormSchema,
+  type TTenantSmsSettingsFormValues,
+} from "./tenant-sms-settings-form-schema";
 
 function syncTenantUserCaches(queryClient: ReturnType<typeof useQueryClient>, user: ITenantUser) {
   queryClient.setQueryData(queryKeys.me(), { user });
@@ -51,23 +59,31 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
   const otpId = useId();
   const subscriptionStatus = getTenantSmsSubscriptionStatus(user);
   const isSubscribed = subscriptionStatus === TenantSmsSubscriptionStatus.SUBSCRIBED;
-
-  const [phone, setPhone] = useState(user.phone ?? "");
-  const [smsConsent, setSmsConsent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
   const [awaitingOtp, setAwaitingOtp] = useState(false);
 
+  const form = useForm<TTenantSmsSettingsFormValues>({
+    defaultValues: tenantSmsSettingsFormDefaults(user.phone),
+    resolver: zodResolver(tenantSmsSettingsFormSchema),
+  });
+
+  const {
+    control,
+    formState: { errors },
+    getValues,
+    register,
+    reset,
+    trigger,
+  } = form;
+
   useEffect(() => {
-    setPhone(user.phone ?? "");
-    setSmsConsent(false);
-    setOtpCode("");
+    reset(tenantSmsSettingsFormDefaults(user.phone));
     setAwaitingOtp(false);
-  }, [user.id, user.phone, user.phoneVerifiedAt, user.smsConsentedAt, user.smsOptedOutAt]);
+  }, [reset, user.id, user.phone, user.phoneVerifiedAt, user.smsConsentedAt, user.smsOptedOutAt]);
 
   const bindStartMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (normalizedPhone: string) =>
       tenantPortalApi.phoneBindStart({
-        phone,
+        phone: normalizedPhone,
         smsConsent: true,
       }),
     onError: (error) => {
@@ -75,25 +91,20 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
     },
     onSuccess: () => {
       setAwaitingOtp(true);
-      setOtpCode("");
+      reset({ ...getValues(), otp: "" });
       toast.success("Verification code sent");
     },
   });
 
   const bindVerifyMutation = useMutation({
-    mutationFn: () =>
-      tenantPortalApi.phoneBindVerify({
-        code: otpCode.trim(),
-        phone,
-      }),
+    mutationFn: (input: { code: string; phone: string }) => tenantPortalApi.phoneBindVerify(input),
     onError: (error) => {
       toast.error(getAuthApiErrorMessage(error, "Failed to verify phone number"));
     },
     onSuccess: (response) => {
       syncTenantUserCaches(queryClient, response.user);
       setAwaitingOtp(false);
-      setSmsConsent(false);
-      setOtpCode("");
+      reset(tenantSmsSettingsFormDefaults(response.user.phone));
       toast.success("SMS alerts enabled");
     },
   });
@@ -105,18 +116,47 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
     },
     onSuccess: (response) => {
       syncTenantUserCaches(queryClient, response.user);
-      setPhone("");
       setAwaitingOtp(false);
-      setSmsConsent(false);
-      setOtpCode("");
+      reset(tenantSmsSettingsFormDefaults(null));
       toast.success("SMS alerts disabled");
     },
   });
 
-  const phoneValid = isValidE164(phone);
-  const canStartBind = phoneValid && smsConsent && !bindStartMutation.isPending && !awaitingOtp;
-  const canVerifyOtp =
-    awaitingOtp && otpCode.trim().length >= 4 && !bindVerifyMutation.isPending && phoneValid;
+  const handleEnableSms = async () => {
+    const isValid = await trigger(["phone", "smsConsent"]);
+    if (!isValid) {
+      return;
+    }
+
+    const normalizedPhone = normalizeToE164(getValues("phone"));
+    if (normalizedPhone == null) {
+      await trigger("phone");
+      return;
+    }
+
+    bindStartMutation.mutate(normalizedPhone);
+  };
+
+  const handleVerifyOtp = async () => {
+    const isValid = await trigger("otp");
+    if (!isValid) {
+      return;
+    }
+
+    const normalizedPhone = normalizeToE164(getValues("phone"));
+    if (normalizedPhone == null) {
+      await trigger("phone");
+      return;
+    }
+
+    bindVerifyMutation.mutate({
+      code: getValues("otp").trim(),
+      phone: normalizedPhone,
+    });
+  };
+
+  const phoneValue = form.watch("phone");
+  const formDisabled = awaitingOtp || bindStartMutation.isPending || bindVerifyMutation.isPending;
 
   return (
     <div className="space-y-4 text-sm">
@@ -138,27 +178,55 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
           {optOutMutation.isPending ? "Disabling…" : "Disable SMS alerts"}
         </Button>
       ) : (
-        <>
-          <PhoneInput
-            disabled={awaitingOtp || bindStartMutation.isPending || bindVerifyMutation.isPending}
-            id="tenant-sms-phone"
-            label="Mobile phone"
-            onChange={setPhone}
-            value={phone}
-          />
+        <form
+          className="space-y-4"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+          }}
+        >
+          <div className="space-y-1">
+            <Controller
+              control={control}
+              name="phone"
+              render={({ field }) => (
+                <PhoneInput
+                  disabled={formDisabled}
+                  id="tenant-sms-phone"
+                  label="Mobile phone"
+                  onChange={field.onChange}
+                  value={field.value}
+                />
+              )}
+            />
+            {errors.phone ? (
+              <p className="text-xs text-destructive">{errors.phone.message}</p>
+            ) : null}
+          </div>
 
-          <SmsConsentField
-            checked={smsConsent}
-            consentId={consentId}
-            disabled={awaitingOtp || bindStartMutation.isPending || bindVerifyMutation.isPending}
-            onCheckedChange={setSmsConsent}
-            webAppUrl={getWebAppUrl()}
-          />
+          <div className="space-y-1">
+            <Controller
+              control={control}
+              name="smsConsent"
+              render={({ field }) => (
+                <SmsConsentField
+                  checked={field.value}
+                  consentId={consentId}
+                  disabled={formDisabled}
+                  onCheckedChange={field.onChange}
+                  webAppUrl={getWebAppUrl()}
+                />
+              )}
+            />
+            {errors.smsConsent ? (
+              <p className="text-xs text-destructive">{errors.smsConsent.message}</p>
+            ) : null}
+          </div>
 
           {!awaitingOtp ? (
             <Button
-              disabled={!canStartBind}
-              onClick={() => bindStartMutation.mutate()}
+              disabled={bindStartMutation.isPending}
+              onClick={() => void handleEnableSms()}
               type="button"
             >
               {bindStartMutation.isPending ? "Sending code…" : "Enable SMS alerts"}
@@ -166,7 +234,7 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
           ) : (
             <div className="space-y-3 rounded-xl border border-border/80 bg-muted/20 p-4">
               <p className="text-sm text-muted-foreground">
-                Enter the verification code sent to {formatPhoneDisplay(phone)}. It expires in{" "}
+                Enter the verification code sent to {formatPhoneDisplay(phoneValue)}. It expires in{" "}
                 {OTP_EXPIRY_MINUTES} minutes.
               </p>
               <div className="flex flex-col gap-2">
@@ -176,14 +244,16 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
                   id={otpId}
                   inputMode="numeric"
                   maxLength={6}
-                  onChange={(event) => setOtpCode(event.target.value)}
-                  value={otpCode}
+                  {...register("otp")}
                 />
+                {errors.otp ? (
+                  <p className="text-xs text-destructive">{errors.otp.message}</p>
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button
-                  disabled={!canVerifyOtp}
-                  onClick={() => bindVerifyMutation.mutate()}
+                  disabled={bindVerifyMutation.isPending}
+                  onClick={() => void handleVerifyOtp()}
                   type="button"
                 >
                   {bindVerifyMutation.isPending ? "Verifying…" : "Verify and enable"}
@@ -192,7 +262,7 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
                   disabled={bindVerifyMutation.isPending}
                   onClick={() => {
                     setAwaitingOtp(false);
-                    setOtpCode("");
+                    reset({ ...getValues(), otp: "" });
                   }}
                   type="button"
                   variant="outline"
@@ -202,8 +272,10 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
               </div>
             </div>
           )}
-        </>
+        </form>
       )}
     </div>
   );
 });
+
+TenantSmsSettingsSection.displayName = "TenantSmsSettingsSection";
