@@ -79,8 +79,19 @@ export interface ITenantRentPaymentStatusResponse {
   status: TTenantRentPaymentStatus;
 }
 
+/** Stripe Connect account onboarding model for a property. */
+export const PropertyStripeAccountType = {
+  EXPRESS: "express",
+  STANDARD: "standard",
+} as const;
+
+export type TPropertyStripeAccountType =
+  (typeof PropertyStripeAccountType)[keyof typeof PropertyStripeAccountType];
+
 /** Admin: property Connect onboarding status. */
 export interface IPropertyStripeConnectStatusResponse {
+  /** Null when no Connect account is linked yet. */
+  accountType: TPropertyStripeAccountType | null;
   chargesEnabled: boolean;
   detailsSubmitted: boolean;
   onboardingComplete: boolean;

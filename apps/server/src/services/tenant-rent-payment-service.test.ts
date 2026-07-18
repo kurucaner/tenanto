@@ -66,6 +66,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     findByPropertyId: mockFindStripeAccount,
   },
   toConnectStatusResponse: () => ({
+    accountType: null,
     chargesEnabled: false,
     detailsSubmitted: false,
     onboardingComplete: false,

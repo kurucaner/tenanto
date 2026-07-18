@@ -692,7 +692,9 @@ export {
   type ITenantRentPaymentStatusResponse,
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
+  PropertyStripeAccountType,
   TenantRentPaymentStatus,
+  type TPropertyStripeAccountType,
   type TTenantRentPaymentStatus,
 } from "./tenant-rent-payment-types";
 export {

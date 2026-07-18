@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
-import {
-  mockAsyncFn,
-  mockResolved,
-  mockResolvedNull,
-} from "@/test-fixtures/mocks";
+import { PropertyStripeAccountType } from "@/packages/shared";
+import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
 const mockFindByPropertyId = mockResolvedNull<IPropertyStripeAccount>();
 const mockUpdateFlags = mockResolvedNull<IPropertyStripeAccount>();
@@ -34,6 +31,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     upsert: mockUpsert,
   },
   toConnectStatusResponse: (account: IPropertyStripeAccount | null, platformEnabled: boolean) => ({
+    accountType: account?.accountType ?? null,
     chargesEnabled: account?.chargesEnabled ?? false,
     detailsSubmitted: account?.detailsSubmitted ?? false,
     onboardingComplete: account?.onboardingComplete ?? false,
@@ -109,6 +107,7 @@ describe("propertyStripeConnectService.getStatus", () => {
   test("syncAccountStatus updates flags from Stripe when flag is on", async () => {
     process.env.STRIPE_CONNECT_ENABLED = "true";
     const localAccount = {
+      accountType: PropertyStripeAccountType.EXPRESS,
       chargesEnabled: false,
       detailsSubmitted: true,
       onboardingComplete: false,

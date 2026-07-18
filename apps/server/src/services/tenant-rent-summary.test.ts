@@ -7,11 +7,7 @@ import {
   TenantMembershipStatus,
 } from "@/packages/shared";
 import { makeLeaseListItem } from "@/test-fixtures/domain";
-import {
-  mockAsyncFn,
-  mockResolved,
-  mockSyncVoid,
-} from "@/test-fixtures/mocks";
+import { mockAsyncFn, mockResolved, mockSyncVoid } from "@/test-fixtures/mocks";
 
 const mockListLeases = mockAsyncFn(
   (_tenantUserId: string, _status: string): Promise<ITenantLeaseListItem[]> => Promise.resolve([])
@@ -73,6 +69,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     findByPropertyId: mockFindStripeAccount,
   },
   toConnectStatusResponse: () => ({
+    accountType: null,
     chargesEnabled: false,
     detailsSubmitted: false,
     onboardingComplete: false,

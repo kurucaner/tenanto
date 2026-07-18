@@ -1,9 +1,14 @@
 import { isStripeConnectEnabled } from "@/lib/stripe-connect-config";
-import type { IPropertyStripeConnectStatusResponse } from "@/packages/shared";
+import {
+  type IPropertyStripeConnectStatusResponse,
+  PropertyStripeAccountType,
+  type TPropertyStripeAccountType,
+} from "@/packages/shared";
 
 import { pool } from "./pool";
 
 export interface IPropertyStripeAccount {
+  accountType: TPropertyStripeAccountType;
   chargesEnabled: boolean;
   detailsSubmitted: boolean;
   onboardingComplete: boolean;
@@ -13,8 +18,16 @@ export interface IPropertyStripeAccount {
   updatedAt: string;
 }
 
+function mapAccountType(value: unknown): TPropertyStripeAccountType {
+  if (value === PropertyStripeAccountType.STANDARD) {
+    return PropertyStripeAccountType.STANDARD;
+  }
+  return PropertyStripeAccountType.EXPRESS;
+}
+
 function mapRow(row: Record<string, unknown>): IPropertyStripeAccount {
   return {
+    accountType: mapAccountType(row.account_type),
     chargesEnabled: row.charges_enabled as boolean,
     detailsSubmitted: row.details_submitted as boolean,
     onboardingComplete: row.onboarding_complete as boolean,
@@ -31,6 +44,7 @@ export function toConnectStatusResponse(
 ): IPropertyStripeConnectStatusResponse {
   if (!account) {
     return {
+      accountType: null,
       chargesEnabled: false,
       detailsSubmitted: false,
       onboardingComplete: false,
@@ -40,6 +54,7 @@ export function toConnectStatusResponse(
     };
   }
   return {
+    accountType: account.accountType,
     chargesEnabled: account.chargesEnabled,
     detailsSubmitted: account.detailsSubmitted,
     onboardingComplete: account.onboardingComplete,
@@ -99,6 +114,7 @@ export const propertyStripeAccountsDb = {
   },
 
   async upsert(input: {
+    accountType?: TPropertyStripeAccountType;
     chargesEnabled: boolean;
     detailsSubmitted: boolean;
     onboardingComplete: boolean;
@@ -106,6 +122,7 @@ export const propertyStripeAccountsDb = {
     propertyId: string;
     stripeAccountId: string;
   }): Promise<IPropertyStripeAccount> {
+    const accountType = input.accountType ?? PropertyStripeAccountType.EXPRESS;
     const result = await pool.query(
       `INSERT INTO property_stripe_accounts (
          property_id,
@@ -113,8 +130,9 @@ export const propertyStripeAccountsDb = {
          charges_enabled,
          payouts_enabled,
          onboarding_complete,
-         details_submitted
-       ) VALUES ($1, $2, $3, $4, $5, $6)
+         details_submitted,
+         account_type
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (property_id) DO UPDATE SET
          stripe_account_id = EXCLUDED.stripe_account_id,
          charges_enabled = EXCLUDED.charges_enabled,
@@ -130,6 +148,7 @@ export const propertyStripeAccountsDb = {
         input.payoutsEnabled,
         input.onboardingComplete,
         input.detailsSubmitted,
+        accountType,
       ]
     );
     return mapRow(result.rows[0] as Record<string, unknown>);

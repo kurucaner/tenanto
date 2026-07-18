@@ -3,9 +3,10 @@ import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
 } from "@/lib/stripe-connect-config";
-import type {
-  IPropertyStripeConnectOnboardingLinkResponse,
-  IPropertyStripeConnectStatusResponse,
+import {
+  type IPropertyStripeConnectOnboardingLinkResponse,
+  type IPropertyStripeConnectStatusResponse,
+  PropertyStripeAccountType,
 } from "@/packages/shared";
 import { getStripeClient } from "@/stripe/stripe-client";
 
@@ -64,6 +65,7 @@ export const propertyStripeConnectService = {
         type: "express",
       });
       local = await propertyStripeAccountsDb.upsert({
+        accountType: PropertyStripeAccountType.EXPRESS,
         chargesEnabled: Boolean(account.charges_enabled),
         detailsSubmitted: Boolean(account.details_submitted),
         onboardingComplete: false,

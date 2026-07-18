@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
 import { getStripeConnectUiStatus } from "@/lib/property-stripe-connect-utils";
+import { PropertyStripeAccountType } from "@/packages/shared";
 
 describe("getStripeConnectUiStatus", () => {
   test("not_connected when no account id", () => {
     expect(
       getStripeConnectUiStatus({
+        accountType: null,
         chargesEnabled: false,
         detailsSubmitted: false,
         onboardingComplete: false,
@@ -19,6 +21,7 @@ describe("getStripeConnectUiStatus", () => {
   test("ready when charges enabled", () => {
     expect(
       getStripeConnectUiStatus({
+        accountType: PropertyStripeAccountType.EXPRESS,
         chargesEnabled: true,
         detailsSubmitted: true,
         onboardingComplete: true,
@@ -32,6 +35,7 @@ describe("getStripeConnectUiStatus", () => {
   test("setup_incomplete when account exists but charges disabled", () => {
     expect(
       getStripeConnectUiStatus({
+        accountType: PropertyStripeAccountType.EXPRESS,
         chargesEnabled: false,
         detailsSubmitted: true,
         onboardingComplete: false,

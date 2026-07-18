@@ -3087,4 +3087,33 @@ export const migrations: IMigration[] = [
     },
     version: 68,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE property_stripe_accounts
+          DROP COLUMN IF EXISTS account_type;
+      `);
+      await client.query(`DROP TYPE IF EXISTS property_stripe_account_type;`);
+    },
+    name: "property_stripe_accounts_account_type",
+    up: async (client) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_stripe_account_type AS ENUM ('express', 'standard');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE property_stripe_accounts
+          ADD COLUMN IF NOT EXISTS account_type property_stripe_account_type NOT NULL DEFAULT 'express';
+      `);
+      await client.query(`
+        UPDATE property_stripe_accounts
+        SET account_type = 'express'
+        WHERE account_type IS DISTINCT FROM 'express';
+      `);
+    },
+    version: 69,
+  },
 ];
