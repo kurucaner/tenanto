@@ -35,13 +35,13 @@ Ship a **10DLC-compliant tenant SMS consent flow** in the resident portal: expli
 - After successful phone bind verify, send **one opt-in confirmation SMS** (campaign sample 2).
 - Tenant can **opt out in-app** (remove phone / disable SMS) as described in privacy/terms.
 - Produce a **screenshot-ready Settings UI** for AWS 10DLC campaign resubmission.
-- Align outbound message bodies with registered samples (STOP/HELP footer on OTP and transactional messages).
+- Align outbound message bodies with registered samples (STOP/HELP footer on opt-in confirmation only; disclosed at checkbox consent).
 
 ## Non-goals (initial release)
 
 - **Admin operator SMS opt-in** — no `users.phone`, no admin account settings page today.
 - **Rent/lease alert SMS delivery** — only consent plumbing + OTP + opt-in confirmation in v1.
-- **Inbound STOP/HELP auto-reply** — Phase 3 (required for production sandbox exit, not for screenshot).
+- **Inbound STOP/HELP auto-reply** — Phase 3a (handler) + Phase 3b (AWS wiring); required for production sandbox exit, not for screenshot.
 - **Phone-only tenant accounts** — unchanged deferral from auth expansion doc.
 - **Marketing SMS** — transactional campaign only.
 
@@ -72,7 +72,7 @@ sequenceDiagram
   TenantUI->>API: POST bind/start {phone, smsConsent:true}
   API->>DB: Validate no opt-out conflict
   API->>OTP: sendPhoneOtpWithCooldown
-  OTP->>SNS: OTP SMS with STOP/HELP footer
+  OTP->>SNS: OTP SMS
   TenantUI->>API: POST bind/verify {phone, code}
   API->>DB: setVerifiedPhone + sms_consented_at
   API->>SNS: Opt-in confirmation SMS
@@ -96,9 +96,9 @@ flowchart LR
 
 ### Feature flags
 
-| Flag | Gates |
-| ---- | ----- |
-| `TENANT_PHONE_AUTH_ENABLED` | Bind/login phone routes, consent flow, OTP send |
+| Flag                             | Gates                                                      |
+| -------------------------------- | ---------------------------------------------------------- |
+| `TENANT_PHONE_AUTH_ENABLED`      | Bind/login phone routes, consent flow, OTP send            |
 | `VITE_TENANT_PHONE_AUTH_ENABLED` | Tenant Settings SMS section visibility (must match server) |
 
 ---
@@ -107,10 +107,10 @@ flowchart LR
 
 ### `tenant_users` (extend — migration v67)
 
-| Column | Notes |
-| ------ | ----- |
+| Column             | Notes                                                                         |
+| ------------------ | ----------------------------------------------------------------------------- |
 | `sms_consented_at` | `TIMESTAMPTZ` nullable — set on successful bind verify after explicit consent |
-| `sms_opted_out_at` | `TIMESTAMPTZ` nullable — set on in-app opt-out (and later STOP keyword) |
+| `sms_opted_out_at` | `TIMESTAMPTZ` nullable — set on in-app opt-out (and later STOP keyword)       |
 
 Existing columns reused: `phone`, `phone_verified_at`.
 
@@ -118,9 +118,7 @@ Existing columns reused: `phone`, `phone_verified_at`.
 
 ```typescript
 canReceiveSms(user) =
-  user.phoneVerifiedAt != null &&
-  user.smsConsentedAt != null &&
-  user.smsOptedOutAt == null;
+  user.phoneVerifiedAt != null && user.smsConsentedAt != null && user.smsOptedOutAt == null;
 ```
 
 New DB helpers in `tenant-users.ts`:
@@ -134,26 +132,28 @@ New DB helpers in `tenant-users.ts`:
 
 ## Shared contract (`packages/shared`)
 
-| Type | Purpose |
-| ---- | ------- |
-| `ITenantUser` (extend) | Add `smsConsentedAt`, `smsOptedOutAt` |
-| `ITenantPhoneBindStartBody` (extend) | Add required `smsConsent: true` |
-| `ITenantSmsOptOutResponse` | `{ user: ITenantUser }` |
-| `canReceiveSms(user)` | Pure eligibility helper |
-| `buildTenantPhoneOtpSmsMessage(code)` | OTP body — campaign sample 1 |
-| `buildTenantSmsOptInConfirmationMessage()` | Opt-in confirmation — sample 2 |
-| `buildTenantSmsOptOutConfirmationMessage()` | Stop confirmation — campaign stop sample |
+| Type                                        | Purpose                                           |
+| ------------------------------------------- | ------------------------------------------------- |
+| `ITenantUser` (extend)                      | Add `smsConsentedAt`, `smsOptedOutAt`             |
+| `ITenantPhoneBindStartBody` (extend)        | Add required `smsConsent: true`                   |
+| `ITenantSmsOptOutResponse`                  | `{ user: ITenantUser }`                           |
+| `canReceiveSms(user)`                       | Pure eligibility helper                           |
+| `buildTenantPhoneOtpSmsMessage(code)`       | OTP body — campaign sample 1                      |
+| `buildTenantSmsOptInConfirmationMessage()`  | Opt-in confirmation — sample 2                    |
+| `buildTenantSmsOptOutConfirmationMessage()` | Stop confirmation — campaign stop sample          |
+| `buildTenantSmsHelpMessage()`               | HELP auto-reply — campaign help sample (Phase 3a) |
 
 ---
 
 ## API (sketch)
 
-| Method | Path | Auth | Body | Notes |
-| ------ | ---- | ---- | ---- | ----- |
-| `POST` | `/tenant/auth/phone/bind/start` | Tenant JWT | `{ phone, smsConsent: true }` | Reject if `smsConsent !== true`; then send OTP |
-| `POST` | `/tenant/auth/phone/bind/verify` | Tenant JWT | `{ phone, code }` | Verify OTP, set consent, send opt-in confirmation SMS |
-| `POST` | `/tenant/me/sms/opt-out` | Tenant JWT | — | In-app opt-out; return updated user |
-| `GET` | `/tenant/me` | Tenant JWT | — | Include new consent fields |
+| Method | Path                             | Auth                | Body                          | Notes                                                                        |
+| ------ | -------------------------------- | ------------------- | ----------------------------- | ---------------------------------------------------------------------------- |
+| `POST` | `/tenant/auth/phone/bind/start`  | Tenant JWT          | `{ phone, smsConsent: true }` | Reject if `smsConsent !== true`; then send OTP                               |
+| `POST` | `/tenant/auth/phone/bind/verify` | Tenant JWT          | `{ phone, code }`             | Verify OTP, set consent, send opt-in confirmation SMS                        |
+| `POST` | `/tenant/me/sms/opt-out`         | Tenant JWT          | —                             | In-app opt-out; return updated user                                          |
+| `POST` | `/webhooks/sms/inbound`          | `X-Internal-Secret` | SNS/Lambda payload            | Inbound STOP/HELP (Phase 3a); exempt from rate limit like `/s3-notification` |
+| `GET`  | `/tenant/me`                     | Tenant JWT          | —                             | Include new consent fields                                                   |
 
 Server-side send path:
 
@@ -170,7 +170,7 @@ Server-side send path:
 
 1. **Status row** — Not subscribed / Pending verification / Subscribed / Opted out
 2. **PhoneInput** — editable when not subscribed (extract to app-ui)
-3. **Consent checkbox (unchecked default)** — disclosure from campaign doc + ToS/Privacy links
+3. **Consent checkbox (unchecked default)** — disclosure: “I agree to receive transactional SMS from PropertyOS, including verification codes and account notifications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.” + ToS/Privacy links
 4. **Enable SMS** — disabled until valid phone + consent; triggers bind/start → OTP dialog
 5. **OTP verify dialog** — code entry → bind/verify
 6. **Remove / Disable SMS** — visible when subscribed; calls opt-out API
@@ -234,15 +234,70 @@ After Phase 2 lands on staging, capture Settings showing phone field, **unchecke
 
 ### Phase 3 — STOP/HELP + production compliance
 
-**Goal:** Inbound keyword handling required before production SMS volume.
+**Goal:** Inbound keyword handling required before production SMS volume. Split into **3a (app backend)** and **3b (AWS wiring + proof)** so handler logic can ship and be tested with `curl` before two-way SMS is configured in AWS.
 
-- [ ] Inbound SMS handler (SNS → Lambda or Fastify webhook) for STOP / HELP
-- [ ] STOP: set `sms_opted_out_at`, clear phone, send stop confirmation SMS
-- [ ] HELP: auto-reply with campaign help message
-- [ ] Persist keyword events for audit
-- [ ] Manual STOP/HELP test on sandbox number
+**Inbound flow (target):**
 
-**Exit criteria:** STOP suppresses future SMS; HELP returns registered help copy; [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) checklist items for STOP/HELP checked.
+```mermaid
+sequenceDiagram
+  participant Tenant as TenantPhone
+  participant AWS as AWSTwoWaySms
+  participant Lambda as smsInboundLambda
+  participant API as POST webhooks/sms/inbound
+  participant DB as tenant_users
+  participant SNS as sendSms
+
+  Tenant->>AWS: SMS "STOP" or "HELP"
+  AWS->>Lambda: Inbound event
+  Lambda->>API: Forward payload (X-Internal-Secret)
+  API->>DB: Lookup by phone; opt out or log keyword
+  API->>SNS: Stop or help confirmation reply
+```
+
+**Pattern:** Reuse the S3 notification approach — `lambda/s3-notification` forwards to `POST /s3-notification` with `AWS_INTERNAL_SECRET`. Phase 3b adds `lambda/sms-inbound` (or equivalent) → `POST /webhooks/sms/inbound`.
+
+---
+
+#### Phase 3a — Inbound handler (backend only)
+
+**Goal:** STOP/HELP business logic + audit trail; verifiable locally without AWS.
+
+- [x] Migration: `tenant_sms_keyword_events` (phone E.164, keyword, tenant_user_id nullable, raw payload snippet, created_at)
+- [x] Add `buildTenantSmsHelpMessage()` in `packages/shared` (campaign help sample)
+- [x] Keyword parser — normalize STOP / STOPALL / UNSUBSCRIBE / CANCEL / END / QUIT and HELP / INFO
+- [x] `tenant-inbound-sms-service` (or equivalent):
+  - STOP → `optOutOfSms` by phone lookup + send `buildTenantSmsOptOutConfirmationMessage()` (capture phone before clear)
+  - HELP → send help message to sender (no subscription change)
+  - Unknown keyword / unknown phone → log event; no outbound reply (or log-only)
+- [x] `POST /webhooks/sms/inbound` — auth via `X-Internal-Secret`; register in `server.ts` rate-limit exempt list
+- [x] Unit tests with mocked payloads; manual `curl` against local server
+
+**Exit criteria:** `curl` with STOP payload opts out a subscribed tenant and sends stop confirmation; HELP returns registered help copy; events persisted; tests pass — **no AWS dependency**.
+
+**Local test (`curl`):**
+
+```bash
+curl -X POST http://localhost:3001/webhooks/sms/inbound \
+  -H "Content-Type: application/json" \
+  -H "X-Internal-Secret: $AWS_INTERNAL_SECRET" \
+  -d '{"phoneNumber":"+13055550100","message":"STOP"}'
+```
+
+---
+
+#### Phase 3b — AWS two-way SMS + sandbox proof
+
+**Goal:** Connect production/staging origination number to the Phase 3a handler; prove real handset STOP/HELP.
+
+- [ ] Enable **two-way SMS** on PropertyOS origination number (End User Messaging / us-east-1)
+- [ ] Route inbound messages → SNS topic → Lambda forwarder (mirror `lambda/s3-notification` + `docs/LAMBDA_SETUP.md`)
+- [ ] Lambda env: `API_PUBLIC_URL`, `AWS_INTERNAL_SECRET` (same as API server)
+- [ ] Document setup in [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) (two-way + inbound section)
+- [ ] Manual STOP/HELP test on sandbox-verified handset against staging API
+
+**Exit criteria:** Real SMS STOP suppresses future OTP/alerts; HELP returns registered help copy; [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) checklist items for STOP/HELP checked.
+
+**Phase 3 overall exit criteria:** Phase 3a + 3b complete.
 
 ---
 
@@ -250,14 +305,14 @@ After Phase 2 lands on staging, capture Settings showing phone field, **unchecke
 
 **Goal:** Production-safe consent behavior.
 
-| Concern | Action |
-| ------- | ------ |
-| Consent bypass | Server rejects bind/start without `smsConsent: true` |
-| Re-opt-in after STOP | Full bind + checkbox flow; clear `sms_opted_out_at` only via new explicit consent |
-| Duplicate opt-in SMS | Idempotent: skip confirmation if already consented for same verified phone |
-| OTP to opted-out numbers | Send gate + login start checks |
-| Message drift | Single shared template module; campaign doc references same strings |
-| Rate limits | Reuse `phone_bind` limits in `tenant-auth-rate-limit.ts` |
+| Concern                  | Action                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------- |
+| Consent bypass           | Server rejects bind/start without `smsConsent: true`                              |
+| Re-opt-in after STOP     | Full bind + checkbox flow; clear `sms_opted_out_at` only via new explicit consent |
+| Duplicate opt-in SMS     | Idempotent: skip confirmation if already consented for same verified phone        |
+| OTP to opted-out numbers | Send gate + login start checks                                                    |
+| Message drift            | Single shared template module; campaign doc references same strings               |
+| Rate limits              | Reuse `phone_bind` limits in `tenant-auth-rate-limit.ts`                          |
 
 **Exit criteria:** Failure modes documented; no SMS sent without recorded consent.
 
@@ -277,7 +332,7 @@ After Phase 2 lands on staging, capture Settings showing phone field, **unchecke
 - Do **not** send OTP on bind/start without explicit `smsConsent: true` in the request body.
 - Do **not** pre-check the consent checkbox.
 - Do **not** call `sendSms` directly from new tenant SMS code without the consent gate wrapper.
-- Do **not** block AWS resubmission on STOP/HELP — ship Phase 2 UI first, then Phase 3 before production volume.
+- Do **not** block AWS resubmission on STOP/HELP — ship Phase 2 UI first, then Phase 3a → 3b before production volume.
 - Do **not** add admin operator SMS in the same PR as tenant opt-in.
 
 ---
@@ -287,12 +342,13 @@ After Phase 2 lands on staging, capture Settings showing phone field, **unchecke
 1. **Migration + shared types** before any route or UI changes.
 2. **Backend consent gating + opt-in confirmation** before relying on UI.
 3. **Tenant Settings UI** next — unblocks AWS screenshot.
-4. **STOP/HELP inbound** before production sandbox exit.
-5. **Admin operator SMS** only after tenant flow is proven.
+4. **Phase 3a inbound handler** (backend + tests) before AWS console work.
+5. **Phase 3b two-way SMS wiring** + sandbox STOP/HELP proof before production volume.
+6. **Admin operator SMS** only after tenant flow is proven.
 
 ---
 
 ## Related doc updates (after implementation)
 
-- [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) — add “Opt-in workflow screenshot” section; mark pre-launch checklist items when Phases 1–2 ship.
+- [AWS_SMS_10DLC_CAMPAIGN.md](./AWS_SMS_10DLC_CAMPAIGN.md) — add “Opt-in workflow screenshot” section; mark pre-launch checklist items when Phases 1–2 ship; add inbound two-way SMS setup when Phase 3b ships.
 - [TENANT_PORTAL_AUTH_EXPANSION_PHASES.md](./TENANT_PORTAL_AUTH_EXPANSION_PHASES.md) — cross-link SMS consent as prerequisite for transactional SMS beyond OTP verification during bind.

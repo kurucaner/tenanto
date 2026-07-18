@@ -1,12 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
+import { ITenantUser } from "./tenant-portal-types";
 import {
   buildTenantPhoneOtpSmsMessage,
+  buildTenantSmsHelpMessage,
   buildTenantSmsOptInConfirmationMessage,
   buildTenantSmsOptOutConfirmationMessage,
   canReceiveSms,
   getTenantSmsSubscriptionStatus,
-  type ITenantUser,
   TenantSmsSubscriptionStatus,
 } from "./tenant-sms-utils";
 
@@ -90,12 +91,12 @@ describe("getTenantSmsSubscriptionStatus", () => {
 });
 
 describe("buildTenantPhoneOtpSmsMessage", () => {
-  test("includes code, expiry, and STOP/HELP footer", () => {
+  test("includes code and expiry without STOP/HELP footer", () => {
     const message = buildTenantPhoneOtpSmsMessage("847291");
 
     expect(message).toContain("847291");
     expect(message).toContain("10 minutes");
-    expect(message).toContain("Reply STOP to opt out or HELP for help.");
+    expect(message).not.toContain("Reply STOP");
   });
 });
 
@@ -111,6 +112,14 @@ describe("buildTenantSmsOptOutConfirmationMessage", () => {
   test("matches registered stop confirmation copy", () => {
     expect(buildTenantSmsOptOutConfirmationMessage()).toBe(
       "PropertyOS: You're unsubscribed from SMS alerts. No further messages will be sent. Add your number again in PropertyOS settings to re-subscribe."
+    );
+  });
+});
+
+describe("buildTenantSmsHelpMessage", () => {
+  test("matches registered help copy", () => {
+    expect(buildTenantSmsHelpMessage()).toBe(
+      "PropertyOS: Help at support@propertyos.app or https://propertyos.app. Msg & data rates may apply. Reply STOP to unsubscribe."
     );
   });
 });

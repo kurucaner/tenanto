@@ -3060,4 +3060,31 @@ export const migrations: IMigration[] = [
     },
     version: 67,
   },
+  {
+    down: async (client) => {
+      await client.query(`DROP TABLE IF EXISTS tenant_sms_keyword_events;`);
+    },
+    name: "tenant_sms_keyword_events",
+    up: async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tenant_sms_keyword_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          phone TEXT NOT NULL,
+          keyword TEXT NOT NULL,
+          tenant_user_id UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
+          payload_snippet TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_sms_keyword_events_phone
+          ON tenant_sms_keyword_events (phone);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_sms_keyword_events_created_at
+          ON tenant_sms_keyword_events (created_at DESC);
+      `);
+    },
+    version: 68,
+  },
 ];

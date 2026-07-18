@@ -41,6 +41,7 @@ import { notificationRoutes } from "./routes/notification-routes";
 import { propertyInviteRoutes } from "./routes/property-invite-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
+import { smsInboundWebhookRoutes } from "./routes/sms-inbound-webhook-routes";
 import { stripeWebhookRoutes } from "./routes/stripe-webhook-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { tenantAuthRoutes } from "./routes/tenant/tenant-auth-routes";
@@ -95,7 +96,10 @@ server.register(rateLimit, {
   allowList: (request) => {
     const path = request.url.split("?")[0];
     return (
-      path === "/notifications/stream" || path === "/s3-notification" || path === "/webhooks/stripe"
+      path === "/notifications/stream" ||
+      path === "/s3-notification" ||
+      path === "/webhooks/sms/inbound" ||
+      path === "/webhooks/stripe"
     );
   },
   max: isProduction ? 20 : 100,
@@ -131,6 +135,7 @@ server.register(portfolioReportRoutes);
 server.register(homeRoutes);
 server.register(pushTokenRoutes);
 server.register(s3Routes);
+server.register(smsInboundWebhookRoutes);
 server.register(stripeWebhookRoutes);
 server.register(supportRoutes);
 server.register(notificationRoutes);

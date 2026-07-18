@@ -32,18 +32,18 @@ export const SmsConsentField = memo(function SmsConsentField({
     <div className={cn("flex items-start gap-3", className)}>
       <Checkbox
         checked={checked}
+        className="mt-0.5"
         disabled={disabled}
         id={consentId}
         onCheckedChange={(value) => onCheckedChange(value === true)}
       />
       <Label
-        className="text-sm leading-relaxed font-normal text-muted-foreground"
+        className="block min-w-0 flex-1 text-sm leading-relaxed font-normal text-muted-foreground"
         htmlFor={consentId}
       >
-        By enabling SMS alerts, you agree to receive transactional text messages from PropertyOS
-        (Edgium LLC), including one-time passcodes and account/property notifications. Message
-        frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.
-        See our{" "}
+        I agree to receive transactional SMS from PropertyOS, including verification codes and
+        account notifications. Message frequency varies. Message and data rates may apply. Reply
+        STOP to opt out or HELP for help. See our{" "}
         <a
           className={linkClassName}
           href={`${baseUrl}/terms-of-service`}

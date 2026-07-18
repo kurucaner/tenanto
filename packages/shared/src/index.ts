@@ -712,7 +712,13 @@ export {
   validateCreateRentCheckoutBody,
 } from "./tenant-rent-payment-utils";
 export {
+  parseTenantSmsInboundKeyword,
+  TenantSmsInboundKeyword,
+  type TTenantSmsInboundKeyword,
+} from "./tenant-sms-inbound-utils";
+export {
   buildTenantPhoneOtpSmsMessage,
+  buildTenantSmsHelpMessage,
   buildTenantSmsOptInConfirmationMessage,
   buildTenantSmsOptOutConfirmationMessage,
   canReceiveSms,

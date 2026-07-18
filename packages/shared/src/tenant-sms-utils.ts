@@ -1,5 +1,5 @@
 import { OTP_EXPIRY_MINUTES } from "./auth-constants";
-import { APP_NAME } from "./constants";
+import { APP_NAME, SUPPORT_EMAIL } from "./constants";
 import { type ITenantUser } from "./tenant-portal-types";
 
 export type ITenantSmsEligibilityInput = Pick<
@@ -32,7 +32,7 @@ export function getTenantSmsSubscriptionStatus(user: ITenantUser): TTenantSmsSub
 
 /** Campaign sample 1 — OTP verification SMS. */
 export function buildTenantPhoneOtpSmsMessage(code: string): string {
-  return `${APP_NAME}: Your verification code is ${code}. It expires in ${OTP_EXPIRY_MINUTES} minutes. Do not share this code. Reply STOP to opt out or HELP for help.`;
+  return `${APP_NAME}: Your verification code is ${code}. It expires in ${OTP_EXPIRY_MINUTES} minutes. Do not share this code.`;
 }
 
 /** Campaign sample 2 — opt-in confirmation SMS. */
@@ -43,4 +43,9 @@ export function buildTenantSmsOptInConfirmationMessage(): string {
 /** Campaign stop reply — sent after in-app opt-out or STOP keyword. */
 export function buildTenantSmsOptOutConfirmationMessage(): string {
   return `${APP_NAME}: You're unsubscribed from SMS alerts. No further messages will be sent. Add your number again in PropertyOS settings to re-subscribe.`;
+}
+
+/** Campaign help reply — sent after HELP keyword. */
+export function buildTenantSmsHelpMessage(): string {
+  return `${APP_NAME}: Help at ${SUPPORT_EMAIL} or https://propertyos.app. Msg & data rates may apply. Reply STOP to unsubscribe.`;
 }

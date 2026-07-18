@@ -17,9 +17,9 @@ import {
   formatPhoneDisplay,
   getTenantSmsSubscriptionStatus,
   isValidE164,
+  type ITenantUser,
   OTP_EXPIRY_MINUTES,
   TenantSmsSubscriptionStatus,
-  type ITenantUser,
 } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -156,7 +156,11 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
           />
 
           {!awaitingOtp ? (
-            <Button disabled={!canStartBind} onClick={() => bindStartMutation.mutate()} type="button">
+            <Button
+              disabled={!canStartBind}
+              onClick={() => bindStartMutation.mutate()}
+              type="button"
+            >
               {bindStartMutation.isPending ? "Sending code…" : "Enable SMS alerts"}
             </Button>
           ) : (
@@ -177,7 +181,11 @@ export const TenantSmsSettingsSection = memo(function TenantSmsSettingsSection({
                 />
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button disabled={!canVerifyOtp} onClick={() => bindVerifyMutation.mutate()} type="button">
+                <Button
+                  disabled={!canVerifyOtp}
+                  onClick={() => bindVerifyMutation.mutate()}
+                  type="button"
+                >
                   {bindVerifyMutation.isPending ? "Verifying…" : "Verify and enable"}
                 </Button>
                 <Button

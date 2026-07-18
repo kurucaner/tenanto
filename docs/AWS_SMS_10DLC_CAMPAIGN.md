@@ -19,12 +19,12 @@ Edgium LLC (Brand registration, once)
                             └── SNS Publish → recipients
 ```
 
-| Layer | What it is |
-| ----- | ---------- |
-| **Brand** | Legal business (Edgium LLC). One registration shared across apps. |
-| **Campaign** | A specific messaging program (use case, samples, opt-in). One per app or per message type if split. |
-| **Origination number** | The US phone number recipients see. Required before any SMS (including sandbox OTP). |
-| **Sandbox** | New accounts start here; only verified destination numbers receive SMS until production. |
+| Layer                  | What it is                                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| **Brand**              | Legal business (Edgium LLC). One registration shared across apps.                                   |
+| **Campaign**           | A specific messaging program (use case, samples, opt-in). One per app or per message type if split. |
+| **Origination number** | The US phone number recipients see. Required before any SMS (including sandbox OTP).                |
+| **Sandbox**            | New accounts start here; only verified destination numbers receive SMS until production.            |
 
 **US rule:** Recipients see a **phone number**, not “PropertyOS” as the sender ID. Put the product name in the message body.
 
@@ -32,14 +32,14 @@ Edgium LLC (Brand registration, once)
 
 ## Order of operations
 
-| Step | Can do before brand vetting? | Action |
-| ---- | ---------------------------- | ------ |
-| 1. Brand registration | Submit; wait for vetting | Edgium LLC in AWS End User Messaging → 10DLC → Brands |
-| 2. Campaign registration | **Draft only**; submit after brand **Approved** | See [PropertyOS campaign fields](#propertyos-campaign-fields) below |
-| 3. Request 10DLC number | **No** | After campaign approved |
-| 4. Associate number ↔ campaign | **No** | After number is active |
-| 5. SMS sandbox | **Partial** | Add destinations only **after** you have an origination number |
-| 6. Exit sandbox (production) | **Partial** | Request production access after origination + compliance |
+| Step                           | Can do before brand vetting?                    | Action                                                              |
+| ------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------- |
+| 1. Brand registration          | Submit; wait for vetting                        | Edgium LLC in AWS End User Messaging → 10DLC → Brands               |
+| 2. Campaign registration       | **Draft only**; submit after brand **Approved** | See [PropertyOS campaign fields](#propertyos-campaign-fields) below |
+| 3. Request 10DLC number        | **No**                                          | After campaign approved                                             |
+| 4. Associate number ↔ campaign | **No**                                          | After number is active                                              |
+| 5. SMS sandbox                 | **Partial**                                     | Add destinations only **after** you have an origination number      |
+| 6. Exit sandbox (production)   | **Partial**                                     | Request production access after origination + compliance            |
 
 ### Parallel path for early testing
 
@@ -97,6 +97,7 @@ Recipients: Property managers, owners, and tenants who add and verify a mobile p
 Purpose: To deliver account-related transactional messages only, including:
 - One-time passcodes (OTP) for sign-in and account verification
 - Rent payment and lease-related notifications initiated by property activity
+- Maintenance visit and work-order appointment notifications
 - Important account and property alerts the user has enabled
 
 Opt-in: Users opt in by entering their phone number in PropertyOS and accepting our Terms of Service and Privacy Policy (https://propertyos.app/terms-of-service, https://propertyos.app/privacy-policy). SMS is optional; users can manage or remove their phone number in account settings.
@@ -141,7 +142,7 @@ The user optionally adds a mobile phone number in PropertyOS account settings (o
 
 3) Explicit SMS consent
 Before SMS is enabled, the user must check an unchecked consent box (not pre-selected) with disclosure text similar to:
-"By enabling SMS alerts, you agree to receive transactional text messages from PropertyOS (Edgium LLC), including one-time passcodes and account/property notifications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help."
+"I agree to receive transactional SMS from PropertyOS, including verification codes and account notifications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. See our Terms of Service and Privacy Policy."
 
 4) Confirmation message
 After consent, PropertyOS sends one opt-in confirmation SMS to the provided number confirming subscription and including STOP/HELP instructions.
@@ -159,24 +160,24 @@ Support: support@propertyos.app
 
 ### Use case and compliance toggles
 
-| Field | Value | Notes |
-| ----- | ----- | ----- |
-| **Use case** | `ACCOUNT_NOTIFICATION` | Use `2FA` if campaign is OTP-only |
-| **Sub use case** | *(blank)* | Only if use case is `MIXED` or `LOW_VOLUME` |
-| **Subscriber opt-in** | Yes | |
-| **Subscriber opt-out** | Yes | STOP + in-app removal |
-| **Subscriber help** | Yes | HELP auto-reply |
-| **Direct lending or loan arrangement** | No | PropertyOS sends notices; it does not arrange loans |
-| **Embedded link** | No* | *Yes + `https://propertyos.app` if any message body includes a URL |
-| **Embedded phone number** | No | Unless message bodies include phone numbers |
-| **Age-gated content** | No | |
+| Field                                  | Value                  | Notes                                                              |
+| -------------------------------------- | ---------------------- | ------------------------------------------------------------------ |
+| **Use case**                           | `ACCOUNT_NOTIFICATION` | Use `2FA` if campaign is OTP-only                                  |
+| **Sub use case**                       | _(blank)_              | Only if use case is `MIXED` or `LOW_VOLUME`                        |
+| **Subscriber opt-in**                  | Yes                    |                                                                    |
+| **Subscriber opt-out**                 | Yes                    | STOP + in-app removal                                              |
+| **Subscriber help**                    | Yes                    | HELP auto-reply                                                    |
+| **Direct lending or loan arrangement** | No                     | PropertyOS sends notices; it does not arrange loans                |
+| **Embedded link**                      | No*                    | *Yes + `https://propertyos.app` if any message body includes a URL |
+| **Embedded phone number**              | No                     | Unless message bodies include phone numbers                        |
+| **Age-gated content**                  | No                     |                                                                    |
 
 ### Message samples (≥20 chars each)
 
 **Sample 1 — OTP:**
 
 ```text
-PropertyOS: Your verification code is [OTP Code]. It expires in 10 minutes. Do not share this code. Reply STOP to opt out or HELP for help.
+PropertyOS: Your verification code is [OTP Code]. It expires in 10 minutes. Do not share this code.
 ```
 
 **Sample 2 — Opt-in confirmation:**
@@ -188,19 +189,19 @@ PropertyOS: You're subscribed to account SMS alerts (OTP and transactional notic
 **Sample 3 — Rent payment recorded:**
 
 ```text
-PropertyOS: A rent payment of $[Amount] was recorded for [Property Name], Unit [Unit]. Reply STOP to opt out or HELP for help.
+PropertyOS: A rent payment of $[Amount] was recorded for [Property Name], Unit [Unit].
 ```
 
 **Sample 4 — Lease / account alert:**
 
 ```text
-PropertyOS: Your lease at [Property Address] has been updated. Sign in to your account for details. Reply STOP to opt out or HELP for help.
+PropertyOS: Your lease at [Property Address] has been updated. Sign in to your account for details.
 ```
 
-**Sample 5 — Optional (only if you send links):**
+**Sample 5 — Maintenance visit scheduled:**
 
 ```text
-PropertyOS: You have a new account notification. Sign in at https://propertyos.app for details. Reply STOP to opt out or HELP for help.
+PropertyOS: A team member will arrive at [Property Address], Unit [Unit], on [Date] at [Time] for a maintenance visit.
 ```
 
 Samples must match **actual** message content sent in production.
