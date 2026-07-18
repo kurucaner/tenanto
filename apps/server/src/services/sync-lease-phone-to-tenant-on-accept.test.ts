@@ -24,6 +24,7 @@ const { syncLeasePhoneToTenantUserOnAccept } =
 function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
   return {
     acceptedAt: "2026-01-02T00:00:00.000Z",
+    contactPhone: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     declinedAt: null,
     displayName: "Jane Tenant",
@@ -101,23 +102,50 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
     expect(mockFindByIdLease).not.toHaveBeenCalled();
   });
 
+  test("copies membership contact_phone for secondary accept when user phone is null", async () => {
+    const syncedUser = makeTenant({ phone: "+13055550100" });
+    mockSetUnverifiedPhoneIfNull.mockResolvedValue(syncedUser);
+
+    const result = await syncLeasePhoneToTenantUserOnAccept(
+      makeMembership({
+        contactPhone: "+13055550100",
+        role: TenantMembershipRole.SECONDARY,
+      }),
+      makeTenant(),
+      makeLease()
+    );
+
+    expect(mockSetUnverifiedPhoneIfNull).toHaveBeenCalledWith("tenant-1", "+13055550100");
+    expect(mockFindByIdLease).not.toHaveBeenCalled();
+    expect(result.phone).toBe("+13055550100");
+    expect(result.phoneVerifiedAt).toBeNull();
+  });
+
+  test("skips secondary accept when membership contact_phone is missing or invalid E.164", async () => {
+    const tenant = makeTenant();
+    const secondary = {
+      contactPhone: null,
+      role: TenantMembershipRole.SECONDARY,
+    } as const;
+
+    await syncLeasePhoneToTenantUserOnAccept(
+      makeMembership(secondary),
+      tenant,
+      makeLease()
+    );
+    await syncLeasePhoneToTenantUserOnAccept(
+      makeMembership({ ...secondary, contactPhone: "not-e164" }),
+      tenant,
+      makeLease()
+    );
+
+    expect(mockSetUnverifiedPhoneIfNull).not.toHaveBeenCalled();
+  });
+
   test("skips when tenant already has a phone", async () => {
     const tenant = makeTenant({ phone: "+13055550999" });
 
     const result = await syncLeasePhoneToTenantUserOnAccept(makeMembership(), tenant, makeLease());
-
-    expect(mockSetUnverifiedPhoneIfNull).not.toHaveBeenCalled();
-    expect(result).toBe(tenant);
-  });
-
-  test("skips for secondary memberships", async () => {
-    const tenant = makeTenant();
-
-    const result = await syncLeasePhoneToTenantUserOnAccept(
-      makeMembership({ role: TenantMembershipRole.SECONDARY }),
-      tenant,
-      makeLease()
-    );
 
     expect(mockSetUnverifiedPhoneIfNull).not.toHaveBeenCalled();
     expect(result).toBe(tenant);

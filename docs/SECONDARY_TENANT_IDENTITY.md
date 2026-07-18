@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: s2-accept-sync
     content: Extend accept phone sync for secondary role from membership.contact_phone
-    status: pending
+    status: completed
   - id: s3a-secondary-crud
     content: Secondary-occupant CRUD routes + service (listed membership); admin add/edit/delete dialogs; max-10 on membership count
     status: completed
@@ -222,7 +222,7 @@ bun apps/server/scripts/backfill-secondary-tenant-memberships.ts --sync-phones
 
 ### S2 — Accept sync (secondary)
 
-- Extend [`sync-lease-phone-to-tenant-on-accept.ts`](apps/server/src/services/sync-lease-phone-to-tenant-on-accept.ts): **secondary role**; copy `membership.contact_phone` → `tenant_users.phone` when user phone null (same rules as primary; update test that currently expects secondary skip)
+- [x] Extend [`sync-lease-phone-to-tenant-on-accept.ts`](apps/server/src/services/sync-lease-phone-to-tenant-on-accept.ts): **secondary role**; copy `membership.contact_phone` → `tenant_users.phone` when user phone null (same rules as primary; update test that currently expects secondary skip)
 - **Exit:** accept secondary invite with phone on membership → `/tenant/me` has phone
 
 ### S3 — Write path (split for safe rollout)
