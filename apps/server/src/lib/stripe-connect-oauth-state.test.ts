@@ -108,7 +108,7 @@ describe("consumeStripeConnectOAuthState", () => {
       userId: "user-1",
     });
 
-    getdel.mockResolvedValueOnce(null);
+    getdel.mockResolvedValueOnce(JSON.stringify({ propertyId: "property-1", userId: "user-1" }));
     const second = await consumeStripeConnectOAuthState(token, { redis });
     expect(second).toBeNull();
   });
