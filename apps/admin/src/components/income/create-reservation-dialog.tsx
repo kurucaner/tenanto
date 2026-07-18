@@ -3,9 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, useCallback, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { buildChannelOptions, STATUS_OPTIONS } from "@/components/income/reservation-form-options";
+import {
+  emptyReservationFormValues,
+  reservationFormSchema,
+  type TReservationFormValues,
+} from "@/components/income/reservation-form-schema";
 import { ReservationRoomTotalField } from "@/components/income/reservation-room-total-field";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,58 +29,9 @@ import { PropertyUnitSelectOptions } from "@/components/units/property-unit-sele
 import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { optionalNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { queryKeys } from "@/lib/query-keys";
-import {
-  getMinCheckOutDate,
-  isValidStayDateRange,
-  shouldClearCheckOutOnCheckInChange,
-} from "@/lib/reservation-date-utils";
-import { createPersonNameSchema } from "@/packages/app-ui";
-import { ReservationStatus, UnitRentalType } from "@/packages/shared";
-
-const createReservationSchema = z
-  .object({
-    channelCommissionId: z.uuid("Channel is required"),
-    checkIn: z.string().min(1, "Check-in is required"),
-    checkOut: z.string().min(1, "Check-out is required"),
-    cleaningFee: optionalNonNegativeMoneyField("Cleaning fee must be a non-negative number"),
-    guestName: createPersonNameSchema({ requiredMessage: "Guest name is required" }),
-    reservationNumber: z.string(),
-    roomTotal: optionalNonNegativeMoneyField("Room total must be a non-negative number"),
-    status: z.enum([
-      ReservationStatus.ACTIVE,
-      ReservationStatus.CANCELED,
-      ReservationStatus.NO_SHOW,
-      ReservationStatus.STAYED,
-    ]),
-    unitId: z.string().min(1, "Unit is required"),
-  })
-  .superRefine((values, ctx) => {
-    if (!isValidStayDateRange(values.checkIn, values.checkOut)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Check-out must be after check-in",
-        path: ["checkOut"],
-      });
-    }
-  });
-
-type TCreateReservationFormValues = z.infer<typeof createReservationSchema>;
-
-function getDefaultValues(defaultChannelCommissionId = ""): TCreateReservationFormValues {
-  return {
-    channelCommissionId: defaultChannelCommissionId,
-    checkIn: "",
-    checkOut: "",
-    cleaningFee: "",
-    guestName: "",
-    reservationNumber: "",
-    roomTotal: "",
-    status: ReservationStatus.ACTIVE,
-    unitId: "",
-  };
-}
+import { getMinCheckOutDate, shouldClearCheckOutOnCheckInChange } from "@/lib/reservation-date-utils";
+import { UnitRentalType } from "@/packages/shared";
 
 interface CreateReservationDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -100,9 +55,9 @@ export const CreateReservationDialog = memo(
 
     const defaultChannelCommissionId = channelOptions[0]?.value ?? "";
 
-    const form = useForm<TCreateReservationFormValues>({
-      defaultValues: getDefaultValues(defaultChannelCommissionId),
-      resolver: zodResolver(createReservationSchema),
+    const form = useForm<TReservationFormValues>({
+      defaultValues: emptyReservationFormValues(defaultChannelCommissionId),
+      resolver: zodResolver(reservationFormSchema),
     });
 
     const unitsQuery = useQuery({
@@ -131,7 +86,7 @@ export const CreateReservationDialog = memo(
     const minCheckOutDate = getMinCheckOutDate(checkIn);
 
     const mutation = useMutation({
-      mutationFn: (values: TCreateReservationFormValues) =>
+      mutationFn: (values: TReservationFormValues) =>
         shortStaysApi.create(propertyId, {
           channelCommissionId: values.channelCommissionId,
           checkIn: values.checkIn,
@@ -156,7 +111,7 @@ export const CreateReservationDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(getDefaultValues(defaultChannelCommissionId));
+          form.reset(emptyReservationFormValues(defaultChannelCommissionId));
         }
         onOpenChange(nextOpen);
       },
