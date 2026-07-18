@@ -161,8 +161,8 @@ No route or response shape changes.
 
 **Update:** [`apps/server/src/services/tenant-email-campaign-service.ts`](apps/server/src/services/tenant-email-campaign-service.ts)
 
-- [ ] After `listByProperty`, call `loadSecondaryTenantContactsByLeaseIds(leases.map((l) => l.id))`
-- [ ] Pass map into `resolveTenantEmailRecipients(leases, secondaryContactsByLeaseId)` in both preview and create paths
+- [x] After `listByProperty`, call `loadSecondaryTenantContactsByLeaseIds(leases.map((l) => l.id))`
+- [x] Pass map into `resolveTenantEmailRecipients(leases, secondaryContactsByLeaseId)` in both preview and create paths
 
 **Tests:** Extend campaign service tests (or integration-style unit tests) verifying secondaries appear in preview when memberships exist.
 

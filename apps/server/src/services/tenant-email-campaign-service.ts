@@ -13,10 +13,12 @@ import {
   type ITenantEmailCampaign,
   type ITenantEmailCampaignCreateResponse,
   type ITenantEmailCampaignPreviewResponse,
+  type ITenantEmailRecipientResolution,
   PropertyLongStayStatus,
   resolveTenantEmailRecipients,
 } from "@/packages/shared";
 import { enqueueTenantEmailSendJobs } from "@/queues/tenant-email-queue";
+import { loadSecondaryTenantContactsByLeaseIds } from "@/services/load-secondary-tenant-contacts-by-lease-ids";
 import { logTenantEmailCampaignCreated } from "@/services/tenant-email-campaign-observability";
 import { reenqueueQueuedRecipientsForCampaign } from "@/services/tenant-email-campaign-reenqueue";
 import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
@@ -70,13 +72,22 @@ function validateCampaignBody(body: ICreateTenantEmailCampaignBody): {
   return { htmlBody, subject, textBody };
 }
 
-export async function buildTenantEmailCampaignPreview(
+async function resolveCampaignRecipientsForProperty(
   propertyId: string
-): Promise<ITenantEmailCampaignPreviewResponse> {
+): Promise<ITenantEmailRecipientResolution> {
   const leases = await propertyLongStaysDb.listByProperty(propertyId, {
     status: PropertyLongStayStatus.ACTIVE,
   });
-  const resolution = resolveTenantEmailRecipients(leases);
+  const secondaryContactsByLeaseId = await loadSecondaryTenantContactsByLeaseIds(
+    leases.map((lease) => lease.id)
+  );
+  return resolveTenantEmailRecipients(leases, secondaryContactsByLeaseId);
+}
+
+export async function buildTenantEmailCampaignPreview(
+  propertyId: string
+): Promise<ITenantEmailCampaignPreviewResponse> {
+  const resolution = await resolveCampaignRecipientsForProperty(propertyId);
 
   return {
     recipientCount: resolution.recipients.length,
@@ -94,10 +105,7 @@ export async function createTenantEmailCampaign(params: {
 }): Promise<ITenantEmailCampaignCreateResponse> {
   const { htmlBody, subject, textBody } = validateCampaignBody(params.body);
 
-  const leases = await propertyLongStaysDb.listByProperty(params.propertyId, {
-    status: PropertyLongStayStatus.ACTIVE,
-  });
-  const resolution = resolveTenantEmailRecipients(leases);
+  const resolution = await resolveCampaignRecipientsForProperty(params.propertyId);
 
   if (resolution.recipients.length === 0) {
     throw new TenantEmailCampaignNoRecipientsError();
