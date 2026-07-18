@@ -1,18 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
 import { createIdentityConflictError } from "@/constants/account";
-import { PortalInviteErrorCode, portalInviteInvalidStateError } from "@/errors/portal-invite-errors";
+import {
+  inviteSignupAccountExistsError,
+  InviteSignupErrorCode,
+  inviteSignupValidationError,
+} from "@/errors/invite-signup-errors";
+import {
+  PortalInviteErrorCode,
+  portalInviteInvalidStateError,
+} from "@/errors/portal-invite-errors";
 import {
   PropertyMemberInviteErrorCode,
   propertyMemberInviteNotFoundError,
 } from "@/errors/property-member-invite-errors";
 import { HttpStatus } from "@/packages/shared";
 
-import {
-  inviteSignupAccountExistsError,
-  InviteSignupErrorCode,
-  inviteSignupValidationError,
-} from "@/errors/invite-signup-errors";
 import { mapInviteSignupDomainError } from "./map-invite-signup-domain-error";
 
 describe("mapInviteSignupDomainError", () => {

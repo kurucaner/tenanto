@@ -1,7 +1,4 @@
-import {
-  type ILeaseSecondaryTenantContact,
-  type ILeaseTenantMembership,
-} from "@/packages/shared";
+import { type ILeaseSecondaryTenantContact, type ILeaseTenantMembership } from "@/packages/shared";
 
 export function resolveSecondaryTenantContactsForDisplay(
   apiContacts: ILeaseSecondaryTenantContact[] | undefined

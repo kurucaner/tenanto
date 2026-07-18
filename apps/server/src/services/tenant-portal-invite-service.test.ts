@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { CreateLeaseTenantMembershipInput } from "@/db/lease-tenant-memberships";
+import { duplicatePortalInviteError, PortalInviteErrorCode } from "@/errors/portal-invite-errors";
 import type {
   ILeaseTenantMembership,
   IProperty,
@@ -14,10 +15,6 @@ import {
   TenantMembershipStatus,
   UnitRentalType,
 } from "@/packages/shared";
-import {
-  duplicatePortalInviteError,
-  PortalInviteErrorCode,
-} from "@/errors/portal-invite-errors";
 import * as transactionalEmails from "@/ses/transactional-emails";
 
 const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));

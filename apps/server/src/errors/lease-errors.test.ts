@@ -4,8 +4,8 @@ import { HttpStatus, LeaseTermsEditBlockReason } from "@/packages/shared";
 
 import {
   activeLongStayConflictError,
-  leaseTermsNotEditableError,
   LeaseErrorCode,
+  leaseTermsNotEditableError,
   longStayNotFoundError,
 } from "./lease-errors";
 

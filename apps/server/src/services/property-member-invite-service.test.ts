@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IProperty, IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
-import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
 import {
   duplicatePropertyMemberInviteError,
   PropertyMemberInviteErrorCode,
 } from "@/errors/property-member-invite-errors";
+import type { IProperty, IPropertyInvite, IPropertyMember, IUser } from "@/packages/shared";
+import { PropertyInviteStatus, PropertyRole, UserType } from "@/packages/shared";
 
 const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
 const mockFindByEmail = mock(() => Promise.resolve(null as IUser | null));
