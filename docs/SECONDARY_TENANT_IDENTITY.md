@@ -311,8 +311,8 @@ Implementation plan: [`SECONDARY_TENANT_S4_LEGACY_REMOVAL_PHASES.md`](SECONDARY_
 
 - [x] List/export occupancy names via `secondaryOccupantNames` + [`getLeaseOccupancyNames`](packages/shared/src/lease-tenant-utils.ts)
 - [x] Unit list search uses secondary membership rows (not JSONB)
-- [ ] Campaign secondary recipients via memberships
-- [ ] Drift check + legacy merge removal
+- [x] Campaign secondary recipients via memberships
+- [x] Legacy merge removal (drift check N/A post-v63)
 
 **Exit:** campaigns and search use memberships; drift zero in staging; legacy merge removed
 

@@ -1,14 +1,9 @@
 import {
   type ILeaseSecondaryTenantContact,
   type ILeaseTenantMembership,
-  type IPropertyLongStay,
-  TenantMembershipRole,
 } from "@/packages/shared";
 
-import { findLeasePortalMembership } from "./lease-portal-access-display";
-
 export function resolveSecondaryTenantContactsForDisplay(
-  _lease: IPropertyLongStay,
   apiContacts: ILeaseSecondaryTenantContact[] | undefined
 ): ILeaseSecondaryTenantContact[] {
   return apiContacts ?? [];
@@ -18,20 +13,19 @@ export function resolveSecondaryPortalMembershipForContact(
   contact: ILeaseSecondaryTenantContact,
   memberships: readonly ILeaseTenantMembership[]
 ): ILeaseTenantMembership | null {
-  if (contact.membershipId) {
-    return memberships.find((membership) => membership.id === contact.membershipId) ?? null;
+  if (!contact.membershipId) {
+    return null;
   }
 
-  return findLeasePortalMembership(
-    memberships,
-    TenantMembershipRole.SECONDARY,
-    contact.effectiveEmail
-  );
+  return memberships.find((membership) => membership.id === contact.membershipId) ?? null;
 }
 
 export function getSecondaryPortalActingMembershipId(
-  contact: ILeaseSecondaryTenantContact,
-  index: number
+  contact: ILeaseSecondaryTenantContact
 ): string {
-  return contact.membershipId ?? `legacy-jsonb-${index}`;
+  if (!contact.membershipId) {
+    throw new Error("Secondary tenant contact is missing membership id");
+  }
+
+  return contact.membershipId;
 }

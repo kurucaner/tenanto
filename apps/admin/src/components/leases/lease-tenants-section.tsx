@@ -310,26 +310,31 @@ export const LeaseTenantsSection = memo(
     );
 
     const handleInviteSecondary = useCallback(
-      (contact: ILeaseSecondaryTenantContact, index: number) => {
-        const actingMembershipId = getSecondaryPortalActingMembershipId(contact, index);
-        const body = contact.membershipId
-          ? { secondaryMembershipIds: [contact.membershipId] }
-          : { secondaryIndexes: [index] };
+      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+        if (!contact.membershipId) {
+          return;
+        }
+
         const portalMembershipId =
           resolveSecondaryPortalMembershipForContact(contact, memberships)?.id ??
           contact.membershipId;
 
-        void runPortalAction("invite", portalMembershipId, body, {
-          kind: "secondary",
-          membershipId: actingMembershipId,
-        });
+        void runPortalAction(
+          "invite",
+          portalMembershipId,
+          { secondaryMembershipIds: [contact.membershipId] },
+          { kind: "secondary", membershipId: contact.membershipId }
+        );
       },
       [memberships, runPortalAction]
     );
 
     const handleResendSecondary = useCallback(
-      (contact: ILeaseSecondaryTenantContact, index: number) => {
-        const actingMembershipId = getSecondaryPortalActingMembershipId(contact, index);
+      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+        if (!contact.membershipId) {
+          return;
+        }
+
         const portalMembershipId = resolveSecondaryPortalMembershipForContact(
           contact,
           memberships
@@ -342,15 +347,18 @@ export const LeaseTenantsSection = memo(
           "resend",
           portalMembershipId,
           {},
-          { kind: "secondary", membershipId: actingMembershipId }
+          { kind: "secondary", membershipId: contact.membershipId }
         );
       },
       [memberships, runPortalAction]
     );
 
     const handleRevokeSecondary = useCallback(
-      (contact: ILeaseSecondaryTenantContact, index: number) => {
-        const actingMembershipId = getSecondaryPortalActingMembershipId(contact, index);
+      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+        if (!contact.membershipId) {
+          return;
+        }
+
         const portalMembership = resolveSecondaryPortalMembershipForContact(contact, memberships);
         if (!portalMembership) {
           return;
@@ -358,7 +366,7 @@ export const LeaseTenantsSection = memo(
 
         requestRevokeConfirmation(portalMembership.id, contact.effectiveName, {
           kind: "secondary",
-          membershipId: actingMembershipId,
+          membershipId: contact.membershipId,
         });
       },
       [memberships, requestRevokeConfirmation]
@@ -439,6 +447,10 @@ export const LeaseTenantsSection = memo(
               <div className="space-y-3 border-t pt-3">
                 <p className="text-muted-foreground text-xs">Secondary tenants</p>
                 {secondaryTenantContacts.map((contact, index) => {
+                  if (!contact.membershipId) {
+                    return null;
+                  }
+
                   const membership = resolveSecondaryPortalMembershipForContact(
                     contact,
                     memberships
@@ -450,7 +462,7 @@ export const LeaseTenantsSection = memo(
 
                   const portalRowTarget = {
                     kind: "secondary" as const,
-                    membershipId: getSecondaryPortalActingMembershipId(contact, index),
+                    membershipId: getSecondaryPortalActingMembershipId(contact),
                   };
 
                   return (
@@ -462,7 +474,7 @@ export const LeaseTenantsSection = memo(
                       index={index}
                       isDeletePending={removeMutation.isPending}
                       isQuickDeleteActive={isQuickDeleteActive}
-                      key={contact.membershipId ?? `legacy-jsonb-${index}`}
+                      key={contact.membershipId}
                       onDelete={handleDeleteSecondary}
                       onEdit={handleEditSecondary}
                       onInvite={handleInviteSecondary}

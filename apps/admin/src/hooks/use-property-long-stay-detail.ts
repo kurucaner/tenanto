@@ -20,9 +20,8 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
   const rentSchedule = detail?.rentSchedule ?? [];
   const rentPeriods = useMemo(() => detail?.rentPeriods ?? [], [detail?.rentPeriods]);
   const secondaryTenantContacts = useMemo(
-    () =>
-      lease ? resolveSecondaryTenantContactsForDisplay(lease, detail?.secondaryTenantContacts) : [],
-    [detail?.secondaryTenantContacts, lease]
+    () => resolveSecondaryTenantContactsForDisplay(detail?.secondaryTenantContacts),
+    [detail?.secondaryTenantContacts]
   );
   const termsEditability = detail?.termsEditability ?? { editable: false };
 

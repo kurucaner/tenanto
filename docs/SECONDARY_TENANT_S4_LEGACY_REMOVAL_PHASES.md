@@ -200,13 +200,13 @@ No route or response shape changes.
 
 **Update:** [`apps/admin/src/lib/resolve-secondary-tenant-contacts-for-display.ts`](apps/admin/src/lib/resolve-secondary-tenant-contacts-for-display.ts)
 
-- [ ] Return `apiContacts ?? []`; delete JSONB fallback block and `mapLegacyJsonbSecondaryTenantToContact` import
-- [ ] `getSecondaryPortalActingMembershipId`: require `contact.membershipId`; throw or assert if null (all S3a+ secondaries have ids)
-- [ ] Simplify `resolveSecondaryPortalMembershipForContact` if email-only fallback was only for legacy rows
+- [x] Return `apiContacts ?? []`; delete JSONB fallback block and `mapLegacyJsonbSecondaryTenantToContact` import
+- [x] `getSecondaryPortalActingMembershipId`: require `contact.membershipId`; throw or assert if null (all S3a+ secondaries have ids)
+- [x] Simplify `resolveSecondaryPortalMembershipForContact` if email-only fallback was only for legacy rows
 
 **Update:** [`apps/admin/src/components/leases/lease-tenants-section.tsx`](apps/admin/src/components/leases/lease-tenants-section.tsx)
 
-- [ ] List keys: `contact.membershipId` only (remove `legacy-jsonb-${index}`)
+- [x] List keys: `contact.membershipId` only (remove `legacy-jsonb-${index}`)
 
 **Update:** [`apps/admin/src/hooks/use-property-long-stay-detail.ts`](apps/admin/src/hooks/use-property-long-stay-detail.ts) if call site comments reference fallback
 
