@@ -106,7 +106,7 @@ export async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose
   const expiryText = `It expires in ${OTP_EXPIRY_MINUTES} minutes.`;
 
   const html = renderTemplate("otp.html", {
-    baseUrl: WEB_APP_URL,
+    baseUrl: WEB_APP_URL ?? "",
     expiryText,
     headline,
     otpCode: code,

@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
-import { TenantEmailCampaignStatus } from "@/packages/shared";
+import { TenantEmailCampaignStatus, type ITenantEmailCampaign } from "@/packages/shared";
+import { mockResolvedNull, mockResolvedVoid, mockSyncVoid } from "@/test-fixtures/mocks";
 
-const findByIdMock = mock(() => Promise.resolve(null as never));
-const publishTenantEmailCampaignUpdatedMock = mock(() => Promise.resolve());
-const notifyUserMock = mock(() => Promise.resolve());
+const findByIdMock = mockResolvedNull<ITenantEmailCampaign>();
+const publishTenantEmailCampaignUpdatedMock = mockResolvedVoid();
+const notifyUserMock = mockResolvedVoid();
 
 mock.module("@/db/property-tenant-email-campaigns", () => ({
   propertyTenantEmailCampaignsDb: {
@@ -23,7 +24,7 @@ mock.module("@/services/user-notifications", () => ({
 }));
 
 mock.module("./tenant-email-campaign-observability", () => ({
-  maybeLogTenantEmailCampaignCompletion: mock(() => undefined),
+  maybeLogTenantEmailCampaignCompletion: mockSyncVoid(),
 }));
 
 const { maybePublishTenantEmailCampaignUpdated } = await import("./tenant-email-campaign-stream");

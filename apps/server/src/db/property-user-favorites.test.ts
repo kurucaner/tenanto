@@ -24,7 +24,7 @@ describe("propertyUserFavoritesDb.setFavorite", () => {
 
     expect(result.favoritedAt).toBe("2026-07-01T12:00:00.000Z");
     expect(mockQuery).toHaveBeenCalledTimes(1);
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const [sql, values] = mockQuery.mock.calls[0] as unknown as [string, unknown[]];
     expect(sql).toContain("INSERT INTO property_user_favorites");
     expect(sql).toContain("ON CONFLICT (user_id, property_id)");
     expect(sql).toContain("DO UPDATE SET favorited_at = property_user_favorites.favorited_at");
@@ -40,7 +40,7 @@ describe("propertyUserFavoritesDb.setFavorite", () => {
       userId: "user-1",
     });
 
-    const [sql] = mockQuery.mock.calls[0] as [string];
+    const [sql] = mockQuery.mock.calls[0] as unknown as [string];
     expect(sql).not.toContain("favorited_at = NOW()");
     expect(sql).toContain("DO UPDATE SET favorited_at = property_user_favorites.favorited_at");
   });
@@ -57,7 +57,7 @@ describe("propertyUserFavoritesDb.setFavorite", () => {
 
     expect(result.favoritedAt).toBeNull();
     expect(mockQuery).toHaveBeenCalledTimes(1);
-    const [sql, values] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const [sql, values] = mockQuery.mock.calls[0] as unknown as [string, unknown[]];
     expect(sql).toContain("DELETE FROM property_user_favorites");
     expect(values).toEqual(["user-1", "prop-1"]);
   });

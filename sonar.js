@@ -6,7 +6,8 @@ scan({
     "sonar.projectKey": "propertyos",
     "sonar.login": "sqp_ef6439a98c75ec8e294772a60199c81332c75d54",
     "sonar.sources": ".",
-    "sonar.exclusions": "**/node_modules/**,**/dist/**,**/.next/**",
+    "sonar.exclusions": "**/node_modules/**,**/dist/**,**/.next/**,**/apps/server/templates/**",
+    "sonar.coverage.exclusions": "**/*",
   },
 })
   .then(() => {

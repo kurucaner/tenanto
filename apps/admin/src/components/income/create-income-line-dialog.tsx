@@ -98,7 +98,7 @@ function getDefaultValues(
     ? resolveRentIncomeLineTypeId(incomeLineTypes)
     : resolveDefaultIncomeLineTypeId(incomeLineTypes);
   const maxTransactionDate = getTodayLocalIsoDate();
-  const rawTransactionDate = prefill?.transactionDate ?? lockedStay?.checkOut ?? "";
+  const rawTransactionDate = prefill?.transactionDate ?? maxTransactionDate;
 
   return {
     amount: prefill?.amount ?? (lockedLease ? String(lockedLease.monthlyRent) : ""),

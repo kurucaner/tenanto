@@ -10,11 +10,8 @@ import {
 } from "@/packages/shared";
 import { parseUuidParam } from "@/routes/admin/admin-query-utils";
 import { parseJsonObject } from "@/routes/admin/parse-body-utils";
-import {
-  propertyMemberInviteActionService,
-  PropertyMemberInviteInvalidStateError,
-  PropertyMemberInviteNotFoundError,
-} from "@/services/property-member-invite-action-service";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
+import { propertyMemberInviteActionService } from "@/services/property-member-invite-action-service";
 import { propertyMemberInviteService } from "@/services/property-member-invite-service";
 import {
   registerPlatformUserWithInviteGoogle,
@@ -76,11 +73,8 @@ async function sendInviteSignupResult(
 }
 
 function mapInviteActionError(error: unknown, reply: FastifyReply): FastifyReply | null {
-  if (error instanceof PropertyMemberInviteNotFoundError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-  }
-  if (error instanceof PropertyMemberInviteInvalidStateError) {
-    return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+  if (replyFromDomainError(reply, error)) {
+    return reply;
   }
   return null;
 }

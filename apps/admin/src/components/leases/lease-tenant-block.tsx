@@ -9,7 +9,7 @@ import {
   type TLeasePortalActingTarget,
   type TLeasePortalRowAction,
 } from "@/lib/lease-portal-access-display";
-import { formatPhoneDisplay, type IPropertyLongStaySecondaryTenant } from "@/packages/shared";
+import { formatPhoneDisplay, type ILeaseSecondaryTenantContact } from "@/packages/shared";
 
 function TenantContactLine({ label, value }: Readonly<{ label: string; value: string | null }>) {
   if (!value) {
@@ -183,24 +183,27 @@ interface ILeaseSecondaryTenantRowProps {
   actingAction: TLeasePortalRowAction | null;
   actingTarget: TLeasePortalActingTarget | null;
   canEdit: boolean;
+  contact: ILeaseSecondaryTenantContact;
   index: number;
   isDeletePending: boolean;
   isQuickDeleteActive: boolean;
   onDelete: (index: number, event: MouseEvent<HTMLButtonElement>) => void;
   onEdit: (index: number) => void;
-  onInvite: (index: number) => void;
-  onResend: (index: number) => void;
-  onRevoke: (index: number) => void;
+  onInvite: (contact: ILeaseSecondaryTenantContact, index: number) => void;
+  onResend: (contact: ILeaseSecondaryTenantContact, index: number) => void;
+  onRevoke: (contact: ILeaseSecondaryTenantContact, index: number) => void;
   portalMutationPending: boolean;
+  portalRowTarget: TLeasePortalActingTarget;
   portalState: ILeasePortalRowState;
+  showDelete: boolean;
   showPortalRow: boolean;
-  tenant: IPropertyLongStaySecondaryTenant;
 }
 
 export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   actingAction,
   actingTarget,
   canEdit,
+  contact,
   index,
   isDeletePending,
   isQuickDeleteActive,
@@ -210,21 +213,28 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   onResend,
   onRevoke,
   portalMutationPending,
+  portalRowTarget,
   portalState,
+  showDelete,
   showPortalRow,
-  tenant,
 }: ILeaseSecondaryTenantRowProps) {
+  const tenant = {
+    email: contact.effectiveEmail,
+    name: contact.effectiveName,
+    phone: contact.effectivePhone,
+  };
+
   const handleInvite = useCallback(() => {
-    onInvite(index);
-  }, [index, onInvite]);
+    onInvite(contact, index);
+  }, [contact, index, onInvite]);
 
   const handleResend = useCallback(() => {
-    onResend(index);
-  }, [index, onResend]);
+    onResend(contact, index);
+  }, [contact, index, onResend]);
 
   const handleRevoke = useCallback(() => {
-    onRevoke(index);
-  }, [index, onRevoke]);
+    onRevoke(contact, index);
+  }, [contact, index, onRevoke]);
 
   const handleEdit = useCallback(() => {
     onEdit(index);
@@ -240,7 +250,9 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-medium">{tenant.name}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium">{tenant.name}</p>
+        </div>
         <TenantContactLine label="email" value={tenant.email} />
         <TenantContactLine label="phone" value={tenant.phone} />
       </div>
@@ -259,8 +271,8 @@ export const LeaseSecondaryTenantRow = memo(function LeaseSecondaryTenantRow({
         onRevoke={handleRevoke}
         portalMutationPending={portalMutationPending}
         portalState={portalState}
-        rowTarget={{ index, kind: "secondary" }}
-        showDelete
+        rowTarget={portalRowTarget}
+        showDelete={showDelete}
         showPortalRow={showPortalRow}
       />
     </div>

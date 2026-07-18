@@ -7,6 +7,11 @@ import { propertiesDb } from "@/db/properties";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
 import { tenantUsersDb } from "@/db/tenant-users";
+import { tenantMembershipNotFoundError } from "@/errors/lease-errors";
+import {
+  portalInviteInvalidStateError,
+  portalInviteNotFoundError,
+} from "@/errors/portal-invite-errors";
 import {
   buildTenantInviteLeaseSummary,
   formatUnitLabel,
@@ -18,32 +23,22 @@ import type {
   ITenantLeaseListItem,
   ITenantPendingInvite,
   ITenantUser,
+  TTenantLeaseListStatus,
   TTenantMembershipStatus,
 } from "@/packages/shared";
 import {
   formatLeaseMonthLabel,
   JwtAudience,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   TenantLeaseListStatus,
   TenantMembershipStatus,
-  type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { syncLeasePhoneToTenantUserOnAccept } from "@/services/sync-lease-phone-to-tenant-on-accept";
 import { issueTenantSession } from "@/services/tenant-auth-service";
 
 import { assertLeaseTenantReadAccess } from "./tenant-portal-access";
-import {
-  PortalInviteInvalidStateError,
-  PortalInviteNotFoundError,
-} from "./tenant-portal-invite-service";
 import { logTenantPortalAccepted, logTenantPortalDeclined } from "./tenant-portal-observability";
-
-export class TenantMembershipNotFoundError extends Error {
-  constructor(message = "Portal invite not found") {
-    super(message);
-    this.name = "TenantMembershipNotFoundError";
-  }
-}
 
 const ACCEPTABLE_STATUSES = new Set<TTenantMembershipStatus>([
   TenantMembershipStatus.PENDING_INVITE,
@@ -54,12 +49,14 @@ function assertMembershipMatchesTenant(
   membership: ILeaseTenantMembership,
   tenantUser: ITenantUser
 ): void {
-  if (normalizeTenantEmail(membership.inviteEmail) !== normalizeTenantEmail(tenantUser.email)) {
-    throw new PortalInviteInvalidStateError("This invite was sent to a different email address");
+  if (
+    requireMembershipInviteEmail(membership.inviteEmail) !== normalizeTenantEmail(tenantUser.email)
+  ) {
+    throw portalInviteInvalidStateError("This invite was sent to a different email address");
   }
 
   if (membership.tenantUserId != null && membership.tenantUserId !== tenantUser.id) {
-    throw new PortalInviteInvalidStateError("This invite belongs to another account");
+    throw portalInviteInvalidStateError("This invite belongs to another account");
   }
 }
 
@@ -68,18 +65,18 @@ async function assertMembershipActionable(membership: ILeaseTenantMembership): P
     membership.status === TenantMembershipStatus.DECLINED ||
     membership.status === TenantMembershipStatus.EXPIRED
   ) {
-    throw new PortalInviteInvalidStateError(
+    throw portalInviteInvalidStateError(
       "This invite is no longer available. Ask your property manager to resend."
     );
   }
 
   if (!ACCEPTABLE_STATUSES.has(membership.status)) {
-    throw new PortalInviteInvalidStateError("This invite is no longer available");
+    throw portalInviteInvalidStateError("This invite is no longer available");
   }
 
   const expired = await leaseTenantMembershipsDb.expireMembershipIfPastTtl(membership);
   if (expired) {
-    throw new PortalInviteInvalidStateError("This invite has expired");
+    throw portalInviteInvalidStateError("This invite has expired");
   }
 }
 
@@ -94,7 +91,7 @@ async function acceptMembershipForTenant(
   if (current.tenantUserId == null) {
     const linked = await leaseTenantMembershipsDb.linkTenantUser(current.id, tenantUser.id);
     if (!linked) {
-      throw new PortalInviteNotFoundError("Portal invite not found");
+      throw portalInviteNotFoundError("Portal invite not found");
     }
     current = linked;
   }
@@ -104,7 +101,7 @@ async function acceptMembershipForTenant(
     TenantMembershipStatus.ACTIVE
   );
   if (!updated) {
-    throw new PortalInviteNotFoundError("Portal invite not found");
+    throw portalInviteNotFoundError("Portal invite not found");
   }
   logTenantPortalAccepted(updated);
   await syncLeasePhoneToTenantUserOnAccept(updated, tenantUser);
@@ -173,7 +170,7 @@ export const tenantPortalMembershipService = {
   ): Promise<ILeaseTenantMembership> {
     const membership = await leaseTenantMembershipsDb.findById(membershipId);
     if (!membership) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
     return acceptMembershipForTenant(membership, tenantUser);
   },
@@ -184,7 +181,7 @@ export const tenantPortalMembershipService = {
   ): Promise<ILeaseTenantMembership> {
     const membership = await leaseTenantMembershipsDb.findById(membershipId);
     if (!membership) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
 
     await assertMembershipActionable(membership);
@@ -195,7 +192,7 @@ export const tenantPortalMembershipService = {
       TenantMembershipStatus.DECLINED
     );
     if (!updated) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
     logTenantPortalDeclined(updated);
     return updated;
@@ -205,7 +202,7 @@ export const tenantPortalMembershipService = {
     const membership = await assertLeaseTenantReadAccess(leaseId, tenantUserId);
     const lease = await propertyLongStaysDb.findById(leaseId);
     if (!lease) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
 
     const [property, unit, rentScheduleMonths] = await Promise.all([
@@ -216,7 +213,7 @@ export const tenantPortalMembershipService = {
         : propertyLongStaysDb.getRentSchedule(leaseId),
     ]);
     if (!property || !unit) {
-      throw new TenantMembershipNotFoundError();
+      throw tenantMembershipNotFoundError();
     }
 
     return {
@@ -265,7 +262,7 @@ export const tenantPortalMembershipService = {
   async redeemInvite(token: string, tenantUser: ITenantUser): Promise<ILeaseTenantMembership> {
     const membership = await leaseTenantMembershipsDb.findByInviteToken(token);
     if (!membership) {
-      throw new PortalInviteNotFoundError("Invalid or expired invite link");
+      throw portalInviteNotFoundError("Invalid or expired invite link");
     }
     return acceptMembershipForTenant(membership, tenantUser);
   },

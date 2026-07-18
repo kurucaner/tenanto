@@ -1,8 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 
-import { StripeConnectNotConfiguredError } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
-import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   RentPaymentConnectNotReadyError,
   RentPaymentNotFoundError,
@@ -14,8 +13,8 @@ import { WinstonLogger } from "@/services/winston";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function mapRentPaymentError(error: unknown, reply: FastifyReply): FastifyReply | null {
-  if (error instanceof TenantLeaseAccessDeniedError) {
-    return reply.status(HttpStatus.FORBIDDEN).send({ error: error.message });
+  if (replyFromDomainError(reply, error)) {
+    return reply;
   }
   if (error instanceof RentPaymentValidationError) {
     return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
@@ -25,9 +24,6 @@ function mapRentPaymentError(error: unknown, reply: FastifyReply): FastifyReply 
   }
   if (error instanceof RentPaymentNotFoundError) {
     return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-  }
-  if (error instanceof StripeConnectNotConfiguredError) {
-    return reply.status(HttpStatus.SERVICE_UNAVAILABLE).send({ error: error.message });
   }
   return null;
 }

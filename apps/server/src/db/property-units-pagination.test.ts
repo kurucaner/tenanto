@@ -1,49 +1,16 @@
 import { describe, expect, mock, test } from "bun:test";
 
-const mockQuery = mock((sql: string) => {
-  if (sql.includes("COUNT(*)")) {
-    return Promise.resolve({
-      rows: [{ long_term_count: 1, short_term_count: 2, total_count: 3 }],
-    });
-  }
+import {
+  buildDescendingUnitRows,
+  createPaginationMockQuery,
+  findCountQuerySql,
+  findListQuerySql,
+  UNIT_PAGINATION_COUNT_ROW,
+} from "@/test-fixtures/pagination";
 
-  return Promise.resolve({
-    rows: [
-      {
-        created_at: new Date("2026-07-09T10:00:00.000Z"),
-        deleted_at: null,
-        id: "11111111-1111-4111-8111-111111111111",
-        is_deleted: false,
-        layout: "1BR",
-        property_id: "prop-1",
-        rental_type: "short_term",
-        unit_number: "101",
-        updated_at: new Date("2026-07-09T10:00:00.000Z"),
-      },
-      {
-        created_at: new Date("2026-07-08T10:00:00.000Z"),
-        deleted_at: null,
-        id: "22222222-2222-4222-8222-222222222222",
-        is_deleted: false,
-        layout: "2BR",
-        property_id: "prop-1",
-        rental_type: "short_term",
-        unit_number: "102",
-        updated_at: new Date("2026-07-08T10:00:00.000Z"),
-      },
-      {
-        created_at: new Date("2026-07-07T10:00:00.000Z"),
-        deleted_at: null,
-        id: "33333333-3333-4333-8333-333333333333",
-        is_deleted: false,
-        layout: "Studio",
-        property_id: "prop-1",
-        rental_type: "long_term",
-        unit_number: "201",
-        updated_at: new Date("2026-07-07T10:00:00.000Z"),
-      },
-    ],
-  });
+const mockQuery = createPaginationMockQuery({
+  countRow: UNIT_PAGINATION_COUNT_ROW,
+  rows: buildDescendingUnitRows(),
 });
 
 mock.module("./pool", () => ({
@@ -65,9 +32,7 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
     expect(firstPage.meta).toEqual({ longTermCount: 1, shortTermCount: 2, totalCount: 3 });
     expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("ORDER BY rental_type ASC, unit_number ASC, id ASC");
     expect(sql).toContain("LIMIT $");
   });
@@ -118,9 +83,7 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
 
     await propertyUnitsDb.listPaginatedByProperty("prop-1", {}, { limit: 2, sortDir: "desc" });
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("ORDER BY rental_type DESC, unit_number DESC, id DESC");
 
     mockQuery.mockClear();
@@ -158,12 +121,8 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
       { limit: 2 }
     );
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
+    const countSql = findCountQuerySql(mockQuery);
 
     expect(listSql).toContain("rental_type = $");
     expect(countSql).toContain("rental_type = $");
@@ -174,12 +133,8 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
 
     await propertyUnitsDb.listPaginatedByProperty("prop-1", { occupancy: "vacant" }, { limit: 2 });
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
+    const countSql = findCountQuerySql(mockQuery);
 
     expect(listSql).toContain("NOT EXISTS");
     expect(listSql).toContain("property_long_stays");
@@ -192,15 +147,13 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
 
     await propertyUnitsDb.listPaginatedByProperty("prop-1", { q: "Tenant" }, { limit: 2 });
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
+    const countSql = findCountQuerySql(mockQuery);
 
     expect(listSql).toContain("unit_number ILIKE");
     expect(listSql).toContain("pls.guest_name ILIKE");
+    expect(listSql).toContain("lease_tenant_memberships ltm");
+    expect(listSql).not.toContain("jsonb_array_elements");
     expect(countSql).toContain("unit_number ILIKE");
     expect(countSql).toContain("pls.guest_name ILIKE");
   });
@@ -214,12 +167,8 @@ describe("propertyUnitsDb.listPaginatedByProperty", () => {
       { limit: 2 }
     );
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
+    const countSql = findCountQuerySql(mockQuery);
 
     expect(listSql).toContain("DATE(created_at) >=");
     expect(listSql).toContain("DATE(created_at) <=");

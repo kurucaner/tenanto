@@ -210,7 +210,6 @@ export {
   type IResolvePrimaryTenantContactInput,
   resolvePrimaryTenantContact,
   selectPrimaryMembershipForContact,
-  type TPrimaryTenantContactSource,
 } from "./lease-primary-tenant-contact";
 export {
   calculateExpectedRentForLeaseMonth,
@@ -244,6 +243,13 @@ export {
   MAX_TOTAL_LEASE_TERM_MONTHS,
   validateExtendLease,
 } from "./lease-rent-utils";
+export {
+  type ILeaseSecondaryTenantContact,
+  type IResolveSecondaryTenantContactsForLeaseInput,
+  resolveSecondaryTenantContact,
+  resolveSecondaryTenantContactsForLease,
+  selectSecondaryMembershipForContact,
+} from "./lease-secondary-tenant-contact";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
   deriveLeaseTermsEditability,
@@ -253,6 +259,7 @@ export {
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
 export {
+  type IListTotalCountMeta,
   type IPropertyExpensesListMeta,
   type IPropertyExportsListMeta,
   type IPropertyIncomeEntriesListMeta,
@@ -295,6 +302,12 @@ export {
   type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
+export {
+  type TPrimaryTenantContactSource,
+  type TSecondaryTenantContactSource,
+  type TTenantContactLinkedUserSource,
+  type TTenantContactMembershipPendingSource,
+} from "./tenant-contact-source-types";
 
 // Property Income Refund Filter
 export {
@@ -546,6 +559,27 @@ export {
   PHONE_DEFAULT_COUNTRY,
   toE164,
 } from "./phone";
+export {
+  type ICreateSecondaryOccupantBody,
+  type ICreateSecondaryOccupantResponse,
+  type IDeleteSecondaryOccupantResponse,
+  type ISecondaryOccupantMutationResponse,
+  type IUpdateSecondaryOccupantBody,
+  type IUpdateSecondaryOccupantResponse,
+  MAX_SECONDARY_OCCUPANTS,
+} from "./secondary-occupant-types";
+export {
+  canonicalizeJsonbSecondaryTenants,
+  type ISecondaryBackfillJsonbTenant,
+  type ISecondaryBackfillLeasePlan,
+  type ISecondaryBackfillPlannedAction,
+  type ISecondaryBackfillVerificationGap,
+  type ISecondaryBackfillVerificationResult,
+  planSecondaryTenantBackfillForLease,
+  summarizeSecondaryBackfillVerification,
+  type TSecondaryBackfillActionKind,
+  verifySecondaryTenantBackfillForLease,
+} from "./secondary-tenant-membership-backfill";
 
 // Tenant email campaigns
 export {
@@ -582,7 +616,10 @@ export {
 } from "./tenant-email-campaign-types";
 export {
   isValidTenantEmail,
+  type ITenantEmailSecondaryContact,
+  normalizeOptionalInviteEmail,
   normalizeTenantEmail,
+  requireMembershipInviteEmail,
   resolveTenantEmailRecipients,
 } from "./tenant-email-recipient-resolver";
 export {
@@ -629,6 +666,7 @@ export {
   type ITenantPhoneAuthVerifyBody,
   type ITenantPhoneBindStartBody,
   type ITenantPhoneBindVerifyBody,
+  type ITenantSmsOptOutResponse,
   type ITenantUser,
   TenantLeaseListStatus,
   TenantMembershipRole,
@@ -644,6 +682,7 @@ export {
   type TTenantRentScheduleBalanceMonth,
 } from "./tenant-rent-balance-from-schedule";
 export {
+  type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   isTerminalTenantRentPaymentStatus,
@@ -654,7 +693,9 @@ export {
   type ITenantRentPaymentStatusResponse,
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
+  PropertyStripeAccountType,
   TenantRentPaymentStatus,
+  type TPropertyStripeAccountType,
   type TTenantRentPaymentStatus,
 } from "./tenant-rent-payment-types";
 export {
@@ -673,6 +714,22 @@ export {
   type TValidateRentCheckoutResult,
   validateCreateRentCheckoutBody,
 } from "./tenant-rent-payment-utils";
+export {
+  parseTenantSmsInboundKeyword,
+  TenantSmsInboundKeyword,
+  type TTenantSmsInboundKeyword,
+} from "./tenant-sms-inbound-utils";
+export {
+  buildTenantPhoneOtpSmsMessage,
+  buildTenantSmsHelpMessage,
+  buildTenantSmsOptInConfirmationMessage,
+  buildTenantSmsOptOutConfirmationMessage,
+  canReceiveSms,
+  getTenantSmsSubscriptionStatus,
+  type ITenantSmsEligibilityInput,
+  TenantSmsSubscriptionStatus,
+  type TTenantSmsSubscriptionStatus,
+} from "./tenant-sms-utils";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

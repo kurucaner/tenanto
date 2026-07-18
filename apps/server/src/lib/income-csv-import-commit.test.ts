@@ -4,27 +4,23 @@ import {
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
   type IPropertyChannelCommission,
   type IPropertyTaxRate,
-  type IPropertyUnit,
   ReservationStatus,
   UnitRentalType,
 } from "@/packages/shared";
+import { makeUnit } from "@/test-fixtures/domain";
 
 import { validateIncomeImportCommitRows } from "./income-csv-import-commit";
 
 const propertyId = "00000000-0000-4000-8000-000000000001";
 
-const units: IPropertyUnit[] = [
-  {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
+const units = [
+  makeUnit({
     id: "00000000-0000-4000-8000-000000000010",
-    isDeleted: false,
     layout: "studio",
     propertyId,
     rentalType: UnitRentalType.SHORT_TERM,
     unitNumber: "210",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
+  }),
 ];
 
 const channels: IPropertyChannelCommission[] = DEFAULT_PROPERTY_CHANNEL_COMMISSIONS.map(

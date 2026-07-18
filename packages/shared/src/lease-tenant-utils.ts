@@ -1,7 +1,11 @@
 import type { IPropertyLongStay } from "./property-long-stay-types";
 
 export function getLeaseOccupancyNames(
-  lease: Pick<IPropertyLongStay, "guestName" | "secondaryTenants">
+  lease: Pick<IPropertyLongStay, "guestName" | "secondaryTenants"> & {
+    secondaryOccupantNames?: readonly string[];
+  }
 ): string[] {
-  return [lease.guestName, ...lease.secondaryTenants.map((tenant) => tenant.name)];
+  const secondaryNames =
+    lease.secondaryOccupantNames ?? lease.secondaryTenants.map((tenant) => tenant.name);
+  return [lease.guestName, ...secondaryNames];
 }

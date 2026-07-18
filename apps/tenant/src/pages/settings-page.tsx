@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { memo } from "react";
-import { toast } from "sonner";
 
+import { TenantSmsSettingsSection } from "@/components/settings/tenant-sms-settings-section";
+import { getTenantSmsSettingsSectionKey } from "@/components/settings/use-tenant-sms-settings-form";
 import { useTenantLogout } from "@/hooks/use-tenant-logout";
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { isTenantPhoneAuthEnabled } from "@/lib/tenant-auth-expansion-flags";
 import {
   Button,
   Card,
@@ -16,13 +18,13 @@ import {
   ThemeSwitcher,
   useResolvedDark,
 } from "@/packages/app-ui";
-import { formatPhoneDisplay } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
 export const SettingsPage = memo(function SettingsPage() {
   const user = useAuthStore((s) => s.user);
   const resolvedDark = useResolvedDark();
   const logout = useTenantLogout();
+  const phoneAuthEnabled = isTenantPhoneAuthEnabled();
 
   const meQuery = useQuery({
     queryFn: () => tenantPortalApi.getMe(),
@@ -51,42 +53,34 @@ export const SettingsPage = memo(function SettingsPage() {
             </p>
           ) : null}
           {meQuery.data ? (
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Member since</p>
-                <p className="text-foreground">
-                  {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
-                    new Date(meQuery.data.user.createdAt)
-                  )}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Phone</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-foreground">
-                    {meQuery.data.user.phone
-                      ? formatPhoneDisplay(meQuery.data.user.phone)
-                      : "Not added"}
-                  </p>
-                  {meQuery.data.user.phone && !meQuery.data.user.phoneVerifiedAt ? (
-                    <Button
-                      onClick={() => toast.message("Coming soon")}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      Verify
-                    </Button>
-                  ) : null}
-                </div>
-                {meQuery.data.user.phone && meQuery.data.user.phoneVerifiedAt ? (
-                  <p className="text-xs text-muted-foreground">Verified</p>
-                ) : null}
-              </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Member since</p>
+              <p className="text-foreground">
+                {new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+                  new Date(meQuery.data.user.createdAt)
+                )}
+              </p>
             </div>
           ) : null}
         </CardContent>
       </Card>
+
+      {phoneAuthEnabled && meQuery.data ? (
+        <Card className="rounded-2xl border-border/80 bg-card/85 shadow-sm">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-lg font-semibold">SMS alerts</CardTitle>
+            <CardDescription>
+              Optional transactional texts for verification codes and account notifications.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TenantSmsSettingsSection
+              key={getTenantSmsSettingsSectionKey(meQuery.data.user)}
+              user={meQuery.data.user}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="rounded-2xl border-border/80 bg-card/85 shadow-sm">
         <CardHeader className="space-y-1">

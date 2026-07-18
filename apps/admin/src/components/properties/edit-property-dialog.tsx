@@ -14,9 +14,9 @@ import {
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { PhoneInput } from "@/packages/app-ui";
 import type { IProperty, IPropertyDetail } from "@/packages/shared";
 
 interface EditPropertyDialogProps {

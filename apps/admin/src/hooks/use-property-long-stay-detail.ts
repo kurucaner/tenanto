@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { longStaysApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { resolveSecondaryTenantContactsForDisplay } from "@/lib/resolve-secondary-tenant-contacts-for-display";
 import { getCurrentLeaseRent } from "@/packages/shared";
 
 export function usePropertyLongStayDetail(propertyId: string, leaseId: string | undefined) {
@@ -18,6 +19,10 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
   const primaryTenantContact = detail?.primaryTenantContact;
   const rentSchedule = detail?.rentSchedule ?? [];
   const rentPeriods = useMemo(() => detail?.rentPeriods ?? [], [detail?.rentPeriods]);
+  const secondaryTenantContacts = useMemo(
+    () => resolveSecondaryTenantContactsForDisplay(detail?.secondaryTenantContacts),
+    [detail?.secondaryTenantContacts]
+  );
   const termsEditability = detail?.termsEditability ?? { editable: false };
 
   const currentRent = useMemo(() => {
@@ -36,6 +41,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
     primaryTenantContact,
     rentPeriods,
     rentSchedule,
+    secondaryTenantContacts,
     termsEditability,
   };
 }

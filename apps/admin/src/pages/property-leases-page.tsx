@@ -1,15 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleDollarSign, Download, Eye, MoreHorizontal, Plus, SquarePen } from "lucide-react";
+import { Download, Eye, MoreHorizontal, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "@/components/data-table/data-table";
 import { type DataTableColumn } from "@/components/data-table/data-table-types";
 import { PropertyTableExportDialog } from "@/components/exports/property-table-export-dialog";
-import {
-  CreateIncomeLineDialog,
-  type CreateIncomeLineDialogPrefill,
-} from "@/components/income/create-income-line-dialog";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { type TLeaseFilterKey } from "@/components/leases/lease-filter-panel";
 import { PropertyLeaseToolbar } from "@/components/leases/property-lease-toolbar";
@@ -41,7 +37,6 @@ import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { formatMoney } from "@/lib/format-money";
-import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import {
   buildLeaseToolbarClearAllPatch,
   buildLeaseToolbarClearOnePatch,
@@ -71,7 +66,6 @@ import {
   LEASES_SORT_BY_VALUES,
   LEASES_SORT_DIR_VALUES,
   PropertyLongStayStatus,
-  resolveRentIncomeLineTypeId,
   type TPropertyLongStaysListSortBy,
   type TPropertyLongStaysListSortDir,
   type TPropertyLongStayStatus,
@@ -128,14 +122,12 @@ const LeaseRow = memo(
     lease,
     leaseDetailPath,
     onEndLease,
-    onRecordRent,
     unitLabel,
   }: {
     canManage: boolean;
     lease: IPropertyLongStay;
     leaseDetailPath: string;
     onEndLease: (lease: IPropertyLongStay) => void;
-    onRecordRent: (lease: IPropertyLongStay) => void;
     unitLabel: string;
   }) => {
     const navigate = useNavigate();
@@ -185,28 +177,16 @@ const LeaseRow = memo(
               <Eye className="size-3.5" />
             </TableIconButton>
             {canManage && lease.status === PropertyLongStayStatus.ACTIVE ? (
-              <>
-                <TableIconButton
-                  ariaLabel="Record rent"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onRecordRent(lease);
-                  }}
-                  tooltip="Record rent"
-                >
-                  <CircleDollarSign className="size-3.5" />
-                </TableIconButton>
-                <TableIconButton
-                  ariaLabel="End lease"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onEndLease(lease);
-                  }}
-                  tooltip="End lease"
-                >
-                  <SquarePen className="size-3.5" />
-                </TableIconButton>
-              </>
+              <TableIconButton
+                ariaLabel="End lease"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEndLease(lease);
+                }}
+                tooltip="End lease"
+              >
+                <SquarePen className="size-3.5" />
+              </TableIconButton>
             ) : null}
           </div>
         </TableCell>
@@ -274,10 +254,6 @@ export const PropertyLeasesPage = memo(() => {
   const [createOpen, setCreateOpen] = useState(false);
   const [exportTableOpen, setExportTableOpen] = useState(false);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
-  const [recordRentLease, setRecordRentLease] = useState<IPropertyLongStay | null>(null);
-  const [recordRentPrefill, setRecordRentPrefill] = useState<CreateIncomeLineDialogPrefill | null>(
-    null
-  );
 
   const listQueryFilters = useMemo(
     () =>
@@ -321,14 +297,6 @@ export const PropertyLeasesPage = memo(() => {
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
   const activeUnits = useMemo(() => units.filter((unit) => !unit.isDeleted), [units]);
-  const incomeLineTypes = useMemo(
-    () => settingsQuery.data?.settings.incomeLineTypes ?? [],
-    [settingsQuery.data?.settings.incomeLineTypes]
-  );
-  const rentIncomeLineTypeId = useMemo(
-    () => resolveRentIncomeLineTypeId(incomeLineTypes),
-    [incomeLineTypes]
-  );
 
   const unitLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -447,22 +415,6 @@ export const PropertyLeasesPage = memo(() => {
 
   usePropertyShellActions(pageActions);
 
-  const handleRecordRent = useCallback(
-    (lease: IPropertyLongStay, month?: string) => {
-      const detail = queryClient.getQueryData<IPropertyLongStayDetailResponse>(
-        queryKeys.propertyLongStay(propertyId, lease.id)
-      );
-      setRecordRentLease(lease);
-      setRecordRentPrefill(
-        buildLeaseRecordRentPrefill(lease, rentIncomeLineTypeId, {
-          month,
-          rentSchedule: detail?.rentSchedule,
-        })
-      );
-    },
-    [propertyId, queryClient, rentIncomeLineTypeId]
-  );
-
   const renderLeaseRow = useCallback(
     (lease: IPropertyLongStay) => (
       <LeaseRow
@@ -471,11 +423,10 @@ export const PropertyLeasesPage = memo(() => {
         lease={lease}
         leaseDetailPath={`/properties/${propertyId}/leases/${lease.id}`}
         onEndLease={setEndLease}
-        onRecordRent={handleRecordRent}
         unitLabel={unitLabelById.get(lease.unitId) ?? lease.unitId}
       />
     ),
-    [canManage, handleRecordRent, propertyId, unitLabelById]
+    [canManage, propertyId, unitLabelById]
   );
 
   const countLabel = meta
@@ -546,24 +497,6 @@ export const PropertyLeasesPage = memo(() => {
               queryKeys.propertyLongStay(propertyId, endLease.id)
             )?.rentPeriods ?? []
           }
-        />
-      ) : null}
-
-      {recordRentLease ? (
-        <CreateIncomeLineDialog
-          incomeLineTypes={incomeLineTypes}
-          key={`${recordRentLease.id}-${recordRentPrefill?.transactionDate ?? "today"}`}
-          lockedLease={recordRentLease}
-          onOpenChange={(open) => {
-            if (!open) {
-              setRecordRentLease(null);
-              setRecordRentPrefill(null);
-            }
-          }}
-          open={true}
-          prefill={recordRentPrefill}
-          propertyId={propertyId}
-          units={units}
         />
       ) : null}
 

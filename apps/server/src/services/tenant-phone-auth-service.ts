@@ -6,6 +6,7 @@ import { isTenantPhoneAuthEnabled } from "@/lib/tenant-auth-expansion-config";
 import { TENANT_AUTH_RATE_LIMIT_WINDOW_MS } from "@/lib/tenant-portal-rate-limit-config";
 import {
   AccountError,
+  canReceiveSms,
   HttpStatus,
   type ITenantAuthSessionResponse,
   type ITenantPhoneAuthStartBody,
@@ -25,6 +26,7 @@ import {
   getTenantAuthRateLimitErrorMessage,
 } from "@/services/tenant-auth-rate-limit";
 import { issueTenantSession } from "@/services/tenant-auth-service";
+import { sendTenantOptInConfirmationSms } from "@/services/tenant-sms-service";
 import { resolveSmsPhoneNumber } from "@/sns/sns";
 
 export type TTenantPhoneAuthSuccess =
@@ -130,7 +132,7 @@ export async function startTenantPhoneLogin(input: {
   }
 
   const existing = await tenantUsersDb.findByVerifiedPhone(e164);
-  if (!existing) {
+  if (!existing || !canReceiveSms(existing)) {
     return GENERIC_LOGIN_START_OK;
   }
 
@@ -228,6 +230,14 @@ export async function startTenantPhoneBind(input: {
 }): Promise<TTenantPhoneAuthResult> {
   if (!isTenantPhoneAuthEnabled()) {
     return disabledResult();
+  }
+
+  if (input.body.smsConsent !== true) {
+    return {
+      body: { error: "SMS consent is required to enable text alerts" },
+      status: "error",
+      statusCode: HttpStatus.BAD_REQUEST,
+    };
   }
 
   const rawPhone = input.body.phone?.trim() ?? "";
@@ -344,7 +354,13 @@ export async function verifyTenantPhoneBind(input: {
   await deletePhoneOtpById(verified.otpRowId);
 
   try {
-    const user = await tenantUsersDb.setVerifiedPhone(input.tenantUserId, e164);
+    const { newlySubscribed, user } = await tenantUsersDb.grantVerifiedPhoneWithSmsConsent(
+      input.tenantUserId,
+      e164
+    );
+    if (newlySubscribed) {
+      await sendTenantOptInConfirmationSms({ phoneNumber: e164, tenantUser: user });
+    }
     return { status: "ok", user };
   } catch (error) {
     if (isIdentityConflictError(error)) {

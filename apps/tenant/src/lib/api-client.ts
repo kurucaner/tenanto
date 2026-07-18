@@ -21,8 +21,11 @@ import {
   type ITenantMembershipActionResponse,
   type ITenantMeResponse,
   type ITenantPendingInvitesResponse,
+  type ITenantPhoneBindStartBody,
+  type ITenantPhoneBindVerifyBody,
   type ITenantRentPaymentStatusResponse,
   type ITenantRentSummaryResponse,
+  type ITenantSmsOptOutResponse,
   type ITenantUser,
   TenantLeaseListStatus,
   type TTenantLeaseListStatus,
@@ -157,6 +160,24 @@ export const tenantPortalApi = {
   listPendingInvites: () =>
     authenticatedRequest<ITenantPendingInvitesResponse>("/tenant/me/invites/pending"),
 
+  phoneBindStart: (body: ITenantPhoneBindStartBody) =>
+    authenticatedRequest<{ ok: true }>("/tenant/auth/phone/bind/start", {
+      body: JSON.stringify({
+        phone: body.phone,
+        smsConsent: body.smsConsent,
+      }),
+      method: "POST",
+    }),
+
+  phoneBindVerify: (body: ITenantPhoneBindVerifyBody) =>
+    authenticatedRequest<{ user: ITenantUser }>("/tenant/auth/phone/bind/verify", {
+      body: JSON.stringify({
+        code: body.code.trim(),
+        phone: body.phone,
+      }),
+      method: "POST",
+    }),
+
   previewInvite: (token: string) =>
     request<ITenantInvitePreviewResponse>(
       `/tenant/invites/preview?token=${encodeURIComponent(token)}`
@@ -191,5 +212,11 @@ export const tenantPortalApi = {
         token: body.token.trim(),
       }),
       method: "POST",
+    }),
+
+  smsOptOut: () =>
+    authenticatedRequest<ITenantSmsOptOutResponse>("/tenant/me/sms/opt-out", {
+      method: "POST",
+      omitDefaultContentType: true,
     }),
 };

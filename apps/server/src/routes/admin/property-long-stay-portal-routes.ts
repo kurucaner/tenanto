@@ -12,18 +12,12 @@ import {
   type IResendLeasePortalInviteResponse,
   type IRevokeLeasePortalInviteResponse,
 } from "@/packages/shared";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   assertTenantPortalInviteCreateAllowed,
   getTenantPortalInviteCreateRateLimitErrorMessage,
 } from "@/services/tenant-portal-invite-create-rate-limit";
-import {
-  DuplicatePortalInviteError,
-  PortalInviteInvalidStateError,
-  PortalInviteLeaseMismatchError,
-  PortalInviteNotFoundError,
-  PortalInviteTargetError,
-  tenantPortalInviteService,
-} from "@/services/tenant-portal-invite-service";
+import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseJsonObject } from "./parse-body-utils";
@@ -59,6 +53,25 @@ function parseSecondaryIndexes(raw: unknown): number[] | null {
   return indexes;
 }
 
+function parseSecondaryMembershipIds(raw: unknown): string[] | null {
+  if (raw === undefined || raw === null) {
+    return [];
+  }
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+
+  const membershipIds: string[] = [];
+  for (const item of raw) {
+    const parsed = parseUuidParam(item);
+    if (parsed === null) {
+      return null;
+    }
+    membershipIds.push(parsed);
+  }
+  return membershipIds;
+}
+
 function parseCreateInviteBody(
   raw: unknown
 ): { body: ICreateLeasePortalInviteBody; ok: true } | { error: string; ok: false } {
@@ -72,6 +85,11 @@ function parseCreateInviteBody(
     return { error: "invitePrimary must be a boolean", ok: false };
   }
 
+  const secondaryMembershipIds = parseSecondaryMembershipIds(parsed["secondaryMembershipIds"]);
+  if (secondaryMembershipIds === null) {
+    return { error: "secondaryMembershipIds must be an array of UUIDs", ok: false };
+  }
+
   const secondaryIndexes = parseSecondaryIndexes(parsed["secondaryIndexes"]);
   if (secondaryIndexes === null) {
     return { error: "secondaryIndexes must be an array of non-negative integers", ok: false };
@@ -81,23 +99,15 @@ function parseCreateInviteBody(
     body: {
       invitePrimary: invitePrimaryRaw === true ? true : undefined,
       secondaryIndexes,
+      secondaryMembershipIds,
     },
     ok: true,
   };
 }
 
 function handlePortalInviteError(error: unknown, reply: FastifyReply): FastifyReply {
-  if (error instanceof DuplicatePortalInviteError) {
-    return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-  }
-  if (error instanceof PortalInviteTargetError || error instanceof PortalInviteInvalidStateError) {
-    return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
-  }
-  if (error instanceof PortalInviteLeaseMismatchError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: (error as Error).message });
-  }
-  if (error instanceof PortalInviteNotFoundError) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: (error as Error).message });
+  if (replyFromDomainError(reply, error)) {
+    return reply;
   }
   throw error;
 }
@@ -195,6 +205,7 @@ export const propertyLongStayPortalRoutes = async (server: FastifyInstance): Pro
           leaseId: longStayId,
           propertyId,
           secondaryIndexes: parsed.body.secondaryIndexes,
+          secondaryMembershipIds: parsed.body.secondaryMembershipIds,
         });
         const response: ICreateLeasePortalInvitesResponse = { results };
         return reply.status(HttpStatus.CREATED).send(response);

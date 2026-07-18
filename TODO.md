@@ -1,10 +1,15 @@
 - refactor
   - property-export-list-constants
   - list-meta-types
+  - "linked_user" | "membership_pending" | "lease"; duplicated
+  - RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same
+
 - Do I need turbo?
 - Eslint configuration merge
 - SMS flow at the beginning with campaign opt in compatability
 - Typescript 7 implementation
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
-- RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same
+- A dialog when the users log in to the app for the first time.
+- Phone number country selection list virtualization
+- When logout, clear recent properties cache

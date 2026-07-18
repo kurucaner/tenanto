@@ -1,70 +1,22 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { PropertyLongStayStatus } from "@/packages/shared";
+import {
+  buildDescendingLongStayRows,
+  createPaginationMockQuery,
+  findCountQuerySql,
+  findListQuerySql,
+  LONG_STAY_PAGINATION_COUNT_ROW,
+} from "@/test-fixtures/pagination";
 
-const mockQuery = mock((sql: string) => {
-  if (sql.includes("COUNT(*)")) {
-    return Promise.resolve({
-      rows: [{ active_count: 1, ended_count: 2, total_count: 3 }],
-    });
-  }
-
-  return Promise.resolve({
-    rows: [
-      {
-        actual_end_date: null,
-        created_at: new Date("2026-07-09T10:00:00.000Z"),
-        guest_name: "Tenant A",
-        id: "11111111-1111-4111-8111-111111111111",
-        lease_end_date: "2027-07-09",
-        lease_start_date: "2026-07-09",
-        monthly_rent: "1500.00",
-        property_id: "prop-1",
-        secondary_tenants: [],
-        status: PropertyLongStayStatus.ACTIVE,
-        tenant_email: null,
-        tenant_phone: null,
-        term_months: 12,
-        unit_id: "unit-1",
-        updated_at: new Date("2026-07-09T10:00:00.000Z"),
-      },
-      {
-        actual_end_date: "2026-06-30",
-        created_at: new Date("2026-06-01T10:00:00.000Z"),
-        guest_name: "Tenant B",
-        id: "22222222-2222-4222-8222-222222222222",
-        lease_end_date: "2026-06-30",
-        lease_start_date: "2026-01-01",
-        monthly_rent: "1200.00",
-        property_id: "prop-1",
-        secondary_tenants: [],
-        status: PropertyLongStayStatus.ENDED,
-        tenant_email: null,
-        tenant_phone: null,
-        term_months: 6,
-        unit_id: "unit-2",
-        updated_at: new Date("2026-06-30T10:00:00.000Z"),
-      },
-      {
-        actual_end_date: null,
-        created_at: new Date("2025-12-01T10:00:00.000Z"),
-        guest_name: "Tenant C",
-        id: "33333333-3333-4333-8333-333333333333",
-        lease_end_date: "2026-05-31",
-        lease_start_date: "2025-12-01",
-        monthly_rent: "1100.00",
-        property_id: "prop-1",
-        secondary_tenants: [],
-        status: PropertyLongStayStatus.ENDED,
-        tenant_email: null,
-        tenant_phone: null,
-        term_months: 6,
-        unit_id: "unit-3",
-        updated_at: new Date("2026-05-31T10:00:00.000Z"),
-      },
-    ],
-  });
+const mockQuery = createPaginationMockQuery({
+  countRow: LONG_STAY_PAGINATION_COUNT_ROW,
+  rows: buildDescendingLongStayRows(),
 });
+
+mock.module("@/services/hydrate-long-stays-secondary-occupant-names", () => ({
+  hydrateLongStaysSecondaryOccupantNames: (longStays: readonly unknown[]) =>
+    Promise.resolve([...longStays]),
+}));
 
 mock.module("./pool", () => ({
   pool: { query: mockQuery },
@@ -85,9 +37,7 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
     expect(firstPage.meta).toEqual({ activeCount: 1, endedCount: 2, totalCount: 3 });
     expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("pls.lease_start_date DESC");
     expect(sql).toContain("LIMIT $");
   });
@@ -97,12 +47,8 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
 
     await propertyLongStaysDb.listPaginatedByProperty("prop-1", { q: "Tenant" }, { limit: 2 });
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
+    const countSql = findCountQuerySql(mockQuery);
 
     expect(listSql).toContain("property_units pu");
     expect(listSql).toContain("pls.guest_name ILIKE");
@@ -119,12 +65,8 @@ describe("propertyLongStaysDb.listPaginatedByProperty", () => {
       { limit: 2 }
     );
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
+    const countSql = findCountQuerySql(mockQuery);
 
     expect(listSql).toContain("COALESCE(pls.actual_end_date, pls.lease_end_date) >=");
     expect(listSql).toContain("pls.lease_start_date <=");

@@ -1,102 +1,14 @@
 import { describe, expect, mock, test } from "bun:test";
 
-const CHANNEL_ID = "ch000000-0000-4000-8000-000000000001";
+import {
+  buildDescendingReservationRows,
+  createPaginationMockQuery,
+  findCountQuerySql,
+  findListQuerySql,
+} from "@/test-fixtures/pagination";
 
-const mockQuery = mock((sql: string) => {
-  if (sql.includes("COUNT(*)")) {
-    return Promise.resolve({
-      rows: [{ total_count: 3 }],
-    });
-  }
-
-  return Promise.resolve({
-    rows: [
-      {
-        channel_commission: "10.00",
-        channel_commission_id: CHANNEL_ID,
-        channel_commission_rate: "0.10000",
-        channel_name: "Airbnb",
-        check_in: "2026-07-09",
-        check_out: "2026-07-11",
-        cleaning_fee: "0.00",
-        created_at: new Date("2026-07-09T10:00:00.000Z"),
-        deleted_at: null,
-        exclude_cleaning_from_commission_base: false,
-        exclude_resort_tax_from_payout: false,
-        gross_income: "100.00",
-        guest_name: "Guest A",
-        id: "11111111-1111-4111-8111-111111111111",
-        is_deleted: false,
-        net_income: "90.00",
-        nights: 2,
-        property_id: "prop-1",
-        refunded_at: null,
-        refunded_by: null,
-        reservation_number: null,
-        room_total: "100.00",
-        status: "stayed",
-        tax_breakdown: [],
-        unit_id: "unit-1",
-        updated_at: new Date("2026-07-09T10:00:00.000Z"),
-      },
-      {
-        channel_commission: "5.00",
-        channel_commission_id: CHANNEL_ID,
-        channel_commission_rate: "0.10000",
-        channel_name: "Airbnb",
-        check_in: "2026-07-08",
-        check_out: "2026-07-10",
-        cleaning_fee: "0.00",
-        created_at: new Date("2026-07-08T10:00:00.000Z"),
-        deleted_at: null,
-        exclude_cleaning_from_commission_base: false,
-        exclude_resort_tax_from_payout: false,
-        gross_income: "50.00",
-        guest_name: "Guest B",
-        id: "22222222-2222-4222-8222-222222222222",
-        is_deleted: false,
-        net_income: "45.00",
-        nights: 2,
-        property_id: "prop-1",
-        refunded_at: null,
-        refunded_by: null,
-        reservation_number: null,
-        room_total: "50.00",
-        status: "stayed",
-        tax_breakdown: [],
-        unit_id: "unit-1",
-        updated_at: new Date("2026-07-08T10:00:00.000Z"),
-      },
-      {
-        channel_commission: "2.50",
-        channel_commission_id: CHANNEL_ID,
-        channel_commission_rate: "0.10000",
-        channel_name: "Airbnb",
-        check_in: "2026-07-07",
-        check_out: "2026-07-08",
-        cleaning_fee: "0.00",
-        created_at: new Date("2026-07-07T10:00:00.000Z"),
-        deleted_at: null,
-        exclude_cleaning_from_commission_base: false,
-        exclude_resort_tax_from_payout: false,
-        gross_income: "25.00",
-        guest_name: "Guest C",
-        id: "33333333-3333-4333-8333-333333333333",
-        is_deleted: false,
-        net_income: "22.50",
-        nights: 1,
-        property_id: "prop-1",
-        refunded_at: null,
-        refunded_by: null,
-        reservation_number: null,
-        room_total: "25.00",
-        status: "stayed",
-        tax_breakdown: [],
-        unit_id: "unit-1",
-        updated_at: new Date("2026-07-07T10:00:00.000Z"),
-      },
-    ],
-  });
+const mockQuery = createPaginationMockQuery({
+  rows: buildDescendingReservationRows(),
 });
 
 mock.module("./pool", () => ({
@@ -122,9 +34,7 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
     expect(firstPage.meta).toEqual({ totalCount: 3 });
     expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("ORDER BY pr.check_in DESC, pr.created_at DESC, pr.id DESC");
     expect(sql).toContain("LIMIT $");
   });
@@ -181,9 +91,7 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
       { limit: 2 }
     );
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("pr.status = $");
   });
 
@@ -192,9 +100,7 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
 
     await propertyReservationsDb.listPaginatedByProperty("prop-1", { q: "alex" }, { limit: 2 });
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("pr.guest_name ILIKE");
     expect(sql).toContain("pcc.name ILIKE");
     expect(sql).toContain("pu.unit_number ILIKE");
@@ -209,14 +115,10 @@ describe("propertyReservationsDb.listPaginatedByProperty", () => {
       { limit: 2 }
     );
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
     expect(listSql).toContain("pr.refunded_at IS NOT NULL");
 
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const countSql = findCountQuerySql(mockQuery);
     expect(countSql).toContain("pr.refunded_at IS NOT NULL");
   });
 });

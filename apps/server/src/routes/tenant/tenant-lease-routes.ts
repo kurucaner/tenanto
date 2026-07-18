@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { type TenantJwtPayload } from "@/auth/tenant-jwt";
+import { isPortalInviteDomainError } from "@/errors/portal-invite-errors";
 import {
   HttpStatus,
   type ITenantInviteRedeemBody,
@@ -16,21 +17,14 @@ import {
   type TTenantLeaseListStatus,
 } from "@/packages/shared";
 import { parseUuidParam } from "@/routes/notification-query-utils";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   registerTenantWithInviteGoogle,
   registerTenantWithInvitePassword,
   type TTenantInviteSignupResult,
 } from "@/services/tenant-invite-signup-service";
-import { TenantLeaseAccessDeniedError } from "@/services/tenant-portal-access";
-import {
-  PortalInviteInvalidStateError,
-  PortalInviteNotFoundError,
-  tenantPortalInviteService,
-} from "@/services/tenant-portal-invite-service";
-import {
-  TenantMembershipNotFoundError,
-  tenantPortalMembershipService,
-} from "@/services/tenant-portal-membership-service";
+import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
+import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 
 function parseRedeemBody(body: unknown): ITenantInviteRedeemBody | null {
   if (body == null || typeof body !== "object") {
@@ -102,15 +96,8 @@ async function sendInviteSignupResult(
 }
 
 function mapMembershipError(error: unknown, reply: FastifyReply): FastifyReply | null {
-  if (
-    error instanceof PortalInviteNotFoundError ||
-    error instanceof TenantMembershipNotFoundError
-  ) {
-    return reply.status(HttpStatus.NOT_FOUND).send({ error: (error as Error).message });
-  }
-
-  if (error instanceof PortalInviteInvalidStateError) {
-    return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+  if (replyFromDomainError(reply, error)) {
+    return reply;
   }
 
   return null;
@@ -260,11 +247,8 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
         const lease = await tenantPortalMembershipService.getLeaseDetail(leaseId, tenantUserId);
         return reply.send(lease);
       } catch (error) {
-        if (error instanceof TenantLeaseAccessDeniedError) {
-          return reply.status(HttpStatus.FORBIDDEN).send({ error: error.message });
-        }
-        if (error instanceof TenantMembershipNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        if (replyFromDomainError(reply, error)) {
+          return reply;
         }
         throw error;
       }
@@ -283,11 +267,12 @@ export const tenantLeaseRoutes = async (server: FastifyInstance): Promise<void> 
         const preview = await tenantPortalInviteService.previewInvite(token);
         return reply.send(preview);
       } catch (error) {
-        if (
-          error instanceof PortalInviteNotFoundError ||
-          error instanceof PortalInviteInvalidStateError
-        ) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: (error as Error).message });
+        if (isPortalInviteDomainError(error)) {
+          return reply.status(HttpStatus.NOT_FOUND).send({
+            code: error.code,
+            error: error.message,
+            ...(error.body ?? {}),
+          });
         }
         throw error;
       }

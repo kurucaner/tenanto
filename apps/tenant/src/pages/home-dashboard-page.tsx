@@ -27,12 +27,12 @@ function formatUsdFromCents(cents: number, currency: string): string {
 
 function amountDueHint(totalDue: number, onlinePayAvailable: boolean): string {
   if (totalDue === 0) {
-    return "You’re all caught up.";
+    return "You&apos;re all caught up.";
   }
   if (onlinePayAvailable) {
     return "Pay online securely using the button above.";
   }
-  return "Online payments aren’t available for these leases yet. Open your lease for details.";
+  return "Online payments aren&apos;t available for these leases yet. Open your lease for details.";
 }
 
 function primaryDueCtaLabel(isStartingCheckout: boolean, onlinePayAvailable: boolean): string {

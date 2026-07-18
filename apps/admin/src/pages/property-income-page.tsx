@@ -94,6 +94,7 @@ import {
 } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   ExportResourceType,
@@ -367,7 +368,7 @@ function buildOtherIncomePrefillFromStay(
     guestName: stay.guestName,
     incomeLineTypeId: resolveDefaultIncomeLineTypeId(incomeLineTypes),
     reservationId: stay.id,
-    transactionDate: stay.checkOut,
+    transactionDate: getTodayLocalIsoDate(),
     unitId: stay.unitId,
   };
 }

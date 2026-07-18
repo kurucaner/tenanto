@@ -13,7 +13,15 @@ const ALLOWED_TRANSITIONS: Readonly<
   [TenantMembershipStatus.ACTIVE]: [TenantMembershipStatus.REVOKED, TenantMembershipStatus.ENDED],
   [TenantMembershipStatus.DECLINED]: [],
   [TenantMembershipStatus.ENDED]: [],
-  [TenantMembershipStatus.EXPIRED]: [],
+  [TenantMembershipStatus.EXPIRED]: [
+    TenantMembershipStatus.PENDING_ACCEPTANCE,
+    TenantMembershipStatus.PENDING_INVITE,
+  ],
+  [TenantMembershipStatus.LISTED]: [
+    TenantMembershipStatus.ENDED,
+    TenantMembershipStatus.PENDING_ACCEPTANCE,
+    TenantMembershipStatus.PENDING_INVITE,
+  ],
   [TenantMembershipStatus.PENDING_ACCEPTANCE]: [
     TenantMembershipStatus.ACTIVE,
     TenantMembershipStatus.DECLINED,
@@ -28,7 +36,10 @@ const ALLOWED_TRANSITIONS: Readonly<
     TenantMembershipStatus.REVOKED,
     TenantMembershipStatus.ENDED,
   ],
-  [TenantMembershipStatus.REVOKED]: [],
+  [TenantMembershipStatus.REVOKED]: [
+    TenantMembershipStatus.PENDING_ACCEPTANCE,
+    TenantMembershipStatus.PENDING_INVITE,
+  ],
 };
 
 export function isTerminalTenantMembershipStatus(status: TTenantMembershipStatus): boolean {

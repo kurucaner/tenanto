@@ -1,4 +1,11 @@
+import {
+  activeLongStayConflictError,
+  invalidExtendLeaseError,
+  longStayNotActiveError,
+  longStayNotFoundError,
+} from "@/errors/lease-errors";
 import { buildLeaseRentScheduleWithRollup } from "@/lib/build-lease-rent-schedule-with-rollup";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import type {
   ICreatePropertyLongStayBody,
   IEditPropertyLongStayTermsBody,
@@ -23,6 +30,7 @@ import {
 import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
+import { hydrateLongStaysSecondaryOccupantNames } from "@/services/hydrate-long-stays-secondary-occupant-names";
 
 import {
   mapPropertyIncomeLineRow,
@@ -76,9 +84,19 @@ function buildPropertyLongStayListParts(
       OR pls.tenant_email ILIKE $${p + 1}
       OR pu.unit_number ILIKE $${p + 2}
       OR EXISTS (
-        SELECT 1 FROM jsonb_array_elements(pls.secondary_tenants) AS st
-        WHERE st->>'name' ILIKE $${p + 3}
-           OR COALESCE(st->>'email', '') ILIKE $${p + 4}
+        SELECT 1 FROM lease_tenant_memberships ltm
+        WHERE ltm.lease_id = pls.id
+          AND ltm.role = 'secondary'::tenant_membership_role
+          AND ltm.status NOT IN (
+            'declined'::tenant_membership_status,
+            'revoked'::tenant_membership_status,
+            'ended'::tenant_membership_status,
+            'expired'::tenant_membership_status
+          )
+          AND (
+            ltm.display_name ILIKE $${p + 3}
+            OR ltm.invite_email ILIKE $${p + 4}
+          )
       )
     )`);
     values.push(pattern, pattern, pattern, pattern, pattern);
@@ -94,44 +112,11 @@ function ensureUnitJoin(joinUnits: string): string {
   return "LEFT JOIN property_units pu ON pu.id = pls.unit_id";
 }
 
-export class ActiveLongStayConflictError extends Error {
-  constructor() {
-    super("Unit already has an active lease");
-    this.name = "ActiveLongStayConflictError";
-  }
-}
-
-export class LongStayNotFoundError extends Error {
-  constructor() {
-    super("Long stay not found");
-    this.name = "LongStayNotFoundError";
-  }
-}
-
-export class LongStayNotActiveError extends Error {
-  constructor() {
-    super("Long stay is not active");
-    this.name = "LongStayNotActiveError";
-  }
-}
-
-export class InvalidExtendLeaseError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidExtendLeaseError";
-  }
-}
-
-function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
-
 export const propertyLongStaysDb = {
   async create(propertyId: string, input: ICreatePropertyLongStayBody): Promise<IPropertyLongStay> {
     const activeLease = await propertyLongStaysDb.findActiveByUnitId(input.unitId);
     if (activeLease) {
-      throw new ActiveLongStayConflictError();
+      throw activeLongStayConflictError();
     }
 
     const leaseEndDate = calculateLeaseEndDate(input.leaseStartDate, input.termMonths);
@@ -141,8 +126,8 @@ export const propertyLongStaysDb = {
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, monthly_rent,
-          lease_end_date, tenant_email, tenant_phone, status, secondary_tenants)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status, '[]'::jsonb)
+          lease_end_date, tenant_email, tenant_phone, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status)
        RETURNING *`,
       [
         propertyId,
@@ -173,9 +158,9 @@ export const propertyLongStaysDb = {
     if (result.rows.length === 0) {
       const existing = await propertyLongStaysDb.findById(id);
       if (!existing) {
-        throw new LongStayNotFoundError();
+        throw longStayNotFoundError();
       }
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
@@ -183,15 +168,15 @@ export const propertyLongStaysDb = {
   async extendLease(id: string, body: IExtendPropertyLongStayBody): Promise<IPropertyLongStay> {
     const existing = await propertyLongStaysDb.findById(id);
     if (!existing) {
-      throw new LongStayNotFoundError();
+      throw longStayNotFoundError();
     }
     if (existing.status !== PropertyLongStayStatus.ACTIVE) {
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
 
     const validationError = validateExtendLease(body, existing, getTodayUtcIsoDate());
     if (validationError) {
-      throw new InvalidExtendLeaseError(validationError);
+      throw invalidExtendLeaseError(validationError);
     }
 
     const newTermMonths = existing.termMonths + body.additionalTermMonths;
@@ -254,7 +239,7 @@ export const propertyLongStaysDb = {
       );
 
       if (result.rows.length === 0) {
-        throw new LongStayNotActiveError();
+        throw longStayNotActiveError();
       }
 
       await client.query("COMMIT");
@@ -320,7 +305,7 @@ export const propertyLongStaysDb = {
   ): Promise<IPropertyLongStayRentMonth[]> {
     const longStay = await propertyLongStaysDb.findById(longStayId);
     if (!longStay) {
-      throw new LongStayNotFoundError();
+      throw longStayNotFoundError();
     }
 
     const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
@@ -495,8 +480,12 @@ export const propertyLongStaysDb = {
       })
     );
 
+    const longStays = await hydrateLongStaysSecondaryOccupantNames(
+      pageRows.map((row) => mapPropertyLongStayRow(row))
+    );
+
     return {
-      longStays: pageRows.map((row) => mapPropertyLongStayRow(row)),
+      longStays,
       nextCursor,
     };
   },
@@ -531,10 +520,6 @@ export const propertyLongStaysDb = {
       setClauses.push(`tenant_phone = $${paramIndex++}`);
       values.push(patch.tenantPhone?.trim() || null);
     }
-    if (patch.secondaryTenants !== undefined) {
-      setClauses.push(`secondary_tenants = $${paramIndex++}::jsonb`);
-      values.push(JSON.stringify(patch.secondaryTenants));
-    }
 
     values.push(PropertyLongStayStatus.ACTIVE);
     const statusParamIndex = paramIndex;
@@ -550,9 +535,9 @@ export const propertyLongStaysDb = {
     if (result.rows.length === 0) {
       const existing = await propertyLongStaysDb.findById(id);
       if (!existing) {
-        throw new LongStayNotFoundError();
+        throw longStayNotFoundError();
       }
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
   },
@@ -560,10 +545,10 @@ export const propertyLongStaysDb = {
   async updateTerms(id: string, body: IEditPropertyLongStayTermsBody): Promise<IPropertyLongStay> {
     const existing = await propertyLongStaysDb.findById(id);
     if (!existing) {
-      throw new LongStayNotFoundError();
+      throw longStayNotFoundError();
     }
     if (existing.status !== PropertyLongStayStatus.ACTIVE) {
-      throw new LongStayNotActiveError();
+      throw longStayNotActiveError();
     }
 
     const scheduleChanged =
@@ -571,7 +556,7 @@ export const propertyLongStaysDb = {
     if (scheduleChanged) {
       const activeOnUnit = await propertyLongStaysDb.findActiveByUnitId(existing.unitId);
       if (activeOnUnit && activeOnUnit.id !== id) {
-        throw new ActiveLongStayConflictError();
+        throw activeLongStayConflictError();
       }
     }
 
@@ -620,7 +605,7 @@ export const propertyLongStaysDb = {
       );
 
       if (result.rows.length === 0) {
-        throw new LongStayNotActiveError();
+        throw longStayNotActiveError();
       }
 
       await client.query("COMMIT");

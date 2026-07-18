@@ -146,7 +146,7 @@ export const tenantAuthRoutes = async (server: FastifyInstance): Promise<void> =
         return reply.status(HttpStatus.UNAUTHORIZED).send({ error: "Unauthorized" });
       }
       const result = await startTenantPhoneBind({
-        body: request.body ?? { phone: "" },
+        body: request.body ?? { phone: "", smsConsent: false },
         ip: request.ip,
         tenantUserId,
       });

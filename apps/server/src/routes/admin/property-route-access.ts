@@ -4,6 +4,8 @@ import { propertiesDb } from "@/db/properties";
 import { propertyMembersDb } from "@/db/property-members";
 import { HttpStatus, PropertyRole, UserType } from "@/packages/shared";
 
+import { getAuthenticatedRequestParams, parsePropertyIdParam, type TAuthenticatedRequest } from "./property-route-params";
+
 const UNIT_MANAGE_ROLES = new Set<string>([PropertyRole.OWNER, PropertyRole.MANAGER]);
 const LEDGER_WRITE_ROLES = new Set<string>([PropertyRole.OWNER, PropertyRole.MANAGER]);
 
@@ -29,6 +31,24 @@ export async function assertPropertyMemberAccess(
     }
   }
   return true;
+}
+
+export async function requirePropertyMemberAccess(
+  request: TAuthenticatedRequest,
+  reply: FastifyReply
+): Promise<string | null> {
+  const propertyId = parsePropertyIdParam(getAuthenticatedRequestParams(request).propertyId, reply);
+  if (propertyId === null) return null;
+
+  const hasAccess = await assertPropertyMemberAccess(
+    propertyId,
+    request.user.userId,
+    request.user.userType,
+    reply
+  );
+  if (!hasAccess) return null;
+
+  return propertyId;
 }
 
 export async function assertPropertyStructureAccess(

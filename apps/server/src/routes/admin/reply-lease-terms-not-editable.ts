@@ -1,14 +1,11 @@
 import type { FastifyReply } from "fastify";
 
-import { HttpStatus } from "@/packages/shared";
-import { type LeaseTermsNotEditableError } from "@/services/lease-terms-edit-service";
+import { type DomainError } from "@/lib/domain-error";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 
-export function replyLeaseTermsNotEditable(
-  reply: FastifyReply,
-  error: LeaseTermsNotEditableError
-): void {
-  void reply.status(HttpStatus.CONFLICT).send({
-    error: error.message,
-    reason: error.reason,
-  });
+export function replyLeaseTermsNotEditable(reply: FastifyReply, error: DomainError): FastifyReply {
+  if (replyFromDomainError(reply, error)) {
+    return reply;
+  }
+  throw error;
 }

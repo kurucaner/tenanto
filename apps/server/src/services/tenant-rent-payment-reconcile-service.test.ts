@@ -2,16 +2,23 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
+import { makePayment } from "@/test-fixtures/domain";
+import {
+  mockResolved,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockListReconcileCandidatesSince = mock(() => Promise.resolve([] as ITenantRentPayment[]));
-const mockFindById = mock(() => Promise.resolve(null as ITenantRentPayment | null));
-const mockMarkSucceeded = mock(() => Promise.resolve(null as unknown));
-const mockMarkCanceled = mock(() => Promise.resolve(null as unknown));
-const mockRetrievePi = mock(() => Promise.resolve({ id: "pi_1", status: "succeeded" }));
-const mockListPi = mock(() => Promise.resolve({ data: [] as unknown[] }));
+const mockListReconcileCandidatesSince = mockResolvedEmpty<ITenantRentPayment>();
+const mockFindById = mockResolvedNull<ITenantRentPayment>();
+const mockMarkSucceeded = mockResolvedNull<unknown>();
+const mockMarkCanceled = mockResolvedNull<unknown>();
+const mockRetrievePi = mockResolved({ id: "pi_1", status: "succeeded" });
+const mockListPi = mockResolved({ data: [] as unknown[] });
 const mockIsStripeConfigured = mock(() => true);
-const mockWinstonInfo = mock(() => undefined);
-const mockWinstonWarn = mock(() => undefined);
+const mockWinstonInfo = mockSyncVoid();
+const mockWinstonWarn = mockSyncVoid();
 
 mock.module("@/db/tenant-rent-payments", () => ({
   tenantRentPaymentsDb: {
@@ -42,7 +49,7 @@ mock.module("@/stripe/stripe-client", () => ({
 
 mock.module("@/services/winston", () => ({
   WinstonLogger: {
-    error: mock(() => undefined),
+    error: mockSyncVoid(),
     info: mockWinstonInfo,
     warn: mockWinstonWarn,
   },
@@ -50,24 +57,6 @@ mock.module("@/services/winston", () => ({
 
 const { reconcileTenantRentPayments } = await import("./tenant-rent-payment-reconcile-service");
 
-function makePayment(overrides: Partial<ITenantRentPayment> = {}): ITenantRentPayment {
-  return {
-    amountCents: 100_00,
-    connectedAccountId: "acct_1",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    currency: "usd",
-    id: "payment-1",
-    idempotencyKey: "key-1",
-    leaseId: "lease-1",
-    propertyId: "property-1",
-    status: TenantRentPaymentStatus.PENDING,
-    stripeCheckoutSessionId: "cs_1",
-    stripePaymentIntentId: "pi_1",
-    tenantUserId: "tenant-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("reconcileTenantRentPayments", () => {
   const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
@@ -117,7 +106,7 @@ describe("reconcileTenantRentPayments", () => {
   });
 
   test("recovers local open payment when Stripe PaymentIntent succeeded", async () => {
-    const payment = makePayment();
+    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" });
     mockListReconcileCandidatesSince.mockResolvedValueOnce([payment]);
     mockRetrievePi.mockResolvedValueOnce({ id: "pi_1", status: "succeeded" });
     mockFindById.mockResolvedValue(payment);

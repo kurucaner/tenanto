@@ -23,7 +23,10 @@ import {
   type ICreatePropertyLongStayResponse,
   type ICreatePropertyReservationBody,
   type ICreatePropertyUnitBody,
+  type ICreateSecondaryOccupantBody,
+  type ICreateSecondaryOccupantResponse,
   type ICreateTenantEmailCampaignBody,
+  type IDeleteSecondaryOccupantResponse,
   type IEditPropertyLongStayTermsBody,
   type IEditPropertyLongStayTermsResponse,
   type IEndPropertyLongStayBody,
@@ -70,6 +73,7 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyShortStaysListResponse,
+  type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   type IPropertyUnit,
@@ -100,6 +104,8 @@ import {
   type IUpdatePropertyReservationBody,
   type IUpdatePropertySettingsBody,
   type IUpdatePropertyUnitBody,
+  type IUpdateSecondaryOccupantBody,
+  type IUpdateSecondaryOccupantResponse,
   type IUser,
   type IUserNotification,
   type IUserNotificationsListQuery,
@@ -564,6 +570,22 @@ export const longStaysApi = {
       { body: JSON.stringify(body), method: "POST" }
     ),
 
+  createSecondaryOccupant: (
+    propertyId: string,
+    longStayId: string,
+    body: ICreateSecondaryOccupantBody
+  ) =>
+    authenticatedRequest<ICreateSecondaryOccupantResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/secondary-occupants`,
+      { body: JSON.stringify(body), method: "POST" }
+    ),
+
+  deleteSecondaryOccupant: (propertyId: string, longStayId: string, membershipId: string) =>
+    authenticatedRequest<IDeleteSecondaryOccupantResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/secondary-occupants/${encodeURIComponent(membershipId)}`,
+      { method: "DELETE", omitDefaultContentType: true }
+    ),
+
   end: (propertyId: string, longStayId: string, body: IEndPropertyLongStayBody) =>
     authenticatedRequest<{ longStay: IPropertyLongStay }>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/end`,
@@ -602,6 +624,17 @@ export const longStaysApi = {
   update: (propertyId: string, longStayId: string, body: IUpdatePropertyLongStayBody) =>
     authenticatedRequest<{ longStay: IPropertyLongStay }>(
       `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}`,
+      { body: JSON.stringify(body), method: "PATCH" }
+    ),
+
+  updateSecondaryOccupant: (
+    propertyId: string,
+    longStayId: string,
+    membershipId: string,
+    body: IUpdateSecondaryOccupantBody
+  ) =>
+    authenticatedRequest<IUpdateSecondaryOccupantResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/long-stays/${encodeURIComponent(longStayId)}/secondary-occupants/${encodeURIComponent(membershipId)}`,
       { body: JSON.stringify(body), method: "PATCH" }
     ),
 
@@ -730,13 +763,26 @@ export const settingsApi = {
 };
 
 export const propertyStripeConnectApi = {
-  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+  createExpressOnboardingLink: (
+    propertyId: string,
+    body?: { refreshUrl?: string; returnUrl?: string }
+  ) =>
     authenticatedRequest<IPropertyStripeConnectOnboardingLinkResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/onboarding-link`,
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/express/onboarding-link`,
       {
         body: JSON.stringify(body ?? {}),
         method: "POST",
       }
+    ),
+
+  /** @deprecated Use createExpressOnboardingLink */
+  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+    propertyStripeConnectApi.createExpressOnboardingLink(propertyId, body),
+
+  createStandardOAuthAuthorizeUrl: (propertyId: string) =>
+    authenticatedRequest<IPropertyStripeConnectAuthorizeUrlResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/oauth/authorize-url`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   getStatus: (propertyId: string) =>

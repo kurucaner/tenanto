@@ -1,46 +1,57 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { CreateLeaseTenantMembershipInput } from "@/db/lease-tenant-memberships";
+import { duplicatePortalInviteError, PortalInviteErrorCode } from "@/errors/portal-invite-errors";
 import type {
+  ILeaseSecondaryTenantContact,
   ILeaseTenantMembership,
   IProperty,
   IPropertyLongStay,
   IPropertyUnit,
   ITenantUser,
 } from "@/packages/shared";
-import {
-  PropertyLongStayStatus,
-  TenantMembershipRole,
-  TenantMembershipStatus,
-  UnitRentalType,
-} from "@/packages/shared";
+import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
+import { makeLease, makeMembership, makeProperty, makeUnit } from "@/test-fixtures/domain";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockFindByIdLease = mock(() => Promise.resolve(null as IPropertyLongStay | null));
-const mockFindByIdProperty = mock(() => Promise.resolve(null as IProperty | null));
-const mockFindByIdUnit = mock(() => Promise.resolve(null as IPropertyUnit | null));
-const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockFindByTokenHash = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockFindByIdMembership = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockCreateMembership = mock(
+const mockFindByIdLease = mockResolvedNull<IPropertyLongStay>();
+const mockFindByIdProperty = mockResolvedNull<IProperty>();
+const mockFindByIdUnit = mockResolvedNull<IPropertyUnit>();
+const mockFindByEmail = mockResolvedNull<ITenantUser>();
+const mockFindByTokenHash = mockResolvedNull<ILeaseTenantMembership>();
+const mockFindByIdMembership = mockResolvedNull<ILeaseTenantMembership>();
+const mockCreateMembership = mockAsyncFn(
   (_input: CreateLeaseTenantMembershipInput): Promise<ILeaseTenantMembership> =>
-    Promise.resolve(makeMembership())
+    Promise.resolve(makeMembership({ expiresAt: "2026-02-01T00:00:00.000Z" }))
 );
-const mockTransitionStatus = mock(
+const mockTransitionStatus = mockAsyncFn(
   (_id: string, _status: string): Promise<ILeaseTenantMembership | null> => Promise.resolve(null)
 );
-const mockUpdateInviteToken = mock(
+const mockUpdateInviteToken = mockAsyncFn(
   (_id: string, _hash: string): Promise<ILeaseTenantMembership | null> => Promise.resolve(null)
 );
-const mockExpireMembershipIfPastTtl = mock(() =>
-  Promise.resolve(null as ILeaseTenantMembership | null)
+const mockLinkTenantUser = mockAsyncFn(
+  (_id: string, _tenantUserId: string): Promise<ILeaseTenantMembership | null> =>
+    Promise.resolve(null)
 );
-const mockExpirePendingPortalInvites = mock(() => Promise.resolve(0));
-const mockSendNewEmail = mock(() => Promise.resolve(true));
-const mockSendExistingEmail = mock(() => Promise.resolve(true));
-const mockWinstonError = mock(() => {});
+const mockResolveSecondaryContacts = mockAsyncFn(
+  (): Promise<ILeaseSecondaryTenantContact[]> => Promise.resolve([])
+);
+const mockExpireMembershipIfPastTtl = mockResolvedNull<ILeaseTenantMembership>();
+const mockExpirePendingPortalInvites = mockResolved(0);
+const mockSendNewEmail = mockResolved(true);
+const mockSendExistingEmail = mockResolved(true);
+const mockWinstonError = mockSyncVoid();
 
 mock.module("@/db/property-long-stays", () => ({
+  LongStayNotActiveError: class LongStayNotActiveError extends Error {},
   propertyLongStaysDb: { findById: mockFindByIdLease },
 }));
 
@@ -57,23 +68,26 @@ mock.module("@/db/tenant-users", () => ({
 }));
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
-    membership: ILeaseTenantMembership;
-    constructor(membership: ILeaseTenantMembership) {
-      super("A pending portal invite already exists for this lease occupant");
-      this.name = "DuplicatePortalInviteError";
-      this.membership = membership;
-    }
-  },
+  InvalidTenantMembershipTransitionError: class InvalidTenantMembershipTransitionError extends Error {},
   leaseTenantMembershipsDb: {
     create: mockCreateMembership,
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
     expirePendingPortalInvites: mockExpirePendingPortalInvites,
     findById: mockFindByIdMembership,
     findByInviteToken: mockFindByTokenHash,
+    linkTenantUser: mockLinkTenantUser,
     transitionStatus: mockTransitionStatus,
     updateInviteToken: mockUpdateInviteToken,
   },
+  loadPrimaryMembershipForLease: mockResolvedNull(),
+  loadSecondaryMembershipsForLease: mockResolvedEmpty(),
+  MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
+  SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
+}));
+
+mock.module("@/services/resolve-secondary-tenant-contacts-service", () => ({
+  buildSecondaryOccupantMutationResponse: mockResolvedNull(),
+  resolveSecondaryTenantContactsForLongStay: mockResolveSecondaryContacts,
 }));
 
 mock.module("@/ses/transactional-emails", () => ({
@@ -85,89 +99,16 @@ mock.module("@/ses/transactional-emails", () => ({
 mock.module("./winston", () => ({
   WinstonLogger: {
     error: mockWinstonError,
-    info: mock(() => {}),
-    warn: mock(() => {}),
+    info: mockSyncVoid(),
+    warn: mockSyncVoid(),
   },
 }));
 
-const { DuplicatePortalInviteError, tenantPortalInviteService } =
-  await import("./tenant-portal-invite-service");
+const { tenantPortalInviteService } = await import("./tenant-portal-invite-service");
 
-function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
-  return {
-    acceptedAt: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    displayName: "Jane Tenant",
-    endedAt: null,
-    expiresAt: "2026-02-01T00:00:00.000Z",
-    id: "membership-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    inviteEmail: "jane@example.com",
-    leaseId: "lease-1",
-    revokedAt: null,
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.PENDING_INVITE,
-    tenantUserId: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
-  return {
-    actualEndDate: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    guestName: "Jane Tenant",
-    id: "lease-1",
-    leaseEndDate: "2026-12-31",
-    leaseStartDate: "2026-01-01",
-    monthlyRent: 1500,
-    propertyId: "property-1",
-    secondaryTenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenantEmail: "jane@example.com",
-    tenantPhone: null,
-    termMonths: 12,
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeProperty(overrides: Partial<IProperty> = {}): IProperty {
-  return {
-    address: "123 Main",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    createdBy: "operator-1",
-    favoritedAt: null,
-    id: "property-1",
-    isFavorite: false,
-    legalName: null,
-    memberCount: 1,
-    name: "Oak Apartments",
-    phoneNumber: null,
-    unitCount: 1,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
-function makeUnit(overrides: Partial<IPropertyUnit> = {}): IPropertyUnit {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
-    id: "unit-1",
-    isDeleted: false,
-    layout: "1BR",
-    propertyId: "property-1",
-    rentalType: UnitRentalType.LONG_TERM,
-    unitNumber: "101",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("tenantPortalInviteService.createInvites", () => {
   const originalTenantAppUrl = process.env.TENANT_APP_URL;
@@ -183,6 +124,8 @@ describe("tenantPortalInviteService.createInvites", () => {
     mockCreateMembership.mockReset();
     mockTransitionStatus.mockReset();
     mockUpdateInviteToken.mockReset();
+    mockLinkTenantUser.mockReset();
+    mockResolveSecondaryContacts.mockReset();
     mockExpireMembershipIfPastTtl.mockReset();
     mockExpirePendingPortalInvites.mockReset();
     mockSendNewEmail.mockReset();
@@ -241,6 +184,8 @@ describe("tenantPortalInviteService.createInvites", () => {
       name: "Jane Tenant",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -265,7 +210,7 @@ describe("tenantPortalInviteService.createInvites", () => {
   test("rejects duplicate pending invite (409 path)", async () => {
     const existing = makeMembership({ status: TenantMembershipStatus.PENDING_INVITE });
     mockCreateMembership.mockImplementation(async () => {
-      throw new DuplicatePortalInviteError(existing);
+      throw duplicatePortalInviteError(existing);
     });
 
     await expect(
@@ -275,7 +220,197 @@ describe("tenantPortalInviteService.createInvites", () => {
         leaseId: "lease-1",
         propertyId: "property-1",
       })
-    ).rejects.toBeInstanceOf(DuplicatePortalInviteError);
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.DUPLICATE });
+  });
+
+  test("transitions listed secondary membership to pending_invite without inserting", async () => {
+    const listedSecondary = makeMembership({
+      displayName: "Alex Secondary",
+      id: "secondary-1",
+      inviteEmail: "alex@example.com",
+      role: TenantMembershipRole.SECONDARY,
+      status: TenantMembershipStatus.LISTED,
+    });
+    mockFindByIdMembership.mockResolvedValue(listedSecondary);
+    mockTransitionStatus.mockImplementation(async (_id, status) =>
+      makeMembership({
+        ...listedSecondary,
+        status: status as ILeaseTenantMembership["status"],
+      })
+    );
+    mockUpdateInviteToken.mockImplementation(async (id) =>
+      makeMembership({
+        ...listedSecondary,
+        id,
+        status: TenantMembershipStatus.PENDING_INVITE,
+      })
+    );
+
+    const results = await tenantPortalInviteService.createInvites({
+      invitedBy: "operator-1",
+      leaseId: "lease-1",
+      propertyId: "property-1",
+      secondaryMembershipIds: ["secondary-1"],
+    });
+
+    expect(results).toHaveLength(1);
+    expect(mockCreateMembership).not.toHaveBeenCalled();
+    expect(mockTransitionStatus).toHaveBeenCalledWith(
+      "secondary-1",
+      TenantMembershipStatus.PENDING_INVITE
+    );
+    expect(mockUpdateInviteToken).toHaveBeenCalledTimes(1);
+    expect(mockSendNewEmail).toHaveBeenCalledTimes(1);
+    expect(results[0]?.membership.status).toBe(TenantMembershipStatus.PENDING_INVITE);
+  });
+
+  test("transitions listed secondary to pending_acceptance and links tenant user when account exists", async () => {
+    const listedSecondary = makeMembership({
+      displayName: "Alex Secondary",
+      id: "secondary-1",
+      inviteEmail: "alex@example.com",
+      role: TenantMembershipRole.SECONDARY,
+      status: TenantMembershipStatus.LISTED,
+    });
+    mockFindByEmail.mockResolvedValue({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      email: "alex@example.com",
+      emailVerifiedAt: "2026-01-01T00:00:00.000Z",
+      id: "tenant-2",
+      name: "Alex Secondary",
+      phone: null,
+      phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    mockFindByIdMembership.mockResolvedValue(listedSecondary);
+    mockTransitionStatus.mockImplementation(async (_id, status) =>
+      makeMembership({
+        ...listedSecondary,
+        status: status as ILeaseTenantMembership["status"],
+      })
+    );
+    mockLinkTenantUser.mockImplementation(async (id, tenantUserId) =>
+      makeMembership({
+        ...listedSecondary,
+        id,
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId,
+      })
+    );
+    mockUpdateInviteToken.mockImplementation(async (id) =>
+      makeMembership({
+        ...listedSecondary,
+        id,
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-2",
+      })
+    );
+
+    await tenantPortalInviteService.createInvites({
+      invitedBy: "operator-1",
+      leaseId: "lease-1",
+      propertyId: "property-1",
+      secondaryMembershipIds: ["secondary-1"],
+    });
+
+    expect(mockTransitionStatus).toHaveBeenCalledWith(
+      "secondary-1",
+      TenantMembershipStatus.PENDING_ACCEPTANCE
+    );
+    expect(mockLinkTenantUser).toHaveBeenCalledWith("secondary-1", "tenant-2");
+    expect(mockSendExistingEmail).toHaveBeenCalledTimes(1);
+  });
+
+  test("rejects duplicate pending secondary invite", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        id: "secondary-1",
+        role: TenantMembershipRole.SECONDARY,
+        status: TenantMembershipStatus.PENDING_INVITE,
+      })
+    );
+
+    await expect(
+      tenantPortalInviteService.createInvites({
+        invitedBy: "operator-1",
+        leaseId: "lease-1",
+        propertyId: "property-1",
+        secondaryMembershipIds: ["secondary-1"],
+      })
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.DUPLICATE });
+    expect(mockCreateMembership).not.toHaveBeenCalled();
+    expect(mockTransitionStatus).not.toHaveBeenCalled();
+  });
+
+  test("returns not found when secondary membership belongs to another lease", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        id: "secondary-1",
+        leaseId: "other-lease",
+        role: TenantMembershipRole.SECONDARY,
+        status: TenantMembershipStatus.LISTED,
+      })
+    );
+
+    await expect(
+      tenantPortalInviteService.createInvites({
+        invitedBy: "operator-1",
+        leaseId: "lease-1",
+        propertyId: "property-1",
+        secondaryMembershipIds: ["secondary-1"],
+      })
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.LEASE_MISMATCH });
+  });
+
+  test("deprecated secondaryIndexes path transitions existing membership without insert", async () => {
+    const listedSecondary = makeMembership({
+      displayName: "Alex Secondary",
+      id: "secondary-1",
+      inviteEmail: "alex@example.com",
+      role: TenantMembershipRole.SECONDARY,
+      status: TenantMembershipStatus.LISTED,
+    });
+    mockResolveSecondaryContacts.mockResolvedValue([
+      {
+        effectiveEmail: "alex@example.com",
+        effectiveName: "Alex Secondary",
+        effectivePhone: null,
+        membershipId: "secondary-1",
+        source: "membership_listed",
+        status: TenantMembershipStatus.LISTED,
+        tenantUserId: null,
+      },
+    ]);
+    mockFindByIdMembership.mockResolvedValue(listedSecondary);
+    mockTransitionStatus.mockImplementation(async (_id, status) =>
+      makeMembership({
+        ...listedSecondary,
+        status: status as ILeaseTenantMembership["status"],
+      })
+    );
+    mockUpdateInviteToken.mockImplementation(async (id) =>
+      makeMembership({
+        ...listedSecondary,
+        id,
+        status: TenantMembershipStatus.PENDING_INVITE,
+      })
+    );
+
+    await tenantPortalInviteService.createInvites({
+      invitedBy: "operator-1",
+      leaseId: "lease-1",
+      propertyId: "property-1",
+      secondaryIndexes: [0],
+    });
+
+    expect(mockResolveSecondaryContacts).toHaveBeenCalledTimes(1);
+    expect(mockCreateMembership).not.toHaveBeenCalled();
+    expect(mockTransitionStatus).toHaveBeenCalledWith(
+      "secondary-1",
+      TenantMembershipStatus.PENDING_INVITE
+    );
   });
 });
 

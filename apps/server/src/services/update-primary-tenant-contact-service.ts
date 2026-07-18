@@ -4,6 +4,7 @@ import {
 } from "@/db/lease-tenant-memberships";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { tenantUsersDb } from "@/db/tenant-users";
+import { linkedTenantContactError } from "@/errors/lease-errors";
 import {
   type ILeaseTenantMembership,
   type IPropertyLongStay,
@@ -21,13 +22,6 @@ export const LINKED_TENANT_EMAIL_CHANGE_MESSAGE =
 
 export const LINKED_TENANT_VERIFIED_PHONE_CHANGE_MESSAGE =
   "Cannot change a verified tenant phone from the lease. The tenant can update their phone in the portal.";
-
-export class LinkedTenantContactError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LinkedTenantContactError";
-  }
-}
 
 export type TPrimaryTenantContactPatch = Pick<
   IUpdatePropertyLongStayBody,
@@ -63,7 +57,7 @@ function assertLinkedEmailUnchanged(patch: TPrimaryTenantContactPatch, tenantEma
   const currentEmail = normalizeTenantEmail(tenantEmail);
   const normalizedNext = nextEmail ? normalizeTenantEmail(nextEmail) : null;
   if (normalizedNext !== currentEmail) {
-    throw new LinkedTenantContactError(LINKED_TENANT_EMAIL_CHANGE_MESSAGE);
+    throw linkedTenantContactError(LINKED_TENANT_EMAIL_CHANGE_MESSAGE);
   }
 }
 
@@ -79,7 +73,7 @@ function assertVerifiedPhoneUnchanged(
   const nextPhone = normalizeNullablePhone(patch.tenantPhone);
   const currentPhone = normalizeNullablePhone(tenantPhone);
   if (nextPhone !== currentPhone) {
-    throw new LinkedTenantContactError(LINKED_TENANT_VERIFIED_PHONE_CHANGE_MESSAGE);
+    throw linkedTenantContactError(LINKED_TENANT_VERIFIED_PHONE_CHANGE_MESSAGE);
   }
 }
 

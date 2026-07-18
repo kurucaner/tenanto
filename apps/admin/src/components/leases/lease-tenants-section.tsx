@@ -28,18 +28,21 @@ import {
 } from "@/lib/lease-portal-access-display";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  getSecondaryPortalActingMembershipId,
+  resolveSecondaryPortalMembershipForContact,
+} from "@/lib/resolve-secondary-tenant-contacts-for-display";
+import {
   type ILeasePrimaryTenantContact,
+  type ILeaseSecondaryTenantContact,
   type IPropertyLongStay,
-  type IPropertyLongStaySecondaryTenant,
+  MAX_SECONDARY_OCCUPANTS,
   PropertyLongStayStatus,
   TenantMembershipRole,
 } from "@/packages/shared";
 
-const MAX_SECONDARY_TENANTS = 10;
-
 type TLeaseSecondaryTenantDeleteTarget = {
-  index: number;
-  tenant: IPropertyLongStaySecondaryTenant;
+  contact: ILeaseSecondaryTenantContact;
+  membershipId: string;
 };
 
 type TLeasePortalRevokeTarget = {
@@ -53,16 +56,23 @@ interface LeaseTenantsSectionProps {
   lease: IPropertyLongStay;
   primaryTenantContact: ILeasePrimaryTenantContact;
   propertyId: string;
+  secondaryTenantContacts: ILeaseSecondaryTenantContact[];
 }
 
 export const LeaseTenantsSection = memo(
-  ({ canManage, lease, primaryTenantContact, propertyId }: LeaseTenantsSectionProps) => {
+  ({
+    canManage,
+    lease,
+    primaryTenantContact,
+    propertyId,
+    secondaryTenantContacts,
+  }: LeaseTenantsSectionProps) => {
     const queryClient = useQueryClient();
     const [addSecondaryOpen, setAddSecondaryOpen] = useState(false);
     const [editPrimaryOpen, setEditPrimaryOpen] = useState(false);
     const [editingSecondary, setEditingSecondary] = useState<{
-      index: number;
-      tenant: IPropertyLongStaySecondaryTenant;
+      contact: ILeaseSecondaryTenantContact;
+      membershipId: string;
     } | null>(null);
     const [actingAction, setActingAction] = useState<TLeasePortalRowAction | null>(null);
     const [actingTarget, setActingTarget] = useState<TLeasePortalActingTarget | null>(null);
@@ -106,8 +116,11 @@ export const LeaseTenantsSection = memo(
     );
 
     const inviteMutation = useMutation({
-      mutationFn: (body: { invitePrimary?: boolean; secondaryIndexes?: number[] }) =>
-        longStayPortalApi.createInvites(propertyId, lease.id, body),
+      mutationFn: (body: {
+        invitePrimary?: boolean;
+        secondaryIndexes?: number[];
+        secondaryMembershipIds?: string[];
+      }) => longStayPortalApi.createInvites(propertyId, lease.id, body),
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to send portal invite");
       },
@@ -151,7 +164,11 @@ export const LeaseTenantsSection = memo(
       async (
         action: TLeasePortalRowAction,
         membershipId: string | null,
-        body: { invitePrimary?: boolean; secondaryIndexes?: number[] },
+        body: {
+          invitePrimary?: boolean;
+          secondaryIndexes?: number[];
+          secondaryMembershipIds?: string[];
+        },
         target: TLeasePortalActingTarget
       ) => {
         setActingAction(action);
@@ -187,18 +204,18 @@ export const LeaseTenantsSection = memo(
       Boolean(lease.tenantEmail?.trim())
     );
 
-    const inviteAllTargets = getLeasePortalInviteAllTargets(lease, memberships);
+    const inviteAllTargets = getLeasePortalInviteAllTargets(
+      lease,
+      memberships,
+      secondaryTenantContacts
+    );
     const canInviteAll =
       canEditTenants &&
-      (inviteAllTargets.invitePrimary || inviteAllTargets.secondaryIndexes.length > 0);
+      (inviteAllTargets.invitePrimary || inviteAllTargets.secondaryMembershipIds.length > 0);
 
     const removeMutation = useMutation({
-      mutationFn: (tenantIndex: number) => {
-        const nextTenants = lease.secondaryTenants.filter((_, index) => index !== tenantIndex);
-        return longStaysApi.update(propertyId, lease.id, {
-          secondaryTenants: nextTenants,
-        });
-      },
+      mutationFn: (membershipId: string) =>
+        longStaysApi.deleteSecondaryOccupant(propertyId, lease.id, membershipId),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to remove secondary tenant");
       },
@@ -211,7 +228,7 @@ export const LeaseTenantsSection = memo(
 
     const deleteFn = useCallback(
       (target: TLeaseSecondaryTenantDeleteTarget, onDeleted?: () => void) => {
-        removeMutation.mutate(target.index, { onSuccess: onDeleted });
+        removeMutation.mutate(target.membershipId, { onSuccess: onDeleted });
       },
       [removeMutation]
     );
@@ -219,7 +236,7 @@ export const LeaseTenantsSection = memo(
     const getConfirmationOptions = useCallback(
       (target: TLeaseSecondaryTenantDeleteTarget) => ({
         confirmLabel: "Remove",
-        description: `Remove "${target.tenant.name}" from this lease?`,
+        description: `Remove "${target.contact.effectiveName}" from this lease?`,
         target,
         title: "Remove secondary tenant",
       }),
@@ -287,81 +304,94 @@ export const LeaseTenantsSection = memo(
       setEditPrimaryOpen(true);
     }, []);
 
-    const findSecondaryMembership = useCallback(
-      (index: number) => {
-        const tenant = lease.secondaryTenants[index];
-        if (!tenant) {
-          return { membership: null, tenant: null };
-        }
-        return {
-          membership: findLeasePortalMembership(
-            memberships,
-            TenantMembershipRole.SECONDARY,
-            tenant.email
-          ),
-          tenant,
-        };
-      },
-      [lease.secondaryTenants, memberships]
+    const findSecondaryContact = useCallback(
+      (index: number) => secondaryTenantContacts[index] ?? null,
+      [secondaryTenantContacts]
     );
 
     const handleInviteSecondary = useCallback(
-      (index: number) => {
-        const { membership } = findSecondaryMembership(index);
+      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+        if (!contact.membershipId) {
+          return;
+        }
+
+        const portalMembershipId =
+          resolveSecondaryPortalMembershipForContact(contact, memberships)?.id ??
+          contact.membershipId;
+
         void runPortalAction(
           "invite",
-          membership?.id ?? null,
-          {
-            secondaryIndexes: [index],
-          },
-          { index, kind: "secondary" }
+          portalMembershipId,
+          { secondaryMembershipIds: [contact.membershipId] },
+          { kind: "secondary", membershipId: contact.membershipId }
         );
       },
-      [findSecondaryMembership, runPortalAction]
+      [memberships, runPortalAction]
     );
 
     const handleResendSecondary = useCallback(
-      (index: number) => {
-        const { membership } = findSecondaryMembership(index);
-        void runPortalAction("resend", membership?.id ?? null, {}, { index, kind: "secondary" });
+      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+        if (!contact.membershipId) {
+          return;
+        }
+
+        const portalMembershipId = resolveSecondaryPortalMembershipForContact(
+          contact,
+          memberships
+        )?.id;
+        if (!portalMembershipId) {
+          return;
+        }
+
+        void runPortalAction(
+          "resend",
+          portalMembershipId,
+          {},
+          { kind: "secondary", membershipId: contact.membershipId }
+        );
       },
-      [findSecondaryMembership, runPortalAction]
+      [memberships, runPortalAction]
     );
 
     const handleRevokeSecondary = useCallback(
-      (index: number) => {
-        const { membership, tenant } = findSecondaryMembership(index);
-        if (!tenant) {
+      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+        if (!contact.membershipId) {
           return;
         }
-        requestRevokeConfirmation(membership?.id, tenant.name, {
-          index,
+
+        const portalMembership = resolveSecondaryPortalMembershipForContact(contact, memberships);
+        if (!portalMembership) {
+          return;
+        }
+
+        requestRevokeConfirmation(portalMembership.id, contact.effectiveName, {
           kind: "secondary",
+          membershipId: contact.membershipId,
         });
       },
-      [findSecondaryMembership, requestRevokeConfirmation]
+      [memberships, requestRevokeConfirmation]
     );
 
     const handleEditSecondary = useCallback(
       (index: number) => {
-        const { tenant } = findSecondaryMembership(index);
-        if (!tenant) {
+        const contact = findSecondaryContact(index);
+        if (!contact?.membershipId) {
           return;
         }
-        setEditingSecondary({ index, tenant });
+        setEditingSecondary({ contact, membershipId: contact.membershipId });
       },
-      [findSecondaryMembership]
+      [findSecondaryContact]
     );
 
     const handleDeleteSecondary = useCallback(
       (index: number, event: MouseEvent<HTMLButtonElement>) => {
-        const { tenant } = findSecondaryMembership(index);
-        if (!tenant) {
+        const contact = findSecondaryContact(index);
+        if (!contact?.membershipId) {
           return;
         }
-        handleDelete({ index, tenant }, event);
+        handleDelete({ contact, membershipId: contact.membershipId }, event);
       },
-      [findSecondaryMembership, handleDelete]
+      [findSecondaryContact, handleDelete]
     );
 
     const handleOpenAddSecondary = useCallback(() => {
@@ -374,11 +404,11 @@ export const LeaseTenantsSection = memo(
         null,
         {
           invitePrimary: inviteAllTargets.invitePrimary ? true : undefined,
-          secondaryIndexes: inviteAllTargets.secondaryIndexes,
+          secondaryMembershipIds: inviteAllTargets.secondaryMembershipIds,
         },
         { kind: "invite-all" }
       );
-    }, [inviteAllTargets.invitePrimary, inviteAllTargets.secondaryIndexes, runPortalAction]);
+    }, [inviteAllTargets.invitePrimary, inviteAllTargets.secondaryMembershipIds, runPortalAction]);
 
     const handleEditSecondaryDialogOpenChange = useCallback((nextOpen: boolean) => {
       if (!nextOpen) {
@@ -413,38 +443,48 @@ export const LeaseTenantsSection = memo(
               showPortalRow={showPortalRow}
             />
 
-            {lease.secondaryTenants.length > 0 ? (
+            {secondaryTenantContacts.length > 0 ? (
               <div className="space-y-3 border-t pt-3">
                 <p className="text-muted-foreground text-xs">Secondary tenants</p>
-                {lease.secondaryTenants.map((tenant, index) => {
-                  const rowMembership = findLeasePortalMembership(
-                    memberships,
-                    TenantMembershipRole.SECONDARY,
-                    tenant.email
+                {secondaryTenantContacts.map((contact, index) => {
+                  if (!contact.membershipId) {
+                    return null;
+                  }
+
+                  const membership = resolveSecondaryPortalMembershipForContact(
+                    contact,
+                    memberships
                   );
                   const rowPortalState = getLeasePortalRowState(
-                    rowMembership,
-                    Boolean(tenant.email?.trim())
+                    membership,
+                    Boolean(contact.effectiveEmail?.trim())
                   );
+
+                  const portalRowTarget = {
+                    kind: "secondary" as const,
+                    membershipId: getSecondaryPortalActingMembershipId(contact),
+                  };
 
                   return (
                     <LeaseSecondaryTenantRow
                       actingAction={actingAction}
                       actingTarget={actingTarget}
                       canEdit={canEditTenants}
+                      contact={contact}
                       index={index}
                       isDeletePending={removeMutation.isPending}
                       isQuickDeleteActive={isQuickDeleteActive}
-                      key={`${tenant.name}-${index}`}
+                      key={contact.membershipId}
                       onDelete={handleDeleteSecondary}
                       onEdit={handleEditSecondary}
                       onInvite={handleInviteSecondary}
                       onResend={handleResendSecondary}
                       onRevoke={handleRevokeSecondary}
                       portalMutationPending={portalMutationPending}
+                      portalRowTarget={portalRowTarget}
                       portalState={rowPortalState}
+                      showDelete={canEditTenants}
                       showPortalRow={showPortalRow}
-                      tenant={tenant}
                     />
                   );
                 })}
@@ -455,7 +495,7 @@ export const LeaseTenantsSection = memo(
               <div className="flex flex-wrap gap-2 border-t pt-3">
                 <Button
                   className="gap-1.5"
-                  disabled={lease.secondaryTenants.length >= MAX_SECONDARY_TENANTS}
+                  disabled={secondaryTenantContacts.length >= MAX_SECONDARY_OCCUPANTS}
                   onClick={handleOpenAddSecondary}
                   size="sm"
                   type="button"
@@ -487,6 +527,7 @@ export const LeaseTenantsSection = memo(
             onOpenChange={setAddSecondaryOpen}
             open={true}
             propertyId={propertyId}
+            secondaryOccupantCount={secondaryTenantContacts.length}
           />
         ) : null}
 
@@ -503,13 +544,14 @@ export const LeaseTenantsSection = memo(
 
         {editingSecondary ? (
           <EditSecondaryTenantDialog
-            key={`${lease.id}-edit-secondary-${editingSecondary.index}`}
+            key={`${lease.id}-edit-secondary-${editingSecondary.membershipId}`}
+            contact={editingSecondary.contact}
+            isPortalLinked={editingSecondary.contact.source === "linked_user"}
             lease={lease}
+            membershipId={editingSecondary.membershipId}
             onOpenChange={handleEditSecondaryDialogOpenChange}
             open={true}
             propertyId={propertyId}
-            tenant={editingSecondary.tenant}
-            tenantIndex={editingSecondary.index}
           />
         ) : null}
 

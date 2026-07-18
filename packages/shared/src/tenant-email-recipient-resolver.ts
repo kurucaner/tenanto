@@ -1,3 +1,4 @@
+import type { ILeaseSecondaryTenantContact } from "./lease-secondary-tenant-contact";
 import type { IPropertyLongStay } from "./property-long-stay-types";
 import {
   type ITenantEmailRecipientResolution,
@@ -6,6 +7,11 @@ import {
   TenantEmailTenantRole,
   type TTenantEmailTenantRole,
 } from "./tenant-email-campaign-types";
+
+export type ITenantEmailSecondaryContact = Pick<
+  ILeaseSecondaryTenantContact,
+  "effectiveEmail" | "effectiveName"
+>;
 
 export function normalizeTenantEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -46,6 +52,24 @@ export function isValidTenantEmail(email: string): boolean {
     return false;
   }
   return isStructuredEmailAddress(normalized);
+}
+
+export function normalizeOptionalInviteEmail(email: string | null | undefined): string | null {
+  if (email == null || email.trim() === "") {
+    return null;
+  }
+  if (!isValidTenantEmail(email.trim())) {
+    throw new Error("email must be a valid email address");
+  }
+  return normalizeTenantEmail(email.trim());
+}
+
+export function requireMembershipInviteEmail(inviteEmail: string | null | undefined): string {
+  const normalized = normalizeOptionalInviteEmail(inviteEmail);
+  if (normalized == null) {
+    throw new Error("Membership has no valid invite email");
+  }
+  return normalized;
 }
 
 function pushSkipped(
@@ -108,10 +132,8 @@ function pushRecipient(
 }
 
 export function resolveTenantEmailRecipients(
-  leases: readonly Pick<
-    IPropertyLongStay,
-    "guestName" | "id" | "secondaryTenants" | "status" | "tenantEmail"
-  >[]
+  leases: readonly Pick<IPropertyLongStay, "guestName" | "id" | "status" | "tenantEmail">[],
+  secondaryContactsByLeaseId?: ReadonlyMap<string, readonly ITenantEmailSecondaryContact[]>
 ): ITenantEmailRecipientResolution {
   const recipients: ITenantEmailResolvedRecipient[] = [];
   const skipped: ITenantEmailSkippedRecipient[] = [];
@@ -129,11 +151,12 @@ export function resolveTenantEmailRecipients(
       tenantRole: TenantEmailTenantRole.PRIMARY,
     });
 
-    for (const secondaryTenant of lease.secondaryTenants) {
+    const secondaryContacts = secondaryContactsByLeaseId?.get(lease.id) ?? [];
+    for (const contact of secondaryContacts) {
       pushRecipient(recipients, seenEmails, skipped, {
-        email: secondaryTenant.email,
+        email: contact.effectiveEmail,
         leaseId: lease.id,
-        tenantName: secondaryTenant.name,
+        tenantName: contact.effectiveName,
         tenantRole: TenantEmailTenantRole.SECONDARY,
       });
     }

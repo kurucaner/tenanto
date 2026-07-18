@@ -1,4 +1,6 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+
+import { mockResolved } from "@/test-fixtures/mocks";
 
 import {
   consumeFixedWindowRateLimit,
@@ -14,9 +16,9 @@ describe("isFixedWindowRateLimitExceeded", () => {
 
 describe("consumeFixedWindowRateLimit", () => {
   test("allows counts within the limit and denies when exceeded", async () => {
-    const incr = mock(() => Promise.resolve(1));
-    const expire = mock(() => Promise.resolve(1));
-    const ttl = mock(() => Promise.resolve(42));
+    const incr = mockResolved(1);
+    const expire = mockResolved(1);
+    const ttl = mockResolved(42);
     const redis = { expire, incr, ttl } as never;
 
     const first = await consumeFixedWindowRateLimit({

@@ -4,34 +4,22 @@ import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import {
   type ITenantLeaseListItem,
   TenantLeaseListStatus,
-  TenantMembershipRole,
   TenantMembershipStatus,
 } from "@/packages/shared";
+import { makeLeaseListItem } from "@/test-fixtures/domain";
+import { mockAsyncFn, mockResolved, mockSyncVoid } from "@/test-fixtures/mocks";
 
-function makeLeaseListItem(
-  overrides: Pick<ITenantLeaseListItem, "leaseId" | "propertyName" | "unitLabel"> &
-    Partial<ITenantLeaseListItem>
-): ITenantLeaseListItem {
-  return {
-    leaseEndDate: "2026-12-31",
-    leaseStartDate: "2026-01-01",
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.ACTIVE,
-    ...overrides,
-  };
-}
-
-const mockListLeases = mock(
+const mockListLeases = mockAsyncFn(
   (_tenantUserId: string, _status: string): Promise<ITenantLeaseListItem[]> => Promise.resolve([])
 );
-const mockFindLeaseById = mock(() =>
+const mockFindLeaseById = mockAsyncFn(() =>
   Promise.resolve({
     id: "lease-1",
     propertyId: "property-1",
     unitId: "unit-1",
   } as { id: string; propertyId: string; unitId: string } | null)
 );
-const mockGetRentSchedule = mock(() =>
+const mockGetRentSchedule = mockAsyncFn(() =>
   Promise.resolve([
     {
       expectedRent: 200,
@@ -42,7 +30,7 @@ const mockGetRentSchedule = mock(() =>
     },
   ])
 );
-const mockFindStripeAccount = mock(() =>
+const mockFindStripeAccount = mockAsyncFn(() =>
   Promise.resolve({
     chargesEnabled: true,
     detailsSubmitted: true,
@@ -53,11 +41,11 @@ const mockFindStripeAccount = mock(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   } as IPropertyStripeAccount | null)
 );
-const mockSumSucceededByMonths = mock(() => Promise.resolve(new Map<string, number>()));
+const mockSumSucceededByMonths = mockResolved(new Map<string, number>());
 
 mock.module("@/services/tenant-portal-access", () => ({
-  assertLeaseTenantAccess: mock(() => Promise.resolve({})),
-  assertLeaseTenantReadAccess: mock(() => Promise.resolve({})),
+  assertLeaseTenantAccess: mockResolved({}),
+  assertLeaseTenantReadAccess: mockResolved({}),
   TenantLeaseAccessDeniedError: class extends Error {
     name = "TenantLeaseAccessDeniedError";
   },
@@ -81,6 +69,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
     findByPropertyId: mockFindStripeAccount,
   },
   toConnectStatusResponse: () => ({
+    accountType: null,
     chargesEnabled: false,
     detailsSubmitted: false,
     onboardingComplete: false,
@@ -103,9 +92,9 @@ mock.module("@/stripe/stripe-client", () => ({
 
 mock.module("@/services/winston", () => ({
   WinstonLogger: {
-    error: mock(() => undefined),
-    info: mock(() => undefined),
-    warn: mock(() => undefined),
+    error: mockSyncVoid(),
+    info: mockSyncVoid(),
+    warn: mockSyncVoid(),
   },
 }));
 

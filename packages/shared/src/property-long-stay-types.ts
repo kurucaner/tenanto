@@ -1,4 +1,5 @@
 import type { ILeasePrimaryTenantContact } from "./lease-primary-tenant-contact";
+import type { ILeaseSecondaryTenantContact } from "./lease-secondary-tenant-contact";
 import type { IPropertyLongStaysListMeta } from "./list-meta-types";
 import type {
   TPropertyLongStaysListSortBy,
@@ -29,6 +30,8 @@ export interface IPropertyLongStay {
   leaseStartDate: string;
   monthlyRent: number;
   propertyId: string;
+  /** Populated on list/export reads from non-terminal secondary memberships. */
+  secondaryOccupantNames?: string[];
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
   status: TPropertyLongStayStatus;
   /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
@@ -85,6 +88,8 @@ export interface IPropertyLongStayDetailResponse {
   primaryTenantContact: ILeasePrimaryTenantContact;
   rentPeriods: IPropertyLongStayRentPeriod[];
   rentSchedule: IPropertyLongStayRentMonth[];
+  /** Effective secondary occupant contacts from membership rows (+ legacy JSONB merge when present). */
+  secondaryTenantContacts?: ILeaseSecondaryTenantContact[];
   termsEditability: ILeaseTermsEditability;
 }
 

@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import { makeMembership } from "@/test-fixtures/domain";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedNull,
+} from "@/test-fixtures/mocks";
 
-const mockFindByInviteToken = mock(() => Promise.resolve(null as ILeaseTenantMembership | null));
-const mockExpireMembershipIfPastTtl = mock(() =>
-  Promise.resolve(null as ILeaseTenantMembership | null)
-);
-const mockFindByEmail = mock(() => Promise.resolve(null as ITenantUser | null));
-const mockCreateUser = mock((_input: unknown): Promise<ITenantUser> =>
+const mockFindByInviteToken = mockResolvedNull<ILeaseTenantMembership>();
+const mockExpireMembershipIfPastTtl = mockResolvedNull<ILeaseTenantMembership>();
+const mockFindByEmail = mockResolvedNull<ITenantUser>();
+const mockCreateUser = mockAsyncFn((_input: unknown): Promise<ITenantUser> =>
   Promise.resolve({
     createdAt: "2026-01-01T00:00:00.000Z",
     email: "jane@example.com",
@@ -17,10 +21,12 @@ const mockCreateUser = mock((_input: unknown): Promise<ITenantUser> =>
     name: "Jane Doe",
     phone: null,
     phoneVerifiedAt: null,
+    smsConsentedAt: null,
+    smsOptedOutAt: null,
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: ITenantUser }> =>
+const mockFindOrCreateByGoogle = mockAsyncFn((_input: unknown): Promise<{ user: ITenantUser }> =>
   Promise.resolve({
     user: {
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -30,14 +36,17 @@ const mockFindOrCreateByGoogle = mock((_input: unknown): Promise<{ user: ITenant
       name: "Jane Doe",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
   })
 );
-const mockRedeemInvite = mock(
+const mockRedeemInvite = mockAsyncFn(
   (_token: string, _user: ITenantUser): Promise<ILeaseTenantMembership> =>
     Promise.resolve({
       acceptedAt: "2026-01-02T00:00:00.000Z",
+      contactPhone: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       declinedAt: null,
       displayName: "Jane Doe",
@@ -55,7 +64,7 @@ const mockRedeemInvite = mock(
       updatedAt: "2026-01-02T00:00:00.000Z",
     })
 );
-const mockIssueTenantSession = mock(() =>
+const mockIssueTenantSession = mockAsyncFn(() =>
   Promise.resolve({
     accessToken: "access",
     refreshToken: "refresh",
@@ -67,28 +76,23 @@ const mockIssueTenantSession = mock(() =>
       name: "Jane Doe",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     },
   })
 );
-const mockVerifyGoogleToken = mock(() =>
+const mockVerifyGoogleToken = mockAsyncFn(() =>
   Promise.resolve({
     email: "jane@example.com",
     googleId: "google-1",
     name: "Jane Doe",
   })
 );
-const mockIpAllowed = mock(() => Promise.resolve({ allowed: true as const }));
-const mockEmailAllowed = mock(() => Promise.resolve({ allowed: true as const }));
+const mockIpAllowed = mockResolved({ allowed: true as const });
+const mockEmailAllowed = mockResolved({ allowed: true as const });
 
 mock.module("@/db/lease-tenant-memberships", () => ({
-  DuplicatePortalInviteError: class DuplicatePortalInviteError extends Error {
-    membership: ILeaseTenantMembership;
-    constructor(membership: ILeaseTenantMembership) {
-      super("duplicate");
-      this.membership = membership;
-    }
-  },
   leaseTenantMembershipsDb: {
     expireMembershipIfPastTtl: mockExpireMembershipIfPastTtl,
     findByInviteToken: mockFindByInviteToken,
@@ -130,27 +134,6 @@ mock.module("@/lib/redis-fixed-window-rate-limit", () => ({
 const { registerTenantWithInviteGoogle, registerTenantWithInvitePassword } =
   await import("./tenant-invite-signup-service");
 
-function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
-  return {
-    acceptedAt: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    displayName: "Jane Doe",
-    endedAt: null,
-    expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
-    id: "membership-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    inviteEmail: "jane@example.com",
-    leaseId: "lease-1",
-    revokedAt: null,
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.PENDING_INVITE,
-    tenantUserId: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 const fakeServer = {} as import("fastify").FastifyInstance;
 
@@ -165,7 +148,7 @@ describe("registerTenantWithInvitePassword", () => {
     mockIpAllowed.mockClear();
     mockEmailAllowed.mockClear();
 
-    mockFindByInviteToken.mockResolvedValue(makeMembership());
+    mockFindByInviteToken.mockResolvedValue(makeMembership({ displayName: "Jane Doe" }));
     mockExpireMembershipIfPastTtl.mockResolvedValue(null);
     mockFindByEmail.mockResolvedValue(null);
     mockIpAllowed.mockResolvedValue({ allowed: true });
@@ -207,6 +190,8 @@ describe("registerTenantWithInvitePassword", () => {
       name: "Jane",
       phone: null,
       phoneVerifiedAt: null,
+      smsConsentedAt: null,
+      smsOptedOutAt: null,
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -254,6 +239,7 @@ describe("registerTenantWithInvitePassword", () => {
     }
     expect(result.statusCode).toBe(400);
     expect(result.body.error).toContain("expired");
+    expect(result.body.code).toBe("PORTAL_INVITE_INVALID_STATE");
   });
 });
 
@@ -268,7 +254,7 @@ describe("registerTenantWithInviteGoogle", () => {
     mockIpAllowed.mockClear();
     mockEmailAllowed.mockClear();
 
-    mockFindByInviteToken.mockResolvedValue(makeMembership());
+    mockFindByInviteToken.mockResolvedValue(makeMembership({ displayName: "Jane Doe" }));
     mockExpireMembershipIfPastTtl.mockResolvedValue(null);
     mockVerifyGoogleToken.mockResolvedValue({
       email: "jane@example.com",

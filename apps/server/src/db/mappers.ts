@@ -339,6 +339,8 @@ export const mapTenantUserRow = (row: Record<string, unknown>): ITenantUser => (
   name: row.name as string,
   phone: (row.phone as string) ?? null,
   phoneVerifiedAt: toIso(row.phone_verified_at),
+  smsConsentedAt: toIso(row.sms_consented_at),
+  smsOptedOutAt: toIso(row.sms_opted_out_at),
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 
@@ -346,6 +348,7 @@ export const mapLeaseTenantMembershipRow = (
   row: Record<string, unknown>
 ): ILeaseTenantMembership => ({
   acceptedAt: toIso(row.accepted_at),
+  contactPhone: (row.contact_phone as string | null) ?? null,
   createdAt: (row.created_at as Date).toISOString(),
   declinedAt: toIso(row.declined_at),
   displayName: row.display_name as string,
@@ -354,7 +357,7 @@ export const mapLeaseTenantMembershipRow = (
   id: row.id as string,
   invitedAt: (row.invited_at as Date).toISOString(),
   invitedBy: row.invited_by as string,
-  inviteEmail: row.invite_email as string,
+  inviteEmail: (row.invite_email as string | null) ?? null,
   leaseId: row.lease_id as string,
   revokedAt: toIso(row.revoked_at),
   role: row.role as TTenantMembershipRole,

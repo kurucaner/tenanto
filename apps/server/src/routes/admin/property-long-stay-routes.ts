@@ -2,86 +2,43 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
-import {
-  ActiveLongStayConflictError,
-  InvalidExtendLeaseError,
-  LongStayNotActiveError,
-  LongStayNotFoundError,
-  propertyLongStaysDb,
-} from "@/db/property-long-stays";
-import { propertyUnitsDb } from "@/db/property-units";
+import { propertyLongStaysDb } from "@/db/property-long-stays";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   HttpStatus,
   type ICreatePropertyLongStayBody,
   type IEditPropertyLongStayTermsBody,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
-  type IPropertyLongStaySecondaryTenant,
   type IUpdatePropertyLongStayBody,
-  LEASES_LIST_LIMIT,
-  LEASES_LIST_MAX_LIMIT,
-  LEASES_SORT_BY_VALUES,
-  LEASES_SORT_DIR_VALUES,
   MAX_ADDITIONAL_TERM_MONTHS,
-  PropertyLongStayStatus,
-  type TPropertyLongStaysListFilters,
-  type TPropertyLongStaysListSortBy,
-  type TPropertyLongStaysListSortDir,
-  type TPropertyLongStayStatus,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
 } from "@/packages/shared";
-import { decodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
 import { resolvePrimaryTenantContactForLongStay } from "@/services/lease-primary-tenant-contact-service";
-import {
-  editLeaseTerms,
-  getLeaseTermsEditability,
-  LeaseTermsNotEditableError,
-  LeaseTermsValidationError,
-} from "@/services/lease-terms-edit-service";
+import { editLeaseTerms, getLeaseTermsEditability } from "@/services/lease-terms-edit-service";
+import { resolveSecondaryTenantContactsForLongStay } from "@/services/resolve-secondary-tenant-contacts-service";
 import { tenantPortalInviteService } from "@/services/tenant-portal-invite-service";
 import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observability";
-import {
-  LinkedTenantContactError,
-  updatePrimaryTenantContact,
-} from "@/services/update-primary-tenant-contact-service";
+import { updatePrimaryTenantContact } from "@/services/update-primary-tenant-contact-service";
 
-import { parseUuidParam } from "./admin-query-utils";
-import { parseJsonObject } from "./parse-body-utils";
-import {
-  applyOptionalQueryDateFilter,
-  applyOptionalQuerySearchFilter,
-  applyOptionalQueryUuidFilter,
-} from "./parse-list-query-filters";
+import { parseDateString, parseUuidParam } from "./admin-query-utils";
+import { parseJsonObject, parseMoney } from "./parse-body-utils";
+import { buildPaginatedListResponse } from "./parse-list-query-pagination";
+import { parsePropertyLongStaysListQuery } from "./parse-property-long-stays-list-query";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
+  requirePropertyMemberAccess,
 } from "./property-route-access";
-import { replyLeaseTermsNotEditable } from "./reply-lease-terms-not-editable";
+import { type IPropertyParams } from "./property-route-params";
+import { resolvePropertyUnit } from "./resolve-property-unit";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const MAX_TERM_MONTHS = 60;
-const MAX_SECONDARY_TENANTS = 10;
-
-function parseDateString(raw: unknown): string | null {
-  if (typeof raw !== "string" || !DATE_RE.test(raw.trim())) return null;
-  const date = Date.parse(`${raw.trim()}T00:00:00Z`);
-  if (!Number.isFinite(date)) return null;
-  return raw.trim();
-}
-
-function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
-
-function parseMoney(raw: unknown): number | null {
-  if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return null;
-  return raw;
-}
 
 function parseTermMonths(raw: unknown): number | null {
   if (typeof raw !== "number" || !Number.isInteger(raw)) return null;
@@ -256,37 +213,6 @@ function parseExtendLongStayBody(
   return { body, ok: true };
 }
 
-function parseSecondaryTenant(
-  raw: unknown
-): { ok: true; tenant: IPropertyLongStaySecondaryTenant } | { error: string; ok: false } {
-  if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { error: "Each secondary tenant must have a non-empty name", ok: false };
-  }
-  const r = raw as Record<string, unknown>;
-  if (typeof r["name"] !== "string" || r["name"].trim() === "") {
-    return { error: "Each secondary tenant must have a non-empty name", ok: false };
-  }
-
-  const email = parseOptionalString(r["email"]);
-  if (r["email"] !== undefined && r["email"] !== null && email === null) {
-    return { error: "Each secondary tenant email must be a string", ok: false };
-  }
-
-  const phoneResult = parseNullablePhoneNumber(r["phone"], "phone");
-  if (!phoneResult.ok) {
-    return phoneResult;
-  }
-
-  return {
-    ok: true,
-    tenant: {
-      email,
-      name: r["name"].trim(),
-      phone: phoneResult.phoneNumber,
-    },
-  };
-}
-
 function parseNullableContactField(
   raw: unknown,
   fieldName: string
@@ -301,6 +227,17 @@ function parseNullableContactField(
   return { ok: true, value: trimmed === "" ? null : trimmed };
 }
 
+function applyUpdateLongStaySecondaryTenants(
+  r: Record<string, unknown>
+): { error: string; ok: false } | null {
+  if (!("secondaryTenants" in r)) return null;
+  return {
+    error:
+      "secondaryTenants is no longer supported; use /secondary-occupants to manage secondary tenants",
+    ok: false,
+  };
+}
+
 function parseUpdateLongStayBody(
   raw: unknown
 ): { body: IUpdatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -308,6 +245,9 @@ function parseUpdateLongStayBody(
   if (!r) {
     return { error: "Body must be a JSON object", ok: false };
   }
+
+  const secondaryTenantsError = applyUpdateLongStaySecondaryTenants(r);
+  if (secondaryTenantsError) return secondaryTenantsError;
 
   const body: IUpdatePropertyLongStayBody = {};
   const guestNameError = applyUpdateLongStayGuestName(r, body);
@@ -318,9 +258,6 @@ function parseUpdateLongStayBody(
 
   const tenantPhoneError = applyUpdateLongStayTenantPhone(r, body);
   if (tenantPhoneError) return tenantPhoneError;
-
-  const secondaryTenantsError = applyUpdateLongStaySecondaryTenants(r, body);
-  if (secondaryTenantsError) return secondaryTenantsError;
 
   if (Object.keys(body).length === 0) {
     return { error: "At least one updatable field is required", ok: false };
@@ -363,152 +300,16 @@ function applyUpdateLongStayTenantPhone(
   return null;
 }
 
-function applyUpdateLongStaySecondaryTenants(
-  r: Record<string, unknown>,
-  body: IUpdatePropertyLongStayBody
-): { error: string; ok: false } | null {
-  if (!("secondaryTenants" in r)) return null;
-  if (!Array.isArray(r["secondaryTenants"])) {
-    return { error: "secondaryTenants must be an array", ok: false };
-  }
-  if (r["secondaryTenants"].length > MAX_SECONDARY_TENANTS) {
-    return {
-      error: `secondaryTenants cannot exceed ${MAX_SECONDARY_TENANTS} items`,
-      ok: false,
-    };
-  }
-
-  const secondaryTenants: IPropertyLongStaySecondaryTenant[] = [];
-  for (const item of r["secondaryTenants"]) {
-    const tenantResult = parseSecondaryTenant(item);
-    if (!tenantResult.ok) return tenantResult;
-    secondaryTenants.push(tenantResult.tenant);
-  }
-  body.secondaryTenants = secondaryTenants;
-  return null;
-}
-
-function parseLongStaysListLimit(raw: unknown): number {
-  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
-  if (!Number.isFinite(n) || n < 1) return LEASES_LIST_LIMIT;
-  return Math.min(LEASES_LIST_MAX_LIMIT, Math.floor(n));
-}
-
-function parseLongStaysListSortBy(value: unknown): TPropertyLongStaysListSortBy | "" | null {
-  if (value === undefined || value === "") {
-    return "";
-  }
-  if (typeof value !== "string") {
-    return null;
-  }
-  if ((LEASES_SORT_BY_VALUES as readonly string[]).includes(value)) {
-    return value as TPropertyLongStaysListSortBy;
-  }
-  return null;
-}
-
-function parseLongStaysListSortDir(value: unknown): TPropertyLongStaysListSortDir | "" | null {
-  if (value === undefined || value === "") {
-    return "";
-  }
-  if (typeof value !== "string") {
-    return null;
-  }
-  if ((LEASES_SORT_DIR_VALUES as readonly string[]).includes(value)) {
-    return value as TPropertyLongStaysListSortDir;
-  }
-  return null;
-}
-
-function parseLongStaysListQuery(query: Record<string, unknown>):
-  | {
-      cursor?: string;
-      filters: TPropertyLongStaysListFilters;
-      limit: number;
-      ok: true;
-    }
-  | { error: string; ok: false } {
-  const filters: TPropertyLongStaysListFilters = {};
-
-  const filterSteps = [
-    () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
-    () => applyOptionalQueryDateFilter(query, "to", filters, "to must be a YYYY-MM-DD date"),
-    () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
-    () => applyOptionalQuerySearchFilter(query, filters),
-  ];
-
-  for (const applyFilter of filterSteps) {
-    const result = applyFilter();
-    if (!result.ok) return result;
-  }
-
-  if (query["status"] !== undefined && query["status"] !== "") {
-    const status = query["status"];
-    if (status !== PropertyLongStayStatus.ACTIVE && status !== PropertyLongStayStatus.ENDED) {
-      return { error: "status must be active or ended", ok: false };
-    }
-    filters.status = status as TPropertyLongStayStatus;
-  }
-
-  const sortBy = parseLongStaysListSortBy(query["sortBy"]);
-  if (sortBy === null) {
-    return {
-      error: `sortBy must be one of: ${LEASES_SORT_BY_VALUES.join(", ")}`,
-      ok: false,
-    };
-  }
-  if (sortBy) {
-    filters.sortBy = sortBy;
-  }
-
-  const sortDir = parseLongStaysListSortDir(query["sortDir"]);
-  if (sortDir === null) {
-    return {
-      error: `sortDir must be one of: ${LEASES_SORT_DIR_VALUES.join(", ")}`,
-      ok: false,
-    };
-  }
-  if (sortDir) {
-    filters.sortDir = sortDir;
-  }
-
-  const limit = parseLongStaysListLimit(query["limit"]);
-  const cursor =
-    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
-
-  return { cursor, filters, limit, ok: true };
-}
-
-async function resolveLongTermUnitForProperty(
-  unitId: string,
-  propertyId: string,
-  reply: FastifyReply
-) {
-  const unit = await propertyUnitsDb.findById(unitId);
-  if (!unit || unit.propertyId !== propertyId) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
-    return null;
-  }
-  if (unit.rentalType !== UnitRentalType.LONG_TERM) {
-    void reply
-      .status(HttpStatus.BAD_REQUEST)
-      .send({ error: "Long stays can only be created for long-term units" });
-    return null;
-  }
-  if (unit.isDeleted) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit has been deleted" });
-    return null;
-  }
-  return unit;
-}
-
-interface IPropertyParams {
-  propertyId: string;
-}
-
 interface IPropertyLongStayParams {
   longStayId: string;
   propertyId: string;
+}
+
+function handleLeaseDomainError(error: unknown, reply: FastifyReply): FastifyReply {
+  if (replyFromDomainError(reply, error)) {
+    return reply;
+  }
+  throw error;
 }
 
 export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -521,30 +322,12 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
       reply: FastifyReply
     ) => {
-      const propertyId = parseUuidParam(request.params.propertyId);
-      if (propertyId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
-      }
+      const propertyId = await requirePropertyMemberAccess(request, reply);
+      if (propertyId === null) return;
 
-      const hasAccess = await assertPropertyMemberAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
-        reply
-      );
-      if (!hasAccess) return;
-
-      const parsed = parseLongStaysListQuery(request.query);
+      const parsed = parsePropertyLongStaysListQuery(request.query);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-
-      if (parsed.cursor != null) {
-        try {
-          decodeLeaseKeysetCursor(parsed.cursor);
-        } catch {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-        }
       }
 
       const { longStays, meta, nextCursor } = await propertyLongStaysDb.listPaginatedByProperty(
@@ -552,7 +335,9 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         parsed.filters,
         { cursor: parsed.cursor, limit: parsed.limit }
       );
-      return reply.send(meta ? { longStays, meta, nextCursor } : { longStays, nextCursor });
+      return reply.send(
+        buildPaginatedListResponse("longStays", longStays, meta, nextCursor ?? undefined)
+      );
     }
   );
 
@@ -585,12 +370,14 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       const rentSchedule = await propertyLongStaysDb.getRentSchedule(longStayId);
       const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
       const primaryTenantContact = await resolvePrimaryTenantContactForLongStay(longStay);
+      const secondaryTenantContacts = await resolveSecondaryTenantContactsForLongStay(longStay);
       const termsEditability = await getLeaseTermsEditability(longStayId);
       return reply.send({
         longStay,
         primaryTenantContact,
         rentPeriods,
         rentSchedule,
+        secondaryTenantContacts,
         termsEditability: termsEditability ?? { editable: false },
       });
     }
@@ -627,7 +414,10 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const unit = await resolveLongTermUnitForProperty(parsed.body.unitId, propertyId, reply);
+      const unit = await resolvePropertyUnit(parsed.body.unitId, propertyId, reply, {
+        rentalType: UnitRentalType.LONG_TERM,
+        rentalTypeError: "Long stays can only be created for long-term units",
+      });
       if (!unit) return;
 
       try {
@@ -642,10 +432,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
           ...(portalInvite ? { portalInvite } : {}),
         });
       } catch (error) {
-        if (error instanceof ActiveLongStayConflictError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -691,37 +478,19 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       }
 
       try {
-        const { guestName, secondaryTenants, tenantEmail, tenantPhone } = parsed.body;
-        const hasPrimaryPatch =
-          guestName !== undefined || tenantEmail !== undefined || tenantPhone !== undefined;
-
-        let longStay = existing;
-        if (hasPrimaryPatch) {
-          longStay = await updatePrimaryTenantContact(existing, {
-            guestName,
-            tenantEmail,
-            tenantPhone,
-          });
-        }
-        if (secondaryTenants !== undefined) {
-          longStay = await propertyLongStaysDb.updateLease(longStayId, { secondaryTenants });
-        }
+        const { guestName, tenantEmail, tenantPhone } = parsed.body;
+        const longStay = await updatePrimaryTenantContact(existing, {
+          guestName,
+          tenantEmail,
+          tenantPhone,
+        });
 
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof LinkedTenantContactError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
         if (isIdentityConflictError(error)) {
           return reply.status(HttpStatus.CONFLICT).send({ code: error.code, error: error.message });
         }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -790,13 +559,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
 
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -845,23 +608,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         const longStay = await editLeaseTerms(longStayId, parsed.body);
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof LeaseTermsNotEditableError) {
-          replyLeaseTermsNotEditable(reply, error);
-          return;
-        }
-        if (error instanceof LeaseTermsValidationError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof ActiveLongStayConflictError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );
@@ -910,16 +657,7 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         const longStay = await propertyLongStaysDb.extendLease(longStayId, parsed.body);
         return reply.send({ longStay });
       } catch (error) {
-        if (error instanceof InvalidExtendLeaseError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotActiveError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof LongStayNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        throw error;
+        return handleLeaseDomainError(error, reply);
       }
     }
   );

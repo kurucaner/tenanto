@@ -7,6 +7,11 @@ import { propertyMembersDb } from "@/db/property-members";
 import { propertyUserFavoritesDb } from "@/db/property-user-favorites";
 import { userDb } from "@/db/users";
 import {
+  isDuplicatePropertyMemberInviteError,
+  isPropertyMemberInviteDomainError,
+  PropertyMemberInviteErrorCode,
+} from "@/errors/property-member-invite-errors";
+import {
   AdminAuditAction,
   HttpStatus,
   type IAdminAddPropertyMemberBody,
@@ -19,14 +24,8 @@ import {
   UserType,
 } from "@/packages/shared";
 import { decodePropertyFavoriteKeysetCursor } from "@/pagination/keyset-cursor";
-import {
-  DuplicatePropertyMemberInviteError,
-  PropertyMemberAlreadyMemberError,
-  PropertyMemberInviteInvalidStateError,
-  PropertyMemberInviteMismatchError,
-  PropertyMemberInviteNotFoundError,
-  propertyMemberInviteService,
-} from "@/services/property-member-invite-service";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
+import { propertyMemberInviteService } from "@/services/property-member-invite-service";
 import { notifyUser } from "@/services/user-notifications";
 
 import { parseAdminLimit, parseUuidParam } from "./admin-query-utils";
@@ -264,6 +263,57 @@ interface IPropertyMemberParams {
 interface IPropertyMemberInviteParams {
   inviteId: string;
   propertyId: string;
+}
+
+function replyFromPropertyMemberInviteCreateError(
+  error: unknown,
+  reply: FastifyReply
+): FastifyReply | null {
+  if (isDuplicatePropertyMemberInviteError(error)) {
+    return reply.status(HttpStatus.CONFLICT).send({
+      code: error.code,
+      error: "An invitation has already been sent to this email",
+    });
+  }
+  if (replyFromDomainError(reply, error)) {
+    return reply;
+  }
+  return null;
+}
+
+function replyFromPropertyMemberInviteAdminActionError(
+  error: unknown,
+  reply: FastifyReply
+): FastifyReply | null {
+  if (!isPropertyMemberInviteDomainError(error)) {
+    return null;
+  }
+
+  if (error.code === PropertyMemberInviteErrorCode.MISMATCH) {
+    return reply.status(HttpStatus.NOT_FOUND).send({
+      code: error.code,
+      error: error.message,
+      ...(error.body ?? {}),
+    });
+  }
+
+  if (
+    error.code === PropertyMemberInviteErrorCode.NOT_FOUND ||
+    error.code === PropertyMemberInviteErrorCode.INVALID_STATE ||
+    error.code === PropertyMemberInviteErrorCode.INVALID_TRANSITION
+  ) {
+    return reply.status(HttpStatus.BAD_REQUEST).send({
+      code: error.code,
+      error: error.message,
+      ...(error.body ?? {}),
+    });
+  }
+
+  if (replyFromDomainError(reply, error)) {
+    return reply;
+  }
+
+  return null;
 }
 
 export const propertyRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -548,14 +598,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         });
         return reply.status(HttpStatus.CREATED).send(response);
       } catch (error) {
-        if (error instanceof DuplicatePropertyMemberInviteError) {
-          return reply
-            .status(HttpStatus.CONFLICT)
-            .send({ error: "An invitation has already been sent to this email" });
-        }
-        if (error instanceof PropertyMemberAlreadyMemberError) {
-          return reply.status(HttpStatus.CONFLICT).send({ error: error.message });
-        }
+        const mapped = replyFromPropertyMemberInviteCreateError(error, reply);
+        if (mapped) return mapped;
         throw error;
       }
     }
@@ -598,15 +642,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         const result = await propertyMemberInviteService.resendInvite({ inviteId, propertyId });
         return reply.send(result);
       } catch (error) {
-        if (error instanceof PropertyMemberInviteMismatchError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        if (
-          error instanceof PropertyMemberInviteNotFoundError ||
-          error instanceof PropertyMemberInviteInvalidStateError
-        ) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
-        }
+        const mapped = replyFromPropertyMemberInviteAdminActionError(error, reply);
+        if (mapped) return mapped;
         throw error;
       }
     }
@@ -649,15 +686,8 @@ export const propertyRoutes = async (server: FastifyInstance): Promise<void> => 
         const result = await propertyMemberInviteService.revokeInvite({ inviteId, propertyId });
         return reply.send(result);
       } catch (error) {
-        if (error instanceof PropertyMemberInviteMismatchError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
-        }
-        if (
-          error instanceof PropertyMemberInviteNotFoundError ||
-          error instanceof PropertyMemberInviteInvalidStateError
-        ) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: (error as Error).message });
-        }
+        const mapped = replyFromPropertyMemberInviteAdminActionError(error, reply);
+        if (mapped) return mapped;
         throw error;
       }
     }

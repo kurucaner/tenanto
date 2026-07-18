@@ -1,3 +1,4 @@
+import { duplicatePropertyMemberInviteError, invalidPropertyMemberInviteTransitionError } from "@/errors/property-member-invite-errors";
 import {
   canTransitionPropertyMemberInviteStatus,
   type IPropertyInvite,
@@ -27,13 +28,6 @@ const ADMIN_HIDDEN_INVITE_STATUSES: TPropertyInviteStatus[] = [
   PropertyInviteStatus.EXPIRED,
 ];
 
-export class InvalidPropertyMemberInviteTransitionError extends Error {
-  constructor(from: TPropertyInviteStatus, to: TPropertyInviteStatus) {
-    super(`Invalid property member invite transition from ${from} to ${to}`);
-    this.name = "InvalidPropertyMemberInviteTransitionError";
-  }
-}
-
 function inviteStatusTimestampColumn(status: TPropertyInviteStatus): string | null {
   switch (status) {
     case PropertyInviteStatus.ACCEPTED:
@@ -56,13 +50,6 @@ export interface CreatePropertyInviteInput {
   status: TPropertyInviteStatus;
 }
 
-export class DuplicatePropertyMemberInviteError extends Error {
-  constructor(message = "A pending property member invite already exists for this email") {
-    super(message);
-    this.name = "DuplicatePropertyMemberInviteError";
-  }
-}
-
 export const propertyInvitesDb = {
   async create(input: CreatePropertyInviteInput): Promise<IPropertyInvite> {
     const expiresAt = new Date();
@@ -74,7 +61,7 @@ export const propertyInvitesDb = {
       normalizedEmail
     );
     if (existingPending) {
-      throw new DuplicatePropertyMemberInviteError();
+      throw duplicatePropertyMemberInviteError();
     }
 
     const result = await pool.query(
@@ -229,7 +216,7 @@ export const propertyInvitesDb = {
     }
 
     if (!canTransitionPropertyMemberInviteStatus(current.status, toStatus)) {
-      throw new InvalidPropertyMemberInviteTransitionError(current.status, toStatus);
+      throw invalidPropertyMemberInviteTransitionError(current.status, toStatus);
     }
 
     const timestampColumn = inviteStatusTimestampColumn(toStatus);

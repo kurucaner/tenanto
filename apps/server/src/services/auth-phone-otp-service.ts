@@ -1,8 +1,8 @@
 import bcrypt from "bcrypt";
 
 import { authPhoneOtpsDb, type PhoneOtpPurpose } from "@/db/auth-phone-otps";
-import { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
-import { APP_NAME } from "@/packages/shared";
+import { OTP_COOLDOWN_SECONDS } from "@/lib/auth-otp-config";
+import { buildTenantPhoneOtpSmsMessage } from "@/packages/shared";
 import {
   buildOtpExpiresAt,
   generateOtp,
@@ -17,9 +17,7 @@ export function buildPhoneOtpInProgressKey(purpose: PhoneOtpPurpose, phone: stri
   return `${purpose}:${phone}`;
 }
 
-export function buildTenantPhoneOtpSmsMessage(code: string): string {
-  return `${APP_NAME} verification code: ${code}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`;
-}
+export { buildTenantPhoneOtpSmsMessage };
 
 export async function sendPhoneOtpWithCooldown(input: {
   inProgressMessage?: string;

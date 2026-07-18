@@ -4,7 +4,7 @@ import { type Control, Controller, type FieldErrors, type UseFormRegister } from
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
+import { PhoneInput } from "@/packages/app-ui";
 
 import type { TTenantContactFormValues } from "./tenant-contact-form-schema";
 

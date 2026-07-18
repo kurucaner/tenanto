@@ -9,30 +9,34 @@ export const runMigrations = async (pool: Pool): Promise<void> => {
       await migrationsTableMigration.up(client);
     }
 
-    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_lock($1)", [8_424_242]);
 
-    const result = await client.query("SELECT version FROM migrations ORDER BY version FOR UPDATE");
-    const appliedVersions = new Set(result.rows.map((row) => row.version));
+    const result = await client.query("SELECT version FROM migrations ORDER BY version");
+    const appliedVersions = new Set(result.rows.map((row) => row.version as number));
 
     for (const migration of migrations) {
       if (migration.name === "create_migrations_table") continue;
 
       if (!appliedVersions.has(migration.version)) {
-        await migration.up(client);
+        await client.query("BEGIN");
+        try {
+          await migration.up(client);
 
-        await client.query("INSERT INTO migrations (version, name) VALUES ($1, $2)", [
-          migration.version,
-          migration.name,
-        ]);
+          await client.query("INSERT INTO migrations (version, name) VALUES ($1, $2)", [
+            migration.version,
+            migration.name,
+          ]);
+
+          await client.query("COMMIT");
+        } catch (error) {
+          await client.query("ROLLBACK");
+          console.error(`[DB] Migration v${migration.version} (${migration.name}) failed:`, error);
+          throw error;
+        }
       }
     }
-
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("[DB] Migration failed. All changes rolled back:", error);
-    throw error;
   } finally {
+    await client.query("SELECT pg_advisory_unlock($1)", [8_424_242]).catch(() => undefined);
     client.release();
   }
 };
@@ -2877,5 +2881,239 @@ export const migrations: IMigration[] = [
       `);
     },
     version: 63,
+  },
+  {
+    down: async () => {
+      // Postgres cannot remove enum values safely.
+    },
+    name: "property_invite_status_lifecycle_enum",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'pending_invite';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'pending_acceptance';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'declined';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'revoked';
+      `);
+      await client.query(`
+        ALTER TYPE property_invite_status ADD VALUE IF NOT EXISTS 'expired';
+      `);
+    },
+    version: 64,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP TRIGGER IF EXISTS update_property_invites_updated_at ON property_invites;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS property_invites_non_terminal_uniq;
+      `);
+      await client.query(`
+        ALTER TABLE property_invites
+          DROP COLUMN IF EXISTS invite_token_hash,
+          DROP COLUMN IF EXISTS invited_at,
+          DROP COLUMN IF EXISTS accepted_at,
+          DROP COLUMN IF EXISTS declined_at,
+          DROP COLUMN IF EXISTS revoked_at,
+          DROP COLUMN IF EXISTS updated_at;
+      `);
+      await client.query(`
+        ALTER TABLE property_invites
+          ADD CONSTRAINT property_invites_property_id_email_key UNIQUE (property_id, email);
+      `);
+    },
+    name: "property_member_invite_lifecycle",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_invites
+          ADD COLUMN IF NOT EXISTS invite_token_hash VARCHAR(64),
+          ADD COLUMN IF NOT EXISTS invited_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS declined_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      `);
+
+      await client.query(`
+        UPDATE property_invites
+        SET invited_at = COALESCE(invited_at, created_at),
+            updated_at = COALESCE(updated_at, created_at)
+        WHERE invited_at IS NULL OR updated_at IS NULL;
+      `);
+
+      await client.query(`
+        UPDATE property_invites pi
+        SET status = CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(pi.email))
+          ) THEN 'pending_acceptance'::property_invite_status
+          ELSE 'pending_invite'::property_invite_status
+        END
+        WHERE pi.status = 'pending'::property_invite_status;
+      `);
+
+      await client.query(`
+        UPDATE property_invites
+        SET accepted_at = COALESCE(accepted_at, created_at)
+        WHERE status = 'accepted'::property_invite_status
+          AND accepted_at IS NULL;
+      `);
+
+      await client.query(`
+        UPDATE property_invites
+        SET status = 'expired'::property_invite_status,
+            updated_at = NOW()
+        WHERE status = ANY(
+          ARRAY[
+            'pending'::property_invite_status,
+            'pending_invite'::property_invite_status,
+            'pending_acceptance'::property_invite_status
+          ]
+        )
+          AND expires_at <= NOW();
+      `);
+
+      await client.query(`
+        ALTER TABLE property_invites
+          DROP CONSTRAINT IF EXISTS property_invites_property_id_email_key;
+      `);
+
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS property_invites_non_terminal_uniq
+          ON property_invites (property_id, LOWER(TRIM(email)))
+          WHERE status NOT IN ('accepted', 'declined', 'revoked', 'expired', 'email_failed');
+      `);
+
+      await client.query(`
+        DROP TRIGGER IF EXISTS update_property_invites_updated_at ON property_invites;
+      `);
+      await client.query(`
+        CREATE TRIGGER update_property_invites_updated_at
+          BEFORE UPDATE ON property_invites
+          FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+      `);
+    },
+    version: 65,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        DROP INDEX IF EXISTS lease_tenant_memberships_non_terminal_uniq;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX lease_tenant_memberships_non_terminal_uniq
+          ON lease_tenant_memberships (lease_id, LOWER(TRIM(invite_email)), role)
+          WHERE status NOT IN ('declined', 'revoked', 'ended', 'expired');
+      `);
+      await client.query(`
+        UPDATE lease_tenant_memberships
+        SET invite_email = display_name
+        WHERE invite_email IS NULL;
+      `);
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ALTER COLUMN invite_email SET NOT NULL;
+      `);
+    },
+    name: "nullable_secondary_invite_email",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE lease_tenant_memberships
+          ALTER COLUMN invite_email DROP NOT NULL;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS lease_tenant_memberships_non_terminal_uniq;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX lease_tenant_memberships_non_terminal_uniq
+          ON lease_tenant_memberships (lease_id, LOWER(TRIM(invite_email)), role)
+          WHERE status NOT IN ('declined', 'revoked', 'ended', 'expired')
+            AND invite_email IS NOT NULL
+            AND TRIM(invite_email) <> '';
+      `);
+    },
+    version: 66,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          DROP COLUMN IF EXISTS sms_consented_at,
+          DROP COLUMN IF EXISTS sms_opted_out_at;
+      `);
+    },
+    name: "tenant_users_sms_consent",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          ADD COLUMN IF NOT EXISTS sms_consented_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS sms_opted_out_at TIMESTAMP WITH TIME ZONE;
+      `);
+    },
+    version: 67,
+  },
+  {
+    down: async (client) => {
+      await client.query(`DROP TABLE IF EXISTS tenant_sms_keyword_events;`);
+    },
+    name: "tenant_sms_keyword_events",
+    up: async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tenant_sms_keyword_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          phone TEXT NOT NULL,
+          keyword TEXT NOT NULL,
+          tenant_user_id UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
+          payload_snippet TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_sms_keyword_events_phone
+          ON tenant_sms_keyword_events (phone);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_sms_keyword_events_created_at
+          ON tenant_sms_keyword_events (created_at DESC);
+      `);
+    },
+    version: 68,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE property_stripe_accounts
+          DROP COLUMN IF EXISTS account_type;
+      `);
+      await client.query(`DROP TYPE IF EXISTS property_stripe_account_type;`);
+    },
+    name: "property_stripe_accounts_account_type",
+    up: async (client) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_stripe_account_type AS ENUM ('express', 'standard');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE property_stripe_accounts
+          ADD COLUMN IF NOT EXISTS account_type property_stripe_account_type NOT NULL DEFAULT 'express';
+      `);
+      await client.query(`
+        UPDATE property_stripe_accounts
+        SET account_type = 'express'
+        WHERE account_type IS DISTINCT FROM 'express';
+      `);
+    },
+    version: 69,
   },
 ];

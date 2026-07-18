@@ -3,10 +3,10 @@ import { describe, expect, test } from "bun:test";
 import {
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
   type IPropertyChannelCommission,
-  type IPropertyUnit,
   ReservationStatus,
   UnitRentalType,
 } from "@/packages/shared";
+import { makeUnit } from "@/test-fixtures/domain";
 
 import {
   buildIncomeImportParsedRow,
@@ -14,29 +14,21 @@ import {
   resolveUnitByRoomNo,
 } from "./income-csv-import-resolvers";
 
-const units: IPropertyUnit[] = [
-  {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
+const units = [
+  makeUnit({
     id: "unit-210",
-    isDeleted: false,
     layout: "studio",
     propertyId: "property-1",
     rentalType: UnitRentalType.SHORT_TERM,
     unitNumber: "210",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
-  {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
+  }),
+  makeUnit({
     id: "unit-abbott",
-    isDeleted: false,
     layout: "2br",
     propertyId: "property-1",
     rentalType: UnitRentalType.SHORT_TERM,
     unitNumber: "Abbott 3",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-  },
+  }),
 ];
 
 const channels: IPropertyChannelCommission[] = DEFAULT_PROPERTY_CHANNEL_COMMISSIONS.map(
