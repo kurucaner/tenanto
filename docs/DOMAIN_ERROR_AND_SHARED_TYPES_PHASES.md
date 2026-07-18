@@ -239,11 +239,11 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
 
 **Tasks**
 
-- [ ] Add [`apps/server/src/lib/domain-error.ts`](apps/server/src/lib/domain-error.ts) (`DomainError`, `isDomainError`)
-- [ ] Add [`apps/server/src/lib/define-domain-error.ts`](apps/server/src/lib/define-domain-error.ts) (optional companion for gradual migration)
-- [ ] Add [`apps/server/src/routes/reply-from-domain-error.ts`](apps/server/src/routes/reply-from-domain-error.ts)
-- [ ] Unit tests: `DomainError` preserves `code` / `httpStatus`; `replyFromDomainError` sends correct status/body; returns `false` for non-domain errors
-- [ ] Document code naming convention: `SCREAMING_SNAKE` domain prefix, e.g. `PORTAL_INVITE_NOT_FOUND`, `PROPERTY_MEMBER_INVITE_MISMATCH`
+- [x] Add [`apps/server/src/lib/domain-error.ts`](apps/server/src/lib/domain-error.ts) (`DomainError`, `isDomainError`)
+- [x] Add [`apps/server/src/lib/define-domain-error.ts`](apps/server/src/lib/define-domain-error.ts) (optional companion for gradual migration)
+- [x] Add [`apps/server/src/routes/reply-from-domain-error.ts`](apps/server/src/routes/reply-from-domain-error.ts)
+- [x] Unit tests: `DomainError` preserves `code` / `httpStatus`; `replyFromDomainError` sends correct status/body; returns `false` for non-domain errors
+- [x] Document code naming convention: `SCREAMING_SNAKE` domain prefix, e.g. `PORTAL_INVITE_NOT_FOUND`, `PROPERTY_MEMBER_INVITE_MISMATCH`
 
 **Exit criteria:** New modules tested; no production route uses them yet; lint passes.
 
