@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreditCard, ExternalLink } from "lucide-react";
 import { type ComponentProps, memo } from "react";
 import { toast } from "sonner";
@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { PropertyStripeConnectStatusBadge } from "@/components/settings/property-stripe-connect-status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { propertyStripeConnectApi } from "@/lib/api-client";
 import {
   EXPRESS_CONNECT_HELPER,
@@ -23,7 +22,10 @@ import {
   stripeConnectSectionDescription,
 } from "@/lib/property-stripe-connect-utils";
 import { queryKeys } from "@/lib/query-keys";
-import { PropertyStripeAccountType } from "@/packages/shared";
+import {
+  type IPropertyStripeConnectStatusResponse,
+  PropertyStripeAccountType,
+} from "@/packages/shared";
 
 function openStripeOnboardingUrl(url: string): void {
   const link = document.createElement("a");
@@ -71,15 +73,12 @@ StripeConnectOption.displayName = "StripeConnectOption";
 
 export const PropertyStripeConnectSection = memo(function PropertyStripeConnectSection({
   propertyId,
+  status,
 }: {
   propertyId: string;
+  status: IPropertyStripeConnectStatusResponse;
 }) {
   const queryClient = useQueryClient();
-
-  const statusQuery = useQuery({
-    queryFn: () => propertyStripeConnectApi.getStatus(propertyId),
-    queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
-  });
 
   const expressOnboardingMutation = useMutation({
     mutationFn: () => propertyStripeConnectApi.createExpressOnboardingLink(propertyId),
@@ -88,7 +87,7 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
     },
     onSuccess: (result) => {
       openStripeOnboardingUrl(result.url);
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
       });
     },
@@ -104,42 +103,17 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
     },
   });
 
-  if (statusQuery.isPending) {
-    return (
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-9 w-40" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (statusQuery.isError || !statusQuery.data) {
-    return (
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">Rent payments (Stripe)</CardTitle>
-          <CardDescription>
-            {statusQuery.error instanceof Error
-              ? statusQuery.error.message
-              : "Failed to load Stripe Connect status"}
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  const status = statusQuery.data;
   const uiStatus = getStripeConnectUiStatus(status);
   const dualOptions = showDualConnectOptions(status);
   const showExpressOnboarding = shouldShowExpressOnboardingButton(status);
   const showStandardOAuth = shouldShowStandardOAuthButton(status);
   const showStandardDashboard = shouldShowStandardDashboardLink(status);
   const connectPending = expressOnboardingMutation.isPending || standardOAuthMutation.isPending;
+  const showStandardIncompleteOAuth =
+    showStandardOAuth &&
+    status.accountType === PropertyStripeAccountType.STANDARD &&
+    uiStatus === "setup_incomplete";
+  const showStandardOAuthButton = showStandardOAuth && !showStandardIncompleteOAuth;
 
   return (
     <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
@@ -206,30 +180,28 @@ export const PropertyStripeConnectSection = memo(function PropertyStripeConnectS
                   : expressOnboardingButtonLabel(uiStatus)}
               </Button>
             ) : null}
-            {showStandardOAuth ? (
-              status.accountType === PropertyStripeAccountType.STANDARD &&
-              uiStatus === "setup_incomplete" ? (
-                <StripeConnectOption
-                  disabled={connectPending}
-                  helper={STANDARD_INCOMPLETE_HELPER}
-                  label={standardOAuthButtonLabel(uiStatus)}
-                  loadingLabel="Redirecting to Stripe…"
-                  onClick={() => standardOAuthMutation.mutate()}
-                  pending={standardOAuthMutation.isPending}
-                  variant="outline"
-                />
-              ) : (
-                <Button
-                  disabled={connectPending}
-                  onClick={() => standardOAuthMutation.mutate()}
-                  type="button"
-                  variant="outline"
-                >
-                  {standardOAuthMutation.isPending
-                    ? "Redirecting to Stripe…"
-                    : standardOAuthButtonLabel(uiStatus)}
-                </Button>
-              )
+            {showStandardIncompleteOAuth ? (
+              <StripeConnectOption
+                disabled={connectPending}
+                helper={STANDARD_INCOMPLETE_HELPER}
+                label={standardOAuthButtonLabel(uiStatus)}
+                loadingLabel="Redirecting to Stripe…"
+                onClick={() => standardOAuthMutation.mutate()}
+                pending={standardOAuthMutation.isPending}
+                variant="outline"
+              />
+            ) : null}
+            {showStandardOAuthButton ? (
+              <Button
+                disabled={connectPending}
+                onClick={() => standardOAuthMutation.mutate()}
+                type="button"
+                variant="outline"
+              >
+                {standardOAuthMutation.isPending
+                  ? "Redirecting to Stripe…"
+                  : standardOAuthButtonLabel(uiStatus)}
+              </Button>
             ) : null}
           </>
         )}

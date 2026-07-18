@@ -50,6 +50,7 @@ export const PropertySettingsPage = memo(() => {
 
   const stripeConnectStatusQuery = useQuery({
     enabled: canManageStripeConnect,
+    meta: { persist: true },
     queryFn: () => propertyStripeConnectApi.getStatus(propertyId),
     queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
   });
@@ -127,7 +128,12 @@ export const PropertySettingsPage = memo(() => {
 
   return (
     <div className="space-y-6">
-      {showStripeConnectSection ? <PropertyStripeConnectSection propertyId={propertyId} /> : null}
+      {showStripeConnectSection && stripeConnectStatusQuery.data ? (
+        <PropertyStripeConnectSection
+          propertyId={propertyId}
+          status={stripeConnectStatusQuery.data}
+        />
+      ) : null}
       <PropertySettingsForm
         canEdit={canEdit}
         propertyId={propertyId}
