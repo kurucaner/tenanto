@@ -28,6 +28,10 @@ import {
 } from "@/lib/lease-portal-access-display";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  getSecondaryPortalActingMembershipId,
+  resolveSecondaryPortalMembershipForContact,
+} from "@/lib/resolve-secondary-tenant-contacts-for-display";
+import {
   type ILeasePrimaryTenantContact,
   type ILeaseSecondaryTenantContact,
   type IPropertyLongStay,
@@ -53,14 +57,6 @@ interface LeaseTenantsSectionProps {
   primaryTenantContact: ILeasePrimaryTenantContact;
   propertyId: string;
   secondaryTenantContacts: ILeaseSecondaryTenantContact[];
-}
-
-function contactToTenantRow(contact: ILeaseSecondaryTenantContact) {
-  return {
-    email: contact.effectiveEmail,
-    name: contact.effectiveName,
-    phone: contact.effectivePhone,
-  };
 }
 
 export const LeaseTenantsSection = memo(
@@ -120,8 +116,11 @@ export const LeaseTenantsSection = memo(
     );
 
     const inviteMutation = useMutation({
-      mutationFn: (body: { invitePrimary?: boolean; secondaryMembershipIds?: string[] }) =>
-        longStayPortalApi.createInvites(propertyId, lease.id, body),
+      mutationFn: (body: {
+        invitePrimary?: boolean;
+        secondaryIndexes?: number[];
+        secondaryMembershipIds?: string[];
+      }) => longStayPortalApi.createInvites(propertyId, lease.id, body),
       onError: (error) => {
         toast.error(error instanceof Error ? error.message : "Failed to send portal invite");
       },
@@ -165,7 +164,11 @@ export const LeaseTenantsSection = memo(
       async (
         action: TLeasePortalRowAction,
         membershipId: string | null,
-        body: { invitePrimary?: boolean; secondaryMembershipIds?: string[] },
+        body: {
+          invitePrimary?: boolean;
+          secondaryIndexes?: number[];
+          secondaryMembershipIds?: string[];
+        },
         target: TLeasePortalActingTarget
       ) => {
         setActingAction(action);
@@ -306,68 +309,59 @@ export const LeaseTenantsSection = memo(
       [secondaryTenantContacts]
     );
 
-    const findSecondaryMembership = useCallback(
-      (index: number) => {
-        const contact = findSecondaryContact(index);
-        if (!contact) {
-          return { contact: null, membership: null };
-        }
-        return {
-          contact,
-          membership:
-            (contact.membershipId
-              ? memberships.find((membership) => membership.id === contact.membershipId)
-              : null) ??
-            findLeasePortalMembership(
-              memberships,
-              TenantMembershipRole.SECONDARY,
-              contact.effectiveEmail
-            ),
-        };
-      },
-      [findSecondaryContact, memberships]
-    );
-
     const handleInviteSecondary = useCallback(
-      (membershipId: string) => {
-        void runPortalAction(
-          "invite",
-          membershipId,
-          {
-            secondaryMembershipIds: [membershipId],
-          },
-          { kind: "secondary", membershipId }
-        );
+      (contact: ILeaseSecondaryTenantContact, index: number) => {
+        const actingMembershipId = getSecondaryPortalActingMembershipId(contact, index);
+        const body = contact.membershipId
+          ? { secondaryMembershipIds: [contact.membershipId] }
+          : { secondaryIndexes: [index] };
+        const portalMembershipId =
+          resolveSecondaryPortalMembershipForContact(contact, memberships)?.id ??
+          contact.membershipId;
+
+        void runPortalAction("invite", portalMembershipId, body, {
+          kind: "secondary",
+          membershipId: actingMembershipId,
+        });
       },
-      [runPortalAction]
+      [memberships, runPortalAction]
     );
 
     const handleResendSecondary = useCallback(
-      (membershipId: string) => {
-        void runPortalAction("resend", membershipId, {}, { kind: "secondary", membershipId });
+      (contact: ILeaseSecondaryTenantContact, index: number) => {
+        const actingMembershipId = getSecondaryPortalActingMembershipId(contact, index);
+        const portalMembershipId = resolveSecondaryPortalMembershipForContact(
+          contact,
+          memberships
+        )?.id;
+        if (!portalMembershipId) {
+          return;
+        }
+
+        void runPortalAction(
+          "resend",
+          portalMembershipId,
+          {},
+          { kind: "secondary", membershipId: actingMembershipId }
+        );
       },
-      [runPortalAction]
+      [memberships, runPortalAction]
     );
 
     const handleRevokeSecondary = useCallback(
-      (membershipId: string) => {
-        const contact = secondaryTenantContacts.find((row) => row.membershipId === membershipId);
-        if (!contact) {
+      (contact: ILeaseSecondaryTenantContact, index: number) => {
+        const actingMembershipId = getSecondaryPortalActingMembershipId(contact, index);
+        const portalMembership = resolveSecondaryPortalMembershipForContact(contact, memberships);
+        if (!portalMembership) {
           return;
         }
-        const membership =
-          memberships.find((row) => row.id === membershipId) ??
-          findLeasePortalMembership(
-            memberships,
-            TenantMembershipRole.SECONDARY,
-            contact.effectiveEmail
-          );
-        requestRevokeConfirmation(membership?.id ?? membershipId, contact.effectiveName, {
+
+        requestRevokeConfirmation(portalMembership.id, contact.effectiveName, {
           kind: "secondary",
-          membershipId,
+          membershipId: actingMembershipId,
         });
       },
-      [memberships, requestRevokeConfirmation, secondaryTenantContacts]
+      [memberships, requestRevokeConfirmation]
     );
 
     const handleEditSecondary = useCallback(
@@ -445,37 +439,40 @@ export const LeaseTenantsSection = memo(
               <div className="space-y-3 border-t pt-3">
                 <p className="text-muted-foreground text-xs">Secondary tenants</p>
                 {secondaryTenantContacts.map((contact, index) => {
-                  const { membership } = findSecondaryMembership(index);
+                  const membership = resolveSecondaryPortalMembershipForContact(
+                    contact,
+                    memberships
+                  );
                   const rowPortalState = getLeasePortalRowState(
                     membership,
                     Boolean(contact.effectiveEmail?.trim())
                   );
-                  const tenant = contactToTenantRow(contact);
                   const canEditRow = canEditTenants && contact.membershipId != null;
-
-                  if (!contact.membershipId) {
-                    return null;
-                  }
+                  const portalRowTarget = {
+                    kind: "secondary" as const,
+                    membershipId: getSecondaryPortalActingMembershipId(contact, index),
+                  };
 
                   return (
                     <LeaseSecondaryTenantRow
                       actingAction={actingAction}
                       actingTarget={actingTarget}
                       canEdit={canEditRow}
+                      contact={contact}
                       index={index}
                       isDeletePending={removeMutation.isPending}
                       isQuickDeleteActive={isQuickDeleteActive}
-                      key={contact.membershipId}
-                      membershipId={contact.membershipId}
+                      key={contact.membershipId ?? `legacy-jsonb-${index}`}
                       onDelete={handleDeleteSecondary}
                       onEdit={handleEditSecondary}
                       onInvite={handleInviteSecondary}
                       onResend={handleResendSecondary}
                       onRevoke={handleRevokeSecondary}
                       portalMutationPending={portalMutationPending}
+                      portalRowTarget={portalRowTarget}
                       portalState={rowPortalState}
+                      showDelete={canEditRow}
                       showPortalRow={showPortalRow}
-                      tenant={tenant}
                     />
                   );
                 })}

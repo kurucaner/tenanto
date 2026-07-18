@@ -7,7 +7,7 @@ todos:
     status: completed
   - id: s1-read-path
     content: GET lease detail `secondaryTenantContacts` with legacy JSONB merge; admin display + linked badge + fallback
-    status: pending
+    status: completed
   - id: s1b-backfill
     content: "Idempotent JSONB→membership backfill script; staging verification query; optional retroactive phone sync"
     status: pending
@@ -166,17 +166,17 @@ Post-v63 prod fix:       S0 → S3a server+admin (membership CRUD only) → S1 r
 
 **Server**
 
-- [`resolve-secondary-tenant-contacts-service.ts`](apps/server/src/services/) (mirror [`lease-primary-tenant-contact-service.ts`](apps/server/src/services/lease-primary-tenant-contact-service.ts))
-- `GET .../long-stays/:id` → include `secondaryTenantContacts[]`
-- **Transition merge:** for each JSONB entry with no matching non-terminal secondary membership (by normalized email), append contact with `source: 'legacy_jsonb'` and `membershipId: null`. Prevents JSONB-only secondaries from disappearing before backfill (G3).
-- Keep `longStay.secondaryTenants` JSONB unchanged (transition)
+- [x] [`resolve-secondary-tenant-contacts-service.ts`](apps/server/src/services/) (mirror [`lease-primary-tenant-contact-service.ts`](apps/server/src/services/lease-primary-tenant-contact-service.ts))
+- [x] `GET .../long-stays/:id` → include `secondaryTenantContacts[]`
+- [x] **Transition merge:** for each JSONB entry with no matching non-terminal secondary membership (by normalized email), append contact with `source: 'legacy_jsonb'` and `membershipId: null`. Prevents JSONB-only secondaries from disappearing before backfill (G3).
+- [x] Keep `longStay.secondaryTenants` JSONB unchanged (transition)
 
 **Admin**
 
-- [`lease-tenants-section.tsx`](apps/admin/src/components/leases/lease-tenants-section.tsx): prefer `secondaryTenantContacts` when present
-- **Fallback:** if `secondaryTenantContacts` absent (old server) or empty, keep current JSONB + email-match behavior
-- [`LeaseSecondaryTenantRow`](apps/admin/src/components/leases/lease-tenant-block.tsx): **“Portal account linked”** badge when `source === 'linked_user'`
-- Portal row uses membership from contact object (not email+index guess); legacy JSONB rows use email-match against portal-access memberships until backfilled
+- [x] [`lease-tenants-section.tsx`](apps/admin/src/components/leases/lease-tenants-section.tsx): prefer `secondaryTenantContacts` when present
+- [x] **Fallback:** if `secondaryTenantContacts` absent (old server) or empty, keep current JSONB + email-match behavior
+- [x] [`LeaseSecondaryTenantRow`](apps/admin/src/components/leases/lease-tenant-block.tsx): **“Portal account linked”** badge when `source === 'linked_user'`
+- [x] Portal row uses membership from contact object (not email+index guess); legacy JSONB rows use email-match against portal-access memberships until backfilled
 
 **Exit:** linked secondary shows `tenant_users` contact + badge; listed/pending show membership fields; JSONB-only secondaries still visible via merge
 

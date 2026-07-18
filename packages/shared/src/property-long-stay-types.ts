@@ -86,8 +86,8 @@ export interface IPropertyLongStayDetailResponse {
   primaryTenantContact: ILeasePrimaryTenantContact;
   rentPeriods: IPropertyLongStayRentPeriod[];
   rentSchedule: IPropertyLongStayRentMonth[];
-  /** Effective secondary occupant contacts from membership rows. */
-  secondaryTenantContacts: ILeaseSecondaryTenantContact[];
+  /** Effective secondary occupant contacts from membership rows (+ legacy JSONB merge when present). */
+  secondaryTenantContacts?: ILeaseSecondaryTenantContact[];
   termsEditability: ILeaseTermsEditability;
 }
 

@@ -28,6 +28,21 @@ export interface IResolveSecondaryTenantContactsForLeaseInput {
   tenantUsersById: ReadonlyMap<string, ITenantUser> | Readonly<Record<string, ITenantUser>>;
 }
 
+/** Map one legacy JSONB secondary tenant row to a display contact (transition / admin fallback). */
+export function mapLegacyJsonbSecondaryTenantToContact(
+  tenant: IPropertyLongStaySecondaryTenant
+): ILeaseSecondaryTenantContact {
+  return {
+    effectiveEmail: tenant.email?.trim() ?? null,
+    effectiveName: tenant.name,
+    effectivePhone: tenant.phone,
+    membershipId: null,
+    source: "legacy_jsonb",
+    status: null,
+    tenantUserId: null,
+  };
+}
+
 const PENDING_MEMBERSHIP_STATUSES = new Set<TTenantMembershipStatus>([
   TenantMembershipStatus.PENDING_ACCEPTANCE,
   TenantMembershipStatus.PENDING_INVITE,
@@ -166,15 +181,7 @@ export function resolveSecondaryTenantContactsForLease(
       continue;
     }
 
-    contacts.push({
-      effectiveEmail: email ?? null,
-      effectiveName: orphan.name,
-      effectivePhone: orphan.phone,
-      membershipId: null,
-      source: "legacy_jsonb",
-      status: null,
-      tenantUserId: null,
-    });
+    contacts.push(mapLegacyJsonbSecondaryTenantToContact(orphan));
 
     if (email) {
       matchedEmails.add(normalizeTenantEmail(email));
