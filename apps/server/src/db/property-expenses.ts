@@ -81,12 +81,12 @@ export const propertyExpensesDb = {
       categoryId: ICreatePropertyExpenseBody["categoryId"];
       description: string | null;
       expenseDate: string | null;
-      taxFree: boolean;
+      cashExpense: boolean;
     }
   ): Promise<IPropertyExpense> {
     const insertResult = await pool.query(
       `INSERT INTO property_expenses
-         (property_id, category_id, amount, expense_date, description, tax_free)
+         (property_id, category_id, amount, expense_date, description, cash_expense)
        VALUES ($1, $2::uuid, $3, $4, $5, $6)
        RETURNING id`,
       [
@@ -95,7 +95,7 @@ export const propertyExpensesDb = {
         input.amount,
         input.expenseDate,
         input.description,
-        input.taxFree,
+        input.cashExpense,
       ]
     );
     const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
@@ -113,7 +113,7 @@ export const propertyExpensesDb = {
       categoryId: ICreatePropertyExpenseBody["categoryId"];
       description: string | null;
       expenseDate: string | null;
-      taxFree: boolean;
+      cashExpense: boolean;
     }>
   ): Promise<IPropertyExpense[]> {
     if (inputs.length === 0) {
@@ -128,7 +128,7 @@ export const propertyExpensesDb = {
       for (const input of inputs) {
         const insertResult = await client.query(
           `INSERT INTO property_expenses
-             (property_id, category_id, amount, expense_date, description, tax_free)
+             (property_id, category_id, amount, expense_date, description, cash_expense)
            VALUES ($1, $2::uuid, $3, $4, $5, $6)
            RETURNING id`,
           [
@@ -137,7 +137,7 @@ export const propertyExpensesDb = {
             input.amount,
             input.expenseDate,
             input.description,
-            input.taxFree,
+            input.cashExpense,
           ]
         );
         const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
@@ -319,9 +319,9 @@ export const propertyExpensesDb = {
       setClauses.push(`description = $${param++}`);
       values.push(input.description);
     }
-    if (input.taxFree !== undefined) {
-      setClauses.push(`tax_free = $${param++}`);
-      values.push(input.taxFree);
+    if (input.cashExpense !== undefined) {
+      setClauses.push(`cash_expense = $${param++}`);
+      values.push(input.cashExpense);
     }
 
     if (setClauses.length === 0) {

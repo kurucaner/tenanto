@@ -290,7 +290,7 @@ export function mergeExtractedRowsWithCategories(
   expenseDate?: string;
   rowIndex: number;
   sourceFileName: string;
-  taxFree?: boolean;
+  cashExpense?: boolean;
 }> {
   const namesByRowIndex = new Map(
     assignments.map((assignment) => [assignment.rowIndex, assignment.categoryName])

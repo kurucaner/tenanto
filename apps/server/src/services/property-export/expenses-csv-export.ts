@@ -26,7 +26,7 @@ const EXPENSE_CSV_HEADERS = [
   "Category",
   "Description",
   "Amount",
-  "Tax-free",
+  "Paid in cash",
   "Created at",
 ] as const;
 
@@ -38,8 +38,8 @@ function formatMoney(amount: number): string {
   return amount.toFixed(2);
 }
 
-function formatTaxFree(taxFree: boolean): string {
-  return taxFree ? "Yes" : "No";
+function formatCashExpense(cashExpense: boolean): string {
+  return cashExpense ? "Yes" : "No";
 }
 
 function formatCreatedAt(value: string): string {
@@ -52,7 +52,7 @@ export function mapExpenseToCsvValues(expense: IPropertyExpense): string[] {
     expense.categoryName,
     expense.description ?? "",
     formatMoney(expense.amount),
-    formatTaxFree(expense.taxFree),
+    formatCashExpense(expense.cashExpense),
     formatCreatedAt(expense.createdAt),
   ];
 }

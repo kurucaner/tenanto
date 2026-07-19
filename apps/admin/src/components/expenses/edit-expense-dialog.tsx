@@ -33,16 +33,16 @@ export const EditExpenseDialog = memo(
     const [amount, setAmount] = useState(String(expense.amount));
     const [expenseDate, setExpenseDate] = useState(expense.expenseDate ?? "");
     const [description, setDescription] = useState(expense.description ?? "");
-    const [taxFree, setTaxFree] = useState(expense.taxFree);
+    const [cashExpense, setCashExpense] = useState(expense.cashExpense);
 
     const mutation = useMutation({
       mutationFn: () =>
         expensesApi.update(propertyId, expense.id, {
           amount: Number(amount) || 0,
+          cashExpense,
           categoryId,
           description: description.trim() || null,
           expenseDate: expenseDate || null,
-          taxFree,
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update expense");
@@ -76,8 +76,8 @@ export const EditExpenseDialog = memo(
               onCategoryChange={setCategoryId}
               onDescriptionChange={setDescription}
               onExpenseDateChange={setExpenseDate}
-              onTaxFreeChange={setTaxFree}
-              taxFree={taxFree}
+              onCashExpenseChange={setCashExpense}
+              cashExpense={cashExpense}
             />
 
             <p className="text-muted-foreground text-xs">

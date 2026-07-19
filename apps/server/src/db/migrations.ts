@@ -3116,4 +3116,20 @@ export const migrations: IMigration[] = [
     },
     version: 69,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE property_expenses
+          RENAME COLUMN cash_expense TO tax_free;
+      `);
+    },
+    name: "property_expenses_cash_expense",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE property_expenses
+          RENAME COLUMN tax_free TO cash_expense;
+      `);
+    },
+    version: 70,
+  },
 ];

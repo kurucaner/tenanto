@@ -11,6 +11,7 @@ import { type IPropertyExpenseCategoryType } from "@/packages/shared";
 interface ExpenseFormFieldsProps {
   amount: string;
   amountError?: string;
+  cashExpense: boolean;
   categoryId: string;
   categoryTypes: IPropertyExpenseCategoryType[];
   description: string;
@@ -21,17 +22,17 @@ interface ExpenseFormFieldsProps {
   idPrefix: string;
   maxDate?: string;
   onAmountChange: (value: string) => void;
+  onCashExpenseChange: (value: boolean) => void;
   onCategoryChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onExpenseDateChange: (value: string) => void;
-  onTaxFreeChange: (value: boolean) => void;
-  taxFree: boolean;
 }
 
 export const ExpenseFormFields = memo(
   ({
     amount,
     amountError,
+    cashExpense,
     categoryId,
     categoryTypes,
     description,
@@ -42,11 +43,10 @@ export const ExpenseFormFields = memo(
     idPrefix,
     maxDate,
     onAmountChange,
+    onCashExpenseChange,
     onCategoryChange,
     onDescriptionChange,
     onExpenseDateChange,
-    onTaxFreeChange,
-    taxFree,
   }: ExpenseFormFieldsProps) => {
     const selectedCategory = categoryTypes.find((t) => t.id === categoryId);
 
@@ -106,11 +106,11 @@ export const ExpenseFormFields = memo(
 
         <div className="flex items-center gap-2">
           <Checkbox
-            checked={taxFree}
-            id={`${idPrefix}-tax-free`}
-            onCheckedChange={(checked) => onTaxFreeChange(checked === true)}
+            checked={cashExpense}
+            id={`${idPrefix}-cash-expense`}
+            onCheckedChange={(checked) => onCashExpenseChange(checked === true)}
           />
-          <Label htmlFor={`${idPrefix}-tax-free`}>Tax-free expense</Label>
+          <Label htmlFor={`${idPrefix}-cash-expense`}>Paid in cash</Label>
         </div>
 
         {selectedCategory?.isAnnualAmount ? (

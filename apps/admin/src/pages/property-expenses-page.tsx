@@ -93,7 +93,7 @@ const ExpenseRow = memo(
       </TableCell>
       <TableCell>{expense.expenseDate ?? "—"}</TableCell>
       <TableCell className="max-w-[240px] truncate">{expense.description ?? "—"}</TableCell>
-      <TableCell>{expense.taxFree ? <Badge variant="secondary">Tax-free</Badge> : "—"}</TableCell>
+      <TableCell>{expense.cashExpense ? <Badge variant="secondary">Cash</Badge> : "—"}</TableCell>
       <TableCell className="text-right font-medium">{formatMoney(expense.amount)}</TableCell>
       {canManage ? (
         <TableCell>
@@ -136,7 +136,7 @@ function getExpenseColumns(canManage: boolean): DataTableColumn[] {
     { id: "category", label: "Category" },
     { id: "date", label: "Date" },
     { id: "description", label: "Description" },
-    { id: "tax", label: "Tax" },
+    { id: "cash", label: "Cash" },
     { align: "right", id: "amount", label: "Amount" },
     { hidden: !canManage, id: "actions", label: "Actions" },
   ];

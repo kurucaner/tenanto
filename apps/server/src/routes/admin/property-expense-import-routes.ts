@@ -46,7 +46,7 @@ function buildParsedRow(
     categoryId: string;
     description?: string;
     expenseDate?: string;
-    taxFree?: boolean;
+    cashExpense?: boolean;
   }
 ): IExpenseImportParsedRow {
   if (!Number.isFinite(row.amount) || row.amount < 0) {
@@ -57,7 +57,7 @@ function buildParsedRow(
       expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      taxFree: row.taxFree,
+      cashExpense: row.cashExpense,
       validationError: "amount must be a non-negative number",
     };
   }
@@ -71,7 +71,7 @@ function buildParsedRow(
       expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      taxFree: row.taxFree,
+      cashExpense: row.cashExpense,
       validationError: futureDateError,
     };
   }
@@ -83,7 +83,7 @@ function buildParsedRow(
     expenseDate: row.expenseDate,
     rowIndex,
     sourceFileName,
-    taxFree: row.taxFree,
+    cashExpense: row.cashExpense,
   };
 }
 
@@ -222,7 +222,7 @@ function validateCommitRows(
       expenseDate: row.expenseDate,
       rowIndex: row.rowIndex,
       sourceFileName: row.sourceFileName,
-      taxFree: row.taxFree,
+      cashExpense: row.cashExpense,
     });
   }
 
@@ -378,7 +378,7 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
           categoryId: row.categoryId,
           description: row.description?.trim() || null,
           expenseDate: row.expenseDate ?? null,
-          taxFree: row.taxFree ?? false,
+          cashExpense: row.cashExpense ?? false,
         }))
       );
 

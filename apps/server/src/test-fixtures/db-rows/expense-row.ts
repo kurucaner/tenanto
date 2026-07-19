@@ -20,7 +20,7 @@ export function buildExpenseRow(overrides: TExpenseRowOverrides = {}): Record<st
     is_annual_amount: false,
     is_deleted: false,
     property_id: TEST_PROPERTY_ID,
-    tax_free: false,
+    cash_expense: false,
     updated_at: testDateTime(0),
     ...overrides,
   };

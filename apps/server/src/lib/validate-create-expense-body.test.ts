@@ -33,7 +33,7 @@ describe("parseCreateExpenseBody", () => {
       amount: 120.5,
       categoryId: VALID_CATEGORY_ID,
       expenseDate: "2026-01-15",
-      taxFree: false,
+      cashExpense: false,
     });
 
     expect(parsed.ok).toBe(true);

@@ -78,11 +78,11 @@ export function parseCreateExpenseBody(
     return { error: "description must be a string", ok: false };
   }
 
-  let taxFree: boolean | undefined;
-  if (r["taxFree"] !== undefined) {
-    const parsedTaxFree = parseBoolean(r["taxFree"]);
-    if (parsedTaxFree === null) return { error: "taxFree must be a boolean", ok: false };
-    taxFree = parsedTaxFree;
+  let cashExpense: boolean | undefined;
+  if (r["cashExpense"] !== undefined) {
+    const parsedCashExpense = parseBoolean(r["cashExpense"]);
+    if (parsedCashExpense === null) return { error: "cashExpense must be a boolean", ok: false };
+    cashExpense = parsedCashExpense;
   }
 
   return {
@@ -91,7 +91,7 @@ export function parseCreateExpenseBody(
       categoryId,
       description: description ?? undefined,
       expenseDate: expenseDate ?? undefined,
-      taxFree,
+      cashExpense,
     },
     ok: true,
   };

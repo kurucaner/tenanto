@@ -22,7 +22,7 @@ describe("mapExpenseToCsvValues", () => {
         makeExpense({
           description: null,
           expenseDate: null,
-          taxFree: true,
+          cashExpense: true,
         })
       )
     ).toEqual(["", "Maintenance", "", "125.50", "Yes", "2026-03-15"]);

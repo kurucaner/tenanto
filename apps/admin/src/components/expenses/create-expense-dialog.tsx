@@ -24,6 +24,7 @@ import { type IPropertyExpenseCategoryType } from "@/packages/shared";
 
 const createExpenseSchema = z.object({
   amount: requiredPositiveMoneyField("Amount"),
+  cashExpense: z.boolean(),
   categoryId: z.string().min(1, "Category is required"),
   description: z.string(),
   expenseDate: z
@@ -32,7 +33,6 @@ const createExpenseSchema = z.object({
     .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
       message: "Date cannot be in the future",
     }),
-  taxFree: z.boolean(),
 });
 
 type TCreateExpenseFormValues = z.infer<typeof createExpenseSchema>;
@@ -40,10 +40,10 @@ type TCreateExpenseFormValues = z.infer<typeof createExpenseSchema>;
 function getDefaultValues(firstCategoryId: string): TCreateExpenseFormValues {
   return {
     amount: "",
+    cashExpense: false,
     categoryId: firstCategoryId,
     description: "",
     expenseDate: getTodayLocalIsoDate(),
-    taxFree: false,
   };
 }
 
@@ -67,10 +67,10 @@ export const CreateExpenseDialog = memo(
       mutationFn: (values: TCreateExpenseFormValues) =>
         expensesApi.create(propertyId, {
           amount: Number(values.amount) || 0,
+          cashExpense: values.cashExpense,
           categoryId: values.categoryId,
           description: values.description.trim() || undefined,
           expenseDate: values.expenseDate,
-          taxFree: values.taxFree,
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to create expense");
@@ -98,7 +98,7 @@ export const CreateExpenseDialog = memo(
 
     const { errors, isSubmitting } = form.formState;
     const maxExpenseDate = getTodayLocalIsoDate();
-    const { amount, categoryId, description, expenseDate, taxFree } = form.watch();
+    const { amount, cashExpense, categoryId, description, expenseDate } = form.watch();
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -126,8 +126,8 @@ export const CreateExpenseDialog = memo(
                 onCategoryChange={(value) => form.setValue("categoryId", value)}
                 onDescriptionChange={(value) => form.setValue("description", value)}
                 onExpenseDateChange={(value) => form.setValue("expenseDate", value)}
-                onTaxFreeChange={(value) => form.setValue("taxFree", value)}
-                taxFree={taxFree}
+                onCashExpenseChange={(value) => form.setValue("cashExpense", value)}
+                cashExpense={cashExpense}
               />
             </DialogFormFields>
 
