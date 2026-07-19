@@ -11,4 +11,11 @@
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
 - A dialog when the users log in to the app for the first time.
-- Phone number country selection list virtualization
+- Add security deposit flow
+- Add weekly long term stays
+- Fix 1 day mismatch in monthly long term stays
+- Sub category implementation for expenses
+- Update Tax-Free to be Cash Expense
+- Add Stripe commission to long stay payments
+- Update "Rent" and "Stay" to "Long Term" and "Short Term" in the table
+- ACH

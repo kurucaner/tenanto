@@ -32,7 +32,7 @@ function amountDueHint(totalDue: number, onlinePayAvailable: boolean): string {
   if (onlinePayAvailable) {
     return "Pay online securely using the button above.";
   }
-  return "Online payments aren&apos;t available for these leases yet. Open your lease for details.";
+  return "Online payments aren't available for these leases yet. Open your lease for details.";
 }
 
 function primaryDueCtaLabel(isStartingCheckout: boolean, onlinePayAvailable: boolean): string {
