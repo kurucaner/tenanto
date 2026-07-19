@@ -3,9 +3,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { memo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { ExpenseFormFields } from "@/components/expenses/expense-form-fields";
+import {
+  createExpenseFormSchema,
+  emptyCreateExpenseFormValues,
+  type TCreateExpenseFormValues,
+} from "@/components/expenses/expense-form-schema";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,34 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { expensesApi } from "@/lib/api-client";
 import { invalidatePropertyExpenseCaches } from "@/lib/invalidate-property-expense-caches";
-import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
-import { getTodayLocalIsoDate, isDateOnOrBefore } from "@/lib/reservation-date-utils";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { type IPropertyExpenseCategoryType } from "@/packages/shared";
-
-const createExpenseSchema = z.object({
-  amount: requiredPositiveMoneyField("Amount"),
-  cashExpense: z.boolean(),
-  categoryId: z.string().min(1, "Category is required"),
-  description: z.string(),
-  expenseDate: z
-    .string()
-    .min(1, "Date is required")
-    .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
-      message: "Date cannot be in the future",
-    }),
-});
-
-type TCreateExpenseFormValues = z.infer<typeof createExpenseSchema>;
-
-function getDefaultValues(firstCategoryId: string): TCreateExpenseFormValues {
-  return {
-    amount: "",
-    cashExpense: false,
-    categoryId: firstCategoryId,
-    description: "",
-    expenseDate: getTodayLocalIsoDate(),
-  };
-}
 
 interface CreateExpenseDialogProps {
   categoryTypes: IPropertyExpenseCategoryType[];
@@ -59,8 +37,8 @@ export const CreateExpenseDialog = memo(
     const queryClient = useQueryClient();
     const firstCategoryId = categoryTypes[0]?.id ?? "";
     const form = useForm<TCreateExpenseFormValues>({
-      defaultValues: getDefaultValues(firstCategoryId),
-      resolver: zodResolver(createExpenseSchema),
+      defaultValues: emptyCreateExpenseFormValues(firstCategoryId),
+      resolver: zodResolver(createExpenseFormSchema),
     });
 
     const mutation = useMutation({
@@ -85,7 +63,7 @@ export const CreateExpenseDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(getDefaultValues(firstCategoryId));
+          form.reset(emptyCreateExpenseFormValues(firstCategoryId));
         }
         onOpenChange(nextOpen);
       },
@@ -113,6 +91,7 @@ export const CreateExpenseDialog = memo(
               <ExpenseFormFields
                 amount={amount}
                 amountError={errors.amount?.message}
+                cashExpense={cashExpense}
                 categoryId={categoryId}
                 categoryTypes={categoryTypes}
                 description={description}
@@ -123,11 +102,10 @@ export const CreateExpenseDialog = memo(
                 idPrefix="create-expense"
                 maxDate={maxExpenseDate}
                 onAmountChange={(value) => form.setValue("amount", value)}
+                onCashExpenseChange={(value) => form.setValue("cashExpense", value)}
                 onCategoryChange={(value) => form.setValue("categoryId", value)}
                 onDescriptionChange={(value) => form.setValue("description", value)}
                 onExpenseDateChange={(value) => form.setValue("expenseDate", value)}
-                onCashExpenseChange={(value) => form.setValue("cashExpense", value)}
-                cashExpense={cashExpense}
               />
             </DialogFormFields>
 
