@@ -1,4 +1,4 @@
-import { ChevronRight, History, X } from "lucide-react";
+import { ChevronRight, Compass, History, X } from "lucide-react";
 import { memo } from "react";
 
 import { HomeColumnPanel, HomeColumnRow } from "@/components/home/home-column-panel";
@@ -13,7 +13,9 @@ export const HomeContinueColumn = memo(() => {
   const hasEntries = accessibleRecentEntries.length > 0 || staleRecentEntries.length > 0;
 
   if (!hasEntries) {
-    return <HomeColumnPanel emptyMessage="Start something new" title="Continue" />;
+    return (
+      <HomeColumnPanel emptyIcon={Compass} emptyMessage="Explore something new" title="Continue" />
+    );
   }
 
   return (

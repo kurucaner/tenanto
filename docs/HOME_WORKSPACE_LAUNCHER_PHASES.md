@@ -65,8 +65,7 @@ Phased rollout to transform the admin **Home** page from a portfolio reports pre
   → buildPropertyShellTabPath (routes)
         ↓
 [Global nav — Phase 3]
-  Header property switcher
-  Cmd+K command palette
+  Cmd+K command palette (property switcher in property shell only)
         ↓
 [Phase 5 — optional]
   GET /home/workspace-summary → widget badges on cards
@@ -216,14 +215,14 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 **Goal:** Property navigation from any page; Cmd+K for power users.
 
-#### Phase 3a — Header property switcher (4 files)
+#### Phase 3a — Property switcher (4 files)
 
 - [x] Extract trigger/popover shell into [`apps/admin/src/components/properties/property-switcher-trigger.tsx`](../apps/admin/src/components/properties/property-switcher-trigger.tsx)
-- [x] Refactor [`apps/admin/src/components/properties/property-switcher.tsx`](../apps/admin/src/components/properties/property-switcher.tsx) to use trigger; support `propertyId` optional (global mode)
-- [x] Mount switcher in [`apps/admin/src/components/layout/admin-layout.tsx`](../apps/admin/src/components/layout/admin-layout.tsx) header
-- [x] Remove duplicate in-shell switcher from [`apps/admin/src/components/properties/property-page-shell.tsx`](../apps/admin/src/components/properties/property-page-shell.tsx) (header-only)
+- [x] Refactor [`apps/admin/src/components/properties/property-switcher.tsx`](../apps/admin/src/components/properties/property-switcher.tsx) to use trigger; recent rows + tab-preserving switch
+- [x] Mount switcher in [`apps/admin/src/components/properties/property-page-shell.tsx`](../apps/admin/src/components/properties/property-page-shell.tsx) (property context only)
+- [x] ~~Mount switcher in admin header~~ — reverted; global property pick remains Cmd+K only
 
-**Exit criteria:** Switcher works outside property shell; tab preservation on property switch unchanged.
+**Exit criteria:** Switcher available inside property shell; tab preservation on property switch unchanged; Cmd+K covers global property navigation.
 
 #### Phase 3b — Cmd+K command palette (5 files)
 

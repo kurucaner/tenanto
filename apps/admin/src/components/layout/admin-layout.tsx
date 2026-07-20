@@ -7,7 +7,6 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { GlobalCommandPaletteHost } from "@/components/layout/global-command-palette";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
-import { AdminHeaderPropertySwitcher } from "@/components/properties/property-switcher";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
@@ -59,9 +58,6 @@ const AdminLayoutInner = memo(() => {
         >
           <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
             <SidebarTrigger className="hidden md:inline-flex" />
-            <div className="min-w-0 flex-1">
-              <AdminHeaderPropertySwitcher />
-            </div>
             <div className="ms-auto flex shrink-0 items-center gap-2">
               <NotificationBell />
               {resolvedDark ? <AdminDarkPaletteMenu compact /> : null}

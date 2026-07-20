@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { PropertySwitcherTrigger } from "@/components/properties/property-switcher-trigger";
 import { Button } from "@/components/ui/button";
@@ -9,18 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
 import { useRecentProperties } from "@/hooks/use-recent-properties";
-import { propertiesApi } from "@/lib/api-client";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
-import { PROPERTIES_LIST_STALE_TIME_MS } from "@/lib/properties-list-constants";
 import { buildPropertyResumePath, buildPropertySwitchPath } from "@/lib/property-switch-navigation";
-import { queryKeys } from "@/lib/query-keys";
 import { clearRecentProperties, type IRecentProperty, removeRecentProperty } from "@/lib/recent-properties-storage";
 import { cn } from "@/lib/utils";
 import { type IProperty, LIST_SEARCH_DEBOUNCE_MS } from "@/packages/shared";
 
 type TPropertySwitcherRow = Pick<IProperty, "address" | "id" | "name">;
-
-const GLOBAL_PROPERTY_SWITCHER_LABEL = "Select property";
 
 interface PropertySwitcherOptionProps {
   isSelected: boolean;
@@ -120,8 +114,8 @@ const PropertySwitcherRecentSectionHeader = memo(
 PropertySwitcherRecentSectionHeader.displayName = "PropertySwitcherRecentSectionHeader";
 
 interface PropertySwitcherProps {
-  propertyId?: string;
-  propertyName?: string;
+  propertyId: string;
+  propertyName: string;
 }
 
 export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwitcherProps) => {
@@ -132,7 +126,6 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const recentProperties = useRecentProperties();
-  const switcherLabel = propertyName ?? GLOBAL_PROPERTY_SWITCHER_LABEL;
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -179,7 +172,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   );
 
   const showStaticName =
-    propertyId != null && !isSearching && properties.length === 1 && !isPending;
+    !isSearching && properties.length === 1 && !isPending;
   const showRecentSection = !isSearching && recentProperties.length > 0;
   const showAllPropertiesSection = !isSearching && (allProperties.length > 0 || showRecentSection);
   const showEmptyState =
@@ -192,23 +185,18 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   const handleSelect = (nextPropertyId: string) => {
     setOpen(false);
 
-    if (propertyId != null) {
-      if (nextPropertyId === propertyId) {
-        return;
-      }
-
-      navigate(
-        buildPropertySwitchPath({
-          nextPropertyId,
-          pathname: location.pathname,
-          propertyId,
-          search: location.search,
-        })
-      );
+    if (nextPropertyId === propertyId) {
       return;
     }
 
-    navigate(buildPropertyResumePath(nextPropertyId));
+    navigate(
+      buildPropertySwitchPath({
+        nextPropertyId,
+        pathname: location.pathname,
+        propertyId,
+        search: location.search,
+      })
+    );
   };
 
   const handleSelectRecent = (recent: IRecentProperty) => {
@@ -225,12 +213,12 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   };
 
   if (showStaticName) {
-    return <span className="text-sm font-medium text-foreground">{switcherLabel}</span>;
+    return <span className="text-sm font-medium text-foreground">{propertyName}</span>;
   }
 
   return (
     <PropertySwitcherTrigger
-      label={switcherLabel}
+      label={propertyName}
       onOpenChange={setOpen}
       open={open}
       searchField={
@@ -316,19 +304,3 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   );
 });
 PropertySwitcher.displayName = "PropertySwitcher";
-
-export const AdminHeaderPropertySwitcher = memo(() => {
-  const { propertyId } = useParams<{ propertyId?: string }>();
-
-  const detailQuery = useQuery({
-    enabled: Boolean(propertyId),
-    queryFn: () => propertiesApi.getDetail(propertyId!), // NOSONAR
-    queryKey: queryKeys.propertyDetail(propertyId ?? ""),
-    staleTime: PROPERTIES_LIST_STALE_TIME_MS,
-  });
-
-  return (
-    <PropertySwitcher propertyId={propertyId} propertyName={detailQuery.data?.property.name} />
-  );
-});
-AdminHeaderPropertySwitcher.displayName = "AdminHeaderPropertySwitcher";

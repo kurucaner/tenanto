@@ -7,6 +7,7 @@ import {
   PropertyShellHeaderActions,
 } from "@/components/properties/property-shell-actions-context";
 import { PropertyShellTabs } from "@/components/properties/property-shell-tabs";
+import { PropertySwitcher } from "@/components/properties/property-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { propertiesApi } from "@/lib/api-client";
@@ -70,7 +71,7 @@ export const PropertyPageShell = memo(
               ← Properties
             </Link>
             <Separator className="h-4" orientation="vertical" />
-            <span className="truncate text-sm font-medium">{propertyName}</span>
+            <PropertySwitcher propertyId={propertyId} propertyName={propertyName} />
             <PropertyShellHeaderActions />
           </div>
 
