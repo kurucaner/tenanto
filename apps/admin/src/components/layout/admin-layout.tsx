@@ -4,7 +4,7 @@ import { Outlet } from "react-router-dom";
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
 import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
-import { GlobalCommandPalette } from "@/components/layout/global-command-palette";
+import { GlobalCommandPaletteHost } from "@/components/layout/global-command-palette";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { AdminHeaderPropertySwitcher } from "@/components/properties/property-switcher";
@@ -16,7 +16,6 @@ import {
 import { HomeSearchFocusContext } from "@/contexts/home-search-focus-context";
 import { LayoutScrollContext } from "@/contexts/layout-scroll-context";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
-import { useGlobalCommandPalette } from "@/hooks/use-global-command-palette";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
 import { cn } from "@/lib/utils";
@@ -35,7 +34,6 @@ const AdminLayoutInner = memo(() => {
     }),
     []
   );
-  const { open: commandPaletteOpen, setOpen: setCommandPaletteOpen } = useGlobalCommandPalette();
   const [suppressToasts, setSuppressToasts] = useState(false);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const streamStatus = useNotificationStream({ suppressToasts });
@@ -77,12 +75,12 @@ const AdminLayoutInner = memo(() => {
             <LayoutScrollContext.Provider value={scrollElement}>
               <HomeSearchFocusContext.Provider value={homeSearchFocusValue}>
                 <Outlet />
+                <GlobalCommandPaletteHost />
               </HomeSearchFocusContext.Provider>
             </LayoutScrollContext.Provider>
           </div>
           <MobileBottomNav />
         </SidebarInset>
-        <GlobalCommandPalette onOpenChange={setCommandPaletteOpen} open={commandPaletteOpen} />
       </SidebarProvider>
     </NotificationStreamContext.Provider>
   );

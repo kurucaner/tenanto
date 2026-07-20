@@ -6,6 +6,7 @@ import {
   CommandDialog,
   CommandInput,
 } from "@/components/ui/command";
+import { useGlobalCommandPalette } from "@/hooks/use-global-command-palette";
 import { useWorkspaceCommandSearch } from "@/hooks/use-workspace-command-search";
 
 interface GlobalCommandPaletteProps {
@@ -58,3 +59,10 @@ export const GlobalCommandPalette = memo(({ onOpenChange, open }: GlobalCommandP
   );
 });
 GlobalCommandPalette.displayName = "GlobalCommandPalette";
+
+export const GlobalCommandPaletteHost = memo(() => {
+  const { open, setOpen } = useGlobalCommandPalette();
+
+  return <GlobalCommandPalette onOpenChange={setOpen} open={open} />;
+});
+GlobalCommandPaletteHost.displayName = "GlobalCommandPaletteHost";

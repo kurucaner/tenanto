@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { WorkspaceCommandResults } from "@/components/home/workspace-command-results";
@@ -52,6 +52,15 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
     navigate(path);
   };
 
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Escape" || searchState.search.length > 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.blur();
+  };
+
   return (
     <div className="relative w-full" ref={containerRef}>
       <Command
@@ -63,6 +72,7 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
             className="h-11 pe-16"
             onBlur={() => setIsFocused(false)}
             onFocus={() => setIsFocused(true)}
+            onKeyDown={handleInputKeyDown}
             onValueChange={searchState.setSearch}
             placeholder="Search"
             value={searchState.search}
