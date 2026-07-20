@@ -1,31 +1,35 @@
-import { ChevronRight, Rocket } from "lucide-react";
+import { ChevronRight, type LucideIcon, Rocket } from "lucide-react";
 import { memo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
 
 interface HomeColumnEmptyStateProps {
+  icon?: LucideIcon;
   message: string;
 }
 
-export const HomeColumnEmptyState = memo(({ message }: HomeColumnEmptyStateProps) => (
-  <div className="flex items-center justify-center gap-2 px-3 py-3 text-muted-foreground bg-muted/50">
-    <Rocket aria-hidden className="size-4 shrink-0" />
-    <p className="text-sm">{message}</p>
-  </div>
-));
+export const HomeColumnEmptyState = memo(
+  ({ icon: Icon = Rocket, message }: HomeColumnEmptyStateProps) => (
+    <div className="flex items-center justify-center gap-2 bg-muted/50 px-3 py-3 text-muted-foreground">
+      <Icon aria-hidden className="size-4 shrink-0" />
+      <p className="text-sm">{message}</p>
+    </div>
+  )
+);
 HomeColumnEmptyState.displayName = "HomeColumnEmptyState";
 
 interface HomeColumnPanelProps {
   children?: ReactNode;
   className?: string;
+  emptyIcon?: LucideIcon;
   emptyMessage?: string;
   headerHref?: string;
   title: string;
 }
 
 export const HomeColumnPanel = memo(
-  ({ children, className, emptyMessage, headerHref, title }: HomeColumnPanelProps) => (
+  ({ children, className, emptyIcon, emptyMessage, headerHref, title }: HomeColumnPanelProps) => (
     <section className={cn("flex min-w-0 flex-col", className)}>
       {headerHref ? (
         <Link
@@ -40,7 +44,9 @@ export const HomeColumnPanel = memo(
       )}
       <div className="overflow-hidden rounded-lg border border-border/80 bg-card/30 divide-y divide-border/60">
         {children}
-        {emptyMessage && children == null ? <HomeColumnEmptyState message={emptyMessage} /> : null}
+        {emptyMessage && children == null ? (
+          <HomeColumnEmptyState icon={emptyIcon} message={emptyMessage} />
+        ) : null}
       </div>
     </section>
   )

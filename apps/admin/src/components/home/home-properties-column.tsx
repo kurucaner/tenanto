@@ -1,4 +1,4 @@
-import { Building2, ChevronRight } from "lucide-react";
+import { Building2, ChevronRight, Construction } from "lucide-react";
 import { memo } from "react";
 
 import { HomeColumnPanel, HomeColumnRow } from "@/components/home/home-column-panel";
@@ -11,7 +11,7 @@ const HOME_PROPERTIES_COLUMN_MAX = 6;
 
 export const HomePropertiesColumn = memo(() => {
   const { error, isError, isPending, properties, refetch } = useHomeWorkspaceProperties();
-  const visibleProperties = properties.slice(0, HOME_PROPERTIES_COLUMN_MAX);
+  const visibleProperties = [];
 
   if (isPending) {
     return (
@@ -33,7 +33,7 @@ export const HomePropertiesColumn = memo(() => {
           <p className="text-destructive text-xs">
             {error instanceof Error ? error.message : "Could not load properties."}
           </p>
-          <Button onClick={() => void refetch()} size="sm" type="button" variant="outline">
+          <Button onClick={() => refetch()} size="sm" type="button" variant="outline">
             Try again
           </Button>
         </div>
@@ -43,7 +43,12 @@ export const HomePropertiesColumn = memo(() => {
 
   if (visibleProperties.length === 0) {
     return (
-      <HomeColumnPanel emptyMessage="Add something new" headerHref="/properties" title="Properties" />
+      <HomeColumnPanel
+        emptyIcon={Construction}
+        emptyMessage="Build new homes"
+        headerHref="/properties"
+        title="Properties"
+      />
     );
   }
 
