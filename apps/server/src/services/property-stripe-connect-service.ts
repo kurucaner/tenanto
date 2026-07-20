@@ -11,6 +11,7 @@ import { stripeConnectAccountFlagsFromStripeAccount } from "@/lib/stripe-connect
 import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
+  requireStripeConnectStandardOAuthConfigured,
 } from "@/lib/stripe-connect-config";
 import {
   buildPropertyStripeConnectSettingsRedirectUrl,
