@@ -11,6 +11,8 @@ export type TPropertyRole = (typeof PropertyRole)[keyof typeof PropertyRole];
 
 export interface IProperty {
   address: string;
+  /** Viewer's membership role on this property; null for platform admins and non-members. */
+  callerRole: TPropertyRole | null;
   createdAt: string;
   createdBy: string;
   favoritedAt: string | null;

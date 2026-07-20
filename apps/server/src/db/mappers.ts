@@ -65,6 +65,10 @@ export const mapSupportRequestRow = (row: Record<string, unknown>): ISupportRequ
 
 export const mapPropertyRow = (row: Record<string, unknown>): IProperty => ({
   address: row.address as string,
+  callerRole:
+    row.caller_role != null && row.caller_role !== ""
+      ? (row.caller_role as TPropertyRole)
+      : null,
   createdAt: (row.created_at as Date).toISOString(),
   createdBy: row.created_by as string,
   favoritedAt: row.favorited_at != null ? (row.favorited_at as Date).toISOString() : null,
