@@ -1,7 +1,5 @@
 - refactor
   - property-export-list-constants
-  - list-meta-types
-  - "linked_user" | "membership_pending" | "lease"; duplicated
   - RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same
 
 - Do I need turbo?

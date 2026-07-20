@@ -4,7 +4,10 @@
     "module": "ESNext",
     "target": "ESNext",
     "lib": ["ESNext"],
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "paths": {
+      "@/packages/shared": ["./src"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
