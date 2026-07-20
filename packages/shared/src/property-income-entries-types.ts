@@ -26,7 +26,10 @@ export interface IPropertyIncomeEntriesListQuery {
   channelCommissionId?: string;
   cursor?: string;
   from?: string;
-  /** Empty = all entries; `stay` = stays only; otherwise an income line type id. */
+  /**
+   * Empty = all entries; `stay` = stays only; `longTerm` = lease-linked income lines only;
+   * otherwise an income line type UUID (other lines only — excludes long-term lease rent).
+   */
   incomeType?: string;
   limit?: number;
   q?: string;

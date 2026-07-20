@@ -92,10 +92,12 @@ export interface IPropertyIncomeLinesListResponse {
 
 export type TPropertyIncomeEntry =
   | { entryKind: "line"; line: IPropertyIncomeLine }
+  | { entryKind: "longTerm"; line: IPropertyIncomeLine }
   | { entryKind: "stay"; stay: IPropertyReservation };
 
 export const IncomeEntryKind = {
   LINE: "line",
+  LONG_TERM: "longTerm",
   STAY: "stay",
 } as const;
 
