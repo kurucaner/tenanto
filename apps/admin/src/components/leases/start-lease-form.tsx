@@ -8,10 +8,18 @@ import { FieldLabel } from "@/components/ui/field-label";
 import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { type TStartLeaseFormValues } from "@/lib/start-lease-form-schema";
+import {
+  getStartLeaseRentAmountLabel,
+  getStartLeaseRentBillingHelperText,
+  START_LEASE_RENT_BILLING_CADENCES,
+  START_LEASE_RENT_BILLING_LABELS,
+  WEEKLY_RENT_BILLING_ENABLED,
+} from "@/lib/start-lease-rent-billing";
 import {
   canNavigateToStartLeaseStep,
   START_LEASE_STEP_LABELS,
@@ -200,57 +208,102 @@ const RentStep = memo(
     leaseEndDate,
     leaseStartDate,
     unitLabel,
-  }: RentStepProps) => (
-    <div className="space-y-6">
-      <div className="text-muted-foreground space-y-1 text-sm">
-        <p>
-          <span className="text-foreground font-medium">{guestName.trim() || "Tenant"}</span>
-          {unitLabel ? ` · ${unitLabel}` : null}
-        </p>
-        <p>
-          {leaseStartDate ? formatIsoDateDisplay(leaseStartDate) : "—"}
-          {" → "}
-          {leaseEndDate ? formatIsoDateDisplay(leaseEndDate) : "—"}
-        </p>
-      </div>
+  }: RentStepProps) => {
+    const rentBillingCadence = form.watch("rentBillingCadence");
+    const rentAmountLabel = getStartLeaseRentAmountLabel(rentBillingCadence);
 
-      <div className="border-border/60 border-t" />
+    return (
+      <div className="space-y-6">
+        <div className="text-muted-foreground space-y-1 text-sm">
+          <p>
+            <span className="text-foreground font-medium">{guestName.trim() || "Tenant"}</span>
+            {unitLabel ? ` · ${unitLabel}` : null}
+          </p>
+          <p>
+            {leaseStartDate ? formatIsoDateDisplay(leaseStartDate) : "—"}
+            {" → "}
+            {leaseEndDate ? formatIsoDateDisplay(leaseEndDate) : "—"}
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="start-lease-monthly-rent">Monthly rent</Label>
-        <div className="relative max-w-xs">
-          <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
-            $
-          </span>
+        <div className="border-border/60 border-t" />
+
+        <div className="space-y-3">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            Rent billing
+          </p>
           <Controller
             control={form.control}
-            name="monthlyRent"
+            name="rentBillingCadence"
             render={({ field }) => (
-              <Input
-                autoFocus={autoFocusRent}
-                className="pl-7 tabular-nums"
-                id="start-lease-monthly-rent"
-                inputMode="decimal"
-                onChange={(e) => {
-                  if (isValidDecimalInput(e.target.value)) {
-                    field.onChange(e.target.value);
-                  }
-                }}
-                type="text"
+              <RadioGroupFieldset
+                legend="Rent billing"
+                onValueChange={field.onChange}
                 value={field.value}
-              />
+              >
+                {START_LEASE_RENT_BILLING_CADENCES.map((cadence) => {
+                  const isWeekly = cadence === "weekly";
+                  const isDisabled = isWeekly && !WEEKLY_RENT_BILLING_ENABLED;
+
+                  return (
+                    <RadioOption
+                      disabled={isDisabled}
+                      key={cadence}
+                      label={
+                        isWeekly && isDisabled
+                          ? `${START_LEASE_RENT_BILLING_LABELS[cadence]} · Coming soon`
+                          : START_LEASE_RENT_BILLING_LABELS[cadence]
+                      }
+                      value={cadence}
+                    />
+                  );
+                })}
+              </RadioGroupFieldset>
             )}
           />
+          <p className="text-muted-foreground text-xs">
+            {getStartLeaseRentBillingHelperText(rentBillingCadence)}
+          </p>
         </div>
-        {errors.monthlyRent ? (
-          <p className="text-destructive text-xs">{errors.monthlyRent.message}</p>
-        ) : null}
-        {firstMonthRentPreview ? (
-          <p className="text-sm font-medium">{firstMonthRentPreview}</p>
-        ) : null}
+
+        <div className="border-border/60 border-t" />
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="start-lease-monthly-rent">{rentAmountLabel}</Label>
+          <div className="relative max-w-xs">
+            <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
+              $
+            </span>
+            <Controller
+              control={form.control}
+              name="monthlyRent"
+              render={({ field }) => (
+                <Input
+                  autoFocus={autoFocusRent}
+                  className="pl-7 tabular-nums"
+                  id="start-lease-monthly-rent"
+                  inputMode="decimal"
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) {
+                      field.onChange(e.target.value);
+                    }
+                  }}
+                  type="text"
+                  value={field.value}
+                />
+              )}
+            />
+          </div>
+          {errors.monthlyRent ? (
+            <p className="text-destructive text-xs">{errors.monthlyRent.message}</p>
+          ) : null}
+          {rentBillingCadence === "monthly" && firstMonthRentPreview ? (
+            <p className="text-sm font-medium">{firstMonthRentPreview}</p>
+          ) : null}
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
 );
 RentStep.displayName = "RentStep";
 

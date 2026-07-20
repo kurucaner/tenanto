@@ -5,13 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import {
-  buildLeaseTermApiPayload,
-  getInitialLeaseTermEndValues,
-  LeaseTermEndFields,
-  refineLeaseTermEndFormValues,
-  resolveLeaseTermEndPreview,
-} from "@/components/leases/lease-term-end-fields";
+import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +22,12 @@ import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
+import {
+  buildLeaseTermApiPayload,
+  getInitialLeaseTermEndValues,
+  refineLeaseTermEndFormValues,
+  resolveLeaseTermEndPreview,
+} from "@/lib/lease-term-end-utils";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { type IPropertyLongStay, validateEditLeaseTerms } from "@/packages/shared";

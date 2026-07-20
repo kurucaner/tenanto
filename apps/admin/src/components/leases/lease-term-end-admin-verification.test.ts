@@ -2,12 +2,14 @@ import { describe, expect, test } from "bun:test";
 
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import {
+  getInitialLeaseTermEndValues,
+  resolveLeaseTermEndPreview,
+} from "@/lib/lease-term-end-utils";
+import {
   isCustomLeaseEndDate,
   PropertyLongStayStatus,
   resolveExtendLeaseEndDate,
 } from "@/packages/shared";
-
-import { getInitialLeaseTermEndValues, resolveLeaseTermEndPreview } from "./lease-term-end-fields";
 
 describe("admin lease term end previews", () => {
   test("start lease months mode preview ends Jun 30, 2027 for Jul 1 start and 12 months", () => {

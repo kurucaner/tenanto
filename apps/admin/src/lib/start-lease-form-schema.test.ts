@@ -14,6 +14,7 @@ describe("getStartLeaseDefaultValues", () => {
   test("uses default term months and empty tenant fields", () => {
     const values = getStartLeaseDefaultValues();
     expect(values.termMonths).toBe(DEFAULT_START_LEASE_TERM_MONTHS);
+    expect(values.rentBillingCadence).toBe("monthly");
     expect(values.guestName).toBe("");
     expect(values.monthlyRent).toBe("");
     expect(values.unitId).toBe("");

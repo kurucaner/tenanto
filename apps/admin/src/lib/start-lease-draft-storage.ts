@@ -2,6 +2,7 @@ import {
   getStartLeaseDefaultValues,
   type TStartLeaseFormValues,
 } from "@/lib/start-lease-form-schema";
+import { normalizeStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 import { isStartLeaseStep, type TStartLeaseStep } from "@/lib/start-lease-steps";
 
 export const START_LEASE_DRAFT_KEY_PREFIX = "propertyos:start-lease-draft:v1:";
@@ -45,6 +46,7 @@ function mergeDraftValues(raw: unknown, lockedUnitId?: string): TStartLeaseFormV
         ? raw.leaseStartDate
         : defaults.leaseStartDate,
     monthlyRent: typeof raw.monthlyRent === "string" ? raw.monthlyRent : defaults.monthlyRent,
+    rentBillingCadence: normalizeStartLeaseRentBillingCadence(raw.rentBillingCadence),
     tenantEmail: typeof raw.tenantEmail === "string" ? raw.tenantEmail : defaults.tenantEmail,
     tenantPhone: typeof raw.tenantPhone === "string" ? raw.tenantPhone : defaults.tenantPhone,
     termMode:
