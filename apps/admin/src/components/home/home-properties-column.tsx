@@ -11,7 +11,7 @@ const HOME_PROPERTIES_COLUMN_MAX = 6;
 
 export const HomePropertiesColumn = memo(() => {
   const { error, isError, isPending, properties, refetch } = useHomeWorkspaceProperties();
-  const visibleProperties = [];
+  const visibleProperties = properties.slice(0, HOME_PROPERTIES_COLUMN_MAX);
 
   if (isPending) {
     return (
