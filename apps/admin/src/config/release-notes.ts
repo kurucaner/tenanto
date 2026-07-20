@@ -37,6 +37,50 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "Lease rent shows in the Income table as its own Long term type — filter by Long term to see rent payments separate from short stays and other income lines.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property Settings lists for income types, expense categories, tax rates, and channel commissions use searchable catalogs with add and edit dialogs instead of inline rows.",
+      },
+      {
+        category: "improved",
+        description:
+          "Removing an income or expense type from Settings archives it — past entries keep their label, and archived types no longer appear when recording new income or expenses.",
+      },
+      {
+        category: "improved",
+        description:
+          "Recording rent from a lease no longer asks you to pick an income type — the amount and date are enough.",
+      },
+      {
+        category: "improved",
+        description:
+          "Stripe Connect in Settings shows a clearer not connected, in progress, or connected layout, and you can switch between Express and Standard while setup is still incomplete.",
+      },
+      {
+        category: "improved",
+        description:
+          "The cash-expense checkbox is now labeled Paid in cash, and the Expenses table shows a Cash badge for those entries.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Your recently viewed properties list clears when you sign out so the next person on the same browser does not see your history.",
+      },
+    ],
+    id: "2026.14.0",
+    publishedAt: "2026-07-19",
+    summary:
+      "Long-term rent in Income, cleaner property Settings catalogs, and clearer rent recording and Stripe Connect setup.",
+    version: "2026.14.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "Tenants get their own portal — sign in with email, Google, Apple, or a phone code; view active and past leases; and accept portal invites from a dedicated page.",
       },
       {
