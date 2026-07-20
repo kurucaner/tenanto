@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { type KeyboardEvent, memo, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { WorkspaceCommandResults } from "@/components/home/workspace-command-results";
@@ -96,8 +96,6 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
             )}
           >
             <WorkspaceCommandResults
-              hasResults={searchState.hasResults}
-              isPending={searchState.isPending}
               isSearching={searchState.isSearching}
               navigationItems={searchState.navigationItems}
               onSelect={handleSelect}
@@ -109,12 +107,12 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
               <span className="inline-flex items-center gap-1">
                 <kbd className="rounded border border-border/80 px-1">↑</kbd>
                 <kbd className="rounded border border-border/80 px-1">↓</kbd>
-                to navigate
+                {"to navigate"}
               </span>
               <span className="mx-2">·</span>
               <span className="inline-flex items-center gap-1">
                 <kbd className="rounded border border-border/80 px-1">↵</kbd>
-                to select
+                {"to select"}
               </span>
             </div>
           </div>

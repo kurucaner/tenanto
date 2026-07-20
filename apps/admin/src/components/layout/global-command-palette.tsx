@@ -2,10 +2,7 @@ import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { WorkspaceCommandResults } from "@/components/home/workspace-command-results";
-import {
-  CommandDialog,
-  CommandInput,
-} from "@/components/ui/command";
+import { CommandDialog, CommandInput } from "@/components/ui/command";
 import { useGlobalCommandPalette } from "@/hooks/use-global-command-palette";
 import { useWorkspaceCommandSearch } from "@/hooks/use-workspace-command-search";
 
@@ -40,8 +37,6 @@ export const GlobalCommandPalette = memo(({ onOpenChange, open }: GlobalCommandP
         value={searchState.search}
       />
       <WorkspaceCommandResults
-        hasResults={searchState.hasResults}
-        isPending={searchState.isPending}
         isSearching={searchState.isSearching}
         navigationItems={searchState.navigationItems}
         onSelect={handleSelect}
@@ -50,11 +45,10 @@ export const GlobalCommandPalette = memo(({ onOpenChange, open }: GlobalCommandP
         searchTips={searchState.searchTips}
         showRecentWhenIdle
       />
-      {!searchState.isSearching ? (
-        <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-          Tip: search for a property, then jump to Expenses, Leases, and more.
-        </div>
-      ) : null}
+
+      <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+        Tip: search for a property, then jump to Expenses, Leases, and more.
+      </div>
     </CommandDialog>
   );
 });

@@ -1,20 +1,10 @@
 import { memo } from "react";
 
-import {
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command";
-import {
-  type IWorkspaceCommandSearchTip,
-} from "@/hooks/use-workspace-command-search";
+import { CommandGroup, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { type IWorkspaceCommandSearchTip } from "@/hooks/use-workspace-command-search";
 import { type IGlobalCommandPaletteItem } from "@/lib/global-command-palette-items";
 
 interface WorkspaceCommandResultsProps {
-  hasResults: boolean;
-  isPending: boolean;
   isSearching: boolean;
   navigationItems: IGlobalCommandPaletteItem[];
   onSelect: (path: string) => void;
@@ -27,8 +17,6 @@ interface WorkspaceCommandResultsProps {
 
 export const WorkspaceCommandResults = memo(
   ({
-    hasResults,
-    isPending,
     isSearching,
     navigationItems,
     onSelect,
@@ -39,9 +27,6 @@ export const WorkspaceCommandResults = memo(
     showRecentWhenIdle = false,
   }: WorkspaceCommandResultsProps) => (
     <CommandList className="max-h-[min(50vh,360px)]">
-      {!hasResults && !isPending && isSearching ? (
-        <CommandEmpty>No results found.</CommandEmpty>
-      ) : null}
       {!isSearching && showIdleTips ? (
         <CommandGroup heading="Search tips">
           {searchTips.map((tip) => (
