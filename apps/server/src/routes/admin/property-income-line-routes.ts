@@ -436,6 +436,12 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           .send({ error: "Transaction date cannot be in the future" });
       }
 
+      if (parsed.body.incomeLineTypeId === undefined) {
+        return reply
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ error: "incomeLineTypeId must be a valid UUID" });
+      }
+
       const incomeLineType = await resolveIncomeLineTypeForProperty(
         parsed.body.incomeLineTypeId,
         propertyId,

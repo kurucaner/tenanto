@@ -173,9 +173,11 @@ export {
   type IPropertyIncomeLineType,
   type IPropertyIncomeLineTypeInput,
   isRentIncomeLineType,
+  isSystemLeaseRentIncomeLineTypeName,
   resolveDefaultIncomeLineTypeId,
   resolveLeaseIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
+  SYSTEM_LEASE_RENT_INCOME_TYPE_NAME,
 } from "./property-income-line-type-config";
 
 // Property Reservation Types

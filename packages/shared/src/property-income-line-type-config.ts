@@ -12,13 +12,18 @@ export interface IPropertyIncomeLineTypeInput {
   sortOrder: number;
 }
 
+/** Fixed name for the server-managed lease rent type (not shown in property settings). */
+export const SYSTEM_LEASE_RENT_INCOME_TYPE_NAME = "Long-term rent";
+
+/** User-managed misc income types seeded for new properties (excludes system lease rent). */
 export const DEFAULT_PROPERTY_INCOME_LINE_TYPES: Pick<IPropertyIncomeLineTypeInput, "name">[] = [
-  { name: "Rent" },
   { name: "Extra cleaning" },
   { name: "Beach equipment rental" },
 ];
 
 export const DEFAULT_EXTRA_CLEANING_TYPE_NAME = "Extra cleaning";
+
+/** @deprecated Legacy default name; migration v72 renames system rows to {@link SYSTEM_LEASE_RENT_INCOME_TYPE_NAME}. */
 export const DEFAULT_RENT_TYPE_NAME = "Rent";
 
 export function resolveDefaultIncomeLineTypeId(
@@ -30,16 +35,27 @@ export function resolveDefaultIncomeLineTypeId(
   return extraCleaning?.id ?? types[0]?.id ?? "";
 }
 
+/**
+ * Legacy client helper for lease rent type id from settings types.
+ * Prefer server-side `ensureLeaseRentIncomeLineType` for lease-linked writes.
+ */
 export function resolveLeaseIncomeLineTypeId(
   types: Pick<IPropertyIncomeLineType, "id" | "name">[]
 ): string {
+  const systemType = types.find(
+    (type) => type.name.toLowerCase() === SYSTEM_LEASE_RENT_INCOME_TYPE_NAME.toLowerCase()
+  );
+  if (systemType != null) {
+    return systemType.id;
+  }
+
   const rent = types.find(
     (type) => type.name.toLowerCase() === DEFAULT_RENT_TYPE_NAME.toLowerCase()
   );
   return rent?.id ?? types[0]?.id ?? "";
 }
 
-/** @deprecated Prefer `resolveLeaseIncomeLineTypeId` for lease-linked income writes. */
+/** @deprecated Prefer server-side lease rent type resolution for lease-linked income writes. */
 export function resolveRentIncomeLineTypeId(
   types: Pick<IPropertyIncomeLineType, "id" | "name">[]
 ): string {
@@ -47,5 +63,13 @@ export function resolveRentIncomeLineTypeId(
 }
 
 export function isRentIncomeLineType(type: Pick<IPropertyIncomeLineType, "name">): boolean {
-  return type.name.toLowerCase() === DEFAULT_RENT_TYPE_NAME.toLowerCase();
+  const normalized = type.name.toLowerCase();
+  return (
+    normalized === SYSTEM_LEASE_RENT_INCOME_TYPE_NAME.toLowerCase() ||
+    normalized === DEFAULT_RENT_TYPE_NAME.toLowerCase()
+  );
+}
+
+export function isSystemLeaseRentIncomeLineTypeName(name: string): boolean {
+  return name.toLowerCase() === SYSTEM_LEASE_RENT_INCOME_TYPE_NAME.toLowerCase();
 }

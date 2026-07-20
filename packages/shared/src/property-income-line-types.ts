@@ -45,7 +45,8 @@ export interface ICreatePropertyIncomeLineBody {
   amount: number;
   description?: string;
   guestName?: string;
-  incomeLineTypeId: string;
+  /** Required for misc income; omit for lease rent — server assigns the system Long-term rent type. */
+  incomeLineTypeId?: string;
   longStayId?: string;
   rentPeriodMonth?: string;
   reservationId?: string;
