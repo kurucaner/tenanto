@@ -11,7 +11,7 @@ import { PropertySwitcher } from "@/components/properties/property-switcher";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { propertiesApi } from "@/lib/api-client";
-import { isPropertyLeaseDetailPath } from "@/lib/property-shell-routes";
+import { isPropertyLeaseFocusedPath } from "@/lib/property-shell-routes";
 import { queryKeys } from "@/lib/query-keys";
 import { recordRecentProperty } from "@/lib/recent-properties-storage";
 import { type IPropertyDetail } from "@/packages/shared";
@@ -48,7 +48,7 @@ export const PropertyPageShell = memo(
   ({ children, propertyId, propertyName }: PropertyPageShellProps) => {
     const isNested = useContext(PropertyShellDepthContext);
     const { pathname } = useLocation();
-    const hideParentChrome = isPropertyLeaseDetailPath(pathname);
+    const hideParentChrome = isPropertyLeaseFocusedPath(pathname);
 
     if (isNested) {
       throw new Error("PropertyPageShell cannot be nested inside another PropertyPageShell");
@@ -110,7 +110,7 @@ PropertyShellLayoutContent.displayName = "PropertyShellLayoutContent";
 export const PropertyShellLayout = memo(() => {
   const { propertyId } = useParams<{ propertyId: string }>();
   const { pathname } = useLocation();
-  const isLeaseDetailRoute = isPropertyLeaseDetailPath(pathname);
+  const isLeaseFocusedRoute = isPropertyLeaseFocusedPath(pathname);
 
   const detailQuery = useQuery({
     enabled: Boolean(propertyId),
@@ -123,7 +123,7 @@ export const PropertyShellLayout = memo(() => {
   }
 
   if (detailQuery.isPending) {
-    return isLeaseDetailRoute ? (
+    return isLeaseFocusedRoute ? (
       <LeaseDetailShellLoadingSkeleton />
     ) : (
       <PropertyShellLoadingSkeleton />

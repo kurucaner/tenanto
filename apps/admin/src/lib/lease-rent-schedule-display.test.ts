@@ -150,7 +150,7 @@ describe("buildLeaseRecordRentPrefill", () => {
   };
 
   test("prefills prorated expectedRent from the rent schedule", () => {
-    const prefill = buildLeaseRecordRentPrefill(lease, "income-type-rent", {
+    const prefill = buildLeaseRecordRentPrefill(lease, {
       month: "2024-06",
       rentSchedule: MID_MONTH_START_SCHEDULE,
     });
@@ -162,13 +162,13 @@ describe("buildLeaseRecordRentPrefill", () => {
   });
 
   test("falls back to lease monthlyRent when no month is provided", () => {
-    const prefill = buildLeaseRecordRentPrefill(lease, "income-type-rent");
+    const prefill = buildLeaseRecordRentPrefill(lease);
 
     expect(prefill.amount).toBe("1000");
   });
 
   test("uses explicit expectedAmount when rent schedule is not provided", () => {
-    const prefill = buildLeaseRecordRentPrefill(lease, "income-type-rent", {
+    const prefill = buildLeaseRecordRentPrefill(lease, {
       expectedAmount: 483.87,
       month: "2024-07",
     });
@@ -185,7 +185,7 @@ describe("buildLeaseRecordRentPrefill", () => {
         remainingRent: 1000,
       }),
     ];
-    const prefill = buildLeaseRecordRentPrefill(lease, "income-type-rent", {
+    const prefill = buildLeaseRecordRentPrefill(lease, {
       month: "2024-07",
       rentSchedule: schedule,
     });

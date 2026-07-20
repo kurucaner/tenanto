@@ -14,6 +14,7 @@ import {
   MAX_ADDITIONAL_TERM_MONTHS,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
+  validateLeaseTermInput,
 } from "@/packages/shared";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { notifyPrimaryTenantLeaseEnded } from "@/services/lease-notifications";
@@ -53,6 +54,65 @@ function parseOptionalString(raw: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+function parseLeaseTermFields(r: Record<string, unknown>):
+  | {
+      body: Pick<ICreatePropertyLongStayBody, "leaseEndDate" | "leaseStartDate" | "termMonths">;
+      ok: true;
+    }
+  | { error: string; ok: false } {
+  const leaseStartDate = parseDateString(r["leaseStartDate"]);
+  if (!leaseStartDate) {
+    return { error: "leaseStartDate must be a YYYY-MM-DD date", ok: false };
+  }
+
+  const hasLeaseEndDate =
+    "leaseEndDate" in r &&
+    r["leaseEndDate"] !== undefined &&
+    r["leaseEndDate"] !== null &&
+    r["leaseEndDate"] !== "";
+  const hasTermMonths =
+    "termMonths" in r && r["termMonths"] !== undefined && r["termMonths"] !== null;
+
+  let leaseEndDate: string | undefined;
+  if (hasLeaseEndDate) {
+    const parsedLeaseEndDate = parseDateString(r["leaseEndDate"]);
+    if (!parsedLeaseEndDate) {
+      return { error: "leaseEndDate must be a YYYY-MM-DD date", ok: false };
+    }
+    leaseEndDate = parsedLeaseEndDate;
+  }
+
+  let termMonths: number | undefined;
+  if (hasTermMonths) {
+    const parsedTermMonths = parseTermMonths(r["termMonths"]);
+    if (parsedTermMonths === null) {
+      return {
+        error: `termMonths must be a whole number between 1 and ${MAX_TERM_MONTHS}`,
+        ok: false,
+      };
+    }
+    termMonths = parsedTermMonths;
+  }
+
+  const validationError = validateLeaseTermInput({
+    leaseEndDate,
+    leaseStartDate,
+    termMonths,
+  });
+  if (validationError) {
+    return { error: validationError, ok: false };
+  }
+
+  return {
+    body: {
+      leaseEndDate,
+      leaseStartDate,
+      termMonths,
+    },
+    ok: true,
+  };
+}
+
 function parseCreateLongStayBody(
   raw: unknown
 ): { body: ICreatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -68,17 +128,9 @@ function parseCreateLongStayBody(
     return { error: "guestName is required", ok: false };
   }
 
-  const leaseStartDate = parseDateString(r["leaseStartDate"]);
-  if (!leaseStartDate) {
-    return { error: "leaseStartDate must be a YYYY-MM-DD date", ok: false };
-  }
-
-  const termMonths = parseTermMonths(r["termMonths"]);
-  if (termMonths === null) {
-    return {
-      error: `termMonths must be a whole number between 1 and ${MAX_TERM_MONTHS}`,
-      ok: false,
-    };
+  const leaseTermFields = parseLeaseTermFields(r);
+  if (!leaseTermFields.ok) {
+    return leaseTermFields;
   }
 
   const monthlyRent = parseMoney(r["monthlyRent"]);
@@ -99,11 +151,10 @@ function parseCreateLongStayBody(
   return {
     body: {
       guestName: r["guestName"].trim(),
-      leaseStartDate,
+      ...leaseTermFields.body,
       monthlyRent,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
-      termMonths,
       unitId,
     },
     ok: true,
@@ -132,17 +183,9 @@ function parseEditLeaseTermsBody(
   }
   const r = raw as Record<string, unknown>;
 
-  const leaseStartDate = parseDateString(r["leaseStartDate"]);
-  if (!leaseStartDate) {
-    return { error: "leaseStartDate must be a YYYY-MM-DD date", ok: false };
-  }
-
-  const termMonths = parseTermMonths(r["termMonths"]);
-  if (termMonths === null) {
-    return {
-      error: `termMonths must be a whole number between 1 and ${MAX_TERM_MONTHS}`,
-      ok: false,
-    };
+  const leaseTermFields = parseLeaseTermFields(r);
+  if (!leaseTermFields.ok) {
+    return leaseTermFields;
   }
 
   const monthlyRent = parseMoney(r["monthlyRent"]);
@@ -152,9 +195,8 @@ function parseEditLeaseTermsBody(
 
   return {
     body: {
-      leaseStartDate,
+      ...leaseTermFields.body,
       monthlyRent,
-      termMonths,
     },
     ok: true,
   };
@@ -173,15 +215,41 @@ function parseExtendLongStayBody(
   }
   const r = raw as Record<string, unknown>;
 
-  const additionalTermMonths = parseTermMonths(r["additionalTermMonths"]);
-  if (additionalTermMonths === null) {
+  const hasCustomEnd =
+    "newLeaseEndDate" in r &&
+    r["newLeaseEndDate"] !== undefined &&
+    r["newLeaseEndDate"] !== null &&
+    r["newLeaseEndDate"] !== "";
+  const hasAdditionalMonths =
+    "additionalTermMonths" in r &&
+    r["additionalTermMonths"] !== undefined &&
+    r["additionalTermMonths"] !== null;
+
+  if (hasCustomEnd === hasAdditionalMonths) {
     return {
-      error: `additionalTermMonths must be a whole number between 1 and ${MAX_ADDITIONAL_TERM_MONTHS}`,
+      error: "Provide additionalTermMonths or newLeaseEndDate, but not both",
       ok: false,
     };
   }
 
-  const body: IExtendPropertyLongStayBody = { additionalTermMonths };
+  const body: IExtendPropertyLongStayBody = {};
+
+  if (hasCustomEnd) {
+    const newLeaseEndDate = parseDateString(r["newLeaseEndDate"]);
+    if (!newLeaseEndDate) {
+      return { error: "newLeaseEndDate must be a YYYY-MM-DD date", ok: false };
+    }
+    body.newLeaseEndDate = newLeaseEndDate;
+  } else {
+    const additionalTermMonths = parseTermMonths(r["additionalTermMonths"]);
+    if (additionalTermMonths === null) {
+      return {
+        error: `additionalTermMonths must be a whole number between 1 and ${MAX_ADDITIONAL_TERM_MONTHS}`,
+        ok: false,
+      };
+    }
+    body.additionalTermMonths = additionalTermMonths;
+  }
 
   const hasNewRent = "newMonthlyRent" in r;
   const hasEffectiveMonth = "rentEffectiveFromMonth" in r;

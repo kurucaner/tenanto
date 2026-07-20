@@ -2,7 +2,6 @@ import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { formatMoney } from "@/lib/format-money";
 import {
   calculateExpectedRentForLeaseMonth,
-  calculateLeaseEndDate,
   formatProratedDaysLabel,
   type ILeaseMonthExpectedRent,
   type IPropertyLongStay,
@@ -50,19 +49,18 @@ export function getEndLeaseMoveOutRentPreview(input: {
 }
 
 export function getStartLeaseFirstMonthRentPreview(input: {
+  leaseEndDate: string;
   leaseStartDate: string;
   monthlyRent: number;
-  termMonths: number;
 }): string | null {
-  if (!input.leaseStartDate || input.monthlyRent <= 0 || input.termMonths < 1) {
+  if (!input.leaseStartDate || input.monthlyRent <= 0 || !input.leaseEndDate) {
     return null;
   }
 
-  const leaseEndDate = calculateLeaseEndDate(input.leaseStartDate, input.termMonths);
   const month = transactionDateToMonth(input.leaseStartDate);
   const rent = calculateExpectedRentForLeaseMonth({
     baseMonthlyRent: input.monthlyRent,
-    effectiveEndDate: leaseEndDate,
+    effectiveEndDate: input.leaseEndDate,
     leaseStartDate: input.leaseStartDate,
     month,
     rentPeriods: [],

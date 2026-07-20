@@ -262,7 +262,6 @@ export async function runSecondaryTenantMembershipBackfill(
               action.kind === "skip_duplicate_jsonb" ||
               action.kind === "skip_invalid_jsonb")
           ) {
-            console.log(`[lease ${lease.id}] ${action.kind}: ${action.message}`);
           }
         }
       }

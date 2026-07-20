@@ -42,6 +42,20 @@ mock.module("./pool", () => ({
   pool: { query: mockQuery },
 }));
 
+mock.module("./tenant-rent-payments", () => ({
+  tenantRentPaymentsDb: {
+    sumSucceededAllocatedCentsByMonths: (_leaseId: string, months: string[]) => {
+      const totals = new Map<string, number>();
+      for (const row of currentAllocationRows) {
+        if (months.includes(row.month)) {
+          totals.set(row.month, row.total);
+        }
+      }
+      return Promise.resolve(totals);
+    },
+  },
+}));
+
 const { propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.getRentSchedule", () => {
@@ -633,6 +647,38 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       remainingRent: 1000,
     });
     expect(january?.incomeLineId).toBeUndefined();
+  });
+
+  test("uses a custom contract end date without an extra partial month after the last full month", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      id: "lease-custom-end",
+      lease_end_date: "2027-06-30",
+      lease_start_date: "2026-07-01",
+      monthly_rent: "1000.00",
+      term_months: 12,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [];
+    currentAllocationRows = [];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-custom-end", "2027-06-30");
+
+    expect(schedule.map((month) => month.month)).toEqual([
+      "2026-07",
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11",
+      "2026-12",
+      "2027-01",
+      "2027-02",
+      "2027-03",
+      "2027-04",
+      "2027-05",
+      "2027-06",
+    ]);
+    expect(schedule.every((month) => month.isProrated === false)).toBe(true);
+    expect(schedule.every((month) => month.expectedRent === 1000)).toBe(true);
   });
 
   test("refunded Stripe-linked income marks month unpaid when allocations are excluded", async () => {

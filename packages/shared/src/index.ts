@@ -173,9 +173,11 @@ export {
   type IPropertyIncomeLineType,
   type IPropertyIncomeLineTypeInput,
   isRentIncomeLineType,
+  isSystemLeaseRentIncomeLineTypeName,
   resolveDefaultIncomeLineTypeId,
   resolveLeaseIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
+  SYSTEM_LEASE_RENT_INCOME_TYPE_NAME,
 } from "./property-income-line-type-config";
 
 // Property Reservation Types
@@ -259,6 +261,20 @@ export {
   MAX_LEASE_TERM_MONTHS,
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
+export {
+  addMonthsToIsoDate,
+  deriveTermMonthsFromDates,
+  isCustomLeaseEndDate,
+  type IResolveLeaseEndDateInput,
+  type IResolvedExtendLeaseTerm,
+  type IResolvedLeaseTerm,
+  type LeaseExtendInputMode,
+  type LeaseTermInputMode,
+  parseLeaseIsoDate,
+  resolveExtendLeaseEndDate,
+  resolveLeaseEndDate,
+  validateLeaseTermInput,
+} from "./lease-term-input-utils";
 export {
   type IListTotalCountMeta,
   type IPropertyExpensesListMeta,

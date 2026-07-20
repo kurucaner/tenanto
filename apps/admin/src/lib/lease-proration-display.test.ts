@@ -40,9 +40,9 @@ describe("getStartLeaseFirstMonthRentPreview", () => {
   test("returns prorated first month preview for mid-month starts", () => {
     expect(
       getStartLeaseFirstMonthRentPreview({
+        leaseEndDate: "2025-06-15",
         leaseStartDate: "2024-06-16",
         monthlyRent: 1000,
-        termMonths: 12,
       })
     ).toBe("First month rent: $500.00 (15/30 days)");
   });
@@ -50,9 +50,9 @@ describe("getStartLeaseFirstMonthRentPreview", () => {
   test("returns null when the first month is not prorated", () => {
     expect(
       getStartLeaseFirstMonthRentPreview({
+        leaseEndDate: "2025-06-01",
         leaseStartDate: "2024-06-01",
         monthlyRent: 1000,
-        termMonths: 12,
       })
     ).toBeNull();
   });

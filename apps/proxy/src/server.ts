@@ -35,13 +35,9 @@ async function start(): Promise<void> {
     trustProxy: true,
   });
 
-  fastify.addContentTypeParser(
-    "*",
-    { parseAs: "buffer" },
-    (_request, body, done) => {
-      done(null, body);
-    }
-  );
+  fastify.addContentTypeParser("*", { parseAs: "buffer" }, (_request, body, done) => {
+    done(null, body);
+  });
 
   await fastify.register(cors, {
     allowedHeaders: ["Content-Type"],
@@ -59,14 +55,7 @@ async function start(): Promise<void> {
   await registerRumProxyRoutes(fastify, intakeOrigin);
 
   await fastify.listen({ host: "0.0.0.0", port });
-
-  console.log(
-    `Proxy server started on http://localhost:${port} (bind 0.0.0.0:${port}, DD_SITE=${ddSite})`
-  );
-  fastify.log.info(
-    { corsOrigins, ddSite, intakeOrigin, port },
-    "Proxy server started"
-  );
+  fastify.log.info({ corsOrigins, ddSite, intakeOrigin, port }, "Proxy server started");
 }
 
 start().catch((error: unknown) => {

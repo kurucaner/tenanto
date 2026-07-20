@@ -9,7 +9,6 @@ import { PropertyTableExportDialog } from "@/components/exports/property-table-e
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { type TLeaseFilterKey } from "@/components/leases/lease-filter-panel";
 import { PropertyLeaseToolbar } from "@/components/leases/property-lease-toolbar";
-import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +52,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { buildPropertyStartLeasePath } from "@/lib/start-lease-routes";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   ExportResourceType,
@@ -199,6 +199,7 @@ LeaseRow.displayName = "LeaseRow";
 export const PropertyLeasesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
@@ -251,7 +252,6 @@ export const PropertyLeasesPage = memo(() => {
   });
   const { sortState } = sortController;
 
-  const [createOpen, setCreateOpen] = useState(false);
   const [exportTableOpen, setExportTableOpen] = useState(false);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
 
@@ -364,8 +364,8 @@ export const PropertyLeasesPage = memo(() => {
   }, [defaultDateRange, handleSearchInputChange, setFilters]);
 
   const handleOpenCreate = useCallback(() => {
-    setCreateOpen(true);
-  }, []);
+    navigate(buildPropertyStartLeasePath(propertyId, { from: "leases" }));
+  }, [navigate, propertyId]);
 
   const handleOpenExportTable = useCallback(() => {
     setExportTableOpen(true);
@@ -475,13 +475,6 @@ export const PropertyLeasesPage = memo(() => {
           />
         </CardContent>
       </Card>
-
-      <StartLeaseDialog
-        onOpenChange={setCreateOpen}
-        open={createOpen}
-        propertyId={propertyId}
-        units={units}
-      />
 
       {endLease ? (
         <EndLeaseDialog

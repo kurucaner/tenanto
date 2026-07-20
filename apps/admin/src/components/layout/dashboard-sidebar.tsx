@@ -15,7 +15,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getNavItemsForRole, isAdminNavActive } from "@/config/admin-nav";
@@ -101,7 +100,6 @@ const DashboardSidebarInner = memo(() => {
         </SidebarGroup>
       </SidebarContent>
       <SidebarWhatsChanged />
-      <SidebarSeparator className="mx-2" />
       <SidebarFooter className="gap-2 p-2">
         <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-sidebar-border/70 px-2.5 py-2 group-data-[collapsible=icon]:hidden">
           <span className="truncate text-xs font-medium text-sidebar-foreground">

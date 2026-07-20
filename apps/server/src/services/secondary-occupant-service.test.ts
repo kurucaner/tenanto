@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
-import { MAX_SECONDARY_OCCUPANTS, TenantMembershipStatus } from "@/packages/shared";
+import {
+  MAX_SECONDARY_OCCUPANTS,
+  TenantMembershipRole,
+  TenantMembershipStatus,
+} from "@/packages/shared";
 import {
   makeLease,
   makeListedMembership,
@@ -59,6 +63,18 @@ const mockBuildSecondaryOccupantMutationResponse = mockAsyncFn(
       membership,
     })
 );
+const mockResolvePrimaryTenantContactForLongStay = mockAsyncFn(
+  (lease: ReturnType<typeof makeLease>) =>
+    Promise.resolve({
+      effectiveEmail: lease.tenantEmail,
+      effectiveName: lease.guestName,
+      effectivePhone: lease.tenantPhone,
+      membershipId: null,
+      membershipStatus: null,
+      source: "lease" as const,
+      tenantUserId: null,
+    })
+);
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   leaseTenantMembershipsDb: {
@@ -69,6 +85,8 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     updateSecondaryContact: mockUpdateSecondaryContact,
   },
   loadPrimaryMembershipForLease: mockResolvedNull(),
+  loadSecondaryMembershipsByLeaseIds: mockAsyncFn(async () => new Map()),
+  loadSecondaryOccupancyNamesByLeaseIds: mockAsyncFn(async () => new Map()),
 }));
 
 mock.module("@/db/tenant-users", () => ({
@@ -83,6 +101,10 @@ mock.module("./resolve-secondary-tenant-contacts-service", () => ({
   buildSecondaryOccupantMutationResponse: mockBuildSecondaryOccupantMutationResponse,
 }));
 
+mock.module("./lease-primary-tenant-contact-service", () => ({
+  resolvePrimaryTenantContactForLongStay: mockResolvePrimaryTenantContactForLongStay,
+}));
+
 const { createSecondaryOccupant, deleteSecondaryOccupant, updateSecondaryOccupant } =
   await import("./secondary-occupant-service");
 
@@ -90,6 +112,16 @@ describe("createSecondaryOccupant", () => {
   beforeEach(() => {
     mockCountNonTerminalSecondariesForLease.mockReset();
     mockCreateListedSecondary.mockReset();
+    mockResolvePrimaryTenantContactForLongStay.mockReset();
+    mockResolvePrimaryTenantContactForLongStay.mockImplementation(async (lease) => ({
+      effectiveEmail: lease.tenantEmail,
+      effectiveName: lease.guestName,
+      effectivePhone: lease.tenantPhone,
+      membershipId: null,
+      membershipStatus: null,
+      source: "lease" as const,
+      tenantUserId: null,
+    }));
     mockCreateListedSecondary.mockImplementation(async () =>
       makeListedMembership({
         contactPhone: "+13055550111",
@@ -186,6 +218,26 @@ describe("createSecondaryOccupant", () => {
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.MAX_SECONDARY_OCCUPANTS });
   });
+
+  test("rejects when secondary email matches primary tenant email", async () => {
+    await expect(
+      createSecondaryOccupant({
+        body: {
+          email: "Lease@Example.com",
+          name: "Secondary Tenant",
+        },
+        invitedBy: "operator-1",
+        lease: makeLease({
+          guestName: "Lease Primary",
+          leaseEndDate: "2027-01-01",
+          tenantEmail: "lease@example.com",
+          tenantPhone: "+13055550100",
+        }),
+      })
+    ).rejects.toMatchObject({ code: LeaseErrorCode.SECONDARY_OCCUPANT_EMAIL_MATCHES_PRIMARY });
+
+    expect(mockCreateListedSecondary).not.toHaveBeenCalled();
+  });
 });
 
 describe("updateSecondaryOccupant", () => {
@@ -196,6 +248,16 @@ describe("updateSecondaryOccupant", () => {
     mockUpdateName.mockReset();
     mockUpdateUnverifiedPhone.mockReset();
     mockBuildSecondaryOccupantMutationResponse.mockReset();
+    mockResolvePrimaryTenantContactForLongStay.mockReset();
+    mockResolvePrimaryTenantContactForLongStay.mockImplementation(async (lease) => ({
+      effectiveEmail: lease.tenantEmail,
+      effectiveName: lease.guestName,
+      effectivePhone: lease.tenantPhone,
+      membershipId: null,
+      membershipStatus: null,
+      source: "lease" as const,
+      tenantUserId: null,
+    }));
   });
 
   test("updates listed membership contact fields", async () => {
@@ -203,6 +265,7 @@ describe("updateSecondaryOccupant", () => {
       makeListedMembership({
         contactPhone: "+13055550111",
         displayName: "Secondary Tenant",
+        id: "membership-1",
         inviteEmail: "secondary@example.com",
       })
     );
@@ -231,6 +294,7 @@ describe("updateSecondaryOccupant", () => {
       makeListedMembership({
         contactPhone: "+13055550111",
         displayName: "Secondary Tenant",
+        id: "membership-1",
         inviteEmail: "secondary@example.com",
       })
     );
@@ -255,6 +319,7 @@ describe("updateSecondaryOccupant", () => {
   test("rejects linked email changes", async () => {
     mockFindById.mockResolvedValueOnce(
       makeMembership({
+        role: TenantMembershipRole.SECONDARY,
         status: TenantMembershipStatus.ACTIVE,
         tenantUserId: "tenant-1",
       })
@@ -274,6 +339,32 @@ describe("updateSecondaryOccupant", () => {
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.LINKED_TENANT_CONTACT });
   });
+
+  test("rejects when updated secondary email matches primary tenant email", async () => {
+    mockFindById.mockResolvedValueOnce(
+      makeListedMembership({
+        contactPhone: "+13055550111",
+        displayName: "Secondary Tenant",
+        id: "membership-1",
+        inviteEmail: "secondary@example.com",
+      })
+    );
+
+    await expect(
+      updateSecondaryOccupant({
+        body: { email: "lease@example.com" },
+        lease: makeLease({
+          guestName: "Lease Primary",
+          leaseEndDate: "2027-01-01",
+          tenantEmail: "lease@example.com",
+          tenantPhone: "+13055550100",
+        }),
+        membershipId: "membership-1",
+      })
+    ).rejects.toMatchObject({ code: LeaseErrorCode.SECONDARY_OCCUPANT_EMAIL_MATCHES_PRIMARY });
+
+    expect(mockUpdateSecondaryContact).not.toHaveBeenCalled();
+  });
 });
 
 describe("deleteSecondaryOccupant", () => {
@@ -287,6 +378,7 @@ describe("deleteSecondaryOccupant", () => {
       makeListedMembership({
         contactPhone: "+13055550111",
         displayName: "Secondary Tenant",
+        id: "membership-1",
         inviteEmail: "secondary@example.com",
       })
     );

@@ -5,11 +5,11 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { getTodayUtcIsoDate } from "@/lib/date-utils";
+import { parseCreateIncomeLineBody } from "@/lib/parse-create-income-line-body";
 import { resolveLeaseIncomeRentPeriodMonthForLongStay } from "@/lib/resolve-lease-income-rent-period-month";
 import {
   getIncomeLineRefundableCap,
   HttpStatus,
-  type ICreatePropertyIncomeLineBody,
   type IPropertyIncomeLine,
   type IRefundLedgerEntryBody,
   type IUpdatePropertyIncomeLineBody,
@@ -29,9 +29,6 @@ import {
   parseNullablePeriodMonthField,
   parseNullableTrimmedStringField,
   parseNullableUuidField,
-  parseOptionalPeriodMonthField,
-  parseOptionalTrimmedStringField,
-  parseOptionalUuidField,
 } from "./parse-body-utils";
 import {
   buildPaginatedListResponse,
@@ -51,67 +48,6 @@ import { resolvePropertyUnit } from "./resolve-property-unit";
 function parseIncomeLineTypeId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   return parseUuidParam(raw);
-}
-
-function parseCreateIncomeLineBody(
-  raw: unknown
-): { body: ICreatePropertyIncomeLineBody; ok: true } | { error: string; ok: false } {
-  const r = parseJsonObject(raw);
-  if (!r) {
-    return { error: "Body must be a JSON object", ok: false };
-  }
-
-  const incomeLineTypeId = parseIncomeLineTypeId(r["incomeLineTypeId"]);
-  if (incomeLineTypeId === null) {
-    return { error: "incomeLineTypeId must be a valid UUID", ok: false };
-  }
-
-  const unitIdResult = parseOptionalUuidField(r["unitId"], "unitId");
-  if (!unitIdResult.ok) return unitIdResult;
-  const unitId = unitIdResult.value ?? null;
-
-  const transactionDate = parseDateString(r["transactionDate"]);
-  if (!transactionDate) {
-    return { error: "transactionDate must be a YYYY-MM-DD date", ok: false };
-  }
-
-  const amount = parseMoney(r["amount"]);
-  if (amount === null) return { error: "amount must be a non-negative number", ok: false };
-
-  const reservationResult = parseOptionalUuidField(r["reservationId"], "reservationId");
-  if (!reservationResult.ok) return reservationResult;
-  const longStayResult = parseOptionalUuidField(r["longStayId"], "longStayId");
-  if (!longStayResult.ok) return longStayResult;
-
-  if (reservationResult.value && longStayResult.value) {
-    return { error: "Cannot link an income line to both a reservation and a long stay", ok: false };
-  }
-
-  const descriptionResult = parseOptionalTrimmedStringField(r["description"], "description");
-  if (!descriptionResult.ok) return descriptionResult;
-  const guestNameResult = parseOptionalTrimmedStringField(r["guestName"], "guestName");
-  if (!guestNameResult.ok) return guestNameResult;
-
-  const rentPeriodMonthResult = parseOptionalPeriodMonthField(
-    r["rentPeriodMonth"],
-    "rentPeriodMonth"
-  );
-  if (!rentPeriodMonthResult.ok) return rentPeriodMonthResult;
-
-  return {
-    body: {
-      amount,
-      description: descriptionResult.value,
-      guestName: guestNameResult.value,
-      incomeLineTypeId,
-      longStayId: longStayResult.value,
-      rentPeriodMonth: rentPeriodMonthResult.value,
-      reservationId: reservationResult.value,
-      transactionDate,
-      unitId,
-    },
-    ok: true,
-  };
 }
 
 const UPDATE_FIELDS = [
@@ -436,13 +372,6 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           .send({ error: "Transaction date cannot be in the future" });
       }
 
-      const incomeLineType = await resolveIncomeLineTypeForProperty(
-        parsed.body.incomeLineTypeId,
-        propertyId,
-        reply
-      );
-      if (!incomeLineType) return;
-
       const unitId = parsed.body.unitId ?? null;
       if (unitId !== null) {
         const unit = await resolvePropertyUnit(unitId, propertyId, reply);
@@ -451,6 +380,27 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       let reservationId: string | null = parsed.body.reservationId ?? null;
       let longStayId: string | null = parsed.body.longStayId ?? null;
+
+      let incomeLineTypeId: string;
+      if (longStayId) {
+        const systemType =
+          await propertyIncomeLineTypesDb.ensureLeaseRentIncomeLineType(propertyId);
+        incomeLineTypeId = systemType.id;
+      } else {
+        if (!parsed.body.incomeLineTypeId) {
+          return reply
+            .status(HttpStatus.BAD_REQUEST)
+            .send({ error: "incomeLineTypeId must be a valid UUID" });
+        }
+        const incomeLineType = await resolveIncomeLineTypeForProperty(
+          parsed.body.incomeLineTypeId,
+          propertyId,
+          reply
+        );
+        if (!incomeLineType) return;
+        incomeLineTypeId = incomeLineType.id;
+      }
+
       const guestName = await resolveIncomeLineGuestName(
         reservationId,
         longStayId,
@@ -481,7 +431,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           amount: parsed.body.amount,
           description: parsed.body.description?.trim() || null,
           guestName,
-          incomeLineTypeId: incomeLineType.id,
+          incomeLineTypeId,
           longStayId,
           rentPeriodMonth,
           reservationId,

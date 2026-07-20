@@ -40,6 +40,8 @@ export const propertySettingsDb = {
       propertyChannelCommissionsDb.seedDefaults(propertyId),
     ]);
 
+    await propertyIncomeLineTypesDb.ensureLeaseRentIncomeLineType(propertyId);
+
     const settings = await propertySettingsDb.findByProperty(propertyId);
     if (!settings) {
       throw new Error(`Failed to load property settings for property ${propertyId}`);

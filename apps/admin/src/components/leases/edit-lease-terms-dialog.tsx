@@ -5,6 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,23 +20,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
-import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
+import {
+  buildLeaseTermApiPayload,
+  getInitialLeaseTermEndValues,
+  refineLeaseTermEndFormValues,
+  resolveLeaseTermEndPreview,
+} from "@/lib/lease-term-end-utils";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import {
-  calculateLeaseEndDate,
-  type IPropertyLongStay,
-  MAX_LEASE_TERM_MONTHS,
-  validateEditLeaseTerms,
-} from "@/packages/shared";
+import { type IPropertyLongStay, validateEditLeaseTerms } from "@/packages/shared";
 
 function getDefaultValues(lease: IPropertyLongStay) {
   return {
-    leaseStartDate: lease.leaseStartDate,
+    ...getInitialLeaseTermEndValues(lease),
     monthlyRent: String(lease.monthlyRent),
-    termMonths: String(lease.termMonths),
   };
 }
 
@@ -58,30 +58,20 @@ export const EditLeaseTermsDialog = memo(
       resolver: zodResolver(
         z
           .object({
+            leaseEndDate: z.string(),
             leaseStartDate: z.string().min(1, "Lease start date is required"),
             monthlyRent: requiredNonNegativeMoneyField("Monthly rent"),
-            termMonths: z
-              .string()
-              .min(1, "Term is required")
-              .refine((value) => /^\d+$/.test(value), {
-                message: "Term must be a whole number",
-              })
-              .refine(
-                (value) => {
-                  const parsed = Number.parseInt(value, 10);
-                  return parsed >= 1 && parsed <= MAX_LEASE_TERM_MONTHS;
-                },
-                { message: `Term must be between 1 and ${MAX_LEASE_TERM_MONTHS}` }
-              ),
+            termMode: z.enum(["months", "customEnd"]),
+            termMonths: z.string(),
           })
           .superRefine((values, ctx) => {
-            const termMonths = Number.parseInt(values.termMonths, 10);
+            refineLeaseTermEndFormValues(values, ctx);
+
             const monthlyRent = Number(values.monthlyRent);
             const error = validateEditLeaseTerms(
               {
-                leaseStartDate: values.leaseStartDate,
+                ...buildLeaseTermApiPayload(values),
                 monthlyRent,
-                termMonths,
               },
               lease,
               today
@@ -90,32 +80,39 @@ export const EditLeaseTermsDialog = memo(
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: error,
-                path: ["termMonths"],
+                path: [values.termMode === "customEnd" ? "leaseEndDate" : "termMonths"],
               });
             }
           })
       ),
     });
 
-    const leaseStartDate = form.watch("leaseStartDate");
+    const termFields = form.watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
     const monthlyRent = form.watch("monthlyRent");
-    const termMonths = form.watch("termMonths");
 
     const leaseEndDate = useMemo(() => {
-      const parsedTermMonths = Number.parseInt(termMonths, 10);
-      if (leaseStartDate === "" || !Number.isInteger(parsedTermMonths) || parsedTermMonths < 1) {
-        return null;
-      }
-      return calculateLeaseEndDate(leaseStartDate, parsedTermMonths);
-    }, [leaseStartDate, termMonths]);
+      const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+      return resolveLeaseTermEndPreview({
+        leaseEndDate: leaseEndDateValue,
+        leaseStartDate,
+        termMode,
+        termMonths,
+      });
+    }, [termFields]);
 
     const firstMonthRentPreview = useMemo(() => {
-      const parsedTermMonths = Number.parseInt(termMonths, 10);
       const parsedMonthlyRent = Number(monthlyRent);
+      const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+      const resolvedEnd = resolveLeaseTermEndPreview({
+        leaseEndDate: leaseEndDateValue,
+        leaseStartDate,
+        termMode,
+        termMonths,
+      });
+
       if (
+        !resolvedEnd ||
         leaseStartDate === "" ||
-        !Number.isInteger(parsedTermMonths) ||
-        parsedTermMonths < 1 ||
         !Number.isFinite(parsedMonthlyRent) ||
         parsedMonthlyRent < 0
       ) {
@@ -123,18 +120,17 @@ export const EditLeaseTermsDialog = memo(
       }
 
       return getStartLeaseFirstMonthRentPreview({
+        leaseEndDate: resolvedEnd,
         leaseStartDate,
         monthlyRent: parsedMonthlyRent,
-        termMonths: parsedTermMonths,
       });
-    }, [leaseStartDate, monthlyRent, termMonths]);
+    }, [monthlyRent, termFields]);
 
     const mutation = useMutation({
       mutationFn: (values: TEditLeaseTermsFormValues) =>
         longStaysApi.updateTerms(propertyId, lease.id, {
-          leaseStartDate: values.leaseStartDate,
+          ...buildLeaseTermApiPayload(values),
           monthlyRent: Number(values.monthlyRent),
-          termMonths: Number.parseInt(values.termMonths, 10),
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update lease terms");
@@ -175,42 +171,16 @@ export const EditLeaseTermsDialog = memo(
 
           <form onSubmit={onSubmit}>
             <DialogFormFields>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="edit-lease-start-date">Lease Start Date</Label>
-                  <Input
-                    id="edit-lease-start-date"
-                    type="date"
-                    {...form.register("leaseStartDate")}
-                  />
-                  {errors.leaseStartDate ? (
-                    <p className="text-xs text-destructive">{errors.leaseStartDate.message}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="edit-lease-term-months">Term (Months)</Label>
-                  <Controller
-                    control={form.control}
-                    name="termMonths"
-                    render={({ field }) => (
-                      <Input
-                        id="edit-lease-term-months"
-                        inputMode="numeric"
-                        onChange={(e) => {
-                          if (isValidIntegerInput(e.target.value)) {
-                            field.onChange(e.target.value);
-                          }
-                        }}
-                        type="text"
-                        value={field.value}
-                      />
-                    )}
-                  />
-                  {errors.termMonths ? (
-                    <p className="text-xs text-destructive">{errors.termMonths.message}</p>
-                  ) : null}
-                </div>
-              </div>
+              <LeaseTermEndFields<TEditLeaseTermsFormValues>
+                control={form.control}
+                endDateFieldId="edit-lease-end-date"
+                leaseEndDateError={errors.leaseEndDate?.message}
+                leaseStartDateError={errors.leaseStartDate?.message}
+                register={form.register}
+                startDateFieldId="edit-lease-start-date"
+                termMonthsError={errors.termMonths?.message}
+                termMonthsFieldId="edit-lease-term-months"
+              />
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="edit-lease-monthly-rent">Monthly Rent</Label>
