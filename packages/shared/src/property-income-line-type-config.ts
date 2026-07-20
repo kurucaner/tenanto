@@ -1,3 +1,4 @@
+/** Active income line type in property settings. Archived types are omitted server-side and are not exposed on the API. */
 export interface IPropertyIncomeLineType {
   id: string;
   name: string;
