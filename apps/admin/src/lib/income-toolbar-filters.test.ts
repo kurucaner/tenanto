@@ -11,7 +11,10 @@ import {
 
 const OPTIONS = {
   channelOptions: [{ label: "Airbnb", value: "channel-1" }],
-  incomeTypeOptions: [{ label: "Stay", value: "stay" }],
+  incomeTypeOptions: [
+    { label: "Stay", value: "stay" },
+    { label: "Long term", value: "longTerm" },
+  ],
   refundStatusOptions: [{ label: "Refunded", value: "refunded" }],
   statusOptions: [{ label: "Active", value: "active" }],
   unitOptions: [{ label: "Unit 101", value: "unit-1" }],
