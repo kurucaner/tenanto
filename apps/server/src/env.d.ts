@@ -41,10 +41,12 @@ declare global {
       SNS_SMS_ORIGINATION_NUMBER?: string;
       /** Optional SNS SMS sender ID shown on supported carriers */
       SNS_SMS_SENDER_ID?: string;
-      /** Stripe Connect OAuth client id (optional for Express Account Links) */
+      /** Stripe Connect OAuth client id (required for Standard OAuth; optional for Express Account Links) */
       STRIPE_CONNECT_CLIENT_ID?: string;
       /** Enable Stripe Connect + tenant online rent payments (default off) */
       STRIPE_CONNECT_ENABLED?: string;
+      /** Enable Standard Connect OAuth (connect existing Stripe account); requires STRIPE_CONNECT_CLIENT_ID */
+      STRIPE_CONNECT_STANDARD_OAUTH_ENABLED?: string;
       /** Stripe publishable key (pk_…) — documented for ops; Checkout hosted page may not need it server-side */
       STRIPE_PUBLISHABLE_KEY?: string;
       /** Stripe secret key (sk_…) — required when rent payments / Connect is enabled */

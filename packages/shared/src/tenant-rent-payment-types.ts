@@ -79,17 +79,34 @@ export interface ITenantRentPaymentStatusResponse {
   status: TTenantRentPaymentStatus;
 }
 
+/** Stripe Connect account onboarding model for a property. */
+export const PropertyStripeAccountType = {
+  EXPRESS: "express",
+  STANDARD: "standard",
+} as const;
+
+export type TPropertyStripeAccountType =
+  (typeof PropertyStripeAccountType)[keyof typeof PropertyStripeAccountType];
+
 /** Admin: property Connect onboarding status. */
 export interface IPropertyStripeConnectStatusResponse {
+  /** Null when no Connect account is linked yet. */
+  accountType: TPropertyStripeAccountType | null;
   chargesEnabled: boolean;
   detailsSubmitted: boolean;
   onboardingComplete: boolean;
   payoutsEnabled: boolean;
   /** False when deployment has STRIPE_CONNECT_ENABLED off. */
   platformEnabled: boolean;
+  /** False when Standard OAuth is not configured for this deployment. */
+  standardOAuthEnabled: boolean;
   stripeAccountId: string | null;
 }
 
 export interface IPropertyStripeConnectOnboardingLinkResponse {
+  url: string;
+}
+
+export interface IPropertyStripeConnectAuthorizeUrlResponse {
   url: string;
 }

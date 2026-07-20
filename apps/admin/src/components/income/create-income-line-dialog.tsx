@@ -22,6 +22,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -43,7 +44,7 @@ import {
   type IPropertyReservation,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
-  resolveRentIncomeLineTypeId,
+  resolveLeaseIncomeLineTypeId,
 } from "@/packages/shared";
 
 export interface CreateIncomeLineDialogPrefill {
@@ -95,10 +96,10 @@ function getDefaultValues(
   lockedLease?: IPropertyLongStay | null
 ): TCreateIncomeLineFormValues {
   const defaultIncomeLineTypeId = lockedLease
-    ? resolveRentIncomeLineTypeId(incomeLineTypes)
+    ? resolveLeaseIncomeLineTypeId(incomeLineTypes)
     : resolveDefaultIncomeLineTypeId(incomeLineTypes);
   const maxTransactionDate = getTodayLocalIsoDate();
-  const rawTransactionDate = prefill?.transactionDate ?? lockedStay?.checkOut ?? "";
+  const rawTransactionDate = prefill?.transactionDate ?? maxTransactionDate;
 
   return {
     amount: prefill?.amount ?? (lockedLease ? String(lockedLease.monthlyRent) : ""),
@@ -191,7 +192,7 @@ const CreateIncomeLineDialogForm = memo(
           <DialogDescription>{getDialogDescription(lockedLease, lockedStay)}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+        <DialogFormFields>
           <Controller
             control={form.control}
             name="incomeLineTypeId"
@@ -316,7 +317,7 @@ const CreateIncomeLineDialogForm = memo(
             {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel
             commission applied.
           </p>
-        </div>
+        </DialogFormFields>
 
         <DialogFooter>
           <Button disabled={mutation.isPending} onClick={onClose} type="button" variant="outline">

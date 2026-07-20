@@ -1,25 +1,25 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-const mockFindMostRecentCreatedAt = mock(() => Promise.resolve(null as Date | null));
-const mockDeleteByEmailAndPurpose = mock(() => Promise.resolve());
-const mockCreate = mock(() => Promise.resolve());
-const mockFindValidByEmailAndPurpose = mock(() =>
-  Promise.resolve(null as { codeHash: string; id: string } | null)
-);
-const mockSendTransactionalEmail = mock(() => Promise.resolve());
+import { mockResolvedNull, mockResolvedVoid } from "@/test-fixtures/mocks";
+
+const mockFindMostRecentCreatedAt = mockResolvedNull<Date>();
+const mockDeleteByEmailAndPurpose = mockResolvedVoid();
+const mockCreate = mockResolvedVoid();
+const mockFindValidByEmailAndPurpose = mockResolvedNull<{ codeHash: string; id: string }>();
+const mockSendTransactionalEmail = mockResolvedVoid();
 
 mock.module("@/db/auth-otps", () => ({
   authOtpsDb: {
     create: mockCreate,
     deleteByEmailAndPurpose: mockDeleteByEmailAndPurpose,
-    deleteById: mock(() => Promise.resolve()),
+    deleteById: mockResolvedVoid(),
     findMostRecentCreatedAt: mockFindMostRecentCreatedAt,
     findValidByEmailAndPurpose: mockFindValidByEmailAndPurpose,
   },
 }));
 
 mock.module("@/ses/ses", () => ({
-  sendSesEmail: mock(() => Promise.resolve()),
+  sendSesEmail: mockResolvedVoid(),
   sendTransactionalEmail: mockSendTransactionalEmail,
 }));
 

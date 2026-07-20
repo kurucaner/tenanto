@@ -1,3 +1,4 @@
+/** Active expense category in property settings. Archived categories are omitted server-side and are not exposed on the API. */
 export interface IPropertyExpenseCategoryType {
   id: string;
   isAnnualAmount: boolean;

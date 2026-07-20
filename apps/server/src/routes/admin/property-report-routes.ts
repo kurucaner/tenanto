@@ -1,21 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
-import { HttpStatus, type IPropertyReportsQuery } from "@/packages/shared";
 import {
   buildPropertyReportCsv,
   buildPropertyReportSummary,
   loadReportData,
 } from "@/services/property-report-service";
 
-import { parseUuidParam } from "./admin-query-utils";
-import { assertPropertyMemberAccess } from "./property-route-access";
-import { parseReportsQuery } from "./report-query";
+import { type IPropertyParams, loadPropertyReportContext } from "./property-report-route-context";
 
-interface IPropertyParams {
-  propertyId: string;
-}
-
-async function buildSummary(propertyId: string, query: IPropertyReportsQuery) {
+async function buildSummary(propertyId: string, query: Parameters<typeof loadReportData>[1]) {
   const data = await loadReportData(propertyId, query);
   const summary = buildPropertyReportSummary(data, query);
 
@@ -32,25 +25,10 @@ export const propertyReportRoutes = async (server: FastifyInstance): Promise<voi
       request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
       reply: FastifyReply
     ) => {
-      const propertyId = parseUuidParam(request.params.propertyId);
-      if (propertyId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
-      }
+      const context = await loadPropertyReportContext(request, reply);
+      if (!context) return;
 
-      const hasAccess = await assertPropertyMemberAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
-        reply
-      );
-      if (!hasAccess) return;
-
-      const parsed = parseReportsQuery(request.query);
-      if (!parsed.ok) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-
-      const summary = await buildSummary(propertyId, parsed.query);
+      const summary = await buildSummary(context.propertyId, context.query);
       return reply.send({ summary });
     }
   );
@@ -62,32 +40,17 @@ export const propertyReportRoutes = async (server: FastifyInstance): Promise<voi
       request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
       reply: FastifyReply
     ) => {
-      const propertyId = parseUuidParam(request.params.propertyId);
-      if (propertyId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
-      }
+      const context = await loadPropertyReportContext(request, reply);
+      if (!context) return;
 
-      const hasAccess = await assertPropertyMemberAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
-        reply
-      );
-      if (!hasAccess) return;
-
-      const parsed = parseReportsQuery(request.query);
-      if (!parsed.ok) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
-      }
-
-      const summary = await buildSummary(propertyId, parsed.query);
+      const summary = await buildSummary(context.propertyId, context.query);
       const csv = buildPropertyReportCsv(summary);
 
       return reply
         .header("Content-Type", "text/csv; charset=utf-8")
         .header(
           "Content-Disposition",
-          `attachment; filename="property-${propertyId}-report-${parsed.query.from}-${parsed.query.to}.csv"`
+          `attachment; filename="property-${context.propertyId}-report-${context.query.from}-${context.query.to}.csv"`
         )
         .send(csv);
     }

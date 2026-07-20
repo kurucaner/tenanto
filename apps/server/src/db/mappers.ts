@@ -317,6 +317,7 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
 
 export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyExpense => ({
   amount: Number(row.amount),
+  cashExpense: row.cash_expense as boolean,
   categoryId: row.category_id as string,
   categoryIsAnnualAmount: row.is_annual_amount as boolean,
   categoryName: row.category_name as string,
@@ -327,7 +328,6 @@ export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyEx
   id: row.id as string,
   isDeleted: (row.is_deleted as boolean) ?? false,
   propertyId: row.property_id as string,
-  taxFree: row.tax_free as boolean,
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 
@@ -339,6 +339,8 @@ export const mapTenantUserRow = (row: Record<string, unknown>): ITenantUser => (
   name: row.name as string,
   phone: (row.phone as string) ?? null,
   phoneVerifiedAt: toIso(row.phone_verified_at),
+  smsConsentedAt: toIso(row.sms_consented_at),
+  smsOptedOutAt: toIso(row.sms_opted_out_at),
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 

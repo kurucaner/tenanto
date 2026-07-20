@@ -46,18 +46,18 @@ function buildParsedRow(
     categoryId: string;
     description?: string;
     expenseDate?: string;
-    taxFree?: boolean;
+    cashExpense?: boolean;
   }
 ): IExpenseImportParsedRow {
   if (!Number.isFinite(row.amount) || row.amount < 0) {
     return {
       amount: row.amount,
+      cashExpense: row.cashExpense,
       categoryId: row.categoryId,
       description: row.description,
       expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      taxFree: row.taxFree,
       validationError: "amount must be a non-negative number",
     };
   }
@@ -66,24 +66,24 @@ function buildParsedRow(
   if (futureDateError) {
     return {
       amount: row.amount,
+      cashExpense: row.cashExpense,
       categoryId: row.categoryId,
       description: row.description,
       expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      taxFree: row.taxFree,
       validationError: futureDateError,
     };
   }
 
   return {
     amount: row.amount,
+    cashExpense: row.cashExpense,
     categoryId: row.categoryId,
     description: row.description,
     expenseDate: row.expenseDate,
     rowIndex,
     sourceFileName,
-    taxFree: row.taxFree,
   };
 }
 
@@ -217,12 +217,12 @@ function validateCommitRows(
 
     validatedRows.push({
       amount: row.amount,
+      cashExpense: row.cashExpense,
       categoryId,
       description: row.description,
       expenseDate: row.expenseDate,
       rowIndex: row.rowIndex,
       sourceFileName: row.sourceFileName,
-      taxFree: row.taxFree,
     });
   }
 
@@ -375,10 +375,10 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
         propertyId,
         validated.rows.map((row) => ({
           amount: row.amount,
+          cashExpense: row.cashExpense ?? false,
           categoryId: row.categoryId,
           description: row.description?.trim() || null,
           expenseDate: row.expenseDate ?? null,
-          taxFree: row.taxFree ?? false,
         }))
       );
 

@@ -1,7 +1,5 @@
 - refactor
   - property-export-list-constants
-  - list-meta-types
-  - "linked_user" | "membership_pending" | "lease"; duplicated
   - RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same
 
 - Do I need turbo?
@@ -10,3 +8,10 @@
 - Typescript 7 implementation
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
+- A dialog when the users log in to the app for the first time.
+- Add security deposit flow
+- Add weekly long term stays
+- Fix 1 day mismatch in monthly long term stays
+- Sub category implementation for expenses
+- Add Stripe commission to long stay payments
+- ACH

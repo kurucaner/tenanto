@@ -107,7 +107,11 @@ export function invalidTenantMembershipTransitionError(
 }
 
 export function tenantLeaseAccessDeniedError(message = "Access denied"): DomainError {
-  return createDomainError(LeaseErrorCode.TENANT_LEASE_ACCESS_DENIED, message, HttpStatus.FORBIDDEN);
+  return createDomainError(
+    LeaseErrorCode.TENANT_LEASE_ACCESS_DENIED,
+    message,
+    HttpStatus.FORBIDDEN
+  );
 }
 
 export function tenantMembershipNotFoundError(message = "Portal invite not found"): DomainError {

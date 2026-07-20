@@ -4,24 +4,20 @@ import { propertyIncomeLineTypesDb } from "@/db/property-income-line-types";
 import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyReservationsDb } from "@/db/property-reservations";
-import { propertyUnitsDb } from "@/db/property-units";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import { resolveLeaseIncomeRentPeriodMonthForLongStay } from "@/lib/resolve-lease-income-rent-period-month";
 import {
   getIncomeLineRefundableCap,
   HttpStatus,
   type ICreatePropertyIncomeLineBody,
   type IPropertyIncomeLine,
-  type IPropertyIncomeLinesListQuery,
   type IRefundLedgerEntryBody,
-  isRentIncomeLineType,
   type IUpdatePropertyIncomeLineBody,
-  UserType,
 } from "@/packages/shared";
-import { decodeIncomeLineKeysetCursor } from "@/pagination/keyset-cursor";
 import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
 
-import { parseDateString, parseIncomeEntriesListLimit, parseUuidParam } from "./admin-query-utils";
+import { parseDateString, parseUuidParam } from "./admin-query-utils";
 import {
   executeLedgerRefund,
   executeLedgerUnrefund,
@@ -38,22 +34,19 @@ import {
   parseOptionalUuidField,
 } from "./parse-body-utils";
 import {
-  applyOptionalQueryDateFilter,
-  applyOptionalQueryRefundStatusFilter,
-  applyOptionalQuerySearchFilter,
-  applyOptionalQueryUuidFilter,
-} from "./parse-list-query-filters";
+  buildPaginatedListResponse,
+  shouldIncludeDeletedListItems,
+} from "./parse-list-query-pagination";
+import { parsePropertyIncomeLinesListQueryPaginated } from "./parse-property-income-lines-list-query";
 import {
   assertPropertyLedgerWriteAccess,
   assertPropertyMemberAccess,
+  requirePropertyMemberAccess,
 } from "./property-route-access";
+import { type IPropertyParams } from "./property-route-params";
 import { rejectIfDeleted } from "./reject-if-deleted";
 import { rejectIfRefunded } from "./reject-if-refunded";
-
-function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
+import { resolvePropertyUnit } from "./resolve-property-unit";
 
 function parseIncomeLineTypeId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
@@ -233,83 +226,9 @@ function parseUpdateIncomeLineBody(
   return { body, ok: true };
 }
 
-function parseIncomeLinesListQuery(
-  query: Record<string, unknown>
-): { filters: IPropertyIncomeLinesListQuery; ok: true } | { error: string; ok: false } {
-  const filters: IPropertyIncomeLinesListQuery = {};
-
-  const filterSteps = [
-    () => applyOptionalQueryDateFilter(query, "from", filters, "from must be a YYYY-MM-DD date"),
-    () => applyOptionalQueryDateFilter(query, "to", filters, "to must be a YYYY-MM-DD date"),
-    () => applyOptionalQueryUuidFilter(query, "unitId", filters, "unitId must be a valid UUID"),
-    () =>
-      applyOptionalQueryUuidFilter(
-        query,
-        "reservationId",
-        filters,
-        "reservationId must be a valid UUID"
-      ),
-    () =>
-      applyOptionalQueryUuidFilter(query, "longStayId", filters, "longStayId must be a valid UUID"),
-    () => applyOptionalQuerySearchFilter(query, filters),
-    () => applyOptionalQueryRefundStatusFilter(query, filters),
-  ];
-
-  for (const applyFilter of filterSteps) {
-    const result = applyFilter();
-    if (!result.ok) return result;
-  }
-
-  if (query["incomeLineTypeId"] !== undefined && query["incomeLineTypeId"] !== "") {
-    const incomeLineTypeId = parseIncomeLineTypeId(query["incomeLineTypeId"]);
-    if (incomeLineTypeId === null) {
-      return { error: "incomeLineTypeId must be a valid UUID", ok: false };
-    }
-    filters.incomeLineTypeId = incomeLineTypeId;
-  }
-
-  return { filters, ok: true };
-}
-
-type TIncomeLineListRouteFilters = Omit<IPropertyIncomeLinesListQuery, "cursor" | "limit">;
-
-function parseIncomeLinesListQueryPaginated(
-  query: Record<string, unknown>
-):
-  | { cursor?: string; filters: TIncomeLineListRouteFilters; limit: number; ok: true }
-  | { error: string; ok: false } {
-  const parsed = parseIncomeLinesListQuery(query);
-  if (!parsed.ok) {
-    return parsed;
-  }
-
-  const limit = parseIncomeEntriesListLimit(query["limit"]);
-  const cursor =
-    typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
-
-  return { cursor, filters: parsed.filters, limit, ok: true };
-}
-
-interface IPropertyParams {
-  propertyId: string;
-}
-
 interface IPropertyIncomeLineParams {
   lineId: string;
   propertyId: string;
-}
-
-async function resolveUnitForProperty(unitId: string, propertyId: string, reply: FastifyReply) {
-  const unit = await propertyUnitsDb.findById(unitId);
-  if (!unit || unit.propertyId !== propertyId) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit not found for this property" });
-    return null;
-  }
-  if (unit.isDeleted) {
-    void reply.status(HttpStatus.BAD_REQUEST).send({ error: "Unit has been deleted" });
-    return null;
-  }
-  return unit;
 }
 
 async function resolveReservationForProperty(
@@ -368,7 +287,9 @@ async function resolveIncomeLineTypeForProperty(
 ) {
   const incomeLineType = await propertyIncomeLineTypesDb.findByIdForProperty(
     incomeLineTypeId,
-    propertyId
+    propertyId,
+    undefined,
+    true
   );
   if (!incomeLineType) {
     void reply
@@ -458,39 +379,23 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       request: FastifyRequest<{ Params: IPropertyParams; Querystring: Record<string, unknown> }>,
       reply: FastifyReply
     ) => {
-      const propertyId = parseUuidParam(request.params.propertyId);
-      if (propertyId === null) {
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid propertyId" });
-      }
+      const propertyId = await requirePropertyMemberAccess(request, reply);
+      if (propertyId === null) return;
 
-      const hasAccess = await assertPropertyMemberAccess(
-        propertyId,
-        request.user.userId,
-        request.user.userType,
-        reply
-      );
-      if (!hasAccess) return;
-
-      const parsed = parseIncomeLinesListQueryPaginated(request.query);
+      const parsed = parsePropertyIncomeLinesListQueryPaginated(request.query);
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      if (parsed.cursor != null) {
-        try {
-          decodeIncomeLineKeysetCursor(parsed.cursor);
-        } catch {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid cursor" });
-        }
-      }
-
-      const includeDeleted = request.user.userType === UserType.ADMIN;
+      const includeDeleted = shouldIncludeDeletedListItems(request.user.userType);
       const { incomeLines, meta, nextCursor } = await propertyIncomeLinesDb.listPaginatedByProperty(
         propertyId,
         parsed.filters,
         { cursor: parsed.cursor, includeDeleted, limit: parsed.limit }
       );
-      return reply.send(meta ? { incomeLines, meta, nextCursor } : { incomeLines, nextCursor });
+      return reply.send(
+        buildPaginatedListResponse("incomeLines", incomeLines, meta, nextCursor ?? undefined)
+      );
     }
   );
 
@@ -540,7 +445,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       const unitId = parsed.body.unitId ?? null;
       if (unitId !== null) {
-        const unit = await resolveUnitForProperty(unitId, propertyId, reply);
+        const unit = await resolvePropertyUnit(unitId, propertyId, reply);
         if (!unit) return;
       }
 
@@ -586,7 +491,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         computed
       );
 
-      if (longStayId && isRentIncomeLineType(incomeLineType)) {
+      if (longStayId) {
         void notifyPrimaryTenantRentRecorded({
           amount: parsed.body.amount,
           longStayId,
@@ -646,15 +551,17 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       const merged = mergeIncomeLineInput(existing, parsed.body);
 
-      const incomeLineType = await resolveIncomeLineTypeForProperty(
-        merged.incomeLineTypeId,
-        propertyId,
-        reply
-      );
-      if (!incomeLineType) return;
+      if (parsed.body.incomeLineTypeId !== undefined) {
+        const incomeLineType = await resolveIncomeLineTypeForProperty(
+          merged.incomeLineTypeId,
+          propertyId,
+          reply
+        );
+        if (!incomeLineType) return;
+      }
 
       if (merged.unitId !== null) {
-        const unit = await resolveUnitForProperty(merged.unitId, propertyId, reply);
+        const unit = await resolvePropertyUnit(merged.unitId, propertyId, reply);
         if (!unit) return;
       }
 

@@ -124,6 +124,19 @@ export function writeRecentProperties(entries: IRecentProperty[]): void {
   }
 }
 
+export function clearRecentProperties(): void {
+  if (globalThis.window === undefined) {
+    return;
+  }
+  try {
+    globalThis.window.localStorage.removeItem(RECENT_PROPERTIES_STORAGE_KEY);
+    setRecentPropertiesSnapshot(null, EMPTY_RECENT_PROPERTIES);
+    broadcastRecentProperties();
+  } catch {
+    /* private mode etc. */
+  }
+}
+
 export function recordRecentProperty({
   address,
   id,

@@ -13,6 +13,7 @@ import {
 interface DeleteConfirmationDialogProps {
   cancelLabel?: string;
   confirmLabel?: string;
+  confirmVariant?: "default" | "destructive";
   description: string;
   isPending?: boolean;
   onConfirm: () => void;
@@ -25,6 +26,7 @@ export const DeleteConfirmationDialog = memo(
   ({
     cancelLabel = "Cancel",
     confirmLabel = "Delete",
+    confirmVariant = "destructive",
     description,
     isPending = false,
     onConfirm,
@@ -56,7 +58,7 @@ export const DeleteConfirmationDialog = memo(
             >
               {cancelLabel}
             </Button>
-            <Button disabled={isPending} onClick={onConfirm} type="button" variant="destructive">
+            <Button disabled={isPending} onClick={onConfirm} type="button" variant={confirmVariant}>
               {isPending ? `${confirmLabel}…` : confirmLabel}
             </Button>
           </DialogFooter>

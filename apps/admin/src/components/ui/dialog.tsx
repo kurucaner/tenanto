@@ -64,6 +64,14 @@ function DialogContent({
   );
 }
 
+function DialogFormFields({ children, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5" {...props}>
+      {children}
+    </div>
+  );
+}
+
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -120,6 +128,7 @@ export {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogPortal,
   DialogTitle,

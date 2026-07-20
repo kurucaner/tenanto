@@ -8,6 +8,11 @@ import {
 
 import { mapPropertyExpenseCategoryTypeRow } from "./mappers";
 import { pool } from "./pool";
+import {
+  archivePropertyCatalogTypesNotInIds,
+  propertyCatalogHasAnyRows,
+  restoreArchivedExpenseCategoryTypeByName,
+} from "./property-catalog-type-utils";
 
 export const propertyExpenseCategoryTypesDb = {
   async countUsage(typeId: string, client?: PoolClient): Promise<number> {
@@ -24,13 +29,14 @@ export const propertyExpenseCategoryTypesDb = {
   async findByIdForProperty(
     typeId: string,
     propertyId: string,
-    client?: PoolClient
+    client?: PoolClient,
+    activeOnly = false
   ): Promise<IPropertyExpenseCategoryType | null> {
     const db = client ?? pool;
     const result = await db.query(
       `SELECT id, property_id, name, sort_order, is_annual_amount
        FROM property_expense_category_types
-       WHERE id = $1 AND property_id = $2`,
+       WHERE id = $1 AND property_id = $2${activeOnly ? " AND is_deleted = false" : ""}`,
       [typeId, propertyId]
     );
     if (result.rows.length === 0) return null;
@@ -45,7 +51,7 @@ export const propertyExpenseCategoryTypesDb = {
     const result = await db.query(
       `SELECT id, property_id, name, sort_order, is_annual_amount
        FROM property_expense_category_types
-       WHERE property_id = $1
+       WHERE property_id = $1 AND is_deleted = false
        ORDER BY sort_order ASC, created_at ASC`,
       [propertyId]
     );
@@ -62,18 +68,12 @@ export const propertyExpenseCategoryTypesDb = {
     const db = client ?? pool;
     const incomingIds = inputs.flatMap((input) => (input.id != null ? [input.id] : []));
 
-    if (incomingIds.length === 0) {
-      await db.query(`DELETE FROM property_expense_category_types WHERE property_id = $1`, [
-        propertyId,
-      ]);
-    } else {
-      await db.query(
-        `DELETE FROM property_expense_category_types
-         WHERE property_id = $1
-           AND NOT (id = ANY($2::uuid[]))`,
-        [propertyId, incomingIds]
-      );
-    }
+    await archivePropertyCatalogTypesNotInIds(
+      db,
+      "property_expense_category_types",
+      propertyId,
+      incomingIds
+    );
 
     for (const input of inputs) {
       const name = input.name.trim();
@@ -81,17 +81,31 @@ export const propertyExpenseCategoryTypesDb = {
       if (input.id != null) {
         await db.query(
           `UPDATE property_expense_category_types
-           SET name = $1, sort_order = $2, is_annual_amount = $3, updated_at = NOW()
+           SET name = $1,
+               sort_order = $2,
+               is_annual_amount = $3,
+               is_deleted = false,
+               deleted_at = NULL,
+               updated_at = NOW()
            WHERE id = $4 AND property_id = $5`,
           [name, input.sortOrder, isAnnualAmount, input.id, propertyId]
         );
       } else {
-        await db.query(
-          `INSERT INTO property_expense_category_types
-             (property_id, name, sort_order, is_annual_amount)
-           VALUES ($1, $2, $3, $4)`,
-          [propertyId, name, input.sortOrder, isAnnualAmount]
+        const restored = await restoreArchivedExpenseCategoryTypeByName(
+          db,
+          propertyId,
+          name,
+          input.sortOrder,
+          isAnnualAmount
         );
+        if (!restored) {
+          await db.query(
+            `INSERT INTO property_expense_category_types
+               (property_id, name, sort_order, is_annual_amount)
+             VALUES ($1, $2, $3, $4)`,
+            [propertyId, name, input.sortOrder, isAnnualAmount]
+          );
+        }
       }
     }
 
@@ -99,10 +113,14 @@ export const propertyExpenseCategoryTypesDb = {
   },
 
   async seedDefaults(propertyId: string, client?: PoolClient): Promise<void> {
-    const existing = await propertyExpenseCategoryTypesDb.findByProperty(propertyId, client);
-    if (existing.length > 0) return;
-
     const db = client ?? pool;
+    const hasAnyRows = await propertyCatalogHasAnyRows(
+      db,
+      "property_expense_category_types",
+      propertyId
+    );
+    if (hasAnyRows) return;
+
     for (let index = 0; index < DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES.length; index += 1) {
       const categoryType = DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES[index];
       if (categoryType == null) continue;

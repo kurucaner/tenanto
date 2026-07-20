@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -109,7 +110,7 @@ export const PropertyTableExportDialog = memo(
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 px-6 py-5">
+          <DialogFormFields>
             <div className="bg-muted/40 space-y-1 rounded-md border p-3">
               <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                 Filters
@@ -137,7 +138,7 @@ export const PropertyTableExportDialog = memo(
               <RadioOption label="CSV" value={ExportFormat.CSV} />
               <RadioOption label="Excel" value={ExportFormat.XLSX} />
             </RadioGroupFieldset>
-          </div>
+          </DialogFormFields>
 
           <DialogFooter>
             <Button

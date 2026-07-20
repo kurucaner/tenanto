@@ -28,6 +28,8 @@ export interface ITenantUser {
   name: string;
   phone: string | null;
   phoneVerifiedAt: string | null;
+  smsConsentedAt: string | null;
+  smsOptedOutAt: string | null;
   updatedAt: string;
 }
 
@@ -205,6 +207,7 @@ export interface ITenantPhoneAuthVerifyBody {
 
 export interface ITenantPhoneBindStartBody {
   phone: string;
+  smsConsent: boolean;
 }
 
 export interface ITenantPhoneBindVerifyBody {
@@ -213,6 +216,10 @@ export interface ITenantPhoneBindVerifyBody {
 }
 
 export interface ITenantMeResponse {
+  user: ITenantUser;
+}
+
+export interface ITenantSmsOptOutResponse {
   user: ITenantUser;
 }
 

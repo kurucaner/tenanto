@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
 import { ExportFormat, ExportResourceType, PROPERTY_EXPORT_EMPTY_MESSAGE } from "@/packages/shared";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedNull,
+  mockResolvedVoid,
+} from "@/test-fixtures/mocks";
 
-const findActiveDuplicateMock = mock(() => Promise.resolve(null));
-const createExportJobMock = mock(() =>
+const findActiveDuplicateMock = mockResolvedNull();
+const createExportJobMock = mockAsyncFn(() =>
   Promise.resolve({
     createdBy: "user-1",
     filters: {},
@@ -14,8 +20,8 @@ const createExportJobMock = mock(() =>
     status: "queued",
   })
 );
-const getExpenseListMetaMock = mock(() => Promise.resolve({ totalCount: 0 }));
-const enqueuePropertyExportJobMock = mock(() => Promise.resolve());
+const getExpenseListMetaMock = mockResolved({ totalCount: 0 });
+const enqueuePropertyExportJobMock = mockResolvedVoid();
 
 mock.module("@/db/export-jobs", () => ({
   exportJobsDb: {
@@ -32,13 +38,13 @@ mock.module("@/db/property-expenses", () => ({
 
 mock.module("@/db/property-income-entries", () => ({
   propertyIncomeEntriesDb: {
-    getListMetaByProperty: mock(() => Promise.resolve({ totalCount: 0 })),
+    getListMetaByProperty: mockResolved({ totalCount: 0 }),
   },
 }));
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: {
-    getListMetaByProperty: mock(() => Promise.resolve({ totalCount: 0 })),
+    getListMetaByProperty: mockResolved({ totalCount: 0 }),
   },
 }));
 

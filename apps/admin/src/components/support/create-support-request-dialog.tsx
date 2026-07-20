@@ -13,6 +13,7 @@ import {
   Dialog,
   DialogContent,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -125,7 +126,7 @@ export const CreateSupportRequestDialog = memo(
             <DialogTitle>New support request</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-4 px-6 py-4">
+            <DialogFormFields>
               <FormSelectField
                 disabled={isBusy}
                 id="create-support-category"
@@ -162,7 +163,7 @@ export const CreateSupportRequestDialog = memo(
                   onRetry={retryAttachment}
                 />
               </div>
-            </div>
+            </DialogFormFields>
             <DialogFooter>
               <Button disabled={!canSubmit || isBusy} type="submit">
                 {submitLabel}

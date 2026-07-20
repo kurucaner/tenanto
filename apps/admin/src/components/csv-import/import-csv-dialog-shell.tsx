@@ -4,6 +4,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -41,12 +42,12 @@ export const ImportCsvDialogShell = memo(
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div
+        <DialogFormFields
           className={bodyClassName ?? "min-h-0 flex-1 overflow-y-auto px-6 py-5"}
           ref={onBodyElementReady}
         >
           {children}
-        </div>
+        </DialogFormFields>
 
         {footer}
       </DialogContent>

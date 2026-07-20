@@ -17,6 +17,7 @@ export function buildIncomeTypeFilterOptions(
   return [
     { label: "All types", value: "" },
     { label: "Stay", value: IncomeEntryKind.STAY },
+    { label: "Long term", value: IncomeEntryKind.LONG_TERM },
     ...buildIncomeLineTypeOptions(types),
   ];
 }

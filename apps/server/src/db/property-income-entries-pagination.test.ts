@@ -6,125 +6,18 @@ import {
   type IPropertyReservation,
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
-
-const CHANNEL_ID = "ch000000-0000-4000-8000-000000000001";
-const LINE_TYPE_ID = "ilt00000-0000-4000-8000-000000000001";
-
-const stayRowA: Record<string, unknown> = {
-  channel_commission: "10.00",
-  channel_commission_id: CHANNEL_ID,
-  channel_commission_rate: "0.10000",
-  channel_name: "Airbnb",
-  check_in: "2026-07-10",
-  check_out: "2026-07-12",
-  cleaning_fee: "0.00",
-  created_at: new Date("2026-07-10T10:00:00.000Z"),
-  deleted_at: null,
-  exclude_cleaning_from_commission_base: false,
-  exclude_resort_tax_from_payout: false,
-  gross_income: "100.00",
-  guest_name: "Guest Stay",
-  id: "11111111-1111-4111-8111-111111111111",
-  is_deleted: false,
-  net_income: "90.00",
-  nights: 2,
-  property_id: "prop-1",
-  refunded_at: null,
-  refunded_by: null,
-  reservation_number: null,
-  room_total: "100.00",
-  status: "stayed",
-  tax_breakdown: [],
-  unit_id: "unit-1",
-  updated_at: new Date("2026-07-10T10:00:00.000Z"),
-};
-
-const stayRowB: Record<string, unknown> = {
-  ...stayRowA,
-  check_in: "2026-07-09",
-  check_out: "2026-07-11",
-  created_at: new Date("2026-07-09T10:00:00.000Z"),
-  guest_name: "Guest Stay B",
-  id: "22222222-2222-4222-8222-222222222222",
-  updated_at: new Date("2026-07-09T10:00:00.000Z"),
-};
-
-const lineRowA: Record<string, unknown> = {
-  amount: "25.00",
-  channel_commission: "0.00",
-  created_at: new Date("2026-07-09T15:00:00.000Z"),
-  deleted_at: null,
-  description: null,
-  gross_income: "25.00",
-  guest_name: null,
-  id: "33333333-3333-4333-8333-333333333333",
-  income_line_type_id: LINE_TYPE_ID,
-  income_line_type_name: "Parking",
-  is_deleted: false,
-  long_stay_id: null,
-  net_income: "25.00",
-  property_id: "prop-1",
-  refunded_at: null,
-  refunded_by: null,
-  reservation_id: null,
-  tax_breakdown: [],
-  transaction_date: "2026-07-09",
-  unit_id: null,
-  updated_at: new Date("2026-07-09T15:00:00.000Z"),
-};
-
-const lineRowB: Record<string, unknown> = {
-  ...lineRowA,
-  amount: "15.00",
-  created_at: new Date("2026-07-08T10:00:00.000Z"),
-  gross_income: "15.00",
-  id: "44444444-4444-4444-8444-444444444444",
-  net_income: "15.00",
-  transaction_date: "2026-07-08",
-  updated_at: new Date("2026-07-08T10:00:00.000Z"),
-};
-
-const mergedRowsCanonical = [
-  {
-    created_at: stayRowA.created_at,
-    entry_kind: IncomeEntryKind.STAY,
-    id: stayRowA.id,
-    row_payload: stayRowA,
-    sort_key_date: stayRowA.check_in,
-    sort_key_num: null,
-    sort_key_text: null,
-  },
-  {
-    created_at: lineRowA.created_at,
-    entry_kind: IncomeEntryKind.LINE,
-    id: lineRowA.id,
-    row_payload: lineRowA,
-    sort_key_date: lineRowA.transaction_date,
-    sort_key_num: null,
-    sort_key_text: null,
-  },
-  {
-    created_at: stayRowB.created_at,
-    entry_kind: IncomeEntryKind.STAY,
-    id: stayRowB.id,
-    row_payload: stayRowB,
-    sort_key_date: stayRowB.check_in,
-    sort_key_num: null,
-    sort_key_text: null,
-  },
-  {
-    created_at: lineRowB.created_at,
-    entry_kind: IncomeEntryKind.LINE,
-    id: lineRowB.id,
-    row_payload: lineRowB,
-    sort_key_date: lineRowB.transaction_date,
-    sort_key_num: null,
-    sort_key_text: null,
-  },
-];
+import {
+  INCOME_ENTRIES_LINE_TYPE_ID,
+  incomeEntriesLineRowA,
+  incomeEntriesLineRowB,
+  incomeEntriesLongTermRowA,
+  incomeEntriesMergedRowsCanonical,
+  incomeEntriesStayRowA,
+  incomeEntriesStayRowB,
+} from "@/test-fixtures/pagination/income-entries-pagination-rows";
 
 function rowIsBeforeDateCursor(
-  row: (typeof mergedRowsCanonical)[number],
+  row: (typeof incomeEntriesMergedRowsCanonical)[number],
   sortKeyDate: string,
   createdAt: string,
   id: string,
@@ -141,12 +34,27 @@ function rowIsBeforeDateCursor(
 
 const mockQuery = mock((sql: string, values?: unknown[]) => {
   if (sql.includes("COUNT(*)")) {
+    if (sql.includes("property_reservations")) {
+      return Promise.resolve({
+        rows: [{ total_count: 2 }],
+      });
+    }
+    if (sql.includes("long_stay_id IS NOT NULL")) {
+      return Promise.resolve({
+        rows: [{ total_count: 1 }],
+      });
+    }
+    if (sql.includes("long_stay_id IS NULL")) {
+      return Promise.resolve({
+        rows: [{ total_count: 2 }],
+      });
+    }
     return Promise.resolve({
-      rows: [{ total_count: 2 }],
+      rows: [{ total_count: 0 }],
     });
   }
 
-  let rows = [...mergedRowsCanonical];
+  let rows = [...incomeEntriesMergedRowsCanonical];
 
   if (sql.includes("entry_kind) <") && values) {
     const entryKind = values[values.length - 2] as string;
@@ -157,7 +65,7 @@ const mockQuery = mock((sql: string, values?: unknown[]) => {
   }
 
   const limitPlusOne =
-    (values?.[values.length - 1] as number | undefined) ?? mergedRowsCanonical.length;
+    (values?.[values.length - 1] as number | undefined) ?? incomeEntriesMergedRowsCanonical.length;
 
   return Promise.resolve({ rows: rows.slice(0, limitPlusOne) });
 });
@@ -176,7 +84,10 @@ function buildMergedEntries(
 ): TPropertyIncomeEntry[] {
   const entries: TPropertyIncomeEntry[] = [];
   const showStays = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.STAY;
-  const showLines = incomeTypeFilter === "" || incomeTypeFilter !== IncomeEntryKind.STAY;
+  const showLongTerm = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.LONG_TERM;
+  const showLines =
+    incomeTypeFilter === "" ||
+    (incomeTypeFilter !== IncomeEntryKind.STAY && incomeTypeFilter !== IncomeEntryKind.LONG_TERM);
 
   if (showStays) {
     for (const stay of reservations) {
@@ -184,10 +95,20 @@ function buildMergedEntries(
     }
   }
 
+  if (showLongTerm) {
+    for (const line of incomeLines) {
+      if (line.longStayId != null) {
+        entries.push({ entryKind: IncomeEntryKind.LONG_TERM, line });
+      }
+    }
+  }
+
   if (showLines) {
     for (const line of incomeLines) {
-      if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
-        entries.push({ entryKind: IncomeEntryKind.LINE, line });
+      if (line.longStayId == null) {
+        if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
+          entries.push({ entryKind: IncomeEntryKind.LINE, line });
+        }
       }
     }
   }
@@ -220,9 +141,13 @@ function referenceSortDateDesc(entries: TPropertyIncomeEntry[]): TPropertyIncome
 }
 
 function getEntryKey(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY
-    ? `stay:${entry.stay.id}`
-    : `line:${entry.line.id}`;
+  if (entry.entryKind === IncomeEntryKind.STAY) {
+    return `stay:${entry.stay.id}`;
+  }
+  if (entry.entryKind === IncomeEntryKind.LONG_TERM) {
+    return `longTerm:${entry.line.id}`;
+  }
+  return `line:${entry.line.id}`;
 }
 
 describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
@@ -243,8 +168,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
         : null
     ).toBe("2026-07-10");
     expect(firstPage.nextCursor).toBeString();
-    expect(firstPage.meta).toEqual({ totalCount: 4 });
-    expect(mockQuery.mock.calls).toHaveLength(3);
+    expect(firstPage.meta).toEqual({ totalCount: 5 });
+    expect(mockQuery.mock.calls).toHaveLength(4);
 
     const sql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
@@ -337,7 +262,7 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
 
     await propertyIncomeEntriesDb.listPaginatedByProperty(
       "prop-1",
-      { incomeType: LINE_TYPE_ID },
+      { incomeType: INCOME_ENTRIES_LINE_TYPE_ID },
       { limit: 2 }
     );
 
@@ -347,6 +272,25 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     expect(sql).toContain("property_income_lines pil");
     expect(sql).not.toContain("property_reservations pr");
     expect(sql).toContain("pil.income_line_type_id = $");
+    expect(sql).toContain("pil.long_stay_id IS NULL");
+  });
+
+  test("applies longTerm incomeType filter in SQL", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      { incomeType: IncomeEntryKind.LONG_TERM },
+      { limit: 2 }
+    );
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("property_income_lines pil");
+    expect(sql).not.toContain("property_reservations pr");
+    expect(sql).toContain("pil.long_stay_id IS NOT NULL");
+    expect(sql).toContain(`'${IncomeEntryKind.LONG_TERM}'::text AS entry_kind`);
   });
 
   test("cursor pages have no duplicates or gaps", async () => {
@@ -368,8 +312,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       guard += 1;
     }
 
-    expect(collected).toHaveLength(4);
-    expect(new Set(collected.map(getEntryKey)).size).toBe(4);
+    expect(collected).toHaveLength(5);
+    expect(new Set(collected.map(getEntryKey)).size).toBe(5);
   });
 
   test("matches merged client ordering for date desc", async () => {
@@ -378,8 +322,15 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     const page = await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", {}, { limit: 10 });
     const expected = referenceSortDateDesc(
       buildMergedEntries(
-        [mapPropertyReservationRow(stayRowA), mapPropertyReservationRow(stayRowB)],
-        [mapPropertyIncomeLineRow(lineRowA), mapPropertyIncomeLineRow(lineRowB)],
+        [
+          mapPropertyReservationRow(incomeEntriesStayRowA),
+          mapPropertyReservationRow(incomeEntriesStayRowB),
+        ],
+        [
+          mapPropertyIncomeLineRow(incomeEntriesLineRowA),
+          mapPropertyIncomeLineRow(incomeEntriesLineRowB),
+          mapPropertyIncomeLineRow(incomeEntriesLongTermRowA),
+        ],
         ""
       )
     );
@@ -403,6 +354,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       .map(([query]) => query as string);
     expect(countSqls.some((sql) => sql.includes("property_income_line_types ilt"))).toBe(true);
     expect(countSqls.some((sql) => sql.includes("ilt.name ILIKE"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NULL"))).toBe(true);
   });
 
   test("applies refundStatus filter across stay and line branches", async () => {
@@ -425,5 +378,7 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       .map(([query]) => query as string);
     expect(countSqls.some((sql) => sql.includes("pr.refunded_at IS NOT NULL"))).toBe(true);
     expect(countSqls.some((sql) => sql.includes("pil.refunded_at IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NULL"))).toBe(true);
   });
 });

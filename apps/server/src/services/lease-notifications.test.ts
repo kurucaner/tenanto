@@ -3,10 +3,17 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
 import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
+import { makeLease } from "@/test-fixtures/domain";
+import {
+  mockAsyncFn,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockResolvedVoid,
+} from "@/test-fixtures/mocks";
 
-const mockFindLongStayById = mock(() => Promise.resolve(null as IPropertyLongStay | null));
-const mockGetRentSchedule = mock(() => Promise.resolve([] as IPropertyLongStayRentMonth[]));
-const mockFindPropertyById = mock(() =>
+const mockFindLongStayById = mockResolvedNull<IPropertyLongStay>();
+const mockGetRentSchedule = mockResolvedEmpty<IPropertyLongStayRentMonth>();
+const mockFindPropertyById = mockAsyncFn(() =>
   Promise.resolve({
     address: "123 Main St",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -17,7 +24,7 @@ const mockFindPropertyById = mock(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockFindUnitById = mock(() =>
+const mockFindUnitById = mockAsyncFn(() =>
   Promise.resolve({
     createdAt: "2026-01-01T00:00:00.000Z",
     deletedAt: null,
@@ -30,8 +37,8 @@ const mockFindUnitById = mock(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockSendRentPaymentRecordedEmail = mock(() => Promise.resolve());
-const mockSendLeaseEndedEmail = mock(() => Promise.resolve());
+const mockSendRentPaymentRecordedEmail = mockResolvedVoid();
+const mockSendLeaseEndedEmail = mockResolvedVoid();
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: {
@@ -61,27 +68,6 @@ mock.module("@/ses/transactional-emails", () => ({
 const { notifyPrimaryTenantLeaseEnded, notifyPrimaryTenantRentRecorded } =
   await import("./lease-notifications");
 
-function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
-  return {
-    actualEndDate: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    guestName: "Jane Tenant",
-    id: "lease-1",
-    leaseEndDate: "2027-01-01",
-    leaseStartDate: "2026-01-01",
-    monthlyRent: 1500,
-    propertyId: "prop-1",
-    secondaryTenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenantEmail: "jane@example.com",
-    tenantPhone: null,
-    termMonths: 12,
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
 describe("notifyPrimaryTenantRentRecorded", () => {
   const originalFlag = process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
 
@@ -102,7 +88,9 @@ describe("notifyPrimaryTenantRentRecorded", () => {
   });
 
   test("sends email when lease has tenant email and related records resolve", async () => {
-    mockFindLongStayById.mockResolvedValueOnce(makeLease());
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({ leaseEndDate: "2027-01-01", propertyId: "prop-1" })
+    );
 
     await notifyPrimaryTenantRentRecorded({
       amount: 1500,
@@ -123,7 +111,9 @@ describe("notifyPrimaryTenantRentRecorded", () => {
   });
 
   test("no-ops when tenant email is missing", async () => {
-    mockFindLongStayById.mockResolvedValueOnce(makeLease({ tenantEmail: null }));
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({ propertyId: "prop-1", tenantEmail: null })
+    );
 
     await notifyPrimaryTenantRentRecorded({
       amount: 1500,
@@ -136,7 +126,9 @@ describe("notifyPrimaryTenantRentRecorded", () => {
   });
 
   test("no-ops when tenant email is blank", async () => {
-    mockFindLongStayById.mockResolvedValueOnce(makeLease({ tenantEmail: "   " }));
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({ propertyId: "prop-1", tenantEmail: "   " })
+    );
 
     await notifyPrimaryTenantRentRecorded({
       amount: 1500,
@@ -200,6 +192,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       makeLease({
         actualEndDate: "2024-07-05",
         leaseEndDate: "2024-06-30",
+        propertyId: "prop-1",
         status: PropertyLongStayStatus.ENDED,
       })
     );
@@ -244,6 +237,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       makeLease({
         actualEndDate: "2026-03-31",
         leaseEndDate: "2026-03-31",
+        propertyId: "prop-1",
         status: PropertyLongStayStatus.ENDED,
       })
     );
@@ -286,6 +280,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
     mockFindLongStayById.mockResolvedValueOnce(
       makeLease({
         actualEndDate: "2026-03-31",
+        propertyId: "prop-1",
         status: PropertyLongStayStatus.ENDED,
         tenantEmail: null,
       })

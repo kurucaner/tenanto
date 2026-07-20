@@ -8,14 +8,15 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FieldLabel } from "@/components/ui/field-label";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { propertiesApi } from "@/lib/api-client";
+import { PhoneInput } from "@/packages/app-ui";
 
 interface CreatePropertyDialogProps {
   onOpenChange: (open: boolean) => void;
@@ -66,7 +67,7 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5 px-6 py-5">
+          <DialogFormFields>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="create-property-name">Name</Label>
               <Input
@@ -105,7 +106,7 @@ export const CreatePropertyDialog = memo(({ onOpenChange, open }: CreateProperty
               optional
               value={phoneNumber}
             />
-          </div>
+          </DialogFormFields>
           <DialogFooter>
             <Button
               disabled={mutation.isPending}

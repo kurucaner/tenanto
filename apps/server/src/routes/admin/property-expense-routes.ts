@@ -12,7 +12,6 @@ import {
   EXPENSES_LIST_LIMIT,
   EXPENSES_LIST_MAX_LIMIT,
   HttpStatus,
-  type IPropertyExpense,
   type IUpdatePropertyExpenseBody,
   type TPropertyExpensesListFilters,
   UserType,
@@ -52,7 +51,13 @@ function parseBoolean(raw: unknown): boolean | null {
   return raw;
 }
 
-const UPDATE_FIELDS = ["categoryId", "amount", "expenseDate", "description", "taxFree"] as const;
+const UPDATE_FIELDS = [
+  "categoryId",
+  "amount",
+  "expenseDate",
+  "description",
+  "cashExpense",
+] as const;
 
 function parseUpdateExpenseCategoryId(
   r: Record<string, unknown>,
@@ -104,14 +109,14 @@ function parseUpdateExpenseDescription(
   return null;
 }
 
-function parseUpdateExpenseTaxFree(
+function parseUpdateExpenseCashExpense(
   r: Record<string, unknown>,
   body: IUpdatePropertyExpenseBody
 ): string | null {
-  if (r["taxFree"] === undefined) return null;
-  const taxFree = parseBoolean(r["taxFree"]);
-  if (taxFree === null) return "taxFree must be a boolean";
-  body.taxFree = taxFree;
+  if (r["cashExpense"] === undefined) return null;
+  const cashExpense = parseBoolean(r["cashExpense"]);
+  if (cashExpense === null) return "cashExpense must be a boolean";
+  body.cashExpense = cashExpense;
   return null;
 }
 
@@ -135,7 +140,7 @@ function parseUpdateExpenseBody(
     parseUpdateExpenseAmount(r, body) ??
     parseUpdateExpenseDate(r, body) ??
     parseUpdateExpenseDescription(r, body) ??
-    parseUpdateExpenseTaxFree(r, body);
+    parseUpdateExpenseCashExpense(r, body);
   if (fieldError) {
     return { error: fieldError, ok: false };
   }
@@ -194,16 +199,6 @@ interface IPropertyParams {
 interface IPropertyExpenseParams {
   expenseId: string;
   propertyId: string;
-}
-
-function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExpenseBody) {
-  return {
-    amount: patch.amount ?? existing.amount,
-    categoryId: patch.categoryId ?? existing.categoryId,
-    description: patch.description === undefined ? existing.description : patch.description,
-    expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
-    taxFree: patch.taxFree ?? existing.taxFree,
-  };
 }
 
 export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -285,7 +280,9 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
 
       const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
         parsed.body.categoryId,
-        propertyId
+        propertyId,
+        undefined,
+        true
       );
       if (!categoryType) {
         return reply
@@ -302,10 +299,10 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
 
       const expense = await propertyExpensesDb.create(propertyId, {
         amount: parsed.body.amount,
+        cashExpense: parsed.body.cashExpense ?? false,
         categoryId: parsed.body.categoryId,
         description: parsed.body.description?.trim() || null,
         expenseDate: parsed.body.expenseDate ?? null,
-        taxFree: parsed.body.taxFree ?? false,
       });
 
       return reply.status(HttpStatus.CREATED).send({ expense });
@@ -354,15 +351,18 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const merged = mergeExpenseInput(existing, parsed.body);
-      const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
-        merged.categoryId,
-        propertyId
-      );
-      if (!categoryType) {
-        return reply
-          .status(HttpStatus.BAD_REQUEST)
-          .send({ error: "Category not found for this property" });
+      if (parsed.body.categoryId !== undefined) {
+        const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
+          parsed.body.categoryId,
+          propertyId,
+          undefined,
+          true
+        );
+        if (!categoryType) {
+          return reply
+            .status(HttpStatus.BAD_REQUEST)
+            .send({ error: "Category not found for this property" });
+        }
       }
 
       const expense = await propertyExpensesDb.update(expenseId, parsed.body);

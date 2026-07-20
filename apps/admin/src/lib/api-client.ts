@@ -73,6 +73,7 @@ import {
   type IPropertyReservationsListQuery,
   type IPropertySettings,
   type IPropertyShortStaysListResponse,
+  type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   type IPropertyUnit,
@@ -762,13 +763,26 @@ export const settingsApi = {
 };
 
 export const propertyStripeConnectApi = {
-  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+  createExpressOnboardingLink: (
+    propertyId: string,
+    body?: { refreshUrl?: string; returnUrl?: string }
+  ) =>
     authenticatedRequest<IPropertyStripeConnectOnboardingLinkResponse>(
-      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/onboarding-link`,
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/express/onboarding-link`,
       {
         body: JSON.stringify(body ?? {}),
         method: "POST",
       }
+    ),
+
+  /** @deprecated Use createExpressOnboardingLink */
+  createOnboardingLink: (propertyId: string, body?: { refreshUrl?: string; returnUrl?: string }) =>
+    propertyStripeConnectApi.createExpressOnboardingLink(propertyId, body),
+
+  createStandardOAuthAuthorizeUrl: (propertyId: string) =>
+    authenticatedRequest<IPropertyStripeConnectAuthorizeUrlResponse>(
+      `/properties/${encodeURIComponent(propertyId)}/stripe/connect/oauth/authorize-url`,
+      { method: "POST", omitDefaultContentType: true }
     ),
 
   getStatus: (propertyId: string) =>

@@ -41,11 +41,14 @@ import { notificationRoutes } from "./routes/notification-routes";
 import { propertyInviteRoutes } from "./routes/property-invite-routes";
 import { pushTokenRoutes } from "./routes/push-token-routes";
 import { s3Routes } from "./routes/s3-routes";
+import { smsInboundWebhookRoutes } from "./routes/sms-inbound-webhook-routes";
+import { stripeConnectOAuthCallbackRoutes } from "./routes/stripe-connect-oauth-callback-routes";
 import { stripeWebhookRoutes } from "./routes/stripe-webhook-routes";
 import { supportRoutes } from "./routes/support-routes";
 import { tenantAuthRoutes } from "./routes/tenant/tenant-auth-routes";
 import { tenantLeaseRoutes } from "./routes/tenant/tenant-lease-routes";
 import { tenantRentPaymentRoutes } from "./routes/tenant/tenant-rent-payment-routes";
+import { tenantSettingsRoutes } from "./routes/tenant/tenant-settings-routes";
 import { unsubscribeRoutes } from "./routes/unsubscribe-routes";
 import { startPortalInviteExpiryCron } from "./scheduler/portal-invite-expiry-cron";
 import { startPropertyExportExpiryCron } from "./scheduler/property-export-expiry-cron";
@@ -94,7 +97,10 @@ server.register(rateLimit, {
   allowList: (request) => {
     const path = request.url.split("?")[0];
     return (
-      path === "/notifications/stream" || path === "/s3-notification" || path === "/webhooks/stripe"
+      path === "/notifications/stream" ||
+      path === "/s3-notification" ||
+      path === "/webhooks/sms/inbound" ||
+      path === "/webhooks/stripe"
     );
   },
   max: isProduction ? 20 : 100,
@@ -107,6 +113,7 @@ server.register(authRoutes);
 server.register(propertyInviteRoutes);
 server.register(tenantAuthRoutes);
 server.register(tenantLeaseRoutes);
+server.register(tenantSettingsRoutes);
 server.register(tenantRentPaymentRoutes);
 server.register(adminRoutes);
 server.register(propertyRoutes);
@@ -129,7 +136,9 @@ server.register(portfolioReportRoutes);
 server.register(homeRoutes);
 server.register(pushTokenRoutes);
 server.register(s3Routes);
+server.register(smsInboundWebhookRoutes);
 server.register(stripeWebhookRoutes);
+server.register(stripeConnectOAuthCallbackRoutes);
 server.register(supportRoutes);
 server.register(notificationRoutes);
 server.register(unsubscribeRoutes);

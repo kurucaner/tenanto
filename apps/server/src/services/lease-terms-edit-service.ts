@@ -4,6 +4,7 @@ import {
   leaseTermsValidationError,
   longStayNotFoundError,
 } from "@/errors/lease-errors";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   deriveLeaseTermsEditability,
   type IEditPropertyLongStayTermsBody,
@@ -11,11 +12,6 @@ import {
   type IPropertyLongStay,
   validateEditLeaseTerms,
 } from "@/packages/shared";
-
-function getTodayUtcIsoDate(): string {
-  const date = new Date();
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
-}
 
 export async function getLeaseTermsEditability(
   longStayId: string

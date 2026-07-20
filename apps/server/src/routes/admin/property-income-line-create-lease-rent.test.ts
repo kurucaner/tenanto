@@ -1,23 +1,20 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { PropertyLongStayStatus } from "@/packages/shared";
+import { resolveLeaseIncomeLineTypeId } from "@/packages/shared";
+import { makeLongStay } from "@/test-fixtures/domain";
 
 const mockFindById = mock(() =>
-  Promise.resolve({
-    actualEndDate: null,
-    guestName: "Tenant",
-    id: "lease-1",
-    leaseEndDate: "2026-03-31",
-    leaseStartDate: "2026-01-01",
-    monthlyRent: 1500,
-    propertyId: "prop-1",
-    secondaryTenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenantEmail: null,
-    tenantPhone: null,
-    termMonths: 3,
-    unitId: "unit-1",
-  })
+  Promise.resolve(
+    makeLongStay({
+      guestName: "Tenant",
+      leaseEndDate: "2026-03-31",
+      leaseStartDate: "2026-01-01",
+      monthlyRent: 1500,
+      propertyId: "prop-1",
+      tenantEmail: null,
+      termMonths: 3,
+    })
+  )
 );
 
 mock.module("@/db/property-long-stays", () => ({
@@ -92,5 +89,25 @@ describe("POST /properties/:propertyId/income-lines lease rent validation", () =
     });
 
     expect(result).toEqual({ ok: true, rentPeriodMonth: "2026-01" });
+  });
+});
+
+describe("lease rent income line type resolution", () => {
+  test("still resolves a type id when Rent was renamed in settings", () => {
+    expect(
+      resolveLeaseIncomeLineTypeId([
+        { id: "type-clean", name: "Extra cleaning" },
+        { id: "type-lease", name: "Monthly lease" },
+      ])
+    ).toBe("type-clean");
+  });
+
+  test("prefers Rent by name when the catalog still includes it", () => {
+    expect(
+      resolveLeaseIncomeLineTypeId([
+        { id: "type-clean", name: "Extra cleaning" },
+        { id: "type-rent", name: "Rent" },
+      ])
+    ).toBe("type-rent");
   });
 });

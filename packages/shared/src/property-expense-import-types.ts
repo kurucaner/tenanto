@@ -24,7 +24,7 @@ export interface IExpenseImportParsedRow {
   expenseDate?: string;
   rowIndex: number;
   sourceFileName: string;
-  taxFree?: boolean;
+  cashExpense?: boolean;
   validationError?: string;
 }
 

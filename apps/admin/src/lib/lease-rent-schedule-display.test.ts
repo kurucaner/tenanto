@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { type IPropertyLongStayRentMonth } from "@/packages/shared";
 
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
@@ -157,7 +158,7 @@ describe("buildLeaseRecordRentPrefill", () => {
     expect(prefill.amount).toBe("500");
     expect(prefill.longStayId).toBe("lease-1");
     expect(prefill.rentPeriodMonth).toBe("2024-06");
-    expect(prefill.transactionDate).toBe("2024-06-01");
+    expect(prefill.transactionDate).toBe(getTodayLocalIsoDate());
   });
 
   test("falls back to lease monthlyRent when no month is provided", () => {

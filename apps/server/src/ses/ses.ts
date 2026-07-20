@@ -1,12 +1,10 @@
 import { SendEmailCommand, SESv2Client } from "@aws-sdk/client-sesv2";
 
+import { awsStaticCredentials } from "@/lib/aws-static-credentials";
 import { APP_NAME } from "@/packages/shared";
 
 const ses = new SESv2Client({
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
+  credentials: awsStaticCredentials(),
   region: "us-east-1",
 });
 

@@ -4,10 +4,13 @@ import { ColoredPill } from "@/components/income/colored-pill";
 import { IncomeEntryKind } from "@/packages/shared";
 
 type IncomeEntryTypeBadgeProps =
+  | { entryKind: typeof IncomeEntryKind.LONG_TERM }
   | { entryKind: typeof IncomeEntryKind.STAY }
   | { entryKind: typeof IncomeEntryKind.LINE; incomeLineTypeId: string; label: string };
 
 const STAY_CLASS_NAME = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+
+const LONG_TERM_CLASS_NAME = "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400";
 
 const INCOME_TYPE_BADGE_CLASSES = [
   "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400",
@@ -33,6 +36,10 @@ function getIncomeEntryTypeBadgeProps(props: IncomeEntryTypeBadgeProps): {
 } {
   if (props.entryKind === IncomeEntryKind.STAY) {
     return { className: STAY_CLASS_NAME, label: "Stay" };
+  }
+
+  if (props.entryKind === IncomeEntryKind.LONG_TERM) {
+    return { className: LONG_TERM_CLASS_NAME, label: "Long term" };
   }
 
   return {

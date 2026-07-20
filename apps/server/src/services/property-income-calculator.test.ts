@@ -15,26 +15,12 @@ import {
   isOperandInMetric,
   UnitRentalType,
 } from "@/packages/shared";
+import { makeChannel } from "@/test-fixtures/domain";
 
 const TAX_RATES: IPropertyTaxRate[] = [
   { id: "tax-sales", name: "Sales tax", propertyId: "prop-1", rate: 0.06, sortOrder: 1 },
   { id: "tax-resort", name: "Resort tax", propertyId: "prop-1", rate: 0.04, sortOrder: 2 },
 ];
-
-function makeChannel(
-  defaults: (typeof DEFAULT_PROPERTY_CHANNEL_COMMISSIONS)[number],
-  id: string
-): IPropertyChannelCommission {
-  return {
-    excludeCleaningFromCommissionBase: defaults.excludeCleaningFromCommissionBase ?? false,
-    excludeResortTaxFromPayout: defaults.excludeResortTaxFromPayout ?? false,
-    id,
-    name: defaults.name,
-    propertyId: "prop-1",
-    rate: defaults.rate,
-    sortOrder: 1,
-  };
-}
 
 const AIRBNB = makeChannel(DEFAULT_PROPERTY_CHANNEL_COMMISSIONS[0]!, "channel-airbnb");
 const BOOKING = makeChannel(DEFAULT_PROPERTY_CHANNEL_COMMISSIONS[1]!, "channel-booking");
@@ -184,7 +170,7 @@ describe("stay calculation breakdowns", () => {
     const taxesBreakdown = buildStayTaxesBreakdown(stay);
 
     expect(commissionBreakdown.total).toBe(135);
-    expect(commissionBreakdown.baseLines[0]?.note).toBe("Commission base");
+    expect(commissionBreakdown.baseLines[0]?.note).toBe("(Room total)");
     expect(getBreakdownLineLabels(commissionBreakdown)).not.toContain("Cleaning fee");
     expect(taxesBreakdown.baseLines.some((line) => line.label === "Cleaning fee")).toBe(true);
     expect(buildStayGrossBreakdown(stay).total).toBe(1100);

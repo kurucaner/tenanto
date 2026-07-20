@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { LeaseErrorCode } from "@/errors/lease-errors";
-import { PropertyLongStayStatus } from "@/packages/shared";
+import { buildRentScheduleLeaseRow } from "@/test-fixtures/db-rows";
 
 type TLeaseRow = Record<string, unknown>;
 
@@ -9,27 +9,6 @@ let currentLeaseRow: TLeaseRow;
 let activeLeaseOnUnit: TLeaseRow | null = null;
 let currentRentPeriodRows: Record<string, unknown>[] = [];
 const capturedClientSql: string[] = [];
-
-function buildLeaseRow(overrides: Record<string, unknown> = {}): TLeaseRow {
-  return {
-    actual_end_date: null,
-    created_at: new Date("2026-01-01T00:00:00.000Z"),
-    guest_name: "Tenant",
-    id: "lease-1",
-    lease_end_date: "2026-03-31",
-    lease_start_date: "2026-01-01",
-    monthly_rent: "1500.00",
-    property_id: "prop-1",
-    secondary_tenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenant_email: null,
-    tenant_phone: null,
-    term_months: 3,
-    unit_id: "unit-1",
-    updated_at: new Date("2026-01-01T00:00:00.000Z"),
-    ...overrides,
-  };
-}
 
 const mockClientQuery = mock((sql: string, params?: unknown[]) => {
   capturedClientSql.push(sql);
@@ -53,7 +32,7 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
   }
 
   if (sql.includes("UPDATE property_long_stays")) {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       lease_end_date: params?.[4],
       lease_start_date: params?.[1],
       monthly_rent: String(params?.[3]),
@@ -70,7 +49,7 @@ const mockClient = {
   release: mock(() => {}),
 };
 
-const mockQuery = mock((sql: string, params?: unknown[]) => {
+const mockQuery = mock((sql: string, _params?: unknown[]) => {
   if (sql.includes("FROM property_income_lines")) {
     return Promise.resolve({ rows: [] });
   }
@@ -115,7 +94,7 @@ const { propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.updateTerms", () => {
   test("updates lease fields in a transaction", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     activeLeaseOnUnit = null;
     currentRentPeriodRows = [];
     capturedClientSql.length = 0;
@@ -139,7 +118,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
   });
 
   test("syncs a single rent period row when present", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentRentPeriodRows = [{ id: "period-1" }];
     capturedClientSql.length = 0;
     mockClientQuery.mockClear();
@@ -162,7 +141,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
   });
 
   test("getRentSchedule reflects updated dates and rent", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentRentPeriodRows = [];
     mockQuery.mockClear();
 
@@ -179,8 +158,8 @@ describe("propertyLongStaysDb.updateTerms", () => {
   });
 
   test("throws when another active lease exists on the unit and schedule changes", async () => {
-    currentLeaseRow = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
-    activeLeaseOnUnit = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    activeLeaseOnUnit = buildRentScheduleLeaseRow({
       guest_name: "Other Tenant",
       id: "lease-2",
       unit_id: "unit-1",
@@ -200,8 +179,8 @@ describe("propertyLongStaysDb.updateTerms", () => {
   });
 
   test("allows rent-only patch when another active lease row exists for the same lease id", async () => {
-    currentLeaseRow = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
-    activeLeaseOnUnit = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    currentLeaseRow = buildRentScheduleLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    activeLeaseOnUnit = buildRentScheduleLeaseRow({ id: "lease-1", unit_id: "unit-1" });
     capturedClientSql.length = 0;
     mockClientQuery.mockClear();
 
@@ -216,8 +195,8 @@ describe("propertyLongStaysDb.updateTerms", () => {
   });
 
   test("skips unit conflict check for rent-only patch", async () => {
-    currentLeaseRow = buildLeaseRow({ id: "lease-1", unit_id: "unit-1" });
-    activeLeaseOnUnit = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({ id: "lease-1", unit_id: "unit-1" });
+    activeLeaseOnUnit = buildRentScheduleLeaseRow({
       guest_name: "Other Tenant",
       id: "lease-2",
       unit_id: "unit-1",

@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -115,7 +116,7 @@ export const TenantEmailPreviewDialog = memo(
             </DialogDescription>
           </DialogHeader>
 
-          <div className="px-6 py-5">{renderPreviewBody(previewQuery)}</div>
+          <DialogFormFields>{renderPreviewBody(previewQuery)}</DialogFormFields>
 
           <DialogFooter>
             <Button onClick={() => onOpenChange(false)} type="button" variant="outline">

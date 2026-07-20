@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -60,7 +61,7 @@ export const EditUnitDialog = memo(
             <DialogDescription>Update the details of this unit.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-5 px-6 py-5">
+          <DialogFormFields>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-unit-number">Unit Number</Label>
               <Input
@@ -81,7 +82,7 @@ export const EditUnitDialog = memo(
               onChange={setRentalType}
               value={rentalType}
             />
-          </div>
+          </DialogFormFields>
 
           <DialogFooter>
             <Button

@@ -25,12 +25,12 @@ import {
   type TPlatform,
 } from "@/packages/shared";
 import { validateName, validatePassword } from "@/routes/auth/validators";
-import { issuePlatformSession } from "@/services/platform-auth-service";
-import { propertyMemberInviteActionService } from "@/services/property-member-invite-action-service";
 import {
   mapInviteSignupDomainError,
   type TInviteSignupFailure,
 } from "@/services/map-invite-signup-domain-error";
+import { issuePlatformSession } from "@/services/platform-auth-service";
+import { propertyMemberInviteActionService } from "@/services/property-member-invite-action-service";
 
 export type TPropertyMemberInviteSignupSuccess = {
   response: IPropertyInviteRedeemResponse;

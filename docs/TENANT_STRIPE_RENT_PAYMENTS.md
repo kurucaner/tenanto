@@ -207,12 +207,12 @@ Rent settlement requires a **platform snapshot** Event Destination (or classic w
 
 ### Required destination
 
-| Setting | Value                                                                                                        |
-| ------- | ------------------------------------------------------------------------------------------------------------ |
-| Scope   | **Your account** (platform) — Checkout Sessions are created on the platform with `transfer_data.destination` |
-| Payload | **Snapshot** (`object: "event"`)                                                                             |
-| URL     | `https://<api-host>/webhooks/stripe`                                                                         |
-| Events  | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`                    |
+| Setting | Value                                                                                                                                  |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope   | **Your account** (platform) — Checkout Sessions are created on the platform with `transfer_data.destination`                           |
+| Payload | **Snapshot** (`object: "event"`)                                                                                                       |
+| URL     | `https://<api-host>/webhooks/stripe`                                                                                                   |
+| Events  | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`, `account.updated` (Connect capability sync) |
 
 `STRIPE_WEBHOOK_SECRET` must be **that** destination’s signing secret (`whsec_…`).
 
@@ -227,7 +227,7 @@ Set `STRIPE_CONNECT_ENABLED=true` on the API server to opt in (default off when 
 - Snapshot (`object: "event"`) → `webhooks.constructEvent`
 - Thin (`object: "v2.core.event"`) → `parseEventNotification` (acks destination pings; other thin types ignored until handled)
 
-**One signing secret per URL.** Do not point a thin Accounts v2 destination (`v2.core.account*`, `v2.core.account_person*`) at the same `/webhooks/stripe` with a different `whsec_` — verification will fail. Disable that destination or use a different path if you need Accounts lifecycle events later. Accounts v2 events are **not** required for rent; Connect readiness is synced via `accounts.retrieve` on status/onboarding return.
+**One signing secret per URL.** Do not point a thin Accounts v2 destination (`v2.core.account*`, `v2.core.account_person*`) at the same `/webhooks/stripe` with a different `whsec_` — verification will fail. Disable that destination or use a different path if you need Accounts lifecycle events later. Connect capability flags (`charges_enabled`, `details_submitted`, `payouts_enabled`) are synced from snapshot `account.updated` events when a linked `property_stripe_accounts` row exists; status/onboarding return also calls `accounts.retrieve`.
 
 ### Ops checklist
 
@@ -298,15 +298,15 @@ Local forward: `stripe listen --forward-to localhost:3001/webhooks/stripe` and u
 
 ### Phase 4 — Hardening
 
-| Concern                    | Action                                                                                                         |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Rate limits                | Redis limits on checkout create per tenant/IP                                                                  |
-| Idempotency                | Unique constraints + Stripe Idempotency-Key                                                                    |
+| Concern                    | Action                                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Rate limits                | Redis limits on checkout create per tenant/IP                                                                                     |
+| Idempotency                | Unique constraints + Stripe Idempotency-Key                                                                                       |
 | Refunds/disputes           | Done — [`TENANT_STRIPE_RENT_REFUNDS.md`](./TENANT_STRIPE_RENT_REFUNDS.md) (R0–R3): webhooks set `refunded` + refund linked income |
-| Race with admin manual pay | Apply path re-reads remaining; overpay → don’t double income; prefer refund or credit note path documented     |
-| Observability              | Datadog/log metrics on webhook latency + failures                                                              |
-| PCI                        | Checkout only; no card data on our servers                                                                     |
-| Failure modes              | Extend `TENANT_PORTAL_FAILURE_MODES.md`                                                                        |
+| Race with admin manual pay | Apply path re-reads remaining; overpay → don’t double income; prefer refund or credit note path documented                        |
+| Observability              | Datadog/log metrics on webhook latency + failures                                                                                 |
+| PCI                        | Checkout only; no card data on our servers                                                                                        |
+| Failure modes              | Extend `TENANT_PORTAL_FAILURE_MODES.md`                                                                                           |
 
 **Exit criteria:** Documented failure matrix; load light-test on webhook burst.
 

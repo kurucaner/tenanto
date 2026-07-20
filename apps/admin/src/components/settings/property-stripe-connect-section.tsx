@@ -1,15 +1,38 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CreditCard } from "lucide-react";
-import { memo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, ExternalLink, Link2, Sparkles, Wallet } from "lucide-react";
+import { memo, useState } from "react";
 import { toast } from "sonner";
 
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
+import { StripeConnectChoiceCard } from "@/components/settings/property-stripe-connect-choice-card";
+import { StripeConnectProgressSteps } from "@/components/settings/property-stripe-connect-progress-steps";
 import { PropertyStripeConnectStatusBadge } from "@/components/settings/property-stripe-connect-status-badge";
+import { StripeConnectTechnicalDetails } from "@/components/settings/property-stripe-connect-technical-details";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { propertyStripeConnectApi } from "@/lib/api-client";
-import { getStripeConnectUiStatus } from "@/lib/property-stripe-connect-utils";
+import {
+  expressOnboardingButtonLabel,
+  getStripeConnectUiStatus,
+  isStripeConnectTypeSwitch,
+  shouldShowStandardDashboardLink,
+  shouldShowStandardOAuthButton,
+  showDualConnectOptions,
+  STANDARD_OAUTH_UNAVAILABLE_NOTE,
+  STANDARD_STRIPE_DASHBOARD_URL,
+  standardOAuthButtonLabel,
+  STRIPE_CONNECT_RETURN_HINT,
+  stripeConnectSectionDescription,
+  type TStripeConnectUiStatus,
+} from "@/lib/property-stripe-connect-utils";
 import { queryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
+import {
+  type IPropertyStripeConnectStatusResponse,
+  PropertyStripeAccountType,
+} from "@/packages/shared";
+
+type TStripeConnectSwitchTarget = "express" | "standard";
 
 function openStripeOnboardingUrl(url: string): void {
   const link = document.createElement("a");
@@ -21,127 +44,340 @@ function openStripeOnboardingUrl(url: string): void {
   link.remove();
 }
 
-function onboardingButtonLabel(uiStatus: ReturnType<typeof getStripeConnectUiStatus>): string {
-  switch (uiStatus) {
-    case "ready":
-      return "Update Stripe details";
-    case "setup_incomplete":
-      return "Continue setup";
-    case "not_connected":
-    default:
-      return "Connect with Stripe";
-  }
+function navigateToStripeOAuthUrl(url: string): void {
+  window.location.assign(url);
 }
 
-function connectDescription(uiStatus: ReturnType<typeof getStripeConnectUiStatus>): string {
-  switch (uiStatus) {
-    case "ready":
-      return "Tenants can pay rent to this property. Funds settle to the connected Stripe account after checkout.";
-    case "setup_incomplete":
-      return "Stripe Connect is started but not fully enabled for charges yet. Continue setup so tenants can pay rent.";
-    case "not_connected":
-    default:
-      return "Connect a Stripe Express account so tenants can pay rent to this property. Funds settle to the connected account after checkout.";
-  }
+function getStripeConnectMutationErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Failed to start Stripe Connect";
 }
 
-export const PropertyStripeConnectSection = memo(function PropertyStripeConnectSection({
-  propertyId,
-}: {
-  propertyId: string;
-}) {
+function usePropertyStripeConnectMutations(propertyId: string) {
   const queryClient = useQueryClient();
 
-  const statusQuery = useQuery({
-    queryFn: () => propertyStripeConnectApi.getStatus(propertyId),
-    queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
-  });
-
-  const onboardingMutation = useMutation({
-    mutationFn: () => propertyStripeConnectApi.createOnboardingLink(propertyId),
+  const expressOnboardingMutation = useMutation({
+    mutationFn: () => propertyStripeConnectApi.createExpressOnboardingLink(propertyId),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start Stripe Connect");
+      toast.error(getStripeConnectMutationErrorMessage(error));
     },
     onSuccess: (result) => {
       openStripeOnboardingUrl(result.url);
-      void queryClient.invalidateQueries({
+      queryClient.invalidateQueries({
         queryKey: queryKeys.propertyStripeConnectStatus(propertyId),
       });
     },
   });
 
-  if (statusQuery.isPending) {
-    return (
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardHeader>
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-72" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-9 w-40" />
-        </CardContent>
-      </Card>
-    );
-  }
+  const standardOAuthMutation = useMutation({
+    mutationFn: () => propertyStripeConnectApi.createStandardOAuthAuthorizeUrl(propertyId),
+    onError: (error) => {
+      toast.error(getStripeConnectMutationErrorMessage(error));
+    },
+    onSuccess: (result) => {
+      navigateToStripeOAuthUrl(result.url);
+    },
+  });
 
-  if (statusQuery.isError || !statusQuery.data) {
-    return (
-      <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-lg">Rent payments (Stripe)</CardTitle>
-          <CardDescription>
-            {statusQuery.error instanceof Error
-              ? statusQuery.error.message
-              : "Failed to load Stripe Connect status"}
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  return {
+    connectPending: expressOnboardingMutation.isPending || standardOAuthMutation.isPending,
+    expressOnboardingMutation,
+    standardOAuthMutation,
+  };
+}
 
-  const status = statusQuery.data;
-  const uiStatus = getStripeConnectUiStatus(status);
+const StripeConnectDashboardButton = memo(function StripeConnectDashboardButton() {
+  return (
+    <Button asChild type="button" variant="outline">
+      <a href={STANDARD_STRIPE_DASHBOARD_URL} rel="noopener noreferrer" target="_blank">
+        Open Stripe Dashboard
+        <ExternalLink className="size-4" />
+      </a>
+    </Button>
+  );
+});
+StripeConnectDashboardButton.displayName = "StripeConnectDashboardButton";
+
+type TConnectViewSharedProps = {
+  connectPending: boolean;
+  expressPending: boolean;
+  onExpressClick: () => void;
+  onStandardOAuthClick: () => void;
+  onSwitchToExpress: () => void;
+  onSwitchToStandard: () => void;
+  standardOAuthPending: boolean;
+  status: IPropertyStripeConnectStatusResponse;
+  uiStatus: TStripeConnectUiStatus;
+};
+
+const NotConnectedConnectView = memo(function NotConnectedConnectView({
+  connectPending,
+  expressPending,
+  onExpressClick,
+  onStandardOAuthClick,
+  standardOAuthPending,
+  status,
+}: Omit<TConnectViewSharedProps, "onSwitchToExpress" | "onSwitchToStandard" | "uiStatus">) {
+  const showStandard = shouldShowStandardOAuthButton(status);
 
   return (
-    <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm">
+    <div className="space-y-3">
+      <div className={cn("grid gap-3", showStandard ? "sm:grid-cols-2" : "sm:grid-cols-1")}>
+        <StripeConnectChoiceCard
+          bullets={["Guided Stripe setup", "About 5–10 minutes"]}
+          disabled={connectPending}
+          icon={Sparkles}
+          label={expressOnboardingButtonLabel("not_connected")}
+          loadingLabel="Opening Stripe…"
+          onClick={onExpressClick}
+          pending={expressPending}
+          title="I’m new to Stripe"
+          variant="default"
+        />
+        {showStandard ? (
+          <StripeConnectChoiceCard
+            bullets={["Link your existing account", "Payouts stay in your Stripe"]}
+            disabled={connectPending}
+            icon={Link2}
+            label={standardOAuthButtonLabel("not_connected")}
+            loadingLabel="Redirecting to Stripe…"
+            onClick={onStandardOAuthClick}
+            pending={standardOAuthPending}
+            title="I already have Stripe"
+            variant="outline"
+          />
+        ) : null}
+      </div>
+      {!showStandard ? (
+        <p className="text-muted-foreground text-sm">{STANDARD_OAUTH_UNAVAILABLE_NOTE}</p>
+      ) : null}
+      {connectPending ? (
+        <p className="text-muted-foreground text-sm">{STRIPE_CONNECT_RETURN_HINT}</p>
+      ) : null}
+    </div>
+  );
+});
+NotConnectedConnectView.displayName = "NotConnectedConnectView";
+
+const IncompleteConnectView = memo(function IncompleteConnectView({
+  connectPending,
+  expressPending,
+  onExpressClick,
+  onStandardOAuthClick,
+  onSwitchToExpress,
+  onSwitchToStandard,
+  standardOAuthPending,
+  status,
+  uiStatus,
+}: TConnectViewSharedProps) {
+  const canSwitch = showDualConnectOptions(status);
+  const isExpress = status.accountType === PropertyStripeAccountType.EXPRESS;
+  const isStandard = status.accountType === PropertyStripeAccountType.STANDARD;
+  const primaryPending = isExpress ? expressPending : standardOAuthPending;
+  const primaryLabel = isExpress
+    ? expressOnboardingButtonLabel(uiStatus, status.accountType)
+    : standardOAuthButtonLabel(uiStatus, status.accountType);
+  const primaryLoadingLabel = isExpress ? "Opening Stripe…" : "Redirecting to Stripe…";
+  const onPrimaryClick = isExpress ? onExpressClick : onStandardOAuthClick;
+
+  return (
+    <div className="space-y-4">
+      <StripeConnectProgressSteps />
+      <div className="space-y-2">
+        <Button disabled={connectPending} onClick={onPrimaryClick} type="button">
+          {primaryPending ? primaryLoadingLabel : primaryLabel}
+        </Button>
+        {connectPending ? (
+          <p className="text-muted-foreground text-sm">{STRIPE_CONNECT_RETURN_HINT}</p>
+        ) : null}
+      </div>
+      {canSwitch ? (
+        <Button
+          className="h-auto px-0 text-sm"
+          disabled={connectPending}
+          onClick={isExpress ? onSwitchToStandard : onSwitchToExpress}
+          type="button"
+          variant="link"
+        >
+          Use a different connection method
+        </Button>
+      ) : null}
+      {isStandard && !canSwitch ? (
+        <p className="text-muted-foreground text-sm">
+          Complete any remaining requirements in Stripe Dashboard, then return here.
+        </p>
+      ) : null}
+      <StripeConnectTechnicalDetails status={status} />
+    </div>
+  );
+});
+IncompleteConnectView.displayName = "IncompleteConnectView";
+
+const ReadyConnectView = memo(function ReadyConnectView({
+  connectPending,
+  expressPending,
+  onExpressClick,
+  status,
+}: Pick<
+  TConnectViewSharedProps,
+  "connectPending" | "expressPending" | "onExpressClick" | "status"
+>) {
+  const showDashboard = shouldShowStandardDashboardLink(status);
+  const showExpressUpdate = status.accountType === PropertyStripeAccountType.EXPRESS;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="bg-background text-foreground flex size-10 shrink-0 items-center justify-center rounded-lg border">
+          <CheckCircle2 className="size-5" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-medium leading-snug">Rent payments are live</p>
+          <p className="text-muted-foreground text-sm">
+            Tenants can pay from their portal; funds settle to your Stripe account.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {showExpressUpdate ? (
+          <Button
+            disabled={connectPending}
+            onClick={onExpressClick}
+            type="button"
+            variant="outline"
+          >
+            {expressPending ? "Opening Stripe…" : "Update Stripe details"}
+          </Button>
+        ) : null}
+        {showDashboard ? <StripeConnectDashboardButton /> : null}
+      </div>
+      {expressPending ? (
+        <p className="text-muted-foreground text-sm">{STRIPE_CONNECT_RETURN_HINT}</p>
+      ) : null}
+      <StripeConnectTechnicalDetails status={status} />
+    </div>
+  );
+});
+ReadyConnectView.displayName = "ReadyConnectView";
+
+export const PropertyStripeConnectSection = memo(function PropertyStripeConnectSection({
+  propertyId,
+  status,
+}: {
+  propertyId: string;
+  status: IPropertyStripeConnectStatusResponse;
+}) {
+  const [switchTarget, setSwitchTarget] = useState<TStripeConnectSwitchTarget | null>(null);
+  const { connectPending, expressOnboardingMutation, standardOAuthMutation } =
+    usePropertyStripeConnectMutations(propertyId);
+
+  const uiStatus = getStripeConnectUiStatus(status);
+
+  const runExpressConnect = () => {
+    expressOnboardingMutation.mutate();
+  };
+
+  const runStandardConnect = () => {
+    standardOAuthMutation.mutate();
+  };
+
+  const handleExpressClick = () => {
+    if (isStripeConnectTypeSwitch(status, "express")) {
+      setSwitchTarget("express");
+      return;
+    }
+    runExpressConnect();
+  };
+
+  const handleStandardOAuthClick = () => {
+    if (isStripeConnectTypeSwitch(status, "standard")) {
+      setSwitchTarget("standard");
+      return;
+    }
+    runStandardConnect();
+  };
+
+  const handleSwitchToExpress = () => {
+    setSwitchTarget("express");
+  };
+
+  const handleSwitchToStandard = () => {
+    setSwitchTarget("standard");
+  };
+
+  const handleConfirmSwitch = () => {
+    if (switchTarget === "express") {
+      runExpressConnect();
+    } else if (switchTarget === "standard") {
+      runStandardConnect();
+    }
+    setSwitchTarget(null);
+  };
+
+  return (
+    <Card
+      className={cn(
+        "border-border/80 bg-card/80 border-l-4 shadow-sm backdrop-blur-sm",
+        uiStatus === "ready" && "border-l-emerald-600/70",
+        uiStatus === "setup_incomplete" && "border-l-primary",
+        uiStatus === "not_connected" && "border-l-transparent"
+      )}
+    >
       <CardHeader>
         <div className="flex flex-wrap items-center gap-2">
-          <CreditCard className="text-muted-foreground size-4" />
-          <CardTitle className="text-lg">Rent payments (Stripe)</CardTitle>
+          <Wallet className="text-muted-foreground size-4" />
+          <CardTitle className="text-lg">Online rent payments</CardTitle>
           <PropertyStripeConnectStatusBadge status={status} />
         </div>
-        <CardDescription>{connectDescription(uiStatus)}</CardDescription>
+        <CardDescription>{stripeConnectSectionDescription(status, uiStatus)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <dl className="grid gap-2 text-sm sm:grid-cols-2">
-          <div className="flex justify-between gap-3 sm:block sm:space-y-0.5">
-            <dt className="text-muted-foreground">Charges enabled</dt>
-            <dd className="font-medium">{status.chargesEnabled ? "Yes" : "No"}</dd>
-          </div>
-          <div className="flex justify-between gap-3 sm:block sm:space-y-0.5">
-            <dt className="text-muted-foreground">Details submitted</dt>
-            <dd className="font-medium">{status.detailsSubmitted ? "Yes" : "No"}</dd>
-          </div>
-          <div className="flex justify-between gap-3 sm:block sm:space-y-0.5">
-            <dt className="text-muted-foreground">Payouts enabled</dt>
-            <dd className="font-medium">{status.payoutsEnabled ? "Yes" : "No"}</dd>
-          </div>
-          {status.stripeAccountId ? (
-            <div className="flex justify-between gap-3 sm:block sm:space-y-0.5 sm:col-span-2">
-              <dt className="text-muted-foreground">Account</dt>
-              <dd className="font-mono text-xs font-medium">{status.stripeAccountId}</dd>
-            </div>
-          ) : null}
-        </dl>
-
-        <Button
-          disabled={onboardingMutation.isPending}
-          onClick={() => onboardingMutation.mutate()}
-          type="button"
-        >
-          {onboardingMutation.isPending ? "Opening Stripe…" : onboardingButtonLabel(uiStatus)}
-        </Button>
+        {uiStatus === "not_connected" ? (
+          <NotConnectedConnectView
+            connectPending={connectPending}
+            expressPending={expressOnboardingMutation.isPending}
+            onExpressClick={handleExpressClick}
+            onStandardOAuthClick={handleStandardOAuthClick}
+            standardOAuthPending={standardOAuthMutation.isPending}
+            status={status}
+          />
+        ) : null}
+        {uiStatus === "setup_incomplete" ? (
+          <IncompleteConnectView
+            connectPending={connectPending}
+            expressPending={expressOnboardingMutation.isPending}
+            onExpressClick={handleExpressClick}
+            onStandardOAuthClick={handleStandardOAuthClick}
+            onSwitchToExpress={handleSwitchToExpress}
+            onSwitchToStandard={handleSwitchToStandard}
+            standardOAuthPending={standardOAuthMutation.isPending}
+            status={status}
+            uiStatus={uiStatus}
+          />
+        ) : null}
+        {uiStatus === "ready" ? (
+          <ReadyConnectView
+            connectPending={connectPending}
+            expressPending={expressOnboardingMutation.isPending}
+            onExpressClick={handleExpressClick}
+            status={status}
+          />
+        ) : null}
       </CardContent>
+      <DeleteConfirmationDialog
+        cancelLabel="Cancel"
+        confirmLabel="Switch"
+        confirmVariant="default"
+        description="Your incomplete Stripe setup will be discarded and you'll start connecting a different way."
+        isPending={connectPending}
+        onConfirm={handleConfirmSwitch}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSwitchTarget(null);
+          }
+        }}
+        open={switchTarget !== null}
+        title="Switch connection method?"
+      />
     </Card>
   );
 });

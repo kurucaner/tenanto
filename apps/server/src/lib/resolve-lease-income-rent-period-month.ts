@@ -6,7 +6,7 @@ import {
   transactionDateToMonth,
 } from "@/packages/shared";
 
-import { getTodayUtcIsoDate } from "./validate-create-expense-body";
+import { getTodayUtcIsoDate } from "./date-utils";
 
 export async function resolveLeaseIncomeRentPeriodMonthForLongStay(input: {
   longStayId: string;

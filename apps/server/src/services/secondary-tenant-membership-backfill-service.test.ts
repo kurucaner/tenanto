@@ -2,27 +2,43 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { ILeaseTenantMembership } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockSyncVoid,
+} from "@/test-fixtures/mocks";
 
-const mockQuery = mock(() =>
+type TBackfillQueryRow =
+  | { exists: boolean }
+  | {
+      created_by: string;
+      id: string;
+      property_id: string;
+      secondary_tenants: Array<{ email: string; name: string; phone: string }>;
+    };
+
+const mockQuery = mockAsyncFn((_sql: string): Promise<{ rows: TBackfillQueryRow[] }> =>
   Promise.resolve({
     rows: [{ exists: true }],
   })
 );
-const mockConnect = mock(() =>
+const mockConnect = mockAsyncFn(() =>
   Promise.resolve({
     query: mockQuery,
-    release: mock(() => {}),
+    release: mockSyncVoid(),
   })
 );
-const mockLoadSecondaryMemberships = mock(() => Promise.resolve([] as ILeaseTenantMembership[]));
-const mockCreateListedSecondary = mock(() => Promise.resolve({ id: "membership-new" }));
-const mockUpdateSecondaryContact = mock(() => Promise.resolve({ id: "membership-updated" }));
-const mockSetUnverifiedPhoneIfNull = mock(() => Promise.resolve(null));
+const mockLoadSecondaryMemberships = mockResolvedEmpty<ILeaseTenantMembership>();
+const mockCreateListedSecondary = mockResolved({ id: "membership-new" });
+const mockUpdateSecondaryContact = mockResolved({ id: "membership-updated" });
+const mockSetUnverifiedPhoneIfNull = mockResolvedNull();
 
 mock.module("@/db/pool", () => ({
   pool: {
     connect: mockConnect,
-    query: mock(() => Promise.resolve({ rows: [] })),
+    query: mockResolved({ rows: [] }),
   },
 }));
 
@@ -32,7 +48,7 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     createListedSecondary: mockCreateListedSecondary,
     updateSecondaryContact: mockUpdateSecondaryContact,
   },
-  loadPrimaryMembershipForLease: mock(() => Promise.resolve(null)),
+  loadPrimaryMembershipForLease: mockResolvedNull(),
   loadSecondaryMembershipsForLease: mockLoadSecondaryMemberships,
   MaxSecondaryOccupantsError: class MaxSecondaryOccupantsError extends Error {},
   SecondaryOccupantNotFoundError: class SecondaryOccupantNotFoundError extends Error {},
@@ -59,7 +75,7 @@ describe("runSecondaryTenantMembershipBackfill", () => {
     mockConnect.mockImplementation(() =>
       Promise.resolve({
         query: mockQuery,
-        release: mock(() => {}),
+        release: mockSyncVoid(),
       })
     );
     mockQuery.mockImplementation((sql: string) => {

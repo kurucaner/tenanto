@@ -2,6 +2,7 @@ import type { IPropertyExpensesListMeta } from "./list-meta-types";
 
 export interface IPropertyExpense {
   amount: number;
+  cashExpense: boolean;
   categoryId: string;
   categoryIsAnnualAmount: boolean;
   categoryName: string;
@@ -12,24 +13,23 @@ export interface IPropertyExpense {
   id: string;
   isDeleted: boolean;
   propertyId: string;
-  taxFree: boolean;
   updatedAt: string;
 }
 
 export interface ICreatePropertyExpenseBody {
   amount: number;
+  cashExpense?: boolean;
   categoryId: string;
   description?: string;
   expenseDate?: string;
-  taxFree?: boolean;
 }
 
 export interface IUpdatePropertyExpenseBody {
   amount?: number;
+  cashExpense?: boolean;
   categoryId?: string;
   description?: string | null;
   expenseDate?: string | null;
-  taxFree?: boolean;
 }
 
 export interface IPropertyExpensesListQuery {

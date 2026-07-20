@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -89,7 +90,7 @@ export const StayCalculationDetailsDialog = memo(
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex max-h-[60vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+          <DialogFormFields>
             <CalculationBreakdownSections
               baseLines={baseLines}
               detailLines={breakdown.detailLines}
@@ -100,7 +101,7 @@ export const StayCalculationDetailsDialog = memo(
             {breakdown.footnote ? (
               <p className="text-muted-foreground text-xs">{breakdown.footnote}</p>
             ) : null}
-          </div>
+          </DialogFormFields>
         </DialogContent>
       </Dialog>
     );

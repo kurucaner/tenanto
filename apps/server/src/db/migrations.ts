@@ -3042,4 +3042,138 @@ export const migrations: IMigration[] = [
     },
     version: 66,
   },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          DROP COLUMN IF EXISTS sms_consented_at,
+          DROP COLUMN IF EXISTS sms_opted_out_at;
+      `);
+    },
+    name: "tenant_users_sms_consent",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          ADD COLUMN IF NOT EXISTS sms_consented_at TIMESTAMP WITH TIME ZONE,
+          ADD COLUMN IF NOT EXISTS sms_opted_out_at TIMESTAMP WITH TIME ZONE;
+      `);
+    },
+    version: 67,
+  },
+  {
+    down: async (client) => {
+      await client.query(`DROP TABLE IF EXISTS tenant_sms_keyword_events;`);
+    },
+    name: "tenant_sms_keyword_events",
+    up: async (client) => {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tenant_sms_keyword_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          phone TEXT NOT NULL,
+          keyword TEXT NOT NULL,
+          tenant_user_id UUID REFERENCES tenant_users(id) ON DELETE SET NULL,
+          payload_snippet TEXT,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_sms_keyword_events_phone
+          ON tenant_sms_keyword_events (phone);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tenant_sms_keyword_events_created_at
+          ON tenant_sms_keyword_events (created_at DESC);
+      `);
+    },
+    version: 68,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE property_stripe_accounts
+          DROP COLUMN IF EXISTS account_type;
+      `);
+      await client.query(`DROP TYPE IF EXISTS property_stripe_account_type;`);
+    },
+    name: "property_stripe_accounts_account_type",
+    up: async (client) => {
+      await client.query(`
+        DO $$ BEGIN
+          CREATE TYPE property_stripe_account_type AS ENUM ('express', 'standard');
+        EXCEPTION
+          WHEN duplicate_object THEN NULL;
+        END $$;
+      `);
+      await client.query(`
+        ALTER TABLE property_stripe_accounts
+          ADD COLUMN IF NOT EXISTS account_type property_stripe_account_type NOT NULL DEFAULT 'express';
+      `);
+      await client.query(`
+        UPDATE property_stripe_accounts
+        SET account_type = 'express'
+        WHERE account_type IS DISTINCT FROM 'express';
+      `);
+    },
+    version: 69,
+  },
+  {
+    down: async (client) => {
+      await client.query(`
+        ALTER TABLE property_expenses
+          RENAME COLUMN cash_expense TO tax_free;
+      `);
+    },
+    name: "property_expenses_cash_expense",
+    up: async (client) => {
+      await client.query(`
+        ALTER TABLE property_expenses
+          RENAME COLUMN tax_free TO cash_expense;
+      `);
+    },
+    version: 70,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_expense_category_types_property_name_active;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_name_active;
+      `);
+      await client.query(`
+        ALTER TABLE property_expense_category_types
+          DROP COLUMN IF EXISTS is_deleted,
+          DROP COLUMN IF EXISTS deleted_at;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_line_types
+          DROP COLUMN IF EXISTS is_deleted,
+          DROP COLUMN IF EXISTS deleted_at;
+      `);
+    },
+    name: "property_catalog_type_archive",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_income_line_types
+          ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      `);
+      await client.query(`
+        ALTER TABLE property_expense_category_types
+          ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_name_active
+          ON property_income_line_types (property_id, lower(name))
+          WHERE is_deleted = false;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_expense_category_types_property_name_active
+          ON property_expense_category_types (property_id, lower(name))
+          WHERE is_deleted = false;
+      `);
+    },
+    version: 71,
+  },
 ];

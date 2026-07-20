@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,7 +20,6 @@ import { FieldLabel } from "@/components/ui/field-label";
 import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PhoneInput } from "@/components/ui/phone-input";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
@@ -29,7 +29,7 @@ import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { createPersonNameSchema } from "@/packages/app-ui";
+import { createPersonNameSchema, PhoneInput } from "@/packages/app-ui";
 import {
   calculateLeaseEndDate,
   type IPropertyUnit,
@@ -193,7 +193,7 @@ const StartLeaseDialogForm = memo(
     onSubmit,
   }: StartLeaseDialogFormProps) => (
     <form onSubmit={onSubmit}>
-      <div className="flex flex-col gap-5 px-6 py-5">
+      <DialogFormFields>
         {!lockedUnit ? (
           <StartLeaseUnitSelectField
             availableUnits={availableUnits}
@@ -269,7 +269,7 @@ const StartLeaseDialogForm = memo(
         {firstMonthRentPreview ? (
           <p className="text-sm font-medium">{firstMonthRentPreview}</p>
         ) : null}
-      </div>
+      </DialogFormFields>
 
       <DialogFooter>
         <Button disabled={mutationPending} onClick={onCancel} type="button" variant="outline">

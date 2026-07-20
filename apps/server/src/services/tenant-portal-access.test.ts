@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership } from "@/packages/shared";
-import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import { TenantMembershipStatus } from "@/packages/shared";
+import { makeMembership } from "@/test-fixtures/domain";
 
 const mockFindActiveByLeaseAndTenantUser = mock(() =>
   Promise.resolve(null as ILeaseTenantMembership | null)
@@ -21,35 +22,19 @@ mock.module("@/db/lease-tenant-memberships", () => ({
 const { assertLeaseTenantAccess, assertLeaseTenantReadAccess } =
   await import("./tenant-portal-access");
 
-function makeMembership(overrides: Partial<ILeaseTenantMembership> = {}): ILeaseTenantMembership {
-  return {
-    acceptedAt: "2026-01-02T00:00:00.000Z",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    declinedAt: null,
-    displayName: "Jane Tenant",
-    endedAt: null,
-    expiresAt: "2026-02-01T00:00:00.000Z",
-    id: "membership-1",
-    invitedAt: "2026-01-01T00:00:00.000Z",
-    invitedBy: "operator-1",
-    inviteEmail: "jane@example.com",
-    leaseId: "lease-1",
-    revokedAt: null,
-    role: TenantMembershipRole.PRIMARY,
-    status: TenantMembershipStatus.ACTIVE,
-    tenantUserId: "tenant-1",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
 describe("assertLeaseTenantAccess", () => {
   beforeEach(() => {
     mockFindActiveByLeaseAndTenantUser.mockClear();
   });
 
   test("returns active membership when tenant has access", async () => {
-    const membership = makeMembership();
+    const membership = makeMembership({
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+      expiresAt: "2026-02-01T00:00:00.000Z",
+      status: TenantMembershipStatus.ACTIVE,
+      tenantUserId: "tenant-1",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     mockFindActiveByLeaseAndTenantUser.mockResolvedValueOnce(membership);
 
     const result = await assertLeaseTenantAccess("lease-1", "tenant-1");
@@ -73,7 +58,13 @@ describe("assertLeaseTenantReadAccess", () => {
   });
 
   test("returns ended membership for archive read access", async () => {
-    const membership = makeMembership({ status: TenantMembershipStatus.ENDED });
+    const membership = makeMembership({
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+      expiresAt: "2026-02-01T00:00:00.000Z",
+      status: TenantMembershipStatus.ENDED,
+      tenantUserId: "tenant-1",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValueOnce(membership);
 
     const result = await assertLeaseTenantReadAccess("lease-1", "tenant-1");

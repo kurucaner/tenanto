@@ -40,6 +40,10 @@ function getEntryTypeLabel(entry: TPropertyIncomeEntry): string {
     return "Stay";
   }
 
+  if (entry.entryKind === IncomeEntryKind.LONG_TERM) {
+    return "Long term";
+  }
+
   return entry.line.incomeLineTypeName ?? entry.line.incomeLineTypeId;
 }
 

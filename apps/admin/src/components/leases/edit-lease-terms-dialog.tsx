@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -173,7 +174,7 @@ export const EditLeaseTermsDialog = memo(
           </DialogHeader>
 
           <form onSubmit={onSubmit}>
-            <div className="flex flex-col gap-5 px-6 py-5">
+            <DialogFormFields>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="edit-lease-start-date">Lease Start Date</Label>
@@ -244,7 +245,7 @@ export const EditLeaseTermsDialog = memo(
               {firstMonthRentPreview ? (
                 <p className="text-sm font-medium">{firstMonthRentPreview}</p>
               ) : null}
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button

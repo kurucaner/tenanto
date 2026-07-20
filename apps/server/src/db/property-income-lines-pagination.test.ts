@@ -1,87 +1,15 @@
 import { describe, expect, mock, test } from "bun:test";
 
-const INCOME_LINE_TYPE_ID = "type0000-0000-4000-8000-000000000001";
+import {
+  buildDescendingIncomeLineRows,
+  createPaginationMockQuery,
+  findCountQuerySql,
+  findListQuerySql,
+  TEST_INCOME_LINE_TYPE_ID,
+} from "@/test-fixtures/pagination";
 
-const mockQuery = mock((sql: string) => {
-  if (sql.includes("COUNT(*)")) {
-    return Promise.resolve({
-      rows: [{ total_count: 3 }],
-    });
-  }
-
-  return Promise.resolve({
-    rows: [
-      {
-        amount: "100.00",
-        channel_commission: "0.00",
-        created_at: new Date("2026-07-09T10:00:00.000Z"),
-        deleted_at: null,
-        description: null,
-        gross_income: "100.00",
-        guest_name: null,
-        id: "11111111-1111-4111-8111-111111111111",
-        income_line_type_id: INCOME_LINE_TYPE_ID,
-        income_line_type_name: "Parking",
-        is_deleted: false,
-        long_stay_id: null,
-        net_income: "100.00",
-        property_id: "prop-1",
-        refunded_at: null,
-        refunded_by: null,
-        reservation_id: null,
-        tax_breakdown: [],
-        transaction_date: "2026-07-09",
-        unit_id: null,
-        updated_at: new Date("2026-07-09T10:00:00.000Z"),
-      },
-      {
-        amount: "50.00",
-        channel_commission: "0.00",
-        created_at: new Date("2026-07-08T10:00:00.000Z"),
-        deleted_at: null,
-        description: null,
-        gross_income: "50.00",
-        guest_name: null,
-        id: "22222222-2222-4222-8222-222222222222",
-        income_line_type_id: INCOME_LINE_TYPE_ID,
-        income_line_type_name: "Parking",
-        is_deleted: false,
-        long_stay_id: null,
-        net_income: "50.00",
-        property_id: "prop-1",
-        refunded_at: null,
-        refunded_by: null,
-        reservation_id: null,
-        tax_breakdown: [],
-        transaction_date: "2026-07-08",
-        unit_id: null,
-        updated_at: new Date("2026-07-08T10:00:00.000Z"),
-      },
-      {
-        amount: "25.00",
-        channel_commission: "0.00",
-        created_at: new Date("2026-07-07T10:00:00.000Z"),
-        deleted_at: null,
-        description: null,
-        gross_income: "25.00",
-        guest_name: null,
-        id: "33333333-3333-4333-8333-333333333333",
-        income_line_type_id: INCOME_LINE_TYPE_ID,
-        income_line_type_name: "Parking",
-        is_deleted: false,
-        long_stay_id: null,
-        net_income: "25.00",
-        property_id: "prop-1",
-        refunded_at: null,
-        refunded_by: null,
-        reservation_id: null,
-        tax_breakdown: [],
-        transaction_date: "2026-07-07",
-        unit_id: null,
-        updated_at: new Date("2026-07-07T10:00:00.000Z"),
-      },
-    ],
-  });
+const mockQuery = createPaginationMockQuery({
+  rows: buildDescendingIncomeLineRows(),
 });
 
 mock.module("./pool", () => ({
@@ -107,9 +35,7 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
     expect(firstPage.meta).toEqual({ totalCount: 3 });
     expect(mockQuery.mock.calls).toHaveLength(2);
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("ORDER BY pil.transaction_date DESC, pil.created_at DESC, pil.id DESC");
     expect(sql).toContain("LIMIT $");
   });
@@ -162,13 +88,11 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
 
     await propertyIncomeLinesDb.listPaginatedByProperty(
       "prop-1",
-      { incomeLineTypeId: INCOME_LINE_TYPE_ID },
+      { incomeLineTypeId: TEST_INCOME_LINE_TYPE_ID },
       { limit: 2 }
     );
 
-    const sql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const sql = findListQuerySql(mockQuery);
     expect(sql).toContain("pil.income_line_type_id = $");
   });
 
@@ -177,16 +101,12 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
 
     await propertyIncomeLinesDb.listPaginatedByProperty("prop-1", { q: "parking" }, { limit: 2 });
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
     expect(listSql).toContain("pil.guest_name");
     expect(listSql).toContain("pil.description");
     expect(listSql).toContain("ilt.name ILIKE");
 
-    const metaSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const metaSql = findCountQuerySql(mockQuery);
     expect(metaSql).toContain("property_income_line_types ilt");
   });
 
@@ -199,14 +119,10 @@ describe("propertyIncomeLinesDb.listPaginatedByProperty", () => {
       { limit: 2 }
     );
 
-    const listSql = mockQuery.mock.calls.find(
-      ([query]) => !(query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const listSql = findListQuerySql(mockQuery);
     expect(listSql).toContain("pil.refunded_at IS NULL");
 
-    const countSql = mockQuery.mock.calls.find(([query]) =>
-      (query as string).includes("COUNT(*)")
-    )?.[0] as string;
+    const countSql = findCountQuerySql(mockQuery);
     expect(countSql).toContain("pil.refunded_at IS NULL");
   });
 });

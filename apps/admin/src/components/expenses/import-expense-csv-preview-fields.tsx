@@ -73,19 +73,19 @@ function renderDescriptionInput({ idPrefix, onChange, row }: PreviewFieldContext
   );
 }
 
-function renderTaxFreeInput(
+function renderCashExpenseInput(
   { idPrefix, onChange, row }: PreviewFieldContext,
   labelClassName = "text-sm"
 ) {
   return (
     <label className={cn("flex items-center gap-2", labelClassName)}>
       <input
-        checked={row.taxFree ?? false}
-        id={`${idPrefix}-tax-free`}
-        onChange={(e) => onChange({ ...row, taxFree: e.target.checked })}
+        checked={row.cashExpense ?? false}
+        id={`${idPrefix}-cash-expense`}
+        onChange={(e) => onChange({ ...row, cashExpense: e.target.checked })}
         type="checkbox"
       />{" "}
-      Tax-free
+      Paid in cash
     </label>
   );
 }
@@ -141,7 +141,7 @@ export const ImportExpenseCsvPreviewFields = memo(
             <Label htmlFor={`${idPrefix}-amount`}>Amount</Label>
             {renderAmountInput(context)}
           </div>
-          <div className="flex flex-col justify-end gap-1.5">{renderTaxFreeInput(context)}</div>
+          <div className="flex flex-col justify-end gap-1.5">{renderCashExpenseInput(context)}</div>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -236,7 +236,7 @@ export const ImportExpenseCsvPreviewTableRow = memo(
         <TableCell className="whitespace-normal">{renderCategorySelect(context)}</TableCell>
         <TableCell>{renderDateInput(context)}</TableCell>
         <TableCell className="whitespace-normal">{renderDescriptionInput(context)}</TableCell>
-        <TableCell>{renderTaxFreeInput(context, "text-xs")}</TableCell>
+        <TableCell>{renderCashExpenseInput(context, "text-xs")}</TableCell>
         <TableCell className={STICKY_AMOUNT_CELL_CLASS_NAME}>
           <div className="min-w-0">{renderAmountInput(context, "table")}</div>
         </TableCell>

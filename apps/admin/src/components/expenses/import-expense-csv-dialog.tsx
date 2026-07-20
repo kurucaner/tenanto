@@ -388,7 +388,7 @@ export const ImportExpenseCsvDialog = memo(
                 <TableHead className="whitespace-normal">Category</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="whitespace-normal">Description</TableHead>
-                <TableHead>Tax</TableHead>
+                <TableHead>Cash</TableHead>
                 <TableHead className={cn(STICKY_AMOUNT_CELL_CLASS_NAME, "text-right")}>
                   Amount
                 </TableHead>

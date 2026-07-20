@@ -1,29 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IPropertyLongStay } from "@/packages/shared";
 import { LeaseErrorCode } from "@/errors/lease-errors";
+import type { IPropertyLongStay } from "@/packages/shared";
 import { LeaseTermsEditBlockReason, PropertyLongStayStatus } from "@/packages/shared";
-
-function makeLease(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
-  return {
-    actualEndDate: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    guestName: "Tenant A",
-    id: "lease-1",
-    leaseEndDate: "2027-01-01",
-    leaseStartDate: "2026-01-01",
-    monthlyRent: 1500,
-    propertyId: "property-1",
-    secondaryTenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenantEmail: null,
-    tenantPhone: null,
-    termMonths: 12,
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
+import { makeLease } from "@/test-fixtures/domain";
 
 const mockFindById = mock((): Promise<IPropertyLongStay | null> => Promise.resolve(null));
 const mockGetTermsEditSignals = mock(
@@ -36,7 +16,11 @@ const mockGetTermsEditSignals = mock(
     };
   } | null> => Promise.resolve(null)
 );
-const mockUpdateTerms = mock((): Promise<IPropertyLongStay> => Promise.resolve(makeLease()));
+const mockUpdateTerms = mock((): Promise<IPropertyLongStay> =>
+  Promise.resolve(
+    makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+  )
+);
 
 mock.module("@/db/property-long-stays", () => ({
   LongStayNotFoundError: class LongStayNotFoundError extends Error {
@@ -52,11 +36,8 @@ mock.module("@/db/property-long-stays", () => ({
   },
 }));
 
-const {
-  assertLeaseTermsEditable,
-  editLeaseTerms,
-  getLeaseTermsEditability,
-} = await import("./lease-terms-edit-service");
+const { assertLeaseTermsEditable, editLeaseTerms, getLeaseTermsEditability } =
+  await import("./lease-terms-edit-service");
 
 describe("getLeaseTermsEditability", () => {
   beforeEach(() => {
@@ -71,7 +52,9 @@ describe("getLeaseTermsEditability", () => {
   });
 
   test("returns editable when all gates pass", async () => {
-    mockFindById.mockResolvedValueOnce(makeLease());
+    mockFindById.mockResolvedValueOnce(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValueOnce({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -85,7 +68,9 @@ describe("getLeaseTermsEditability", () => {
   });
 
   test("returns block reason from signals", async () => {
-    mockFindById.mockResolvedValueOnce(makeLease());
+    mockFindById.mockResolvedValueOnce(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValueOnce({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -109,7 +94,9 @@ describe("assertLeaseTermsEditable", () => {
   });
 
   test("throws LeaseTermsNotEditableError when blocked", async () => {
-    mockFindById.mockResolvedValueOnce(makeLease());
+    mockFindById.mockResolvedValueOnce(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValueOnce({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -120,13 +107,15 @@ describe("assertLeaseTermsEditable", () => {
     });
 
     await expect(assertLeaseTermsEditable("lease-1")).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
   test("resolves when lease terms are editable", async () => {
-    mockFindById.mockResolvedValueOnce(makeLease());
+    mockFindById.mockResolvedValueOnce(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValueOnce({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -140,7 +129,13 @@ describe("assertLeaseTermsEditable", () => {
   });
 });
 
-function mockEditableLease(lease: IPropertyLongStay = makeLease()): void {
+function mockEditableLease(
+  lease: IPropertyLongStay = makeLease({
+    guestName: "Tenant A",
+    leaseEndDate: "2027-01-01",
+    tenantEmail: null,
+  })
+): void {
   mockFindById.mockResolvedValue(lease);
   mockGetTermsEditSignals.mockResolvedValue({
     leaseStartDate: lease.leaseStartDate,
@@ -160,7 +155,11 @@ describe("editLeaseTerms", () => {
   });
 
   test("updates terms when lease is editable and body is valid", async () => {
-    const lease = makeLease();
+    const lease = makeLease({
+      guestName: "Tenant A",
+      leaseEndDate: "2027-01-01",
+      tenantEmail: null,
+    });
     mockEditableLease(lease);
     const updatedLease = makeLease({
       leaseEndDate: "2026-08-31",
@@ -193,7 +192,9 @@ describe("editLeaseTerms", () => {
   });
 
   test("rejects leases with income lines", async () => {
-    mockFindById.mockResolvedValue(makeLease());
+    mockFindById.mockResolvedValue(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValue({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -210,13 +211,15 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
   test("rejects leases with succeeded payments", async () => {
-    mockFindById.mockResolvedValue(makeLease());
+    mockFindById.mockResolvedValue(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValue({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -233,13 +236,15 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
   test("rejects leases with extend rent period history", async () => {
-    mockFindById.mockResolvedValue(makeLease());
+    mockFindById.mockResolvedValue(
+      makeLease({ guestName: "Tenant A", leaseEndDate: "2027-01-01", tenantEmail: null })
+    );
     mockGetTermsEditSignals.mockResolvedValue({
       leaseStartDate: "2026-01-01",
       signals: {
@@ -256,13 +261,17 @@ describe("editLeaseTerms", () => {
         termMonths: 7,
       })
     ).rejects.toMatchObject({
-      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
       body: { reason: LeaseTermsEditBlockReason.HAS_RENT_PERIOD_HISTORY },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
     });
   });
 
   test("rejects no-op updates", async () => {
-    const lease = makeLease();
+    const lease = makeLease({
+      guestName: "Tenant A",
+      leaseEndDate: "2027-01-01",
+      tenantEmail: null,
+    });
     mockEditableLease(lease);
 
     await expect(

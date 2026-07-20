@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { supportStagedUploadsDb } from "@/db/support-staged-uploads";
-import { isProduction } from "@/lib/environment";
+import { isAuthorizedInternalRequest } from "@/lib/internal-webhook-auth";
 import { HttpStatus } from "@/packages/shared";
 import {
   decodeS3ObjectKey,
@@ -9,31 +9,6 @@ import {
   parseS3NotificationEvent,
 } from "@/s3/s3-notification-utils";
 import { publishSupportAttachmentStatus } from "@/services/publish-support-attachment-status";
-
-function getInternalSecretFromRequest(request: FastifyRequest): string | null {
-  const headerSecret = request.headers["x-internal-secret"];
-  if (typeof headerSecret === "string" && headerSecret.length > 0) {
-    return headerSecret;
-  }
-
-  const authorization = request.headers.authorization;
-  if (typeof authorization === "string" && authorization.startsWith("Bearer ")) {
-    const token = authorization.slice("Bearer ".length).trim();
-    return token.length > 0 ? token : null;
-  }
-
-  return null;
-}
-
-function isAuthorizedInternalRequest(request: FastifyRequest): boolean {
-  const configuredSecret = process.env.AWS_INTERNAL_SECRET;
-  if (configuredSecret == null || configuredSecret === "") {
-    return !isProduction;
-  }
-
-  const providedSecret = getInternalSecretFromRequest(request);
-  return providedSecret != null && providedSecret === configuredSecret;
-}
 
 export const s3Routes = async (server: FastifyInstance): Promise<void> => {
   server.post("/s3-notification", async (request: FastifyRequest, reply: FastifyReply) => {

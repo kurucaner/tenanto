@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -85,7 +86,7 @@ export const WhatsChangedDialog = memo(({ onOpenChange, open }: WhatsChangedDial
         <DialogTitle>What&apos;s changed</DialogTitle>
         <DialogDescription>Recent improvements and fixes to your workspace.</DialogDescription>
       </DialogHeader>
-      <div className="flex max-h-[min(60vh,520px)] flex-col gap-6 overflow-y-auto px-6 py-5">
+      <DialogFormFields>
         {RELEASE_NOTES.map((note, index) => (
           <div className="flex flex-col gap-6" key={note.id}>
             <ReleaseNoteSection note={note} />
@@ -94,7 +95,7 @@ export const WhatsChangedDialog = memo(({ onOpenChange, open }: WhatsChangedDial
             ) : null}
           </div>
         ))}
-      </div>
+      </DialogFormFields>
     </DialogContent>
   </Dialog>
 ));

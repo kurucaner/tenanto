@@ -1,112 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  type IPropertyIncomeLine,
-  type IPropertyReservation,
-  type IPropertyUnit,
-  ReservationStatus,
-  UnitRentalType,
-} from "@/packages/shared";
+import { UnitRentalType } from "@/packages/shared";
+import { makeIncomeLine, makeReportData, makeStay, makeUnit } from "@/test-fixtures/domain";
 
-import {
-  buildPropertyReportSummary,
-  type IReportData,
-  rollupSummaries,
-} from "../services/property-report-service";
+import { buildPropertyReportSummary, rollupSummaries } from "../services/property-report-service";
 
 const QUERY = { from: "2026-01-01", to: "2026-01-31" };
-
-function makeUnit(overrides: Partial<IPropertyUnit> = {}): IPropertyUnit {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
-    id: "unit-1",
-    isDeleted: false,
-    layout: "1BR",
-    propertyId: "prop-1",
-    rentalType: UnitRentalType.SHORT_TERM,
-    unitNumber: "101",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
-function makeStay(overrides: Partial<IPropertyReservation> = {}): IPropertyReservation {
-  return {
-    channelCommission: 10,
-    channelCommissionId: "channel-airbnb",
-    channelCommissionRate: 0.1,
-    channelName: "Airbnb",
-    checkIn: "2026-01-05",
-    checkOut: "2026-01-08",
-    cleaningFee: 50,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
-    excludeCleaningFromCommissionBase: false,
-    excludeResortTaxFromPayout: true,
-    grossIncome: 500,
-    guestName: "Guest",
-    id: "stay-1",
-    isDeleted: false,
-    netIncome: 400,
-    nights: 3,
-    propertyId: "prop-1",
-    refundedAmount: null,
-    refundedAt: null,
-    refundedBy: null,
-    reservationNumber: null,
-    roomTotal: 450,
-    status: ReservationStatus.STAYED,
-    taxBreakdown: [],
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
-function makeIncomeLine(overrides: Partial<IPropertyIncomeLine> = {}): IPropertyIncomeLine {
-  return {
-    amount: 75,
-    channelCommission: 0,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    deletedAt: null,
-    description: null,
-    grossIncome: 75,
-    guestName: null,
-    id: "line-1",
-    incomeLineTypeId: "type-fee",
-    incomeLineTypeName: "Late fee",
-    isDeleted: false,
-    longStayId: null,
-    netIncome: 75,
-    propertyId: "prop-1",
-    refundedAmount: null,
-    refundedAt: null,
-    refundedBy: null,
-    rentPeriodMonth: null,
-    reservationId: null,
-    taxBreakdown: [],
-    tenantRentPaymentId: null,
-    transactionDate: "2026-01-15",
-    unitId: "unit-1",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
-
-function makeReportData(overrides: Partial<IReportData> = {}): IReportData {
-  return {
-    expenses: [],
-    incomeLines: [],
-    reservations: [],
-    units: [makeUnit()],
-    ...overrides,
-  };
-}
+const reportUnit = makeUnit({ propertyId: "prop-1", rentalType: UnitRentalType.SHORT_TERM });
 
 describe("buildPropertyReportSummary taxSummary", () => {
   test("returns empty taxSummary when there are no reservations", () => {
-    const summary = buildPropertyReportSummary(makeReportData(), QUERY);
+    const summary = buildPropertyReportSummary(makeReportData({ units: [reportUnit] }), QUERY);
     expect(summary.taxSummary).toEqual([]);
   });
 
@@ -128,6 +32,7 @@ describe("buildPropertyReportSummary taxSummary", () => {
             taxBreakdown: [{ amount: 20, name: "Sales tax", rate: 0.06, taxRateId: "tax-sales" }],
           }),
         ],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -145,6 +50,7 @@ describe("buildPropertyReportSummary byUnit stayGrossIncome", () => {
       makeReportData({
         incomeLines: [makeIncomeLine({ amount: 75, grossIncome: 75, netIncome: 75 })],
         reservations: [makeStay({ grossIncome: 500, netIncome: 400 })],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -171,6 +77,7 @@ describe("buildPropertyReportSummary refunds", () => {
             refundedAt: "2026-03-01T00:00:00.000Z",
           }),
         ],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -195,6 +102,7 @@ describe("buildPropertyReportSummary refunds", () => {
             refundedAt: "2026-03-01T00:00:00.000Z",
           }),
         ],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -218,6 +126,7 @@ describe("buildPropertyReportSummary refunds", () => {
             refundedAt: "2026-03-01T00:00:00.000Z",
           }),
         ],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -242,6 +151,7 @@ describe("buildPropertyReportSummary refunds", () => {
             refundedAt: "2026-03-01T00:00:00.000Z",
           }),
         ],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -262,6 +172,7 @@ describe("rollupSummaries taxSummary", () => {
             taxBreakdown: [{ amount: 15, name: "Sales tax", rate: 0.06, taxRateId: "tax-sales" }],
           }),
         ],
+        units: [reportUnit],
       }),
       QUERY
     );
@@ -278,7 +189,14 @@ describe("rollupSummaries taxSummary", () => {
             unitId: "unit-2",
           }),
         ],
-        units: [makeUnit({ id: "unit-2", unitNumber: "102" })],
+        units: [
+          makeUnit({
+            id: "unit-2",
+            propertyId: "prop-1",
+            rentalType: UnitRentalType.SHORT_TERM,
+            unitNumber: "102",
+          }),
+        ],
       }),
       QUERY
     );

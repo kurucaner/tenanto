@@ -20,7 +20,8 @@
       "@/services/*": ["./src/services/*"],
       "@/ses/*": ["./src/ses/*"],
       "@/sns/*": ["./src/sns/*"],
-      "@/queues/*": ["./src/queues/*"]
+      "@/queues/*": ["./src/queues/*"],
+      "@/test-fixtures/*": ["./src/test-fixtures/*"]
     }
   },
   "files": [],

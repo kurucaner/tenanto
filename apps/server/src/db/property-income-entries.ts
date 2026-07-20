@@ -17,6 +17,7 @@ import {
   buildIncomeEntryCursorPredicate,
   buildIncomeEntryOrderByClause,
   getLineSortKeySelects,
+  getLongTermSortKeySelects,
   getStaySortKeySelects,
   type IIncomeEntryListSortOptions,
   needsUnitJoinForSort,
@@ -43,18 +44,27 @@ type TIncomeEntriesListDbFilters = Omit<IPropertyIncomeEntriesListQuery, "cursor
 
 interface IIncomeEntryBranchPlan {
   includeLines: boolean;
+  includeLongTerm: boolean;
   includeStays: boolean;
   lineTypeId?: string;
 }
 
 function resolveIncomeTypeFilter(incomeType?: string): IIncomeEntryBranchPlan {
   if (!incomeType || incomeType === "") {
-    return { includeLines: true, includeStays: true };
+    return { includeLines: true, includeLongTerm: true, includeStays: true };
   }
   if (incomeType === IncomeEntryKind.STAY) {
-    return { includeLines: false, includeStays: true };
+    return { includeLines: false, includeLongTerm: false, includeStays: true };
   }
-  return { includeLines: true, includeStays: false, lineTypeId: incomeType };
+  if (incomeType === IncomeEntryKind.LONG_TERM) {
+    return { includeLines: false, includeLongTerm: true, includeStays: false };
+  }
+  return {
+    includeLines: true,
+    includeLongTerm: false,
+    includeStays: false,
+    lineTypeId: incomeType,
+  };
 }
 
 function toStayListFilters(filters: TIncomeEntriesListDbFilters): IPropertyReservationsListQuery {
@@ -114,6 +124,9 @@ function mapUnifiedRow(row: Record<string, unknown>): TPropertyIncomeEntry {
   if (entryKind === IncomeEntryKind.STAY) {
     return { entryKind: IncomeEntryKind.STAY, stay: mapPropertyReservationRow(payload) };
   }
+  if (entryKind === IncomeEntryKind.LONG_TERM) {
+    return { entryKind: IncomeEntryKind.LONG_TERM, line: mapPropertyIncomeLineRow(payload) };
+  }
   return { entryKind: IncomeEntryKind.LINE, line: mapPropertyIncomeLineRow(payload) };
 }
 
@@ -159,11 +172,13 @@ function buildStayBranchSql(
   };
 }
 
-function buildLineBranchSql(
+function buildIncomeLineEntryBranchSql(
   propertyId: string,
   filters: TIncomeEntriesListDbFilters,
   includeDeleted: boolean,
+  entryKind: typeof IncomeEntryKind.LINE | typeof IncomeEntryKind.LONG_TERM,
   lineTypeId: string | undefined,
+  longStayIdConstraint: "is_null" | "is_not_null",
   sort: IIncomeEntryListSortOptions
 ): { sql: string; values: unknown[] } {
   const { conditions, joinUnits, values } = buildIncomeLineListParts(
@@ -171,7 +186,15 @@ function buildLineBranchSql(
     toLineListFilters(filters, lineTypeId),
     includeDeleted
   );
-  const { sortKeyDate, sortKeyNum, sortKeyText } = getLineSortKeySelects(sort.sortBy);
+  const longStayCondition =
+    longStayIdConstraint === "is_null"
+      ? "pil.long_stay_id IS NULL"
+      : "pil.long_stay_id IS NOT NULL";
+  const branchConditions = [...conditions, longStayCondition];
+  const { sortKeyDate, sortKeyNum, sortKeyText } =
+    entryKind === IncomeEntryKind.LONG_TERM
+      ? getLongTermSortKeySelects(sort.sortBy)
+      : getLineSortKeySelects(sort.sortBy);
   const unitJoin = needsUnitJoinForSort(sort.sortBy)
     ? "LEFT JOIN property_units pu ON pu.id = pil.unit_id"
     : "";
@@ -179,7 +202,7 @@ function buildLineBranchSql(
   return {
     sql: `
       SELECT
-        '${IncomeEntryKind.LINE}'::text AS entry_kind,
+        '${entryKind}'::text AS entry_kind,
         inner_row.sort_key_date,
         inner_row.sort_key_num,
         inner_row.sort_key_text,
@@ -197,10 +220,45 @@ function buildLineBranchSql(
         INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
         ${unitJoin}
         ${joinUnits}
-        WHERE ${conditions.join(" AND ")}
+        WHERE ${branchConditions.join(" AND ")}
       ) inner_row`,
     values,
   };
+}
+
+function buildLineBranchSql(
+  propertyId: string,
+  filters: TIncomeEntriesListDbFilters,
+  includeDeleted: boolean,
+  lineTypeId: string | undefined,
+  sort: IIncomeEntryListSortOptions
+): { sql: string; values: unknown[] } {
+  return buildIncomeLineEntryBranchSql(
+    propertyId,
+    filters,
+    includeDeleted,
+    IncomeEntryKind.LINE,
+    lineTypeId,
+    "is_null",
+    sort
+  );
+}
+
+function buildLongTermBranchSql(
+  propertyId: string,
+  filters: TIncomeEntriesListDbFilters,
+  includeDeleted: boolean,
+  sort: IIncomeEntryListSortOptions
+): { sql: string; values: unknown[] } {
+  return buildIncomeLineEntryBranchSql(
+    propertyId,
+    filters,
+    includeDeleted,
+    IncomeEntryKind.LONG_TERM,
+    undefined,
+    "is_not_null",
+    sort
+  );
 }
 
 function buildMergedUnionSql(
@@ -217,6 +275,12 @@ function buildMergedUnionSql(
     const stayBranch = buildStayBranchSql(propertyId, filters, includeDeleted, sort);
     branches.push(stayBranch.sql);
     values.push(...stayBranch.values);
+  }
+
+  if (branchPlan.includeLongTerm) {
+    const longTermBranch = buildLongTermBranchSql(propertyId, filters, includeDeleted, sort);
+    branches.push(offsetSqlPlaceholders(longTermBranch.sql, values.length));
+    values.push(...longTermBranch.values);
   }
 
   if (branchPlan.includeLines) {
@@ -336,12 +400,13 @@ export const propertyIncomeEntriesDb = {
       );
     }
 
-    if (branchPlan.includeLines) {
+    if (branchPlan.includeLongTerm) {
       const { conditions, joinLineTypes, joinUnits, values } = buildIncomeLineListParts(
         propertyId,
-        toLineListFilters(filters, branchPlan.lineTypeId),
+        toLineListFilters(filters),
         includeDeleted
       );
+      const longTermConditions = [...conditions, "pil.long_stay_id IS NOT NULL"];
       counts.push(
         pool
           .query<{ total_count: number }>(
@@ -349,7 +414,28 @@ export const propertyIncomeEntriesDb = {
              FROM property_income_lines pil
              ${joinLineTypes}
              ${joinUnits}
-             WHERE ${conditions.join(" AND ")}`,
+             WHERE ${longTermConditions.join(" AND ")}`,
+            values
+          )
+          .then((result) => result.rows[0]?.total_count ?? 0)
+      );
+    }
+
+    if (branchPlan.includeLines) {
+      const { conditions, joinLineTypes, joinUnits, values } = buildIncomeLineListParts(
+        propertyId,
+        toLineListFilters(filters, branchPlan.lineTypeId),
+        includeDeleted
+      );
+      const lineConditions = [...conditions, "pil.long_stay_id IS NULL"];
+      counts.push(
+        pool
+          .query<{ total_count: number }>(
+            `SELECT COUNT(*)::int AS total_count
+             FROM property_income_lines pil
+             ${joinLineTypes}
+             ${joinUnits}
+             WHERE ${lineConditions.join(" AND ")}`,
             values
           )
           .then((result) => result.rows[0]?.total_count ?? 0)

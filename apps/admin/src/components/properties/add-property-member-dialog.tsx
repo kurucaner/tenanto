@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
+  DialogFormFields,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -111,7 +112,7 @@ export const AddPropertyMemberDialog = memo(
           </DialogHeader>
 
           <form onSubmit={onSubmit}>
-            <div className="flex flex-col gap-5 px-6 py-5">
+            <DialogFormFields>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="add-member-email">Email address</Label>
                 <Input
@@ -141,7 +142,7 @@ export const AddPropertyMemberDialog = memo(
                   />
                 )}
               />
-            </div>
+            </DialogFormFields>
 
             <DialogFooter>
               <Button

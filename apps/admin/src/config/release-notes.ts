@@ -37,6 +37,85 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "Tenants get their own portal — sign in with email, Google, Apple, or a phone code; view active and past leases; and accept portal invites from a dedicated page.",
+      },
+      {
+        category: "new",
+        description:
+          "Tenants can pay rent online when a property is connected to Stripe — from home or the lease view, with partial payments and monthly balance tracked on the lease.",
+      },
+      {
+        category: "new",
+        description:
+          "Connect a property to Stripe from Settings — choose Express onboarding or link an existing Standard account.",
+      },
+      {
+        category: "new",
+        description:
+          "Invite teammates to a property with a personal link — they accept or decline on their own page, including signup if they are new.",
+      },
+      {
+        category: "new",
+        description:
+          "Add secondary occupants on a lease, invite them to the portal, and include them in tenant email campaigns.",
+      },
+      {
+        category: "new",
+        description:
+          "Edit lease terms from the lease detail Terms tab before rent has started — dates, rent, deposit, and related fields.",
+      },
+      {
+        category: "improved",
+        description:
+          "Lease proration when starting, ending, or holding over — rent due for partial months is calculated automatically in admin and reflected on the lease.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property reports use the same date presets and filter toolbar as Income and Expenses; the leases list defaults to active status.",
+      },
+      {
+        category: "improved",
+        description:
+          "Mobile property navigation opens as a bottom sheet for quicker section switching on small screens.",
+      },
+      {
+        category: "improved",
+        description:
+          "Portal invites on the Tenants tab and lease detail — clearer status, confirm before revoking access, and single-use invite links.",
+      },
+      {
+        category: "improved",
+        description:
+          "When a lease starts with a primary tenant email, a portal invite sends automatically; lease-ended emails include holdover and final rent details.",
+      },
+      {
+        category: "improved",
+        description:
+          "Tenants can opt in to SMS updates from their settings; standard STOP and HELP replies are supported.",
+      },
+      {
+        category: "improved",
+        description:
+          "Extend and end lease actions moved to the lease detail toolbar; recording rent removed from the lease header to reduce confusion.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Recording income defaults the payment date to today; empty property exports are blocked with a clear message.",
+      },
+    ],
+    id: "2026.13.0",
+    publishedAt: "2026-07-18",
+    summary:
+      "Tenant portal with online rent payments, team and co-tenant invites, lease term edits, and Stripe Connect.",
+    version: "2026.13.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "Each property has an Exports tab — download income, expenses, or leases as CSV or Excel, track past exports, and get a notification when a large export is ready.",
       },
       {

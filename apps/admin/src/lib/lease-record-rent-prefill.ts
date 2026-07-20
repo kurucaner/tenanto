@@ -1,5 +1,5 @@
 import { type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
-import { clampToMaxLocalIsoDate, getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { type IPropertyLongStay } from "@/packages/shared";
 
 import {
@@ -12,6 +12,7 @@ import {
  * Prefill for Record Rent on a lease schedule month.
  * Each submission creates a new income line; partial payments for the same
  * `rentPeriodMonth` are additive and roll up to `paidRent` on the schedule.
+ * `incomeLineTypeId` is resolved by the caller (typically `resolveLeaseIncomeLineTypeId`).
  */
 export function buildLeaseRecordRentPrefill(
   lease: Pick<IPropertyLongStay, "guestName" | "id" | "monthlyRent" | "unitId">,
@@ -24,7 +25,6 @@ export function buildLeaseRecordRentPrefill(
 ): CreateIncomeLineDialogPrefill {
   const maxDate = getTodayLocalIsoDate();
   const month = options?.month;
-  const monthDate = month ? `${month}-01` : maxDate;
   const scheduleAmount =
     month && options?.rentSchedule
       ? (getRemainingRentForScheduleMonth(options.rentSchedule, month) ??
@@ -37,7 +37,7 @@ export function buildLeaseRecordRentPrefill(
     incomeLineTypeId,
     longStayId: lease.id,
     rentPeriodMonth: month,
-    transactionDate: clampToMaxLocalIsoDate(monthDate, maxDate),
+    transactionDate: maxDate,
     unitId: lease.unitId,
   };
 }

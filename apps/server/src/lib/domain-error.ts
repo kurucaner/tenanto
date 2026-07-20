@@ -19,12 +19,7 @@ export class DomainError extends Error {
   readonly httpStatus: number;
   readonly body: Record<string, unknown> | undefined;
 
-  constructor(
-    code: string,
-    message: string,
-    httpStatus: number,
-    body?: Record<string, unknown>
-  ) {
+  constructor(code: string, message: string, httpStatus: number, body?: Record<string, unknown>) {
     super(message);
     this.name = "DomainError";
     this.code = code;

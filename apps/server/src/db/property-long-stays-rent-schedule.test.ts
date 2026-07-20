@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { PropertyLongStayStatus } from "@/packages/shared";
+import { buildRentScheduleIncomeLineRow, buildRentScheduleLeaseRow } from "@/test-fixtures/db-rows";
 
 const capturedIncomeSql: string[] = [];
 
@@ -10,56 +11,6 @@ let currentLeaseRow: TLeaseRow;
 let currentIncomeRows: Record<string, unknown>[] = [];
 let currentRentPeriodRows: Record<string, unknown>[] = [];
 let currentAllocationRows: Array<{ month: string; total: number }> = [];
-
-function buildIncomeLineRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return {
-    amount: "1500.00",
-    channel_commission: "0.00",
-    created_at: new Date("2026-01-15T12:00:00.000Z"),
-    deleted_at: null,
-    description: null,
-    gross_income: "1500.00",
-    guest_name: null,
-    id: "line-rent-jan",
-    income_line_type_id: "00000000-0000-4000-8000-000000000031",
-    is_deleted: false,
-    long_stay_id: "lease-1",
-    net_income: "1500.00",
-    property_id: "prop-1",
-    refunded_amount: null,
-    refunded_at: null,
-    refunded_by: null,
-    rent_period_month: null,
-    reservation_id: null,
-    tax_breakdown: "[]",
-    tenant_rent_payment_id: null,
-    transaction_date: "2026-01-15",
-    unit_id: "unit-1",
-    updated_at: new Date("2026-01-15T12:00:00.000Z"),
-    ...overrides,
-  };
-}
-
-function buildLeaseRow(overrides: Record<string, unknown> = {}): TLeaseRow {
-  return {
-    actual_end_date: null,
-    created_at: new Date("2026-01-01T00:00:00.000Z"),
-    guest_name: "Tenant",
-    id: "lease-1",
-    lease_end_date: "2026-03-31",
-    lease_start_date: "2026-01-01",
-    monthly_rent: "1500.00",
-    property_id: "prop-1",
-    secondary_tenants: [],
-    status: PropertyLongStayStatus.ACTIVE,
-    tenant_email: null,
-    tenant_phone: null,
-    term_months: 3,
-    unit_id: "unit-1",
-    updated_at: new Date("2026-01-01T00:00:00.000Z"),
-    ...overrides,
-  };
-}
 
 const mockQuery = mock((sql: string) => {
   if (sql.includes("FROM property_income_lines")) {
@@ -95,21 +46,21 @@ const { propertyLongStaysDb } = await import("./property-long-stays");
 
 describe("propertyLongStaysDb.getRentSchedule", () => {
   test("partial refund leaves month unpaid with paid and remaining amounts", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-partial-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-03-01T00:00:00.000Z"),
         transaction_date: "2026-01-15",
       }),
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-full-feb",
         refunded_amount: "1500.00",
         refunded_at: new Date("2026-03-01T00:00:00.000Z"),
         transaction_date: "2026-02-15",
       }),
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-paid-mar",
         transaction_date: "2026-03-15",
       }),
@@ -155,7 +106,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("prorates the first month when the lease starts mid-month", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       id: "lease-mid-start",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-06-16",
@@ -184,7 +135,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("prorates the last month for an early ended lease", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       actual_end_date: "2024-07-15",
       id: "lease-early-end",
       lease_end_date: "2024-12-31",
@@ -220,7 +171,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("prorates holdover days after lease end for an ended lease", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       actual_end_date: "2024-07-05",
       id: "lease-holdover",
       lease_end_date: "2024-06-30",
@@ -251,7 +202,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("projects holdover through today for an active overdue lease", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       id: "lease-active-holdover",
       lease_end_date: "2024-06-30",
       lease_start_date: "2024-01-01",
@@ -289,7 +240,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("uses the rent period rate when prorating after a mid-lease increase", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       id: "lease-rent-change",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-06-16",
@@ -317,7 +268,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("prorates an extended lease final month using the rent period rate for that month", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       actual_end_date: "2025-06-15",
       id: "lease-extended-partial-end",
       lease_end_date: "2025-06-15",
@@ -356,7 +307,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("prorated partial refund leaves month unpaid when reportable rent is short", async () => {
-    currentLeaseRow = buildLeaseRow({
+    currentLeaseRow = buildRentScheduleLeaseRow({
       id: "lease-prorated-refund",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-06-16",
@@ -364,7 +315,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       term_months: 12,
     });
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "500.00",
         gross_income: "500.00",
         id: "line-partial-june",
@@ -373,7 +324,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         refunded_at: new Date("2024-07-01T00:00:00.000Z"),
         transaction_date: "2024-06-20",
       }),
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "500.00",
         gross_income: "500.00",
         id: "line-refunded-july",
@@ -409,9 +360,9 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("full refund marks month unpaid with zero paid rent", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-full-refund-jan",
         refunded_amount: "1500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
@@ -435,12 +386,12 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("partial refund then re-recording completes the month", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentRentPeriodRows = [];
     currentAllocationRows = [];
 
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-paid-jan",
         rent_period_month: "2026-01",
         transaction_date: "2026-01-15",
@@ -455,7 +406,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     });
 
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-paid-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
@@ -473,14 +424,14 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     });
 
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-paid-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
         rent_period_month: "2026-01",
         transaction_date: "2026-01-15",
       }),
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "500.00",
         gross_income: "500.00",
         id: "line-rerecord-jan",
@@ -500,12 +451,12 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("unrefund restores fully paid month after partial refund", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentRentPeriodRows = [];
     currentAllocationRows = [];
 
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-refunded-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
@@ -522,7 +473,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     });
 
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-refunded-jan",
         rent_period_month: "2026-01",
         transaction_date: "2026-01-15",
@@ -539,9 +490,9 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("partial manual payment keeps month unpaid", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "750.00",
         gross_income: "750.00",
         id: "line-partial-jan",
@@ -565,16 +516,16 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("two partial income lines sum to fully paid month", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "750.00",
         gross_income: "750.00",
         id: "line-partial-a",
         net_income: "750.00",
         transaction_date: "2026-01-10",
       }),
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "750.00",
         gross_income: "750.00",
         id: "line-partial-b",
@@ -598,9 +549,9 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("two $750 manual lines with rentPeriodMonth mark month paid", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "750.00",
         gross_income: "750.00",
         id: "line-partial-a",
@@ -608,7 +559,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         rent_period_month: "2026-01",
         transaction_date: "2026-01-10",
       }),
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "750.00",
         gross_income: "750.00",
         id: "line-partial-b",
@@ -633,9 +584,9 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("manual partial plus Stripe partial combine without exceeding expected rent", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         amount: "500.00",
         gross_income: "500.00",
         id: "line-manual-jan",
@@ -667,7 +618,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("includes succeeded Stripe allocations in rollup", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [];
     currentRentPeriodRows = [];
     currentAllocationRows = [{ month: "2026-01", total: 50_000 }];
@@ -685,9 +636,9 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
   });
 
   test("refunded Stripe-linked income marks month unpaid when allocations are excluded", async () => {
-    currentLeaseRow = buildLeaseRow();
+    currentLeaseRow = buildRentScheduleLeaseRow();
     currentIncomeRows = [
-      buildIncomeLineRow({
+      buildRentScheduleIncomeLineRow({
         id: "line-stripe-jan",
         refunded_amount: "1500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),

@@ -174,6 +174,7 @@ export {
   type IPropertyIncomeLineTypeInput,
   isRentIncomeLineType,
   resolveDefaultIncomeLineTypeId,
+  resolveLeaseIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
 } from "./property-income-line-type-config";
 
@@ -666,6 +667,7 @@ export {
   type ITenantPhoneAuthVerifyBody,
   type ITenantPhoneBindStartBody,
   type ITenantPhoneBindVerifyBody,
+  type ITenantSmsOptOutResponse,
   type ITenantUser,
   TenantLeaseListStatus,
   TenantMembershipRole,
@@ -681,6 +683,7 @@ export {
   type TTenantRentScheduleBalanceMonth,
 } from "./tenant-rent-balance-from-schedule";
 export {
+  type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
   isTerminalTenantRentPaymentStatus,
@@ -691,7 +694,9 @@ export {
   type ITenantRentPaymentStatusResponse,
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
+  PropertyStripeAccountType,
   TenantRentPaymentStatus,
+  type TPropertyStripeAccountType,
   type TTenantRentPaymentStatus,
 } from "./tenant-rent-payment-types";
 export {
@@ -710,6 +715,22 @@ export {
   type TValidateRentCheckoutResult,
   validateCreateRentCheckoutBody,
 } from "./tenant-rent-payment-utils";
+export {
+  parseTenantSmsInboundKeyword,
+  TenantSmsInboundKeyword,
+  type TTenantSmsInboundKeyword,
+} from "./tenant-sms-inbound-utils";
+export {
+  buildTenantPhoneOtpSmsMessage,
+  buildTenantSmsHelpMessage,
+  buildTenantSmsOptInConfirmationMessage,
+  buildTenantSmsOptOutConfirmationMessage,
+  canReceiveSms,
+  getTenantSmsSubscriptionStatus,
+  type ITenantSmsEligibilityInput,
+  TenantSmsSubscriptionStatus,
+  type TTenantSmsSubscriptionStatus,
+} from "./tenant-sms-utils";
 
 // Brand Constants
 export { APP_NAME, APP_SLUG, SUPPORT_EMAIL } from "./constants";

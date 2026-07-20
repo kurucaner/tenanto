@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { ITenantUser } from "@/packages/shared";
+import { makeTenantUser } from "@/test-fixtures/domain";
+import { mockResolvedVoid } from "@/test-fixtures/mocks";
 
 const mockSignTenantAccessToken = mock(() => "access-token");
 const mockGenerateRefreshToken = mock(() => "refresh-token");
 const mockHashToken = mock((token: string) => `hash:${token}`);
 const mockGetRefreshTokenExpiresAt = mock(() => new Date("2026-02-01T00:00:00.000Z"));
-const mockCreateRefreshToken = mock(() => Promise.resolve());
+const mockCreateRefreshToken = mockResolvedVoid();
 
 mock.module("@/auth/tenant-jwt", () => ({
   signTenantAccessToken: mockSignTenantAccessToken,
@@ -28,20 +29,6 @@ mock.module("@/db/tenant-refresh-tokens", () => ({
 const { issueTenantAccessToken, issueTenantSession } = await import("./tenant-auth-service");
 
 const mockServer = {} as import("fastify").FastifyInstance;
-
-function makeTenantUser(overrides: Partial<ITenantUser> = {}): ITenantUser {
-  return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    email: "tenant@example.com",
-    emailVerifiedAt: "2026-01-01T00:00:00.000Z",
-    id: "tenant-1",
-    name: "Jane Tenant",
-    phone: null,
-    phoneVerifiedAt: null,
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("issueTenantSession", () => {
   beforeEach(() => {

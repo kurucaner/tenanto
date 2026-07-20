@@ -31,9 +31,9 @@ describe("parseCreateExpenseBody", () => {
   test("accepts valid expense body with UUID categoryId", () => {
     const parsed = parseCreateExpenseBody({
       amount: 120.5,
+      cashExpense: false,
       categoryId: VALID_CATEGORY_ID,
       expenseDate: "2026-01-15",
-      taxFree: false,
     });
 
     expect(parsed.ok).toBe(true);

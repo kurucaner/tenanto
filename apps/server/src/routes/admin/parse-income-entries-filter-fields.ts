@@ -24,6 +24,7 @@ export function parseIncomeTypeFilter(raw: unknown): string | null | undefined {
   const trimmed = raw.trim();
   if (trimmed === "") return undefined;
   if (trimmed === IncomeEntryKind.STAY) return IncomeEntryKind.STAY;
+  if (trimmed === IncomeEntryKind.LONG_TERM) return IncomeEntryKind.LONG_TERM;
   return parseOptionalUuid(trimmed) ?? null;
 }
 
