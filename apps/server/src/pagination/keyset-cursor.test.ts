@@ -183,6 +183,22 @@ describe("encodeIncomeEntryKeysetCursor / decodeIncomeEntryKeysetCursor", () => 
     expect(decoded.sortKeyNum).toBe(42.5);
   });
 
+  test("round-trips longTerm entryKind", () => {
+    const encoded = encodeIncomeEntryKeysetCursor({
+      createdAt: "2026-07-07T12:00:00.000Z",
+      entryKind: "longTerm",
+      id: "55555555-5555-4555-8555-555555555555",
+      sortBy: "date",
+      sortDir: "desc",
+      sortKeyDate: "2026-07-07",
+      sortKeyNum: null,
+      sortKeyText: null,
+    });
+    const decoded = decodeIncomeEntryKeysetCursor(encoded);
+    expect(decoded.entryKind).toBe("longTerm");
+    expect(decoded.sortKeyDate).toBe("2026-07-07");
+  });
+
   test("throws on invalid cursor", () => {
     expect(() => decodeIncomeEntryKeysetCursor("bad")).toThrow("Invalid cursor");
   });

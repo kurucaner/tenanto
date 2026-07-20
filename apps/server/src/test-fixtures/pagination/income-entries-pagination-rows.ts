@@ -25,6 +25,21 @@ export const incomeEntriesStayRowB = buildReservationRow({
   updated_at: new Date("2026-07-09T10:00:00.000Z"),
 });
 
+export const INCOME_ENTRIES_LONG_STAY_ID = "66666666-6666-4666-8666-666666666666";
+
+export const incomeEntriesLongTermRowA = buildIncomeLineRow({
+  amount: "1200.00",
+  created_at: new Date("2026-07-07T12:00:00.000Z"),
+  gross_income: "1200.00",
+  id: "55555555-5555-4555-8555-555555555555",
+  income_line_type_id: INCOME_ENTRIES_LINE_TYPE_ID,
+  income_line_type_name: "Rent",
+  long_stay_id: INCOME_ENTRIES_LONG_STAY_ID,
+  net_income: "1200.00",
+  transaction_date: "2026-07-07",
+  updated_at: new Date("2026-07-07T12:00:00.000Z"),
+});
+
 export const incomeEntriesLineRowA = buildIncomeLineRow({
   amount: "25.00",
   created_at: new Date("2026-07-09T15:00:00.000Z"),
@@ -80,6 +95,15 @@ export const incomeEntriesMergedRowsCanonical = [
     id: incomeEntriesLineRowB.id,
     row_payload: incomeEntriesLineRowB,
     sort_key_date: incomeEntriesLineRowB.transaction_date,
+    sort_key_num: null,
+    sort_key_text: null,
+  },
+  {
+    created_at: incomeEntriesLongTermRowA.created_at,
+    entry_kind: IncomeEntryKind.LONG_TERM,
+    id: incomeEntriesLongTermRowA.id,
+    row_payload: incomeEntriesLongTermRowA,
+    sort_key_date: incomeEntriesLongTermRowA.transaction_date,
     sort_key_num: null,
     sort_key_text: null,
   },

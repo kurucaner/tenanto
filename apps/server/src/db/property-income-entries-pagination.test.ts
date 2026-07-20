@@ -10,6 +10,7 @@ import {
   INCOME_ENTRIES_LINE_TYPE_ID,
   incomeEntriesLineRowA,
   incomeEntriesLineRowB,
+  incomeEntriesLongTermRowA,
   incomeEntriesMergedRowsCanonical,
   incomeEntriesStayRowA,
   incomeEntriesStayRowB,
@@ -33,8 +34,23 @@ function rowIsBeforeDateCursor(
 
 const mockQuery = mock((sql: string, values?: unknown[]) => {
   if (sql.includes("COUNT(*)")) {
+    if (sql.includes("property_reservations")) {
+      return Promise.resolve({
+        rows: [{ total_count: 2 }],
+      });
+    }
+    if (sql.includes("long_stay_id IS NOT NULL")) {
+      return Promise.resolve({
+        rows: [{ total_count: 1 }],
+      });
+    }
+    if (sql.includes("long_stay_id IS NULL")) {
+      return Promise.resolve({
+        rows: [{ total_count: 2 }],
+      });
+    }
     return Promise.resolve({
-      rows: [{ total_count: 2 }],
+      rows: [{ total_count: 0 }],
     });
   }
 
@@ -68,7 +84,12 @@ function buildMergedEntries(
 ): TPropertyIncomeEntry[] {
   const entries: TPropertyIncomeEntry[] = [];
   const showStays = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.STAY;
-  const showLines = incomeTypeFilter === "" || incomeTypeFilter !== IncomeEntryKind.STAY;
+  const showLongTerm =
+    incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.LONG_TERM;
+  const showLines =
+    incomeTypeFilter === "" ||
+    (incomeTypeFilter !== IncomeEntryKind.STAY &&
+      incomeTypeFilter !== IncomeEntryKind.LONG_TERM);
 
   if (showStays) {
     for (const stay of reservations) {
@@ -76,10 +97,20 @@ function buildMergedEntries(
     }
   }
 
+  if (showLongTerm) {
+    for (const line of incomeLines) {
+      if (line.longStayId != null) {
+        entries.push({ entryKind: IncomeEntryKind.LONG_TERM, line });
+      }
+    }
+  }
+
   if (showLines) {
     for (const line of incomeLines) {
-      if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
-        entries.push({ entryKind: IncomeEntryKind.LINE, line });
+      if (line.longStayId == null) {
+        if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
+          entries.push({ entryKind: IncomeEntryKind.LINE, line });
+        }
       }
     }
   }
@@ -112,9 +143,13 @@ function referenceSortDateDesc(entries: TPropertyIncomeEntry[]): TPropertyIncome
 }
 
 function getEntryKey(entry: TPropertyIncomeEntry): string {
-  return entry.entryKind === IncomeEntryKind.STAY
-    ? `stay:${entry.stay.id}`
-    : `line:${entry.line.id}`;
+  if (entry.entryKind === IncomeEntryKind.STAY) {
+    return `stay:${entry.stay.id}`;
+  }
+  if (entry.entryKind === IncomeEntryKind.LONG_TERM) {
+    return `longTerm:${entry.line.id}`;
+  }
+  return `line:${entry.line.id}`;
 }
 
 describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
@@ -135,8 +170,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
         : null
     ).toBe("2026-07-10");
     expect(firstPage.nextCursor).toBeString();
-    expect(firstPage.meta).toEqual({ totalCount: 4 });
-    expect(mockQuery.mock.calls).toHaveLength(3);
+    expect(firstPage.meta).toEqual({ totalCount: 5 });
+    expect(mockQuery.mock.calls).toHaveLength(4);
 
     const sql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
@@ -239,6 +274,25 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     expect(sql).toContain("property_income_lines pil");
     expect(sql).not.toContain("property_reservations pr");
     expect(sql).toContain("pil.income_line_type_id = $");
+    expect(sql).toContain("pil.long_stay_id IS NULL");
+  });
+
+  test("applies longTerm incomeType filter in SQL", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeEntriesDb.listPaginatedByProperty(
+      "prop-1",
+      { incomeType: IncomeEntryKind.LONG_TERM },
+      { limit: 2 }
+    );
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("property_income_lines pil");
+    expect(sql).not.toContain("property_reservations pr");
+    expect(sql).toContain("pil.long_stay_id IS NOT NULL");
+    expect(sql).toContain(`'${IncomeEntryKind.LONG_TERM}'::text AS entry_kind`);
   });
 
   test("cursor pages have no duplicates or gaps", async () => {
@@ -260,8 +314,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       guard += 1;
     }
 
-    expect(collected).toHaveLength(4);
-    expect(new Set(collected.map(getEntryKey)).size).toBe(4);
+    expect(collected).toHaveLength(5);
+    expect(new Set(collected.map(getEntryKey)).size).toBe(5);
   });
 
   test("matches merged client ordering for date desc", async () => {
@@ -271,7 +325,11 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     const expected = referenceSortDateDesc(
       buildMergedEntries(
         [mapPropertyReservationRow(incomeEntriesStayRowA), mapPropertyReservationRow(incomeEntriesStayRowB)],
-        [mapPropertyIncomeLineRow(incomeEntriesLineRowA), mapPropertyIncomeLineRow(incomeEntriesLineRowB)],
+        [
+          mapPropertyIncomeLineRow(incomeEntriesLineRowA),
+          mapPropertyIncomeLineRow(incomeEntriesLineRowB),
+          mapPropertyIncomeLineRow(incomeEntriesLongTermRowA),
+        ],
         ""
       )
     );
@@ -295,6 +353,8 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       .map(([query]) => query as string);
     expect(countSqls.some((sql) => sql.includes("property_income_line_types ilt"))).toBe(true);
     expect(countSqls.some((sql) => sql.includes("ilt.name ILIKE"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NULL"))).toBe(true);
   });
 
   test("applies refundStatus filter across stay and line branches", async () => {
@@ -317,5 +377,7 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
       .map(([query]) => query as string);
     expect(countSqls.some((sql) => sql.includes("pr.refunded_at IS NOT NULL"))).toBe(true);
     expect(countSqls.some((sql) => sql.includes("pil.refunded_at IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NOT NULL"))).toBe(true);
+    expect(countSqls.some((sql) => sql.includes("long_stay_id IS NULL"))).toBe(true);
   });
 });

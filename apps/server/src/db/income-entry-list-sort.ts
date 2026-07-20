@@ -33,67 +33,83 @@ const SORT_KEY_CONFIG: Record<
   TPropertyIncomeEntriesListSortBy,
   {
     line: { date?: string; num?: string; text?: string };
+    longTerm: { date?: string; num?: string; text?: string };
     stay: { date?: string; num?: string; text?: string };
   }
 > = {
   channel: {
     line: { text: "''" },
+    longTerm: { text: "''" },
     stay: { text: "pcc.name" },
   },
   checkOut: {
     line: { date: "NULL::date" },
+    longTerm: { date: "NULL::date" },
     stay: { date: "pr.check_out" },
   },
   cleaning: {
     line: { num: "0" },
+    longTerm: { num: "0" },
     stay: { num: "pr.cleaning_fee" },
   },
   commission: {
     line: { num: "0" },
+    longTerm: { num: "0" },
     stay: { num: "pr.channel_commission" },
   },
   date: {
     line: { date: "pil.transaction_date" },
+    longTerm: { date: "pil.transaction_date" },
     stay: { date: "pr.check_in" },
   },
   gross: {
     line: { num: "pil.gross_income" },
+    longTerm: { num: "pil.gross_income" },
     stay: { num: "pr.gross_income" },
   },
   guest: {
     line: { text: "COALESCE(pil.guest_name, '')" },
+    longTerm: { text: "COALESCE(pil.guest_name, '')" },
     stay: { text: "pr.guest_name" },
   },
   net: {
     line: { num: "pil.net_income" },
+    longTerm: { num: "pil.net_income" },
     stay: { num: "pr.net_income" },
   },
   netPayout: {
     line: { num: "pil.net_income" },
+    longTerm: { num: "pil.net_income" },
     stay: { num: STAY_NET_PAYOUT_SQL },
   },
   nights: {
     line: { num: "0" },
+    longTerm: { num: "0" },
     stay: { num: "pr.nights" },
   },
   roomTotal: {
     line: { num: "pil.amount" },
+    longTerm: { num: "pil.amount" },
     stay: { num: "pr.room_total" },
   },
   status: {
     line: { text: "''" },
+    longTerm: { text: "''" },
     stay: { text: STAY_STATUS_SORT_SQL },
   },
   taxes: {
     line: { num: "0" },
+    longTerm: { num: "0" },
     stay: { num: STAY_TAX_TOTAL_SQL },
   },
   type: {
     line: { text: "ilt.name" },
+    longTerm: { text: "'Long term'" },
     stay: { text: "'Stay'" },
   },
   unit: {
     line: { text: `COALESCE(pu.unit_number, '${PROPERTY_AMENITY_UNIT_LABEL}')` },
+    longTerm: { text: `COALESCE(pu.unit_number, '${PROPERTY_AMENITY_UNIT_LABEL}')` },
     stay: { text: "COALESCE(pu.unit_number, '')" },
   },
 };
@@ -167,6 +183,19 @@ export function getLineSortKeySelects(sortBy: TPropertyIncomeEntriesListSortBy):
   sortKeyText: string;
 } {
   const branch = SORT_KEY_CONFIG[sortBy].line;
+  return {
+    sortKeyDate: branch.date ?? "NULL::date",
+    sortKeyNum: branch.num ?? "NULL::numeric",
+    sortKeyText: branch.text ?? "NULL::text",
+  };
+}
+
+export function getLongTermSortKeySelects(sortBy: TPropertyIncomeEntriesListSortBy): {
+  sortKeyDate: string;
+  sortKeyNum: string;
+  sortKeyText: string;
+} {
+  const branch = SORT_KEY_CONFIG[sortBy].longTerm;
   return {
     sortKeyDate: branch.date ?? "NULL::date",
     sortKeyNum: branch.num ?? "NULL::numeric",

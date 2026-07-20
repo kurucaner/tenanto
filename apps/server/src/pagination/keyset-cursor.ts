@@ -270,6 +270,7 @@ export function encodeIncomeLineKeysetCursor(
 /**
  * Unified income-entries list keyset cursor (v1): sort dimensions + createdAt + id + entryKind.
  * Matches dynamic ORDER BY with tiebreakers created_at, id, entry_kind.
+ * After deploys that introduce new entryKind values, in-flight cursors may paginate incorrectly until refresh.
  */
 export type IncomeEntryKeysetCursorV1 = {
   createdAt: string;

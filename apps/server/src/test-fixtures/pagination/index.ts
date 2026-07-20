@@ -12,6 +12,7 @@ export {
   INCOME_ENTRIES_LINE_TYPE_ID,
   incomeEntriesLineRowA,
   incomeEntriesLineRowB,
+  incomeEntriesLongTermRowA,
   incomeEntriesMergedRowsCanonical,
   incomeEntriesStayRowA,
   incomeEntriesStayRowB,

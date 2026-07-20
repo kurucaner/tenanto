@@ -79,7 +79,7 @@ function applyIncomeExportIncomeTypeFilter(
   const incomeType = parseIncomeTypeFilter(record.incomeType);
   if (incomeType === null) {
     return {
-      error: "filters.incomeType must be 'stay' or a valid income line type id",
+      error: "filters.incomeType must be 'stay', 'longTerm', or a valid income line type id",
       ok: false,
     };
   }
