@@ -154,3 +154,18 @@ export function recordRecentProperty({
   ].slice(0, RECENT_PROPERTIES_MAX);
   writeRecentProperties(next);
 }
+
+export function removeRecentProperty(id: string): void {
+  const next = readRecentProperties().filter((entry) => entry.id !== id);
+  if (next.length === readRecentProperties().length) {
+    return;
+  }
+  writeRecentProperties(next);
+}
+
+export function clearRecentProperties(): void {
+  if (readRecentProperties().length === 0) {
+    return;
+  }
+  writeRecentProperties([]);
+}

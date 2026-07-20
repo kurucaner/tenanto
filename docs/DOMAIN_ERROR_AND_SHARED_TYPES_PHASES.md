@@ -367,23 +367,23 @@ Align `code` strings with existing [`AccountError`](packages/shared/src/account-
 
 **Export**
 
-- [ ] Migrate [`property-export-service.ts`](apps/server/src/services/property-export/property-export-service.ts) — can keep subclass pattern **or** map to `DomainError` codes (`PROPERTY_EXPORT_DUPLICATE`, etc.)
-- [ ] Migrate worker errors: `ExportRowLimitExceededError`, `ExportJobPermanentError`
-- [ ] Update [`property-export-routes.ts`](apps/server/src/routes/admin/property-export-routes.ts)
+- [x] Migrate [`property-export-service.ts`](apps/server/src/services/property-export/property-export-service.ts) — can keep subclass pattern **or** map to `DomainError` codes (`PROPERTY_EXPORT_DUPLICATE`, etc.)
+- [x] Migrate worker errors: `ExportRowLimitExceededError`, `ExportJobPermanentError`
+- [x] Update [`property-export-routes.ts`](apps/server/src/routes/admin/property-export-routes.ts)
 
 **Email campaigns**
 
-- [ ] Migrate campaign service + DB idempotency + reenqueue not-found errors
-- [ ] Update [`property-tenant-email-campaign-routes.ts`](apps/server/src/routes/admin/property-tenant-email-campaign-routes.ts)
+- [x] Migrate campaign service + DB idempotency + reenqueue not-found errors
+- [x] Update [`property-tenant-email-campaign-routes.ts`](apps/server/src/routes/admin/property-tenant-email-campaign-routes.ts)
 
 **Rent + Stripe**
 
-- [ ] Migrate [`tenant-rent-payment-service.ts`](apps/server/src/services/tenant-rent-payment-service.ts), [`stripe-connect-config.ts`](apps/server/src/lib/stripe-connect-config.ts), [`stripe-webhook-service.ts`](apps/server/src/services/stripe-webhook-service.ts)
-- [ ] Update tenant rent + stripe connect + webhook routes
+- [x] Migrate [`tenant-rent-payment-service.ts`](apps/server/src/services/tenant-rent-payment-service.ts), [`stripe-connect-config.ts`](apps/server/src/lib/stripe-connect-config.ts), [`stripe-webhook-service.ts`](apps/server/src/services/stripe-webhook-service.ts)
+- [x] Update tenant rent + stripe connect + webhook routes
 
 **Auth OTP**
 
-- [ ] Migrate [`auth-otp-service.ts`](apps/server/src/services/auth-otp-service.ts); update auth routes
+- [x] Migrate [`auth-otp-service.ts`](apps/server/src/services/auth-otp-service.ts); update auth routes
 
 **Exit criteria:** `rg 'export class \\w+Error extends Error' apps/server` returns zero hits (or only documented exceptions); all routes use `replyFromDomainError` or domain registries.
 

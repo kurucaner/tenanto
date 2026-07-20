@@ -3,24 +3,14 @@ import { randomInt } from "node:crypto";
 import bcrypt from "bcrypt";
 
 import { authOtpsDb, type OtpPurpose } from "@/db/auth-otps";
+import {
+  otpAlreadySendingError,
+  otpCooldownActiveError,
+} from "@/errors/auth-otp-errors";
 import { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
 import { sendOtpEmail } from "@/ses/transactional-emails";
 
 const otpSendInProgress = new Set<string>();
-
-export class OtpAlreadySendingError extends Error {
-  constructor(message = "A verification code is already being sent. Please wait.") {
-    super(message);
-    this.name = "OtpAlreadySendingError";
-  }
-}
-
-export class OtpCooldownActiveError extends Error {
-  constructor(message = "Please wait 1 minute before requesting another code") {
-    super(message);
-    this.name = "OtpCooldownActiveError";
-  }
-}
 
 export function buildOtpInProgressKey(purpose: OtpPurpose, email: string): string {
   return `${purpose}:${email.trim().toLowerCase()}`;
@@ -45,7 +35,7 @@ export async function sendOtpWithCooldown(input: {
   const inProgressKey = buildOtpInProgressKey(input.purpose, input.email);
 
   if (otpSendInProgress.has(inProgressKey)) {
-    throw new OtpAlreadySendingError(input.inProgressMessage);
+    throw otpAlreadySendingError(input.inProgressMessage);
   }
 
   otpSendInProgress.add(inProgressKey);
@@ -53,7 +43,7 @@ export async function sendOtpWithCooldown(input: {
     const lastSent = await authOtpsDb.findMostRecentCreatedAt(input.email, input.purpose);
     const lastSentTime = lastSent ? lastSent.getTime() : 0;
     if (lastSentTime > 0 && Date.now() - lastSentTime < OTP_COOLDOWN_SECONDS * 1000) {
-      throw new OtpCooldownActiveError();
+      throw otpCooldownActiveError();
     }
 
     const otp = generateOtp();

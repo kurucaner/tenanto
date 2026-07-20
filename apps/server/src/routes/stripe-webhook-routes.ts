@@ -2,9 +2,9 @@ import type { FastifyInstance } from "fastify";
 
 import { isStripeConnectEnabled } from "@/lib/stripe-connect-config";
 import { HttpStatus } from "@/packages/shared";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import {
   processVerifiedStripeWebhook,
-  StripeWebhookSignatureError,
   verifyAndParseStripeWebhook,
 } from "@/services/stripe-webhook-service";
 import { WinstonLogger } from "@/services/winston";
@@ -32,12 +32,12 @@ export const stripeWebhookRoutes = async (server: FastifyInstance): Promise<void
       await processVerifiedStripeWebhook(verified);
       return reply.status(HttpStatus.OK).send({ received: true });
     } catch (error) {
-      if (error instanceof StripeWebhookSignatureError) {
+      if (replyFromDomainError(reply, error)) {
         WinstonLogger.warn({
           msg: "tenant_payments.webhook_signature_invalid",
-          reason: error.message,
+          reason: error instanceof Error ? error.message : String(error),
         });
-        return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid signature" });
+        return reply;
       }
       WinstonLogger.error({
         err: error,

@@ -8,6 +8,7 @@ import {
   RECENT_PROPERTIES_MAX,
   RECENT_PROPERTIES_STORAGE_KEY,
   recordRecentProperty,
+  removeRecentProperty,
   writeRecentProperties,
 } from "./recent-properties-storage";
 
@@ -77,6 +78,43 @@ describe("recordRecentProperty", () => {
     const recent = readRecentProperties();
     expect(recent).toHaveLength(RECENT_PROPERTIES_MAX);
     expect(recent.map((entry) => entry.id)).toEqual(["6", "5", "4", "3", "2"]);
+  });
+});
+
+describe("removeRecentProperty", () => {
+  test("removes a single entry", () => {
+    recordRecentProperty(property("a", "Alpha"));
+    recordRecentProperty(property("b", "Beta"));
+
+    removeRecentProperty("a");
+
+    expect(readRecentProperties().map((entry) => entry.id)).toEqual(["b"]);
+  });
+
+  test("no-ops when id is missing", () => {
+    recordRecentProperty(property("a", "Alpha"));
+
+    removeRecentProperty("missing");
+
+    expect(readRecentProperties()).toHaveLength(1);
+  });
+});
+
+describe("clearRecentProperties", () => {
+  test("removes all entries", () => {
+    recordRecentProperty(property("a", "Alpha"));
+    recordRecentProperty(property("b", "Beta"));
+
+    clearRecentProperties();
+
+    expect(readRecentProperties()).toEqual([]);
+    expect(storage.get(RECENT_PROPERTIES_STORAGE_KEY)).toBe(JSON.stringify([]));
+  });
+
+  test("no-ops when already empty", () => {
+    clearRecentProperties();
+
+    expect(readRecentProperties()).toEqual([]);
   });
 });
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
+import { ExportErrorCode } from "@/errors/export-errors";
 import { ExportFormat, ExportResourceType, PROPERTY_EXPORT_EMPTY_MESSAGE } from "@/packages/shared";
 import {
   mockAsyncFn,
@@ -52,8 +53,7 @@ mock.module("@/services/property-export/property-export-reenqueue", () => ({
   enqueuePropertyExportJob: enqueuePropertyExportJobMock,
 }));
 
-const { createPropertyExport, PropertyExportEmptyError } =
-  await import("./property-export-service");
+const { createPropertyExport } = await import("./property-export-service");
 
 const expensesExportRequest = {
   filters: { from: "2026-01-01", to: "2026-01-31" },
@@ -74,7 +74,7 @@ describe("createPropertyExport", () => {
   test("throws PropertyExportEmptyError when filters match zero rows", async () => {
     await expect(
       createPropertyExport("property-1", "user-1", expensesExportRequest)
-    ).rejects.toBeInstanceOf(PropertyExportEmptyError);
+    ).rejects.toMatchObject({ code: ExportErrorCode.EMPTY });
 
     await expect(
       createPropertyExport("property-1", "user-1", expensesExportRequest)

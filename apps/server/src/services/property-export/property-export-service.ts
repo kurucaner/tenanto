@@ -2,7 +2,11 @@ import { exportJobsDb, type ICreateExportJobInput } from "@/db/export-jobs";
 import { propertyExpensesDb } from "@/db/property-expenses";
 import { propertyIncomeEntriesDb } from "@/db/property-income-entries";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
-import { PROPERTY_EXPORT_DUPLICATE_MESSAGE } from "@/lib/property-export-config";
+import {
+  propertyExportDuplicateError,
+  propertyExportEmptyError,
+  propertyExportRowLimitError,
+} from "@/errors/export-errors";
 import {
   normalizeExpenseExportFilters,
   normalizeIncomeExportFilters,
@@ -12,46 +16,9 @@ import {
   ExportResourceType,
   type IPropertyExportCreateRequest,
   type IPropertyExportCreateResponse,
-  PROPERTY_EXPORT_EMPTY_MESSAGE,
   PROPERTY_EXPORT_MAX_ROWS,
 } from "@/packages/shared";
 import { enqueuePropertyExportJob } from "@/services/property-export/property-export-reenqueue";
-
-export class PropertyExportValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PropertyExportValidationError";
-  }
-}
-
-export class PropertyExportDuplicateError extends PropertyExportValidationError {
-  readonly existingJobId: string;
-
-  constructor(existingJobId: string) {
-    super(PROPERTY_EXPORT_DUPLICATE_MESSAGE);
-    this.name = "PropertyExportDuplicateError";
-    this.existingJobId = existingJobId;
-  }
-}
-
-export class PropertyExportRowLimitError extends PropertyExportValidationError {
-  readonly matchedCount: number;
-
-  constructor(matchedCount: number) {
-    super(
-      `Export exceeds the maximum of ${PROPERTY_EXPORT_MAX_ROWS.toLocaleString()} rows (found ${matchedCount.toLocaleString()}). Narrow your date range or filters and try again.`
-    );
-    this.name = "PropertyExportRowLimitError";
-    this.matchedCount = matchedCount;
-  }
-}
-
-export class PropertyExportEmptyError extends PropertyExportValidationError {
-  constructor() {
-    super(PROPERTY_EXPORT_EMPTY_MESSAGE);
-    this.name = "PropertyExportEmptyError";
-  }
-}
 
 async function getMatchedRowCount(
   propertyId: string,
@@ -118,15 +85,15 @@ export async function createPropertyExport(
 
   const duplicate = await exportJobsDb.findActiveDuplicate(createInput);
   if (duplicate != null) {
-    throw new PropertyExportDuplicateError(duplicate.id);
+    throw propertyExportDuplicateError(duplicate.id);
   }
 
   const matchedCount = await getMatchedRowCount(propertyId, body);
   if (matchedCount === 0) {
-    throw new PropertyExportEmptyError();
+    throw propertyExportEmptyError();
   }
   if (matchedCount > PROPERTY_EXPORT_MAX_ROWS) {
-    throw new PropertyExportRowLimitError(matchedCount);
+    throw propertyExportRowLimitError(matchedCount);
   }
 
   const job = await exportJobsDb.create(createInput);

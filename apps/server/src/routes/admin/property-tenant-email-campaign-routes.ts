@@ -19,16 +19,12 @@ import {
   type TTenantEmailCampaignsListFilters,
 } from "@/packages/shared";
 import { decodeKeysetCursor } from "@/pagination/keyset-cursor";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { assertTenantEmailCampaignCreateAllowed } from "@/services/tenant-email-campaign-create-rate-limit";
-import {
-  reenqueueQueuedRecipientsForCampaign,
-  TenantEmailCampaignNotFoundError,
-} from "@/services/tenant-email-campaign-reenqueue";
+import { reenqueueQueuedRecipientsForCampaign } from "@/services/tenant-email-campaign-reenqueue";
 import {
   buildTenantEmailCampaignPreview,
   createTenantEmailCampaign,
-  TenantEmailCampaignNoRecipientsError,
-  TenantEmailCampaignValidationError,
 } from "@/services/tenant-email-campaign-service";
 
 import { parseUuidParam } from "./admin-query-utils";
@@ -270,11 +266,8 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
 
         return reply.status(HttpStatus.ACCEPTED).send(response);
       } catch (error) {
-        if (error instanceof TenantEmailCampaignValidationError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof TenantEmailCampaignNoRecipientsError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        if (replyFromDomainError(reply, error)) {
+          return reply;
         }
         throw error;
       }
@@ -308,8 +301,8 @@ export const propertyTenantEmailCampaignRoutes = async (server: FastifyInstance)
           await reenqueueQueuedRecipientsForCampaign(campaignId, propertyId);
         return reply.status(HttpStatus.ACCEPTED).send(response);
       } catch (error) {
-        if (error instanceof TenantEmailCampaignNotFoundError) {
-          return reply.status(HttpStatus.NOT_FOUND).send({ error: error.message });
+        if (replyFromDomainError(reply, error)) {
+          return reply;
         }
         throw error;
       }

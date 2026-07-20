@@ -1,8 +1,10 @@
 import { propertyLongStaysDb } from "@/db/property-long-stays";
+import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
 import {
-  propertyTenantEmailCampaignsDb,
-  TenantEmailCampaignIdempotencyConflictError,
-} from "@/db/property-tenant-email-campaigns";
+  getTenantEmailCampaignIdempotencyConflictId,
+  tenantEmailCampaignNoRecipientsError,
+  tenantEmailCampaignValidationError,
+} from "@/errors/tenant-email-campaign-errors";
 import {
   TENANT_EMAIL_CAMPAIGN_MAX_BODY_BYTES,
   TENANT_EMAIL_CAMPAIGN_MAX_SUBJECT_LENGTH,
@@ -24,20 +26,6 @@ import { reenqueueQueuedRecipientsForCampaign } from "@/services/tenant-email-ca
 import { maybePublishTenantEmailCampaignUpdated } from "@/services/tenant-email-campaign-stream";
 import { sanitizeTenantEmailHtml, tenantEmailHtmlToPlainText } from "@/ses/tenant-email-html";
 
-export class TenantEmailCampaignValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TenantEmailCampaignValidationError";
-  }
-}
-
-export class TenantEmailCampaignNoRecipientsError extends Error {
-  constructor() {
-    super("No deliverable tenant email recipients found");
-    this.name = "TenantEmailCampaignNoRecipientsError";
-  }
-}
-
 function validateCampaignBody(body: ICreateTenantEmailCampaignBody): {
   htmlBody: string;
   subject: string;
@@ -45,28 +33,28 @@ function validateCampaignBody(body: ICreateTenantEmailCampaignBody): {
 } {
   const subject = body.subject.trim();
   if (subject.length === 0) {
-    throw new TenantEmailCampaignValidationError("Subject is required");
+    throw tenantEmailCampaignValidationError("Subject is required");
   }
   if (subject.length > TENANT_EMAIL_CAMPAIGN_MAX_SUBJECT_LENGTH) {
-    throw new TenantEmailCampaignValidationError("Subject is too long");
+    throw tenantEmailCampaignValidationError("Subject is too long");
   }
 
   const rawHtml = body.htmlBody.trim();
   if (rawHtml.length === 0) {
-    throw new TenantEmailCampaignValidationError("Email body is required");
+    throw tenantEmailCampaignValidationError("Email body is required");
   }
   if (Buffer.byteLength(rawHtml, "utf8") > TENANT_EMAIL_CAMPAIGN_MAX_BODY_BYTES) {
-    throw new TenantEmailCampaignValidationError("Email body is too large");
+    throw tenantEmailCampaignValidationError("Email body is too large");
   }
 
   const htmlBody = sanitizeTenantEmailHtml(rawHtml);
   if (htmlBody.length === 0) {
-    throw new TenantEmailCampaignValidationError("Email body is empty after sanitization");
+    throw tenantEmailCampaignValidationError("Email body is empty after sanitization");
   }
 
   const textBody = tenantEmailHtmlToPlainText(htmlBody);
   if (textBody.length === 0) {
-    throw new TenantEmailCampaignValidationError("Email body must contain readable text");
+    throw tenantEmailCampaignValidationError("Email body must contain readable text");
   }
 
   return { htmlBody, subject, textBody };
@@ -108,11 +96,11 @@ export async function createTenantEmailCampaign(params: {
   const resolution = await resolveCampaignRecipientsForProperty(params.propertyId);
 
   if (resolution.recipients.length === 0) {
-    throw new TenantEmailCampaignNoRecipientsError();
+    throw tenantEmailCampaignNoRecipientsError();
   }
 
   if (resolution.recipients.length > getTenantEmailCampaignMaxRecipients()) {
-    throw new TenantEmailCampaignValidationError(
+    throw tenantEmailCampaignValidationError(
       `Campaign exceeds max recipient limit (${getTenantEmailCampaignMaxRecipients()})`
     );
   }
@@ -156,8 +144,9 @@ export async function createTenantEmailCampaign(params: {
       status: refreshed.status,
     };
   } catch (error) {
-    if (error instanceof TenantEmailCampaignIdempotencyConflictError) {
-      const existing = await propertyTenantEmailCampaignsDb.findById(error.existingCampaignId);
+    const existingCampaignId = getTenantEmailCampaignIdempotencyConflictId(error);
+    if (existingCampaignId != null) {
+      const existing = await propertyTenantEmailCampaignsDb.findById(existingCampaignId);
       if (!existing) {
         throw error;
       }

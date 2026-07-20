@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { mockResolvedNull, mockResolvedVoid } from "@/test-fixtures/mocks";
+import { AuthOtpErrorCode } from "@/errors/auth-otp-errors";
+import { mockResolvedVoid } from "@/test-fixtures/mocks";
 
-const mockFindMostRecentCreatedAt = mockResolvedNull<Date>();
-const mockDeleteByEmailAndPurpose = mockResolvedVoid();
-const mockCreate = mockResolvedVoid();
-const mockFindValidByEmailAndPurpose = mockResolvedNull<{ codeHash: string; id: string }>();
-const mockSendTransactionalEmail = mockResolvedVoid();
+const mockFindMostRecentCreatedAt = mock(() => Promise.resolve(null as Date | null));
+const mockDeleteByEmailAndPurpose = mock(() => Promise.resolve());
+const mockCreate = mock(() => Promise.resolve());
+const mockFindValidByEmailAndPurpose = mock(() =>
+  Promise.resolve(null as { codeHash: string; id: string } | null)
+);
+const mockSendTransactionalEmail = mock(() => Promise.resolve());
 
 mock.module("@/db/auth-otps", () => ({
   authOtpsDb: {
@@ -23,14 +26,8 @@ mock.module("@/ses/ses", () => ({
   sendTransactionalEmail: mockSendTransactionalEmail,
 }));
 
-const {
-  buildOtpInProgressKey,
-  generateOtp,
-  OtpAlreadySendingError,
-  OtpCooldownActiveError,
-  sendOtpWithCooldown,
-  verifyOtpCode,
-} = await import("./auth-otp-service");
+const { buildOtpInProgressKey, generateOtp, sendOtpWithCooldown, verifyOtpCode } =
+  await import("./auth-otp-service");
 
 describe("buildOtpInProgressKey", () => {
   test("scopes in-flight guard by purpose and email", () => {
@@ -69,7 +66,7 @@ describe("sendOtpWithCooldown", () => {
 
     await expect(
       sendOtpWithCooldown({ email: "user@example.com", purpose: "register" })
-    ).rejects.toBeInstanceOf(OtpCooldownActiveError);
+    ).rejects.toMatchObject({ code: AuthOtpErrorCode.COOLDOWN_ACTIVE });
   });
 
   test("allows parallel purposes for the same email", async () => {
@@ -90,7 +87,7 @@ describe("sendOtpWithCooldown", () => {
     const first = sendOtpWithCooldown({ email: "user@example.com", purpose: "register" });
     await expect(
       sendOtpWithCooldown({ email: "user@example.com", purpose: "register" })
-    ).rejects.toBeInstanceOf(OtpAlreadySendingError);
+    ).rejects.toMatchObject({ code: AuthOtpErrorCode.ALREADY_SENDING });
     await first;
   });
 });

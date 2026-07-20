@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 
 import { propertyIncomeEntriesDb } from "@/db/property-income-entries";
 import { propertyUnitsDb } from "@/db/property-units";
+import { exportRowLimitExceededError } from "@/errors/export-errors";
 import { csvRow } from "@/lib/csv-utils";
 import { PROPERTY_EXPORT_BATCH_SIZE } from "@/lib/property-export-config";
 import {
@@ -16,7 +17,6 @@ import {
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
 
-import { ExportRowLimitExceededError } from "./expenses-csv-export";
 import { type TExportSpreadsheetRow, uploadXlsxFromRowIterator } from "./property-export-xlsx";
 
 const INCOME_EXPORT_HEADERS = [
@@ -150,7 +150,7 @@ export async function* iterateIncomeExportRows(
     for (const entry of page.entries) {
       rowCount += 1;
       if (rowCount > maxRows) {
-        throw new ExportRowLimitExceededError(rowCount, maxRows);
+        throw exportRowLimitExceededError(rowCount, maxRows);
       }
       yield mapIncomeEntryToExportRow(entry, unitLabelById);
     }

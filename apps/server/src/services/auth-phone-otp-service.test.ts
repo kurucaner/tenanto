@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { OtpCooldownActiveError } from "@/services/auth-otp-service";
+import { AuthOtpErrorCode } from "@/errors/auth-otp-errors";
 import { mockResolved, mockResolvedNull, mockResolvedVoid } from "@/test-fixtures/mocks";
 
 const mockFindMostRecent = mockResolvedNull<Date>();
@@ -78,7 +78,7 @@ describe("auth-phone-otp-service", () => {
         phone: "+13055550100",
         purpose: "tenant_phone_login",
       })
-    ).rejects.toBeInstanceOf(OtpCooldownActiveError);
+    ).rejects.toMatchObject({ code: AuthOtpErrorCode.COOLDOWN_ACTIVE });
     expect(mockSendSms).not.toHaveBeenCalled();
   });
 

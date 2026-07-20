@@ -1,20 +1,10 @@
 import type { FastifyInstance } from "fastify";
 
 import { exportJobsDb } from "@/db/export-jobs";
-import {
-  HttpStatus,
-  type IExportJobDownloadResponse,
-  type IPropertyExportDetailResponse,
-  type IPropertyExportsListResponse,
-} from "@/packages/shared";
+import { HttpStatus, type IExportJobDownloadResponse, type IPropertyExportDetailResponse, type IPropertyExportsListResponse } from "@/packages/shared";
+import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { generateDownloadUrl } from "@/s3/s3-commands";
-import {
-  createPropertyExport,
-  PropertyExportDuplicateError,
-  PropertyExportEmptyError,
-  PropertyExportRowLimitError,
-  PropertyExportValidationError,
-} from "@/services/property-export/property-export-service";
+import { createPropertyExport } from "@/services/property-export/property-export-service";
 
 import { parseUuidParam } from "./admin-query-utils";
 import { parseCreateExportBody } from "./parse-property-export-body";
@@ -49,20 +39,8 @@ export const propertyExportRoutes = async (server: FastifyInstance): Promise<voi
         const result = await createPropertyExport(propertyId, userId, parsedBody.body);
         return reply.status(HttpStatus.ACCEPTED).send(result);
       } catch (error) {
-        if (error instanceof PropertyExportDuplicateError) {
-          return reply.status(HttpStatus.CONFLICT).send({
-            error: error.message,
-            jobId: error.existingJobId,
-          });
-        }
-        if (error instanceof PropertyExportRowLimitError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof PropertyExportEmptyError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
-        }
-        if (error instanceof PropertyExportValidationError) {
-          return reply.status(HttpStatus.BAD_REQUEST).send({ error: error.message });
+        if (replyFromDomainError(reply, error)) {
+          return reply;
         }
         throw error;
       }

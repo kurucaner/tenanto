@@ -1,15 +1,9 @@
 import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
+import { tenantEmailCampaignNotFoundError } from "@/errors/tenant-email-campaign-errors";
 import { type ITenantEmailCampaignReenqueueResponse } from "@/packages/shared";
 import { enqueueTenantEmailSendJobs } from "@/queues/tenant-email-queue";
 
 import { WinstonLogger } from "./winston";
-
-export class TenantEmailCampaignNotFoundError extends Error {
-  constructor() {
-    super("Campaign not found");
-    this.name = "TenantEmailCampaignNotFoundError";
-  }
-}
 
 export async function reenqueueQueuedRecipientsForCampaign(
   campaignId: string,
@@ -17,7 +11,7 @@ export async function reenqueueQueuedRecipientsForCampaign(
 ): Promise<ITenantEmailCampaignReenqueueResponse> {
   const campaign = await propertyTenantEmailCampaignsDb.findById(campaignId);
   if (campaign == null || (propertyId != null && campaign.propertyId !== propertyId)) {
-    throw new TenantEmailCampaignNotFoundError();
+    throw tenantEmailCampaignNotFoundError();
   }
 
   const queuedRecipientIds =

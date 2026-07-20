@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 
 import { isIdentityConflictError } from "@/constants/account";
 import { tenantUsersDb } from "@/db/tenant-users";
+import { isAuthOtpRateLimitError } from "@/errors/auth-otp-errors";
 import { isTenantPhoneAuthEnabled } from "@/lib/tenant-auth-expansion-config";
 import { TENANT_AUTH_RATE_LIMIT_WINDOW_MS } from "@/lib/tenant-portal-rate-limit-config";
 import {
@@ -15,7 +16,6 @@ import {
   type ITenantPhoneBindVerifyBody,
   type ITenantUser,
 } from "@/packages/shared";
-import { OtpAlreadySendingError, OtpCooldownActiveError } from "@/services/auth-otp-service";
 import {
   deletePhoneOtpById,
   sendPhoneOtpWithCooldown,
@@ -76,11 +76,11 @@ function invalidPhoneResult(error: unknown): TTenantPhoneAuthFailure | null {
 }
 
 function mapOtpSendError(error: unknown): TTenantPhoneAuthFailure | null {
-  if (error instanceof OtpCooldownActiveError || error instanceof OtpAlreadySendingError) {
+  if (isAuthOtpRateLimitError(error)) {
     return {
-      body: { error: error.message },
+      body: { code: error.code, error: error.message },
       status: "error",
-      statusCode: HttpStatus.TOO_MANY_REQUESTS,
+      statusCode: error.httpStatus,
     };
   }
   return invalidPhoneResult(error);
