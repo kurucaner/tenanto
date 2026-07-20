@@ -23,6 +23,13 @@ const eslintConfig = defineConfig([
       "simple-import-sort/exports": "error",
     },
   },
+  {
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
 ]);
 
 export default eslintConfig;
