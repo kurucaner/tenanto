@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
   createTenantContactFormSchema,
+  getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
   tenantContactFormDefaults,
   toSecondaryOccupantPatch,
@@ -38,6 +39,7 @@ interface EditSecondaryTenantDialogProps {
   open: boolean;
   primaryTenantEmail: string | null;
   propertyId: string;
+  secondaryTenantEmails: readonly (string | null | undefined)[];
 }
 
 export const EditSecondaryTenantDialog = memo(
@@ -50,6 +52,7 @@ export const EditSecondaryTenantDialog = memo(
     open,
     primaryTenantEmail,
     propertyId,
+    secondaryTenantEmails,
   }: EditSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
@@ -60,7 +63,11 @@ export const EditSecondaryTenantDialog = memo(
         phone: contact.effectivePhone,
       }),
       resolver: zodResolver(
-        createTenantContactFormSchema({ blockedEmails: [primaryTenantEmail] })
+        createTenantContactFormSchema({
+          excludeEmail: contact.effectiveEmail,
+          primaryTenantEmail,
+          secondaryTenantEmails,
+        })
       ),
     });
 
@@ -85,7 +92,7 @@ export const EditSecondaryTenantDialog = memo(
           toSecondaryOccupantPatch(values)
         ),
       onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to update secondary tenant");
+        toast.error(getSecondaryTenantMutationErrorMessage(e, "Failed to update secondary tenant"));
       },
       onSuccess: () => {
         toast.success("Secondary tenant updated");

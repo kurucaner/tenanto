@@ -79,6 +79,11 @@ export const LeaseTenantsSection = memo(
 
     const canEditTenants = canManage && lease.status === PropertyLongStayStatus.ACTIVE;
 
+    const secondaryTenantEmails = useMemo(
+      () => secondaryTenantContacts.map((contact) => contact.effectiveEmail),
+      [secondaryTenantContacts]
+    );
+
     const portalAccessQuery = useQuery({
       queryFn: () => longStayPortalApi.getAccess(propertyId, lease.id),
       queryKey: queryKeys.propertyLongStayPortalAccess(propertyId, lease.id),
@@ -529,6 +534,7 @@ export const LeaseTenantsSection = memo(
             primaryTenantEmail={primaryTenantContact.effectiveEmail}
             propertyId={propertyId}
             secondaryOccupantCount={secondaryTenantContacts.length}
+            secondaryTenantEmails={secondaryTenantEmails}
           />
         ) : null}
 
@@ -554,6 +560,7 @@ export const LeaseTenantsSection = memo(
             open={true}
             primaryTenantEmail={primaryTenantContact.effectiveEmail}
             propertyId={propertyId}
+            secondaryTenantEmails={secondaryTenantEmails}
           />
         ) : null}
 

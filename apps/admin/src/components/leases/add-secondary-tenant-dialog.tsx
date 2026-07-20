@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
   createTenantContactFormSchema,
+  getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
   toSecondaryOccupantBody,
   type TTenantContactFormValues,
@@ -34,6 +35,7 @@ interface AddSecondaryTenantDialogProps {
   primaryTenantEmail: string | null;
   propertyId: string;
   secondaryOccupantCount: number;
+  secondaryTenantEmails: readonly (string | null | undefined)[];
 }
 
 export const AddSecondaryTenantDialog = memo(
@@ -44,13 +46,17 @@ export const AddSecondaryTenantDialog = memo(
     primaryTenantEmail,
     propertyId,
     secondaryOccupantCount,
+    secondaryTenantEmails,
   }: AddSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
     const form = useForm<TTenantContactFormValues>({
       defaultValues: { name: "", tenantEmail: "", tenantPhone: "" },
       resolver: zodResolver(
-        createTenantContactFormSchema({ blockedEmails: [primaryTenantEmail] })
+        createTenantContactFormSchema({
+          primaryTenantEmail,
+          secondaryTenantEmails,
+        })
       ),
     });
 
@@ -67,7 +73,7 @@ export const AddSecondaryTenantDialog = memo(
         );
       },
       onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to add secondary tenant");
+        toast.error(getSecondaryTenantMutationErrorMessage(e, "Failed to add secondary tenant"));
       },
       onSuccess: () => {
         toast.success("Secondary tenant added");
