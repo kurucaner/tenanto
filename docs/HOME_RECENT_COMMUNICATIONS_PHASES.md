@@ -44,10 +44,10 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 **Files (4)**
 
-- [ ] Add [`packages/shared/src/home-recent-tenant-email-campaigns-types.ts`](../packages/shared/src/home-recent-tenant-email-campaigns-types.ts) — `IHomeRecentTenantEmailCampaign`, `IHomeRecentTenantEmailCampaignsResponse`, default limit constant
-- [ ] Export from [`packages/shared/src/index.ts`](../packages/shared/src/index.ts)
-- [ ] Add `listRecentForAccessibleProperties(userId, isAdmin, limit)` to [`apps/server/src/db/property-tenant-email-campaigns.ts`](../apps/server/src/db/property-tenant-email-campaigns.ts) — join `properties`, filter owner/creator/admin, select `campaign` fields + `property.name`, exclude bodies
-- [ ] Add [`apps/server/src/db/property-tenant-email-campaigns-recent.test.ts`](../apps/server/src/db/property-tenant-email-campaigns-recent.test.ts) — ordering, limit, excludes manager-only properties
+- [x] Add [`packages/shared/src/home-recent-tenant-email-campaigns-types.ts`](../packages/shared/src/home-recent-tenant-email-campaigns-types.ts) — `IHomeRecentTenantEmailCampaign`, `IHomeRecentTenantEmailCampaignsResponse`, default limit constant
+- [x] Export from [`packages/shared/src/index.ts`](../packages/shared/src/index.ts)
+- [x] Add `listRecentForAccessibleProperties(userId, isAdmin, limit)` to [`apps/server/src/db/property-tenant-email-campaigns.ts`](../apps/server/src/db/property-tenant-email-campaigns.ts) — join `properties`, filter owner/creator/admin, select `campaign` fields + `property.name`, exclude bodies
+- [x] Add [`apps/server/src/db/property-tenant-email-campaigns-recent.test.ts`](../apps/server/src/db/property-tenant-email-campaigns-recent.test.ts) — ordering, limit, excludes manager-only properties
 
 **Exit criteria:** DB helper returns correct rows for owner vs manager fixtures; shared types compile on server and admin.
 
@@ -101,11 +101,11 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 ### Visibility matrix
 
-| Caller | Column shown | Data |
-|--------|--------------|------|
-| Platform admin | Yes | Recent campaigns across accessible properties |
-| Property owner / creator | Yes | Campaigns for owned/created properties |
-| Manager / accountant only | Hidden | — |
+| Caller                    | Column shown | Data                                          |
+| ------------------------- | ------------ | --------------------------------------------- |
+| Platform admin            | Yes          | Recent campaigns across accessible properties |
+| Property owner / creator  | Yes          | Campaigns for owned/created properties        |
+| Manager / accountant only | Hidden       | —                                             |
 
 ---
 
@@ -136,15 +136,15 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 ## Row content (locked for v1)
 
-| Element | Treatment |
-|---------|-----------|
-| Column title | **Communications** (rename later) |
-| Header chevron | None in v1 (no portfolio destination) |
-| Row primary | Truncated email subject |
-| Row secondary | Muted property name prefix: `{propertyName} / {subject}` |
-| In-progress | Subtle status text or reuse `TenantEmailCampaignStatusBadge` compact |
-| Cap | 6 rows |
-| Empty | `No tenant emails yet.` |
+| Element        | Treatment                                                            |
+| -------------- | -------------------------------------------------------------------- |
+| Column title   | **Communications** (rename later)                                    |
+| Header chevron | None in v1 (no portfolio destination)                                |
+| Row primary    | Truncated email subject                                              |
+| Row secondary  | Muted property name prefix: `{propertyName} / {subject}`             |
+| In-progress    | Subtle status text or reuse `TenantEmailCampaignStatusBadge` compact |
+| Cap            | 6 rows                                                               |
+| Empty          | `No tenant emails yet.`                                              |
 
 ---
 

@@ -1,8 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { propertiesDb } from "@/db/properties";
+import { propertyTenantEmailCampaignsDb } from "@/db/property-tenant-email-campaigns";
 import {
+  HOME_RECENT_TENANT_EMAIL_CAMPAIGNS_LIMIT,
   type IHomeFinancialOverview,
+  type IHomeRecentTenantEmailCampaignsResponse,
   type IPropertyReportTotals,
   UserType,
 } from "@/packages/shared";
@@ -23,6 +26,14 @@ function getHomeFinancialDateRange(): { from: string; to: string } {
     from: from.toISOString().slice(0, 10),
     to: to.toISOString().slice(0, 10),
   };
+}
+
+export function parseHomeRecentTenantEmailCampaignsLimit(raw: unknown): number {
+  const n = typeof raw === "string" ? Number.parseInt(raw, 10) : Number(raw);
+  if (!Number.isFinite(n) || n < 1) {
+    return HOME_RECENT_TENANT_EMAIL_CAMPAIGNS_LIMIT;
+  }
+  return Math.min(HOME_RECENT_TENANT_EMAIL_CAMPAIGNS_LIMIT, Math.floor(n));
 }
 
 export const homeRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -55,6 +66,24 @@ export const homeRoutes = async (server: FastifyInstance): Promise<void> => {
       };
 
       return reply.send({ overview });
+    }
+  );
+
+  server.get(
+    "/home/recent-tenant-email-campaigns",
+    { preHandler: [server.authenticate] },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const isAdmin = request.user.userType === UserType.ADMIN;
+      const limit = parseHomeRecentTenantEmailCampaignsLimit(
+        (request.query as Record<string, unknown>)["limit"]
+      );
+      const campaigns = await propertyTenantEmailCampaignsDb.listRecentForAccessibleProperties(
+        request.user.userId,
+        isAdmin,
+        limit
+      );
+      const response: IHomeRecentTenantEmailCampaignsResponse = { campaigns };
+      return reply.send(response);
     }
   );
 };
