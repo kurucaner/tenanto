@@ -1,9 +1,14 @@
 import {
+  addDaysToIsoDate,
+  addMonthsToIsoDate,
   calculateLeaseEndDate,
   enumerateLeaseMonths,
 } from "./lease-date-utils";
 import { MAX_LEASE_TERM_MONTHS } from "./lease-terms-edit-utils";
-import { type IExtendPropertyLongStayBody, type IPropertyLongStay } from "./property-long-stay-types";
+import {
+  type IExtendPropertyLongStayBody,
+  type IPropertyLongStay,
+} from "./property-long-stay-types";
 
 export type LeaseTermInputMode = "customEnd" | "months";
 
@@ -11,9 +16,7 @@ export type LeaseExtendInputMode = "customEnd" | "months";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function formatLocalIsoDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
+export { addMonthsToIsoDate } from "./lease-date-utils";
 
 export function parseLeaseIsoDate(value: string): string | null {
   const trimmed = value.trim();
@@ -27,15 +30,6 @@ export function parseLeaseIsoDate(value: string): string | null {
   }
 
   return trimmed;
-}
-
-export function addMonthsToIsoDate(isoDate: string, months: number): string {
-  const parts = isoDate.split("-").map(Number);
-  const year = parts[0] ?? 0;
-  const month = parts[1] ?? 1;
-  const day = parts[2] ?? 1;
-  const date = new Date(year, month - 1 + months, day);
-  return formatLocalIsoDate(date);
 }
 
 export function deriveTermMonthsFromDates(leaseStartDate: string, leaseEndDate: string): number {
@@ -157,7 +151,10 @@ export function resolveExtendLeaseEndDate(
   }
 
   return {
-    newLeaseEndDate: addMonthsToIsoDate(lease.leaseEndDate, body.additionalTermMonths),
+    newLeaseEndDate: calculateLeaseEndDate(
+      addDaysToIsoDate(lease.leaseEndDate, 1),
+      body.additionalTermMonths
+    ),
     newTermMonths: lease.termMonths + body.additionalTermMonths,
   };
 }

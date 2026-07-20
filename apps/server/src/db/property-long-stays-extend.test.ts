@@ -73,7 +73,7 @@ describe("propertyLongStaysDb.extendLease", () => {
     });
 
     expect(updated).toMatchObject({
-      leaseEndDate: "2027-12-30",
+      leaseEndDate: "2027-12-31",
       termMonths: 18,
     });
   });
