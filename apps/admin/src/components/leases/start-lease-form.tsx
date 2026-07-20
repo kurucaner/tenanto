@@ -37,9 +37,9 @@ const StartLeaseProgress = memo(({ currentStep, onStepSelect }: StartLeaseProgre
       const canNavigate = canNavigateToStartLeaseStep(step, currentStep);
       let stepButtonClass = "text-muted-foreground/50 cursor-default";
       if (isActive) {
-        stepButtonClass = "font-medium text-foreground";
+        stepButtonClass = "cursor-default font-medium text-foreground";
       } else if (canNavigate) {
-        stepButtonClass = "text-muted-foreground hover:text-foreground";
+        stepButtonClass = "cursor-pointer text-muted-foreground hover:text-foreground";
       }
       return (
         <div className="flex items-center gap-2" key={step}>
