@@ -5,6 +5,7 @@ import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
 import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { AdminHeaderPropertySwitcher } from "@/components/properties/property-switcher";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -44,6 +45,9 @@ const AdminLayoutInner = memo(() => {
         >
           <header className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md">
             <SidebarTrigger className="hidden md:inline-flex" />
+            <div className="min-w-0 flex-1">
+              <AdminHeaderPropertySwitcher />
+            </div>
             <div className="ms-auto flex shrink-0 items-center gap-2">
               <NotificationBell />
               {resolvedDark ? <AdminDarkPaletteMenu compact /> : null}

@@ -218,10 +218,10 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 3a — Header property switcher (4 files)
 
-- [ ] Extract trigger/popover shell into [`apps/admin/src/components/properties/property-switcher-trigger.tsx`](../apps/admin/src/components/properties/property-switcher-trigger.tsx)
-- [ ] Refactor [`apps/admin/src/components/properties/property-switcher.tsx`](../apps/admin/src/components/properties/property-switcher.tsx) to use trigger; support `propertyId` optional (global mode)
-- [ ] Mount switcher in [`apps/admin/src/components/layout/admin-layout.tsx`](../apps/admin/src/components/layout/admin-layout.tsx) header
-- [ ] Remove duplicate in-shell switcher from [`apps/admin/src/components/properties/property-page-shell.tsx`](../apps/admin/src/components/properties/property-page-shell.tsx) (header-only)
+- [x] Extract trigger/popover shell into [`apps/admin/src/components/properties/property-switcher-trigger.tsx`](../apps/admin/src/components/properties/property-switcher-trigger.tsx)
+- [x] Refactor [`apps/admin/src/components/properties/property-switcher.tsx`](../apps/admin/src/components/properties/property-switcher.tsx) to use trigger; support `propertyId` optional (global mode)
+- [x] Mount switcher in [`apps/admin/src/components/layout/admin-layout.tsx`](../apps/admin/src/components/layout/admin-layout.tsx) header
+- [x] Remove duplicate in-shell switcher from [`apps/admin/src/components/properties/property-page-shell.tsx`](../apps/admin/src/components/properties/property-page-shell.tsx) (header-only)
 
 **Exit criteria:** Switcher works outside property shell; tab preservation on property switch unchanged.
 
