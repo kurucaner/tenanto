@@ -287,7 +287,9 @@ async function resolveIncomeLineTypeForProperty(
 ) {
   const incomeLineType = await propertyIncomeLineTypesDb.findByIdForProperty(
     incomeLineTypeId,
-    propertyId
+    propertyId,
+    undefined,
+    true
   );
   if (!incomeLineType) {
     void reply
@@ -549,12 +551,14 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       const merged = mergeIncomeLineInput(existing, parsed.body);
 
-      const incomeLineType = await resolveIncomeLineTypeForProperty(
-        merged.incomeLineTypeId,
-        propertyId,
-        reply
-      );
-      if (!incomeLineType) return;
+      if (parsed.body.incomeLineTypeId !== undefined) {
+        const incomeLineType = await resolveIncomeLineTypeForProperty(
+          merged.incomeLineTypeId,
+          propertyId,
+          reply
+        );
+        if (!incomeLineType) return;
+      }
 
       if (merged.unitId !== null) {
         const unit = await resolvePropertyUnit(merged.unitId, propertyId, reply);

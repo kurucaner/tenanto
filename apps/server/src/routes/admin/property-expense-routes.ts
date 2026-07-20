@@ -12,7 +12,6 @@ import {
   EXPENSES_LIST_LIMIT,
   EXPENSES_LIST_MAX_LIMIT,
   HttpStatus,
-  type IPropertyExpense,
   type IUpdatePropertyExpenseBody,
   type TPropertyExpensesListFilters,
   UserType,
@@ -202,16 +201,6 @@ interface IPropertyExpenseParams {
   propertyId: string;
 }
 
-function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExpenseBody) {
-  return {
-    amount: patch.amount ?? existing.amount,
-    cashExpense: patch.cashExpense ?? existing.cashExpense,
-    categoryId: patch.categoryId ?? existing.categoryId,
-    description: patch.description === undefined ? existing.description : patch.description,
-    expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
-  };
-}
-
 export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<void> => {
   const authPre = [server.authenticate];
 
@@ -291,7 +280,9 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
 
       const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
         parsed.body.categoryId,
-        propertyId
+        propertyId,
+        undefined,
+        true
       );
       if (!categoryType) {
         return reply
@@ -360,15 +351,18 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }
 
-      const merged = mergeExpenseInput(existing, parsed.body);
-      const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
-        merged.categoryId,
-        propertyId
-      );
-      if (!categoryType) {
-        return reply
-          .status(HttpStatus.BAD_REQUEST)
-          .send({ error: "Category not found for this property" });
+      if (parsed.body.categoryId !== undefined) {
+        const categoryType = await propertyExpenseCategoryTypesDb.findByIdForProperty(
+          parsed.body.categoryId,
+          propertyId,
+          undefined,
+          true
+        );
+        if (!categoryType) {
+          return reply
+            .status(HttpStatus.BAD_REQUEST)
+            .send({ error: "Category not found for this property" });
+        }
       }
 
       const expense = await propertyExpensesDb.update(expenseId, parsed.body);
