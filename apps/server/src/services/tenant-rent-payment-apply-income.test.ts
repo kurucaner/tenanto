@@ -32,8 +32,13 @@ const mockGetRentSchedule = mockAsyncFn(() =>
     },
   ])
 );
-const mockFindIncomeLineTypes = mockAsyncFn(() =>
-  Promise.resolve([{ id: "type-rent", name: "Rent" }] as Array<{ id: string; name: string }>)
+const mockEnsureLeaseRentIncomeLineType = mockAsyncFn(() =>
+  Promise.resolve({
+    id: "type-system-rent",
+    name: "Long-term rent",
+    propertyId: "property-1",
+    sortOrder: -1,
+  })
 );
 const mockCreateIncomeLine = mockAsyncFn(() =>
   Promise.resolve({
@@ -51,7 +56,7 @@ mock.module("@/db/property-long-stays", () => ({
 
 mock.module("@/db/property-income-line-types", () => ({
   propertyIncomeLineTypesDb: {
-    findByProperty: mockFindIncomeLineTypes,
+    ensureLeaseRentIncomeLineType: mockEnsureLeaseRentIncomeLineType,
   },
 }));
 
@@ -76,7 +81,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     mockSumSucceededAllocatedCents.mockClear();
     mockFindLeaseById.mockClear();
     mockGetRentSchedule.mockClear();
-    mockFindIncomeLineTypes.mockClear();
+    mockEnsureLeaseRentIncomeLineType.mockClear();
     mockCreateIncomeLine.mockClear();
 
     mockListAllocations.mockResolvedValue([
@@ -101,7 +106,12 @@ describe("applyIncomeForFullyCoveredMonths", () => {
         remainingRent: 200,
       },
     ]);
-    mockFindIncomeLineTypes.mockResolvedValue([{ id: "type-rent", name: "Rent" }]);
+    mockEnsureLeaseRentIncomeLineType.mockResolvedValue({
+      id: "type-system-rent",
+      name: "Long-term rent",
+      propertyId: "property-1",
+      sortOrder: -1,
+    });
   });
 
   test("creates income with tenantRentPaymentId when month is fully covered", async () => {
@@ -117,7 +127,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
-        incomeLineTypeId: "type-rent",
+        incomeLineTypeId: "type-system-rent",
         longStayId: "lease-1",
         rentPeriodMonth: "2026-01",
         tenantRentPaymentId: "payment-1",
@@ -126,9 +136,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     );
   });
 
-  test("falls back to first income line type when Rent name is absent", async () => {
-    mockFindIncomeLineTypes.mockResolvedValueOnce([{ id: "type-clean", name: "Extra cleaning" }]);
-
+  test("uses system lease rent type when user catalog types are empty", async () => {
     await applyIncomeForFullyCoveredMonths(
       makePayment({
         status: TenantRentPaymentStatus.SUCCEEDED,
@@ -137,10 +145,11 @@ describe("applyIncomeForFullyCoveredMonths", () => {
       })
     );
 
+    expect(mockEnsureLeaseRentIncomeLineType).toHaveBeenCalledWith("property-1");
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
-        incomeLineTypeId: "type-clean",
+        incomeLineTypeId: "type-system-rent",
         longStayId: "lease-1",
       }),
       expect.any(Object)

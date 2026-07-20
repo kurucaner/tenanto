@@ -1,6 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { resolveLeaseIncomeLineTypeId } from "@/packages/shared";
 import { makeLongStay } from "@/test-fixtures/domain";
 
 const mockFindById = mock(() =>
@@ -89,25 +88,5 @@ describe("POST /properties/:propertyId/income-lines lease rent validation", () =
     });
 
     expect(result).toEqual({ ok: true, rentPeriodMonth: "2026-01" });
-  });
-});
-
-describe("lease rent income line type resolution", () => {
-  test("still resolves a type id when Rent was renamed in settings", () => {
-    expect(
-      resolveLeaseIncomeLineTypeId([
-        { id: "type-clean", name: "Extra cleaning" },
-        { id: "type-lease", name: "Monthly lease" },
-      ])
-    ).toBe("type-clean");
-  });
-
-  test("prefers Rent by name when the catalog still includes it", () => {
-    expect(
-      resolveLeaseIncomeLineTypeId([
-        { id: "type-clean", name: "Extra cleaning" },
-        { id: "type-rent", name: "Rent" },
-      ])
-    ).toBe("type-rent");
   });
 });

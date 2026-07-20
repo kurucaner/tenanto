@@ -21,7 +21,6 @@ import {
   type ITenantRentPaymentStatusResponse,
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
-  resolveLeaseIncomeLineTypeId,
   TenantLeaseListStatus,
   TenantRentPaymentStatus,
   transactionDateToMonth,
@@ -116,11 +115,10 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
   const schedule = await propertyLongStaysDb.getRentSchedule(payment.leaseId);
   const paidMonths = new Set(schedule.filter((m) => m.isPaid).map((m) => m.month));
 
-  const types = await propertyIncomeLineTypesDb.findByProperty(payment.propertyId);
-  const incomeLineTypeId = resolveLeaseIncomeLineTypeId(types);
-  if (!incomeLineTypeId) {
-    throw new Error(`No income line type configured for property ${payment.propertyId}`);
-  }
+  const systemType = await propertyIncomeLineTypesDb.ensureLeaseRentIncomeLineType(
+    payment.propertyId
+  );
+  const incomeLineTypeId = systemType.id;
 
   for (const allocation of allocations) {
     if (paidMonths.has(allocation.periodMonth)) {
