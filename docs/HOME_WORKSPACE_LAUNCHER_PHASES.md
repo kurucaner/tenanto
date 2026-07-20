@@ -167,9 +167,9 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 1a — Property workspace card (3 files)
 
-- [ ] Create [`apps/admin/src/components/home/home-property-workspace-card.tsx`](../apps/admin/src/components/home/home-property-workspace-card.tsx) — name, address, favorite star, shortcut link row, “Open property” CTA
-- [ ] Wire `getVisiblePropertyLauncherDestinations` + `buildPropertyShellTabPath` + `derivePropertyPermissionsFromListItem`
-- [ ] Reuse [`PropertyFavoriteButton`](../apps/admin/src/components/properties/property-favorite-button.tsx) + [`useSetPropertyFavorite`](../apps/admin/src/hooks/use-set-property-favorite.ts)
+- [x] Create [`apps/admin/src/components/home/home-property-workspace-card.tsx`](../apps/admin/src/components/home/home-property-workspace-card.tsx) — name, address, favorite star, shortcut link row, “Open property” CTA
+- [x] Wire `getVisiblePropertyLauncherDestinations` + `buildPropertyShellTabPath` + `derivePropertyPermissionsFromListItem`
+- [x] Reuse [`PropertyFavoriteButton`](../apps/admin/src/components/properties/property-favorite-button.tsx) + [`useSetPropertyFavorite`](../apps/admin/src/hooks/use-set-property-favorite.ts)
 
 **Exit criteria:** Card renders shortcuts per role; links navigate to correct tab routes.
 

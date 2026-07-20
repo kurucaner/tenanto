@@ -1,5 +1,6 @@
 import { type IPropertyShellTab, PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
 import { type IPropertyPermissions } from "@/hooks/use-property-permissions";
+import { buildPropertyShellTabPath } from "@/lib/property-shell-tab-navigation";
 import { getVisiblePropertyShellTabs } from "@/lib/property-shell-tab-visibility";
 
 export interface IPropertyLauncherDestination extends IPropertyShellTab {
@@ -37,4 +38,16 @@ export function getVisiblePropertyLauncherDestinations(
   return PROPERTY_LAUNCHER_DESTINATIONS.filter((destination) =>
     visiblePaths.has(destination.path)
   );
+}
+
+export function getHomePropertyLauncherShortcutPaths(
+  propertyId: string,
+  permissions: IPropertyPermissions
+): { label: string; path: string }[] {
+  return getVisiblePropertyLauncherDestinations(permissions)
+    .filter((destination) => destination.showOnHome)
+    .map((destination) => ({
+      label: destination.label,
+      path: buildPropertyShellTabPath(propertyId, destination),
+    }));
 }

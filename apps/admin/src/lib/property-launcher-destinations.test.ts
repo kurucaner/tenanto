@@ -4,7 +4,10 @@ import {
   derivePropertyPermissionsFromListItem,
   type IPropertyPermissions,
 } from "@/hooks/use-property-permissions";
-import { getVisiblePropertyLauncherDestinations } from "@/lib/property-launcher-destinations";
+import {
+  getHomePropertyLauncherShortcutPaths,
+  getVisiblePropertyLauncherDestinations,
+} from "@/lib/property-launcher-destinations";
 import type { IProperty } from "@/packages/shared";
 import { PropertyRole, UserType } from "@/packages/shared";
 
@@ -129,5 +132,32 @@ describe("getVisiblePropertyLauncherDestinations", () => {
 
     const destinations = getVisiblePropertyLauncherDestinations(permissions);
     expect(destinations.some((destination) => destination.path === "communications")).toBe(false);
+  });
+});
+
+describe("getHomePropertyLauncherShortcutPaths", () => {
+  test("owner gets operational shortcuts with correct tab routes", () => {
+    const permissions = derivePropertyPermissionsFromListItem(
+      makeListProperty({ callerRole: PropertyRole.OWNER }),
+      makeUser(ownerId, UserType.USER)
+    );
+
+    expect(getHomePropertyLauncherShortcutPaths(propertyId, permissions)).toEqual([
+      { label: "Units", path: "/properties/property-1/units" },
+      { label: "Leases", path: "/properties/property-1/leases" },
+      { label: "Income", path: "/properties/property-1/income" },
+      { label: "Expenses", path: "/properties/property-1/expenses" },
+    ]);
+  });
+
+  test("manager omits communications shortcuts", () => {
+    const permissions = derivePropertyPermissionsFromListItem(
+      makeListProperty({ callerRole: PropertyRole.MANAGER }),
+      makeUser(managerId, UserType.USER)
+    );
+
+    const shortcuts = getHomePropertyLauncherShortcutPaths(propertyId, permissions);
+    expect(shortcuts.some((shortcut) => shortcut.label === "Communications")).toBe(false);
+    expect(shortcuts).toHaveLength(4);
   });
 });
