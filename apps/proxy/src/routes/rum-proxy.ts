@@ -5,16 +5,6 @@ import { parseIngestTarget, type IngestTarget } from "../lib/parse-ingest-target
 
 const SENSITIVE_REQUEST_HEADERS = new Set(["authorization", "cookie", "set-cookie", "x-api-key"]);
 
-function getBodyByteLength(body: unknown): number {
-  if (body instanceof Buffer) {
-    return body.length;
-  }
-  if (body instanceof ArrayBuffer) {
-    return body.byteLength;
-  }
-  return 0;
-}
-
 function getClientIp(request: FastifyRequest): string {
   const forwarded = request.headers["x-forwarded-for"];
   if (typeof forwarded === "string" && forwarded.length > 0) {
@@ -108,8 +98,6 @@ export async function registerRumProxyRoutes(
   intakeOrigin: string
 ): Promise<void> {
   fastify.addHook("onRequest", async (request, _reply) => {
-    const pathname = request.url.split("?")[0] ?? "/";
-
     if (request.method === "OPTIONS") {
       return;
     }
