@@ -115,9 +115,9 @@ Client gating uses `hasHomeRecentCommunicationsSendAccess()` over the Home works
 
 **Files (3)**
 
-- [ ] Invalidate `homeRecentTenantEmailCampaigns` in [`apps/admin/src/lib/notification-stream-handlers.ts`](../apps/admin/src/lib/notification-stream-handlers.ts) on `tenant_email_campaign.updated` (especially terminal statuses)
-- [ ] Invalidate on successful create in [`apps/admin/src/components/communications/tenant-email-compose-card.tsx`](../apps/admin/src/components/communications/tenant-email-compose-card.tsx)
-- [ ] Extend [`apps/admin/src/lib/notification-stream-handlers.test.ts`](../apps/admin/src/lib/notification-stream-handlers.test.ts) — home query invalidated on campaign update
+- [x] Invalidate `homeRecentTenantEmailCampaigns` in [`apps/admin/src/lib/notification-stream-handlers.ts`](../apps/admin/src/lib/notification-stream-handlers.ts) on `tenant_email_campaign.updated` (especially terminal statuses)
+- [x] Invalidate on successful create in [`apps/admin/src/components/communications/tenant-email-compose-card.tsx`](../apps/admin/src/components/communications/tenant-email-compose-card.tsx)
+- [x] Extend [`apps/admin/src/lib/notification-stream-handlers.test.ts`](../apps/admin/src/lib/notification-stream-handlers.test.ts) — home query invalidated on campaign update
 
 **Exit criteria:** New send appears on Home after compose; completed send updates without full page reload.
 
