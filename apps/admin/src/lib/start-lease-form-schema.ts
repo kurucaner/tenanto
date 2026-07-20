@@ -113,7 +113,7 @@ export function applyStartLeaseStepValidationErrors(
     if (typeof field !== "string") {
       continue;
     }
-    if (!(field in START_LEASE_STEP_FIELDS[step])) {
+    if (!START_LEASE_STEP_FIELDS[step].includes(field as TStartLeaseFormField)) {
       continue;
     }
     form.setError(field as TStartLeaseFormField, { message: issue.message });
