@@ -12,11 +12,10 @@ import {
  * Prefill for Record Rent on a lease schedule month.
  * Each submission creates a new income line; partial payments for the same
  * `rentPeriodMonth` are additive and roll up to `paidRent` on the schedule.
- * `incomeLineTypeId` is resolved by the caller (typically `resolveLeaseIncomeLineTypeId`).
+ * Income type is resolved server-side for lease rent lines.
  */
 export function buildLeaseRecordRentPrefill(
   lease: Pick<IPropertyLongStay, "guestName" | "id" | "monthlyRent" | "unitId">,
-  incomeLineTypeId: string,
   options?: {
     expectedAmount?: number;
     month?: string;
@@ -34,7 +33,6 @@ export function buildLeaseRecordRentPrefill(
   return {
     amount: String(scheduleAmount ?? lease.monthlyRent),
     guestName: lease.guestName,
-    incomeLineTypeId,
     longStayId: lease.id,
     rentPeriodMonth: month,
     transactionDate: maxDate,

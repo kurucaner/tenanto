@@ -44,7 +44,6 @@ import {
   type IPropertyReservation,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
-  resolveLeaseIncomeLineTypeId,
 } from "@/packages/shared";
 
 export interface CreateIncomeLineDialogPrefill {
@@ -71,21 +70,31 @@ interface CreateIncomeLineDialogProps {
 
 const FIELD_ID_PREFIX = "income-line";
 
-const createIncomeLineSchema = z.object({
-  amount: requiredNonNegativeMoneyField("Amount"),
-  description: z.string(),
-  guestName: z.string(),
-  incomeLineTypeId: z.string().min(1, "Income type is required"),
-  longStayId: z.string(),
-  reservationId: z.string(),
-  transactionDate: z
-    .string()
-    .min(1, "Date is required")
-    .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
-      message: "Date cannot be in the future",
-    }),
-  unitId: z.string().min(1, "Unit is required"),
-});
+const createIncomeLineSchema = z
+  .object({
+    amount: requiredNonNegativeMoneyField("Amount"),
+    description: z.string(),
+    guestName: z.string(),
+    incomeLineTypeId: z.string(),
+    longStayId: z.string(),
+    reservationId: z.string(),
+    transactionDate: z
+      .string()
+      .min(1, "Date is required")
+      .refine((value) => isDateOnOrBefore(value, getTodayLocalIsoDate()), {
+        message: "Date cannot be in the future",
+      }),
+    unitId: z.string().min(1, "Unit is required"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.longStayId === "" && data.incomeLineTypeId.trim().length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Income type is required",
+        path: ["incomeLineTypeId"],
+      });
+    }
+  });
 
 type TCreateIncomeLineFormValues = z.infer<typeof createIncomeLineSchema>;
 
@@ -95,9 +104,7 @@ function getDefaultValues(
   lockedStay?: IPropertyReservation | null,
   lockedLease?: IPropertyLongStay | null
 ): TCreateIncomeLineFormValues {
-  const defaultIncomeLineTypeId = lockedLease
-    ? resolveLeaseIncomeLineTypeId(incomeLineTypes)
-    : resolveDefaultIncomeLineTypeId(incomeLineTypes);
+  const defaultIncomeLineTypeId = resolveDefaultIncomeLineTypeId(incomeLineTypes);
   const maxTransactionDate = getTodayLocalIsoDate();
   const rawTransactionDate = prefill?.transactionDate ?? maxTransactionDate;
 
@@ -105,7 +112,7 @@ function getDefaultValues(
     amount: prefill?.amount ?? (lockedLease ? String(lockedLease.monthlyRent) : ""),
     description: "",
     guestName: prefill?.guestName ?? lockedLease?.guestName ?? lockedStay?.guestName ?? "",
-    incomeLineTypeId: prefill?.incomeLineTypeId ?? defaultIncomeLineTypeId,
+    incomeLineTypeId: lockedLease ? "" : (prefill?.incomeLineTypeId ?? defaultIncomeLineTypeId),
     longStayId: prefill?.longStayId ?? lockedLease?.id ?? "",
     reservationId: prefill?.reservationId ?? lockedStay?.id ?? "",
     transactionDate: clampToMaxLocalIsoDate(rawTransactionDate, maxTransactionDate),
@@ -154,18 +161,27 @@ const CreateIncomeLineDialogForm = memo(
     const maxTransactionDate = getTodayLocalIsoDate();
 
     const mutation = useMutation({
-      mutationFn: (values: TCreateIncomeLineFormValues) =>
-        incomeLinesApi.create(propertyId, {
+      mutationFn: (values: TCreateIncomeLineFormValues) => {
+        const body = {
           amount: Number(values.amount) || 0,
           description: values.description.trim() || undefined,
           guestName: values.guestName.trim() || undefined,
-          incomeLineTypeId: values.incomeLineTypeId,
           longStayId: values.longStayId || undefined,
           rentPeriodMonth: prefill?.rentPeriodMonth,
           reservationId: values.reservationId || undefined,
           transactionDate: values.transactionDate,
           unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,
-        }),
+        };
+
+        if (!values.longStayId) {
+          return incomeLinesApi.create(propertyId, {
+            ...body,
+            incomeLineTypeId: values.incomeLineTypeId,
+          });
+        }
+
+        return incomeLinesApi.create(propertyId, body);
+      },
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to create income entry");
       },
@@ -193,23 +209,25 @@ const CreateIncomeLineDialogForm = memo(
         </DialogHeader>
 
         <DialogFormFields>
-          <Controller
-            control={form.control}
-            name="incomeLineTypeId"
-            render={({ field }) => (
-              <div className="flex flex-col gap-1.5">
-                <IncomeLineTypeField
-                  fieldIdPrefix={FIELD_ID_PREFIX}
-                  onChange={field.onChange}
-                  options={incomeLineTypeOptions}
-                  value={field.value}
-                />
-                {errors.incomeLineTypeId ? (
-                  <p className="text-xs text-destructive">{errors.incomeLineTypeId.message}</p>
-                ) : null}
-              </div>
-            )}
-          />
+          {!isRentRecording ? (
+            <Controller
+              control={form.control}
+              name="incomeLineTypeId"
+              render={({ field }) => (
+                <div className="flex flex-col gap-1.5">
+                  <IncomeLineTypeField
+                    fieldIdPrefix={FIELD_ID_PREFIX}
+                    onChange={field.onChange}
+                    options={incomeLineTypeOptions}
+                    value={field.value}
+                  />
+                  {errors.incomeLineTypeId ? (
+                    <p className="text-xs text-destructive">{errors.incomeLineTypeId.message}</p>
+                  ) : null}
+                </div>
+              )}
+            />
+          ) : null}
 
           <Controller
             control={form.control}
@@ -313,10 +331,12 @@ const CreateIncomeLineDialogForm = memo(
             )}
           />
 
-          <p className="text-muted-foreground text-xs">
-            {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel
-            commission applied.
-          </p>
+          {!isRentRecording ? (
+            <p className="text-muted-foreground text-xs">
+              {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel
+              commission applied.
+            </p>
+          ) : null}
         </DialogFormFields>
 
         <DialogFooter>

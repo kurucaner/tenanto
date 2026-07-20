@@ -27,7 +27,7 @@ import {
 } from "@/lib/lease-detail-tab-schema";
 import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import { queryKeys } from "@/lib/query-keys";
-import { formatPropertyUnitSelectLabel, resolveLeaseIncomeLineTypeId } from "@/packages/shared";
+import { formatPropertyUnitSelectLabel } from "@/packages/shared";
 
 export const PropertyLeaseDetailPage = memo(() => {
   const { leaseId, propertyId: routePropertyId } = useParams<{
@@ -77,11 +77,6 @@ export const PropertyLeaseDetailPage = memo(() => {
     return unit ? formatPropertyUnitSelectLabel(unit) : lease.unitId;
   }, [lease, unitsQuery.data?.units]);
 
-  const rentIncomeLineTypeId = useMemo(
-    () => resolveLeaseIncomeLineTypeId(settingsQuery.data?.settings.incomeLineTypes ?? []),
-    [settingsQuery.data?.settings.incomeLineTypes]
-  );
-
   const incomeLineTypes = useMemo(
     () => settingsQuery.data?.settings.incomeLineTypes ?? [],
     [settingsQuery.data?.settings.incomeLineTypes]
@@ -102,13 +97,13 @@ export const PropertyLeaseDetailPage = memo(() => {
         return;
       }
       setRecordRentPrefill(
-        buildLeaseRecordRentPrefill(lease, rentIncomeLineTypeId, {
+        buildLeaseRecordRentPrefill(lease, {
           month,
           rentSchedule,
         })
       );
     },
-    [lease, rentIncomeLineTypeId, rentSchedule]
+    [lease, rentSchedule]
   );
 
   const handleEndLeaseSuccess = useCallback(() => {
