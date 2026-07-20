@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { memo, type RefObject } from "react";
+import { memo, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { Controller, type FieldErrors, type UseFormReturn } from "react-hook-form";
 
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
@@ -256,6 +256,7 @@ interface StartLeaseFormProps {
   formRef: RefObject<HTMLFormElement | null>;
   guestName: string;
   isActiveLeasesPending: boolean;
+  isContinuing: boolean;
   isSubmitDisabled: boolean;
   isSubmitting: boolean;
   leaseEndDate: string | null;
@@ -280,6 +281,7 @@ export const StartLeaseForm = memo(
     formRef,
     guestName,
     isActiveLeasesPending,
+    isContinuing,
     isSubmitDisabled,
     isSubmitting,
     leaseEndDate,
@@ -298,11 +300,32 @@ export const StartLeaseForm = memo(
     const isFirstStep = currentStep === "who";
     const isLastStep = currentStep === "rent";
     const submitDisabled = mutationPending || isSubmitDisabled || isSubmitting;
+    const continueDisabled = mutationPending || isSubmitDisabled || isContinuing;
+
+    const handleFormKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
+      if (event.key !== "Enter" || event.defaultPrevented) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof HTMLTextAreaElement || target instanceof HTMLButtonElement) {
+        return;
+      }
+
+      event.preventDefault();
+      if (currentStep === "rent") {
+        void onSubmit();
+        return;
+      }
+      void onContinue();
+    };
 
     return (
       <form
         className="flex min-h-0 flex-1 flex-col"
         id={START_LEASE_FORM_ID}
+        noValidate
+        onKeyDown={handleFormKeyDown}
         onSubmit={onSubmit}
         ref={formRef}
       >
@@ -368,16 +391,18 @@ export const StartLeaseForm = memo(
               </Button>
             ) : null}
             {isLastStep ? (
-              <Button disabled={submitDisabled} type="submit">
+              <Button
+                disabled={submitDisabled}
+                onClick={() => {
+                  void onSubmit();
+                }}
+                type="button"
+              >
                 {mutationPending ? "Starting…" : "Start Lease"}
               </Button>
             ) : (
-              <Button
-                disabled={mutationPending || isSubmitDisabled}
-                onClick={onContinue}
-                type="button"
-              >
-                Continue
+              <Button disabled={continueDisabled} onClick={onContinue} type="button">
+                {isContinuing ? "Continuing…" : "Continue"}
               </Button>
             )}
           </div>

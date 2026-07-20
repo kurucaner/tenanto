@@ -79,6 +79,7 @@ const PropertyStartLeaseFormLoaded = memo(
           formRef={startLeaseForm.formRef}
           guestName={startLeaseForm.guestName}
           isActiveLeasesPending={startLeaseForm.isActiveLeasesPending}
+          isContinuing={startLeaseForm.isContinuing}
           isSubmitDisabled={startLeaseForm.isSubmitDisabled}
           isSubmitting={startLeaseForm.isSubmitting}
           leaseEndDate={startLeaseForm.leaseEndDate}

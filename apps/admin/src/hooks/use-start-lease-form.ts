@@ -20,9 +20,10 @@ import {
 } from "@/lib/start-lease-draft-storage";
 import { resolveStartLeaseInitialState } from "@/lib/start-lease-form-init";
 import {
-  START_LEASE_STEP_FIELDS,
+  applyStartLeaseStepValidationErrors,
   startLeaseSchema,
   type TStartLeaseFormValues,
+  validateStartLeaseStep,
 } from "@/lib/start-lease-form-schema";
 import { resolveStartLeaseLockedUnit } from "@/lib/start-lease-locked-unit";
 import {
@@ -66,7 +67,8 @@ export function useStartLeaseForm({
     [initialStep, lockedUnitId, propertyId, stepFromUrl]
   );
 
-  const [currentStep, setCurrentStepState] = useState<TStartLeaseStep>(initialState.step);
+  const [currentStep, setCurrentStep] = useState<TStartLeaseStep>(initialState.step);
+  const [isContinuing, setIsContinuing] = useState(false);
 
   const { activeLeases, isPending: isActiveLeasesPending } = usePropertyActiveLeases(propertyId);
 
@@ -95,11 +97,11 @@ export function useStartLeaseForm({
     defaultValues: initialState.values,
     resolver: zodResolver(startLeaseSchema),
   });
-  const { getValues, handleSubmit, trigger, watch } = form;
+  const { clearErrors, getValues, handleSubmit, watch } = form;
 
-  const setCurrentStep = useCallback(
+  const _setCurrentStep = useCallback(
     (step: TStartLeaseStep) => {
-      setCurrentStepState(step);
+      setCurrentStep(step);
       onStepChange(step);
     },
     [onStepChange]
@@ -226,26 +228,38 @@ export function useStartLeaseForm({
 
   const goToStep = useCallback(
     (step: TStartLeaseStep) => {
-      setCurrentStep(step);
+      clearErrors();
+      _setCurrentStep(step);
       flushDraft(step);
     },
-    [flushDraft, setCurrentStep]
+    [clearErrors, flushDraft, _setCurrentStep]
   );
 
   const onContinue = useCallback(async () => {
-    const fields = START_LEASE_STEP_FIELDS[currentStep];
-    const valid = await trigger([...fields]);
-    if (!valid) {
-      toast.error("Fix the highlighted fields");
-      scrollFormToFirstError(formRef.current, currentStep);
+    if (isContinuing) {
       return;
     }
-    const next = getNextStartLeaseStep(currentStep);
-    if (!next) {
-      return;
+
+    setIsContinuing(true);
+    try {
+      const values = getValues();
+      const result = validateStartLeaseStep(currentStep, values);
+      if (!result.success) {
+        applyStartLeaseStepValidationErrors(form, currentStep, result.error);
+        toast.error("Fix the highlighted fields");
+        scrollFormToFirstError(formRef.current, currentStep);
+        return;
+      }
+
+      const next = getNextStartLeaseStep(currentStep);
+      if (!next) {
+        return;
+      }
+      goToStep(next);
+    } finally {
+      setIsContinuing(false);
     }
-    goToStep(next);
-  }, [currentStep, trigger, goToStep]);
+  }, [currentStep, form, getValues, goToStep, isContinuing]);
 
   const onBack = useCallback(() => {
     const previous = getPreviousStartLeaseStep(currentStep);
@@ -265,6 +279,7 @@ export function useStartLeaseForm({
     goToStep,
     guestName,
     isActiveLeasesPending,
+    isContinuing,
     isSubmitDisabled,
     isSubmitting: form.formState.isSubmitting,
     leaseEndDate,
