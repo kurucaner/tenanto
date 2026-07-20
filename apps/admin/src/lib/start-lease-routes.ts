@@ -1,7 +1,4 @@
-import {
-  parseStartLeaseStep,
-  type TStartLeaseStep,
-} from "@/lib/start-lease-steps";
+import { parseStartLeaseStep, type TStartLeaseStep } from "@/lib/start-lease-steps";
 
 export type TStartLeaseFrom = "leases" | "units";
 

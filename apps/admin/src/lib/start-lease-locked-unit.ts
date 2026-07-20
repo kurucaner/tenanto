@@ -1,8 +1,4 @@
-import {
-  type IPropertyLongStay,
-  type IPropertyUnit,
-  UnitRentalType,
-} from "@/packages/shared";
+import { type IPropertyLongStay, type IPropertyUnit, UnitRentalType } from "@/packages/shared";
 
 export function resolveStartLeaseLockedUnit(input: {
   activeLeases: IPropertyLongStay[];

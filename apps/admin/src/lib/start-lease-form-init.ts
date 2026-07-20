@@ -1,7 +1,4 @@
-import {
-  getStartLeaseDraftUnitScope,
-  readStartLeaseDraft,
-} from "@/lib/start-lease-draft-storage";
+import { getStartLeaseDraftUnitScope, readStartLeaseDraft } from "@/lib/start-lease-draft-storage";
 import { getStartLeaseDefaultValues } from "@/lib/start-lease-form-schema";
 import { type TStartLeaseStep } from "@/lib/start-lease-steps";
 
@@ -28,9 +25,7 @@ export function resolveStartLeaseInitialState(options: {
     values.unitId = lockedUnitId;
   }
 
-  const step = options.stepFromUrl
-    ? options.initialStep
-    : (draft?.step ?? options.initialStep);
+  const step = options.stepFromUrl ? options.initialStep : (draft?.step ?? options.initialStep);
 
   return { step, values };
 }

@@ -7,10 +7,7 @@ import {
   resolveExtendLeaseEndDate,
 } from "@/packages/shared";
 
-import {
-  getInitialLeaseTermEndValues,
-  resolveLeaseTermEndPreview,
-} from "./lease-term-end-fields";
+import { getInitialLeaseTermEndValues, resolveLeaseTermEndPreview } from "./lease-term-end-fields";
 
 describe("admin lease term end previews", () => {
   test("start lease months mode preview ends Jun 30, 2027 for Jul 1 start and 12 months", () => {
@@ -33,9 +30,9 @@ describe("admin lease term end previews", () => {
       termMonths: 12,
     };
 
-    expect(
-      resolveExtendLeaseEndDate(lease, { additionalTermMonths: 6 }).newLeaseEndDate
-    ).toBe("2027-12-31");
+    expect(resolveExtendLeaseEndDate(lease, { additionalTermMonths: 6 }).newLeaseEndDate).toBe(
+      "2027-12-31"
+    );
     expect(formatIsoDateDisplay("2027-12-31")).toBe("12/31/2027");
   });
 

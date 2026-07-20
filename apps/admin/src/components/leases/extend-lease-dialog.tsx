@@ -110,7 +110,9 @@ export const ExtendLeaseDialog = memo(
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: error,
-                path: [values.extendMode === "customEnd" ? "newLeaseEndDate" : "additionalTermMonths"],
+                path: [
+                  values.extendMode === "customEnd" ? "newLeaseEndDate" : "additionalTermMonths",
+                ],
               });
             }
 
@@ -245,8 +247,8 @@ export const ExtendLeaseDialog = memo(
           <DialogHeader>
             <DialogTitle>Extend Lease</DialogTitle>
             <DialogDescription>
-              Extend {lease.guestName}&apos;s lease from the current contract end. You can optionally
-              set a new monthly rent for the extension period.
+              Extend {lease.guestName}&apos;s lease from the current contract end. You can
+              optionally set a new monthly rent for the extension period.
             </DialogDescription>
           </DialogHeader>
 
@@ -254,7 +256,9 @@ export const ExtendLeaseDialog = memo(
             <DialogFormFields>
               <RadioGroupFieldset
                 legend="Extension length"
-                onValueChange={(value) => form.setValue("extendMode", value as LeaseExtendInputMode)}
+                onValueChange={(value) =>
+                  form.setValue("extendMode", value as LeaseExtendInputMode)
+                }
                 value={extendMode}
               >
                 <RadioOption label="Additional months" value="months">
@@ -266,7 +270,9 @@ export const ExtendLeaseDialog = memo(
                       onChange={(event) => {
                         const nextValue = event.target.value;
                         if (nextValue === "" || isValidIntegerInput(nextValue)) {
-                          form.setValue("additionalTermMonths", nextValue, { shouldValidate: true });
+                          form.setValue("additionalTermMonths", nextValue, {
+                            shouldValidate: true,
+                          });
                         }
                       }}
                       value={additionalTermMonths}
@@ -284,7 +290,9 @@ export const ExtendLeaseDialog = memo(
                       disabled={extendMode !== "customEnd"}
                       id="extend-lease-end-date"
                       onChange={(event) =>
-                        form.setValue("newLeaseEndDate", event.target.value, { shouldValidate: true })
+                        form.setValue("newLeaseEndDate", event.target.value, {
+                          shouldValidate: true,
+                        })
                       }
                       type="date"
                       value={newLeaseEndDateValue}

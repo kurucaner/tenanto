@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { LeaseErrorCode } from "@/errors/lease-errors";
 import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
-import { MAX_SECONDARY_OCCUPANTS, TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
+import {
+  MAX_SECONDARY_OCCUPANTS,
+  TenantMembershipRole,
+  TenantMembershipStatus,
+} from "@/packages/shared";
 import {
   makeLease,
   makeListedMembership,

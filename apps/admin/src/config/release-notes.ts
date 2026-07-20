@@ -57,8 +57,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
     id: "2026.15.0",
     publishedAt: "2026-07-20",
-    summary:
-      "Start lease is a three-step wizard that remembers your progress if you refresh.",
+    summary: "Start lease is a three-step wizard that remembers your progress if you refresh.",
     version: "2026.15.0",
   },
   {
