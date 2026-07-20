@@ -14,38 +14,13 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getNavItemsForRole, isAdminNavActive } from "@/config/admin-nav";
 import { authApi } from "@/lib/api-client";
 import { clearAppSession } from "@/lib/clear-app-session";
-import { APP_NAME, UserType } from "@/packages/shared";
+import { UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
-
-const BrandLink = memo(() => {
-  return (
-    <Link
-      aria-label={`${APP_NAME} — home`}
-      className="group flex min-w-0 w-full items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:py-1"
-      to="/home"
-    >
-      <img
-        alt=""
-        aria-hidden
-        className="size-8 min-h-8 min-w-8 max-w-none shrink-0 rounded-md object-contain transition-opacity group-hover:opacity-90"
-        height={32}
-        src="/brand-icon.webp"
-        width={32}
-        loading="eager"
-      />
-      <span className="min-w-0 truncate font-display text-lg font-semibold tracking-tight text-sidebar-foreground transition-colors group-hover:text-sidebar-primary group-data-[collapsible=icon]:sr-only">
-        {APP_NAME}
-      </span>
-    </Link>
-  );
-});
-BrandLink.displayName = "BrandLink";
 
 const DashboardSidebarInner = memo(() => {
   const { isMobile, setOpenMobile } = useSidebar();
@@ -101,14 +76,6 @@ const DashboardSidebarInner = memo(() => {
       </SidebarContent>
       <SidebarWhatsChanged />
       <SidebarFooter className="gap-2 p-2">
-        <div className="flex min-w-0 flex-col gap-1 rounded-lg border border-sidebar-border/70 px-2.5 py-2 group-data-[collapsible=icon]:hidden">
-          <span className="truncate text-xs font-medium text-sidebar-foreground">
-            {user?.email ?? "—"}
-          </span>
-          <span className="text-[0.65rem] tracking-wider text-muted-foreground">
-            Version {import.meta.env.VITE_APP_VERSION}
-          </span>
-        </div>
         <Button
           className="w-full gap-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0"
           onClick={handleLogout}
@@ -120,7 +87,6 @@ const DashboardSidebarInner = memo(() => {
           <span className="group-data-[collapsible=icon]:sr-only">Log out</span>
         </Button>
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 });
