@@ -174,6 +174,7 @@ export {
   type IPropertyIncomeLineTypeInput,
   isRentIncomeLineType,
   resolveDefaultIncomeLineTypeId,
+  resolveLeaseIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
 } from "./property-income-line-type-config";
 

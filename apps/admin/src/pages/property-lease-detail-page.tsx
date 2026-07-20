@@ -27,7 +27,7 @@ import {
 } from "@/lib/lease-detail-tab-schema";
 import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import { queryKeys } from "@/lib/query-keys";
-import { formatPropertyUnitSelectLabel, resolveRentIncomeLineTypeId } from "@/packages/shared";
+import { formatPropertyUnitSelectLabel, resolveLeaseIncomeLineTypeId } from "@/packages/shared";
 
 export const PropertyLeaseDetailPage = memo(() => {
   const { leaseId, propertyId: routePropertyId } = useParams<{
@@ -78,7 +78,7 @@ export const PropertyLeaseDetailPage = memo(() => {
   }, [lease, unitsQuery.data?.units]);
 
   const rentIncomeLineTypeId = useMemo(
-    () => resolveRentIncomeLineTypeId(settingsQuery.data?.settings.incomeLineTypes ?? []),
+    () => resolveLeaseIncomeLineTypeId(settingsQuery.data?.settings.incomeLineTypes ?? []),
     [settingsQuery.data?.settings.incomeLineTypes]
   );
 

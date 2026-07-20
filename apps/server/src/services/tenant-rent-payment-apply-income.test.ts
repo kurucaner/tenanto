@@ -70,7 +70,6 @@ mock.module("@/db/tenant-rent-payments", () => ({
 
 const { applyIncomeForFullyCoveredMonths } = await import("./tenant-rent-payment-service");
 
-
 describe("applyIncomeForFullyCoveredMonths", () => {
   beforeEach(() => {
     mockListAllocations.mockClear();
@@ -106,15 +105,43 @@ describe("applyIncomeForFullyCoveredMonths", () => {
   });
 
   test("creates income with tenantRentPaymentId when month is fully covered", async () => {
-    await applyIncomeForFullyCoveredMonths(makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" }));
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_1",
+        stripePaymentIntentId: "pi_1",
+      })
+    );
 
     expect(mockCreateIncomeLine).toHaveBeenCalledTimes(1);
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
+        incomeLineTypeId: "type-rent",
         longStayId: "lease-1",
         rentPeriodMonth: "2026-01",
         tenantRentPaymentId: "payment-1",
+      }),
+      expect.any(Object)
+    );
+  });
+
+  test("falls back to first income line type when Rent name is absent", async () => {
+    mockFindIncomeLineTypes.mockResolvedValueOnce([{ id: "type-clean", name: "Extra cleaning" }]);
+
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_1",
+        stripePaymentIntentId: "pi_1",
+      })
+    );
+
+    expect(mockCreateIncomeLine).toHaveBeenCalledWith(
+      "property-1",
+      expect.objectContaining({
+        incomeLineTypeId: "type-clean",
+        longStayId: "lease-1",
       }),
       expect.any(Object)
     );
@@ -131,7 +158,13 @@ describe("applyIncomeForFullyCoveredMonths", () => {
       },
     ]);
 
-    await applyIncomeForFullyCoveredMonths(makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" }));
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_1",
+        stripePaymentIntentId: "pi_1",
+      })
+    );
 
     expect(mockCreateIncomeLine).not.toHaveBeenCalled();
   });

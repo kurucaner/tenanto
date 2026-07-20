@@ -12,7 +12,6 @@ import {
   type ICreatePropertyIncomeLineBody,
   type IPropertyIncomeLine,
   type IRefundLedgerEntryBody,
-  isRentIncomeLineType,
   type IUpdatePropertyIncomeLineBody,
 } from "@/packages/shared";
 import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications";
@@ -490,7 +489,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         computed
       );
 
-      if (longStayId && isRentIncomeLineType(incomeLineType)) {
+      if (longStayId) {
         void notifyPrimaryTenantRentRecorded({
           amount: parsed.body.amount,
           longStayId,

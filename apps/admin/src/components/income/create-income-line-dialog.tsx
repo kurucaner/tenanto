@@ -44,7 +44,7 @@ import {
   type IPropertyReservation,
   type IPropertyUnit,
   resolveDefaultIncomeLineTypeId,
-  resolveRentIncomeLineTypeId,
+  resolveLeaseIncomeLineTypeId,
 } from "@/packages/shared";
 
 export interface CreateIncomeLineDialogPrefill {
@@ -96,7 +96,7 @@ function getDefaultValues(
   lockedLease?: IPropertyLongStay | null
 ): TCreateIncomeLineFormValues {
   const defaultIncomeLineTypeId = lockedLease
-    ? resolveRentIncomeLineTypeId(incomeLineTypes)
+    ? resolveLeaseIncomeLineTypeId(incomeLineTypes)
     : resolveDefaultIncomeLineTypeId(incomeLineTypes);
   const maxTransactionDate = getTodayLocalIsoDate();
   const rawTransactionDate = prefill?.transactionDate ?? maxTransactionDate;
