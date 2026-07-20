@@ -243,9 +243,9 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 4a — Remove charts from Home (3 files)
 
-- [ ] Remove `HomeFinancialOverview` usage from [`apps/admin/src/pages/home-page.tsx`](../apps/admin/src/pages/home-page.tsx) (component file may remain for `/reports` reuse)
-- [ ] Optional: extend [`apps/admin/src/components/home/home-portfolio-reports-link.tsx`](../apps/admin/src/components/home/home-portfolio-reports-link.tsx) with one-line KPI from `homeApi.financialOverview` (no Recharts)
-- [ ] Verify [`apps/admin/src/lib/query-keys.ts`](../apps/admin/src/lib/query-keys.ts) — drop unused home overview key from Home critical path if applicable
+- [x] Remove `HomeFinancialOverview` usage from [`apps/admin/src/pages/home-page.tsx`](../apps/admin/src/pages/home-page.tsx) (component file may remain for `/reports` reuse)
+- [x] Optional: extend [`apps/admin/src/components/home/home-portfolio-reports-link.tsx`](../apps/admin/src/components/home/home-portfolio-reports-link.tsx) with one-line KPI from `homeApi.financialOverview` (no Recharts)
+- [x] Verify [`apps/admin/src/lib/query-keys.ts`](../apps/admin/src/lib/query-keys.ts) — drop unused home overview key from Home critical path if applicable
 
 **Exit criteria:** Home does not load Recharts bundle on first paint.
 
