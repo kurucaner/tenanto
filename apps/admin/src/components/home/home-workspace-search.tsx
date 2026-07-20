@@ -58,16 +58,16 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
         className="overflow-visible rounded-xl border border-border/80 bg-card/50 shadow-sm **:data-[slot=command-input-wrapper]:border-0 **:data-[slot=command-input-wrapper]:px-3"
         shouldFilter={false}
       >
-        <div className="flex items-center gap-2 pe-3">
+        <div className="relative">
           <CommandInput
-            className="h-11"
+            className="h-11 pe-16"
             onBlur={() => setIsFocused(false)}
             onFocus={() => setIsFocused(true)}
             onValueChange={searchState.setSearch}
             placeholder="Search"
             value={searchState.search}
           />
-          <div className="flex shrink-0 items-center gap-1 pb-px">
+          <div className="pointer-events-none absolute inset-y-0 end-3 flex items-center gap-1">
             <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border/80 bg-muted/50 px-1 text-[10px] font-medium text-muted-foreground">
               {isMac ? "⌘" : "Ctrl"}
             </kbd>
