@@ -17,7 +17,7 @@ function UrlSyncedTabsInner<T extends string>({
   listClassName,
   onTabChange,
   tabs,
-}: UrlSyncedTabsProps<T>) {
+}: Readonly<UrlSyncedTabsProps<T>>) {
   return (
     <Tabs onValueChange={(value) => onTabChange(value as T)} value={activeTab}>
       <TabsList className={listClassName}>
