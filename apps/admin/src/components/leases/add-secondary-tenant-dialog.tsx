@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
-  tenantContactFormSchema,
+  createTenantContactFormSchema,
   toSecondaryOccupantBody,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
@@ -30,6 +30,7 @@ interface AddSecondaryTenantDialogProps {
   lease: IPropertyLongStay;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  primaryTenantEmail: string | null;
   propertyId: string;
   secondaryOccupantCount: number;
 }
@@ -39,6 +40,7 @@ export const AddSecondaryTenantDialog = memo(
     lease,
     onOpenChange,
     open,
+    primaryTenantEmail,
     propertyId,
     secondaryOccupantCount,
   }: AddSecondaryTenantDialogProps) => {
@@ -46,7 +48,9 @@ export const AddSecondaryTenantDialog = memo(
 
     const form = useForm<TTenantContactFormValues>({
       defaultValues: { name: "", tenantEmail: "", tenantPhone: "" },
-      resolver: zodResolver(tenantContactFormSchema),
+      resolver: zodResolver(
+        createTenantContactFormSchema({ blockedEmails: [primaryTenantEmail] })
+      ),
     });
 
     const mutation = useMutation({

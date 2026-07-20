@@ -6,8 +6,8 @@ import { toast } from "sonner";
 
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
+  createTenantContactFormSchema,
   tenantContactFormDefaults,
-  tenantContactFormSchema,
   toSecondaryOccupantPatch,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
@@ -35,6 +35,7 @@ interface EditSecondaryTenantDialogProps {
   membershipId: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  primaryTenantEmail: string | null;
   propertyId: string;
 }
 
@@ -46,6 +47,7 @@ export const EditSecondaryTenantDialog = memo(
     membershipId,
     onOpenChange,
     open,
+    primaryTenantEmail,
     propertyId,
   }: EditSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
@@ -56,7 +58,9 @@ export const EditSecondaryTenantDialog = memo(
         name: contact.effectiveName,
         phone: contact.effectivePhone,
       }),
-      resolver: zodResolver(tenantContactFormSchema),
+      resolver: zodResolver(
+        createTenantContactFormSchema({ blockedEmails: [primaryTenantEmail] })
+      ),
     });
 
     useEffect(() => {

@@ -526,6 +526,7 @@ export const LeaseTenantsSection = memo(
             lease={lease}
             onOpenChange={setAddSecondaryOpen}
             open={true}
+            primaryTenantEmail={primaryTenantContact.effectiveEmail}
             propertyId={propertyId}
             secondaryOccupantCount={secondaryTenantContacts.length}
           />
@@ -551,6 +552,7 @@ export const LeaseTenantsSection = memo(
             membershipId={editingSecondary.membershipId}
             onOpenChange={handleEditSecondaryDialogOpenChange}
             open={true}
+            primaryTenantEmail={primaryTenantContact.effectiveEmail}
             propertyId={propertyId}
           />
         ) : null}

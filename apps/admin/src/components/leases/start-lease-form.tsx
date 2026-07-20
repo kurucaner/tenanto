@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { memo, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, memo, type RefObject } from "react";
 import { Controller, type FieldErrors, type UseFormReturn } from "react-hook-form";
 
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
@@ -121,7 +121,11 @@ const WhoStep = memo(
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="start-lease-tenant-name">Name</Label>
-            <Input autoFocus={autoFocusName} id="start-lease-tenant-name" {...form.register("guestName")} />
+            <Input
+              autoFocus={autoFocusName}
+              id="start-lease-tenant-name"
+              {...form.register("guestName")}
+            />
             {errors.guestName ? (
               <p className="text-destructive text-xs">{errors.guestName.message}</p>
             ) : null}

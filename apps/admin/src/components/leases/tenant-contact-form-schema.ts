@@ -7,6 +7,7 @@ import {
   isValidE164,
   isValidTenantEmail,
   type IUpdateSecondaryOccupantBody,
+  normalizeTenantEmail,
   normalizeToE164,
 } from "@/packages/shared";
 
@@ -27,6 +28,42 @@ export const tenantContactFormSchema = z.object({
 });
 
 export type TTenantContactFormValues = z.infer<typeof tenantContactFormSchema>;
+
+function buildBlockedEmailSet(
+  blockedEmails: readonly (string | null | undefined)[] | undefined
+): Set<string> {
+  const blocked = new Set<string>();
+  for (const email of blockedEmails ?? []) {
+    if (email?.trim()) {
+      blocked.add(normalizeTenantEmail(email));
+    }
+  }
+  return blocked;
+}
+
+export function createTenantContactFormSchema(options?: {
+  blockedEmails?: readonly (string | null | undefined)[];
+}) {
+  const blocked = buildBlockedEmailSet(options?.blockedEmails);
+  if (blocked.size === 0) {
+    return tenantContactFormSchema;
+  }
+
+  return tenantContactFormSchema.superRefine((values, ctx) => {
+    const trimmed = values.tenantEmail.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    if (blocked.has(normalizeTenantEmail(trimmed))) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Email cannot match the primary tenant's email",
+        path: ["tenantEmail"],
+      });
+    }
+  });
+}
 
 function normalizeTenantPhone(value: string): string | null {
   return normalizeToE164(value.trim()) ?? null;

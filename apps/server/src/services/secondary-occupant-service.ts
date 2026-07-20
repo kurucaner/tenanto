@@ -4,6 +4,7 @@ import {
   linkedTenantContactError,
   longStayNotActiveError,
   maxSecondaryOccupantsError,
+  secondaryOccupantEmailMatchesPrimaryError,
   secondaryOccupantNotFoundError,
 } from "@/errors/lease-errors";
 import {
@@ -21,6 +22,7 @@ import {
   type TTenantMembershipStatus,
 } from "@/packages/shared";
 
+import { resolvePrimaryTenantContactForLongStay } from "./lease-primary-tenant-contact-service";
 import { buildSecondaryOccupantMutationResponse } from "./resolve-secondary-tenant-contacts-service";
 import {
   LINKED_TENANT_EMAIL_CHANGE_MESSAGE,
@@ -47,6 +49,25 @@ function normalizeNullablePhone(phone: string | null | undefined): string | null
 
 function hasSecondaryContactPatch(patch: IUpdateSecondaryOccupantBody): boolean {
   return patch.email !== undefined || patch.name !== undefined || patch.phone !== undefined;
+}
+
+async function assertSecondaryEmailDoesNotMatchPrimary(
+  lease: IPropertyLongStay,
+  inviteEmail: string | null
+): Promise<void> {
+  if (inviteEmail == null) {
+    return;
+  }
+
+  const primary = await resolvePrimaryTenantContactForLongStay(lease);
+  const primaryEmail = primary.effectiveEmail?.trim();
+  if (!primaryEmail) {
+    return;
+  }
+
+  if (normalizeTenantEmail(primaryEmail) === normalizeTenantEmail(inviteEmail)) {
+    throw secondaryOccupantEmailMatchesPrimaryError();
+  }
 }
 
 function assertLinkedEmailUnchanged(
@@ -179,6 +200,7 @@ export async function createSecondaryOccupant(input: {
   }
 
   const inviteEmail = normalizeOptionalInviteEmail(input.body.email);
+  await assertSecondaryEmailDoesNotMatchPrimary(input.lease, inviteEmail);
   const membership = await leaseTenantMembershipsDb.createListedSecondary({
     contactPhone: normalizeNullablePhone(input.body.phone),
     displayName: input.body.name.trim(),
@@ -202,6 +224,12 @@ export async function updateSecondaryOccupant(input: {
   }
 
   const membership = await loadSecondaryMembershipForLease(input.lease.id, input.membershipId);
+  if (input.body.email !== undefined) {
+    await assertSecondaryEmailDoesNotMatchPrimary(
+      input.lease,
+      normalizeOptionalInviteEmail(input.body.email)
+    );
+  }
   const tenantUser =
     membership.tenantUserId != null ? await tenantUsersDb.findById(membership.tenantUserId) : null;
   const resolved = resolveSecondaryTenantContact(membership, tenantUser);
