@@ -14,17 +14,12 @@ import { LeasePaymentsSection } from "@/components/leases/lease-payments-section
 import { LeaseTenantsSection } from "@/components/leases/lease-tenants-section";
 import { LeaseTermsSection } from "@/components/leases/lease-terms-section";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlSyncedTabs, UrlSyncedTabsContent } from "@/components/url-synced-tabs";
 import { usePropertyLongStayDetail } from "@/hooks/use-property-long-stay-detail";
 import { usePropertyShell } from "@/hooks/use-property-shell";
-import { useUrlFilterState } from "@/hooks/use-url-filter-state";
+import { useUrlTabState } from "@/hooks/use-url-tab-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
-import {
-  LEASE_DETAIL_TAB_LABELS,
-  LEASE_DETAIL_TAB_URL_SCHEMA,
-  LEASE_DETAIL_TABS,
-  resolveLeaseDetailTab,
-} from "@/lib/lease-detail-tab-schema";
+import { LEASE_DETAIL_TAB_DEFINITIONS, LEASE_DETAIL_TABS } from "@/lib/lease-detail-tab-schema";
 import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import { queryKeys } from "@/lib/query-keys";
 import { formatPropertyUnitSelectLabel } from "@/packages/shared";
@@ -38,8 +33,7 @@ export const PropertyLeaseDetailPage = memo(() => {
   const propertyId = routePropertyId ?? shellPropertyId;
   const canManage = permissions.canManageLedger;
 
-  const { filters, setFilter } = useUrlFilterState(LEASE_DETAIL_TAB_URL_SCHEMA);
-  const activeTab = resolveLeaseDetailTab(filters.tab);
+  const { activeTab, setActiveTab } = useUrlTabState(LEASE_DETAIL_TABS, "overview");
 
   const [endLeaseOpen, setEndLeaseOpen] = useState(false);
   const [extendLeaseOpen, setExtendLeaseOpen] = useState(false);
@@ -83,13 +77,6 @@ export const PropertyLeaseDetailPage = memo(() => {
   );
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
-
-  const handleTabChange = useCallback(
-    (value: string) => {
-      setFilter("tab", value);
-    },
-    [setFilter]
-  );
 
   const handleRecordRent = useCallback(
     (month?: string) => {
@@ -158,20 +145,16 @@ export const PropertyLeaseDetailPage = memo(() => {
 
         <LeaseDetailHeader currentRent={currentRent} lease={lease} unitLabel={unitLabel} />
 
-        <Tabs onValueChange={handleTabChange} value={activeTab}>
-          <TabsList>
-            {LEASE_DETAIL_TABS.map((tab) => (
-              <TabsTrigger key={tab} value={tab}>
-                {LEASE_DETAIL_TAB_LABELS[tab]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <TabsContent value="overview">
+        <UrlSyncedTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          tabs={LEASE_DETAIL_TAB_DEFINITIONS}
+        >
+          <UrlSyncedTabsContent value="overview">
             <LeaseOverviewSection currentRent={currentRent} lease={lease} />
-          </TabsContent>
+          </UrlSyncedTabsContent>
 
-          <TabsContent value="tenants">
+          <UrlSyncedTabsContent value="tenants">
             <LeaseTenantsSection
               canManage={canManage}
               lease={lease}
@@ -179,9 +162,9 @@ export const PropertyLeaseDetailPage = memo(() => {
               propertyId={propertyId}
               secondaryTenantContacts={secondaryTenantContacts}
             />
-          </TabsContent>
+          </UrlSyncedTabsContent>
 
-          <TabsContent value="payments">
+          <UrlSyncedTabsContent value="payments">
             <LeasePaymentsSection
               canManage={canManage}
               isPending={isPending}
@@ -189,9 +172,9 @@ export const PropertyLeaseDetailPage = memo(() => {
               onRecordRent={handleRecordRent}
               rentSchedule={rentSchedule}
             />
-          </TabsContent>
+          </UrlSyncedTabsContent>
 
-          <TabsContent value="terms">
+          <UrlSyncedTabsContent value="terms">
             <LeaseTermsSection
               canManage={canManage}
               lease={lease}
@@ -199,8 +182,8 @@ export const PropertyLeaseDetailPage = memo(() => {
               rentPeriods={rentPeriods}
               termsEditability={termsEditability}
             />
-          </TabsContent>
-        </Tabs>
+          </UrlSyncedTabsContent>
+        </UrlSyncedTabs>
       </div>
 
       {endLeaseOpen ? (

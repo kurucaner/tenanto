@@ -47,11 +47,6 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "improved",
         description:
-          "Removing an income or expense type from Settings archives it — past entries keep their label, and archived types no longer appear when recording new income or expenses.",
-      },
-      {
-        category: "improved",
-        description:
           "Recording rent from a lease no longer asks you to pick an income type — the amount and date are enough.",
       },
       {

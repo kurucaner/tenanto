@@ -10,8 +10,9 @@ import { PropertyTaxRatesCatalog } from "@/components/settings/property-tax-rate
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlSyncedTabs, UrlSyncedTabsContent } from "@/components/url-synced-tabs";
 import { usePropertySettingsListRowDelete } from "@/hooks/use-property-settings-list-row-delete";
+import { useUrlTabState } from "@/hooks/use-url-tab-state";
 import { settingsApi } from "@/lib/api-client";
 import {
   type PropertyChannelCommissionFormRow,
@@ -28,6 +29,10 @@ import {
   type TPropertySettingsListSection,
   validatePropertySettingsSection,
 } from "@/lib/property-settings-form-utils";
+import {
+  PROPERTY_SETTINGS_TAB_DEFINITIONS,
+  PROPERTY_SETTINGS_TABS,
+} from "@/lib/property-settings-tab-schema";
 import { queryKeys } from "@/lib/query-keys";
 import {
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
@@ -62,6 +67,7 @@ export const usePropertySettingsForm = ({
   const queryClient = useQueryClient();
   const savedForm = useMemo(() => settingsToFormState(settings), [settings]);
   const [form, setForm] = useState<TPropertySettingsFormState>(savedForm);
+  const { activeTab, setActiveTab } = useUrlTabState(PROPERTY_SETTINGS_TABS, "expenses");
 
   const parsePercent = (value: string): number | null => {
     const parsed = Number(value);
@@ -325,14 +331,12 @@ export const usePropertySettingsForm = ({
         </CardHeader>
         <Separator />
         <CardContent className="pt-4">
-          <Tabs defaultValue="expenses">
-            <TabsList>
-              <TabsTrigger value="expenses">Expenses</TabsTrigger>
-              <TabsTrigger value="income">Income</TabsTrigger>
-              <TabsTrigger value="taxes">Taxes</TabsTrigger>
-              <TabsTrigger value="channels">Channels</TabsTrigger>
-            </TabsList>
-            <TabsContent className="mt-4" value="expenses">
+          <UrlSyncedTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            tabs={PROPERTY_SETTINGS_TAB_DEFINITIONS}
+          >
+            <UrlSyncedTabsContent className="mt-4" value="expenses">
               <PropertyExpenseCategoriesCatalog
                 disabled={!canEdit}
                 expenseCategoryTypes={form.expenseCategoryTypes}
@@ -341,8 +345,8 @@ export const usePropertySettingsForm = ({
                 onDeleteRow={expenseDelete.handleDelete}
                 onUpsertRow={upsertExpenseCategory}
               />
-            </TabsContent>
-            <TabsContent className="mt-4" value="income">
+            </UrlSyncedTabsContent>
+            <UrlSyncedTabsContent className="mt-4" value="income">
               <PropertyIncomeLineTypesCatalog
                 disabled={!canEdit}
                 incomeLineTypes={form.incomeLineTypes}
@@ -351,8 +355,8 @@ export const usePropertySettingsForm = ({
                 onDeleteRow={incomeDelete.handleDelete}
                 onUpsertRow={upsertIncomeLineType}
               />
-            </TabsContent>
-            <TabsContent className="mt-4" value="taxes">
+            </UrlSyncedTabsContent>
+            <UrlSyncedTabsContent className="mt-4" value="taxes">
               <PropertyTaxRatesCatalog
                 description={taxDescription}
                 disabled={!canEdit}
@@ -362,8 +366,8 @@ export const usePropertySettingsForm = ({
                 onUpsertRow={upsertTaxRate}
                 taxRates={form.taxRates}
               />
-            </TabsContent>
-            <TabsContent className="mt-4" value="channels">
+            </UrlSyncedTabsContent>
+            <UrlSyncedTabsContent className="mt-4" value="channels">
               <PropertyChannelCommissionsCatalog
                 channelCommissions={form.channelCommissions}
                 disabled={!canEdit}
@@ -372,8 +376,8 @@ export const usePropertySettingsForm = ({
                 onDeleteRow={channelDelete.handleDelete}
                 onUpsertRow={upsertChannelCommission}
               />
-            </TabsContent>
-          </Tabs>
+            </UrlSyncedTabsContent>
+          </UrlSyncedTabs>
           {canEdit ? null : (
             <p className="text-muted-foreground mt-4 text-sm">
               Only property owners can edit these settings.
