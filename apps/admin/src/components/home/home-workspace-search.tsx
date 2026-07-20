@@ -53,11 +53,12 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
   };
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Escape" || searchState.search.length > 0) {
+    if (event.key !== "Escape") {
       return;
     }
 
     event.preventDefault();
+    searchState.resetSearch();
     event.currentTarget.blur();
   };
 
