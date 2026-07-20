@@ -1,3 +1,4 @@
+import { type FieldErrors } from "react-hook-form";
 import { z } from "zod";
 
 import { personNameSchema } from "@/packages/app-ui";
@@ -28,6 +29,17 @@ export const tenantContactFormSchema = z.object({
 });
 
 export type TTenantContactFormValues = z.infer<typeof tenantContactFormSchema>;
+
+export function getTenantContactFormErrorMessage(
+  errors: FieldErrors<TTenantContactFormValues>
+): string {
+  return (
+    errors.tenantEmail?.message ??
+    errors.name?.message ??
+    errors.tenantPhone?.message ??
+    "Fix the highlighted fields"
+  );
+}
 
 function buildBlockedEmailSet(
   blockedEmails: readonly (string | null | undefined)[] | undefined

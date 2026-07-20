@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test";
 
-import { createTenantContactFormSchema } from "@/components/leases/tenant-contact-form-schema";
+import { createTenantContactFormSchema, getTenantContactFormErrorMessage } from "@/components/leases/tenant-contact-form-schema";
+
+describe("getTenantContactFormErrorMessage", () => {
+  test("returns the first available field error message", () => {
+    expect(
+      getTenantContactFormErrorMessage({
+        tenantEmail: { message: "Email cannot match the primary tenant's email", type: "custom" },
+      })
+    ).toBe("Email cannot match the primary tenant's email");
+  });
+});
 
 describe("createTenantContactFormSchema", () => {
   test("rejects email that matches a blocked primary tenant email", () => {

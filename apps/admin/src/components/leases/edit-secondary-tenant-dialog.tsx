@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
   createTenantContactFormSchema,
+  getTenantContactFormErrorMessage,
   tenantContactFormDefaults,
   toSecondaryOccupantPatch,
   type TTenantContactFormValues,
@@ -110,9 +111,14 @@ export const EditSecondaryTenantDialog = memo(
       [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, onOpenChange]
     );
 
-    const onSubmit = form.handleSubmit((values) => {
-      mutation.mutate(values);
-    });
+    const onSubmit = form.handleSubmit(
+      (values) => {
+        mutation.mutate(values);
+      },
+      (fieldErrors) => {
+        toast.error(getTenantContactFormErrorMessage(fieldErrors));
+      }
+    );
 
     const { errors, isSubmitting } = form.formState;
 
