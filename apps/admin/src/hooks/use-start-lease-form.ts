@@ -200,10 +200,6 @@ export function useStartLeaseForm({
         toast.success(
           `Lease started. Portal invite sent to ${data.portalInvite.membership.inviteEmail}`
         );
-      } else if (data.portalInvite && !data.portalInvite.emailSent) {
-        toast.warning(
-          `Lease started but portal invite email failed to send: ${data.portalInvite.emailError ?? "Unknown error"}`
-        );
       } else {
         toast.success("Lease started");
       }
