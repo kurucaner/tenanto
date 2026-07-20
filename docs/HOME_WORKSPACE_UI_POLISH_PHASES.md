@@ -97,6 +97,10 @@ Visual-only redesign so admin **Home** feels like a modern command surface (dens
 - Do not change `property-launcher-destinations` or server contracts for this polish
 - Do not add framer-motion — stick to Tailwind animate utilities
 
+## Completion notes
+
+- **2026-07-20:** Home hub third column replaced **Suggested** nav shortcuts with **Recent Communications** (recent tenant email campaigns). See [`HOME_RECENT_COMMUNICATIONS_PHASES.md`](./HOME_RECENT_COMMUNICATIONS_PHASES.md).
+
 ## Safest sequencing
 
 1. Doc + greeting helper (no UI risk)

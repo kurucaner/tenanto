@@ -5,7 +5,7 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 **Related code today**
 
 - Home hub: [`apps/admin/src/components/home/home-workspace-hub.tsx`](../apps/admin/src/components/home/home-workspace-hub.tsx)
-- Suggested column (to replace): [`apps/admin/src/components/home/home-suggested-column.tsx`](../apps/admin/src/components/home/home-suggested-column.tsx)
+- Communications column: [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx)
 - Column shell: [`apps/admin/src/components/home/home-column-panel.tsx`](../apps/admin/src/components/home/home-column-panel.tsx)
 - Per-property campaigns API: [`apps/server/src/routes/admin/property-tenant-email-campaign-routes.ts`](../apps/server/src/routes/admin/property-tenant-email-campaign-routes.ts)
 - Campaign DB: [`apps/server/src/db/property-tenant-email-campaigns.ts`](../apps/server/src/db/property-tenant-email-campaigns.ts)
@@ -83,7 +83,7 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 **Files (2)**
 
 - [x] Add [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) — `Mail` icon, `{propertyName} / {subject}` truncate, optional status hint for `Sending` / `Queued`, skeleton + error/retry + empty states (mirror Properties column)
-- [x] Swap `<HomeSuggestedColumn />` → `<HomeCommunicationsColumn />` in [`apps/admin/src/components/home/home-workspace-hub.tsx`](../apps/admin/src/components/home/home-workspace-hub.tsx)
+- [x] Swap Suggested column → Communications column in [`apps/admin/src/components/home/home-workspace-hub.tsx`](../apps/admin/src/components/home/home-workspace-hub.tsx)
 
 **Exit criteria:** Home idle grid shows recent campaigns; row navigates to `/properties/{id}/communications?campaignId={id}`.
 
@@ -127,12 +127,11 @@ Client gating uses `hasHomeRecentCommunicationsSendAccess()` over the Home works
 
 **Files (4)**
 
-- [ ] Delete [`apps/admin/src/components/home/home-suggested-column.tsx`](../apps/admin/src/components/home/home-suggested-column.tsx)
-- [ ] Delete [`apps/admin/src/lib/home-suggested-nav-items.ts`](../apps/admin/src/lib/home-suggested-nav-items.ts)
-- [ ] Delete [`apps/admin/src/lib/home-suggested-nav-items.test.ts`](../apps/admin/src/lib/home-suggested-nav-items.test.ts)
-- [ ] Append completion note to [`docs/HOME_WORKSPACE_UI_POLISH_PHASES.md`](../docs/HOME_WORKSPACE_UI_POLISH_PHASES.md) — Suggested → Recent Communications
+- [x] Delete `apps/admin/src/components/home/home-suggested-column.tsx`
+- [x] Delete suggested nav items module + unit tests under `apps/admin/src/lib/`
+- [x] Append completion note to [`docs/HOME_WORKSPACE_UI_POLISH_PHASES.md`](../docs/HOME_WORKSPACE_UI_POLISH_PHASES.md) — Suggested → Recent Communications
 
-**Exit criteria:** `rg HomeSuggested|home-suggested-nav` returns zero hits; lint/build pass.
+**Exit criteria:** No remaining suggested-column code references; lint/build pass.
 
 ---
 
