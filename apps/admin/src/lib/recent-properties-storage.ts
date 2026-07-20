@@ -162,10 +162,3 @@ export function removeRecentProperty(id: string): void {
   }
   writeRecentProperties(next);
 }
-
-export function clearRecentProperties(): void {
-  if (readRecentProperties().length === 0) {
-    return;
-  }
-  writeRecentProperties([]);
-}
