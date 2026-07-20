@@ -163,14 +163,16 @@ WhoStep.displayName = "WhoStep";
 interface TermStepProps {
   errors: FieldErrors<TStartLeaseFormValues>;
   form: UseFormReturn<TStartLeaseFormValues>;
+  leaseEndDate: string | null;
 }
 
-const TermStep = memo(({ errors, form }: TermStepProps) => (
+const TermStep = memo(({ errors, form, leaseEndDate }: TermStepProps) => (
   <LeaseTermEndFields<TStartLeaseFormValues>
     control={form.control}
     endDateFieldId="start-lease-end-date"
     errors={errors}
     register={form.register}
+    resolvedEndDate={leaseEndDate}
     startDateFieldId="start-lease-start-date"
     termMonthsFieldId="start-lease-term-months"
   />
@@ -362,7 +364,7 @@ export const StartLeaseForm = memo(
               data-start-lease-step="term"
               hidden={currentStep !== "term"}
             >
-              <TermStep errors={errors} form={form} />
+              <TermStep errors={errors} form={form} leaseEndDate={leaseEndDate} />
             </section>
 
             <section

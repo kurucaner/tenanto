@@ -11,6 +11,7 @@ import { type z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
+import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import {
   isCustomLeaseEndDate,
@@ -31,6 +32,7 @@ type TLeaseTermEndFieldsProps<TFieldValues extends FieldValues & TLeaseTermEndFo
   endDateFieldId: string;
   errors: FieldErrors<TFieldValues>;
   register: UseFormRegister<TFieldValues>;
+  resolvedEndDate?: string | null;
   startDateFieldId: string;
   termMonthsFieldId: string;
 };
@@ -40,6 +42,7 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
   endDateFieldId,
   errors,
   register,
+  resolvedEndDate = null,
   startDateFieldId,
   termMonthsFieldId,
 }: TLeaseTermEndFieldsProps<TFieldValues>) {
@@ -88,6 +91,11 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
                 />
                 {errors.termMonths ? (
                   <p className="text-xs text-destructive">{String(errors.termMonths.message)}</p>
+                ) : null}
+                {termModeField.value === "months" && resolvedEndDate ? (
+                  <p className="text-muted-foreground text-sm">
+                    Lease ends {formatIsoDateDisplay(resolvedEndDate)}
+                  </p>
                 ) : null}
               </div>
             </RadioOption>
