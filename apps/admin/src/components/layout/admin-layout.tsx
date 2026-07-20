@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
@@ -13,6 +13,7 @@ import {
   MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
   MOBILE_ADMIN_SHELL_OVERFLOW_CLASS,
 } from "@/config/mobile-layout";
+import { HomeSearchFocusContext } from "@/contexts/home-search-focus-context";
 import { LayoutScrollContext } from "@/contexts/layout-scroll-context";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
 import { useGlobalCommandPalette } from "@/hooks/use-global-command-palette";
@@ -22,6 +23,18 @@ import { cn } from "@/lib/utils";
 
 const AdminLayoutInner = memo(() => {
   const resolvedDark = useResolvedAdminDark();
+  const focusHandlerRef = useRef<(() => void) | null>(null);
+  const homeSearchFocusValue = useMemo(
+    () => ({
+      focusSearch: () => {
+        focusHandlerRef.current?.();
+      },
+      registerFocusHandler: (handler: (() => void) | null) => {
+        focusHandlerRef.current = handler;
+      },
+    }),
+    []
+  );
   const { open: commandPaletteOpen, setOpen: setCommandPaletteOpen } = useGlobalCommandPalette();
   const [suppressToasts, setSuppressToasts] = useState(false);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
@@ -62,7 +75,9 @@ const AdminLayoutInner = memo(() => {
             ref={setScrollElement}
           >
             <LayoutScrollContext.Provider value={scrollElement}>
-              <Outlet />
+              <HomeSearchFocusContext.Provider value={homeSearchFocusValue}>
+                <Outlet />
+              </HomeSearchFocusContext.Provider>
             </LayoutScrollContext.Provider>
           </div>
           <MobileBottomNav />
