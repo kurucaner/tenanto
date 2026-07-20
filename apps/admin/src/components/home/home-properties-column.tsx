@@ -43,7 +43,7 @@ export const HomePropertiesColumn = memo(() => {
 
   if (visibleProperties.length === 0) {
     return (
-      <HomeColumnPanel emptyMessage="No properties yet." headerHref="/properties" title="Properties" />
+      <HomeColumnPanel emptyMessage="Add something new" headerHref="/properties" title="Properties" />
     );
   }
 

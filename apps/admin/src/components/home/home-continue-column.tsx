@@ -13,7 +13,7 @@ export const HomeContinueColumn = memo(() => {
   const hasEntries = accessibleRecentEntries.length > 0 || staleRecentEntries.length > 0;
 
   if (!hasEntries) {
-    return <HomeColumnPanel emptyMessage="No recent activity yet." title="Continue" />;
+    return <HomeColumnPanel emptyMessage="Start something new" title="Continue" />;
   }
 
   return (

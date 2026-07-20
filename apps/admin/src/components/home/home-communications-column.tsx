@@ -62,7 +62,7 @@ export const HomeCommunicationsColumn = memo(() => {
           <p className="text-destructive text-xs">
             {error instanceof Error ? error.message : "Could not load tenant emails."}
           </p>
-          <Button onClick={() => void refetch()} size="sm" type="button" variant="outline">
+          <Button onClick={() => refetch()} size="sm" type="button" variant="outline">
             Try again
           </Button>
         </div>
@@ -71,9 +71,7 @@ export const HomeCommunicationsColumn = memo(() => {
   }
 
   if (campaigns.length === 0) {
-    return (
-      <HomeColumnPanel emptyMessage="No tenant emails yet." title="Communications" />
-    );
+    return <HomeColumnPanel emptyMessage="Send something new" title="Communications" />;
   }
 
   return (

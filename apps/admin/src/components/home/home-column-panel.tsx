@@ -1,8 +1,20 @@
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Rocket } from "lucide-react";
 import { memo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { cn } from "@/lib/utils";
+
+interface HomeColumnEmptyStateProps {
+  message: string;
+}
+
+export const HomeColumnEmptyState = memo(({ message }: HomeColumnEmptyStateProps) => (
+  <div className="flex items-center justify-center gap-2 px-3 py-3 text-muted-foreground bg-muted/50">
+    <Rocket aria-hidden className="size-4 shrink-0" />
+    <p className="text-sm">{message}</p>
+  </div>
+));
+HomeColumnEmptyState.displayName = "HomeColumnEmptyState";
 
 interface HomeColumnPanelProps {
   children?: ReactNode;
@@ -28,9 +40,7 @@ export const HomeColumnPanel = memo(
       )}
       <div className="overflow-hidden rounded-lg border border-border/80 bg-card/30 divide-y divide-border/60">
         {children}
-        {emptyMessage && children == null ? (
-          <p className="px-3 py-4 text-muted-foreground text-xs">{emptyMessage}</p>
-        ) : null}
+        {emptyMessage && children == null ? <HomeColumnEmptyState message={emptyMessage} /> : null}
       </div>
     </section>
   )
