@@ -6,6 +6,8 @@ export const RECENT_PROPERTIES_MAX = 5;
 export interface IRecentProperty {
   address: string;
   id: string;
+  /** Tab suffix within the property shell, e.g. `/leases` or `""` for overview. */
+  lastPath?: string;
   name: string;
   visitedAt: string;
 }
@@ -87,7 +89,8 @@ function isRecentProperty(value: unknown): value is IRecentProperty {
     typeof entry.id === "string" &&
     typeof entry.name === "string" &&
     typeof entry.address === "string" &&
-    typeof entry.visitedAt === "string"
+    typeof entry.visitedAt === "string" &&
+    (entry.lastPath === undefined || typeof entry.lastPath === "string")
   );
 }
 
@@ -140,18 +143,18 @@ export function clearRecentProperties(): void {
 export function recordRecentProperty({
   address,
   id,
+  lastPath,
   name,
-}: Pick<IRecentProperty, "address" | "id" | "name">): void {
+}: Pick<IRecentProperty, "address" | "id" | "name"> & Pick<Partial<IRecentProperty>, "lastPath">): void {
   const withoutCurrent = readRecentProperties().filter((entry) => entry.id !== id);
-  const next: IRecentProperty[] = [
-    {
-      address,
-      id,
-      name,
-      visitedAt: new Date().toISOString(),
-    },
-    ...withoutCurrent,
-  ].slice(0, RECENT_PROPERTIES_MAX);
+  const nextEntry: IRecentProperty = {
+    address,
+    id,
+    name,
+    visitedAt: new Date().toISOString(),
+    ...(lastPath !== undefined ? { lastPath } : {}),
+  };
+  const next: IRecentProperty[] = [nextEntry, ...withoutCurrent].slice(0, RECENT_PROPERTIES_MAX);
   writeRecentProperties(next);
 }
 

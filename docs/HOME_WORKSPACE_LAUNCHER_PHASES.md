@@ -145,17 +145,17 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 0c — Recent storage `lastPath` (3 files)
 
-- [ ] Extend `IRecentProperty` with optional `lastPath?: string` in [`apps/admin/src/lib/recent-properties-storage.ts`](../apps/admin/src/lib/recent-properties-storage.ts)
-- [ ] Update `recordRecentProperty` to accept `lastPath`; backward-compatible parse in `isRecentProperty` / `parseRecentProperties`
-- [ ] Add tests in [`apps/admin/src/lib/recent-properties-storage.test.ts`](../apps/admin/src/lib/recent-properties-storage.test.ts) for `lastPath` round-trip and legacy entries
-- [ ] Pass `getPropertyTabSuffix(pathname, propertyId)` from [`apps/admin/src/components/properties/property-page-shell.tsx`](../apps/admin/src/components/properties/property-page-shell.tsx) when recording recents
+- [x] Extend `IRecentProperty` with optional `lastPath?: string` in [`apps/admin/src/lib/recent-properties-storage.ts`](../apps/admin/src/lib/recent-properties-storage.ts)
+- [x] Update `recordRecentProperty` to accept `lastPath`; backward-compatible parse in `isRecentProperty` / `parseRecentProperties`
+- [x] Add tests in [`apps/admin/src/lib/recent-properties-storage.test.ts`](../apps/admin/src/lib/recent-properties-storage.test.ts) for `lastPath` round-trip and legacy entries
+- [x] Pass `getPropertyTabSuffix(pathname, propertyId)` from [`apps/admin/src/components/properties/property-page-shell.tsx`](../apps/admin/src/components/properties/property-page-shell.tsx) when recording recents
 
 **Exit criteria:** Visiting `/properties/:id/leases` stores `lastPath: "/leases"`; old entries still load.
 
 #### Phase 0d — Home workspace data hook (2 files)
 
-- [ ] Create [`apps/admin/src/hooks/use-home-workspace-properties.ts`](../apps/admin/src/hooks/use-home-workspace-properties.ts) — merge recents + favorites-first list page, cap ~8 entries
-- [ ] Add `queryKeys.homeWorkspace()` in [`apps/admin/src/lib/query-keys.ts`](../apps/admin/src/lib/query-keys.ts) if needed for cache identity
+- [x] Create [`apps/admin/src/hooks/use-home-workspace-properties.ts`](../apps/admin/src/hooks/use-home-workspace-properties.ts) — merge recents + favorites-first list page, cap ~8 entries
+- [x] Add `queryKeys.homeWorkspace()` in [`apps/admin/src/lib/query-keys.ts`](../apps/admin/src/lib/query-keys.ts) if needed for cache identity
 
 **Exit criteria:** Hook returns merged property list without N× detail fetches; unit test or integration test optional.
 

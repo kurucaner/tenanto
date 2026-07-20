@@ -18,6 +18,7 @@ export const queryKeys = {
   auditLog: (filters: Omit<IAdminAuditEventsListQuery, "cursor" | "limit">) =>
     ["activity", filters] as const,
   homeFinancialOverview: () => ["home", "financial-overview"] as const,
+  homeWorkspace: () => ["home", "workspace-properties"] as const,
   invitePreview: (token: string) => ["invite-preview", token] as const,
   notificationBroadcastHistory: () => ["notification-broadcasts", "history"] as const,
   notificationsList: () => ["notifications", "list"] as const,
