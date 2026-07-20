@@ -16,7 +16,12 @@ const systemTypeId = "00000000-0000-4000-8000-0000000000aa";
 const mockClientQuery = mockAsyncFn((sql: string, values?: unknown[]) => {
   capturedQueries.push({ sql, values: values ?? [] });
 
-  if (sql.includes("FROM property_income_line_types") && sql.includes("is_system = true") && sql.includes("is_deleted = false") && sql.includes("LIMIT 1")) {
+  if (
+    sql.includes("FROM property_income_line_types") &&
+    sql.includes("is_system = true") &&
+    sql.includes("is_deleted = false") &&
+    sql.includes("LIMIT 1")
+  ) {
     return Promise.resolve({
       rows: [
         {
@@ -29,7 +34,11 @@ const mockClientQuery = mockAsyncFn((sql: string, values?: unknown[]) => {
     });
   }
 
-  if (sql.includes("FROM property_income_line_types") && sql.includes("is_system = false") && sql.includes("ORDER BY")) {
+  if (
+    sql.includes("FROM property_income_line_types") &&
+    sql.includes("is_system = false") &&
+    sql.includes("ORDER BY")
+  ) {
     return Promise.resolve({ rows: [] });
   }
 
@@ -73,9 +82,7 @@ describe("propertyIncomeLineTypesDb system lease rent type", () => {
 
     await propertyIncomeLineTypesDb.replaceAll(propertyId, [], mockClient as never);
 
-    const archiveQuery = capturedQueries.find((query) =>
-      query.sql.includes("is_deleted = true")
-    );
+    const archiveQuery = capturedQueries.find((query) => query.sql.includes("is_deleted = true"));
     expect(archiveQuery?.values?.[1]).toContain(systemTypeId);
     expect(capturedQueries.some((query) => query.sql.includes("DELETE FROM"))).toBe(false);
   });
