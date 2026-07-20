@@ -227,11 +227,11 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 3b — Cmd+K command palette (5 files)
 
-- [ ] Add `cmdk` dependency in [`apps/admin/package.json`](../apps/admin/package.json)
-- [ ] Add shadcn Command dialog primitive if not present (or use cmdk directly)
-- [ ] Create [`apps/admin/src/components/layout/global-command-palette.tsx`](../apps/admin/src/components/layout/global-command-palette.tsx) — recents, searchable properties, app nav groups
-- [ ] Create [`apps/admin/src/hooks/use-global-command-palette.ts`](../apps/admin/src/hooks/use-global-command-palette.ts) — Meta+K / Ctrl+K listener, open state
-- [ ] Wire palette in [`apps/admin/src/components/layout/admin-layout.tsx`](../apps/admin/src/components/layout/admin-layout.tsx); destinations from `getVisiblePropertyLauncherDestinations`
+- [x] Add `cmdk` dependency in [`apps/admin/package.json`](../apps/admin/package.json)
+- [x] Add shadcn Command dialog primitive if not present (or use cmdk directly)
+- [x] Create [`apps/admin/src/components/layout/global-command-palette.tsx`](../apps/admin/src/components/layout/global-command-palette.tsx) — recents, searchable properties, app nav groups
+- [x] Create [`apps/admin/src/hooks/use-global-command-palette.ts`](../apps/admin/src/hooks/use-global-command-palette.ts) — Meta+K / Ctrl+K listener, open state
+- [x] Wire palette in [`apps/admin/src/components/layout/admin-layout.tsx`](../apps/admin/src/components/layout/admin-layout.tsx); destinations from `getVisiblePropertyLauncherDestinations`
 
 **Exit criteria:** Cmd+K opens globally; “Property → Expenses” navigates correctly; no duplicate destination config.
 

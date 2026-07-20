@@ -4,10 +4,14 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
-import { HomeFinancialOverview } from "@/components/home/home-financial-overview";
+import { HomePortfolioReportsLink } from "@/components/home/home-portfolio-reports-link";
+import { HomePropertySearchField } from "@/components/home/home-property-search-field";
+import { HomeWorkspaceContinueSection } from "@/components/home/home-workspace-continue-section";
+import { HomeWorkspaceLauncher } from "@/components/home/home-workspace-launcher";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRecentProperties } from "@/hooks/use-recent-properties";
 import { adminApi, propertyInvitesApi } from "@/lib/api-client";
 import { getAcceptInvitePathByInviteId } from "@/lib/invite-return-url";
 import { queryKeys } from "@/lib/query-keys";
@@ -84,8 +88,9 @@ const HomePendingPropertyInvitesBanner = memo(function HomePendingPropertyInvite
 HomePendingPropertyInvitesBanner.displayName = "HomePendingPropertyInvitesBanner";
 
 const HomePageInner = memo(() => {
-  const userType = useAuthStore((s) => s.user?.userType);
+  const userType = useAuthStore((state) => state.user?.userType);
   const isAdmin = userType === UserType.ADMIN;
+  const recentEntries = useRecentProperties();
 
   const statsQuery = useQuery({
     enabled: isAdmin,
@@ -116,7 +121,10 @@ const HomePageInner = memo(() => {
           </section>
         ) : null}
 
-        <HomeFinancialOverview />
+        <HomeWorkspaceContinueSection recentEntries={recentEntries} />
+        <HomeWorkspaceLauncher />
+        <HomePropertySearchField />
+        <HomePortfolioReportsLink />
 
         {isAdmin ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

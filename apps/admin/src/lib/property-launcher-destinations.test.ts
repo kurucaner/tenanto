@@ -5,6 +5,7 @@ import {
   type IPropertyPermissions,
 } from "@/hooks/use-property-permissions";
 import {
+  getCommandPalettePropertyActions,
   getHomePropertyLauncherShortcutPaths,
   getVisiblePropertyLauncherDestinations,
 } from "@/lib/property-launcher-destinations";
@@ -159,5 +160,22 @@ describe("getHomePropertyLauncherShortcutPaths", () => {
     const shortcuts = getHomePropertyLauncherShortcutPaths(propertyId, permissions);
     expect(shortcuts.some((shortcut) => shortcut.label === "Communications")).toBe(false);
     expect(shortcuts).toHaveLength(4);
+  });
+});
+
+describe("getCommandPalettePropertyActions", () => {
+  test("owner gets full palette including Expenses route", () => {
+    const permissions = derivePropertyPermissionsFromListItem(
+      makeListProperty({ callerRole: PropertyRole.OWNER }),
+      makeUser(ownerId, UserType.USER)
+    );
+
+    const actions = getCommandPalettePropertyActions(propertyId, permissions);
+    const expensesAction = actions.find((action) => action.label === "Expenses");
+
+    expect(expensesAction).toEqual({
+      label: "Expenses",
+      path: "/properties/property-1/expenses",
+    });
   });
 });

@@ -51,3 +51,15 @@ export function getHomePropertyLauncherShortcutPaths(
       path: buildPropertyShellTabPath(propertyId, destination),
     }));
 }
+
+export function getCommandPalettePropertyActions(
+  propertyId: string,
+  permissions: IPropertyPermissions
+): { label: string; path: string }[] {
+  return getVisiblePropertyLauncherDestinations(permissions)
+    .filter((destination) => destination.showInCommandPalette)
+    .map((destination) => ({
+      label: destination.label,
+      path: buildPropertyShellTabPath(propertyId, destination),
+    }));
+}

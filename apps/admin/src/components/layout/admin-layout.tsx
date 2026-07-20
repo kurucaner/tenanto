@@ -4,9 +4,10 @@ import { Outlet } from "react-router-dom";
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
 import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { GlobalCommandPalette } from "@/components/layout/global-command-palette";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
-import { AdminHeaderPropertySwitcher } from "@/components/properties/property-switcher";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { AdminHeaderPropertySwitcher } from "@/components/properties/property-switcher";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
@@ -14,12 +15,14 @@ import {
 } from "@/config/mobile-layout";
 import { LayoutScrollContext } from "@/contexts/layout-scroll-context";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
+import { useGlobalCommandPalette } from "@/hooks/use-global-command-palette";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
 import { useResolvedAdminDark } from "@/hooks/use-resolved-admin-dark";
 import { cn } from "@/lib/utils";
 
 const AdminLayoutInner = memo(() => {
   const resolvedDark = useResolvedAdminDark();
+  const { open: commandPaletteOpen, setOpen: setCommandPaletteOpen } = useGlobalCommandPalette();
   const [suppressToasts, setSuppressToasts] = useState(false);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const streamStatus = useNotificationStream({ suppressToasts });
@@ -64,6 +67,7 @@ const AdminLayoutInner = memo(() => {
           </div>
           <MobileBottomNav />
         </SidebarInset>
+        <GlobalCommandPalette onOpenChange={setCommandPaletteOpen} open={commandPaletteOpen} />
       </SidebarProvider>
     </NotificationStreamContext.Provider>
   );
