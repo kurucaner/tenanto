@@ -1,6 +1,7 @@
 import { clearAppSession } from "@/lib/clear-app-session";
 import { createApiClient } from "@/packages/app-ui";
 import {
+  HOME_RECENT_TENANT_EMAIL_CAMPAIGNS_LIMIT,
   type IAdminAddPropertyMemberBody,
   type IAdminAuditEventsListQuery,
   type IAdminAuditEventsListResponse,
@@ -36,6 +37,7 @@ import {
   type IExportJobDownloadResponse,
   type IExtendPropertyLongStayBody,
   type IHomeFinancialOverview,
+  type IHomeRecentTenantEmailCampaignsResponse,
   type IIncomeImportCommitBody,
   type IIncomeImportCommitResponse,
   type IIncomeImportParseResponse,
@@ -1045,4 +1047,9 @@ export const portfolioReportsApi = {
 export const homeApi = {
   financialOverview: () =>
     authenticatedRequest<{ overview: IHomeFinancialOverview }>("/home/financial-overview"),
+
+  recentTenantEmailCampaigns: (limit = HOME_RECENT_TENANT_EMAIL_CAMPAIGNS_LIMIT) =>
+    authenticatedRequest<IHomeRecentTenantEmailCampaignsResponse>(
+      `/home/recent-tenant-email-campaigns?limit=${limit}`
+    ),
 };

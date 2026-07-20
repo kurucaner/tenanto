@@ -57,8 +57,8 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 **Files (2)**
 
-- [ ] Extend [`apps/server/src/routes/admin/home-routes.ts`](../apps/server/src/routes/admin/home-routes.ts) — `GET /home/recent-tenant-email-campaigns?limit=6`
-- [ ] Add [`apps/server/src/routes/admin/home-recent-tenant-email-campaigns.test.ts`](../apps/server/src/routes/admin/home-recent-tenant-email-campaigns.test.ts) — auth required, empty portfolio, capped limit
+- [x] Extend [`apps/server/src/routes/admin/home-routes.ts`](../apps/server/src/routes/admin/home-routes.ts) — `GET /home/recent-tenant-email-campaigns?limit=6`
+- [x] Add [`apps/server/src/routes/admin/home-recent-tenant-email-campaigns.test.ts`](../apps/server/src/routes/admin/home-recent-tenant-email-campaigns.test.ts) — auth required, empty portfolio, capped limit
 
 **Exit criteria:** Authenticated owner receives merged recent list; unauthenticated 401; manager with no owner properties gets `[]`.
 
@@ -68,11 +68,11 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 **Files (5)**
 
-- [ ] Add `homeRecentTenantEmailCampaigns` to [`apps/admin/src/lib/query-keys.ts`](../apps/admin/src/lib/query-keys.ts)
-- [ ] Add `recentTenantEmailCampaigns()` to [`apps/admin/src/lib/api-client.ts`](../apps/admin/src/lib/api-client.ts) (`homeApi`)
-- [ ] Add [`apps/admin/src/lib/home-recent-communications-utils.ts`](../apps/admin/src/lib/home-recent-communications-utils.ts) — `buildHomeCommunicationsCampaignHref`, row label helper, in-progress status check
-- [ ] Add [`apps/admin/src/lib/home-recent-communications-utils.test.ts`](../apps/admin/src/lib/home-recent-communications-utils.test.ts)
-- [ ] Add [`apps/admin/src/hooks/use-home-recent-communications.ts`](../apps/admin/src/hooks/use-home-recent-communications.ts) — TanStack Query, stale time aligned with home workspace properties
+- [x] Add `homeRecentTenantEmailCampaigns` to [`apps/admin/src/lib/query-keys.ts`](../apps/admin/src/lib/query-keys.ts)
+- [x] Add `recentTenantEmailCampaigns()` to [`apps/admin/src/lib/api-client.ts`](../apps/admin/src/lib/api-client.ts) (`homeApi`)
+- [x] Add [`apps/admin/src/lib/home-recent-communications-utils.ts`](../apps/admin/src/lib/home-recent-communications-utils.ts) — `buildHomeCommunicationsCampaignHref`, row label helper, in-progress status check
+- [x] Add [`apps/admin/src/lib/home-recent-communications-utils.test.ts`](../apps/admin/src/lib/home-recent-communications-utils.test.ts)
+- [x] Add [`apps/admin/src/hooks/use-home-recent-communications.ts`](../apps/admin/src/hooks/use-home-recent-communications.ts) — TanStack Query, stale time aligned with home workspace properties
 
 **Exit criteria:** Hook fetches typed list; utils tested; no UI yet.
 
