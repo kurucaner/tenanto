@@ -5,12 +5,18 @@ import { HomeColumnPanel, HomeColumnRow } from "@/components/home/home-column-pa
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHomeRecentCommunications } from "@/hooks/use-home-recent-communications";
+import { useHomeWorkspaceProperties } from "@/hooks/use-home-workspace-properties";
 import {
   buildHomeCommunicationsCampaignHref,
   isHomeRecentTenantEmailCampaignInProgress,
 } from "@/lib/home-recent-communications-utils";
+import { buildPropertyShellTabPath } from "@/lib/property-shell-tab-navigation";
 import { getTenantEmailCampaignStatusLabel } from "@/lib/tenant-email-campaign-utils";
 import { type IHomeRecentTenantEmailCampaign } from "@/packages/shared";
+
+const COMMUNICATIONS_EMPTY_MESSAGE = "Send something new";
+const COMMUNICATIONS_EMPTY_TOOLTIP = "Create a property first to send tenant emails.";
+const COMMUNICATIONS_TAB = { label: "Communications", path: "communications" } as const;
 
 const HomeCommunicationRow = memo(({ campaign }: { campaign: IHomeRecentTenantEmailCampaign }) => {
   const showStatusHint = isHomeRecentTenantEmailCampaignInProgress(campaign.status);
@@ -37,6 +43,8 @@ HomeCommunicationRow.displayName = "HomeCommunicationRow";
 export const HomeCommunicationsColumn = memo(() => {
   const { campaigns, error, hasSendAccess, isAccessResolved, isError, isPending, refetch } =
     useHomeRecentCommunications();
+  const { listItems } = useHomeWorkspaceProperties();
+  const firstProperty = listItems[0];
 
   if (!isAccessResolved || !hasSendAccess) {
     return null;
@@ -71,7 +79,23 @@ export const HomeCommunicationsColumn = memo(() => {
   }
 
   if (campaigns.length === 0) {
-    return <HomeColumnPanel emptyMessage="Send something new" title="Communications" />;
+    if (firstProperty) {
+      return (
+        <HomeColumnPanel
+          emptyHref={buildPropertyShellTabPath(firstProperty.id, COMMUNICATIONS_TAB)}
+          emptyMessage={COMMUNICATIONS_EMPTY_MESSAGE}
+          title="Communications"
+        />
+      );
+    }
+
+    return (
+      <HomeColumnPanel
+        emptyMessage={COMMUNICATIONS_EMPTY_MESSAGE}
+        emptyTooltip={COMMUNICATIONS_EMPTY_TOOLTIP}
+        title="Communications"
+      />
+    );
   }
 
   return (
