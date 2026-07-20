@@ -35,7 +35,12 @@ const HomeCommunicationRow = memo(({ campaign }: { campaign: IHomeRecentTenantEm
 HomeCommunicationRow.displayName = "HomeCommunicationRow";
 
 export const HomeCommunicationsColumn = memo(() => {
-  const { campaigns, error, isError, isPending, refetch } = useHomeRecentCommunications();
+  const { campaigns, error, hasSendAccess, isAccessResolved, isError, isPending, refetch } =
+    useHomeRecentCommunications();
+
+  if (!isAccessResolved || !hasSendAccess) {
+    return null;
+  }
 
   if (isPending) {
     return (

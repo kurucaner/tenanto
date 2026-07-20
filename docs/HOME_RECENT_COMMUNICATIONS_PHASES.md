@@ -93,13 +93,15 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 **Files (3)**
 
-- [ ] Gate fetch in [`apps/admin/src/hooks/use-home-recent-communications.ts`](../apps/admin/src/hooks/use-home-recent-communications.ts) — `enabled` when user may have send access (platform admin or any owner/creator property in workspace list)
-- [ ] Hide column in [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) when user has **no** send-eligible properties (manager/accountant-only) — render `null` so grid becomes two columns
-- [ ] Document role matrix in this file (see **Visibility matrix** below)
+- [x] Gate fetch in [`apps/admin/src/hooks/use-home-recent-communications.ts`](../apps/admin/src/hooks/use-home-recent-communications.ts) — `enabled` when user may have send access (platform admin or any owner/creator property in workspace list)
+- [x] Hide column in [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) when user has **no** send-eligible properties (manager/accountant-only) — render `null` so grid becomes two columns
+- [x] Document role matrix in this file (see **Visibility matrix** below)
 
 **Exit criteria:** Manager/accountant Home shows Properties + Continue only; owners see three columns; no 403 deep links.
 
 ### Visibility matrix
+
+Client gating uses `hasHomeRecentCommunicationsSendAccess()` over the Home workspace property list (`derivePropertyPermissionsFromListItem(...).canSendTenantNotifications`), matching the Communications tab and server-side owner/creator/admin rules.
 
 | Caller                    | Column shown | Data                                          |
 | ------------------------- | ------------ | --------------------------------------------- |
