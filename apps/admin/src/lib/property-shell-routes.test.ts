@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  isPropertyLeaseDetailPath,
-  isPropertyLeaseFocusedPath,
-} from "./property-shell-routes";
+import { isPropertyLeaseDetailPath, isPropertyLeaseFocusedPath } from "./property-shell-routes";
 
 describe("isPropertyLeaseFocusedPath", () => {
   test("matches lease detail and start lease routes", () => {

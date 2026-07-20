@@ -1,4 +1,4 @@
-import { type DefinedUrlFilterSchema,defineUrlFilterSchema } from "@/lib/url-search-params";
+import { type DefinedUrlFilterSchema, defineUrlFilterSchema } from "@/lib/url-search-params";
 
 export type UrlTabDefinition<T extends string> = {
   label: string;

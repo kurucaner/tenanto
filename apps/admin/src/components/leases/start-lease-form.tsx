@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { type KeyboardEvent as ReactKeyboardEvent, memo, type RefObject } from "react";
+import { memo, type RefObject } from "react";
 import { Controller, type FieldErrors, type UseFormReturn } from "react-hook-form";
 
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
@@ -8,10 +8,18 @@ import { FieldLabel } from "@/components/ui/field-label";
 import { FormSelectField } from "@/components/ui/form-select-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { type TStartLeaseFormValues } from "@/lib/start-lease-form-schema";
+import {
+  getStartLeaseRentAmountLabel,
+  getStartLeaseRentBillingHelperText,
+  START_LEASE_RENT_BILLING_CADENCES,
+  START_LEASE_RENT_BILLING_LABELS,
+  WEEKLY_RENT_BILLING_ENABLED,
+} from "@/lib/start-lease-rent-billing";
 import {
   canNavigateToStartLeaseStep,
   START_LEASE_STEP_LABELS,
@@ -64,22 +72,26 @@ StartLeaseProgress.displayName = "StartLeaseProgress";
 interface WhoStepProps {
   autoFocusName: boolean;
   availableUnits: IPropertyUnit[];
-  errors: FieldErrors<TStartLeaseFormValues>;
   form: UseFormReturn<TStartLeaseFormValues>;
+  guestNameError?: string;
   isActiveLeasesPending: boolean;
   lockedUnit: IPropertyUnit | null;
   lockedUnitError: string | null;
+  tenantPhoneError?: string;
+  unitIdError?: string;
 }
 
 const WhoStep = memo(
   ({
     autoFocusName,
     availableUnits,
-    errors,
     form,
+    guestNameError,
     isActiveLeasesPending,
     lockedUnit,
     lockedUnitError,
+    tenantPhoneError,
+    unitIdError,
   }: WhoStepProps) => (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -94,7 +106,7 @@ const WhoStep = memo(
           <>
             <FormSelectField
               disabled={isActiveLeasesPending}
-              error={errors.unitId?.message}
+              error={unitIdError}
               id="start-lease-unit"
               label="Unit"
               {...form.register("unitId")}
@@ -126,8 +138,8 @@ const WhoStep = memo(
               id="start-lease-tenant-name"
               {...form.register("guestName")}
             />
-            {errors.guestName ? (
-              <p className="text-destructive text-xs">{errors.guestName.message}</p>
+            {guestNameError ? (
+              <p className="text-destructive text-xs">{guestNameError}</p>
             ) : null}
           </div>
           <div className="flex flex-col gap-1.5">
@@ -149,8 +161,8 @@ const WhoStep = memo(
                 />
               )}
             />
-            {errors.tenantPhone ? (
-              <p className="text-destructive text-xs">{errors.tenantPhone.message}</p>
+            {tenantPhoneError ? (
+              <p className="text-destructive text-xs">{tenantPhoneError}</p>
             ) : null}
           </div>
         </div>
@@ -161,102 +173,160 @@ const WhoStep = memo(
 WhoStep.displayName = "WhoStep";
 
 interface TermStepProps {
-  errors: FieldErrors<TStartLeaseFormValues>;
   form: UseFormReturn<TStartLeaseFormValues>;
   leaseEndDate: string | null;
+  leaseEndDateError?: string;
+  leaseStartDateError?: string;
+  termMonthsError?: string;
 }
 
-const TermStep = memo(({ errors, form, leaseEndDate }: TermStepProps) => (
-  <LeaseTermEndFields<TStartLeaseFormValues>
-    control={form.control}
-    endDateFieldId="start-lease-end-date"
-    errors={errors}
-    register={form.register}
-    resolvedEndDate={leaseEndDate}
-    startDateFieldId="start-lease-start-date"
-    termMonthsFieldId="start-lease-term-months"
-  />
-));
+const TermStep = memo(
+  ({
+    form,
+    leaseEndDate,
+    leaseEndDateError,
+    leaseStartDateError,
+    termMonthsError,
+  }: TermStepProps) => (
+    <LeaseTermEndFields<TStartLeaseFormValues>
+      control={form.control}
+      endDateFieldId="start-lease-end-date"
+      leaseEndDateError={leaseEndDateError}
+      leaseStartDateError={leaseStartDateError}
+      register={form.register}
+      resolvedEndDate={leaseEndDate}
+      startDateFieldId="start-lease-start-date"
+      termMonthsError={termMonthsError}
+      termMonthsFieldId="start-lease-term-months"
+    />
+  )
+);
 TermStep.displayName = "TermStep";
 
 interface RentStepProps {
   autoFocusRent: boolean;
-  errors: FieldErrors<TStartLeaseFormValues>;
   firstMonthRentPreview: string | null;
   form: UseFormReturn<TStartLeaseFormValues>;
   guestName: string;
   leaseEndDate: string | null;
   leaseStartDate: string;
+  monthlyRentError?: string;
   unitLabel: string | null;
 }
 
 const RentStep = memo(
   ({
     autoFocusRent,
-    errors,
     firstMonthRentPreview,
     form,
     guestName,
     leaseEndDate,
     leaseStartDate,
+    monthlyRentError,
     unitLabel,
-  }: RentStepProps) => (
-    <div className="space-y-6">
-      <div className="text-muted-foreground space-y-1 text-sm">
-        <p>
-          <span className="text-foreground font-medium">{guestName.trim() || "Tenant"}</span>
-          {unitLabel ? ` · ${unitLabel}` : null}
-        </p>
-        <p>
-          {leaseStartDate ? formatIsoDateDisplay(leaseStartDate) : "—"}
-          {" → "}
-          {leaseEndDate ? formatIsoDateDisplay(leaseEndDate) : "—"}
-        </p>
-      </div>
+  }: RentStepProps) => {
+    const rentBillingCadence = form.watch("rentBillingCadence");
+    const rentAmountLabel = getStartLeaseRentAmountLabel(rentBillingCadence);
 
-      <div className="border-border/60 border-t" />
+    return (
+      <div className="space-y-6">
+        <div className="text-muted-foreground space-y-1 text-sm">
+          <p>
+            <span className="text-foreground font-medium">{guestName.trim() || "Tenant"}</span>
+            {unitLabel ? ` · ${unitLabel}` : null}
+          </p>
+          <p>
+            {leaseStartDate ? formatIsoDateDisplay(leaseStartDate) : "—"}
+            {" → "}
+            {leaseEndDate ? formatIsoDateDisplay(leaseEndDate) : "—"}
+          </p>
+        </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="start-lease-monthly-rent">Monthly rent</Label>
-        <div className="relative max-w-xs">
-          <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
-            $
-          </span>
+        <div className="border-border/60 border-t" />
+
+        <div className="space-y-3">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            Rent billing
+          </p>
           <Controller
             control={form.control}
-            name="monthlyRent"
+            name="rentBillingCadence"
             render={({ field }) => (
-              <Input
-                autoFocus={autoFocusRent}
-                className="pl-7 tabular-nums"
-                id="start-lease-monthly-rent"
-                inputMode="decimal"
-                onChange={(e) => {
-                  if (isValidDecimalInput(e.target.value)) {
-                    field.onChange(e.target.value);
-                  }
-                }}
-                type="text"
+              <RadioGroupFieldset
+                legend="Rent billing"
+                onValueChange={field.onChange}
                 value={field.value}
-              />
+              >
+                {START_LEASE_RENT_BILLING_CADENCES.map((cadence) => {
+                  const isWeekly = cadence === "weekly";
+                  const isDisabled = isWeekly && !WEEKLY_RENT_BILLING_ENABLED;
+
+                  return (
+                    <RadioOption
+                      disabled={isDisabled}
+                      key={cadence}
+                      label={
+                        isWeekly && isDisabled
+                          ? `${START_LEASE_RENT_BILLING_LABELS[cadence]} · Coming soon`
+                          : START_LEASE_RENT_BILLING_LABELS[cadence]
+                      }
+                      value={cadence}
+                    />
+                  );
+                })}
+              </RadioGroupFieldset>
             )}
           />
+          <p className="text-muted-foreground text-xs">
+            {getStartLeaseRentBillingHelperText(rentBillingCadence)}
+          </p>
         </div>
-        {errors.monthlyRent ? (
-          <p className="text-destructive text-xs">{errors.monthlyRent.message}</p>
-        ) : null}
-        {firstMonthRentPreview ? (
-          <p className="text-sm font-medium">{firstMonthRentPreview}</p>
-        ) : null}
+
+        <div className="border-border/60 border-t" />
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="start-lease-monthly-rent">{rentAmountLabel}</Label>
+          <div className="relative max-w-xs">
+            <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
+              $
+            </span>
+            <Controller
+              control={form.control}
+              name="monthlyRent"
+              render={({ field }) => (
+                <Input
+                  autoFocus={autoFocusRent}
+                  className="pl-7 tabular-nums"
+                  id="start-lease-monthly-rent"
+                  inputMode="decimal"
+                  onChange={(e) => {
+                    if (isValidDecimalInput(e.target.value)) {
+                      field.onChange(e.target.value);
+                    }
+                  }}
+                  type="text"
+                  value={field.value}
+                />
+              )}
+            />
+          </div>
+          {monthlyRentError ? (
+            <p className="text-destructive text-xs">{monthlyRentError}</p>
+          ) : null}
+          {rentBillingCadence === "monthly" && firstMonthRentPreview ? (
+            <p className="text-sm font-medium">{firstMonthRentPreview}</p>
+          ) : null}
+        </div>
       </div>
-    </div>
-  )
+    );
+  }
 );
 RentStep.displayName = "RentStep";
 
 interface StartLeaseFormProps {
   availableUnits: IPropertyUnit[];
   currentStep: TStartLeaseStep;
+  errors: FieldErrors<TStartLeaseFormValues>;
   firstMonthRentPreview: string | null;
   form: UseFormReturn<TStartLeaseFormValues>;
   formRef: RefObject<HTMLFormElement | null>;
@@ -282,6 +352,7 @@ export const StartLeaseForm = memo(
   ({
     availableUnits,
     currentStep,
+    errors,
     firstMonthRentPreview,
     form,
     formRef,
@@ -302,36 +373,16 @@ export const StartLeaseForm = memo(
     onSubmit,
     unitLabel,
   }: StartLeaseFormProps) => {
-    const { errors } = form.formState;
     const isFirstStep = currentStep === "who";
     const isLastStep = currentStep === "rent";
     const submitDisabled = mutationPending || isSubmitDisabled || isSubmitting;
     const continueDisabled = mutationPending || isSubmitDisabled || isContinuing;
-
-    const handleFormKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
-      if (event.key !== "Enter" || event.defaultPrevented) {
-        return;
-      }
-
-      const target = event.target;
-      if (target instanceof HTMLTextAreaElement || target instanceof HTMLButtonElement) {
-        return;
-      }
-
-      event.preventDefault();
-      if (currentStep === "rent") {
-        void onSubmit();
-        return;
-      }
-      void onContinue();
-    };
 
     return (
       <form
         className="flex min-h-0 flex-1 flex-col"
         id={START_LEASE_FORM_ID}
         noValidate
-        onKeyDown={handleFormKeyDown}
         onSubmit={onSubmit}
         ref={formRef}
       >
@@ -351,11 +402,13 @@ export const StartLeaseForm = memo(
               <WhoStep
                 autoFocusName={currentStep === "who"}
                 availableUnits={availableUnits}
-                errors={errors}
                 form={form}
+                guestNameError={errors.guestName?.message}
                 isActiveLeasesPending={isActiveLeasesPending}
                 lockedUnit={lockedUnit}
                 lockedUnitError={lockedUnitError}
+                tenantPhoneError={errors.tenantPhone?.message}
+                unitIdError={errors.unitId?.message}
               />
             </section>
 
@@ -364,7 +417,13 @@ export const StartLeaseForm = memo(
               data-start-lease-step="term"
               hidden={currentStep !== "term"}
             >
-              <TermStep errors={errors} form={form} leaseEndDate={leaseEndDate} />
+              <TermStep
+                form={form}
+                leaseEndDate={leaseEndDate}
+                leaseEndDateError={errors.leaseEndDate?.message}
+                leaseStartDateError={errors.leaseStartDate?.message}
+                termMonthsError={errors.termMonths?.message}
+              />
             </section>
 
             <section
@@ -374,12 +433,12 @@ export const StartLeaseForm = memo(
             >
               <RentStep
                 autoFocusRent={currentStep === "rent"}
-                errors={errors}
                 firstMonthRentPreview={firstMonthRentPreview}
                 form={form}
                 guestName={guestName}
                 leaseEndDate={leaseEndDate}
                 leaseStartDate={leaseStartDate}
+                monthlyRentError={errors.monthlyRent?.message}
                 unitLabel={unitLabel}
               />
             </section>

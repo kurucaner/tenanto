@@ -3,12 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { isAllowedRumPath } from "../lib/intake-origin";
 import { parseIngestTarget, type IngestTarget } from "../lib/parse-ingest-target";
 
-const SENSITIVE_REQUEST_HEADERS = new Set([
-  "authorization",
-  "cookie",
-  "set-cookie",
-  "x-api-key",
-]);
+const SENSITIVE_REQUEST_HEADERS = new Set(["authorization", "cookie", "set-cookie", "x-api-key"]);
 
 function getBodyByteLength(body: unknown): number {
   if (body instanceof Buffer) {
@@ -28,10 +23,7 @@ function getClientIp(request: FastifyRequest): string {
   return request.ip;
 }
 
-function resolveIntakeOriginWithSubdomain(
-  intakeOrigin: string,
-  subdomain: string | null
-): string {
+function resolveIntakeOriginWithSubdomain(intakeOrigin: string, subdomain: string | null): string {
   if (!subdomain) {
     return intakeOrigin;
   }
@@ -77,23 +69,13 @@ async function forwardRumRequest(
   const clientIp = getClientIp(request);
   const body = request.body;
 
-  console.log("[proxy] incoming", {
-    bodyBytes: getBodyByteLength(body),
-    ip: clientIp,
-    method: request.method,
-    origin: request.headers.origin,
-    path: pathname,
-  });
-
   if (!isAllowedRumPath(pathname)) {
-    console.log("[proxy] rejected invalid path", pathname);
     return reply.code(400).send({ error: "Invalid Datadog intake path" });
   }
 
   const targetUrl = buildTargetUrl(intakeOrigin, pathname, search, subdomain);
 
   if (body === undefined || body === null) {
-    console.log("[proxy] rejected missing body", pathname);
     return reply.code(400).send({ error: "Missing request body" });
   }
 
@@ -108,12 +90,6 @@ async function forwardRumRequest(
     body: body instanceof Buffer ? body : Buffer.from(body as ArrayBuffer),
     headers: forwardHeaders,
     method: "POST",
-  });
-
-  console.log("[proxy] forwarded", {
-    path: pathname,
-    targetHost: new URL(targetUrl).hostname,
-    upstreamStatus: upstream.status,
   });
 
   const responseBody = Buffer.from(await upstream.arrayBuffer());
@@ -133,7 +109,6 @@ export async function registerRumProxyRoutes(
 ): Promise<void> {
   fastify.addHook("onRequest", async (request, _reply) => {
     const pathname = request.url.split("?")[0] ?? "/";
-    console.log("[proxy] request", request.method, pathname);
 
     if (request.method === "OPTIONS") {
       return;
@@ -153,7 +128,6 @@ export async function registerRumProxyRoutes(
       const target = parseIngestTarget(queryParams.get("t"));
 
       if (!target) {
-        console.log("[proxy] rejected invalid ingest target");
         return reply.code(400).send({ error: "Invalid ingest target" });
       }
 

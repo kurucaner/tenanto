@@ -4,14 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import {
-  buildLeaseTermApiPayload,
-  resolveLeaseTermEndPreview,
-} from "@/components/leases/lease-term-end-fields";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
+import { buildLeaseTermApiPayload, resolveLeaseTermEndPreview } from "@/lib/lease-term-end-utils";
 import { scrollFormToFirstError } from "@/lib/scroll-form-to-first-error";
 import {
   clearStartLeaseDraft,
@@ -97,7 +94,13 @@ export function useStartLeaseForm({
     defaultValues: initialState.values,
     resolver: zodResolver(startLeaseSchema),
   });
-  const { clearErrors, getValues, handleSubmit, watch } = form;
+  const {
+    clearErrors,
+    formState: { errors, isSubmitting },
+    getValues,
+    handleSubmit,
+    watch,
+  } = form;
 
   const _setCurrentStep = useCallback(
     (step: TStartLeaseStep) => {
@@ -220,7 +223,6 @@ export function useStartLeaseForm({
   );
 
   const onInvalidSubmit = useCallback(() => {
-    toast.error("Fix the highlighted fields");
     scrollFormToFirstError(formRef.current, currentStep);
   }, [currentStep]);
 
@@ -246,7 +248,6 @@ export function useStartLeaseForm({
       const result = validateStartLeaseStep(currentStep, values);
       if (!result.success) {
         applyStartLeaseStepValidationErrors(form, currentStep, result.error);
-        toast.error("Fix the highlighted fields");
         scrollFormToFirstError(formRef.current, currentStep);
         return;
       }
@@ -273,6 +274,7 @@ export function useStartLeaseForm({
     availableUnits,
     clearDraft,
     currentStep,
+    errors,
     firstMonthRentPreview,
     form,
     formRef,
@@ -281,7 +283,7 @@ export function useStartLeaseForm({
     isActiveLeasesPending,
     isContinuing,
     isSubmitDisabled,
-    isSubmitting: form.formState.isSubmitting,
+    isSubmitting,
     leaseEndDate,
     leaseStartDate,
     lockedUnit,

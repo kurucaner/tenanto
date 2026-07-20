@@ -585,9 +585,7 @@ export const PropertyUnitsPage = memo(() => {
 
   const handleStartLease = useCallback(
     (unit: IPropertyUnit) => {
-      navigate(
-        buildPropertyStartLeasePath(propertyId, { from: "units", unitId: unit.id })
-      );
+      navigate(buildPropertyStartLeasePath(propertyId, { from: "units", unitId: unit.id }));
     },
     [navigate, propertyId]
   );

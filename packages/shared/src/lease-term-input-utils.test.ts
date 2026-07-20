@@ -18,7 +18,7 @@ describe("resolveLeaseEndDate", () => {
         termMonths: 12,
       })
     ).toEqual({
-      leaseEndDate: "2027-07-01",
+      leaseEndDate: "2027-06-30",
       termMonths: 12,
     });
   });
@@ -78,9 +78,9 @@ describe("deriveTermMonthsFromDates", () => {
 });
 
 describe("isCustomLeaseEndDate", () => {
-  test("detects when stored end differs from anniversary end", () => {
-    expect(isCustomLeaseEndDate("2026-07-01", 12, "2027-06-30")).toBe(true);
-    expect(isCustomLeaseEndDate("2026-07-01", 12, "2027-07-01")).toBe(false);
+  test("detects when stored end differs from computed term-months end", () => {
+    expect(isCustomLeaseEndDate("2026-07-01", 12, "2027-06-30")).toBe(false);
+    expect(isCustomLeaseEndDate("2026-07-01", 12, "2027-07-01")).toBe(true);
   });
 });
 
@@ -92,10 +92,17 @@ describe("resolveExtendLeaseEndDate", () => {
     termMonths: 12,
   };
 
-  test("extends by additional months from current end", () => {
+  test("extends by additional months from day after current end", () => {
     expect(resolveExtendLeaseEndDate(lease, { additionalTermMonths: 6 })).toEqual({
-      newLeaseEndDate: "2027-12-30",
+      newLeaseEndDate: "2027-12-31",
       newTermMonths: 18,
+    });
+  });
+
+  test("extends twelve months from a month-end contract end", () => {
+    expect(resolveExtendLeaseEndDate(lease, { additionalTermMonths: 12 })).toEqual({
+      newLeaseEndDate: "2028-06-30",
+      newTermMonths: 24,
     });
   });
 

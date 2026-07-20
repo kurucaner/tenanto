@@ -106,8 +106,8 @@ describe("start lease draft storage", () => {
     clearAllStartLeaseDrafts();
 
     expect(sessionStorage.getItem("unrelated")).toBe("keep");
-    expect(
-      [...memory.keys()].some((key) => key.startsWith(START_LEASE_DRAFT_KEY_PREFIX))
-    ).toBe(false);
+    expect([...memory.keys()].some((key) => key.startsWith(START_LEASE_DRAFT_KEY_PREFIX))).toBe(
+      false
+    );
   });
 });

@@ -33,8 +33,7 @@ export type TTenantContactFormValues = z.infer<typeof tenantContactFormSchema>;
 export const DUPLICATE_SECONDARY_TENANT_EMAIL_MESSAGE =
   "This email is already used by another secondary tenant on this lease";
 
-export const PRIMARY_TENANT_EMAIL_MATCH_MESSAGE =
-  "Email cannot match the primary tenant's email";
+export const PRIMARY_TENANT_EMAIL_MATCH_MESSAGE = "Email cannot match the primary tenant's email";
 
 export function getTenantContactFormErrorMessage(
   errors: FieldErrors<TTenantContactFormValues>
@@ -120,10 +119,7 @@ export function createTenantContactFormSchema(options?: {
   });
 }
 
-export function getSecondaryTenantMutationErrorMessage(
-  error: unknown,
-  fallback: string
-): string {
+export function getSecondaryTenantMutationErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
     if ((error as Error & { code?: string }).code === "PORTAL_INVITE_DUPLICATE") {
       return DUPLICATE_SECONDARY_TENANT_EMAIL_MESSAGE;

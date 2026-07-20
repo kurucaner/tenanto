@@ -9,7 +9,7 @@ export const START_LEASE_STEP_LABELS: Record<TStartLeaseStep, string> = {
 };
 
 export const START_LEASE_STEP_SUBTITLES: Record<TStartLeaseStep, string> = {
-  rent: "Confirm the amount and review the lease before starting.",
+  rent: "Set how often rent is due and enter the amount.",
   term: "Choose the start date and how long the lease runs.",
   who: "Pick the unit and primary tenant.",
 };

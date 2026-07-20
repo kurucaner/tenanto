@@ -54,9 +54,7 @@ function parseOptionalString(raw: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-function parseLeaseTermFields(
-  r: Record<string, unknown>
-):
+function parseLeaseTermFields(r: Record<string, unknown>):
   | {
       body: Pick<ICreatePropertyLongStayBody, "leaseEndDate" | "leaseStartDate" | "termMonths">;
       ok: true;
@@ -72,7 +70,8 @@ function parseLeaseTermFields(
     r["leaseEndDate"] !== undefined &&
     r["leaseEndDate"] !== null &&
     r["leaseEndDate"] !== "";
-  const hasTermMonths = "termMonths" in r && r["termMonths"] !== undefined && r["termMonths"] !== null;
+  const hasTermMonths =
+    "termMonths" in r && r["termMonths"] !== undefined && r["termMonths"] !== null;
 
   let leaseEndDate: string | undefined;
   if (hasLeaseEndDate) {

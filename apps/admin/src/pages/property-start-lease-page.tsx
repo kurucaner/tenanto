@@ -74,6 +74,7 @@ const PropertyStartLeaseFormLoaded = memo(
         <StartLeaseForm
           availableUnits={startLeaseForm.availableUnits}
           currentStep={startLeaseForm.currentStep}
+          errors={startLeaseForm.errors}
           firstMonthRentPreview={startLeaseForm.firstMonthRentPreview}
           form={startLeaseForm.form}
           formRef={startLeaseForm.formRef}

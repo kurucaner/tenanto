@@ -1,11 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildFilterSearchPatch } from "@/lib/url-search-params";
-import {
-  buildUrlTabDefinitions,
-  defineUrlTabSchema,
-  resolveUrlTab,
-} from "@/lib/url-tab-state";
+import { buildUrlTabDefinitions, defineUrlTabSchema, resolveUrlTab } from "@/lib/url-tab-state";
 
 const TABS = ["expenses", "income", "taxes", "channels"] as const;
 

@@ -17,7 +17,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryPersistProvider>
       <ThemeSync />
       <App />
-      <Toaster position="bottom-right" theme="system" />
+      <Toaster position="bottom-right" theme="system" duration={6000} />
     </QueryPersistProvider>
   </AppThemeProvider>
 );

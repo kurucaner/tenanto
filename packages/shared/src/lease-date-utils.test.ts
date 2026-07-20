@@ -10,12 +10,16 @@ import {
 } from "./lease-date-utils";
 
 describe("calculateLeaseEndDate", () => {
-  test("adds term months to start date", () => {
-    expect(calculateLeaseEndDate("2026-01-15", 12)).toBe("2027-01-15");
+  test("returns start plus term months minus one day", () => {
+    expect(calculateLeaseEndDate("2026-07-01", 12)).toBe("2027-06-30");
+    expect(calculateLeaseEndDate("2026-07-01", 3)).toBe("2026-09-30");
+    expect(calculateLeaseEndDate("2026-10-01", 3)).toBe("2026-12-31");
+    expect(calculateLeaseEndDate("2026-01-15", 12)).toBe("2027-01-14");
   });
 
-  test("handles month overflow", () => {
-    expect(calculateLeaseEndDate("2026-10-01", 3)).toBe("2027-01-01");
+  test("handles month-end anchors and JS date rollover", () => {
+    expect(calculateLeaseEndDate("2026-01-31", 1)).toBe("2026-03-02");
+    expect(calculateLeaseEndDate("2026-01-31", 3)).toBe("2026-04-30");
   });
 });
 
@@ -72,15 +76,15 @@ describe("validateEndLeaseMoveOutDate", () => {
   });
 
   test("rejects dates before lease start for active leases still within term", () => {
-    expect(
-      validateEndLeaseMoveOutDate("2026-01-14", leaseStartDate, leaseEndDate, today)
-    ).toBe("Move-out date cannot be before the lease start date");
+    expect(validateEndLeaseMoveOutDate("2026-01-14", leaseStartDate, leaseEndDate, today)).toBe(
+      "Move-out date cannot be before the lease start date"
+    );
   });
 
   test("rejects future move-out dates", () => {
-    expect(
-      validateEndLeaseMoveOutDate("2026-07-10", leaseStartDate, leaseEndDate, today)
-    ).toBe("Move-out date cannot be in the future");
+    expect(validateEndLeaseMoveOutDate("2026-07-10", leaseStartDate, leaseEndDate, today)).toBe(
+      "Move-out date cannot be in the future"
+    );
   });
 
   test("allows holdover move-out dates after lease end but not before lease end", () => {
