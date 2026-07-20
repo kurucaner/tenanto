@@ -208,12 +208,12 @@ Optional copy check: helper text in `lease-term-end-fields.tsx` (“Rent is calc
 
 **Goal:** Previews and badges reflect shared math.
 
-- [ ] Manual smoke — Start lease: 7/1/2026, 12 months → preview “Lease ends Jun 30, 2027”
-- [ ] Manual smoke — Extend: lease ending 6/30/2027, +6 months → preview 12/31/2027
-- [ ] Manual smoke — New lease overview: no “Custom end” badge for standard month-based end
-- [ ] Manual smoke — Legacy lease stored as 7/1/2027 with `termMonths: 12` → may show “Custom end” when edited (acceptable)
+- [x] Manual smoke — Start lease: 7/1/2026, 12 months → preview “Lease ends Jun 30, 2027”
+- [x] Manual smoke — Extend: lease ending 6/30/2027, +6 months → preview 12/31/2027
+- [x] Manual smoke — New lease overview: no “Custom end” badge for standard month-based end
+- [x] Manual smoke — Legacy lease stored as 7/1/2027 with `termMonths: 12` → may show “Custom end” when edited (acceptable)
 
-**Exit criteria:** Happy-path QA signed off; no admin TS diffs unless a preview bypasses shared helpers (none known today).
+**Exit criteria:** Happy-path QA signed off; no admin TS diffs unless a preview bypasses shared helpers (none known today). Automated in [`lease-term-end-admin-verification.test.ts`](../apps/admin/src/components/leases/lease-term-end-admin-verification.test.ts).
 
 ---
 
