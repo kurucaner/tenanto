@@ -1,9 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  buildPropertyResumePath,
-  resolveRecentPropertyTabLabel,
-} from "@/components/home/home-workspace-continue-section";
+import { resolveRecentPropertyTabLabel } from "@/components/home/home-workspace-continue-section";
 import type { IRecentProperty } from "@/lib/recent-properties-storage";
 
 const propertyId = "property-1";
@@ -17,16 +14,6 @@ function makeRecent(overrides: Partial<IRecentProperty> = {}): IRecentProperty {
     ...overrides,
   };
 }
-
-describe("buildPropertyResumePath", () => {
-  test("returns overview path when lastPath is absent", () => {
-    expect(buildPropertyResumePath(propertyId)).toBe("/properties/property-1");
-  });
-
-  test("returns tab path when lastPath is present", () => {
-    expect(buildPropertyResumePath(propertyId, "/leases")).toBe("/properties/property-1/leases");
-  });
-});
 
 describe("resolveRecentPropertyTabLabel", () => {
   test("returns Overview for empty lastPath", () => {

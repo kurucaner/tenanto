@@ -184,9 +184,9 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 1c — Home page restructure (3 files)
 
-- [ ] Refactor [`apps/admin/src/pages/home-page.tsx`](../apps/admin/src/pages/home-page.tsx) — replace `HomeFinancialOverview` with launcher + continue + search + reports link; keep invites + admin cards
-- [ ] Create [`apps/admin/src/components/home/home-property-search-field.tsx`](../apps/admin/src/components/home/home-property-search-field.tsx) — compact search navigates to `/properties?q=…`
-- [ ] Create [`apps/admin/src/components/home/home-portfolio-reports-link.tsx`](../apps/admin/src/components/home/home-portfolio-reports-link.tsx) — “View portfolio reports →” link to `/reports` (no charts)
+- [x] Refactor [`apps/admin/src/pages/home-page.tsx`](../apps/admin/src/pages/home-page.tsx) — replace `HomeFinancialOverview` with launcher + continue + search + reports link; keep invites + admin cards
+- [x] Create [`apps/admin/src/components/home/home-property-search-field.tsx`](../apps/admin/src/components/home/home-property-search-field.tsx) — compact search navigates to `/properties?q=…`
+- [x] Create [`apps/admin/src/components/home/home-portfolio-reports-link.tsx`](../apps/admin/src/components/home/home-portfolio-reports-link.tsx) — “View portfolio reports →” link to `/reports` (no charts)
 
 **Exit criteria:** Home loads without report charts; user reaches a property tab in one click; mobile layout stacks/wraps acceptably.
 
@@ -198,15 +198,15 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 2a — Shared resume path helper (2 files)
 
-- [ ] Add `buildPropertyResumePath(propertyId, lastPath?)` in [`apps/admin/src/lib/property-switch-navigation.ts`](../apps/admin/src/lib/property-switch-navigation.ts)
-- [ ] Add tests in [`apps/admin/src/lib/property-switch-navigation.test.ts`](../apps/admin/src/lib/property-switch-navigation.test.ts) — overview, tab suffix, nested path falls back to list tab for v1
+- [x] Add `buildPropertyResumePath(propertyId, lastPath?)` in [`apps/admin/src/lib/property-switch-navigation.ts`](../apps/admin/src/lib/property-switch-navigation.ts)
+- [x] Add tests in [`apps/admin/src/lib/property-switch-navigation.test.ts`](../apps/admin/src/lib/property-switch-navigation.test.ts) — overview, tab suffix, nested path falls back to list tab for v1
 
 **Exit criteria:** Helper covered by tests; documents nested-route limitation.
 
 #### Phase 2b — Wire switcher + Continue to helper (2 files)
 
-- [ ] Update [`apps/admin/src/components/properties/property-switcher.tsx`](../apps/admin/src/components/properties/property-switcher.tsx) — recent rows navigate with `lastPath` when present
-- [ ] Update [`apps/admin/src/components/home/home-workspace-continue-section.tsx`](../apps/admin/src/components/home/home-workspace-continue-section.tsx) — use `buildPropertyResumePath`; show “Property · **Tab**” label
+- [x] Update [`apps/admin/src/components/properties/property-switcher.tsx`](../apps/admin/src/components/properties/property-switcher.tsx) — recent rows navigate with `lastPath` when present
+- [x] Update [`apps/admin/src/components/home/home-workspace-continue-section.tsx`](../apps/admin/src/components/home/home-workspace-continue-section.tsx) — use `buildPropertyResumePath`; show “Property · **Tab**” label
 
 **Exit criteria:** Picking a recent property from switcher lands on last tab; Home Continue matches.
 

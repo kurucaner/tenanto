@@ -9,8 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
 import { useRecentProperties } from "@/hooks/use-recent-properties";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
-import { buildPropertySwitchPath } from "@/lib/property-switch-navigation";
-import { clearRecentProperties, removeRecentProperty } from "@/lib/recent-properties-storage";
+import { buildPropertyResumePath, buildPropertySwitchPath } from "@/lib/property-switch-navigation";
+import { clearRecentProperties, type IRecentProperty, removeRecentProperty } from "@/lib/recent-properties-storage";
 import { cn } from "@/lib/utils";
 import { type IProperty, LIST_SEARCH_DEBOUNCE_MS } from "@/packages/shared";
 
@@ -46,8 +46,8 @@ PropertySwitcherOption.displayName = "PropertySwitcherOption";
 interface PropertySwitcherRecentOptionProps {
   isSelected: boolean;
   onRemove: (propertyId: string) => void;
-  onSelect: (propertyId: string) => void;
-  property: TPropertySwitcherRow;
+  onSelect: (recent: IRecentProperty) => void;
+  property: IRecentProperty;
 }
 
 const PropertySwitcherRecentOption = memo(
@@ -56,7 +56,7 @@ const PropertySwitcherRecentOption = memo(
       <button
         aria-pressed={isSelected}
         className="flex min-w-0 flex-1 items-start gap-2 rounded-md px-2 py-2 text-left text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-        onClick={() => onSelect(property.id)}
+        onClick={() => onSelect(property)}
         type="button"
       >
         <Check
@@ -196,6 +196,11 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
     );
   };
 
+  const handleSelectRecent = (recent: IRecentProperty) => {
+    setOpen(false);
+    navigate(buildPropertyResumePath(recent.id, recent.lastPath));
+  };
+
   const handleRemoveRecent = (removedPropertyId: string) => {
     removeRecentProperty(removedPropertyId);
   };
@@ -257,7 +262,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
                   isSelected={property.id === propertyId}
                   key={property.id}
                   onRemove={handleRemoveRecent}
-                  onSelect={handleSelect}
+                  onSelect={handleSelectRecent}
                   property={property}
                 />
               ))}

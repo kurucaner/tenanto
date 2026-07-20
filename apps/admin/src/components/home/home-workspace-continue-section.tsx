@@ -6,14 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PROPERTY_SHELL_TABS } from "@/config/property-shell-tabs";
 import { resolveActivePropertyShellTab } from "@/lib/property-shell-tab-navigation";
+import { buildPropertyResumePath } from "@/lib/property-switch-navigation";
 import { type IRecentProperty } from "@/lib/recent-properties-storage";
 
 interface HomeWorkspaceContinueSectionProps {
   recentEntries: IRecentProperty[];
-}
-
-function buildPropertyResumePath(propertyId: string, lastPath?: string): string {
-  return `/properties/${propertyId}${lastPath ?? ""}`;
 }
 
 function resolveRecentPropertyTabLabel(recentEntry: IRecentProperty): string {
@@ -34,11 +31,10 @@ const HomeWorkspaceContinueRow = memo(({ recentEntry }: HomeWorkspaceContinueRow
     <Card className="border-border/80 bg-card/80 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md">
       <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="truncate font-medium">{recentEntry.name}</p>
-          <p className="text-muted-foreground truncate text-sm">{recentEntry.address}</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Resume → <span className="text-foreground font-medium">{tabLabel}</span>
+          <p className="truncate font-medium">
+            {recentEntry.name} · <span className="font-semibold">{tabLabel}</span>
           </p>
+          <p className="text-muted-foreground truncate text-sm">{recentEntry.address}</p>
         </div>
         <Button asChild className="gap-2 shrink-0" variant="secondary">
           <Link to={resumePath}>
@@ -72,4 +68,4 @@ export const HomeWorkspaceContinueSection = memo(
 );
 HomeWorkspaceContinueSection.displayName = "HomeWorkspaceContinueSection";
 
-export { buildPropertyResumePath, resolveRecentPropertyTabLabel };
+export { resolveRecentPropertyTabLabel };
