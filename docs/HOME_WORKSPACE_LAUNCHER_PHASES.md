@@ -175,10 +175,10 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 1b — Launcher + Continue sections (4 files)
 
-- [ ] Create [`apps/admin/src/components/home/home-workspace-continue-section.tsx`](../apps/admin/src/components/home/home-workspace-continue-section.tsx) — recents with “Resume → {Tab label}” via `resolveActivePropertyShellTab`
-- [ ] Create [`apps/admin/src/components/home/home-workspace-launcher.tsx`](../apps/admin/src/components/home/home-workspace-launcher.tsx) — grid of workspace cards from `useHomeWorkspaceProperties`
-- [ ] Create [`apps/admin/src/components/home/home-workspace-empty-state.tsx`](../apps/admin/src/components/home/home-workspace-empty-state.tsx) — no properties CTA → `/properties`
-- [ ] Loading skeleton component or inline skeleton in launcher (colocate in launcher file if skeleton is small)
+- [x] Create [`apps/admin/src/components/home/home-workspace-continue-section.tsx`](../apps/admin/src/components/home/home-workspace-continue-section.tsx) — recents with “Resume → {Tab label}” via `resolveActivePropertyShellTab`
+- [x] Create [`apps/admin/src/components/home/home-workspace-launcher.tsx`](../apps/admin/src/components/home/home-workspace-launcher.tsx) — grid of workspace cards from `useHomeWorkspaceProperties`
+- [x] Create [`apps/admin/src/components/home/home-workspace-empty-state.tsx`](../apps/admin/src/components/home/home-workspace-empty-state.tsx) — no properties CTA → `/properties`
+- [x] Loading skeleton component or inline skeleton in launcher (colocate in launcher file if skeleton is small)
 
 **Exit criteria:** Continue hidden when no recents; launcher shows favorites/recents merge; empty state works.
 
