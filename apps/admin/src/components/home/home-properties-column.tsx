@@ -1,7 +1,8 @@
 import { Building2, ChevronRight, Construction } from "lucide-react";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import { HomeColumnPanel, HomeColumnRow } from "@/components/home/home-column-panel";
+import { CreatePropertyDialog } from "@/components/properties/create-property-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHomeWorkspaceProperties } from "@/hooks/use-home-workspace-properties";
@@ -12,6 +13,7 @@ const HOME_PROPERTIES_COLUMN_MAX = 6;
 export const HomePropertiesColumn = memo(() => {
   const { error, isError, isPending, properties, refetch } = useHomeWorkspaceProperties();
   const visibleProperties = properties.slice(0, HOME_PROPERTIES_COLUMN_MAX);
+  const [createOpen, setCreateOpen] = useState(false);
 
   if (isPending) {
     return (
@@ -43,12 +45,16 @@ export const HomePropertiesColumn = memo(() => {
 
   if (visibleProperties.length === 0) {
     return (
-      <HomeColumnPanel
-        emptyIcon={Construction}
-        emptyMessage="Build new homes"
-        headerHref="/properties"
-        title="Properties"
-      />
+      <>
+        <HomeColumnPanel
+          emptyIcon={Construction}
+          emptyMessage="Build new homes"
+          emptyOnClick={() => setCreateOpen(true)}
+          headerHref="/properties"
+          title="Properties"
+        />
+        <CreatePropertyDialog onOpenChange={setCreateOpen} open={createOpen} />
+      </>
     );
   }
 

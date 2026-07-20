@@ -14,7 +14,12 @@ export const HomeContinueColumn = memo(() => {
 
   if (!hasEntries) {
     return (
-      <HomeColumnPanel emptyIcon={Compass} emptyMessage="Explore something new" title="Continue" />
+      <HomeColumnPanel
+        emptyHref="/properties"
+        emptyIcon={Compass}
+        emptyMessage="Explore something new"
+        title="Continue"
+      />
     );
   }
 
@@ -37,10 +42,7 @@ export const HomeContinueColumn = memo(() => {
         );
       })}
       {staleRecentEntries.map((recentEntry) => (
-        <div
-          className="flex min-h-11 items-center gap-2.5 px-3 py-2 text-sm"
-          key={recentEntry.id}
-        >
+        <div className="flex min-h-11 items-center gap-2.5 px-3 py-2 text-sm" key={recentEntry.id}>
           <History className="size-4 shrink-0 text-muted-foreground/60" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-muted-foreground">{recentEntry.name}</p>
