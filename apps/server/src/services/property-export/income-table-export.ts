@@ -104,8 +104,16 @@ function mapIncomeEntryToExportRow(
   if (entry.entryKind === IncomeEntryKind.STAY) {
     return mapStayToExportRow(entry.stay, unitLabelById);
   }
+
+  if (entry.entryKind === IncomeEntryKind.LONG_TERM) {
+    const row = mapLineToExportRow(entry.line, unitLabelById);
+    return ["Long term", ...row.slice(1)];
+  }
+
   return mapLineToExportRow(entry.line, unitLabelById);
 }
+
+export { mapIncomeEntryToExportRow };
 
 export function buildIncomeExportFileName(
   filters: TPropertyIncomeEntriesListFilters,
