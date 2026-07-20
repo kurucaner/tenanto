@@ -35,6 +35,74 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     changes: [
       {
+        category: "improved",
+        description:
+          "Starting a lease is now a short three-step flow — who, term, then rent — with a clean full-page layout and a live recap before you confirm.",
+      },
+      {
+        category: "improved",
+        description:
+          "If you refresh after moving to the next step while starting a lease, your progress is kept until you finish, cancel, or sign out.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Start lease no longer rejects a valid tenant name or shows empty fields after refresh — the form stays in sync with what you type.",
+      },
+      {
+        category: "fixed",
+        description:
+          "If required lease fields were missing when starting a lease, you now get a clear message and the page scrolls to what needs fixing.",
+      },
+    ],
+    id: "2026.15.0",
+    publishedAt: "2026-07-20",
+    summary:
+      "Start lease is a three-step wizard that remembers your progress if you refresh.",
+    version: "2026.15.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
+          "Lease rent shows in the Income table as its own Long term type — filter by Long term to see rent payments separate from short stays and other income lines.",
+      },
+      {
+        category: "improved",
+        description:
+          "Property Settings lists for income types, expense categories, tax rates, and channel commissions use searchable catalogs with add and edit dialogs instead of inline rows.",
+      },
+      {
+        category: "improved",
+        description:
+          "Recording rent from a lease no longer asks you to pick an income type — the amount and date are enough.",
+      },
+      {
+        category: "improved",
+        description:
+          "Stripe Connect in Settings shows a clearer not connected, in progress, or connected layout, and you can switch between Express and Standard while setup is still incomplete.",
+      },
+      {
+        category: "improved",
+        description:
+          "The cash-expense checkbox is now labeled Paid in cash, and the Expenses table shows a Cash badge for those entries.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Your recently viewed properties list clears when you sign out so the next person on the same browser does not see your history.",
+      },
+    ],
+    id: "2026.14.0",
+    publishedAt: "2026-07-19",
+    summary:
+      "Long-term rent in Income, cleaner property Settings catalogs, and clearer rent recording and Stripe Connect setup.",
+    version: "2026.14.0",
+  },
+  {
+    changes: [
+      {
         category: "new",
         description:
           "Tenants get their own portal — sign in with email, Google, Apple, or a phone code; view active and past leases; and accept portal invites from a dedicated page.",

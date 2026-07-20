@@ -1,4 +1,4 @@
-import { defineUrlFilterSchema } from "@/lib/url-search-params";
+import { buildUrlTabDefinitions, defineUrlTabSchema, resolveUrlTab } from "@/lib/url-tab-state";
 
 export const LEASE_DETAIL_TABS = ["overview", "tenants", "payments", "terms"] as const;
 
@@ -11,13 +11,15 @@ export const LEASE_DETAIL_TAB_LABELS: Record<TLeaseDetailTab, string> = {
   terms: "Terms",
 };
 
-export const LEASE_DETAIL_TAB_URL_SCHEMA = defineUrlFilterSchema<{ tab: string }>({
-  tab: { defaultValue: "overview" },
-});
+export const LEASE_DETAIL_TAB_DEFINITIONS = buildUrlTabDefinitions(
+  LEASE_DETAIL_TABS,
+  LEASE_DETAIL_TAB_LABELS
+);
+
+const leaseDetailTabConfig = defineUrlTabSchema(LEASE_DETAIL_TABS, { defaultTab: "overview" });
+
+export const LEASE_DETAIL_TAB_URL_SCHEMA = leaseDetailTabConfig.schema;
 
 export function resolveLeaseDetailTab(raw: string): TLeaseDetailTab {
-  if ((LEASE_DETAIL_TABS as readonly string[]).includes(raw)) {
-    return raw as TLeaseDetailTab;
-  }
-  return "overview";
+  return resolveUrlTab(raw, LEASE_DETAIL_TABS, "overview");
 }

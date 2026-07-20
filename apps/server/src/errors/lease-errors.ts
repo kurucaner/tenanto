@@ -16,6 +16,7 @@ export const LeaseErrorCode = {
   LONG_STAY_NOT_ACTIVE: "LONG_STAY_NOT_ACTIVE",
   LONG_STAY_NOT_FOUND: "LONG_STAY_NOT_FOUND",
   MAX_SECONDARY_OCCUPANTS: "MAX_SECONDARY_OCCUPANTS",
+  SECONDARY_OCCUPANT_EMAIL_MATCHES_PRIMARY: "SECONDARY_OCCUPANT_EMAIL_MATCHES_PRIMARY",
   SECONDARY_OCCUPANT_LEASE_MISMATCH: "SECONDARY_OCCUPANT_LEASE_MISMATCH",
   SECONDARY_OCCUPANT_NOT_FOUND: "SECONDARY_OCCUPANT_NOT_FOUND",
   TENANT_LEASE_ACCESS_DENIED: "TENANT_LEASE_ACCESS_DENIED",
@@ -71,6 +72,14 @@ export function maxSecondaryOccupantsError(max: number): DomainError {
     `A lease can have at most ${max} secondary occupants`,
     HttpStatus.CONFLICT,
     { max }
+  );
+}
+
+export function secondaryOccupantEmailMatchesPrimaryError(): DomainError {
+  return createDomainError(
+    LeaseErrorCode.SECONDARY_OCCUPANT_EMAIL_MATCHES_PRIMARY,
+    "Secondary tenant email cannot match the primary tenant's email",
+    HttpStatus.CONFLICT
   );
 }
 

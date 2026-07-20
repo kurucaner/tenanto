@@ -1,5 +1,9 @@
 import { transactionDateToMonth } from "./lease-date-utils";
 import {
+  resolveLeaseEndDate,
+  validateLeaseTermInput,
+} from "./lease-term-input-utils";
+import {
   type IEditPropertyLongStayTermsBody,
   type ILeaseTermsEditability,
   type ILeaseTermsEditSignals,
@@ -12,8 +16,6 @@ import {
 
 /** Matches create-lease route bounds in `property-long-stay-routes.ts`. */
 export const MAX_LEASE_TERM_MONTHS = 60;
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const LEASE_TERMS_EDIT_BLOCK_MESSAGES: Record<TLeaseTermsEditBlockReason, string> = {
   [LeaseTermsEditBlockReason.HAS_INCOME_LINES]:
@@ -76,48 +78,37 @@ export function deriveLeaseTermsEditability(
   return { editable: true };
 }
 
-function parseIsoDateString(value: string): string | null {
-  if (!ISO_DATE_RE.test(value.trim())) {
-    return null;
-  }
-
-  const date = Date.parse(`${value.trim()}T00:00:00Z`);
-  if (!Number.isFinite(date)) {
-    return null;
-  }
-
-  return value.trim();
-}
-
 export function validateEditLeaseTerms(
   body: IEditPropertyLongStayTermsBody,
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent" | "status" | "termMonths">,
+  lease: Pick<
+    IPropertyLongStay,
+    "leaseEndDate" | "leaseStartDate" | "monthlyRent" | "status" | "termMonths"
+  >,
   _today: string
 ): string | null {
   if (lease.status !== PropertyLongStayStatus.ACTIVE) {
     return "Only active leases can have terms edited";
   }
 
-  const leaseStartDate = parseIsoDateString(body.leaseStartDate);
-  if (!leaseStartDate) {
-    return "leaseStartDate must be a YYYY-MM-DD date";
-  }
-
-  if (
-    !Number.isInteger(body.termMonths) ||
-    body.termMonths < 1 ||
-    body.termMonths > MAX_LEASE_TERM_MONTHS
-  ) {
-    return `termMonths must be a whole number between 1 and ${MAX_LEASE_TERM_MONTHS}`;
+  const termError = validateLeaseTermInput(body);
+  if (termError) {
+    return termError;
   }
 
   if (!Number.isFinite(body.monthlyRent) || body.monthlyRent < 0) {
     return "monthlyRent must be a non-negative number";
   }
 
+  let resolved;
+  try {
+    resolved = resolveLeaseEndDate(body);
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid lease term input";
+  }
+
   if (
-    leaseStartDate === lease.leaseStartDate &&
-    body.termMonths === lease.termMonths &&
+    body.leaseStartDate === lease.leaseStartDate &&
+    resolved.leaseEndDate === lease.leaseEndDate &&
     body.monthlyRent === lease.monthlyRent
   ) {
     return "At least one lease term field must change";

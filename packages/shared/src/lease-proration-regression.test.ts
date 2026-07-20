@@ -114,6 +114,64 @@ describe("lease proration manual QA regression matrix", () => {
       occupiedDays: 15,
     });
   });
+
+  test("7. custom contract end on month boundary avoids extra partial month", () => {
+    expect(
+      calculateExpectedRentForLeaseMonth({
+        baseMonthlyRent: 1000,
+        effectiveEndDate: "2027-06-30",
+        leaseStartDate: "2026-07-01",
+        month: "2027-07",
+        rentPeriods: [],
+      })
+    ).toMatchObject({
+      expectedRent: 0,
+      isProrated: false,
+      occupiedDays: 0,
+    });
+    expect(
+      calculateExpectedRentForLeaseMonth({
+        baseMonthlyRent: 1000,
+        effectiveEndDate: "2027-06-30",
+        leaseStartDate: "2026-07-01",
+        month: "2027-06",
+        rentPeriods: [],
+      })
+    ).toMatchObject({
+      expectedRent: 1000,
+      isProrated: false,
+      occupiedDays: 30,
+    });
+  });
+
+  test("8. mid-month start with custom end still prorates first and last months", () => {
+    expect(
+      calculateExpectedRentForLeaseMonth({
+        baseMonthlyRent: 1000,
+        effectiveEndDate: "2024-12-20",
+        leaseStartDate: "2024-06-16",
+        month: "2024-06",
+        rentPeriods: [],
+      })
+    ).toMatchObject({
+      expectedRent: 500,
+      isProrated: true,
+      occupiedDays: 15,
+    });
+    expect(
+      calculateExpectedRentForLeaseMonth({
+        baseMonthlyRent: 1000,
+        effectiveEndDate: "2024-12-20",
+        leaseStartDate: "2024-06-16",
+        month: "2024-12",
+        rentPeriods: [],
+      })
+    ).toMatchObject({
+      expectedRent: 645.16,
+      isProrated: true,
+      occupiedDays: 20,
+    });
+  });
 });
 
 describe("lease proration date math stays on YYYY-MM-DD strings", () => {

@@ -6,8 +6,10 @@ import { toast } from "sonner";
 
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
+  createTenantContactFormSchema,
+  getSecondaryTenantMutationErrorMessage,
+  getTenantContactFormErrorMessage,
   tenantContactFormDefaults,
-  tenantContactFormSchema,
   toSecondaryOccupantPatch,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
@@ -35,7 +37,9 @@ interface EditSecondaryTenantDialogProps {
   membershipId: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  primaryTenantEmail: string | null;
   propertyId: string;
+  secondaryTenantEmails: readonly (string | null | undefined)[];
 }
 
 export const EditSecondaryTenantDialog = memo(
@@ -46,7 +50,9 @@ export const EditSecondaryTenantDialog = memo(
     membershipId,
     onOpenChange,
     open,
+    primaryTenantEmail,
     propertyId,
+    secondaryTenantEmails,
   }: EditSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
@@ -56,7 +62,13 @@ export const EditSecondaryTenantDialog = memo(
         name: contact.effectiveName,
         phone: contact.effectivePhone,
       }),
-      resolver: zodResolver(tenantContactFormSchema),
+      resolver: zodResolver(
+        createTenantContactFormSchema({
+          excludeEmail: contact.effectiveEmail,
+          primaryTenantEmail,
+          secondaryTenantEmails,
+        })
+      ),
     });
 
     useEffect(() => {
@@ -80,7 +92,7 @@ export const EditSecondaryTenantDialog = memo(
           toSecondaryOccupantPatch(values)
         ),
       onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to update secondary tenant");
+        toast.error(getSecondaryTenantMutationErrorMessage(e, "Failed to update secondary tenant"));
       },
       onSuccess: () => {
         toast.success("Secondary tenant updated");
@@ -106,9 +118,14 @@ export const EditSecondaryTenantDialog = memo(
       [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, onOpenChange]
     );
 
-    const onSubmit = form.handleSubmit((values) => {
-      mutation.mutate(values);
-    });
+    const onSubmit = form.handleSubmit(
+      (values) => {
+        mutation.mutate(values);
+      },
+      (fieldErrors) => {
+        toast.error(getTenantContactFormErrorMessage(fieldErrors));
+      }
+    );
 
     const { errors, isSubmitting } = form.formState;
 

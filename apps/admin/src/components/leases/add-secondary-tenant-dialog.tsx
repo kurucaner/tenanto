@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
-  tenantContactFormSchema,
+  createTenantContactFormSchema,
+  getSecondaryTenantMutationErrorMessage,
+  getTenantContactFormErrorMessage,
   toSecondaryOccupantBody,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
@@ -30,8 +32,10 @@ interface AddSecondaryTenantDialogProps {
   lease: IPropertyLongStay;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  primaryTenantEmail: string | null;
   propertyId: string;
   secondaryOccupantCount: number;
+  secondaryTenantEmails: readonly (string | null | undefined)[];
 }
 
 export const AddSecondaryTenantDialog = memo(
@@ -39,14 +43,21 @@ export const AddSecondaryTenantDialog = memo(
     lease,
     onOpenChange,
     open,
+    primaryTenantEmail,
     propertyId,
     secondaryOccupantCount,
+    secondaryTenantEmails,
   }: AddSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
     const form = useForm<TTenantContactFormValues>({
       defaultValues: { name: "", tenantEmail: "", tenantPhone: "" },
-      resolver: zodResolver(tenantContactFormSchema),
+      resolver: zodResolver(
+        createTenantContactFormSchema({
+          primaryTenantEmail,
+          secondaryTenantEmails,
+        })
+      ),
     });
 
     const mutation = useMutation({
@@ -62,7 +73,7 @@ export const AddSecondaryTenantDialog = memo(
         );
       },
       onError: (e) => {
-        toast.error(e instanceof Error ? e.message : "Failed to add secondary tenant");
+        toast.error(getSecondaryTenantMutationErrorMessage(e, "Failed to add secondary tenant"));
       },
       onSuccess: () => {
         toast.success("Secondary tenant added");
@@ -82,9 +93,14 @@ export const AddSecondaryTenantDialog = memo(
       [form, onOpenChange]
     );
 
-    const onSubmit = form.handleSubmit((values) => {
-      mutation.mutate(values);
-    });
+    const onSubmit = form.handleSubmit(
+      (values) => {
+        mutation.mutate(values);
+      },
+      (fieldErrors) => {
+        toast.error(getTenantContactFormErrorMessage(fieldErrors));
+      }
+    );
 
     const { errors, isSubmitting } = form.formState;
 

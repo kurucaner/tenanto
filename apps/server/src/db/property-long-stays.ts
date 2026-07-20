@@ -19,11 +19,12 @@ import type {
   TPropertyLongStaysListFilters,
 } from "@/packages/shared";
 import {
-  calculateLeaseEndDate,
   enumerateLeaseMonths,
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
   PropertyLongStayStatus,
+  resolveExtendLeaseEndDate,
+  resolveLeaseEndDate,
   transactionDateToMonth,
   validateExtendLease,
 } from "@/packages/shared";
@@ -119,7 +120,7 @@ export const propertyLongStaysDb = {
       throw activeLongStayConflictError();
     }
 
-    const leaseEndDate = calculateLeaseEndDate(input.leaseStartDate, input.termMonths);
+    const { leaseEndDate, termMonths } = resolveLeaseEndDate(input);
     const tenantEmail = input.tenantEmail?.trim() || null;
     const tenantPhone = input.tenantPhone?.trim() || null;
 
@@ -134,7 +135,7 @@ export const propertyLongStaysDb = {
         input.unitId,
         input.guestName.trim(),
         input.leaseStartDate,
-        input.termMonths,
+        termMonths,
         input.monthlyRent,
         leaseEndDate,
         tenantEmail,
@@ -179,8 +180,7 @@ export const propertyLongStaysDb = {
       throw invalidExtendLeaseError(validationError);
     }
 
-    const newTermMonths = existing.termMonths + body.additionalTermMonths;
-    const newLeaseEndDate = calculateLeaseEndDate(existing.leaseStartDate, newTermMonths);
+    const { newLeaseEndDate, newTermMonths } = resolveExtendLeaseEndDate(existing, body);
     const hasRentChange =
       body.newMonthlyRent !== undefined && body.rentEffectiveFromMonth !== undefined;
 
@@ -551,8 +551,13 @@ export const propertyLongStaysDb = {
       throw longStayNotActiveError();
     }
 
+    const resolvedTerms = resolveLeaseEndDate(body);
+    const hasCustomEndInBody = body.leaseEndDate !== undefined && body.leaseEndDate !== "";
     const scheduleChanged =
-      body.leaseStartDate !== existing.leaseStartDate || body.termMonths !== existing.termMonths;
+      body.leaseStartDate !== existing.leaseStartDate ||
+      (hasCustomEndInBody
+        ? resolvedTerms.leaseEndDate !== existing.leaseEndDate
+        : body.termMonths !== undefined && body.termMonths !== existing.termMonths);
     if (scheduleChanged) {
       const activeOnUnit = await propertyLongStaysDb.findActiveByUnitId(existing.unitId);
       if (activeOnUnit && activeOnUnit.id !== id) {
@@ -560,7 +565,7 @@ export const propertyLongStaysDb = {
       }
     }
 
-    const leaseEndDate = calculateLeaseEndDate(body.leaseStartDate, body.termMonths);
+    const { leaseEndDate, termMonths } = resolvedTerms;
     const startMonth = transactionDateToMonth(body.leaseStartDate);
 
     const client = await pool.connect();
@@ -597,7 +602,7 @@ export const propertyLongStaysDb = {
         [
           id,
           body.leaseStartDate,
-          body.termMonths,
+          termMonths,
           body.monthlyRent,
           leaseEndDate,
           PropertyLongStayStatus.ACTIVE,

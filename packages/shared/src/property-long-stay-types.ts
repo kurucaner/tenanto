@@ -45,11 +45,12 @@ export interface IPropertyLongStay {
 
 export interface ICreatePropertyLongStayBody {
   guestName: string;
+  leaseEndDate?: string;
   leaseStartDate: string;
   monthlyRent: number;
   tenantEmail?: string;
   tenantPhone?: string;
-  termMonths: number;
+  termMonths?: number;
   unitId: string;
 }
 
@@ -99,7 +100,8 @@ export interface IPropertyLongStayRentPeriod {
 }
 
 export interface IExtendPropertyLongStayBody {
-  additionalTermMonths: number;
+  additionalTermMonths?: number;
+  newLeaseEndDate?: string;
   newMonthlyRent?: number;
   rentEffectiveFromMonth?: string;
 }
@@ -137,9 +139,10 @@ export interface ILeaseTermsEditSignals {
 }
 
 export interface IEditPropertyLongStayTermsBody {
+  leaseEndDate?: string;
   leaseStartDate: string;
   monthlyRent: number;
-  termMonths: number;
+  termMonths?: number;
 }
 
 export interface IEditPropertyLongStayTermsResponse {

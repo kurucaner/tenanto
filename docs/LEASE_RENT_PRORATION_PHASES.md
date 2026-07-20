@@ -12,7 +12,7 @@ Roadmap for **industry-standard residential proration** on long-term leases: act
 - End lease UI: `apps/admin/src/components/leases/end-lease-dialog.tsx`
 - Payments UI: `apps/admin/src/components/leases/lease-payments-section.tsx`
 - Record rent prefill: `apps/admin/src/pages/property-lease-detail-page.tsx`, `apps/admin/src/pages/property-leases-page.tsx`
-- Start lease: `apps/admin/src/components/leases/start-lease-dialog.tsx`
+- Start lease: `apps/admin/src/pages/property-start-lease-page.tsx`
 - Paid-month detection: `packages/shared/src/property-partial-refund-utils.ts` — `isIncomeLinePaidForRentSchedule`
 - Shared types: `packages/shared/src/property-long-stay-types.ts` — `IPropertyLongStayRentMonth`
 
@@ -36,7 +36,9 @@ Roadmap for **industry-standard residential proration** on long-term leases: act
 - DB migration or persisted proration snapshots
 - Server enforcement that income amount must exactly equal `expectedRent`
 - Backfill/recalculate historical income lines
-- Changes to how `leaseEndDate` is computed on lease create
+- Holdover **penalty** rate or configurable proration methods (see non-goals above)
+
+For **custom contract end dates** on create/edit/extend (e.g. 7/1 start with 6/30 end to avoid an extra partial month), see [`LEASE_CUSTOM_END_DATE_PHASES.md`](./LEASE_CUSTOM_END_DATE_PHASES.md). Proration math is unchanged — operators set the stored `leaseEndDate` explicitly.
 
 ---
 

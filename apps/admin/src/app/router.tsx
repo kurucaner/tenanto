@@ -24,6 +24,7 @@ import { PropertyLeaseDetailPage } from "@/pages/property-lease-detail-page";
 import { PropertyLeasesPage } from "@/pages/property-leases-page";
 import { PropertyReportsPage } from "@/pages/property-reports-page";
 import { PropertySettingsPage } from "@/pages/property-settings-page";
+import { PropertyStartLeasePage } from "@/pages/property-start-lease-page";
 import { PropertyUnitsPage } from "@/pages/property-units-page";
 import { ReportsPage } from "@/pages/reports-page";
 import { ResetPasswordPage } from "@/pages/reset-password-page";
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
                   { element: <PropertyDetailPage />, index: true },
                   { element: <PropertyUnitsPage />, path: "units" },
                   { element: <PropertyLeasesPage />, path: "leases" },
+                  { element: <PropertyStartLeasePage />, path: "leases/new" },
                   { element: <PropertyLeaseDetailPage />, path: "leases/:leaseId" },
                   { element: <PropertyIncomePage />, path: "income" },
                   { element: <PropertyExpensesPage />, path: "expenses" },

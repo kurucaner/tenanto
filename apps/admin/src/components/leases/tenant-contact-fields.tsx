@@ -39,6 +39,9 @@ export const TenantContactFields = memo(
             Email is managed by the linked portal account.
           </p>
         ) : null}
+        {errors.tenantEmail ? (
+          <p className="text-xs text-destructive">{errors.tenantEmail.message}</p>
+        ) : null}
       </div>
       <Controller
         control={control}
