@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus } from "lucide-react";
 import {
   memo,
@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -18,7 +19,6 @@ import {
   type DataTableSortController,
 } from "@/components/data-table/data-table-types";
 import { DeletedBadge, RestoreEntityButton } from "@/components/deleted-badge";
-import { StartLeaseDialog } from "@/components/leases/start-lease-dialog";
 import { QuickDeleteButton } from "@/components/table/quick-delete-button";
 import { TableIconButton } from "@/components/table/table-icon-button";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +44,8 @@ import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
-import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
+import { buildPropertyStartLeasePath } from "@/lib/start-lease-routes";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import {
   buildUnitToolbarClearAllPatch,
@@ -340,19 +340,13 @@ const PropertyUnitsPageDialogs = memo(
     editUnit,
     onCreateOpenChange,
     onEditOpenChange,
-    onStartLeaseOpenChange,
     propertyId,
-    startLeaseUnit,
-    units,
   }: {
     createOpen: boolean;
     editUnit: IPropertyUnit | null;
     onCreateOpenChange: (open: boolean) => void;
     onEditOpenChange: (open: boolean) => void;
-    onStartLeaseOpenChange: (open: boolean) => void;
     propertyId: string;
-    startLeaseUnit: IPropertyUnit | null;
-    units: IPropertyUnit[];
   }) => (
     <>
       <CreateUnitDialog
@@ -369,16 +363,6 @@ const PropertyUnitsPageDialogs = memo(
           unit={editUnit}
         />
       ) : null}
-      {startLeaseUnit ? (
-        <StartLeaseDialog
-          key={startLeaseUnit.id}
-          onOpenChange={onStartLeaseOpenChange}
-          open={true}
-          propertyId={propertyId}
-          unit={startLeaseUnit}
-          units={units}
-        />
-      ) : null}
     </>
   )
 );
@@ -387,10 +371,10 @@ PropertyUnitsPageDialogs.displayName = "PropertyUnitsPageDialogs";
 export const PropertyUnitsPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageUnits;
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
-  const [startLeaseUnit, setStartLeaseUnit] = useState<IPropertyUnit | null>(null);
 
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
   const unitFilterSchema = useMemo(
@@ -545,16 +529,6 @@ export const PropertyUnitsPage = memo(() => {
     isFetchingNextPage,
   });
 
-  const pickerUnitsQuery = useQuery({
-    queryFn: () => unitsApi.list(propertyId),
-    queryKey: queryKeys.propertyUnitsPicker(propertyId),
-  });
-
-  const pickerUnits = useMemo(
-    () => pickerUnitsQuery.data?.units ?? [],
-    [pickerUnitsQuery.data?.units]
-  );
-
   const { activeLeases } = usePropertyActiveLeases(propertyId);
 
   const activeLeaseByUnitId = useMemo(() => {
@@ -609,6 +583,15 @@ export const PropertyUnitsPage = memo(() => {
     [restoreMutation]
   );
 
+  const handleStartLease = useCallback(
+    (unit: IPropertyUnit) => {
+      navigate(
+        buildPropertyStartLeasePath(propertyId, { from: "units", unitId: unit.id })
+      );
+    },
+    [navigate, propertyId]
+  );
+
   const pageActions = useMemo(
     () =>
       canManage ? (
@@ -641,7 +624,7 @@ export const PropertyUnitsPage = memo(() => {
             onDelete={handleDelete}
             onEdit={setEditUnit}
             onRestore={handleRestoreUnit}
-            onStartLease={setStartLeaseUnit}
+            onStartLease={handleStartLease}
             sort={sortController}
             toolbar={
               <PropertyUnitToolbar
@@ -678,12 +661,7 @@ export const PropertyUnitsPage = memo(() => {
         editUnit={editUnit}
         onCreateOpenChange={setCreateOpen}
         onEditOpenChange={(open) => handleUnitDialogOpenChange(open, () => setEditUnit(null))}
-        onStartLeaseOpenChange={(open) =>
-          handleUnitDialogOpenChange(open, () => setStartLeaseUnit(null))
-        }
         propertyId={propertyId}
-        startLeaseUnit={startLeaseUnit}
-        units={pickerUnits}
       />
     </>
   );

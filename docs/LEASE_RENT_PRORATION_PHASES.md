@@ -12,7 +12,7 @@ Roadmap for **industry-standard residential proration** on long-term leases: act
 - End lease UI: `apps/admin/src/components/leases/end-lease-dialog.tsx`
 - Payments UI: `apps/admin/src/components/leases/lease-payments-section.tsx`
 - Record rent prefill: `apps/admin/src/pages/property-lease-detail-page.tsx`, `apps/admin/src/pages/property-leases-page.tsx`
-- Start lease: `apps/admin/src/components/leases/start-lease-dialog.tsx`
+- Start lease: `apps/admin/src/pages/property-start-lease-page.tsx`
 - Paid-month detection: `packages/shared/src/property-partial-refund-utils.ts` — `isIncomeLinePaidForRentSchedule`
 - Shared types: `packages/shared/src/property-long-stay-types.ts` — `IPropertyLongStayRentMonth`
 

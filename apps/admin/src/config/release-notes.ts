@@ -35,6 +35,24 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     changes: [
       {
+        category: "improved",
+        description:
+          "Starting a lease now opens on its own page with clearer sections for unit, rent, term, and tenant — so monthly rent is easy to find and the form has room to grow.",
+      },
+      {
+        category: "fixed",
+        description:
+          "If required lease fields were missing when starting a lease, you now get a clear message and the page scrolls to what needs fixing.",
+      },
+    ],
+    id: "2026.15.0",
+    publishedAt: "2026-07-20",
+    summary: "Start lease moved to a dedicated page with clearer layout and validation feedback.",
+    version: "2026.15.0",
+  },
+  {
+    changes: [
+      {
         category: "new",
         description:
           "Lease rent shows in the Income table as its own Long term type — filter by Long term to see rent payments separate from short stays and other income lines.",

@@ -11,7 +11,7 @@ Phased rollout for **optional custom contract end dates** on long-term leases: o
 - [`packages/shared/src/property-long-stay-types.ts`](packages/shared/src/property-long-stay-types.ts) — `ICreatePropertyLongStayBody`, `IEditPropertyLongStayTermsBody`, `IExtendPropertyLongStayBody`
 - [`apps/server/src/db/property-long-stays.ts`](apps/server/src/db/property-long-stays.ts) — `create`, `updateTerms`, `extendLease`, `getRentSchedule`
 - [`apps/server/src/routes/admin/property-long-stay-routes.ts`](apps/server/src/routes/admin/property-long-stay-routes.ts) — body parsers for create / terms / extend
-- [`apps/admin/src/components/leases/start-lease-dialog.tsx`](apps/admin/src/components/leases/start-lease-dialog.tsx) — term months only
+- [`apps/admin/src/pages/property-start-lease-page.tsx`](apps/admin/src/pages/property-start-lease-page.tsx) — create lease page (see [`START_LEASE_PAGE_PHASES.md`](START_LEASE_PAGE_PHASES.md))
 - [`apps/admin/src/components/leases/edit-lease-terms-dialog.tsx`](apps/admin/src/components/leases/edit-lease-terms-dialog.tsx) — term months only
 - [`apps/admin/src/components/leases/extend-lease-dialog.tsx`](apps/admin/src/components/leases/extend-lease-dialog.tsx) — additional months; preview via `calculateLeaseEndDate(start, termMonths + additional)`
 - [`apps/admin/src/lib/lease-proration-display.ts`](apps/admin/src/lib/lease-proration-display.ts) — first-month preview uses computed end from term
@@ -184,7 +184,7 @@ Helper copy: “Rent is calculated through the end date you set (inclusive).”
 
 #### Phase 1.3 — Start Lease UI
 
-- [x] Term / End date toggle, date picker, resolved preview, submit payload in [`start-lease-dialog.tsx`](apps/admin/src/components/leases/start-lease-dialog.tsx)
+- [x] Term / End date toggle, date picker, resolved preview, submit payload in [`property-start-lease-page.tsx`](../apps/admin/src/pages/property-start-lease-page.tsx) (formerly start-lease dialog)
 
 **Files:** 1
 

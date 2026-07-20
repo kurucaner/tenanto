@@ -3,6 +3,7 @@ import {
   type Control,
   type FieldErrors,
   type FieldValues,
+  type Path,
   type UseFormRegister,
 } from "react-hook-form";
 import { type z } from "zod";
@@ -46,7 +47,11 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
     <div className="space-y-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={startDateFieldId}>Lease Start Date</Label>
-        <Input id={startDateFieldId} type="date" {...register("leaseStartDate")} />
+        <Input
+          id={startDateFieldId}
+          type="date"
+          {...register("leaseStartDate" as Path<TFieldValues>)}
+        />
         {errors.leaseStartDate ? (
           <p className="text-xs text-destructive">{String(errors.leaseStartDate.message)}</p>
         ) : null}

@@ -10,7 +10,7 @@ Phased rollout for correcting **lease start date**, **term (→ contract end)**,
 - [`apps/server/src/db/property-long-stays.ts`](../apps/server/src/db/property-long-stays.ts) — `create`, `extendLease`, `endLease`, `getRentSchedule`, `updateLease` (contact fields)
 - [`apps/server/src/routes/admin/property-long-stay-routes.ts`](../apps/server/src/routes/admin/property-long-stay-routes.ts) — create / extend / end / list / detail routes
 - [`apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts`](../apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts) — schedule from dates + income + Stripe allocations
-- [`apps/admin/src/components/leases/start-lease-dialog.tsx`](../apps/admin/src/components/leases/start-lease-dialog.tsx) — create UX + validation patterns
+- [`apps/admin/src/pages/property-start-lease-page.tsx`](../apps/admin/src/pages/property-start-lease-page.tsx) — create UX + validation patterns
 - [`apps/admin/src/components/leases/extend-lease-dialog.tsx`](../apps/admin/src/components/leases/extend-lease-dialog.tsx) — post-rent term/rent changes
 - [`apps/admin/src/components/leases/end-lease-dialog.tsx`](../apps/admin/src/components/leases/end-lease-dialog.tsx) — move-out / holdover
 - [`apps/admin/src/pages/property-lease-detail-page.tsx`](../apps/admin/src/pages/property-lease-detail-page.tsx) — lease detail shell
