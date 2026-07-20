@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import { HomePropertyWorkspaceCard } from "@/components/home/home-property-workspace-card";
 import { HomeWorkspaceEmptyState } from "@/components/home/home-workspace-empty-state";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHomeWorkspaceProperties } from "@/hooks/use-home-workspace-properties";
@@ -37,9 +38,32 @@ const HomeWorkspaceLauncherSkeleton = memo(() => (
 ));
 HomeWorkspaceLauncherSkeleton.displayName = "HomeWorkspaceLauncherSkeleton";
 
+const HomeWorkspaceLauncherErrorState = memo(
+  ({
+    errorMessage,
+    onRetry,
+  }: {
+    errorMessage: string;
+    onRetry: () => void;
+  }) => (
+    <Card className="border-destructive/30 bg-card/80 shadow-sm">
+      <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-destructive text-sm">{errorMessage}</p>
+        <Button className="shrink-0" onClick={onRetry} type="button" variant="outline">
+          Try again
+        </Button>
+      </CardContent>
+    </Card>
+  )
+);
+HomeWorkspaceLauncherErrorState.displayName = "HomeWorkspaceLauncherErrorState";
+
 export const HomeWorkspaceLauncher = memo(() => {
   const currentUser = useAuthStore((state) => state.user);
-  const { isError, isPending, properties } = useHomeWorkspaceProperties();
+  const { error, isError, isPending, properties, refetch } = useHomeWorkspaceProperties();
+
+  const errorMessage =
+    error instanceof Error ? error.message : "Could not load your properties. Please try again.";
 
   return (
     <section aria-label="Your properties" className="space-y-4">
@@ -52,21 +76,36 @@ export const HomeWorkspaceLauncher = memo(() => {
 
       {isPending ? <HomeWorkspaceLauncherSkeleton /> : null}
 
-      {isError ? (
-        <p className="text-destructive text-sm">Could not load your properties. Please try again.</p>
+      {isError && properties.length === 0 ? (
+        <HomeWorkspaceLauncherErrorState
+          errorMessage={errorMessage}
+          onRetry={() => {
+            void refetch();
+          }}
+        />
       ) : null}
 
       {!isPending && !isError && properties.length === 0 ? <HomeWorkspaceEmptyState /> : null}
 
       {!isPending && properties.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {properties.map((property) => (
-            <HomePropertyWorkspaceCard
-              currentUser={currentUser}
-              key={property.id}
-              property={property}
+        <div className="space-y-4">
+          {isError ? (
+            <HomeWorkspaceLauncherErrorState
+              errorMessage={errorMessage}
+              onRetry={() => {
+                void refetch();
+              }}
             />
-          ))}
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {properties.map((property) => (
+              <HomePropertyWorkspaceCard
+                currentUser={currentUser}
+                key={property.id}
+                property={property}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
     </section>

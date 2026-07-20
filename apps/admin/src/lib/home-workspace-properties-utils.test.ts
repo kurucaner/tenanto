@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   HOME_WORKSPACE_PROPERTIES_MAX,
   mergeHomeWorkspaceProperties,
+  partitionRecentEntriesByAccessibleList,
 } from "@/lib/home-workspace-properties-utils";
 import type { IRecentProperty } from "@/lib/recent-properties-storage";
 import type { IProperty } from "@/packages/shared";
@@ -53,5 +54,31 @@ describe("mergeHomeWorkspaceProperties", () => {
     expect(mergeHomeWorkspaceProperties([], listItems)).toHaveLength(
       HOME_WORKSPACE_PROPERTIES_MAX
     );
+  });
+});
+
+describe("partitionRecentEntriesByAccessibleList", () => {
+  test("splits recents into accessible and stale entries", () => {
+    const partitioned = partitionRecentEntriesByAccessibleList(
+      [
+        makeRecent("accessible", "Accessible"),
+        makeRecent("stale", "Stale"),
+        makeRecent("accessible", "Accessible duplicate"),
+      ],
+      [makeProperty("accessible", "Accessible")]
+    );
+
+    expect(partitioned.accessibleRecentEntries.map((entry) => entry.id)).toEqual(["accessible"]);
+    expect(partitioned.staleRecentEntries.map((entry) => entry.id)).toEqual(["stale"]);
+  });
+
+  test("deduplicates recent entries by property id", () => {
+    const partitioned = partitionRecentEntriesByAccessibleList(
+      [makeRecent("property-1", "First"), makeRecent("property-1", "Second")],
+      [makeProperty("property-1", "Property")]
+    );
+
+    expect(partitioned.accessibleRecentEntries).toHaveLength(1);
+    expect(partitioned.staleRecentEntries).toHaveLength(0);
   });
 });

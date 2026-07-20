@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { resolveRecentPropertyTabLabel } from "@/components/home/home-workspace-continue-section";
+import { resolveRecentPropertyTabLabel } from "@/lib/home-workspace-continue-utils";
 import type { IRecentProperty } from "@/lib/recent-properties-storage";
 
 const propertyId = "property-1";

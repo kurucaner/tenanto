@@ -11,7 +11,6 @@ import { HomeWorkspaceLauncher } from "@/components/home/home-workspace-launcher
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useRecentProperties } from "@/hooks/use-recent-properties";
 import { adminApi, propertyInvitesApi } from "@/lib/api-client";
 import { getAcceptInvitePathByInviteId } from "@/lib/invite-return-url";
 import { queryKeys } from "@/lib/query-keys";
@@ -90,7 +89,6 @@ HomePendingPropertyInvitesBanner.displayName = "HomePendingPropertyInvitesBanner
 const HomePageInner = memo(() => {
   const userType = useAuthStore((state) => state.user?.userType);
   const isAdmin = userType === UserType.ADMIN;
-  const recentEntries = useRecentProperties();
 
   const statsQuery = useQuery({
     enabled: isAdmin,
@@ -121,7 +119,7 @@ const HomePageInner = memo(() => {
           </section>
         ) : null}
 
-        <HomeWorkspaceContinueSection recentEntries={recentEntries} />
+        <HomeWorkspaceContinueSection />
         <HomeWorkspaceLauncher />
         <HomePropertySearchField />
         <HomePortfolioReportsLink />

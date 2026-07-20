@@ -251,9 +251,9 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 4b — Launcher hardening (3 files)
 
-- [ ] Filter stale recent IDs in [`apps/admin/src/hooks/use-home-workspace-properties.ts`](../apps/admin/src/hooks/use-home-workspace-properties.ts) when property no longer in accessible list
-- [ ] Add error + loading states in [`apps/admin/src/components/home/home-workspace-launcher.tsx`](../apps/admin/src/components/home/home-workspace-launcher.tsx)
-- [ ] Offer “Remove from recents” for stale entries in Continue section (reuse `removeRecentProperty`)
+- [x] Filter stale recent IDs in [`apps/admin/src/hooks/use-home-workspace-properties.ts`](../apps/admin/src/hooks/use-home-workspace-properties.ts) when property no longer in accessible list
+- [x] Add error + loading states in [`apps/admin/src/components/home/home-workspace-launcher.tsx`](../apps/admin/src/components/home/home-workspace-launcher.tsx)
+- [x] Offer “Remove from recents” for stale entries in Continue section (reuse `removeRecentProperty`)
 
 **Exit criteria:** Removed/inaccessible properties don’t break Home; errors show retry/empty sensibly.
 
