@@ -12,7 +12,8 @@ export function useGlobalCommandPalette() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== COMMAND_PALETTE_SHORTCUT_KEY) {
+      const key = event.key?.toLowerCase();
+      if (key !== COMMAND_PALETTE_SHORTCUT_KEY) {
         return;
       }
 
