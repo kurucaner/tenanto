@@ -8,6 +8,7 @@ import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   type IPropertyLongStay,
   isActiveLeaseInHoldover,
+  isCustomLeaseEndDate,
   PropertyLongStayStatus,
 } from "@/packages/shared";
 
@@ -20,6 +21,11 @@ export const LeaseOverviewSection = memo(({ currentRent, lease }: LeaseOverviewS
   const today = getTodayLocalIsoDate();
   const isInHoldover = isActiveLeaseInHoldover(lease, today);
   const endDate = lease.actualEndDate ?? lease.leaseEndDate;
+  const hasCustomEnd = isCustomLeaseEndDate(
+    lease.leaseStartDate,
+    lease.termMonths,
+    lease.leaseEndDate
+  );
 
   return (
     <Card>
@@ -58,6 +64,9 @@ export const LeaseOverviewSection = memo(({ currentRent, lease }: LeaseOverviewS
             <dt className="text-muted-foreground">Contract end</dt>
             <dd className="font-medium">
               {new Date(`${lease.leaseEndDate}T00:00:00`).toLocaleDateString()}
+              {hasCustomEnd ? (
+                <span className="text-muted-foreground ml-2 text-xs font-normal">Custom end</span>
+              ) : null}
             </dd>
           </div>
           {lease.actualEndDate ? (

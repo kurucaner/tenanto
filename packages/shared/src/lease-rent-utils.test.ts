@@ -48,15 +48,25 @@ describe("getCurrentLeaseRent", () => {
 });
 
 describe("getExtensionRentEffectiveMonthOptions", () => {
-  test("lists months in the extension window", () => {
-    expect(getExtensionRentEffectiveMonthOptions("2026-12-31", "2026-01-01", 12, 6)).toEqual([
+  test("lists months in the extension window from the current contract end", () => {
+    expect(getExtensionRentEffectiveMonthOptions("2026-12-31", "2027-06-30")).toEqual([
       "2027-01",
       "2027-02",
       "2027-03",
       "2027-04",
       "2027-05",
       "2027-06",
+    ]);
+  });
+
+  test("lists months when extending a custom-ended lease by months", () => {
+    expect(getExtensionRentEffectiveMonthOptions("2027-06-30", "2027-12-30")).toEqual([
       "2027-07",
+      "2027-08",
+      "2027-09",
+      "2027-10",
+      "2027-11",
+      "2027-12",
     ]);
   });
 });
@@ -116,5 +126,27 @@ describe("validateExtendLease", () => {
     expect(
       validateExtendLease({ additionalTermMonths: 61 }, activeLease, "2026-07-09")
     ).toBe("Additional term must be between 1 and 60 months");
+  });
+
+  test("accepts custom new end date", () => {
+    expect(
+      validateExtendLease({ newLeaseEndDate: "2027-06-15" }, activeLease, "2026-07-09")
+    ).toBeNull();
+  });
+
+  test("rejects custom new end date that is not after current end", () => {
+    expect(
+      validateExtendLease({ newLeaseEndDate: "2026-12-31" }, activeLease, "2026-07-09")
+    ).toBe("New lease end date must be after the current contract end date");
+  });
+
+  test("rejects providing both extension modes", () => {
+    expect(
+      validateExtendLease(
+        { additionalTermMonths: 6, newLeaseEndDate: "2027-06-15" },
+        activeLease,
+        "2026-07-09"
+      )
+    ).toBe("Provide additionalTermMonths or newLeaseEndDate, but not both");
   });
 });

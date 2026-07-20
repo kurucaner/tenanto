@@ -30,7 +30,6 @@ Phased rollout for correcting **lease start date**, **term (→ contract end)**,
 ## Non-goals (initial release)
 
 - Inline edit of dates/rent in the leases **table**
-- Free-form edit of **`leaseEndDate`** without going through **start + termMonths** (same model as create)
 - Editing terms after **any** income line or **succeeded** tenant Stripe payment exists
 - Post-rent **correction/amendment** flow (adjust income, reconcile partials) — use Extend / End / manual income edits
 - **Delete lease** in v1 (optional Phase 4 enhancement)
@@ -59,7 +58,7 @@ Phased rollout for correcting **lease start date**, **term (→ contract end)**,
 **What to edit in the form**
 
 - `leaseStartDate`
-- `termMonths` → server recalculates `leaseEndDate` via `calculateLeaseEndDate`
+- **Term (months)** or **custom contract end date** — same modes as Start lease; server resolves via `resolveLeaseEndDate` (see [`LEASE_CUSTOM_END_DATE_PHASES.md`](./LEASE_CUSTOM_END_DATE_PHASES.md))
 - `monthlyRent` (base rent on `property_long_stays.monthly_rent`)
 
 **After the gate fails:** show “Use **Extend lease** or **End lease**” — do not add table cell editing.
@@ -70,7 +69,7 @@ Phased rollout for correcting **lease start date**, **term (→ contract end)**,
 
 1. **Computed schedule is source of truth for unpaid months** — change lease fields; `getRentSchedule` recalculates proration (see [`LEASE_RENT_PRORATION_PHASES.md`](./LEASE_RENT_PRORATION_PHASES.md)).
 2. **Ledger lock** — once money is linked, terms are contractual/accounting facts; block edits with **409** and a reason code.
-3. **Same shape as create** — start + term + rent, not arbitrary end date; avoids inconsistent `termMonths` vs `leaseEndDate`.
+3. **Same shape as create** — start + term or end date + rent; shared `resolveLeaseEndDate` keeps `termMonths` and `leaseEndDate` consistent.
 4. **Dedicated flow, not inline** — dialog on lease detail with preview of new contract end + first-month proration hint (reuse `getStartLeaseFirstMonthRentPreview` in admin).
 5. **Shared contract** — validation and editability rules in `packages/shared` so admin + server agree.
 6. **Mirror permissions** — server `assertPropertyLedgerWriteAccess`; client `canManageLedger` (same as Start / Extend / End).

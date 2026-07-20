@@ -1,8 +1,12 @@
 import {
-  calculateLeaseEndDate,
   enumerateLeaseMonths,
   transactionDateToMonth,
 } from "./lease-date-utils";
+import {
+  deriveTermMonthsFromDates,
+  parseLeaseIsoDate,
+  resolveExtendLeaseEndDate,
+} from "./lease-term-input-utils";
 import {
   type IExtendPropertyLongStayBody,
   type IPropertyLongStay,
@@ -59,23 +63,17 @@ export function getCurrentLeaseRent(
 }
 
 export function getExtensionRentEffectiveMonthOptions(
-  leaseEndDate: string,
-  leaseStartDate: string,
-  currentTermMonths: number,
-  additionalTermMonths: number
+  currentLeaseEndDate: string,
+  newLeaseEndDate: string
 ): string[] {
-  const firstExtensionMonth = getFirstExtensionMonth(leaseEndDate);
-  const newLeaseEndDate = calculateLeaseEndDate(
-    leaseStartDate,
-    currentTermMonths + additionalTermMonths
-  );
+  const firstExtensionMonth = getFirstExtensionMonth(currentLeaseEndDate);
   return enumerateLeaseMonths(`${firstExtensionMonth}-01`, newLeaseEndDate);
 }
 
 function validateLeaseRentChange(
   body: IExtendPropertyLongStayBody,
   lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate">,
-  newTotalTerm: number
+  newLeaseEndDate: string
 ): string | null {
   const hasNewRent = body.newMonthlyRent !== undefined;
   const hasEffectiveMonth = body.rentEffectiveFromMonth !== undefined;
@@ -104,7 +102,6 @@ function validateLeaseRentChange(
   }
 
   const firstExtensionMonth = getFirstExtensionMonth(lease.leaseEndDate);
-  const newLeaseEndDate = calculateLeaseEndDate(lease.leaseStartDate, newTotalTerm);
   const lastExtensionMonth = transactionDateToMonth(newLeaseEndDate);
 
   if (body.rentEffectiveFromMonth < firstExtensionMonth) {
@@ -126,19 +123,51 @@ export function validateExtendLease(
     return "Only active leases can be extended";
   }
 
+  const hasCustomEnd = body.newLeaseEndDate !== undefined && body.newLeaseEndDate !== "";
+  const hasAdditionalMonths = body.additionalTermMonths !== undefined;
+
+  if (hasCustomEnd === hasAdditionalMonths) {
+    return "Provide additionalTermMonths or newLeaseEndDate, but not both";
+  }
+
+  if (hasCustomEnd) {
+    const newLeaseEndDate = parseLeaseIsoDate(body.newLeaseEndDate ?? "");
+    if (!newLeaseEndDate) {
+      return "newLeaseEndDate must be a YYYY-MM-DD date";
+    }
+
+    if (newLeaseEndDate <= lease.leaseEndDate) {
+      return "New lease end date must be after the current contract end date";
+    }
+
+    const newTermMonths = deriveTermMonthsFromDates(lease.leaseStartDate, newLeaseEndDate);
+    if (newTermMonths > MAX_TOTAL_LEASE_TERM_MONTHS) {
+      return `Total lease term cannot exceed ${MAX_TOTAL_LEASE_TERM_MONTHS} months`;
+    }
+
+    return validateLeaseRentChange(body, lease, newLeaseEndDate);
+  }
+
   const { additionalTermMonths } = body;
   if (
     !Number.isInteger(additionalTermMonths) ||
-    additionalTermMonths < 1 ||
-    additionalTermMonths > MAX_ADDITIONAL_TERM_MONTHS
+    additionalTermMonths! < 1 ||
+    additionalTermMonths! > MAX_ADDITIONAL_TERM_MONTHS
   ) {
     return `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_MONTHS} months`;
   }
 
-  const newTotalTerm = lease.termMonths + additionalTermMonths;
+  const newTotalTerm = lease.termMonths + additionalTermMonths!;
   if (newTotalTerm > MAX_TOTAL_LEASE_TERM_MONTHS) {
     return `Total lease term cannot exceed ${MAX_TOTAL_LEASE_TERM_MONTHS} months`;
   }
 
-  return validateLeaseRentChange(body, lease, newTotalTerm);
+  let newLeaseEndDate: string;
+  try {
+    newLeaseEndDate = resolveExtendLeaseEndDate(lease, body).newLeaseEndDate;
+  } catch (error) {
+    return error instanceof Error ? error.message : "Invalid extend lease input";
+  }
+
+  return validateLeaseRentChange(body, lease, newLeaseEndDate);
 }

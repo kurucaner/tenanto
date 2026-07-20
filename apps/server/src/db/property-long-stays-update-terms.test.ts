@@ -213,4 +213,28 @@ describe("propertyLongStaysDb.updateTerms", () => {
     expect(updated.monthlyRent).toBe(1600);
     expect(capturedClientSql.some((sql) => sql === "COMMIT")).toBe(true);
   });
+
+  test("persists a custom contract end date and derived term months", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_end_date: "2027-07-01",
+      lease_start_date: "2026-07-01",
+      term_months: 12,
+    });
+    activeLeaseOnUnit = null;
+    currentRentPeriodRows = [];
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    const updated = await propertyLongStaysDb.updateTerms("lease-1", {
+      leaseEndDate: "2027-06-30",
+      leaseStartDate: "2026-07-01",
+      monthlyRent: 1500,
+    });
+
+    expect(updated).toMatchObject({
+      leaseEndDate: "2027-06-30",
+      leaseStartDate: "2026-07-01",
+      termMonths: 12,
+    });
+  });
 });

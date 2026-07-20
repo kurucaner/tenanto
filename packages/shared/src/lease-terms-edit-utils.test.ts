@@ -13,6 +13,7 @@ import {
 } from "./property-long-stay-types";
 
 const activeLease = {
+  leaseEndDate: "2027-01-01",
   leaseStartDate: "2026-01-01",
   monthlyRent: 1500,
   status: PropertyLongStayStatus.ACTIVE,
@@ -114,6 +115,20 @@ describe("validateEditLeaseTerms", () => {
           leaseStartDate: "2026-02-01",
           monthlyRent: 1600,
           termMonths: 12,
+        },
+        activeLease,
+        "2026-07-09"
+      )
+    ).toBeNull();
+  });
+
+  test("accepts custom end date changes", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseEndDate: "2026-12-30",
+          leaseStartDate: "2026-01-01",
+          monthlyRent: 1600,
         },
         activeLease,
         "2026-07-09"

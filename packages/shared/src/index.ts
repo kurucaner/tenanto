@@ -262,6 +262,20 @@ export {
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
 export {
+  addMonthsToIsoDate,
+  deriveTermMonthsFromDates,
+  isCustomLeaseEndDate,
+  type IResolveLeaseEndDateInput,
+  type IResolvedExtendLeaseTerm,
+  type IResolvedLeaseTerm,
+  type LeaseExtendInputMode,
+  type LeaseTermInputMode,
+  parseLeaseIsoDate,
+  resolveExtendLeaseEndDate,
+  resolveLeaseEndDate,
+  validateLeaseTermInput,
+} from "./lease-term-input-utils";
+export {
   type IListTotalCountMeta,
   type IPropertyExpensesListMeta,
   type IPropertyExportsListMeta,

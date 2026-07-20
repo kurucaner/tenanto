@@ -5,6 +5,12 @@ import { Controller, type FieldErrors, useForm, type UseFormReturn } from "react
 import { toast } from "sonner";
 import { z } from "zod";
 
+import {
+  buildLeaseTermApiPayload,
+  LeaseTermEndFields,
+  refineLeaseTermEndFormValues,
+  resolveLeaseTermEndPreview,
+} from "@/components/leases/lease-term-end-fields";
 import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-schema";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,53 +30,42 @@ import { PropertyUnitSelectOptions } from "@/components/units/property-unit-sele
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
-import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { createPersonNameSchema, PhoneInput } from "@/packages/app-ui";
-import {
-  calculateLeaseEndDate,
-  type IPropertyUnit,
-  normalizeToE164,
-  UnitRentalType,
-} from "@/packages/shared";
+import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
 
 const DEFAULT_TERM_MONTHS = "12";
-const MAX_TERM_MONTHS = 60;
 
-const startLeaseSchema = z.object({
-  guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
-  leaseStartDate: z.string().min(1, "Lease start date is required"),
-  monthlyRent: requiredPositiveMoneyField("Monthly rent"),
-  tenantEmail: z.string(),
-  tenantPhone: tenantPhoneFieldSchema,
-  termMonths: z
-    .string()
-    .min(1, "Term is required")
-    .refine((value) => /^\d+$/.test(value), {
-      message: "Term must be a whole number",
-    })
-    .refine(
-      (value) => {
-        const parsed = Number.parseInt(value, 10);
-        return parsed >= 1 && parsed <= MAX_TERM_MONTHS;
-      },
-      { message: `Term must be between 1 and ${MAX_TERM_MONTHS}` }
-    ),
-  unitId: z.string().min(1, "Unit is required"),
-});
+const startLeaseSchema = z
+  .object({
+    guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
+    leaseEndDate: z.string(),
+    leaseStartDate: z.string().min(1, "Lease start date is required"),
+    monthlyRent: requiredPositiveMoneyField("Monthly rent"),
+    tenantEmail: z.string(),
+    tenantPhone: tenantPhoneFieldSchema,
+    termMode: z.enum(["months", "customEnd"]),
+    termMonths: z.string(),
+    unitId: z.string().min(1, "Unit is required"),
+  })
+  .superRefine((values, ctx) => {
+    refineLeaseTermEndFormValues(values, ctx);
+  });
 
 type TStartLeaseFormValues = z.infer<typeof startLeaseSchema>;
 
 function getDefaultValues(unitId?: string): TStartLeaseFormValues {
   return {
     guestName: "",
+    leaseEndDate: "",
     leaseStartDate: getTodayLocalIsoDate(),
     monthlyRent: "",
     tenantEmail: "",
     tenantPhone: "",
+    termMode: "months",
     termMonths: DEFAULT_TERM_MONTHS,
     unitId: unitId ?? "",
   };
@@ -119,50 +114,6 @@ const StartLeaseUnitSelectField = memo(
   )
 );
 StartLeaseUnitSelectField.displayName = "StartLeaseUnitSelectField";
-
-interface StartLeaseDateTermFieldsProps {
-  control: UseFormReturn<TStartLeaseFormValues>["control"];
-  errors: FieldErrors<TStartLeaseFormValues>;
-  register: UseFormReturn<TStartLeaseFormValues>["register"];
-}
-
-const StartLeaseDateTermFields = memo(
-  ({ control, errors, register }: StartLeaseDateTermFieldsProps) => (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="start-lease-start-date">Lease Start Date</Label>
-        <Input id="start-lease-start-date" type="date" {...register("leaseStartDate")} />
-        {errors.leaseStartDate ? (
-          <p className="text-xs text-destructive">{errors.leaseStartDate.message}</p>
-        ) : null}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="start-lease-term-months">Term (Months)</Label>
-        <Controller
-          control={control}
-          name="termMonths"
-          render={({ field }) => (
-            <Input
-              id="start-lease-term-months"
-              inputMode="numeric"
-              onChange={(e) => {
-                if (isValidIntegerInput(e.target.value)) {
-                  field.onChange(e.target.value);
-                }
-              }}
-              type="text"
-              value={field.value}
-            />
-          )}
-        />
-        {errors.termMonths ? (
-          <p className="text-xs text-destructive">{errors.termMonths.message}</p>
-        ) : null}
-      </div>
-    </div>
-  )
-);
-StartLeaseDateTermFields.displayName = "StartLeaseDateTermFields";
 
 interface StartLeaseDialogFormProps {
   availableUnits: IPropertyUnit[];
@@ -234,7 +185,14 @@ const StartLeaseDialogForm = memo(
           <p className="text-xs text-destructive">{errors.tenantPhone.message}</p>
         ) : null}
 
-        <StartLeaseDateTermFields control={form.control} errors={errors} register={form.register} />
+        <LeaseTermEndFields<TStartLeaseFormValues>
+          control={form.control}
+          endDateFieldId="start-lease-end-date"
+          errors={errors}
+          register={form.register}
+          startDateFieldId="start-lease-start-date"
+          termMonthsFieldId="start-lease-term-months"
+        />
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="start-lease-monthly-rent">Monthly Rent</Label>
@@ -306,25 +264,32 @@ export const StartLeaseDialog = memo(
       resolver: zodResolver(startLeaseSchema),
     });
 
-    const leaseStartDate = form.watch("leaseStartDate");
+    const termFields = form.watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
     const monthlyRent = form.watch("monthlyRent");
-    const termMonths = form.watch("termMonths");
 
     const leaseEndDate = useMemo(() => {
-      const parsedTermMonths = Number.parseInt(termMonths, 10);
-      if (leaseStartDate === "" || !Number.isInteger(parsedTermMonths) || parsedTermMonths < 1) {
-        return null;
-      }
-      return calculateLeaseEndDate(leaseStartDate, parsedTermMonths);
-    }, [leaseStartDate, termMonths]);
+      const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+      return resolveLeaseTermEndPreview({
+        leaseEndDate: leaseEndDateValue,
+        leaseStartDate,
+        termMode,
+        termMonths,
+      });
+    }, [termFields]);
 
     const firstMonthRentPreview = useMemo(() => {
-      const parsedTermMonths = Number.parseInt(termMonths, 10);
       const parsedMonthlyRent = Number(monthlyRent);
+      const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+      const resolvedEnd = resolveLeaseTermEndPreview({
+        leaseEndDate: leaseEndDateValue,
+        leaseStartDate,
+        termMode,
+        termMonths,
+      });
+
       if (
+        !resolvedEnd ||
         leaseStartDate === "" ||
-        !Number.isInteger(parsedTermMonths) ||
-        parsedTermMonths < 1 ||
         !Number.isFinite(parsedMonthlyRent) ||
         parsedMonthlyRent <= 0
       ) {
@@ -332,11 +297,11 @@ export const StartLeaseDialog = memo(
       }
 
       return getStartLeaseFirstMonthRentPreview({
+        leaseEndDate: resolvedEnd,
         leaseStartDate,
         monthlyRent: parsedMonthlyRent,
-        termMonths: parsedTermMonths,
       });
-    }, [leaseStartDate, monthlyRent, termMonths]);
+    }, [monthlyRent, termFields]);
 
     const availableUnits = useMemo(
       () =>
@@ -353,11 +318,10 @@ export const StartLeaseDialog = memo(
       mutationFn: (values: TStartLeaseFormValues) =>
         longStaysApi.create(propertyId, {
           guestName: values.guestName,
-          leaseStartDate: values.leaseStartDate,
+          ...buildLeaseTermApiPayload(values),
           monthlyRent: Number(values.monthlyRent),
           tenantEmail: values.tenantEmail.trim() || undefined,
           tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
-          termMonths: Number.parseInt(values.termMonths, 10),
           unitId: values.unitId,
         }),
       onError: (e) => {
