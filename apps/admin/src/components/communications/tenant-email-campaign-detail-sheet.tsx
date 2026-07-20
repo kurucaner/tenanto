@@ -126,7 +126,9 @@ function renderCampaignDetailContent(
         emptyMessage="No recipients."
         getItemKey={getRecipientKey}
         items={sortedRecipients}
-        renderRow={(recipient) => <TenantEmailCampaignRecipientRow recipient={recipient} />}
+        renderRow={(recipient) => (
+          <TenantEmailCampaignRecipientRow key={recipient.id} recipient={recipient} />
+        )}
         virtualization={{
           estimateRowHeight: RECIPIENT_ROW_ESTIMATED_HEIGHT,
           scrollElement: options.recipientsScrollElement,
