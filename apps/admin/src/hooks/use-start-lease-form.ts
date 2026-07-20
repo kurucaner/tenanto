@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -14,28 +14,59 @@ import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long
 import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import { scrollFormToFirstError } from "@/lib/scroll-form-to-first-error";
 import {
-  getStartLeaseDefaultValues,
+  clearStartLeaseDraft,
+  getStartLeaseDraftUnitScope,
+  writeStartLeaseDraft,
+} from "@/lib/start-lease-draft-storage";
+import { resolveStartLeaseInitialState } from "@/lib/start-lease-form-init";
+import {
+  START_LEASE_STEP_FIELDS,
   startLeaseSchema,
   type TStartLeaseFormValues,
 } from "@/lib/start-lease-form-schema";
 import { resolveStartLeaseLockedUnit } from "@/lib/start-lease-locked-unit";
+import {
+  getNextStartLeaseStep,
+  getPreviousStartLeaseStep,
+  type TStartLeaseStep,
+} from "@/lib/start-lease-steps";
 import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
 
 interface UseStartLeaseFormOptions {
+  initialStep?: TStartLeaseStep;
   lockedUnitId?: string;
+  onStepChange: (step: TStartLeaseStep) => void;
   onSuccess: (leaseId: string) => void;
   propertyId: string;
+  stepFromUrl?: boolean;
   units: IPropertyUnit[];
 }
 
 export function useStartLeaseForm({
+  initialStep = "who",
   lockedUnitId = "",
+  onStepChange,
   onSuccess,
   propertyId,
+  stepFromUrl = false,
   units,
 }: UseStartLeaseFormOptions) {
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLFormElement | null>(null);
+  const didSyncInitialStepRef = useRef(false);
+  const unitScope = getStartLeaseDraftUnitScope(lockedUnitId);
+  const initialState = useMemo(
+    () =>
+      resolveStartLeaseInitialState({
+        initialStep,
+        lockedUnitId,
+        propertyId,
+        stepFromUrl,
+      }),
+    [initialStep, lockedUnitId, propertyId, stepFromUrl]
+  );
+
+  const [currentStep, setCurrentStepState] = useState<TStartLeaseStep>(initialState.step);
 
   const { activeLeases, isPending: isActiveLeasesPending } = usePropertyActiveLeases(propertyId);
 
@@ -61,42 +92,66 @@ export function useStartLeaseForm({
   }, [activeLeases]);
 
   const form = useForm<TStartLeaseFormValues>({
-    defaultValues: getStartLeaseDefaultValues(lockedUnit?.id ?? lockedUnitId),
+    defaultValues: initialState.values,
     resolver: zodResolver(startLeaseSchema),
   });
+  const { getValues, handleSubmit, trigger, watch } = form;
+
+  const setCurrentStep = useCallback(
+    (step: TStartLeaseStep) => {
+      setCurrentStepState(step);
+      onStepChange(step);
+    },
+    [onStepChange]
+  );
 
   useEffect(() => {
-    const nextUnitId = lockedUnit?.id ?? lockedUnitId;
-    if (nextUnitId) {
-      form.setValue("unitId", nextUnitId);
+    if (didSyncInitialStepRef.current || initialState.step === initialStep) {
+      return;
     }
-  }, [form, lockedUnit?.id, lockedUnitId]);
+    didSyncInitialStepRef.current = true;
+    onStepChange(initialState.step);
+  }, [initialState.step, initialStep, onStepChange]);
 
-  const termFields = form.watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
-  const monthlyRent = form.watch("monthlyRent");
+  const flushDraft = useCallback(
+    (step: TStartLeaseStep = currentStep) => {
+      writeStartLeaseDraft(propertyId, unitScope, {
+        step,
+        values: getValues(),
+      });
+    },
+    [currentStep, getValues, propertyId, unitScope]
+  );
+
+  const clearDraft = useCallback(() => {
+    clearStartLeaseDraft(propertyId, unitScope);
+  }, [propertyId, unitScope]);
+
+  useEffect(() => {
+    if (lockedUnitId) {
+      form.setValue("unitId", lockedUnitId);
+    }
+  }, [form, lockedUnitId]);
+
+  const guestName = watch("guestName");
+  const selectedUnitId = watch("unitId");
+  const termFields = watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
+  const monthlyRent = watch("monthlyRent");
+  const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
 
   const leaseEndDate = useMemo(() => {
-    const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
     return resolveLeaseTermEndPreview({
       leaseEndDate: leaseEndDateValue,
       leaseStartDate,
       termMode,
       termMonths,
     });
-  }, [termFields]);
+  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths]);
 
   const firstMonthRentPreview = useMemo(() => {
     const parsedMonthlyRent = Number(monthlyRent);
-    const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
-    const resolvedEnd = resolveLeaseTermEndPreview({
-      leaseEndDate: leaseEndDateValue,
-      leaseStartDate,
-      termMode,
-      termMonths,
-    });
-
     if (
-      !resolvedEnd ||
+      !leaseEndDate ||
       leaseStartDate === "" ||
       !Number.isFinite(parsedMonthlyRent) ||
       parsedMonthlyRent <= 0
@@ -105,11 +160,11 @@ export function useStartLeaseForm({
     }
 
     return getStartLeaseFirstMonthRentPreview({
-      leaseEndDate: resolvedEnd,
+      leaseEndDate,
       leaseStartDate,
       monthlyRent: parsedMonthlyRent,
     });
-  }, [monthlyRent, termFields]);
+  }, [leaseEndDate, leaseStartDate, monthlyRent]);
 
   const availableUnits = useMemo(
     () =>
@@ -147,6 +202,7 @@ export function useStartLeaseForm({
       } else {
         toast.success("Lease started");
       }
+      clearDraft();
       invalidatePropertyLongStayCaches(queryClient, propertyId);
       onSuccess(data.longStay.id);
     },
@@ -163,23 +219,63 @@ export function useStartLeaseForm({
 
   const onInvalidSubmit = useCallback(() => {
     toast.error("Fix the highlighted fields");
-    scrollFormToFirstError(formRef.current);
-  }, []);
+    scrollFormToFirstError(formRef.current, currentStep);
+  }, [currentStep]);
 
-  const onSubmit = form.handleSubmit(onValidSubmit, onInvalidSubmit);
+  const onSubmit = handleSubmit(onValidSubmit, onInvalidSubmit);
+
+  const goToStep = useCallback(
+    (step: TStartLeaseStep) => {
+      setCurrentStep(step);
+      flushDraft(step);
+    },
+    [flushDraft, setCurrentStep]
+  );
+
+  const onContinue = useCallback(async () => {
+    const fields = START_LEASE_STEP_FIELDS[currentStep];
+    const valid = await trigger([...fields]);
+    if (!valid) {
+      toast.error("Fix the highlighted fields");
+      scrollFormToFirstError(formRef.current, currentStep);
+      return;
+    }
+    const next = getNextStartLeaseStep(currentStep);
+    if (!next) {
+      return;
+    }
+    goToStep(next);
+  }, [currentStep, trigger, goToStep]);
+
+  const onBack = useCallback(() => {
+    const previous = getPreviousStartLeaseStep(currentStep);
+    if (!previous) {
+      return;
+    }
+    goToStep(previous);
+  }, [currentStep, goToStep]);
 
   return {
     availableUnits,
+    clearDraft,
+    currentStep,
     firstMonthRentPreview,
     form,
     formRef,
+    goToStep,
+    guestName,
     isActiveLeasesPending,
     isSubmitDisabled,
     isSubmitting: form.formState.isSubmitting,
     leaseEndDate,
+    leaseStartDate,
     lockedUnit,
     lockedUnitError,
+    monthlyRent,
     mutationPending: mutation.isPending,
+    onBack,
+    onContinue,
     onSubmit,
+    selectedUnitId,
   };
 }

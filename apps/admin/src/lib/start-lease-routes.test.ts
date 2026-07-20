@@ -11,28 +11,39 @@ describe("buildPropertyStartLeasePath", () => {
     expect(buildPropertyStartLeasePath("prop-1")).toBe("/properties/prop-1/leases/new");
   });
 
-  test("includes unitId and from query params", () => {
-    expect(buildPropertyStartLeasePath("prop-1", { from: "units", unitId: "unit-9" })).toBe(
-      "/properties/prop-1/leases/new?unitId=unit-9&from=units"
+  test("includes unitId, from, and non-default step", () => {
+    expect(
+      buildPropertyStartLeasePath("prop-1", { from: "units", step: "term", unitId: "unit-9" })
+    ).toBe("/properties/prop-1/leases/new?unitId=unit-9&from=units&step=term");
+  });
+
+  test("omits default who step from query", () => {
+    expect(buildPropertyStartLeasePath("prop-1", { from: "leases", step: "who" })).toBe(
+      "/properties/prop-1/leases/new?from=leases"
     );
   });
 });
 
 describe("parseStartLeaseSearchParams", () => {
-  test("defaults from to leases when missing or invalid", () => {
+  test("defaults from and step when missing or invalid", () => {
     expect(parseStartLeaseSearchParams(new URLSearchParams())).toEqual({
       from: "leases",
+      step: "who",
       unitId: "",
     });
-    expect(parseStartLeaseSearchParams(new URLSearchParams("from=other"))).toEqual({
+    expect(parseStartLeaseSearchParams(new URLSearchParams("from=other&step=nope"))).toEqual({
       from: "leases",
+      step: "who",
       unitId: "",
     });
   });
 
-  test("parses unitId and from=units", () => {
-    expect(parseStartLeaseSearchParams(new URLSearchParams("unitId=u1&from=units"))).toEqual({
+  test("parses unitId, from=units, and step", () => {
+    expect(
+      parseStartLeaseSearchParams(new URLSearchParams("unitId=u1&from=units&step=rent"))
+    ).toEqual({
       from: "units",
+      step: "rent",
       unitId: "u1",
     });
   });

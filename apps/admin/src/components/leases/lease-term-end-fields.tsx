@@ -1,6 +1,6 @@
 import {
-  Controller,
   type Control,
+  Controller,
   type FieldErrors,
   type FieldValues,
   type Path,

@@ -62,6 +62,7 @@ const StartLeaseProgress = memo(({ currentStep, onStepSelect }: StartLeaseProgre
 StartLeaseProgress.displayName = "StartLeaseProgress";
 
 interface WhoStepProps {
+  autoFocusName: boolean;
   availableUnits: IPropertyUnit[];
   errors: FieldErrors<TStartLeaseFormValues>;
   form: UseFormReturn<TStartLeaseFormValues>;
@@ -72,6 +73,7 @@ interface WhoStepProps {
 
 const WhoStep = memo(
   ({
+    autoFocusName,
     availableUnits,
     errors,
     form,
@@ -119,7 +121,7 @@ const WhoStep = memo(
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="start-lease-tenant-name">Name</Label>
-            <Input autoFocus id="start-lease-tenant-name" {...form.register("guestName")} />
+            <Input autoFocus={autoFocusName} id="start-lease-tenant-name" {...form.register("guestName")} />
             {errors.guestName ? (
               <p className="text-destructive text-xs">{errors.guestName.message}</p>
             ) : null}
@@ -172,6 +174,7 @@ const TermStep = memo(({ errors, form }: TermStepProps) => (
 TermStep.displayName = "TermStep";
 
 interface RentStepProps {
+  autoFocusRent: boolean;
   errors: FieldErrors<TStartLeaseFormValues>;
   firstMonthRentPreview: string | null;
   form: UseFormReturn<TStartLeaseFormValues>;
@@ -183,6 +186,7 @@ interface RentStepProps {
 
 const RentStep = memo(
   ({
+    autoFocusRent,
     errors,
     firstMonthRentPreview,
     form,
@@ -217,7 +221,7 @@ const RentStep = memo(
             name="monthlyRent"
             render={({ field }) => (
               <Input
-                autoFocus
+                autoFocus={autoFocusRent}
                 className="pl-7 tabular-nums"
                 id="start-lease-monthly-rent"
                 inputMode="decimal"
@@ -305,16 +309,18 @@ export const StartLeaseForm = memo(
         <div className="flex-1 space-y-8 px-1 pb-28 pt-2 md:pb-8 max-w-xl mx-auto">
           <StartLeaseProgress currentStep={currentStep} onStepSelect={onStepSelect} />
 
-          <div
-            className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
-            key={currentStep}
-          >
+          <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
             <p className="text-muted-foreground text-sm">
               {START_LEASE_STEP_SUBTITLES[currentStep]}
             </p>
 
-            {currentStep === "who" ? (
+            <section
+              aria-hidden={currentStep !== "who"}
+              data-start-lease-step="who"
+              hidden={currentStep !== "who"}
+            >
               <WhoStep
+                autoFocusName={currentStep === "who"}
                 availableUnits={availableUnits}
                 errors={errors}
                 form={form}
@@ -322,12 +328,23 @@ export const StartLeaseForm = memo(
                 lockedUnit={lockedUnit}
                 lockedUnitError={lockedUnitError}
               />
-            ) : null}
+            </section>
 
-            {currentStep === "term" ? <TermStep errors={errors} form={form} /> : null}
+            <section
+              aria-hidden={currentStep !== "term"}
+              data-start-lease-step="term"
+              hidden={currentStep !== "term"}
+            >
+              <TermStep errors={errors} form={form} />
+            </section>
 
-            {currentStep === "rent" ? (
+            <section
+              aria-hidden={currentStep !== "rent"}
+              data-start-lease-step="rent"
+              hidden={currentStep !== "rent"}
+            >
               <RentStep
+                autoFocusRent={currentStep === "rent"}
                 errors={errors}
                 firstMonthRentPreview={firstMonthRentPreview}
                 form={form}
@@ -336,7 +353,7 @@ export const StartLeaseForm = memo(
                 leaseStartDate={leaseStartDate}
                 unitLabel={unitLabel}
               />
-            ) : null}
+            </section>
           </div>
         </div>
 

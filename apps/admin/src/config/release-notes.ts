@@ -37,7 +37,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "improved",
         description:
-          "Starting a lease now opens on its own page with clearer sections for unit, rent, term, and tenant — so monthly rent is easy to find and the form has room to grow.",
+          "Starting a lease is now a short three-step flow — who, term, then rent — with a clean full-page layout and a live recap before you confirm.",
+      },
+      {
+        category: "improved",
+        description:
+          "If you refresh after moving to the next step while starting a lease, your progress is kept until you finish, cancel, or sign out.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Start lease no longer rejects a valid tenant name or shows empty fields after refresh — the form stays in sync with what you type.",
       },
       {
         category: "fixed",
@@ -47,7 +57,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
     id: "2026.15.0",
     publishedAt: "2026-07-20",
-    summary: "Start lease moved to a dedicated page with clearer layout and validation feedback.",
+    summary:
+      "Start lease is a three-step wizard that remembers your progress if you refresh.",
     version: "2026.15.0",
   },
   {

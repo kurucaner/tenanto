@@ -6,6 +6,7 @@ import {
 import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-schema";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { type TStartLeaseStep } from "@/lib/start-lease-steps";
 import { createPersonNameSchema } from "@/packages/app-ui";
 
 export const DEFAULT_START_LEASE_TERM_MONTHS = "12";
@@ -27,6 +28,14 @@ export const startLeaseSchema = z
   });
 
 export type TStartLeaseFormValues = z.infer<typeof startLeaseSchema>;
+
+export type TStartLeaseFormField = keyof TStartLeaseFormValues;
+
+export const START_LEASE_STEP_FIELDS: Record<TStartLeaseStep, readonly TStartLeaseFormField[]> = {
+  rent: ["monthlyRent"],
+  term: ["leaseStartDate", "termMode", "termMonths", "leaseEndDate"],
+  who: ["unitId", "guestName", "tenantEmail", "tenantPhone"],
+};
 
 export function getStartLeaseDefaultValues(unitId?: string): TStartLeaseFormValues {
   return {
