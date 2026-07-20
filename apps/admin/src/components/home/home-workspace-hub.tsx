@@ -1,8 +1,8 @@
 import { memo, useState } from "react";
 
+import { HomeCommunicationsColumn } from "@/components/home/home-communications-column";
 import { HomeContinueColumn } from "@/components/home/home-continue-column";
 import { HomePropertiesColumn } from "@/components/home/home-properties-column";
-import { HomeSuggestedColumn } from "@/components/home/home-suggested-column";
 import { HomeWorkspaceSearch } from "@/components/home/home-workspace-search";
 
 export const HomeWorkspaceHub = memo(() => {
@@ -20,7 +20,7 @@ export const HomeWorkspaceHub = memo(() => {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-4">
           <HomePropertiesColumn />
           <HomeContinueColumn />
-          <HomeSuggestedColumn />
+          <HomeCommunicationsColumn />
         </div>
       ) : null}
     </div>

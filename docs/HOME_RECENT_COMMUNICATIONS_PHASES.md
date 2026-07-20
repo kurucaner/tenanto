@@ -82,8 +82,8 @@ Replace the Home hub **Suggested** column with **recent tenant email campaigns**
 
 **Files (2)**
 
-- [ ] Add [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) — `Mail` icon, `{propertyName} / {subject}` truncate, optional status hint for `Sending` / `Queued`, skeleton + error/retry + empty states (mirror Properties column)
-- [ ] Swap `<HomeSuggestedColumn />` → `<HomeCommunicationsColumn />` in [`apps/admin/src/components/home/home-workspace-hub.tsx`](../apps/admin/src/components/home/home-workspace-hub.tsx)
+- [x] Add [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) — `Mail` icon, `{propertyName} / {subject}` truncate, optional status hint for `Sending` / `Queued`, skeleton + error/retry + empty states (mirror Properties column)
+- [x] Swap `<HomeSuggestedColumn />` → `<HomeCommunicationsColumn />` in [`apps/admin/src/components/home/home-workspace-hub.tsx`](../apps/admin/src/components/home/home-workspace-hub.tsx)
 
 **Exit criteria:** Home idle grid shows recent campaigns; row navigates to `/properties/{id}/communications?campaignId={id}`.
 
