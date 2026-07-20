@@ -28,16 +28,12 @@ export function createPaginationMockQuery(options: IPaginationMockQueryOptions) 
   });
 }
 
-export function findListQuerySql(
-  mockQuery: ReturnType<typeof createPaginationMockQuery>
-): string {
+export function findListQuerySql(mockQuery: ReturnType<typeof createPaginationMockQuery>): string {
   const call = mockQuery.mock.calls.find(([query]) => !isPaginationCountQuery(query as string));
   return call?.[0] as string;
 }
 
-export function findCountQuerySql(
-  mockQuery: ReturnType<typeof createPaginationMockQuery>
-): string {
+export function findCountQuerySql(mockQuery: ReturnType<typeof createPaginationMockQuery>): string {
   const call = mockQuery.mock.calls.find(([query]) => isPaginationCountQuery(query as string));
   return call?.[0] as string;
 }

@@ -23,9 +23,11 @@ export const createExpenseFormSchema = z.object({
 
 export const editExpenseFormSchema = z.object({
   ...expenseFormFields,
-  expenseDate: z.string().refine((value) => value === "" || isDateOnOrBefore(value, getTodayLocalIsoDate()), {
-    message: "Date cannot be in the future",
-  }),
+  expenseDate: z
+    .string()
+    .refine((value) => value === "" || isDateOnOrBefore(value, getTodayLocalIsoDate()), {
+      message: "Date cannot be in the future",
+    }),
 });
 
 export type TCreateExpenseFormValues = z.infer<typeof createExpenseFormSchema>;

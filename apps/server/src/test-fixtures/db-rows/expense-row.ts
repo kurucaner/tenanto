@@ -1,15 +1,12 @@
 import { testDateTime, testIsoDate } from "../dates";
-import {
-  TEST_EXPENSE_CATEGORY_ID_1,
-  TEST_EXPENSE_CATEGORY_ID_2,
-  TEST_PROPERTY_ID,
-} from "../ids";
+import { TEST_EXPENSE_CATEGORY_ID_1, TEST_EXPENSE_CATEGORY_ID_2, TEST_PROPERTY_ID } from "../ids";
 
 export type TExpenseRowOverrides = Record<string, unknown>;
 
 export function buildExpenseRow(overrides: TExpenseRowOverrides = {}): Record<string, unknown> {
   return {
     amount: "100.00",
+    cash_expense: false,
     category_id: TEST_EXPENSE_CATEGORY_ID_1,
     category_name: "Cleaning",
     created_at: testDateTime(0),
@@ -20,7 +17,6 @@ export function buildExpenseRow(overrides: TExpenseRowOverrides = {}): Record<st
     is_annual_amount: false,
     is_deleted: false,
     property_id: TEST_PROPERTY_ID,
-    cash_expense: false,
     updated_at: testDateTime(0),
     ...overrides,
   };

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 
-import { TenantEmailCampaignStatus, type ITenantEmailCampaign } from "@/packages/shared";
+import { type ITenantEmailCampaign, TenantEmailCampaignStatus } from "@/packages/shared";
 import { mockResolvedNull, mockResolvedVoid, mockSyncVoid } from "@/test-fixtures/mocks";
 
 const findByIdMock = mockResolvedNull<ITenantEmailCampaign>();

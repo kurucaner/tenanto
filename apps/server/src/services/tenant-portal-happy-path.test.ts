@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import { TenantLeaseListStatus, TenantMembershipStatus } from "@/packages/shared";
-import { makeLease, makeMembership, makeProperty, makeTenant, makeUnit } from "@/test-fixtures/domain";
+import {
+  makeLease,
+  makeMembership,
+  makeProperty,
+  makeTenant,
+  makeUnit,
+} from "@/test-fixtures/domain";
 import {
   createTenantPortalDbMocks,
   registerTenantPortalDbModules,

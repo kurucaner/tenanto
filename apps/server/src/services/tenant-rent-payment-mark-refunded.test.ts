@@ -3,11 +3,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
 import { TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
-import {
-  mockResolved,
-  mockResolvedNull,
-  mockSyncVoid,
-} from "@/test-fixtures/mocks";
+import { mockResolved, mockResolvedNull, mockSyncVoid } from "@/test-fixtures/mocks";
 
 const mockUpdateStatus = mockResolvedNull<ITenantRentPayment>();
 const mockRefundAllLinked = mockResolved(0);
@@ -36,7 +32,6 @@ mock.module("@/services/winston", () => ({
 
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
-
 describe("tenantRentPaymentService.markRefunded", () => {
   beforeEach(() => {
     mockUpdateStatus.mockClear();
@@ -59,7 +54,11 @@ describe("tenantRentPaymentService.markRefunded", () => {
   });
 
   test("marks refunded and refunds linked income on full refund", async () => {
-    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.SUCCEEDED,
+      stripeCheckoutSessionId: "cs_1",
+      stripePaymentIntentId: "pi_1",
+    });
     const updated = makePayment({ status: TenantRentPaymentStatus.REFUNDED });
     mockUpdateStatus.mockResolvedValueOnce(updated);
     mockRefundAllLinked.mockResolvedValueOnce(1);
@@ -75,7 +74,11 @@ describe("tenantRentPaymentService.markRefunded", () => {
   });
 
   test("marks refunded but skips income refund on partial refund", async () => {
-    const payment = makePayment({ status: TenantRentPaymentStatus.SUCCEEDED, stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.SUCCEEDED,
+      stripeCheckoutSessionId: "cs_1",
+      stripePaymentIntentId: "pi_1",
+    });
     const updated = makePayment({ status: TenantRentPaymentStatus.REFUNDED });
     mockUpdateStatus.mockResolvedValueOnce(updated);
 

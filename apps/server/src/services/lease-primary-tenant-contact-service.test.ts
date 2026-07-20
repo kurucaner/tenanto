@@ -19,9 +19,6 @@ mock.module("@/db/tenant-users", () => ({
 const { resolvePrimaryTenantContactForLongStay } =
   await import("./lease-primary-tenant-contact-service");
 
-
-
-
 describe("resolvePrimaryTenantContactForLongStay", () => {
   beforeEach(() => {
     mockLoadPrimaryMembershipForLease.mockReset();
@@ -31,7 +28,16 @@ describe("resolvePrimaryTenantContactForLongStay", () => {
   test("returns lease fallback when no primary membership exists", async () => {
     mockLoadPrimaryMembershipForLease.mockResolvedValue(null);
 
-    await expect(resolvePrimaryTenantContactForLongStay(makeLease({ guestName: "Lease Primary", leaseEndDate: "2027-01-01", tenantEmail: "lease@example.com", tenantPhone: "+15551234567" }))).resolves.toEqual({
+    await expect(
+      resolvePrimaryTenantContactForLongStay(
+        makeLease({
+          guestName: "Lease Primary",
+          leaseEndDate: "2027-01-01",
+          tenantEmail: "lease@example.com",
+          tenantPhone: "+15551234567",
+        })
+      )
+    ).resolves.toEqual({
       effectiveEmail: "lease@example.com",
       effectiveName: "Lease Primary",
       effectivePhone: "+15551234567",
@@ -44,10 +50,37 @@ describe("resolvePrimaryTenantContactForLongStay", () => {
   });
 
   test("returns linked tenant user contact after invite accept", async () => {
-    mockLoadPrimaryMembershipForLease.mockResolvedValue(makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", displayName: "Lease Primary", inviteEmail: "lease@example.com", status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-user-1", updatedAt: "2026-01-02T00:00:00.000Z" }));
-    mockFindTenantById.mockResolvedValue(makeTenantUser({ email: "linked@example.com", id: "tenant-user-1", name: "Linked Tenant", phone: "+15559876543", phoneVerifiedAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" }));
+    mockLoadPrimaryMembershipForLease.mockResolvedValue(
+      makeMembership({
+        acceptedAt: "2026-01-02T00:00:00.000Z",
+        displayName: "Lease Primary",
+        inviteEmail: "lease@example.com",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-user-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      })
+    );
+    mockFindTenantById.mockResolvedValue(
+      makeTenantUser({
+        email: "linked@example.com",
+        id: "tenant-user-1",
+        name: "Linked Tenant",
+        phone: "+15559876543",
+        phoneVerifiedAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      })
+    );
 
-    await expect(resolvePrimaryTenantContactForLongStay(makeLease({ guestName: "Lease Primary", leaseEndDate: "2027-01-01", tenantEmail: "lease@example.com", tenantPhone: "+15551234567" }))).resolves.toEqual({
+    await expect(
+      resolvePrimaryTenantContactForLongStay(
+        makeLease({
+          guestName: "Lease Primary",
+          leaseEndDate: "2027-01-01",
+          tenantEmail: "lease@example.com",
+          tenantPhone: "+15551234567",
+        })
+      )
+    ).resolves.toEqual({
       effectiveEmail: "linked@example.com",
       effectiveName: "Linked Tenant",
       effectivePhone: "+15559876543",

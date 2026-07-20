@@ -6,8 +6,7 @@ import {
 
 export type TStripeConnectUiStatus = "not_connected" | "ready" | "setup_incomplete";
 
-export const EXPRESS_CONNECT_HELPER =
-  "We’ll open Stripe and walk you through a quick setup.";
+export const EXPRESS_CONNECT_HELPER = "We’ll open Stripe and walk you through a quick setup.";
 
 export const STANDARD_CONNECT_HELPER =
   "Link the Stripe account you already use for business banking.";

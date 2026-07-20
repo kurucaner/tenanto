@@ -6,7 +6,10 @@ const nameSchema = z
   .string()
   .trim()
   .min(1, "Name is required")
-  .max(PROPERTY_SETTINGS_NAME_MAX_LENGTH, `Name must be at most ${PROPERTY_SETTINGS_NAME_MAX_LENGTH} characters`);
+  .max(
+    PROPERTY_SETTINGS_NAME_MAX_LENGTH,
+    `Name must be at most ${PROPERTY_SETTINGS_NAME_MAX_LENGTH} characters`
+  );
 
 const ratePercentSchema = z
   .string()

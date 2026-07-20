@@ -20,9 +20,9 @@ describe("mapExpenseToCsvValues", () => {
     expect(
       mapExpenseToCsvValues(
         makeExpense({
+          cashExpense: true,
           description: null,
           expenseDate: null,
-          cashExpense: true,
         })
       )
     ).toEqual(["", "Maintenance", "", "125.50", "Yes", "2026-03-15"]);

@@ -30,7 +30,10 @@ import { settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { queryKeys } from "@/lib/query-keys";
-import { getMinCheckOutDate, shouldClearCheckOutOnCheckInChange } from "@/lib/reservation-date-utils";
+import {
+  getMinCheckOutDate,
+  shouldClearCheckOutOnCheckInChange,
+} from "@/lib/reservation-date-utils";
 import { UnitRentalType } from "@/packages/shared";
 
 interface CreateReservationDialogProps {

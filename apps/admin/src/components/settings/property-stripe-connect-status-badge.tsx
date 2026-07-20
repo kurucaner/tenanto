@@ -34,7 +34,9 @@ export const PropertyStripeConnectStatusBadge = memo(function PropertyStripeConn
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Badge variant={getBadgeVariant(uiStatus)}>{getStripeConnectUiStatusBadgeLabel(uiStatus)}</Badge>
+      <Badge variant={getBadgeVariant(uiStatus)}>
+        {getStripeConnectUiStatusBadgeLabel(uiStatus)}
+      </Badge>
       {accountTypeLabel ? <Badge variant="outline">{accountTypeLabel}</Badge> : null}
     </div>
   );

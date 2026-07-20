@@ -11,9 +11,7 @@ import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/moc
 
 const mockIsPhoneAuthEnabled = mock(() => true);
 const mockFindByPhone = mockResolvedNull<ITenantUser>();
-const mockOptOutOfSms = mockResolved(
-  makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" })
-);
+const mockOptOutOfSms = mockResolved(makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" }));
 const mockInsertKeywordEvent = mockAsyncFn(() =>
   Promise.resolve({
     createdAt: "2026-01-02T00:00:00.000Z",
@@ -59,7 +57,14 @@ describe("handleTenantInboundSms", () => {
     mockInsertKeywordEvent.mockClear();
     mockSendSms.mockClear();
     mockIsPhoneAuthEnabled.mockReturnValue(true);
-    mockFindByPhone.mockResolvedValue(makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }));
+    mockFindByPhone.mockResolvedValue(
+      makeTenantUser({
+        email: "tenant@example.com",
+        phone: "+13055550100",
+        phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
+        smsConsentedAt: "2026-01-01T00:00:00.000Z",
+      })
+    );
     mockOptOutOfSms.mockResolvedValue(
       makeTenantUser({ smsOptedOutAt: "2026-01-02T00:00:00.000Z" })
     );

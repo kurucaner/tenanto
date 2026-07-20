@@ -239,7 +239,12 @@ const ReadyConnectView = memo(function ReadyConnectView({
       </div>
       <div className="flex flex-wrap gap-2">
         {showExpressUpdate ? (
-          <Button disabled={connectPending} onClick={onExpressClick} type="button" variant="outline">
+          <Button
+            disabled={connectPending}
+            onClick={onExpressClick}
+            type="button"
+            variant="outline"
+          >
             {expressPending ? "Opening Stripe…" : "Update Stripe details"}
           </Button>
         ) : null}

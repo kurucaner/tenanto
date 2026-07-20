@@ -29,9 +29,9 @@ export const PropertyExpenseCategoriesCatalog = memo(function PropertyExpenseCat
   onUpsertRow,
 }: TPropertyExpenseCategoriesCatalogProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [dialogRow, setDialogRow] = useState<
-    PropertyExpenseCategoryTypeFormRow | null | undefined
-  >(undefined);
+  const [dialogRow, setDialogRow] = useState<PropertyExpenseCategoryTypeFormRow | null | undefined>(
+    undefined
+  );
 
   const filtered = expenseCategoryTypes.filter((row) =>
     row.name.toLowerCase().includes(searchQuery.trim().toLowerCase())

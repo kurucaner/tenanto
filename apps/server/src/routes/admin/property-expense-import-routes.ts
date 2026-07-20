@@ -52,12 +52,12 @@ function buildParsedRow(
   if (!Number.isFinite(row.amount) || row.amount < 0) {
     return {
       amount: row.amount,
+      cashExpense: row.cashExpense,
       categoryId: row.categoryId,
       description: row.description,
       expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      cashExpense: row.cashExpense,
       validationError: "amount must be a non-negative number",
     };
   }
@@ -66,24 +66,24 @@ function buildParsedRow(
   if (futureDateError) {
     return {
       amount: row.amount,
+      cashExpense: row.cashExpense,
       categoryId: row.categoryId,
       description: row.description,
       expenseDate: row.expenseDate,
       rowIndex,
       sourceFileName,
-      cashExpense: row.cashExpense,
       validationError: futureDateError,
     };
   }
 
   return {
     amount: row.amount,
+    cashExpense: row.cashExpense,
     categoryId: row.categoryId,
     description: row.description,
     expenseDate: row.expenseDate,
     rowIndex,
     sourceFileName,
-    cashExpense: row.cashExpense,
   };
 }
 
@@ -217,12 +217,12 @@ function validateCommitRows(
 
     validatedRows.push({
       amount: row.amount,
+      cashExpense: row.cashExpense,
       categoryId,
       description: row.description,
       expenseDate: row.expenseDate,
       rowIndex: row.rowIndex,
       sourceFileName: row.sourceFileName,
-      cashExpense: row.cashExpense,
     });
   }
 
@@ -375,10 +375,10 @@ export const propertyExpenseImportRoutes = async (server: FastifyInstance): Prom
         propertyId,
         validated.rows.map((row) => ({
           amount: row.amount,
+          cashExpense: row.cashExpense ?? false,
           categoryId: row.categoryId,
           description: row.description?.trim() || null,
           expenseDate: row.expenseDate ?? null,
-          cashExpense: row.cashExpense ?? false,
         }))
       );
 

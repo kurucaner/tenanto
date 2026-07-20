@@ -5,7 +5,9 @@ import { TEST_CHANNEL_ID, TEST_PROPERTY_ID, TEST_UNIT_ID } from "../ids";
 
 export type TReservationRowOverrides = Record<string, unknown>;
 
-export function buildReservationRow(overrides: TReservationRowOverrides = {}): Record<string, unknown> {
+export function buildReservationRow(
+  overrides: TReservationRowOverrides = {}
+): Record<string, unknown> {
   return {
     channel_commission: "10.00",
     channel_commission_id: TEST_CHANNEL_ID,

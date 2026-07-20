@@ -3,7 +3,9 @@ import type { FastifyReply } from "fastify";
 import { HttpStatus, UserType } from "@/packages/shared";
 
 export function parseOptionalListCursor(query: Record<string, unknown>): string | undefined {
-  return typeof query["cursor"] === "string" && query["cursor"] !== "" ? query["cursor"] : undefined;
+  return typeof query["cursor"] === "string" && query["cursor"] !== ""
+    ? query["cursor"]
+    : undefined;
 }
 
 export function validateKeysetCursor(

@@ -31,7 +31,10 @@ import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
 import { queryKeys } from "@/lib/query-keys";
-import { getMinCheckOutDate, shouldClearCheckOutOnCheckInChange } from "@/lib/reservation-date-utils";
+import {
+  getMinCheckOutDate,
+  shouldClearCheckOutOnCheckInChange,
+} from "@/lib/reservation-date-utils";
 import { type IPropertyReservation, type IPropertyUnit } from "@/packages/shared";
 
 interface EditReservationDialogProps {

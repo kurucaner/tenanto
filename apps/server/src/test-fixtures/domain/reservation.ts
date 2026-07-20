@@ -1,9 +1,8 @@
-import {
-  type IPropertyReservation,
-  ReservationStatus,
-} from "@/packages/shared";
+import { type IPropertyReservation, ReservationStatus } from "@/packages/shared";
 
-export function makeReservation(overrides: Partial<IPropertyReservation> = {}): IPropertyReservation {
+export function makeReservation(
+  overrides: Partial<IPropertyReservation> = {}
+): IPropertyReservation {
   return {
     channelCommission: 10,
     channelCommissionId: "channel-airbnb",

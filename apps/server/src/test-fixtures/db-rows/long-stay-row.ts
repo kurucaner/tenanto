@@ -1,7 +1,7 @@
 import { PropertyLongStayStatus } from "@/packages/shared";
 
 import { testDateTime } from "../dates";
-import { sequentialUnitId,TEST_PROPERTY_ID } from "../ids";
+import { sequentialUnitId, TEST_PROPERTY_ID } from "../ids";
 
 export type TLongStayRowOverrides = Record<string, unknown>;
 

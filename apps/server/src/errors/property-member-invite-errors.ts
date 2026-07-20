@@ -28,11 +28,7 @@ export function isDuplicatePropertyMemberInviteError(error: unknown): error is D
 export function propertyMemberInviteNotFoundError(
   message = "Property member invite not found"
 ): DomainError {
-  return createDomainError(
-    PropertyMemberInviteErrorCode.NOT_FOUND,
-    message,
-    HttpStatus.NOT_FOUND
-  );
+  return createDomainError(PropertyMemberInviteErrorCode.NOT_FOUND, message, HttpStatus.NOT_FOUND);
 }
 
 export function propertyMemberInviteMismatchError(

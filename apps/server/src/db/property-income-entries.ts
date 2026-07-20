@@ -59,7 +59,12 @@ function resolveIncomeTypeFilter(incomeType?: string): IIncomeEntryBranchPlan {
   if (incomeType === IncomeEntryKind.LONG_TERM) {
     return { includeLines: false, includeLongTerm: true, includeStays: false };
   }
-  return { includeLines: true, includeLongTerm: false, includeStays: false, lineTypeId: incomeType };
+  return {
+    includeLines: true,
+    includeLongTerm: false,
+    includeStays: false,
+    lineTypeId: incomeType,
+  };
 }
 
 function toStayListFilters(filters: TIncomeEntriesListDbFilters): IPropertyReservationsListQuery {
@@ -182,7 +187,9 @@ function buildIncomeLineEntryBranchSql(
     includeDeleted
   );
   const longStayCondition =
-    longStayIdConstraint === "is_null" ? "pil.long_stay_id IS NULL" : "pil.long_stay_id IS NOT NULL";
+    longStayIdConstraint === "is_null"
+      ? "pil.long_stay_id IS NULL"
+      : "pil.long_stay_id IS NOT NULL";
   const branchConditions = [...conditions, longStayCondition];
   const { sortKeyDate, sortKeyNum, sortKeyText } =
     entryKind === IncomeEntryKind.LONG_TERM

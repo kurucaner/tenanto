@@ -84,12 +84,10 @@ function buildMergedEntries(
 ): TPropertyIncomeEntry[] {
   const entries: TPropertyIncomeEntry[] = [];
   const showStays = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.STAY;
-  const showLongTerm =
-    incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.LONG_TERM;
+  const showLongTerm = incomeTypeFilter === "" || incomeTypeFilter === IncomeEntryKind.LONG_TERM;
   const showLines =
     incomeTypeFilter === "" ||
-    (incomeTypeFilter !== IncomeEntryKind.STAY &&
-      incomeTypeFilter !== IncomeEntryKind.LONG_TERM);
+    (incomeTypeFilter !== IncomeEntryKind.STAY && incomeTypeFilter !== IncomeEntryKind.LONG_TERM);
 
   if (showStays) {
     for (const stay of reservations) {
@@ -324,7 +322,10 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     const page = await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", {}, { limit: 10 });
     const expected = referenceSortDateDesc(
       buildMergedEntries(
-        [mapPropertyReservationRow(incomeEntriesStayRowA), mapPropertyReservationRow(incomeEntriesStayRowB)],
+        [
+          mapPropertyReservationRow(incomeEntriesStayRowA),
+          mapPropertyReservationRow(incomeEntriesStayRowB),
+        ],
         [
           mapPropertyIncomeLineRow(incomeEntriesLineRowA),
           mapPropertyIncomeLineRow(incomeEntriesLineRowB),

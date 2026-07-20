@@ -3,11 +3,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ILeaseTenantMembership, ITenantUser } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import { makeMembership } from "@/test-fixtures/domain";
-import {
-  mockAsyncFn,
-  mockResolved,
-  mockResolvedNull,
-} from "@/test-fixtures/mocks";
+import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
 const mockFindByInviteToken = mockResolvedNull<ILeaseTenantMembership>();
 const mockExpireMembershipIfPastTtl = mockResolvedNull<ILeaseTenantMembership>();
@@ -133,7 +129,6 @@ mock.module("@/lib/redis-fixed-window-rate-limit", () => ({
 
 const { registerTenantWithInviteGoogle, registerTenantWithInvitePassword } =
   await import("./tenant-invite-signup-service");
-
 
 const fakeServer = {} as import("fastify").FastifyInstance;
 

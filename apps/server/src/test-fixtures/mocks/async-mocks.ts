@@ -1,4 +1,4 @@
-import { mock, type Mock } from "bun:test";
+import { type Mock, mock } from "bun:test";
 
 export type TAsyncMock<TArgs extends unknown[] = [], TResult = unknown> = Mock<
   (...args: TArgs) => Promise<TResult>

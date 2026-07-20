@@ -19,9 +19,6 @@ mock.module("@/db/tenant-users", () => ({
 const { syncLeasePhoneToTenantUserOnAccept } =
   await import("./sync-lease-phone-to-tenant-on-accept");
 
-
-
-
 describe("syncLeasePhoneToTenantUserOnAccept", () => {
   beforeEach(() => {
     mockFindByIdLease.mockReset();
@@ -34,7 +31,12 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
     mockSetUnverifiedPhoneIfNull.mockResolvedValue(syncedUser);
 
     const result = await syncLeasePhoneToTenantUserOnAccept(
-      makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-1", updatedAt: "2026-01-02T00:00:00.000Z" }),
+      makeMembership({
+        acceptedAt: "2026-01-02T00:00:00.000Z",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      }),
       makeTenant({ email: "jane@example.com" }),
       makeLease({ tenantPhone: "+13055550100" })
     );
@@ -71,7 +73,11 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
       role: TenantMembershipRole.SECONDARY,
     } as const;
 
-    await syncLeasePhoneToTenantUserOnAccept(makeMembership(secondary), tenant, makeLease({ tenantPhone: "+13055550100" }));
+    await syncLeasePhoneToTenantUserOnAccept(
+      makeMembership(secondary),
+      tenant,
+      makeLease({ tenantPhone: "+13055550100" })
+    );
     await syncLeasePhoneToTenantUserOnAccept(
       makeMembership({ ...secondary, contactPhone: "not-e164" }),
       tenant,
@@ -84,7 +90,16 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
   test("skips when tenant already has a phone", async () => {
     const tenant = makeTenant({ phone: "+13055550999" });
 
-    const result = await syncLeasePhoneToTenantUserOnAccept(makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-1", updatedAt: "2026-01-02T00:00:00.000Z" }), tenant, makeLease({ tenantPhone: "+13055550100" }));
+    const result = await syncLeasePhoneToTenantUserOnAccept(
+      makeMembership({
+        acceptedAt: "2026-01-02T00:00:00.000Z",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      }),
+      tenant,
+      makeLease({ tenantPhone: "+13055550100" })
+    );
 
     expect(mockSetUnverifiedPhoneIfNull).not.toHaveBeenCalled();
     expect(result).toBe(tenant);
@@ -94,12 +109,22 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
     const tenant = makeTenant({ email: "jane@example.com" });
 
     await syncLeasePhoneToTenantUserOnAccept(
-      makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-1", updatedAt: "2026-01-02T00:00:00.000Z" }),
+      makeMembership({
+        acceptedAt: "2026-01-02T00:00:00.000Z",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      }),
       tenant,
       makeLease({ tenantPhone: null })
     );
     await syncLeasePhoneToTenantUserOnAccept(
-      makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-1", updatedAt: "2026-01-02T00:00:00.000Z" }),
+      makeMembership({
+        acceptedAt: "2026-01-02T00:00:00.000Z",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      }),
       tenant,
       makeLease({ tenantPhone: "not-e164" })
     );
@@ -108,7 +133,15 @@ describe("syncLeasePhoneToTenantUserOnAccept", () => {
   });
 
   test("loads lease when not passed", async () => {
-    await syncLeasePhoneToTenantUserOnAccept(makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", status: TenantMembershipStatus.ACTIVE, tenantUserId: "tenant-1", updatedAt: "2026-01-02T00:00:00.000Z" }), makeTenant({ email: "jane@example.com" }));
+    await syncLeasePhoneToTenantUserOnAccept(
+      makeMembership({
+        acceptedAt: "2026-01-02T00:00:00.000Z",
+        status: TenantMembershipStatus.ACTIVE,
+        tenantUserId: "tenant-1",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      }),
+      makeTenant({ email: "jane@example.com" })
+    );
 
     expect(mockFindByIdLease).toHaveBeenCalledWith("lease-1");
     expect(mockSetUnverifiedPhoneIfNull).toHaveBeenCalledWith("tenant-1", "+13055550100");

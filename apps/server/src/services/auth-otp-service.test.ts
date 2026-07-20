@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import {
-  mockResolvedNull,
-  mockResolvedVoid,
-} from "@/test-fixtures/mocks";
+import { mockResolvedNull, mockResolvedVoid } from "@/test-fixtures/mocks";
 
 const mockFindMostRecentCreatedAt = mockResolvedNull<Date>();
 const mockDeleteByEmailAndPurpose = mockResolvedVoid();

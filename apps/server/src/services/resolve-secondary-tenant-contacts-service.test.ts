@@ -15,7 +15,6 @@ mock.module("@/services/load-secondary-tenant-contacts-by-lease-ids", () => ({
 const { resolveSecondaryTenantContactsForLongStay } =
   await import("./resolve-secondary-tenant-contacts-service");
 
-
 describe("resolveSecondaryTenantContactsForLongStay", () => {
   beforeEach(() => {
     mockLoadSecondaryTenantContactsByLeaseIds.mockReset();
@@ -45,7 +44,9 @@ describe("resolveSecondaryTenantContactsForLongStay", () => {
       ])
     );
 
-    const contacts = await resolveSecondaryTenantContactsForLongStay(makeLease({ guestName: "Primary", tenantEmail: "primary@example.com" }));
+    const contacts = await resolveSecondaryTenantContactsForLongStay(
+      makeLease({ guestName: "Primary", tenantEmail: "primary@example.com" })
+    );
 
     expect(contacts).toHaveLength(1);
     expect(contacts[0]?.source).toBe("membership_listed");
@@ -55,7 +56,9 @@ describe("resolveSecondaryTenantContactsForLongStay", () => {
   test("returns empty array when lease has no secondary contacts", async () => {
     mockLoadSecondaryTenantContactsByLeaseIds.mockResolvedValueOnce(new Map());
 
-    const contacts = await resolveSecondaryTenantContactsForLongStay(makeLease({ guestName: "Primary", tenantEmail: "primary@example.com" }));
+    const contacts = await resolveSecondaryTenantContactsForLongStay(
+      makeLease({ guestName: "Primary", tenantEmail: "primary@example.com" })
+    );
 
     expect(contacts).toEqual([]);
   });

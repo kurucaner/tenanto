@@ -46,19 +46,11 @@ describe("assertPropertyStripeConnectLinkAllowed", () => {
     expect(expire).toHaveBeenCalledWith("stripe-connect:link:property-1:user-1", 900);
 
     incr.mockResolvedValueOnce(10);
-    const withinLimit = await assertPropertyStripeConnectLinkAllowed(
-      "property-1",
-      "user-1",
-      redis
-    );
+    const withinLimit = await assertPropertyStripeConnectLinkAllowed("property-1", "user-1", redis);
     expect(withinLimit).toEqual({ allowed: true });
 
     incr.mockResolvedValueOnce(11);
-    const exceeded = await assertPropertyStripeConnectLinkAllowed(
-      "property-1",
-      "user-1",
-      redis
-    );
+    const exceeded = await assertPropertyStripeConnectLinkAllowed("property-1", "user-1", redis);
     expect(exceeded).toEqual({ allowed: false, retryAfterSec: 42 });
   });
 });

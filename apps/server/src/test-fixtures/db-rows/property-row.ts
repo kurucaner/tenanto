@@ -65,7 +65,9 @@ export function buildRentScheduleIncomeLineRow(
   };
 }
 
-export function buildRentScheduleLeaseRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+export function buildRentScheduleLeaseRow(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
   return {
     actual_end_date: null,
     created_at: new Date("2026-01-01T00:00:00.000Z"),

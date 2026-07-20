@@ -4,7 +4,11 @@ import { propertiesDb } from "@/db/properties";
 import { propertyMembersDb } from "@/db/property-members";
 import { HttpStatus, PropertyRole, UserType } from "@/packages/shared";
 
-import { getAuthenticatedRequestParams, parsePropertyIdParam, type TAuthenticatedRequest } from "./property-route-params";
+import {
+  getAuthenticatedRequestParams,
+  parsePropertyIdParam,
+  type TAuthenticatedRequest,
+} from "./property-route-params";
 
 const UNIT_MANAGE_ROLES = new Set<string>([PropertyRole.OWNER, PropertyRole.MANAGER]);
 const LEDGER_WRITE_ROLES = new Set<string>([PropertyRole.OWNER, PropertyRole.MANAGER]);

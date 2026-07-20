@@ -318,7 +318,9 @@ describe("connected-state actions", () => {
     expect(shouldShowExpressOnboardingButton(status)).toBe(true);
     expect(shouldShowStandardOAuthButton(status)).toBe(true);
     expect(shouldShowStandardDashboardLink(status)).toBe(false);
-    expect(expressOnboardingButtonLabel(uiStatus, status.accountType)).toBe("Continue Stripe setup");
+    expect(expressOnboardingButtonLabel(uiStatus, status.accountType)).toBe(
+      "Continue Stripe setup"
+    );
     expect(standardOAuthButtonLabel(uiStatus, status.accountType)).toBe(
       "Connect existing Stripe account"
     );

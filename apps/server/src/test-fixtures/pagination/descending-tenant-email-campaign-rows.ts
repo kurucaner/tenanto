@@ -3,8 +3,20 @@ import { buildTenantEmailCampaignRow } from "../db-rows/tenant-email-campaign-ro
 import { sequentialUuid } from "../ids";
 
 const CAMPAIGN_SPECS = [
-  { failedCount: 0, recipientCount: 10, sentCount: 10, status: "completed", subject: "Rent reminder July" },
-  { failedCount: 0, recipientCount: 5, sentCount: 5, status: "completed", subject: "Welcome notice" },
+  {
+    failedCount: 0,
+    recipientCount: 10,
+    sentCount: 10,
+    status: "completed",
+    subject: "Rent reminder July",
+  },
+  {
+    failedCount: 0,
+    recipientCount: 5,
+    sentCount: 5,
+    status: "completed",
+    subject: "Welcome notice",
+  },
   {
     failedCount: 1,
     recipientCount: 8,

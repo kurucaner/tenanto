@@ -88,10 +88,10 @@ export function parseCreateExpenseBody(
   return {
     body: {
       amount,
+      cashExpense,
       categoryId,
       description: description ?? undefined,
       expenseDate: expenseDate ?? undefined,
-      cashExpense,
     },
     ok: true,
   };

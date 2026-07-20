@@ -41,8 +41,8 @@ const mockLinkTenantUser = mockAsyncFn(
   (_id: string, _tenantUserId: string): Promise<ILeaseTenantMembership | null> =>
     Promise.resolve(null)
 );
-const mockResolveSecondaryContacts = mockAsyncFn(
-  (): Promise<ILeaseSecondaryTenantContact[]> => Promise.resolve([])
+const mockResolveSecondaryContacts = mockAsyncFn((): Promise<ILeaseSecondaryTenantContact[]> =>
+  Promise.resolve([])
 );
 const mockExpireMembershipIfPastTtl = mockResolvedNull<ILeaseTenantMembership>();
 const mockExpirePendingPortalInvites = mockResolved(0);
@@ -105,10 +105,6 @@ mock.module("./winston", () => ({
 }));
 
 const { tenantPortalInviteService } = await import("./tenant-portal-invite-service");
-
-
-
-
 
 describe("tenantPortalInviteService.createInvites", () => {
   const originalTenantAppUrl = process.env.TENANT_APP_URL;

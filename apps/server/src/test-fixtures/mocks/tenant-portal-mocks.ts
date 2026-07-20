@@ -9,11 +9,7 @@ import type {
   TTenantMembershipStatus,
 } from "@/packages/shared";
 
-import {
-  mockAsyncFn,
-  mockResolvedEmpty,
-  mockResolvedNull,
-} from "./async-mocks";
+import { mockAsyncFn, mockResolvedEmpty, mockResolvedNull } from "./async-mocks";
 
 export interface ITenantPortalDbMocks {
   endAllNonTerminalForLease: ReturnType<typeof mockResolvedEmpty<ILeaseTenantMembership>>;
@@ -27,18 +23,10 @@ export interface ITenantPortalDbMocks {
   findEndedByTenantUserId: ReturnType<typeof mockResolvedEmpty<ILeaseTenantMembership>>;
   findPendingAcceptanceByTenantUserId: ReturnType<typeof mockResolvedEmpty<ILeaseTenantMembership>>;
   findTenantById: ReturnType<typeof mockResolvedNull<ITenantUser>>;
-  linkTenantUser: ReturnType<
-    typeof mockAsyncFn<
-      [string, string],
-      ILeaseTenantMembership | null
-    >
-  >;
+  linkTenantUser: ReturnType<typeof mockAsyncFn<[string, string], ILeaseTenantMembership | null>>;
   setUnverifiedPhoneIfNull: ReturnType<typeof mockResolvedNull<ITenantUser>>;
   transitionStatus: ReturnType<
-    typeof mockAsyncFn<
-      [string, TTenantMembershipStatus],
-      ILeaseTenantMembership | null
-    >
+    typeof mockAsyncFn<[string, TTenantMembershipStatus], ILeaseTenantMembership | null>
   >;
 }
 

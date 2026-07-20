@@ -6,7 +6,10 @@ import {
   InviteSignupErrorCode,
   inviteSignupValidationError,
 } from "@/errors/invite-signup-errors";
-import { PortalInviteErrorCode, portalInviteInvalidStateError } from "@/errors/portal-invite-errors";
+import {
+  PortalInviteErrorCode,
+  portalInviteInvalidStateError,
+} from "@/errors/portal-invite-errors";
 import {
   PropertyMemberInviteErrorCode,
   propertyMemberInviteNotFoundError,

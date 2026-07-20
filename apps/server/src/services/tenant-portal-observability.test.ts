@@ -27,7 +27,9 @@ describe("tenant-portal-observability", () => {
   });
 
   test("normalizes invite email in log context", () => {
-    expect(buildTenantPortalMembershipLogContext(makeMembership({ inviteEmail: "  Jane@Example.COM " }))).toEqual({
+    expect(
+      buildTenantPortalMembershipLogContext(makeMembership({ inviteEmail: "  Jane@Example.COM " }))
+    ).toEqual({
       inviteEmail: "jane@example.com",
       leaseId: "lease-1",
       membershipId: "membership-1",

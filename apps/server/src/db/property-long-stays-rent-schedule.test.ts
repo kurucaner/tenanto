@@ -1,10 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { PropertyLongStayStatus } from "@/packages/shared";
-import {
-  buildRentScheduleIncomeLineRow,
-  buildRentScheduleLeaseRow,
-} from "@/test-fixtures/db-rows";
+import { buildRentScheduleIncomeLineRow, buildRentScheduleLeaseRow } from "@/test-fixtures/db-rows";
 
 const capturedIncomeSql: string[] = [];
 

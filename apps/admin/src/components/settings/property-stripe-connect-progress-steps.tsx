@@ -40,10 +40,7 @@ export const StripeConnectProgressSteps = memo(function StripeConnectProgressSte
             </span>
             <span>{step.label}</span>
             {index < STEPS.length - 1 ? (
-              <span
-                aria-hidden
-                className="bg-border mx-1 hidden h-px flex-1 sm:block"
-              />
+              <span aria-hidden className="bg-border mx-1 hidden h-px flex-1 sm:block" />
             ) : null}
           </li>
         );

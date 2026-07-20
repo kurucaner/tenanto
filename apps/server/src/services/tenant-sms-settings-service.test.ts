@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { HttpStatus } from "@/packages/shared";
 import type { ITenantUser } from "@/packages/shared";
+import { HttpStatus } from "@/packages/shared";
 import { makeTenantUser } from "@/test-fixtures/domain";
 import { mockResolvedNull } from "@/test-fixtures/mocks";
 
@@ -25,7 +25,13 @@ describe("optOutTenantSms", () => {
     mockIsPhoneAuthEnabled.mockClear();
     mockOptOutOfSms.mockClear();
     mockIsPhoneAuthEnabled.mockReturnValue(true);
-    mockOptOutOfSms.mockResolvedValue(makeTenantUser({ email: "tenant@example.com", smsOptedOutAt: "2026-01-02T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z" }));
+    mockOptOutOfSms.mockResolvedValue(
+      makeTenantUser({
+        email: "tenant@example.com",
+        smsOptedOutAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      })
+    );
   });
 
   test("returns 404 when phone auth flag is off", async () => {

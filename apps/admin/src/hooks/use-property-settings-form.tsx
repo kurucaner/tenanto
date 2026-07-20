@@ -317,8 +317,7 @@ export const usePropertySettingsForm = ({
             <CardTitle className="text-lg">Property settings</CardTitle>
           </div>
           <CardDescription>
-            Manage catalogs used for income and expenses. Changes save when you add or edit an
-            item.
+            Manage catalogs used for income and expenses. Changes save when you add or edit an item.
           </CardDescription>
           <p className="text-muted-foreground text-xs">
             Last updated: {new Date(settings.updatedAt).toLocaleString()}

@@ -52,7 +52,13 @@ function parseBoolean(raw: unknown): boolean | null {
   return raw;
 }
 
-const UPDATE_FIELDS = ["categoryId", "amount", "expenseDate", "description", "cashExpense"] as const;
+const UPDATE_FIELDS = [
+  "categoryId",
+  "amount",
+  "expenseDate",
+  "description",
+  "cashExpense",
+] as const;
 
 function parseUpdateExpenseCategoryId(
   r: Record<string, unknown>,
@@ -199,10 +205,10 @@ interface IPropertyExpenseParams {
 function mergeExpenseInput(existing: IPropertyExpense, patch: IUpdatePropertyExpenseBody) {
   return {
     amount: patch.amount ?? existing.amount,
+    cashExpense: patch.cashExpense ?? existing.cashExpense,
     categoryId: patch.categoryId ?? existing.categoryId,
     description: patch.description === undefined ? existing.description : patch.description,
     expenseDate: patch.expenseDate === undefined ? existing.expenseDate : patch.expenseDate,
-    cashExpense: patch.cashExpense ?? existing.cashExpense,
   };
 }
 
@@ -302,10 +308,10 @@ export const propertyExpenseRoutes = async (server: FastifyInstance): Promise<vo
 
       const expense = await propertyExpensesDb.create(propertyId, {
         amount: parsed.body.amount,
+        cashExpense: parsed.body.cashExpense ?? false,
         categoryId: parsed.body.categoryId,
         description: parsed.body.description?.trim() || null,
         expenseDate: parsed.body.expenseDate ?? null,
-        cashExpense: parsed.body.cashExpense ?? false,
       });
 
       return reply.status(HttpStatus.CREATED).send({ expense });

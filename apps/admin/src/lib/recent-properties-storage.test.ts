@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import {
-  type IRecentProperty,
   clearRecentProperties,
+  type IRecentProperty,
   parseRecentProperties,
   readRecentProperties,
   RECENT_PROPERTIES_MAX,

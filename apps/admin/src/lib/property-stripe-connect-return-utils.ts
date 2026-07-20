@@ -87,7 +87,8 @@ export function getStripeConnectOAuthErrorToast(
       };
     case StripeConnectOAuthCallbackReason.NOT_CONFIGURED:
       return {
-        description: "Connecting an existing Stripe account is not configured for this environment.",
+        description:
+          "Connecting an existing Stripe account is not configured for this environment.",
         title: "Stripe connection unavailable",
       };
     case StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED:

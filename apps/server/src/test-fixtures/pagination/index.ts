@@ -1,6 +1,13 @@
-export { buildDescendingExpenseRows, TEST_EXPENSE_CATEGORY_ID_1, TEST_EXPENSE_CATEGORY_ID_2 } from "./descending-expense-rows";
+export {
+  buildDescendingExpenseRows,
+  TEST_EXPENSE_CATEGORY_ID_1,
+  TEST_EXPENSE_CATEGORY_ID_2,
+} from "./descending-expense-rows";
 export { buildDescendingExportJobRows } from "./descending-export-job-rows";
-export { buildDescendingIncomeLineRows, TEST_INCOME_LINE_TYPE_ID } from "./descending-income-line-rows";
+export {
+  buildDescendingIncomeLineRows,
+  TEST_INCOME_LINE_TYPE_ID,
+} from "./descending-income-line-rows";
 export {
   buildDescendingLongStayRows,
   LONG_STAY_PAGINATION_COUNT_ROW,

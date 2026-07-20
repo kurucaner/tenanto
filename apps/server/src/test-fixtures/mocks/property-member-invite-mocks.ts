@@ -4,7 +4,13 @@ import type { IProperty, IPropertyInvite, IPropertyMember, IUser } from "@/packa
 import { PropertyInviteStatus } from "@/packages/shared";
 
 import { makeInvite } from "../domain";
-import { mockAsyncFn, mockResolved, mockResolvedEmpty, mockResolvedNull, mockResolvedVoid } from "./async-mocks";
+import {
+  mockAsyncFn,
+  mockResolved,
+  mockResolvedEmpty,
+  mockResolvedNull,
+  mockResolvedVoid,
+} from "./async-mocks";
 
 export interface IPropertyMemberInviteActionMocks {
   addMember: ReturnType<typeof mockResolvedNull<IPropertyMember>>;

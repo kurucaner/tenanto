@@ -19,9 +19,7 @@ import { rejectIfRefunded } from "./reject-if-refunded";
 const DEFAULT_LEDGER_FORBIDDEN_MESSAGE =
   "Only property owners and managers can manage income entries";
 
-export async function requirePropertyLedgerEntityIds<
-  TParams extends IPropertyParams,
->(
+export async function requirePropertyLedgerEntityIds<TParams extends IPropertyParams>(
   request: TAuthenticatedRequest<TParams>,
   reply: FastifyReply,
   entityParamName: keyof TParams & string,
@@ -40,11 +38,7 @@ export async function requirePropertyLedgerEntityIds<
   );
   if (!hasAccess) return null;
 
-  const entityId = parseNestedUuidParam(
-    params[entityParamName],
-    entityParamLabel,
-    reply
-  );
+  const entityId = parseNestedUuidParam(params[entityParamName], entityParamLabel, reply);
   if (entityId === null) return null;
 
   const canWrite = await assertPropertyLedgerWriteAccess(

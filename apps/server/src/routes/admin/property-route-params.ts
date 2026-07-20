@@ -13,11 +13,10 @@ export interface IAuthenticatedRequestUser {
   userType: string;
 }
 
-export type TAuthenticatedRequest<
-  TParams extends IPropertyParams = IPropertyParams,
-> = FastifyRequest<{ Params: TParams }> & {
-  user: IAuthenticatedRequestUser;
-};
+export type TAuthenticatedRequest<TParams extends IPropertyParams = IPropertyParams> =
+  FastifyRequest<{ Params: TParams }> & {
+    user: IAuthenticatedRequestUser;
+  };
 
 export function getAuthenticatedRequestParams<TParams extends IPropertyParams>(
   request: TAuthenticatedRequest<TParams>

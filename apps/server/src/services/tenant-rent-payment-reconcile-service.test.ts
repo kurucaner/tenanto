@@ -57,7 +57,6 @@ mock.module("@/services/winston", () => ({
 
 const { reconcileTenantRentPayments } = await import("./tenant-rent-payment-reconcile-service");
 
-
 describe("reconcileTenantRentPayments", () => {
   const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
 
@@ -106,7 +105,12 @@ describe("reconcileTenantRentPayments", () => {
   });
 
   test("recovers local open payment when Stripe PaymentIntent succeeded", async () => {
-    const payment = makePayment({ amountCents: 100_00, idempotencyKey: "key-1", stripeCheckoutSessionId: "cs_1", stripePaymentIntentId: "pi_1" });
+    const payment = makePayment({
+      amountCents: 100_00,
+      idempotencyKey: "key-1",
+      stripeCheckoutSessionId: "cs_1",
+      stripePaymentIntentId: "pi_1",
+    });
     mockListReconcileCandidatesSince.mockResolvedValueOnce([payment]);
     mockRetrievePi.mockResolvedValueOnce({ id: "pi_1", status: "succeeded" });
     mockFindById.mockResolvedValue(payment);

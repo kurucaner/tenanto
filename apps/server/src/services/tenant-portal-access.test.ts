@@ -29,12 +29,12 @@ describe("assertLeaseTenantAccess", () => {
 
   test("returns active membership when tenant has access", async () => {
     const membership = makeMembership({
-  acceptedAt: "2026-01-02T00:00:00.000Z",
-  expiresAt: "2026-02-01T00:00:00.000Z",
-  status: TenantMembershipStatus.ACTIVE,
-  tenantUserId: "tenant-1",
-  updatedAt: "2026-01-02T00:00:00.000Z",
-});
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+      expiresAt: "2026-02-01T00:00:00.000Z",
+      status: TenantMembershipStatus.ACTIVE,
+      tenantUserId: "tenant-1",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     mockFindActiveByLeaseAndTenantUser.mockResolvedValueOnce(membership);
 
     const result = await assertLeaseTenantAccess("lease-1", "tenant-1");
@@ -58,7 +58,13 @@ describe("assertLeaseTenantReadAccess", () => {
   });
 
   test("returns ended membership for archive read access", async () => {
-    const membership = makeMembership({ acceptedAt: "2026-01-02T00:00:00.000Z", expiresAt: "2026-02-01T00:00:00.000Z", status: TenantMembershipStatus.ENDED, tenantUserId: "tenant-1", updatedAt: "2026-01-02T00:00:00.000Z" });
+    const membership = makeMembership({
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+      expiresAt: "2026-02-01T00:00:00.000Z",
+      status: TenantMembershipStatus.ENDED,
+      tenantUserId: "tenant-1",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
     mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValueOnce(membership);
 
     const result = await assertLeaseTenantReadAccess("lease-1", "tenant-1");

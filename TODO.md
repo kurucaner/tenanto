@@ -16,5 +16,4 @@
 - Fix 1 day mismatch in monthly long term stays
 - Sub category implementation for expenses
 - Add Stripe commission to long stay payments
-- Update "Rent" and "Stay" to "Long Term" and "Short Term" in the table
 - ACH

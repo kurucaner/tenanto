@@ -49,7 +49,10 @@ describe("propertyMemberInviteActionService.redeemInvite", () => {
     const result = await propertyMemberInviteActionService.redeemInvite("token-abc", makeUser());
 
     expect(result.member.id).toBe("member-1");
-    expect(actionMocks.transitionStatus).toHaveBeenCalledWith("invite-1", PropertyInviteStatus.ACCEPTED);
+    expect(actionMocks.transitionStatus).toHaveBeenCalledWith(
+      "invite-1",
+      PropertyInviteStatus.ACCEPTED
+    );
   });
 
   test("rejects invite sent to a different email", async () => {
@@ -63,7 +66,11 @@ describe("propertyMemberInviteActionService.redeemInvite", () => {
 
 describe("propertyMemberInviteActionService.declineInvite", () => {
   beforeEach(() => {
-    resetMocks(actionMocks.findByIdInvite, actionMocks.transitionStatus, actionMocks.expireInviteIfPastTtl);
+    resetMocks(
+      actionMocks.findByIdInvite,
+      actionMocks.transitionStatus,
+      actionMocks.expireInviteIfPastTtl
+    );
     actionMocks.expireInviteIfPastTtl.mockResolvedValue(null);
   });
 

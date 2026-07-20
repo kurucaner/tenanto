@@ -68,7 +68,6 @@ mock.module("@/ses/transactional-emails", () => ({
 const { notifyPrimaryTenantLeaseEnded, notifyPrimaryTenantRentRecorded } =
   await import("./lease-notifications");
 
-
 describe("notifyPrimaryTenantRentRecorded", () => {
   const originalFlag = process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED;
 
@@ -89,7 +88,9 @@ describe("notifyPrimaryTenantRentRecorded", () => {
   });
 
   test("sends email when lease has tenant email and related records resolve", async () => {
-    mockFindLongStayById.mockResolvedValueOnce(makeLease({ leaseEndDate: "2027-01-01", propertyId: "prop-1" }));
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({ leaseEndDate: "2027-01-01", propertyId: "prop-1" })
+    );
 
     await notifyPrimaryTenantRentRecorded({
       amount: 1500,
@@ -110,7 +111,9 @@ describe("notifyPrimaryTenantRentRecorded", () => {
   });
 
   test("no-ops when tenant email is missing", async () => {
-    mockFindLongStayById.mockResolvedValueOnce(makeLease({ propertyId: "prop-1", tenantEmail: null }));
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({ propertyId: "prop-1", tenantEmail: null })
+    );
 
     await notifyPrimaryTenantRentRecorded({
       amount: 1500,
@@ -123,7 +126,9 @@ describe("notifyPrimaryTenantRentRecorded", () => {
   });
 
   test("no-ops when tenant email is blank", async () => {
-    mockFindLongStayById.mockResolvedValueOnce(makeLease({ propertyId: "prop-1", tenantEmail: "   " }));
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({ propertyId: "prop-1", tenantEmail: "   " })
+    );
 
     await notifyPrimaryTenantRentRecorded({
       amount: 1500,

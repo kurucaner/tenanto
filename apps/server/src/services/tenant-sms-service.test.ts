@@ -12,7 +12,6 @@ mock.module("@/sns/sns", () => ({
 
 const { sendTenantOptInConfirmationSms, sendTenantSms } = await import("./tenant-sms-service");
 
-
 describe("sendTenantSms", () => {
   beforeEach(() => {
     mockSendSms.mockClear();
@@ -22,7 +21,12 @@ describe("sendTenantSms", () => {
     await sendTenantSms({
       message: "PropertyOS: test",
       phoneNumber: "+13055550100",
-      tenantUser: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
+      tenantUser: makeTenantUser({
+        email: "tenant@example.com",
+        phone: "+13055550100",
+        phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
+        smsConsentedAt: "2026-01-01T00:00:00.000Z",
+      }),
     });
 
     expect(mockSendSms).toHaveBeenCalledWith({
@@ -50,7 +54,12 @@ describe("sendTenantOptInConfirmationSms", () => {
   test("sends campaign opt-in confirmation copy", async () => {
     await sendTenantOptInConfirmationSms({
       phoneNumber: "+13055550100",
-      tenantUser: makeTenantUser({ email: "tenant@example.com", phone: "+13055550100", phoneVerifiedAt: "2026-01-01T00:00:00.000Z", smsConsentedAt: "2026-01-01T00:00:00.000Z" }),
+      tenantUser: makeTenantUser({
+        email: "tenant@example.com",
+        phone: "+13055550100",
+        phoneVerifiedAt: "2026-01-01T00:00:00.000Z",
+        smsConsentedAt: "2026-01-01T00:00:00.000Z",
+      }),
     });
 
     expect(mockSendSms).toHaveBeenCalledWith({

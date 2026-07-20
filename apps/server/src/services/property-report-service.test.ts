@@ -3,10 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { UnitRentalType } from "@/packages/shared";
 import { makeIncomeLine, makeReportData, makeStay, makeUnit } from "@/test-fixtures/domain";
 
-import {
-  buildPropertyReportSummary,
-  rollupSummaries,
-} from "../services/property-report-service";
+import { buildPropertyReportSummary, rollupSummaries } from "../services/property-report-service";
 
 const QUERY = { from: "2026-01-01", to: "2026-01-31" };
 const reportUnit = makeUnit({ propertyId: "prop-1", rentalType: UnitRentalType.SHORT_TERM });
@@ -193,7 +190,12 @@ describe("rollupSummaries taxSummary", () => {
           }),
         ],
         units: [
-          makeUnit({ id: "unit-2", propertyId: "prop-1", rentalType: UnitRentalType.SHORT_TERM, unitNumber: "102" }),
+          makeUnit({
+            id: "unit-2",
+            propertyId: "prop-1",
+            rentalType: UnitRentalType.SHORT_TERM,
+            unitNumber: "102",
+          }),
         ],
       }),
       QUERY

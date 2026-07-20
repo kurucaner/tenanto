@@ -30,7 +30,6 @@ const { issueTenantAccessToken, issueTenantSession } = await import("./tenant-au
 
 const mockServer = {} as import("fastify").FastifyInstance;
 
-
 describe("issueTenantSession", () => {
   beforeEach(() => {
     mockSignTenantAccessToken.mockClear();

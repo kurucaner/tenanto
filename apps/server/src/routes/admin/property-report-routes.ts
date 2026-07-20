@@ -6,10 +6,7 @@ import {
   loadReportData,
 } from "@/services/property-report-service";
 
-import {
-  type IPropertyParams,
-  loadPropertyReportContext,
-} from "./property-report-route-context";
+import { type IPropertyParams, loadPropertyReportContext } from "./property-report-route-context";
 
 async function buildSummary(propertyId: string, query: Parameters<typeof loadReportData>[1]) {
   const data = await loadReportData(propertyId, query);
