@@ -3132,4 +3132,48 @@ export const migrations: IMigration[] = [
     },
     version: 70,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_expense_category_types_property_name_active;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_name_active;
+      `);
+      await client.query(`
+        ALTER TABLE property_expense_category_types
+          DROP COLUMN IF EXISTS is_deleted,
+          DROP COLUMN IF EXISTS deleted_at;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_line_types
+          DROP COLUMN IF EXISTS is_deleted,
+          DROP COLUMN IF EXISTS deleted_at;
+      `);
+    },
+    name: "property_catalog_type_archive",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_income_line_types
+          ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      `);
+      await client.query(`
+        ALTER TABLE property_expense_category_types
+          ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_name_active
+          ON property_income_line_types (property_id, lower(name))
+          WHERE is_deleted = false;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_expense_category_types_property_name_active
+          ON property_expense_category_types (property_id, lower(name))
+          WHERE is_deleted = false;
+      `);
+    },
+    version: 71,
+  },
 ];
