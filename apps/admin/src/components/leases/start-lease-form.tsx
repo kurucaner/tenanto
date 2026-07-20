@@ -72,22 +72,26 @@ StartLeaseProgress.displayName = "StartLeaseProgress";
 interface WhoStepProps {
   autoFocusName: boolean;
   availableUnits: IPropertyUnit[];
-  errors: FieldErrors<TStartLeaseFormValues>;
   form: UseFormReturn<TStartLeaseFormValues>;
+  guestNameError?: string;
   isActiveLeasesPending: boolean;
   lockedUnit: IPropertyUnit | null;
   lockedUnitError: string | null;
+  tenantPhoneError?: string;
+  unitIdError?: string;
 }
 
 const WhoStep = memo(
   ({
     autoFocusName,
     availableUnits,
-    errors,
     form,
+    guestNameError,
     isActiveLeasesPending,
     lockedUnit,
     lockedUnitError,
+    tenantPhoneError,
+    unitIdError,
   }: WhoStepProps) => (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -102,7 +106,7 @@ const WhoStep = memo(
           <>
             <FormSelectField
               disabled={isActiveLeasesPending}
-              error={errors.unitId?.message}
+              error={unitIdError}
               id="start-lease-unit"
               label="Unit"
               {...form.register("unitId")}
@@ -134,8 +138,8 @@ const WhoStep = memo(
               id="start-lease-tenant-name"
               {...form.register("guestName")}
             />
-            {errors.guestName ? (
-              <p className="text-destructive text-xs">{errors.guestName.message}</p>
+            {guestNameError ? (
+              <p className="text-destructive text-xs">{guestNameError}</p>
             ) : null}
           </div>
           <div className="flex flex-col gap-1.5">
@@ -157,8 +161,8 @@ const WhoStep = memo(
                 />
               )}
             />
-            {errors.tenantPhone ? (
-              <p className="text-destructive text-xs">{errors.tenantPhone.message}</p>
+            {tenantPhoneError ? (
+              <p className="text-destructive text-xs">{tenantPhoneError}</p>
             ) : null}
           </div>
         </div>
@@ -169,44 +173,56 @@ const WhoStep = memo(
 WhoStep.displayName = "WhoStep";
 
 interface TermStepProps {
-  errors: FieldErrors<TStartLeaseFormValues>;
   form: UseFormReturn<TStartLeaseFormValues>;
   leaseEndDate: string | null;
+  leaseEndDateError?: string;
+  leaseStartDateError?: string;
+  termMonthsError?: string;
 }
 
-const TermStep = memo(({ errors, form, leaseEndDate }: TermStepProps) => (
-  <LeaseTermEndFields<TStartLeaseFormValues>
-    control={form.control}
-    endDateFieldId="start-lease-end-date"
-    errors={errors}
-    register={form.register}
-    resolvedEndDate={leaseEndDate}
-    startDateFieldId="start-lease-start-date"
-    termMonthsFieldId="start-lease-term-months"
-  />
-));
+const TermStep = memo(
+  ({
+    form,
+    leaseEndDate,
+    leaseEndDateError,
+    leaseStartDateError,
+    termMonthsError,
+  }: TermStepProps) => (
+    <LeaseTermEndFields<TStartLeaseFormValues>
+      control={form.control}
+      endDateFieldId="start-lease-end-date"
+      leaseEndDateError={leaseEndDateError}
+      leaseStartDateError={leaseStartDateError}
+      register={form.register}
+      resolvedEndDate={leaseEndDate}
+      startDateFieldId="start-lease-start-date"
+      termMonthsError={termMonthsError}
+      termMonthsFieldId="start-lease-term-months"
+    />
+  )
+);
 TermStep.displayName = "TermStep";
 
 interface RentStepProps {
   autoFocusRent: boolean;
-  errors: FieldErrors<TStartLeaseFormValues>;
   firstMonthRentPreview: string | null;
   form: UseFormReturn<TStartLeaseFormValues>;
   guestName: string;
   leaseEndDate: string | null;
   leaseStartDate: string;
+  monthlyRentError?: string;
   unitLabel: string | null;
 }
 
 const RentStep = memo(
   ({
     autoFocusRent,
-    errors,
     firstMonthRentPreview,
     form,
     guestName,
     leaseEndDate,
     leaseStartDate,
+    monthlyRentError,
     unitLabel,
   }: RentStepProps) => {
     const rentBillingCadence = form.watch("rentBillingCadence");
@@ -294,8 +310,8 @@ const RentStep = memo(
               )}
             />
           </div>
-          {errors.monthlyRent ? (
-            <p className="text-destructive text-xs">{errors.monthlyRent.message}</p>
+          {monthlyRentError ? (
+            <p className="text-destructive text-xs">{monthlyRentError}</p>
           ) : null}
           {rentBillingCadence === "monthly" && firstMonthRentPreview ? (
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
@@ -310,6 +326,7 @@ RentStep.displayName = "RentStep";
 interface StartLeaseFormProps {
   availableUnits: IPropertyUnit[];
   currentStep: TStartLeaseStep;
+  errors: FieldErrors<TStartLeaseFormValues>;
   firstMonthRentPreview: string | null;
   form: UseFormReturn<TStartLeaseFormValues>;
   formRef: RefObject<HTMLFormElement | null>;
@@ -335,6 +352,7 @@ export const StartLeaseForm = memo(
   ({
     availableUnits,
     currentStep,
+    errors,
     firstMonthRentPreview,
     form,
     formRef,
@@ -355,7 +373,6 @@ export const StartLeaseForm = memo(
     onSubmit,
     unitLabel,
   }: StartLeaseFormProps) => {
-    const { errors } = form.formState;
     const isFirstStep = currentStep === "who";
     const isLastStep = currentStep === "rent";
     const submitDisabled = mutationPending || isSubmitDisabled || isSubmitting;
@@ -385,11 +402,13 @@ export const StartLeaseForm = memo(
               <WhoStep
                 autoFocusName={currentStep === "who"}
                 availableUnits={availableUnits}
-                errors={errors}
                 form={form}
+                guestNameError={errors.guestName?.message}
                 isActiveLeasesPending={isActiveLeasesPending}
                 lockedUnit={lockedUnit}
                 lockedUnitError={lockedUnitError}
+                tenantPhoneError={errors.tenantPhone?.message}
+                unitIdError={errors.unitId?.message}
               />
             </section>
 
@@ -398,7 +417,13 @@ export const StartLeaseForm = memo(
               data-start-lease-step="term"
               hidden={currentStep !== "term"}
             >
-              <TermStep errors={errors} form={form} leaseEndDate={leaseEndDate} />
+              <TermStep
+                form={form}
+                leaseEndDate={leaseEndDate}
+                leaseEndDateError={errors.leaseEndDate?.message}
+                leaseStartDateError={errors.leaseStartDate?.message}
+                termMonthsError={errors.termMonths?.message}
+              />
             </section>
 
             <section
@@ -408,12 +433,12 @@ export const StartLeaseForm = memo(
             >
               <RentStep
                 autoFocusRent={currentStep === "rent"}
-                errors={errors}
                 firstMonthRentPreview={firstMonthRentPreview}
                 form={form}
                 guestName={guestName}
                 leaseEndDate={leaseEndDate}
                 leaseStartDate={leaseStartDate}
+                monthlyRentError={errors.monthlyRent?.message}
                 unitLabel={unitLabel}
               />
             </section>

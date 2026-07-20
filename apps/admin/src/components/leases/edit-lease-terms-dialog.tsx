@@ -174,9 +174,11 @@ export const EditLeaseTermsDialog = memo(
               <LeaseTermEndFields<TEditLeaseTermsFormValues>
                 control={form.control}
                 endDateFieldId="edit-lease-end-date"
-                errors={errors}
+                leaseEndDateError={errors.leaseEndDate?.message}
+                leaseStartDateError={errors.leaseStartDate?.message}
                 register={form.register}
                 startDateFieldId="edit-lease-start-date"
+                termMonthsError={errors.termMonths?.message}
                 termMonthsFieldId="edit-lease-term-months"
               />
 

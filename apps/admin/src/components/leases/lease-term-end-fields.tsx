@@ -1,7 +1,6 @@
 import {
   type Control,
   Controller,
-  type FieldErrors,
   type FieldValues,
   type Path,
   type UseFormRegister,
@@ -18,20 +17,24 @@ import { type LeaseTermInputMode } from "@/packages/shared";
 type TLeaseTermEndFieldsProps<TFieldValues extends FieldValues & TLeaseTermEndFormValues> = {
   control: Control<TFieldValues>;
   endDateFieldId: string;
-  errors: FieldErrors<TFieldValues>;
+  leaseEndDateError?: string;
+  leaseStartDateError?: string;
   register: UseFormRegister<TFieldValues>;
   resolvedEndDate?: string | null;
   startDateFieldId: string;
+  termMonthsError?: string;
   termMonthsFieldId: string;
 };
 
 export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTermEndFormValues>({
   control,
   endDateFieldId,
-  errors,
+  leaseEndDateError,
+  leaseStartDateError,
   register,
   resolvedEndDate = null,
   startDateFieldId,
+  termMonthsError,
   termMonthsFieldId,
 }: Readonly<TLeaseTermEndFieldsProps<TFieldValues>>) {
   return (
@@ -43,8 +46,8 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
           type="date"
           {...register("leaseStartDate" as Path<TFieldValues>)}
         />
-        {errors.leaseStartDate ? (
-          <p className="text-xs text-destructive">{String(errors.leaseStartDate.message)}</p>
+        {leaseStartDateError ? (
+          <p className="text-xs text-destructive">{leaseStartDateError}</p>
         ) : null}
       </div>
 
@@ -77,8 +80,8 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
                     />
                   )}
                 />
-                {errors.termMonths ? (
-                  <p className="text-xs text-destructive">{String(errors.termMonths.message)}</p>
+                {termMonthsError ? (
+                  <p className="text-xs text-destructive">{termMonthsError}</p>
                 ) : null}
                 {termModeField.value === "months" && resolvedEndDate ? (
                   <p className="text-muted-foreground text-sm">
@@ -102,8 +105,8 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
                     />
                   )}
                 />
-                {errors.leaseEndDate ? (
-                  <p className="text-xs text-destructive">{String(errors.leaseEndDate.message)}</p>
+                {leaseEndDateError ? (
+                  <p className="text-xs text-destructive">{leaseEndDateError}</p>
                 ) : null}
               </div>
             </RadioOption>
