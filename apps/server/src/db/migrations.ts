@@ -3176,4 +3176,67 @@ export const migrations: IMigration[] = [
     },
     version: 71,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_system_active;
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_name_active;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_name_active
+          ON property_income_line_types (property_id, lower(name))
+          WHERE is_deleted = false;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_line_types
+          DROP COLUMN IF EXISTS is_system;
+      `);
+    },
+    name: "property_income_line_types_system_lease_rent",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_income_line_types
+          ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT FALSE;
+      `);
+
+      await client.query(`
+        UPDATE property_income_line_types
+        SET is_system = true,
+            name = 'Long-term rent',
+            updated_at = NOW()
+        WHERE is_deleted = false
+          AND lower(name) = 'rent';
+      `);
+
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order, is_system)
+        SELECT p.id, 'Long-term rent', -1, true
+        FROM properties p
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM property_income_line_types t
+          WHERE t.property_id = p.id
+            AND t.is_system = true
+            AND t.is_deleted = false
+        );
+      `);
+
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_name_active;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_name_active
+          ON property_income_line_types (property_id, lower(name))
+          WHERE is_deleted = false AND is_system = false;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_system_active
+          ON property_income_line_types (property_id)
+          WHERE is_system = true AND is_deleted = false;
+      `);
+    },
+    version: 72,
+  },
 ];
