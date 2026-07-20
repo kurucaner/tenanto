@@ -136,10 +136,10 @@ N/A for Phases 0–4. Phase 5 widgets may use env gate if needed.
 
 #### Phase 0b — Permissions + launcher destinations (4 files)
 
-- [ ] Add `derivePropertyPermissionsFromListItem` in [`apps/admin/src/hooks/use-property-permissions.ts`](../apps/admin/src/hooks/use-property-permissions.ts)
-- [ ] Add tests in [`apps/admin/src/hooks/use-property-permissions.test.ts`](../apps/admin/src/hooks/use-property-permissions.test.ts) for list-item derive (admin, owner, manager, accountant, creator)
-- [ ] Create [`apps/admin/src/lib/property-launcher-destinations.ts`](../apps/admin/src/lib/property-launcher-destinations.ts) — `getVisiblePropertyLauncherDestinations(permissions)` derived from [`PROPERTY_SHELL_TABS`](../apps/admin/src/config/property-shell-tabs.ts) with `showOnHome` / `showInCommandPalette` metadata
-- [ ] Create [`apps/admin/src/lib/property-launcher-destinations.test.ts`](../apps/admin/src/lib/property-launcher-destinations.test.ts) — per-role destination lists; communications hidden when unauthorized
+- [x] Add `derivePropertyPermissionsFromListItem` in [`apps/admin/src/hooks/use-property-permissions.ts`](../apps/admin/src/hooks/use-property-permissions.ts)
+- [x] Add tests in [`apps/admin/src/hooks/use-property-permissions.test.ts`](../apps/admin/src/hooks/use-property-permissions.test.ts) for list-item derive (admin, owner, manager, accountant, creator)
+- [x] Create [`apps/admin/src/lib/property-launcher-destinations.ts`](../apps/admin/src/lib/property-launcher-destinations.ts) — `getVisiblePropertyLauncherDestinations(permissions)` derived from [`PROPERTY_SHELL_TABS`](../apps/admin/src/config/property-shell-tabs.ts) with `showOnHome` / `showInCommandPalette` metadata
+- [x] Create [`apps/admin/src/lib/property-launcher-destinations.test.ts`](../apps/admin/src/lib/property-launcher-destinations.test.ts) — per-role destination lists; communications hidden when unauthorized
 
 **Exit criteria:** Destination config is the single shortcut source; tests pass.
 
