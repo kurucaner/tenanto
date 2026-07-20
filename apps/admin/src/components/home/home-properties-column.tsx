@@ -51,7 +51,7 @@ export const HomePropertiesColumn = memo(() => {
           emptyMessage="Build new homes"
           emptyOnClick={() => setCreateOpen(true)}
           headerHref="/properties"
-          title="Properties"
+          title="Recent Properties"
         />
         <CreatePropertyDialog onOpenChange={setCreateOpen} open={createOpen} />
       </>
@@ -59,7 +59,7 @@ export const HomePropertiesColumn = memo(() => {
   }
 
   return (
-    <HomeColumnPanel headerHref="/properties" title="Properties">
+    <HomeColumnPanel headerHref="/properties" title="Recent Properties">
       {visibleProperties.map((property) => (
         <HomeColumnRow
           href={buildPropertyShellTabPath(property.id, { label: "Overview", path: "" })}
