@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { memo, type RefObject } from "react";
 import { Controller, type FieldErrors, type UseFormReturn } from "react-hook-form";
 
@@ -15,7 +16,6 @@ import {
   canNavigateToStartLeaseStep,
   START_LEASE_STEP_LABELS,
   START_LEASE_STEP_SUBTITLES,
-  START_LEASE_STEP_TITLES,
   START_LEASE_STEPS,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
@@ -43,7 +43,9 @@ const StartLeaseProgress = memo(({ currentStep, onStepSelect }: StartLeaseProgre
       }
       return (
         <div className="flex items-center gap-2" key={step}>
-          {index > 0 ? <span className="text-muted-foreground/50 text-xs">·</span> : null}
+          {index > 0 ? (
+            <ChevronRight aria-hidden className="text-muted-foreground/50 size-3.5 shrink-0" />
+          ) : null}
           <button
             className={cn("text-sm transition-colors", stepButtonClass)}
             disabled={!canNavigate || isActive}
@@ -307,14 +309,9 @@ export const StartLeaseForm = memo(
             className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
             key={currentStep}
           >
-            <div className="space-y-1">
-              <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
-                {START_LEASE_STEP_TITLES[currentStep]}
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                {START_LEASE_STEP_SUBTITLES[currentStep]}
-              </p>
-            </div>
+            <p className="text-muted-foreground text-sm">
+              {START_LEASE_STEP_SUBTITLES[currentStep]}
+            </p>
 
             {currentStep === "who" ? (
               <WhoStep
