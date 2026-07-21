@@ -331,6 +331,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Payments tab, list, and manual rent recording work for weekly periods.
 
+**Status:** ✅ Complete
+
 **Files (6)**
 
 | #   | File                                                             |
@@ -344,9 +346,9 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Cadence-aware `asOf` comparison and period labels ("Week of Jul 15" vs "Jul 2026").
-- [ ] Leases list: rent column shows `/wk` vs `/mo`.
-- [ ] Record rent prefill + `rent_period_month` for weekly.
+- [x] Cadence-aware `asOf` comparison and period labels ("Week of Jul 15" vs "Jul 2026").
+- [x] Leases list: rent column shows `/wk` vs `/mo`.
+- [x] Record rent prefill + `rent_period_month` for weekly.
 
 **Exit criteria:** Record rent against a due week; schedule marks paid; monthly UI unchanged.
 

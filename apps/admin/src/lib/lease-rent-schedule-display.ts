@@ -1,4 +1,13 @@
-import { type IPropertyLongStayRentMonth } from "@/packages/shared";
+import {
+  formatRentPeriodLabel,
+  inferRentScheduleCadence,
+  isPeriodKeyAfter,
+  isPeriodKeyOnOrBefore,
+  RentBillingCadence,
+  resolveAsOfPeriodKey,
+  type IPropertyLongStayRentMonth,
+  type TRentBillingCadence,
+} from "@/packages/shared";
 
 export type TLeaseRentScheduleMonthAmount = Pick<
   IPropertyLongStayRentMonth,
@@ -15,6 +24,42 @@ export interface ILeaseRentSchedulePartition {
   upcomingMonths: IPropertyLongStayRentMonth[];
 }
 
+export function formatRentSchedulePeriodLabel(periodKey: string): string {
+  return formatRentPeriodLabel(periodKey);
+}
+
+export function getLeaseRentAmountSuffix(cadence: TRentBillingCadence): string {
+  return cadence === RentBillingCadence.WEEKLY ? "/wk" : "/mo";
+}
+
+export function inferRentScheduleCadenceFromItems(
+  rentSchedule: readonly Pick<IPropertyLongStayRentMonth, "month">[]
+): ReturnType<typeof inferRentScheduleCadence> {
+  return inferRentScheduleCadence(rentSchedule.map((item) => item.month));
+}
+
+export function getRentSchedulePeriodPluralLabel(
+  cadence: ReturnType<typeof inferRentScheduleCadence>
+): string {
+  return cadence === "weekly" ? "weeks" : "months";
+}
+
+export function getRentSchedulePeriodSingularLabel(
+  cadence: ReturnType<typeof inferRentScheduleCadence>
+): string {
+  return cadence === "weekly" ? "week" : "month";
+}
+
+export function resolveRentScheduleAsOfKey(
+  rentSchedule: readonly Pick<IPropertyLongStayRentMonth, "month">[],
+  referenceDate: string
+): string {
+  return resolveAsOfPeriodKey(
+    referenceDate,
+    rentSchedule.map((item) => item.month)
+  );
+}
+
 export function isRentMonthPartiallyPaid(
   item: Pick<IPropertyLongStayRentMonth, "isPaid" | "paidRent">
 ): boolean {
@@ -29,12 +74,13 @@ export function hasOutstandingRent(
 
 export function partitionRentSchedule(
   rentSchedule: readonly IPropertyLongStayRentMonth[],
-  asOfMonth: string
+  asOfReferenceDate: string
 ): ILeaseRentSchedulePartition {
+  const asOfKey = resolveRentScheduleAsOfKey(rentSchedule, asOfReferenceDate);
   const paidMonths = rentSchedule.filter((item) => item.isPaid);
   const unpaid = rentSchedule.filter((item) => !item.isPaid);
-  const dueUnpaidMonths = unpaid.filter((item) => item.month <= asOfMonth);
-  const upcomingMonths = unpaid.filter((item) => item.month > asOfMonth);
+  const dueUnpaidMonths = unpaid.filter((item) => isPeriodKeyOnOrBefore(item.month, asOfKey));
+  const upcomingMonths = unpaid.filter((item) => isPeriodKeyAfter(item.month, asOfKey));
   const totalRemaining = dueUnpaidMonths.reduce((sum, item) => sum + item.remainingRent, 0);
 
   return {

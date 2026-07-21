@@ -5,6 +5,7 @@ import { type IPropertyLongStayRentMonth } from "@/packages/shared";
 
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
 import {
+  formatRentSchedulePeriodLabel,
   getExpectedRentForScheduleMonth,
   getRemainingRentForScheduleMonth,
   isRentMonthPartiallyPaid,
@@ -63,7 +64,7 @@ describe("partitionRentSchedule", () => {
   test("sums remainingRent for due unpaid months in the summary total", () => {
     const { dueUnpaidMonths, paidMonths, unpaidSummary } = partitionRentSchedule(
       MID_MONTH_START_SCHEDULE,
-      "2024-07"
+      "2024-07-15"
     );
 
     expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
@@ -72,7 +73,7 @@ describe("partitionRentSchedule", () => {
   });
 
   test("includes holdover proration remaining in due unpaid totals", () => {
-    const { unpaidSummary } = partitionRentSchedule(HOLD_OVER_SCHEDULE, "2024-07");
+    const { unpaidSummary } = partitionRentSchedule(HOLD_OVER_SCHEDULE, "2024-07-15");
 
     expect(unpaidSummary).toEqual({ count: 1, totalRemaining: 161.29 });
   });
@@ -80,7 +81,7 @@ describe("partitionRentSchedule", () => {
   test("separates future unpaid months into upcoming and excludes them from summary", () => {
     const { dueUnpaidMonths, unpaidSummary, upcomingMonths } = partitionRentSchedule(
       MIXED_DUE_UPCOMING_SCHEDULE,
-      "2024-07"
+      "2024-07-15"
     );
 
     expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
@@ -101,7 +102,7 @@ describe("partitionRentSchedule", () => {
 
     const { dueUnpaidMonths, paidMonths, unpaidSummary } = partitionRentSchedule(
       schedule,
-      "2024-07"
+      "2024-07-15"
     );
 
     expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-07"]);
@@ -138,6 +139,42 @@ describe("getExpectedRentForScheduleMonth", () => {
 
   test("returns undefined when the month is not in the schedule", () => {
     expect(getExpectedRentForScheduleMonth(MID_MONTH_START_SCHEDULE, "2024-05")).toBeUndefined();
+  });
+});
+
+const WEEKLY_SCHEDULE: IPropertyLongStayRentMonth[] = [
+  buildRentMonth({ expectedRent: 700, month: "2026-01-15" }),
+  buildRentMonth({ expectedRent: 700, month: "2026-01-22" }),
+  buildRentMonth({ expectedRent: 700, isPaid: true, month: "2026-01-29" }),
+];
+
+describe("partitionRentSchedule weekly", () => {
+  test("partitions weekly schedule using week-start asOf keys", () => {
+    const { dueUnpaidMonths, paidMonths, upcomingMonths, unpaidSummary } = partitionRentSchedule(
+      WEEKLY_SCHEDULE,
+      "2026-01-22"
+    );
+
+    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2026-01-15", "2026-01-22"]);
+    expect(upcomingMonths.map((item) => item.month)).toEqual([]);
+    expect(paidMonths.map((item) => item.month)).toEqual(["2026-01-29"]);
+    expect(unpaidSummary).toEqual({ count: 2, totalRemaining: 1400 });
+  });
+
+  test("treats future week starts as upcoming when asOf is before them", () => {
+    const { dueUnpaidMonths, upcomingMonths } = partitionRentSchedule(
+      WEEKLY_SCHEDULE,
+      "2026-01-18"
+    );
+
+    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2026-01-15"]);
+    expect(upcomingMonths.map((item) => item.month)).toEqual(["2026-01-22"]);
+  });
+});
+
+describe("formatRentSchedulePeriodLabel", () => {
+  test("formats weekly period keys as week-of labels", () => {
+    expect(formatRentSchedulePeriodLabel("2026-01-15")).toMatch(/^Week of /);
   });
 });
 
@@ -192,6 +229,17 @@ describe("buildLeaseRecordRentPrefill", () => {
 
     expect(prefill.amount).toBe("1000");
     expect(prefill.rentPeriodMonth).toBe("2024-07");
+  });
+
+  test("prefills weekly rentPeriodMonth for a due week", () => {
+    const schedule = [buildRentMonth({ expectedRent: 700, month: "2026-01-15" })];
+    const prefill = buildLeaseRecordRentPrefill(lease, {
+      month: "2026-01-15",
+      rentSchedule: schedule,
+    });
+
+    expect(prefill.amount).toBe("700");
+    expect(prefill.rentPeriodMonth).toBe("2026-01-15");
   });
 });
 
