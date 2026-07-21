@@ -15,6 +15,7 @@ describe("getEndLeaseMoveOutRentPreview", () => {
   const lease = {
     leaseStartDate: "2024-01-01",
     monthlyRent: 1000,
+    rentBillingCadence: "monthly" as const,
   };
 
   test("returns prorated final month preview for holdover move-out", () => {
@@ -25,6 +26,20 @@ describe("getEndLeaseMoveOutRentPreview", () => {
         rentPeriods: [],
       })
     ).toBe("Final month rent: $161.29 (5/31 days)");
+  });
+
+  test("returns prorated final week preview for weekly cadence", () => {
+    expect(
+      getEndLeaseMoveOutRentPreview({
+        lease: {
+          leaseStartDate: "2026-01-15",
+          monthlyRent: 700,
+          rentBillingCadence: "weekly",
+        },
+        moveOutDate: "2026-01-20",
+        rentPeriods: [],
+      })
+    ).toBe("Final week rent: $600.00 (6/7 days)");
   });
 
   test("returns null when move-out date is empty", () => {
@@ -131,6 +146,12 @@ describe("getEndLeaseHoldoverHelperText", () => {
   test("returns holdover copy when move-out is after lease end", () => {
     expect(getEndLeaseHoldoverHelperText("2024-07-05", "2024-06-30")).toBe(
       "Move-out is after the contract end date. Holdover days are included in the final month's prorated rent."
+    );
+  });
+
+  test("uses week wording for weekly cadence", () => {
+    expect(getEndLeaseHoldoverHelperText("2024-07-05", "2024-06-30", "weekly")).toBe(
+      "Move-out is after the contract end date. Holdover days are included in the final week's prorated rent."
     );
   });
 

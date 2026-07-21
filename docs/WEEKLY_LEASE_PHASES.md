@@ -410,6 +410,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Ending a weekly lease prorates the final week correctly.
 
+**Status:** ✅ Complete
+
 **Files (4)**
 
 | #   | File                                                   |
@@ -421,8 +423,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Final week preview on end-lease dialog for weekly cadence.
-- [ ] Notification copy uses week period label.
+- [x] Final week preview on end-lease dialog for weekly cadence.
+- [x] Notification copy uses week period label.
 
 **Exit criteria:** End lease preview + notification reflect final partial week.
 

@@ -5,6 +5,7 @@ import {
   calculateExpectedRentForLeaseWeek,
   getOccupiedDaysInWeek,
   isProratedLeaseWeek,
+  resolveLeaseWeekPeriodStartContainingDate,
 } from "./lease-week-proration-utils";
 
 describe("enumerateLeaseWeeks", () => {
@@ -124,6 +125,16 @@ describe("calculateExpectedRentForLeaseWeek", () => {
       isProrated: false,
       occupiedDays: 0,
     });
+  });
+});
+
+describe("resolveLeaseWeekPeriodStartContainingDate", () => {
+  test("returns the week start containing a mid-week move-out date", () => {
+    expect(resolveLeaseWeekPeriodStartContainingDate("2026-01-15", "2026-01-20")).toBe("2026-01-15");
+  });
+
+  test("returns the next week start when move-out is in a later week", () => {
+    expect(resolveLeaseWeekPeriodStartContainingDate("2026-01-15", "2026-01-23")).toBe("2026-01-22");
   });
 });
 

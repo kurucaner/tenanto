@@ -284,6 +284,7 @@ export {
   getOccupiedDaysInWeek,
   type ILeaseWeekExpectedRent,
   isProratedLeaseWeek,
+  resolveLeaseWeekPeriodStartContainingDate,
 } from "./lease-week-proration-utils";
 export {
   type IListTotalCountMeta,

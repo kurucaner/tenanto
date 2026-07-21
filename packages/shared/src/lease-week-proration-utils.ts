@@ -86,3 +86,22 @@ export function isProratedLeaseWeek(
 export function formatProratedWeekDaysLabel(occupiedDays: number, daysInPeriod: number): string {
   return `${occupiedDays}/${daysInPeriod} days`;
 }
+
+/** Week-start key for the lease week containing `referenceDate`, aligned to `leaseStartDate`. */
+export function resolveLeaseWeekPeriodStartContainingDate(
+  leaseStartDate: string,
+  referenceDate: string
+): string {
+  if (referenceDate < leaseStartDate) {
+    return leaseStartDate;
+  }
+
+  let periodStart = leaseStartDate;
+  while (true) {
+    const periodEnd = addDaysToIsoDate(periodStart, DAYS_IN_WEEK - 1);
+    if (referenceDate <= periodEnd) {
+      return periodStart;
+    }
+    periodStart = addDaysToIsoDate(periodStart, DAYS_IN_WEEK);
+  }
+}
