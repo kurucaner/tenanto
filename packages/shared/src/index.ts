@@ -248,7 +248,9 @@ export {
 export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
+  getExtensionRentEffectiveWeekOptions,
   getFirstExtensionMonth,
+  getFirstExtensionWeek,
   getLeaseRentForMonth,
   getLeaseRentForPeriod,
   MAX_ADDITIONAL_TERM_MONTHS,

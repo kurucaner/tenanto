@@ -773,4 +773,34 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       month: "2026-02-05",
     });
   });
+
+  test("reflects weekly extend rent change across original and extension weeks", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      id: "lease-weekly-extended",
+      lease_end_date: "2026-02-04",
+      lease_start_date: "2026-01-01",
+      monthly_rent: "600.00",
+      rent_billing_cadence: "weekly",
+      term_months: 2,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      { effective_from_month: "2026-01-01", monthly_rent: "500.00" },
+      { effective_from_month: "2026-01-15", monthly_rent: "600.00" },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-weekly-extended",
+      "2026-02-04"
+    );
+
+    expect(schedule.map((item) => item.month)).toEqual([
+      "2026-01-01",
+      "2026-01-08",
+      "2026-01-15",
+      "2026-01-22",
+      "2026-01-29",
+    ]);
+    expect(schedule.map((item) => item.expectedRent)).toEqual([500, 500, 600, 600, 600]);
+  });
 });

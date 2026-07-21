@@ -10,10 +10,14 @@ import {
   type IEditPropertyLongStayTermsBody,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
+  isValidRentPeriodKey,
+  isWeeklyPeriodKey,
   type IUpdatePropertyLongStayBody,
   MAX_ADDITIONAL_TERM_MONTHS,
   MAX_ADDITIONAL_TERM_WEEKS,
   parseRentBillingCadence,
+  RentBillingCadence,
+  type TRentBillingCadence,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
   validateLeaseTermInput,
@@ -222,7 +226,8 @@ function parseTermWeeks(raw: unknown): number | null {
 }
 
 function parseExtendLongStayBody(
-  raw: unknown
+  raw: unknown,
+  rentBillingCadence: TRentBillingCadence = RentBillingCadence.MONTHLY
 ): { body: IExtendPropertyLongStayBody; ok: true } | { error: string; ok: false } {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return { error: "Body must be a JSON object", ok: false };
@@ -297,8 +302,16 @@ function parseExtendLongStayBody(
 
     if (
       typeof r["rentEffectiveFromMonth"] !== "string" ||
-      !MONTH_RE.test(r["rentEffectiveFromMonth"])
+      !isValidRentPeriodKey(r["rentEffectiveFromMonth"])
     ) {
+      return { error: "rentEffectiveFromMonth must be YYYY-MM or YYYY-MM-DD", ok: false };
+    }
+
+    if (rentBillingCadence === RentBillingCadence.WEEKLY) {
+      if (!isWeeklyPeriodKey(r["rentEffectiveFromMonth"])) {
+        return { error: "rentEffectiveFromMonth must be YYYY-MM-DD for weekly leases", ok: false };
+      }
+    } else if (!MONTH_RE.test(r["rentEffectiveFromMonth"])) {
       return { error: "rentEffectiveFromMonth must be YYYY-MM format", ok: false };
     }
 
@@ -744,7 +757,10 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Long stay not found" });
       }
 
-      const parsed = parseExtendLongStayBody(request.body);
+      const parsed = parseExtendLongStayBody(
+        request.body,
+        parseRentBillingCadence(existing.rentBillingCadence) ?? RentBillingCadence.MONTHLY
+      );
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }

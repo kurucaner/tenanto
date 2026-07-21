@@ -7,6 +7,8 @@ type TLeaseRow = Record<string, unknown>;
 let currentLeaseRow: TLeaseRow;
 let currentRentPeriodRows: Record<string, unknown>[] = [];
 const capturedClientSql: string[] = [];
+const capturedRentPeriodInserts: Array<{ effective_from_month: unknown; monthly_rent: unknown }> =
+  [];
 
 const mockClientQuery = mock((sql: string, params?: unknown[]) => {
   capturedClientSql.push(sql);
@@ -17,6 +19,16 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
 
   if (sql.includes("SELECT id FROM property_long_stay_rent_periods")) {
     return Promise.resolve({ rows: currentRentPeriodRows });
+  }
+
+  if (sql.includes("INSERT INTO property_long_stay_rent_periods")) {
+    const row = {
+      effective_from_month: params?.[1],
+      monthly_rent: String(params?.[2]),
+    };
+    currentRentPeriodRows = [...currentRentPeriodRows, row];
+    capturedRentPeriodInserts.push(row);
+    return Promise.resolve({ rows: [] });
   }
 
   if (sql.includes("FROM property_long_stay_rent_periods")) {
@@ -66,6 +78,7 @@ describe("propertyLongStaysDb.extendLease", () => {
     });
     currentRentPeriodRows = [];
     capturedClientSql.length = 0;
+    capturedRentPeriodInserts.length = 0;
     mockClientQuery.mockClear();
 
     const updated = await propertyLongStaysDb.extendLease("lease-1", {
@@ -117,21 +130,32 @@ describe("propertyLongStaysDb.extendLease", () => {
     });
   });
 
-  test("rejects weekly lease extension with rent change", async () => {
+  test("extends weekly lease with rent change and week-start bootstrap row", async () => {
     currentLeaseRow = buildRentScheduleLeaseRow({
       lease_end_date: "2026-01-07",
       lease_start_date: "2026-01-01",
+      monthly_rent: "500.00",
       rent_billing_cadence: "weekly",
       term_months: 1,
     });
     currentRentPeriodRows = [];
+    capturedRentPeriodInserts.length = 0;
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
 
-    await expect(
-      propertyLongStaysDb.extendLease("lease-1", {
-        additionalWeeks: 2,
-        newMonthlyRent: 600,
-        rentEffectiveFromMonth: "2026-01",
-      })
-    ).rejects.toThrow("Rent amount cannot be changed when extending a weekly-billed lease");
+    const updated = await propertyLongStaysDb.extendLease("lease-1", {
+      additionalWeeks: 4,
+      newMonthlyRent: 600,
+      rentEffectiveFromMonth: "2026-01-15",
+    });
+
+    expect(updated).toMatchObject({
+      leaseEndDate: "2026-02-04",
+      monthlyRent: 600,
+    });
+    expect(capturedRentPeriodInserts).toEqual([
+      { effective_from_month: "2026-01-01", monthly_rent: "500" },
+      { effective_from_month: "2026-01-15", monthly_rent: "600" },
+    ]);
   });
 });

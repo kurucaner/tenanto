@@ -29,7 +29,6 @@ import {
   RentBillingCadence,
   resolveExtendLeaseEndDate,
   resolveLeaseEndDate,
-  transactionDateToMonth,
   validateExtendLease,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
@@ -208,7 +207,11 @@ export const propertyLongStaysDb = {
             `INSERT INTO property_long_stay_rent_periods
                (long_stay_id, effective_from_month, monthly_rent)
              VALUES ($1, $2, $3)`,
-            [id, transactionDateToMonth(existing.leaseStartDate), existing.monthlyRent]
+            [
+              id,
+              getPristineRentPeriodKey(existing.leaseStartDate, existing.rentBillingCadence),
+              existing.monthlyRent,
+            ]
           );
         }
 

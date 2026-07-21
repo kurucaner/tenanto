@@ -643,6 +643,8 @@ Parent goal for Phase 12: change weekly rent during extend (and future amendment
 
 ### Phase 12b — Extend API: validate + persist (server + shared, UI hidden)
 
+**Status:** ✅ Complete
+
 **Goal:** `POST …/extend` accepts weekly rent change with week-start `rentEffectiveFromMonth`; DB writes correct rows; schedule matches. Admin extend dialog still hides rent-change UI for weekly.
 
 **Files (6)**
@@ -658,11 +660,11 @@ Parent goal for Phase 12: change weekly rent during extend (and future amendment
 
 **Tasks**
 
-- [ ] Remove weekly block in `validateLeaseRentChange`.
-- [ ] Add `getFirstExtensionWeek` / `getExtensionRentEffectiveWeekOptions` (week starts in extension window, not calendar months).
-- [ ] Weekly rent-change validation: effective period is a schedule week start within the extension window.
-- [ ] `extendLease`: bootstrap row uses `getPristineRentPeriodKey`; new row uses submitted week key.
-- [ ] Route parser: cadence-aware effective-period format (`isValidRentPeriodKey` for weekly).
+- [x] Remove weekly block in `validateLeaseRentChange`.
+- [x] Add `getFirstExtensionWeek` / `getExtensionRentEffectiveWeekOptions` (week starts in extension window, not calendar months).
+- [x] Weekly rent-change validation: effective period is a schedule week start within the extension window.
+- [x] `extendLease`: bootstrap row uses `getPristineRentPeriodKey`; new row uses submitted week key.
+- [x] Route parser: cadence-aware effective-period format (`isValidRentPeriodKey` for weekly).
 
 **Exit criteria:** API extend with `additionalWeeks` + `newMonthlyRent` + week-start `rentEffectiveFromMonth` succeeds; schedule reflects new rate from that week; `hasRentPeriodHistory: true` afterward (edit terms blocked — expected).
 
