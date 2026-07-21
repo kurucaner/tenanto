@@ -27,6 +27,27 @@ export function calculateLeaseEndDate(leaseStartDate: string, termMonths: number
   return addDaysToIsoDate(addMonthsToIsoDate(leaseStartDate, termMonths), -1);
 }
 
+/** Inclusive contract end for a whole-number week term aligned to the lease start weekday. */
+export function calculateLeaseEndDateFromWeeks(leaseStartDate: string, termWeeks: number): string {
+  return addDaysToIsoDate(leaseStartDate, termWeeks * DAYS_IN_LEASE_WEEK - 1);
+}
+
+export function deriveTermWeeksFromDates(leaseStartDate: string, leaseEndDate: string): number {
+  return enumerateLeaseWeeks(leaseStartDate, leaseEndDate).length;
+}
+
+export function isStandardWeeklyLeaseEndDate(
+  leaseStartDate: string,
+  leaseEndDate: string
+): boolean {
+  const termWeeks = deriveTermWeeksFromDates(leaseStartDate, leaseEndDate);
+  if (termWeeks < 1) {
+    return false;
+  }
+
+  return leaseEndDate === calculateLeaseEndDateFromWeeks(leaseStartDate, termWeeks);
+}
+
 export function enumerateLeaseMonths(leaseStartDate: string, leaseEndDate: string): string[] {
   const startParts = leaseStartDate.split("-").map(Number);
   const endParts = leaseEndDate.split("-").map(Number);

@@ -17,6 +17,8 @@ describe("stripe domain errors", () => {
   });
 
   test("stripeWebhookSignatureError uses 400", () => {
-    expect(stripeWebhookSignatureError("Invalid signature").httpStatus).toBe(HttpStatus.BAD_REQUEST);
+    expect(stripeWebhookSignatureError("Invalid signature").httpStatus).toBe(
+      HttpStatus.BAD_REQUEST
+    );
   });
 });

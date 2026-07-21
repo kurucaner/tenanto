@@ -2,13 +2,17 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
 import { PropertyLongStayStatus, RentBillingCadence, UnitRentalType } from "@/packages/shared";
+import type {
+  LeaseEndedEmailOptions,
+  RentPaymentRecordedEmailOptions,
+} from "@/ses/transactional-emails";
 import * as transactionalEmails from "@/ses/transactional-emails";
 import { makeLease } from "@/test-fixtures/domain";
 import {
+  getMockCallArg,
   mockAsyncFn,
   mockResolvedEmpty,
   mockResolvedNull,
-  mockResolvedVoid,
 } from "@/test-fixtures/mocks";
 
 const mockFindLongStayById = mockResolvedNull<IPropertyLongStay>();
@@ -37,8 +41,12 @@ const mockFindUnitById = mockAsyncFn(() =>
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 );
-const mockSendRentPaymentRecordedEmail = mockResolvedVoid();
-const mockSendLeaseEndedEmail = mockResolvedVoid();
+const mockSendRentPaymentRecordedEmail = mockAsyncFn(
+  (_to: string, _opts: RentPaymentRecordedEmailOptions) => Promise.resolve(true)
+);
+const mockSendLeaseEndedEmail = mockAsyncFn((_to: string, _opts: LeaseEndedEmailOptions) =>
+  Promise.resolve(true)
+);
 
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: {
@@ -202,9 +210,9 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         expectedRent: 161.29,
         isPaid: false,
         isProrated: true,
-        month: "2024-07",
         occupiedDays: 5,
         paidRent: 0,
+        periodKey: "2024-07",
         remainingRent: 161.29,
       },
     ]);
@@ -248,9 +256,9 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         incomeLineId: "line-mar",
         isPaid: true,
         isProrated: false,
-        month: "2026-03",
         occupiedDays: 31,
         paidRent: 1500,
+        periodKey: "2026-03",
         remainingRent: 0,
       },
     ]);
@@ -291,11 +299,12 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       {
         daysInMonth: 7,
         expectedRent: 400,
+        incomeLineId: "line-jan",
         isPaid: false,
         isProrated: true,
-        month: "2026-01-22",
         occupiedDays: 4,
         paidRent: 0,
+        periodKey: "2026-01-22",
         remainingRent: 400,
       },
     ]);
@@ -306,7 +315,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
     });
 
     expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
-    const emailPayload = mockSendLeaseEndedEmail.mock.calls[0]?.[1];
+    const emailPayload = getMockCallArg<LeaseEndedEmailOptions>(mockSendLeaseEndedEmail, 1);
     expect(emailPayload).toMatchObject({
       contractEndDate: "January 20, 2026",
       holdoverPlain: expect.stringContaining("final week's prorated rent"),

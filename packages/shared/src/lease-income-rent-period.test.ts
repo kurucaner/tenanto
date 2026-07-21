@@ -2,80 +2,80 @@ import { describe, expect, test } from "bun:test";
 
 import {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
-  resolveLeaseIncomeRentPeriodMonth,
+  resolveLeaseIncomeRentPeriodKey,
 } from "./lease-income-rent-period";
 
 const SCHEDULE_MONTHS = ["2026-01", "2026-02", "2026-03"];
 
-describe("resolveLeaseIncomeRentPeriodMonth", () => {
-  test("defaults to transactionDate month when rentPeriodMonth is omitted", () => {
+describe("resolveLeaseIncomeRentPeriodKey", () => {
+  test("defaults to transactionDate month when rentPeriodKey is omitted", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
+      resolveLeaseIncomeRentPeriodKey({
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
     ).toEqual({ ok: true, value: "2026-02" });
   });
 
-  test("uses explicit rentPeriodMonth when provided", () => {
+  test("uses explicit rentPeriodKey when provided", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
-        rentPeriodMonth: "2026-01",
+      resolveLeaseIncomeRentPeriodKey({
+        rentPeriodKey: "2026-01",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
     ).toEqual({ ok: true, value: "2026-01" });
   });
 
-  test("rejects invalid rentPeriodMonth format", () => {
+  test("rejects invalid rentPeriodKey format", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
-        rentPeriodMonth: "2026-13",
+      resolveLeaseIncomeRentPeriodKey({
+        rentPeriodKey: "2026-13",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
-    ).toEqual({ error: "rentPeriodMonth must be YYYY-MM or YYYY-MM-DD", ok: false });
+    ).toEqual({ error: "rentPeriodKey must be YYYY-MM or YYYY-MM-DD", ok: false });
   });
 
-  test("rejects rentPeriodMonth outside lease schedule", () => {
+  test("rejects rentPeriodKey outside lease schedule", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
-        rentPeriodMonth: "2026-04",
+      resolveLeaseIncomeRentPeriodKey({
+        rentPeriodKey: "2026-04",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
     ).toEqual({
-      error: "rentPeriodMonth must be a period in the lease rent schedule",
+      error: "rentPeriodKey must be a period in the lease rent schedule",
       ok: false,
     });
   });
 
   test("rejects default month when transactionDate is outside schedule", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
+      resolveLeaseIncomeRentPeriodKey({
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-04-01",
       })
     ).toEqual({
-      error: "transactionDate falls outside the lease rent schedule; set rentPeriodMonth",
+      error: "transactionDate falls outside the lease rent schedule; set rentPeriodKey",
       ok: false,
     });
   });
 
-  test("allows due-month attribution when rentPeriodMonth is on or before asOfMonth", () => {
+  test("allows due-month attribution when rentPeriodKey is on or before asOfMonth", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
+      resolveLeaseIncomeRentPeriodKey({
         asOfMonth: "2026-02",
-        rentPeriodMonth: "2026-01",
+        rentPeriodKey: "2026-01",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
     ).toEqual({ ok: true, value: "2026-01" });
   });
 
-  test("defaults omitted rentPeriodMonth to transactionDate month when due", () => {
+  test("defaults omitted rentPeriodKey to transactionDate month when due", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
+      resolveLeaseIncomeRentPeriodKey({
         asOfMonth: "2026-02",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
@@ -83,11 +83,11 @@ describe("resolveLeaseIncomeRentPeriodMonth", () => {
     ).toEqual({ ok: true, value: "2026-02" });
   });
 
-  test("rejects upcoming rentPeriodMonth even when it is on the lease schedule", () => {
+  test("rejects upcoming rentPeriodKey even when it is on the lease schedule", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
+      resolveLeaseIncomeRentPeriodKey({
         asOfMonth: "2026-02",
-        rentPeriodMonth: "2026-03",
+        rentPeriodKey: "2026-03",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
@@ -96,7 +96,7 @@ describe("resolveLeaseIncomeRentPeriodMonth", () => {
 
   test("rejects defaulted transactionDate month when it is upcoming", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
+      resolveLeaseIncomeRentPeriodKey({
         asOfMonth: "2026-02",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-03-01",
@@ -106,11 +106,21 @@ describe("resolveLeaseIncomeRentPeriodMonth", () => {
 
   test("skips upcoming check when asOfMonth is omitted", () => {
     expect(
-      resolveLeaseIncomeRentPeriodMonth({
-        rentPeriodMonth: "2026-03",
+      resolveLeaseIncomeRentPeriodKey({
+        rentPeriodKey: "2026-03",
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
     ).toEqual({ ok: true, value: "2026-03" });
+  });
+
+  test("accepts legacy rentPeriodMonth when rentPeriodKey is omitted", () => {
+    expect(
+      resolveLeaseIncomeRentPeriodKey({
+        rentPeriodMonth: "2026-01",
+        scheduleMonths: SCHEDULE_MONTHS,
+        transactionDate: "2026-02-15",
+      })
+    ).toEqual({ ok: true, value: "2026-01" });
   });
 });

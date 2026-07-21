@@ -1,30 +1,13 @@
+import {
+  getOccupiedDaysInBoundedPeriod,
+  prorateOccupiedPeriod,
+} from "./lease-occupancy-proration-utils";
 import { getLeaseRentForMonth } from "./lease-rent-utils";
-import { roundMoney } from "./property-income-calculator";
 import {
   type IPropertyLongStay,
   type IPropertyLongStayRentPeriod,
   PropertyLongStayStatus,
 } from "./property-long-stay-types";
-
-const MS_PER_DAY = 86_400_000;
-
-function parseIsoDateParts(isoDate: string): { day: number; month: number; year: number } {
-  const parts = isoDate.split("-").map(Number);
-  return { day: parts[2] ?? 1, month: parts[1] ?? 1, year: parts[0] ?? 0 };
-}
-
-function toUtcMs(isoDate: string): number {
-  const { day, month, year } = parseIsoDateParts(isoDate);
-  return Date.UTC(year, month - 1, day);
-}
-
-function maxIsoDate(left: string, right: string): string {
-  return left >= right ? left : right;
-}
-
-function minIsoDate(left: string, right: string): string {
-  return left <= right ? left : right;
-}
 
 function getMonthStart(month: string): string {
   return `${month}-01`;
@@ -33,15 +16,6 @@ function getMonthStart(month: string): string {
 function getMonthEnd(month: string): string {
   const daysInMonth = getDaysInMonth(month);
   return `${month}-${String(daysInMonth).padStart(2, "0")}`;
-}
-
-function daysBetweenInclusive(start: string, end: string): number {
-  const startMs = toUtcMs(start);
-  const endMs = toUtcMs(end);
-  if (endMs < startMs) {
-    return 0;
-  }
-  return Math.floor((endMs - startMs) / MS_PER_DAY) + 1;
 }
 
 export function getDaysInMonth(month: string): number {
@@ -56,9 +30,12 @@ export function getOccupiedDaysInMonth(
   leaseStartDate: string,
   effectiveEndDate: string
 ): number {
-  const occupancyStart = maxIsoDate(leaseStartDate, getMonthStart(month));
-  const occupancyEnd = minIsoDate(effectiveEndDate, getMonthEnd(month));
-  return daysBetweenInclusive(occupancyStart, occupancyEnd);
+  return getOccupiedDaysInBoundedPeriod(
+    getMonthStart(month),
+    getMonthEnd(month),
+    leaseStartDate,
+    effectiveEndDate
+  );
 }
 
 export function getLeaseScheduleEffectiveEndDate(
@@ -84,7 +61,7 @@ export interface ILeaseMonthExpectedRent {
 }
 
 export function calculateExpectedRentForLeaseMonth(input: {
-  baseMonthlyRent: number;
+  baseRentAmount: number;
   effectiveEndDate: string;
   leaseStartDate: string;
   month: string;
@@ -96,18 +73,19 @@ export function calculateExpectedRentForLeaseMonth(input: {
     input.leaseStartDate,
     input.effectiveEndDate
   );
+  const rentAmount = getLeaseRentForMonth(input.baseRentAmount, input.rentPeriods, input.month);
+  const proration = prorateOccupiedPeriod({
+    daysInPeriod: daysInMonth,
+    occupiedDays,
+    recurringRent: rentAmount,
+  });
 
-  if (occupiedDays <= 0) {
-    return { daysInMonth, expectedRent: 0, isProrated: false, occupiedDays: 0 };
-  }
-
-  const monthlyRent = getLeaseRentForMonth(input.baseMonthlyRent, input.rentPeriods, input.month);
-  const isProrated = occupiedDays < daysInMonth;
-  const expectedRent = isProrated
-    ? roundMoney((monthlyRent / daysInMonth) * occupiedDays)
-    : monthlyRent;
-
-  return { daysInMonth, expectedRent, isProrated, occupiedDays };
+  return {
+    daysInMonth: proration.daysInPeriod,
+    expectedRent: proration.expectedRent,
+    isProrated: proration.isProrated,
+    occupiedDays: proration.occupiedDays,
+  };
 }
 
 export function isProratedLeaseMonth(

@@ -98,9 +98,9 @@ function formatTransactionDateForCursor(transactionDate: unknown): string {
   throw new TypeError("Invalid transaction_date for cursor");
 }
 
-function assertValidRentPeriodMonth(rentPeriodMonth: string | null | undefined): void {
-  if (rentPeriodMonth != null && rentPeriodMonth !== "" && !isValidRentPeriodKey(rentPeriodMonth)) {
-    throw new Error(`Invalid rent_period_month: ${rentPeriodMonth}`);
+function assertValidRentPeriodKey(rentPeriodKey: string | null | undefined): void {
+  if (rentPeriodKey != null && rentPeriodKey !== "" && !isValidRentPeriodKey(rentPeriodKey)) {
+    throw new Error(`Invalid rent_period_key: ${rentPeriodKey}`);
   }
 }
 
@@ -113,7 +113,7 @@ export const propertyIncomeLinesDb = {
       guestName: string | null;
       incomeLineTypeId: ICreatePropertyIncomeLineBody["incomeLineTypeId"];
       longStayId: string | null;
-      rentPeriodMonth: string | null;
+      rentPeriodKey: string | null;
       reservationId: string | null;
       tenantRentPaymentId?: string | null;
       transactionDate: string;
@@ -121,7 +121,7 @@ export const propertyIncomeLinesDb = {
     },
     computed: IPropertyIncomeLineComputedFields
   ): Promise<IPropertyIncomeLine> {
-    assertValidRentPeriodMonth(input.rentPeriodMonth);
+    assertValidRentPeriodKey(input.rentPeriodKey);
     const result = await pool.query(
       `INSERT INTO property_income_lines (
          property_id,
@@ -137,7 +137,7 @@ export const propertyIncomeLinesDb = {
          tax_breakdown,
          channel_commission,
          net_income,
-         rent_period_month,
+         rent_period_key,
          tenant_rent_payment_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9,
@@ -158,7 +158,7 @@ export const propertyIncomeLinesDb = {
         JSON.stringify(computed.taxBreakdown),
         computed.channelCommission,
         computed.netIncome,
-        input.rentPeriodMonth,
+        input.rentPeriodKey,
         input.tenantRentPaymentId ?? null,
       ]
     );
@@ -387,10 +387,10 @@ export const propertyIncomeLinesDb = {
       setClauses.push(`amount = $${param++}`);
       values.push(input.amount);
     }
-    if (input.rentPeriodMonth !== undefined) {
-      assertValidRentPeriodMonth(input.rentPeriodMonth);
-      setClauses.push(`rent_period_month = $${param++}`);
-      values.push(input.rentPeriodMonth);
+    if (input.rentPeriodKey !== undefined) {
+      assertValidRentPeriodKey(input.rentPeriodKey);
+      setClauses.push(`rent_period_key = $${param++}`);
+      values.push(input.rentPeriodKey);
     }
 
     setClauses.push(`gross_income = $${param++}`);

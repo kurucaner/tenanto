@@ -1,4 +1,3 @@
-import { transactionDateToMonth } from "./lease-date-utils";
 import { resolveLeaseEndDate, validateLeaseTermInput } from "./lease-term-input-utils";
 import {
   type IEditPropertyLongStayTermsBody,
@@ -10,10 +9,21 @@ import {
   PropertyLongStayStatus,
   type TLeaseTermsEditBlockReason,
 } from "./property-long-stay-types";
-import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
+import {
+  isWeeklyRentBillingCadence,
+  RentBillingCadence,
+  type TRentBillingCadence,
+} from "./rent-billing-cadence";
+import {
+  getLeaseRentAmount,
+  getRentPeriodEffectiveFrom,
+  resolveTermsEditRentAmount,
+} from "./rent-period-field-utils";
+import { getPristineRentPeriodKey } from "./rent-period-key-utils";
 
 /** Matches create-lease route bounds in `property-long-stay-routes.ts`. */
 export const MAX_LEASE_TERM_MONTHS = 60;
+export const MAX_LEASE_TERM_WEEKS = 260;
 
 const LEASE_TERMS_EDIT_BLOCK_MESSAGES: Record<TLeaseTermsEditBlockReason, string> = {
   [LeaseTermsEditBlockReason.HAS_INCOME_LINES]:
@@ -33,14 +43,15 @@ export function getLeaseTermsEditBlockMessage(reason: TLeaseTermsEditBlockReason
 
 export function hasRentPeriodHistory(
   periods: readonly IPropertyLongStayRentPeriod[],
-  leaseStartDate: string
+  leaseStartDate: string,
+  cadence: TRentBillingCadence = RentBillingCadence.MONTHLY
 ): boolean {
   if (periods.length > 1) {
     return true;
   }
 
-  const startMonth = transactionDateToMonth(leaseStartDate);
-  return periods.some((period) => period.effectiveFromMonth !== startMonth);
+  const pristineKey = getPristineRentPeriodKey(leaseStartDate, cadence);
+  return periods.some((period) => getRentPeriodEffectiveFrom(period) !== pristineKey);
 }
 
 export function deriveLeaseTermsEditability(
@@ -51,13 +62,6 @@ export function deriveLeaseTermsEditability(
     return {
       editable: false,
       reason: LeaseTermsEditBlockReason.LEASE_ENDED,
-    };
-  }
-
-  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
-    return {
-      editable: false,
-      reason: LeaseTermsEditBlockReason.WEEKLY_CADENCE,
     };
   }
 
@@ -89,7 +93,12 @@ export function validateEditLeaseTerms(
   body: IEditPropertyLongStayTermsBody,
   lease: Pick<
     IPropertyLongStay,
-    "leaseEndDate" | "leaseStartDate" | "monthlyRent" | "status" | "termMonths"
+    | "leaseEndDate"
+    | "leaseStartDate"
+    | "rentAmount"
+    | "rentBillingCadence"
+    | "status"
+    | "termMonths"
   >,
   _today: string
 ): string | null {
@@ -102,8 +111,12 @@ export function validateEditLeaseTerms(
     return termError;
   }
 
-  if (!Number.isFinite(body.monthlyRent) || body.monthlyRent < 0) {
-    return "monthlyRent must be a non-negative number";
+  const editedRentAmount = resolveTermsEditRentAmount(body);
+
+  if (!Number.isFinite(editedRentAmount) || editedRentAmount < 0) {
+    return isWeeklyRentBillingCadence(lease.rentBillingCadence)
+      ? "weekly rent must be a non-negative number"
+      : "rentAmount must be a non-negative number";
   }
 
   let resolved;
@@ -116,7 +129,7 @@ export function validateEditLeaseTerms(
   if (
     body.leaseStartDate === lease.leaseStartDate &&
     resolved.leaseEndDate === lease.leaseEndDate &&
-    body.monthlyRent === lease.monthlyRent
+    editedRentAmount === getLeaseRentAmount(lease)
   ) {
     return "At least one lease term field must change";
   }

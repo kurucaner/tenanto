@@ -1,10 +1,10 @@
 import { describe, expect, mock, test } from "bun:test";
 
 import { PropertyRole } from "@/packages/shared";
-import { buildTenantEmailCampaignRow } from "@/test-fixtures/db-rows/tenant-email-campaign-row";
 import { testDateTime } from "@/test-fixtures/dates";
+import { buildTenantEmailCampaignRow } from "@/test-fixtures/db-rows/tenant-email-campaign-row";
 import { sequentialUuid } from "@/test-fixtures/ids";
-import { mockAsyncFn } from "@/test-fixtures/mocks";
+import { mockPoolQuery } from "@/test-fixtures/mocks";
 
 const OWNER_USER_ID = "22222222-2222-4222-8222-222222222222";
 const MANAGER_USER_ID = "33333333-3333-4333-8333-333333333333";
@@ -16,7 +16,7 @@ function buildRecentCampaignRow(overrides: Record<string, unknown> = {}): Record
   };
 }
 
-const mockQuery = mockAsyncFn((_sql: string, _values?: unknown[]) => Promise.resolve({ rows: [] }));
+const mockQuery = mockPoolQuery<Record<string, unknown>>();
 
 mock.module("./pool", () => ({
   pool: { query: mockQuery },

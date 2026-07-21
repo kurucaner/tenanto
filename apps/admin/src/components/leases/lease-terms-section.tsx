@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
 import {
-  formatRentSchedulePeriodLabel,
   getLeaseEditTermsDescription,
   getLeaseExtendTermsDescription,
   getLeaseRentAmountSuffix,
   getVisibleLeaseRentPeriods,
 } from "@/lib/lease-rent-schedule-display";
 import {
+  formatRentPeriodLabel,
   getLeaseTermsEditBlockMessage,
+  getRentPeriodAmount,
+  getRentPeriodEffectiveFrom,
   type ILeaseTermsEditability,
   type IPropertyLongStay,
   type IPropertyLongStayRentPeriod,
@@ -112,11 +114,11 @@ export const LeaseTermsSection = memo(
                   {visibleRentPeriods.map((period) => (
                     <li
                       className="flex items-center justify-between gap-2"
-                      key={period.effectiveFromMonth}
+                      key={getRentPeriodEffectiveFrom(period)}
                     >
-                      <span>{formatRentSchedulePeriodLabel(period.effectiveFromMonth)}</span>
+                      <span>{formatRentPeriodLabel(getRentPeriodEffectiveFrom(period))}</span>
                       <span className="font-medium">
-                        {formatMoney(period.monthlyRent)}
+                        {formatMoney(getRentPeriodAmount(period))}
                         {rentAmountSuffix}
                       </span>
                     </li>

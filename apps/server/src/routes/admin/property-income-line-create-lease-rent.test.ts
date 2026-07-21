@@ -8,8 +8,8 @@ const mockFindById = mock(() =>
       guestName: "Tenant",
       leaseEndDate: "2026-03-31",
       leaseStartDate: "2026-01-01",
-      monthlyRent: 1500,
       propertyId: "prop-1",
+      rentAmount: 1500,
       tenantEmail: null,
       termMonths: 3,
     })
@@ -23,7 +23,7 @@ mock.module("@/db/property-long-stays", () => ({
 }));
 
 const { resolveLeaseIncomeRentPeriodMonthForLongStay } =
-  await import("@/lib/resolve-lease-income-rent-period-month");
+  await import("@/lib/resolve-lease-income-rent-period-key");
 
 async function validateCreateLeaseIncomeRentPeriod(input: {
   longStayId: string | null;

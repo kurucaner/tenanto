@@ -19,7 +19,7 @@ export function makeIncomeLine(overrides: Partial<IPropertyIncomeLine> = {}): IP
     refundedAmount: null,
     refundedAt: null,
     refundedBy: null,
-    rentPeriodMonth: null,
+    rentPeriodKey: null,
     reservationId: null,
     taxBreakdown: [],
     tenantRentPaymentId: null,

@@ -164,14 +164,14 @@ describe("editLeaseTerms", () => {
     const updatedLease = makeLease({
       leaseEndDate: "2026-08-31",
       leaseStartDate: "2026-02-01",
-      monthlyRent: 1800,
+      rentAmount: 1800,
       termMonths: 7,
     });
     mockUpdateTerms.mockResolvedValueOnce(updatedLease);
 
     const body = {
       leaseStartDate: "2026-02-01",
-      monthlyRent: 1800,
+      rentAmount: 1800,
       termMonths: 7,
     };
 
@@ -185,7 +185,7 @@ describe("editLeaseTerms", () => {
     await expect(
       editLeaseTerms("lease-1", {
         leaseStartDate: "2026-02-01",
-        monthlyRent: 1800,
+        rentAmount: 1800,
         termMonths: 7,
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE });
@@ -207,7 +207,7 @@ describe("editLeaseTerms", () => {
     await expect(
       editLeaseTerms("lease-1", {
         leaseStartDate: "2026-02-01",
-        monthlyRent: 1800,
+        rentAmount: 1800,
         termMonths: 7,
       })
     ).rejects.toMatchObject({
@@ -232,7 +232,7 @@ describe("editLeaseTerms", () => {
     await expect(
       editLeaseTerms("lease-1", {
         leaseStartDate: "2026-02-01",
-        monthlyRent: 1800,
+        rentAmount: 1800,
         termMonths: 7,
       })
     ).rejects.toMatchObject({
@@ -257,7 +257,7 @@ describe("editLeaseTerms", () => {
     await expect(
       editLeaseTerms("lease-1", {
         leaseStartDate: "2026-02-01",
-        monthlyRent: 1800,
+        rentAmount: 1800,
         termMonths: 7,
       })
     ).rejects.toMatchObject({
@@ -269,15 +269,17 @@ describe("editLeaseTerms", () => {
   test("rejects no-op updates", async () => {
     const lease = makeLease({
       guestName: "Tenant A",
-      leaseEndDate: "2027-01-01",
+      leaseEndDate: "2026-12-31",
+      leaseStartDate: "2026-01-01",
       tenantEmail: null,
+      termMonths: 12,
     });
     mockEditableLease(lease);
 
-    await expect(
+    expect(
       editLeaseTerms("lease-1", {
         leaseStartDate: lease.leaseStartDate,
-        monthlyRent: lease.monthlyRent,
+        rentAmount: lease.rentAmount,
         termMonths: lease.termMonths,
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.LEASE_TERMS_VALIDATION });

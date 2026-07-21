@@ -19,7 +19,7 @@ describe("buildLeaseRentScheduleWithRollup", () => {
           incomeLineTypeId: "type-rent",
           longStayId: "lease-1",
           netIncome: 750,
-          rentPeriodMonth: "2026-01",
+          rentPeriodKey: "2026-01",
           transactionDate: "2026-01-10",
           updatedAt: "2026-01-10T00:00:00.000Z",
         }),
@@ -31,14 +31,14 @@ describe("buildLeaseRentScheduleWithRollup", () => {
           incomeLineTypeId: "type-rent",
           longStayId: "lease-1",
           netIncome: 750,
-          rentPeriodMonth: "2026-01",
+          rentPeriodKey: "2026-01",
           transactionDate: "2026-01-20",
           updatedAt: "2026-01-20T00:00:00.000Z",
         }),
       ],
       lease: {
         leaseStartDate: "2026-01-01",
-        monthlyRent: 1500,
+        rentAmount: 1500,
         rentBillingCadence: RentBillingCadence.MONTHLY,
       },
       months: ["2026-01"],
@@ -69,14 +69,14 @@ describe("buildLeaseRentScheduleWithRollup", () => {
           incomeLineTypeId: "type-rent",
           longStayId: "lease-1",
           netIncome: 500,
-          rentPeriodMonth: "2026-01",
+          rentPeriodKey: "2026-01",
           transactionDate: "2026-01-10",
           updatedAt: "2026-01-10T00:00:00.000Z",
         }),
       ],
       lease: {
         leaseStartDate: "2026-01-01",
-        monthlyRent: 1500,
+        rentAmount: 1500,
         rentBillingCadence: RentBillingCadence.MONTHLY,
       },
       months: ["2026-01"],
@@ -87,7 +87,9 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       expectedRent: 1500,
       incomeLineId: "line-manual",
       isPaid: false,
+      month: "2026-01",
       paidRent: 1000,
+      periodKey: "2026-01",
       remainingRent: 500,
     });
   });
@@ -105,18 +107,18 @@ describe("buildLeaseRentScheduleWithRollup", () => {
           incomeLineTypeId: "type-rent",
           longStayId: "lease-weekly",
           netIncome: 700,
-          rentPeriodMonth: "2026-01-15",
+          rentPeriodKey: "2026-01-15",
           transactionDate: "2026-01-20",
           updatedAt: "2026-01-20T00:00:00.000Z",
         }),
       ],
       lease: {
         leaseStartDate: "2026-01-15",
-        monthlyRent: 700,
+        rentAmount: 700,
         rentBillingCadence: RentBillingCadence.WEEKLY,
       },
       months: ["2026-01-15", "2026-01-22", "2026-01-29", "2026-02-05"],
-      rentPeriods: [{ effectiveFromMonth: "2026-01-15", monthlyRent: 700 }],
+      rentPeriods: [],
     });
 
     expect(schedule).toHaveLength(4);
@@ -138,6 +140,33 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       occupiedDays: 6,
       paidRent: 0,
       remainingRent: 600,
+    });
+  });
+
+  test("builds weekly schedule with mid-lease rent period change", () => {
+    const schedule = buildLeaseRentScheduleWithRollup({
+      allocationCentsByMonth: new Map(),
+      effectiveEndDate: "2026-02-10",
+      incomeLines: [],
+      lease: {
+        leaseStartDate: "2026-01-15",
+        rentAmount: 700,
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      },
+      months: ["2026-01-15", "2026-01-22", "2026-01-29", "2026-02-05"],
+      rentPeriods: [
+        { effectiveFromPeriod: "2026-01-15", rentAmount: 700 },
+        { effectiveFromPeriod: "2026-01-29", rentAmount: 800 },
+      ],
+    });
+
+    expect(schedule[0]?.expectedRent).toBe(700);
+    expect(schedule[1]?.expectedRent).toBe(700);
+    expect(schedule[2]?.expectedRent).toBe(800);
+    expect(schedule[3]).toMatchObject({
+      expectedRent: 685.71,
+      isProrated: true,
+      month: "2026-02-05",
     });
   });
 });

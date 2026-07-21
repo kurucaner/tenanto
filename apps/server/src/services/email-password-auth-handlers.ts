@@ -10,11 +10,7 @@ import {
   validatePassword,
 } from "@/routes/auth/validators";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
-import {
-  deleteOtpById,
-  sendOtpWithCooldown,
-  verifyOtpCode,
-} from "@/services/auth-otp-service";
+import { deleteOtpById, sendOtpWithCooldown, verifyOtpCode } from "@/services/auth-otp-service";
 
 import type { IEmailPasswordAuthRealm } from "./auth-realms/email-password-auth-realm";
 

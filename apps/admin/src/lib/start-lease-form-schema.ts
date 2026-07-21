@@ -13,6 +13,7 @@ import { RENT_BILLING_CADENCE_VALUES, RentBillingCadence } from "@/packages/shar
 export type { TStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 
 export const DEFAULT_START_LEASE_TERM_MONTHS = "12";
+export const DEFAULT_START_LEASE_TERM_WEEKS = "4";
 
 const startLeaseRentBillingCadenceSchema = z.enum(RENT_BILLING_CADENCE_VALUES);
 
@@ -27,8 +28,9 @@ const startLeaseTermStepSchema = z
   .object({
     leaseEndDate: z.string(),
     leaseStartDate: z.string().min(1, "Lease start date is required"),
-    termMode: z.enum(["months", "customEnd"]),
+    termMode: z.enum(["months", "weeks", "customEnd"]),
     termMonths: z.string(),
+    termWeeks: z.string(),
   })
   .superRefine((values, ctx) => {
     refineLeaseTermEndFormValues(values, ctx);
@@ -36,17 +38,17 @@ const startLeaseTermStepSchema = z
 
 const startLeaseRentStepSchema = z
   .object({
-    monthlyRent: z.string(),
+    rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
   })
   .superRefine((values, ctx) => {
     const rentResult = requiredPositiveMoneyField(
       getStartLeaseRentAmountLabel(values.rentBillingCadence)
-    ).safeParse(values.monthlyRent);
+    ).safeParse(values.rentAmount);
 
     if (!rentResult.success) {
       for (const issue of rentResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["monthlyRent"] });
+        ctx.addIssue({ ...issue, path: ["rentAmount"] });
       }
     }
   });
@@ -56,12 +58,13 @@ export const startLeaseSchema = z
     guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
     leaseEndDate: z.string(),
     leaseStartDate: z.string().min(1, "Lease start date is required"),
-    monthlyRent: z.string(),
+    rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
     tenantEmail: z.string(),
     tenantPhone: tenantPhoneFieldSchema,
-    termMode: z.enum(["months", "customEnd"]),
+    termMode: z.enum(["months", "weeks", "customEnd"]),
     termMonths: z.string(),
+    termWeeks: z.string(),
     unitId: z.string().min(1, "Unit is required"),
   })
   .superRefine((values, ctx) => {
@@ -69,11 +72,11 @@ export const startLeaseSchema = z
 
     const rentResult = requiredPositiveMoneyField(
       getStartLeaseRentAmountLabel(values.rentBillingCadence)
-    ).safeParse(values.monthlyRent);
+    ).safeParse(values.rentAmount);
 
     if (!rentResult.success) {
       for (const issue of rentResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["monthlyRent"] });
+        ctx.addIssue({ ...issue, path: ["rentAmount"] });
       }
     }
   });
@@ -83,8 +86,8 @@ export type TStartLeaseFormValues = z.infer<typeof startLeaseSchema>;
 export type TStartLeaseFormField = keyof TStartLeaseFormValues;
 
 export const START_LEASE_STEP_FIELDS: Record<TStartLeaseStep, readonly TStartLeaseFormField[]> = {
-  rent: ["rentBillingCadence", "monthlyRent"],
-  term: ["leaseStartDate", "termMode", "termMonths", "leaseEndDate"],
+  rent: ["rentBillingCadence", "rentAmount"],
+  term: ["leaseEndDate", "leaseStartDate", "termMode", "termMonths", "termWeeks"],
   who: ["unitId", "guestName", "tenantEmail", "tenantPhone"],
 };
 
@@ -127,12 +130,13 @@ export function getStartLeaseDefaultValues(unitId?: string): TStartLeaseFormValu
     guestName: "",
     leaseEndDate: "",
     leaseStartDate: getTodayLocalIsoDate(),
-    monthlyRent: "",
+    rentAmount: "",
     rentBillingCadence: RentBillingCadence.MONTHLY,
     tenantEmail: "",
     tenantPhone: "",
     termMode: "months",
     termMonths: DEFAULT_START_LEASE_TERM_MONTHS,
+    termWeeks: DEFAULT_START_LEASE_TERM_WEEKS,
     unitId: unitId ?? "",
   };
 }

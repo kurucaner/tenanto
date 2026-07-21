@@ -21,27 +21,38 @@ import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
+import { getEditLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-display";
 import {
   buildLeaseTermApiPayload,
   getInitialLeaseTermEndValues,
+  getLeaseTermEndErrorPath,
   refineLeaseTermEndFormValues,
   resolveLeaseTermEndPreview,
 } from "@/lib/lease-term-end-utils";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
-  getLeaseTermsEditBlockMessage,
+  getStartLeaseRentAmountLabel,
+  normalizeStartLeaseRentBillingCadence,
+} from "@/lib/start-lease-rent-billing";
+import {
+  deriveTermWeeksFromDates,
+  getLeaseRentAmount,
   type IPropertyLongStay,
-  isWeeklyRentBillingCadence,
-  LeaseTermsEditBlockReason,
+  RentBillingCadence,
   validateEditLeaseTerms,
 } from "@/packages/shared";
 
 function getDefaultValues(lease: IPropertyLongStay) {
   return {
-    ...getInitialLeaseTermEndValues(lease),
-    monthlyRent: String(lease.monthlyRent),
+    ...getInitialLeaseTermEndValues({
+      leaseEndDate: lease.leaseEndDate,
+      leaseStartDate: lease.leaseStartDate,
+      rentBillingCadence: lease.rentBillingCadence,
+      termMonths: lease.termMonths,
+    }),
+    rentAmount: String(getLeaseRentAmount(lease)),
+    termWeeks: String(deriveTermWeeksFromDates(lease.leaseStartDate, lease.leaseEndDate)),
   };
 }
 
@@ -58,7 +69,11 @@ export const EditLeaseTermsDialog = memo(
   ({ lease, onOpenChange, open, propertyId }: EditLeaseTermsDialogProps) => {
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
-    const isWeeklyBlocked = isWeeklyRentBillingCadence(lease.rentBillingCadence);
+    const rentAmountLabel = getStartLeaseRentAmountLabel(
+      normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence)
+    );
+    const isWeeklyLease =
+      normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence) === RentBillingCadence.WEEKLY;
 
     const form = useForm<TEditLeaseTermsFormValues>({
       defaultValues: getDefaultValues(lease),
@@ -67,18 +82,19 @@ export const EditLeaseTermsDialog = memo(
           .object({
             leaseEndDate: z.string(),
             leaseStartDate: z.string().min(1, "Lease start date is required"),
-            monthlyRent: requiredNonNegativeMoneyField("Monthly rent"),
-            termMode: z.enum(["months", "customEnd"]),
+            rentAmount: requiredNonNegativeMoneyField(rentAmountLabel),
+            termMode: z.enum(["months", "weeks", "customEnd"]),
             termMonths: z.string(),
+            termWeeks: z.string(),
           })
           .superRefine((values, ctx) => {
             refineLeaseTermEndFormValues(values, ctx);
 
-            const monthlyRent = Number(values.monthlyRent);
+            const rentAmount = Number(values.rentAmount);
             const error = validateEditLeaseTerms(
               {
                 ...buildLeaseTermApiPayload(values),
-                monthlyRent,
+                rentAmount,
               },
               lease,
               today
@@ -87,7 +103,7 @@ export const EditLeaseTermsDialog = memo(
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: error,
-                path: [values.termMode === "customEnd" ? "leaseEndDate" : "termMonths"],
+                path: [getLeaseTermEndErrorPath(values.termMode)],
               });
             }
           })
@@ -104,50 +120,59 @@ export const EditLeaseTermsDialog = memo(
       [form, lease, onOpenChange]
     );
 
-    const termFields = form.watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
-    const monthlyRent = form.watch("monthlyRent");
+    const termFields = form.watch([
+      "leaseEndDate",
+      "leaseStartDate",
+      "termMode",
+      "termMonths",
+      "termWeeks",
+    ]);
+    const rentAmount = form.watch("rentAmount");
 
     const leaseEndDate = useMemo(() => {
-      const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+      const [leaseEndDateValue, leaseStartDate, termMode, termMonths, termWeeks] = termFields;
       return resolveLeaseTermEndPreview({
         leaseEndDate: leaseEndDateValue,
         leaseStartDate,
         termMode,
         termMonths,
+        termWeeks,
       });
     }, [termFields]);
 
     const firstMonthRentPreview = useMemo(() => {
-      const parsedMonthlyRent = Number(monthlyRent);
-      const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+      const parsedRentAmount = Number(rentAmount);
+      const [leaseEndDateValue, leaseStartDate, termMode, termMonths, termWeeks] = termFields;
       const resolvedEnd = resolveLeaseTermEndPreview({
         leaseEndDate: leaseEndDateValue,
         leaseStartDate,
         termMode,
         termMonths,
+        termWeeks,
       });
 
       if (
         !resolvedEnd ||
         leaseStartDate === "" ||
-        !Number.isFinite(parsedMonthlyRent) ||
-        parsedMonthlyRent < 0
+        !Number.isFinite(parsedRentAmount) ||
+        parsedRentAmount < 0
       ) {
         return null;
       }
 
-      return getStartLeaseFirstMonthRentPreview({
+      return getEditLeaseFirstPeriodRentPreview({
         leaseEndDate: resolvedEnd,
         leaseStartDate,
-        monthlyRent: parsedMonthlyRent,
+        rentAmount: parsedRentAmount,
+        rentBillingCadence: normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence),
       });
-    }, [monthlyRent, termFields]);
+    }, [lease.rentBillingCadence, rentAmount, termFields]);
 
     const mutation = useMutation({
       mutationFn: (values: TEditLeaseTermsFormValues) =>
         longStaysApi.updateTerms(propertyId, lease.id, {
           ...buildLeaseTermApiPayload(values),
-          monthlyRent: Number(values.monthlyRent),
+          rentAmount: Number(values.rentAmount),
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update lease terms");
@@ -165,35 +190,15 @@ export const EditLeaseTermsDialog = memo(
 
     const { errors, isSubmitting } = form.formState;
 
-    if (isWeeklyBlocked) {
-      return (
-        <Dialog onOpenChange={handleOpenChangeWithReset} open={open}>
-          <DialogContent className="sm:max-w-[440px]">
-            <DialogHeader>
-              <DialogTitle>Edit Lease Terms</DialogTitle>
-              <DialogDescription>
-                {getLeaseTermsEditBlockMessage(LeaseTermsEditBlockReason.WEEKLY_CADENCE)} Use Extend
-                lease or End lease instead.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => handleOpenChangeWithReset(false)} type="button">
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      );
-    }
-
     return (
       <Dialog onOpenChange={handleOpenChangeWithReset} open={open}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Edit Lease Terms</DialogTitle>
             <DialogDescription>
-              Correct the lease start date, term, or base monthly rent for {lease.guestName}. This
-              is only available before rent income or online payments are recorded.
+              Correct the lease start date, term, or base{" "}
+              {isWeeklyLease ? "weekly rent" : "monthly rent"} for {lease.guestName}. This is only
+              available before rent income or online payments are recorded.
             </DialogDescription>
           </DialogHeader>
 
@@ -205,16 +210,20 @@ export const EditLeaseTermsDialog = memo(
                 leaseEndDateError={errors.leaseEndDate?.message}
                 leaseStartDateError={errors.leaseStartDate?.message}
                 register={form.register}
+                rentBillingCadence={lease.rentBillingCadence}
+                resolvedEndDate={leaseEndDate}
                 startDateFieldId="edit-lease-start-date"
                 termMonthsError={errors.termMonths?.message}
                 termMonthsFieldId="edit-lease-term-months"
+                termWeeksError={errors.termWeeks?.message}
+                termWeeksFieldId="edit-lease-term-weeks"
               />
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-lease-monthly-rent">Monthly Rent</Label>
+                <Label htmlFor="edit-lease-monthly-rent">{rentAmountLabel}</Label>
                 <Controller
                   control={form.control}
-                  name="monthlyRent"
+                  name="rentAmount"
                   render={({ field }) => (
                     <Input
                       id="edit-lease-monthly-rent"
@@ -229,8 +238,8 @@ export const EditLeaseTermsDialog = memo(
                     />
                   )}
                 />
-                {errors.monthlyRent ? (
-                  <p className="text-xs text-destructive">{errors.monthlyRent.message}</p>
+                {errors.rentAmount ? (
+                  <p className="text-xs text-destructive">{errors.rentAmount.message}</p>
                 ) : null}
               </div>
 

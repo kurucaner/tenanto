@@ -1,11 +1,16 @@
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
-import { formatMoney } from "@/lib/format-money";
+import {
+  formatLeaseMonthRentPreviewLabel,
+  formatLeaseWeekRentPreviewLabel,
+} from "@/lib/lease-rent-preview-labels";
+import {
+  getStartLeaseFirstPeriodRentPreview,
+  normalizeStartLeaseRentBillingCadence,
+} from "@/lib/start-lease-rent-billing";
 import {
   calculateExpectedRentForLeaseMonth,
   calculateExpectedRentForLeaseWeek,
-  formatProratedDaysLabel,
-  type ILeaseMonthExpectedRent,
-  type ILeaseWeekExpectedRent,
+  getLeaseRentAmount,
   type IPropertyLongStay,
   type IPropertyLongStayRentPeriod,
   RentBillingCadence,
@@ -14,22 +19,22 @@ import {
   type TRentBillingCadence,
 } from "@/packages/shared";
 
-export function formatLeaseMonthRentPreviewLabel(
-  prefix: string,
-  rent: Pick<
-    ILeaseMonthExpectedRent,
-    "daysInMonth" | "expectedRent" | "isProrated" | "occupiedDays"
-  >
-): string {
-  if (rent.isProrated) {
-    return `${prefix}: ${formatMoney(rent.expectedRent)} (${formatProratedDaysLabel(rent.occupiedDays, rent.daysInMonth)})`;
-  }
-
-  return `${prefix}: ${formatMoney(rent.expectedRent)}`;
+export function getEditLeaseFirstPeriodRentPreview(input: {
+  leaseEndDate: string;
+  leaseStartDate: string;
+  rentAmount: number;
+  rentBillingCadence: TRentBillingCadence;
+}): string | null {
+  return getStartLeaseFirstPeriodRentPreview({
+    leaseEndDate: input.leaseEndDate,
+    leaseStartDate: input.leaseStartDate,
+    rentAmount: input.rentAmount,
+    rentBillingCadence: normalizeStartLeaseRentBillingCadence(input.rentBillingCadence),
+  });
 }
 
 export function getEndLeaseMoveOutRentPreview(input: {
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent" | "rentBillingCadence">;
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentAmount" | "rentBillingCadence">;
   moveOutDate: string;
   rentPeriods: readonly IPropertyLongStayRentPeriod[];
 }): string | null {
@@ -46,7 +51,7 @@ export function getEndLeaseMoveOutRentPreview(input: {
 
   const month = transactionDateToMonth(input.moveOutDate);
   const rent = calculateExpectedRentForLeaseMonth({
-    baseMonthlyRent: input.lease.monthlyRent,
+    baseRentAmount: getLeaseRentAmount(input.lease),
     effectiveEndDate: input.moveOutDate,
     leaseStartDate: input.lease.leaseStartDate,
     month,
@@ -61,7 +66,7 @@ export function getEndLeaseMoveOutRentPreview(input: {
 }
 
 export function getEndLeaseMoveOutWeekRentPreview(input: {
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent">;
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentAmount">;
   moveOutDate: string;
 }): string | null {
   const periodStart = resolveLeaseWeekPeriodStartContainingDate(
@@ -72,7 +77,7 @@ export function getEndLeaseMoveOutWeekRentPreview(input: {
     effectiveEndDate: input.moveOutDate,
     leaseStartDate: input.lease.leaseStartDate,
     periodStart,
-    weeklyRent: input.lease.monthlyRent,
+    weeklyRent: getLeaseRentAmount(input.lease),
   });
 
   if (rent.occupiedDays <= 0) {
@@ -80,89 +85,6 @@ export function getEndLeaseMoveOutWeekRentPreview(input: {
   }
 
   return formatLeaseWeekRentPreviewLabel("Final week rent", rent);
-}
-
-export function getStartLeaseFirstMonthRentPreview(input: {
-  leaseEndDate: string;
-  leaseStartDate: string;
-  monthlyRent: number;
-}): string | null {
-  if (!input.leaseStartDate || input.monthlyRent <= 0 || !input.leaseEndDate) {
-    return null;
-  }
-
-  const month = transactionDateToMonth(input.leaseStartDate);
-  const rent = calculateExpectedRentForLeaseMonth({
-    baseMonthlyRent: input.monthlyRent,
-    effectiveEndDate: input.leaseEndDate,
-    leaseStartDate: input.leaseStartDate,
-    month,
-    rentPeriods: [],
-  });
-
-  if (!rent.isProrated) {
-    return null;
-  }
-
-  return formatLeaseMonthRentPreviewLabel("First month rent", rent);
-}
-
-export function formatLeaseWeekRentPreviewLabel(
-  prefix: string,
-  rent: Pick<
-    ILeaseWeekExpectedRent,
-    "daysInPeriod" | "expectedRent" | "isProrated" | "occupiedDays"
-  >
-): string {
-  if (rent.isProrated) {
-    return `${prefix}: ${formatMoney(rent.expectedRent)} (${formatProratedDaysLabel(rent.occupiedDays, rent.daysInPeriod)})`;
-  }
-
-  return `${prefix}: ${formatMoney(rent.expectedRent)}`;
-}
-
-export function getStartLeaseFirstWeekRentPreview(input: {
-  leaseEndDate: string;
-  leaseStartDate: string;
-  weeklyRent: number;
-}): string | null {
-  if (!input.leaseStartDate || input.weeklyRent <= 0 || !input.leaseEndDate) {
-    return null;
-  }
-
-  const rent = calculateExpectedRentForLeaseWeek({
-    effectiveEndDate: input.leaseEndDate,
-    leaseStartDate: input.leaseStartDate,
-    periodStart: input.leaseStartDate,
-    weeklyRent: input.weeklyRent,
-  });
-
-  if (!rent.isProrated) {
-    return null;
-  }
-
-  return formatLeaseWeekRentPreviewLabel("First week rent", rent);
-}
-
-export function getStartLeaseFirstPeriodRentPreview(input: {
-  leaseEndDate: string;
-  leaseStartDate: string;
-  rentAmount: number;
-  rentBillingCadence: TRentBillingCadence;
-}): string | null {
-  if (input.rentBillingCadence === RentBillingCadence.WEEKLY) {
-    return getStartLeaseFirstWeekRentPreview({
-      leaseEndDate: input.leaseEndDate,
-      leaseStartDate: input.leaseStartDate,
-      weeklyRent: input.rentAmount,
-    });
-  }
-
-  return getStartLeaseFirstMonthRentPreview({
-    leaseEndDate: input.leaseEndDate,
-    leaseStartDate: input.leaseStartDate,
-    monthlyRent: input.rentAmount,
-  });
 }
 
 export function getEndLeaseMoveOutBoundsHelperText(

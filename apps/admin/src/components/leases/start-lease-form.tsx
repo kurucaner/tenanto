@@ -178,6 +178,7 @@ interface TermStepProps {
   leaseEndDateError?: string;
   leaseStartDateError?: string;
   termMonthsError?: string;
+  termWeeksError?: string;
 }
 
 const TermStep = memo(
@@ -187,19 +188,27 @@ const TermStep = memo(
     leaseEndDateError,
     leaseStartDateError,
     termMonthsError,
-  }: TermStepProps) => (
-    <LeaseTermEndFields<TStartLeaseFormValues>
-      control={form.control}
-      endDateFieldId="start-lease-end-date"
-      leaseEndDateError={leaseEndDateError}
-      leaseStartDateError={leaseStartDateError}
-      register={form.register}
-      resolvedEndDate={leaseEndDate}
-      startDateFieldId="start-lease-start-date"
-      termMonthsError={termMonthsError}
-      termMonthsFieldId="start-lease-term-months"
-    />
-  )
+    termWeeksError,
+  }: TermStepProps) => {
+    const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
+
+    return (
+      <LeaseTermEndFields<TStartLeaseFormValues>
+        control={form.control}
+        endDateFieldId="start-lease-end-date"
+        leaseEndDateError={leaseEndDateError}
+        leaseStartDateError={leaseStartDateError}
+        register={form.register}
+        rentBillingCadence={rentBillingCadence}
+        resolvedEndDate={leaseEndDate}
+        startDateFieldId="start-lease-start-date"
+        termMonthsError={termMonthsError}
+        termMonthsFieldId="start-lease-term-months"
+        termWeeksError={termWeeksError}
+        termWeeksFieldId="start-lease-term-weeks"
+      />
+    );
+  }
 );
 TermStep.displayName = "TermStep";
 
@@ -210,7 +219,7 @@ interface RentStepProps {
   guestName: string;
   leaseEndDate: string | null;
   leaseStartDate: string;
-  monthlyRentError?: string;
+  rentAmountError?: string;
   unitLabel: string | null;
 }
 
@@ -222,7 +231,7 @@ const RentStep = memo(
     guestName,
     leaseEndDate,
     leaseStartDate,
-    monthlyRentError,
+    rentAmountError,
     unitLabel,
   }: RentStepProps) => {
     const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
@@ -284,7 +293,7 @@ const RentStep = memo(
             </span>
             <Controller
               control={form.control}
-              name="monthlyRent"
+              name="rentAmount"
               render={({ field }) => (
                 <Input
                   autoFocus={autoFocusRent}
@@ -302,7 +311,7 @@ const RentStep = memo(
               )}
             />
           </div>
-          {monthlyRentError ? <p className="text-destructive text-xs">{monthlyRentError}</p> : null}
+          {rentAmountError ? <p className="text-destructive text-xs">{rentAmountError}</p> : null}
           {firstMonthRentPreview ? (
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
           ) : null}
@@ -413,6 +422,7 @@ export const StartLeaseForm = memo(
                 leaseEndDateError={errors.leaseEndDate?.message}
                 leaseStartDateError={errors.leaseStartDate?.message}
                 termMonthsError={errors.termMonths?.message}
+                termWeeksError={errors.termWeeks?.message}
               />
             </section>
 
@@ -428,7 +438,7 @@ export const StartLeaseForm = memo(
                 guestName={guestName}
                 leaseEndDate={leaseEndDate}
                 leaseStartDate={leaseStartDate}
-                monthlyRentError={errors.monthlyRent?.message}
+                rentAmountError={errors.rentAmount?.message}
                 unitLabel={unitLabel}
               />
             </section>

@@ -28,6 +28,8 @@ import type {
 } from "@/packages/shared";
 import {
   formatRentPeriodLabel,
+  getLeaseRentAmount,
+  getRentSchedulePeriodKey,
   isWeeklyPeriodKey,
   JwtAudience,
   normalizeTenantEmail,
@@ -217,18 +219,25 @@ export const tenantPortalMembershipService = {
       throw tenantMembershipNotFoundError();
     }
 
+    const rentAmount = getLeaseRentAmount(lease);
+
     return {
       displayName: membership.displayName,
       leaseEndDate: lease.leaseEndDate,
       leaseId: lease.id,
       leaseStartDate: lease.leaseStartDate,
-      monthlyRent: lease.monthlyRent,
+      monthlyRent: rentAmount,
       propertyName: property.name,
-      rentSchedule: rentScheduleMonths.map((item) => ({
-        amount: item.expectedRent,
-        dueDate: isWeeklyPeriodKey(item.month) ? item.month : `${item.month}-01`,
-        periodLabel: formatRentPeriodLabel(item.month),
-      })),
+      rentAmount,
+      rentSchedule: rentScheduleMonths.map((item) => {
+        const periodKey = getRentSchedulePeriodKey(item);
+
+        return {
+          amount: item.expectedRent,
+          dueDate: isWeeklyPeriodKey(periodKey) ? periodKey : `${periodKey}-01`,
+          periodLabel: formatRentPeriodLabel(periodKey),
+        };
+      }),
       role: membership.role,
       status: membership.status,
       unitLabel: formatUnitLabel(unit),

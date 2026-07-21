@@ -7,7 +7,8 @@ export const RentPaymentErrorCode = {
   VALIDATION: "RENT_PAYMENT_VALIDATION",
 } as const;
 
-export type TRentPaymentErrorCode = (typeof RentPaymentErrorCode)[keyof typeof RentPaymentErrorCode];
+export type TRentPaymentErrorCode =
+  (typeof RentPaymentErrorCode)[keyof typeof RentPaymentErrorCode];
 
 const RENT_PAYMENT_ERROR_CODES = new Set<string>(Object.values(RentPaymentErrorCode));
 

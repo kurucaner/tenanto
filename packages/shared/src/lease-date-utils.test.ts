@@ -2,9 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import {
   calculateLeaseEndDate,
+  calculateLeaseEndDateFromWeeks,
+  deriveTermWeeksFromDates,
   enumerateLeaseMonths,
   getEndLeaseMoveOutDateBounds,
   isActiveLeaseInHoldover,
+  isStandardWeeklyLeaseEndDate,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
@@ -20,6 +23,28 @@ describe("calculateLeaseEndDate", () => {
   test("handles month-end anchors and JS date rollover", () => {
     expect(calculateLeaseEndDate("2026-01-31", 1)).toBe("2026-03-02");
     expect(calculateLeaseEndDate("2026-01-31", 3)).toBe("2026-04-30");
+  });
+});
+
+describe("calculateLeaseEndDateFromWeeks", () => {
+  test("returns start plus whole weeks minus one day", () => {
+    expect(calculateLeaseEndDateFromWeeks("2026-07-01", 4)).toBe("2026-07-28");
+    expect(calculateLeaseEndDateFromWeeks("2026-07-01", 52)).toBe("2027-06-29");
+  });
+});
+
+describe("deriveTermWeeksFromDates", () => {
+  test("counts aligned lease weeks inclusive of partial final week", () => {
+    expect(deriveTermWeeksFromDates("2026-07-01", "2026-07-28")).toBe(4);
+    expect(deriveTermWeeksFromDates("2026-07-01", "2027-06-29")).toBe(52);
+  });
+});
+
+describe("isStandardWeeklyLeaseEndDate", () => {
+  test("accepts week-aligned ends and rejects month-based ends", () => {
+    expect(isStandardWeeklyLeaseEndDate("2026-07-01", "2026-07-28")).toBe(true);
+    expect(isStandardWeeklyLeaseEndDate("2026-07-01", "2027-06-29")).toBe(true);
+    expect(isStandardWeeklyLeaseEndDate("2026-07-01", "2027-07-01")).toBe(false);
   });
 });
 

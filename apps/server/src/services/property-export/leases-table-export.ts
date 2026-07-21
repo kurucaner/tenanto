@@ -7,6 +7,7 @@ import { csvRow } from "@/lib/csv-utils";
 import { PROPERTY_EXPORT_BATCH_SIZE } from "@/lib/property-export-config";
 import {
   getLeaseOccupancyNames,
+  getLeaseRentAmount,
   type IPropertyLongStay,
   PROPERTY_EXPORT_MAX_ROWS,
   type TPropertyLongStaysListFilters,
@@ -42,7 +43,7 @@ function mapLeaseToExportRow(
     getLeaseOccupancyNames(lease).join(", "),
     lease.leaseStartDate,
     resolveLeaseEndDate(lease),
-    formatMoney(lease.monthlyRent),
+    formatMoney(getLeaseRentAmount(lease)),
     lease.status,
     lease.tenantEmail ?? "",
     lease.tenantPhone ?? "",

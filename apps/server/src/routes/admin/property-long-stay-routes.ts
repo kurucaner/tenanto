@@ -10,10 +10,16 @@ import {
   type IEditPropertyLongStayTermsBody,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
+  isValidRentPeriodKey,
+  isWeeklyPeriodKey,
   type IUpdatePropertyLongStayBody,
   MAX_ADDITIONAL_TERM_MONTHS,
   MAX_ADDITIONAL_TERM_WEEKS,
   parseRentBillingCadence,
+  RentBillingCadence,
+  resolveCreateLeaseRentAmount,
+  resolveTermsEditRentAmount,
+  type TRentBillingCadence,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
   validateLeaseTermInput,
@@ -135,9 +141,9 @@ function parseCreateLongStayBody(
     return leaseTermFields;
   }
 
-  const monthlyRent = parseMoney(r["monthlyRent"]);
-  if (monthlyRent === null) {
-    return { error: "monthlyRent must be a non-negative number", ok: false };
+  const rentAmountValue = parseMoney(r["rentAmount"] ?? r["monthlyRent"]);
+  if (rentAmountValue === null) {
+    return { error: "rentAmount must be a non-negative number", ok: false };
   }
 
   const rentBillingCadence = parseRentBillingCadence(r["rentBillingCadence"]);
@@ -159,7 +165,11 @@ function parseCreateLongStayBody(
     body: {
       guestName: r["guestName"].trim(),
       ...leaseTermFields.body,
-      monthlyRent,
+      rentAmount:
+        resolveCreateLeaseRentAmount({
+          monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
+          rentAmount: rentAmountValue,
+        }) ?? rentAmountValue,
       rentBillingCadence,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
@@ -196,15 +206,18 @@ function parseEditLeaseTermsBody(
     return leaseTermFields;
   }
 
-  const monthlyRent = parseMoney(r["monthlyRent"]);
-  if (monthlyRent === null) {
-    return { error: "monthlyRent must be a non-negative number", ok: false };
+  const rentAmountValue = parseMoney(r["rentAmount"] ?? r["monthlyRent"]);
+  if (rentAmountValue === null) {
+    return { error: "rentAmount must be a non-negative number", ok: false };
   }
 
   return {
     body: {
       ...leaseTermFields.body,
-      monthlyRent,
+      rentAmount: resolveTermsEditRentAmount({
+        monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
+        rentAmount: rentAmountValue,
+      }),
     },
     ok: true,
   };
@@ -222,7 +235,8 @@ function parseTermWeeks(raw: unknown): number | null {
 }
 
 function parseExtendLongStayBody(
-  raw: unknown
+  raw: unknown,
+  rentBillingCadence: TRentBillingCadence = RentBillingCadence.MONTHLY
 ): { body: IExtendPropertyLongStayBody; ok: true } | { error: string; ok: false } {
   if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
     return { error: "Body must be a JSON object", ok: false };
@@ -279,31 +293,41 @@ function parseExtendLongStayBody(
     body.additionalTermMonths = additionalTermMonths;
   }
 
-  const hasNewRent = "newMonthlyRent" in r;
-  const hasEffectiveMonth = "rentEffectiveFromMonth" in r;
+  const hasNewRent = "newMonthlyRent" in r || "newRentAmount" in r;
+  const hasEffectivePeriod = "rentEffectiveFromMonth" in r || "rentEffectiveFromPeriod" in r;
 
-  if (hasNewRent !== hasEffectiveMonth) {
+  if (hasNewRent !== hasEffectivePeriod) {
     return {
-      error: "newMonthlyRent and rentEffectiveFromMonth must both be provided when changing rent",
+      error:
+        "newRentAmount and rentEffectiveFromPeriod must both be provided when changing rent (legacy: newMonthlyRent, rentEffectiveFromMonth)",
       ok: false,
     };
   }
 
   if (hasNewRent) {
-    const newMonthlyRent = parsePositiveMoney(r["newMonthlyRent"]);
+    const newRentRaw = r["newRentAmount"] ?? r["newMonthlyRent"];
+    const effectivePeriodRaw = r["rentEffectiveFromPeriod"] ?? r["rentEffectiveFromMonth"];
+    const newMonthlyRent = parsePositiveMoney(newRentRaw);
     if (newMonthlyRent === null) {
-      return { error: "newMonthlyRent must be a positive number", ok: false };
+      return { error: "newRentAmount must be a positive number", ok: false };
     }
 
-    if (
-      typeof r["rentEffectiveFromMonth"] !== "string" ||
-      !MONTH_RE.test(r["rentEffectiveFromMonth"])
-    ) {
-      return { error: "rentEffectiveFromMonth must be YYYY-MM format", ok: false };
+    if (typeof effectivePeriodRaw !== "string" || !isValidRentPeriodKey(effectivePeriodRaw)) {
+      return { error: "rentEffectiveFromPeriod must be YYYY-MM or YYYY-MM-DD", ok: false };
+    }
+
+    if (rentBillingCadence === RentBillingCadence.WEEKLY) {
+      if (!isWeeklyPeriodKey(effectivePeriodRaw)) {
+        return { error: "rentEffectiveFromPeriod must be YYYY-MM-DD for weekly leases", ok: false };
+      }
+    } else if (!MONTH_RE.test(effectivePeriodRaw)) {
+      return { error: "rentEffectiveFromPeriod must be YYYY-MM format", ok: false };
     }
 
     body.newMonthlyRent = newMonthlyRent;
-    body.rentEffectiveFromMonth = r["rentEffectiveFromMonth"];
+    body.newRentAmount = newMonthlyRent;
+    body.rentEffectiveFromMonth = effectivePeriodRaw;
+    body.rentEffectiveFromPeriod = effectivePeriodRaw;
   }
 
   return { body, ok: true };
@@ -744,7 +768,10 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
         return reply.status(HttpStatus.NOT_FOUND).send({ error: "Long stay not found" });
       }
 
-      const parsed = parseExtendLongStayBody(request.body);
+      const parsed = parseExtendLongStayBody(
+        request.body,
+        parseRentBillingCadence(existing.rentBillingCadence) ?? RentBillingCadence.MONTHLY
+      );
       if (!parsed.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: parsed.error });
       }

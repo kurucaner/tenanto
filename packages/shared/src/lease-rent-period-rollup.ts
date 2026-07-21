@@ -3,6 +3,7 @@ import { isLeaseRentMonthFullyPaid } from "./lease-rent-paid-tolerance";
 import { roundMoney } from "./property-income-calculator";
 import { getReportableIncomeLineAmounts } from "./property-partial-refund-utils";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
+import { resolveIncomeLineRentPeriodKey } from "./rent-period-field-utils";
 import {
   isValidRentPeriodKey,
   resolveRentPeriodKeyForTransactionDate,
@@ -22,35 +23,45 @@ export interface ILeaseRentPeriodIncomeLineInput {
   netIncome: number;
   refundedAmount: number | null;
   refundedAt: string | null;
-  rentPeriodMonth?: string | null;
+  rentPeriodKey?: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   transactionDate: string;
+  /** @deprecated Use `rentPeriodKey`. */
+  rentPeriodMonth?: string | null;
 }
 
 export interface ILeaseRentPeriodAllocationInput {
   allocatedCents: number;
-  month: string;
+  periodKey: string;
+  /** @deprecated Use `periodKey`. */
+  month?: string;
 }
 
 export interface ILeaseRentPeriodScheduleMonth {
   expectedRent: number;
-  month: string;
+  periodKey: string;
+  /** @deprecated Use `periodKey`. */
+  month?: string;
 }
 
 export interface ILeaseRentPeriodRollupMonth {
   expectedRent: number;
   isPaid: boolean;
-  month: string;
   paidRent: number;
+  periodKey: string;
   remainingRent: number;
+  /** @deprecated Use `periodKey`. */
+  month?: string;
 }
 
-export function getEffectiveRentPeriodMonth(input: {
-  rentPeriodMonth?: string | null;
+export function getEffectiveRentPeriodKey(input: {
+  rentPeriodKey?: string | null;
   schedulePeriods?: readonly string[];
   transactionDate: string;
+  /** @deprecated Use `rentPeriodKey`. */
+  rentPeriodMonth?: string | null;
 }): string {
-  const explicit = input.rentPeriodMonth?.trim() ?? "";
+  const explicit = resolveIncomeLineRentPeriodKey(input)?.trim() ?? "";
   if (explicit !== "" && isValidRentPeriodKey(explicit)) {
     return explicit;
   }
@@ -66,6 +77,25 @@ export function getEffectiveRentPeriodMonth(input: {
   }
 
   return transactionDateToMonth(input.transactionDate);
+}
+
+/** @deprecated Use `getEffectiveRentPeriodKey`. */
+export function getEffectiveRentPeriodMonth(input: {
+  rentPeriodKey?: string | null;
+  schedulePeriods?: readonly string[];
+  transactionDate: string;
+  /** @deprecated Use `rentPeriodKey`. */
+  rentPeriodMonth?: string | null;
+}): string {
+  return getEffectiveRentPeriodKey(input);
+}
+
+function resolveAllocationPeriodKey(allocation: ILeaseRentPeriodAllocationInput): string {
+  return allocation.periodKey ?? allocation.month ?? "";
+}
+
+function resolveSchedulePeriodKey(item: ILeaseRentPeriodScheduleMonth): string {
+  return item.periodKey ?? item.month ?? "";
 }
 
 function sumIncomePaidByPeriod(
@@ -84,7 +114,8 @@ function sumIncomePaidByPeriod(
       continue;
     }
 
-    const period = getEffectiveRentPeriodMonth({
+    const period = getEffectiveRentPeriodKey({
+      rentPeriodKey: line.rentPeriodKey,
       rentPeriodMonth: line.rentPeriodMonth,
       schedulePeriods,
       transactionDate: line.transactionDate,
@@ -105,8 +136,9 @@ function sumAllocationPaidByPeriod(
       continue;
     }
 
+    const periodKey = resolveAllocationPeriodKey(allocation);
     const dollars = centsToDollars(allocation.allocatedCents);
-    byPeriod.set(allocation.month, roundMoney((byPeriod.get(allocation.month) ?? 0) + dollars));
+    byPeriod.set(periodKey, roundMoney((byPeriod.get(periodKey) ?? 0) + dollars));
   }
 
   return byPeriod;
@@ -126,13 +158,14 @@ export function rollupLeaseRentByPeriod(input: {
   incomeLines: readonly ILeaseRentPeriodIncomeLineInput[];
   scheduleMonths: readonly ILeaseRentPeriodScheduleMonth[];
 }): ILeaseRentPeriodRollupMonth[] {
-  const schedulePeriods = input.scheduleMonths.map((item) => item.month);
+  const schedulePeriods = input.scheduleMonths.map((item) => resolveSchedulePeriodKey(item));
   const incomeByPeriod = sumIncomePaidByPeriod(input.incomeLines, schedulePeriods);
   const allocationByPeriod = sumAllocationPaidByPeriod(input.allocations ?? []);
 
-  return input.scheduleMonths.map(({ expectedRent, month }) => {
-    const incomePaid = incomeByPeriod.get(month) ?? 0;
-    const allocationPaid = allocationByPeriod.get(month) ?? 0;
+  return input.scheduleMonths.map(({ expectedRent, month, periodKey }) => {
+    const resolvedPeriodKey = periodKey ?? month ?? "";
+    const incomePaid = incomeByPeriod.get(resolvedPeriodKey) ?? 0;
+    const allocationPaid = allocationByPeriod.get(resolvedPeriodKey) ?? 0;
     const rawPaid = roundMoney(incomePaid + allocationPaid);
     const paidRent = roundMoney(Math.min(expectedRent, Math.max(0, rawPaid)));
     const isPaid = isLeaseRentMonthFullyPaid(expectedRent, paidRent);
@@ -141,8 +174,9 @@ export function rollupLeaseRentByPeriod(input: {
     return {
       expectedRent,
       isPaid,
-      month,
+      month: resolvedPeriodKey,
       paidRent,
+      periodKey: resolvedPeriodKey,
       remainingRent,
     };
   });

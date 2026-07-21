@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
   resolveDefaultRentPeriodForIncomeLine,
+  resolveLeaseIncomeRentPeriodKey,
   resolveLeaseIncomeRentPeriodMonth,
 } from "./lease-income-rent-period";
 import {
@@ -111,25 +112,25 @@ describe("resolveDefaultRentPeriodForIncomeLine", () => {
     ).toEqual({ ok: true, value: "2026-01-15" });
   });
 
-  test("accepts explicit weekly rentPeriodMonth on schedule", () => {
+  test("accepts explicit weekly rentPeriodKey on schedule", () => {
     expect(
       resolveDefaultRentPeriodForIncomeLine({
-        rentPeriodMonth: "2026-01-22",
+        rentPeriodKey: "2026-01-22",
         scheduleMonths: weeklySchedule,
         transactionDate: "2026-01-20",
       })
     ).toEqual({ ok: true, value: "2026-01-22" });
   });
 
-  test("rejects invalid weekly rentPeriodMonth format", () => {
+  test("rejects invalid weekly rentPeriodKey format", () => {
     expect(
       resolveDefaultRentPeriodForIncomeLine({
-        rentPeriodMonth: "2026-13-01",
+        rentPeriodKey: "2026-13-01",
         scheduleMonths: weeklySchedule,
         transactionDate: "2026-01-20",
       })
     ).toEqual({
-      error: "rentPeriodMonth must be YYYY-MM or YYYY-MM-DD",
+      error: "rentPeriodKey must be YYYY-MM or YYYY-MM-DD",
       ok: false,
     });
   });
@@ -138,14 +139,25 @@ describe("resolveDefaultRentPeriodForIncomeLine", () => {
     expect(
       resolveDefaultRentPeriodForIncomeLine({
         asOfMonth: "2026-01-20",
-        rentPeriodMonth: "2026-01-22",
+        rentPeriodKey: "2026-01-22",
         scheduleMonths: weeklySchedule,
         transactionDate: "2026-01-20",
       })
     ).toEqual({ error: LEASE_UPCOMING_RENT_PERIOD_ERROR, ok: false });
   });
 
-  test("resolveLeaseIncomeRentPeriodMonth remains an alias", () => {
-    expect(resolveLeaseIncomeRentPeriodMonth).toBe(resolveDefaultRentPeriodForIncomeLine);
+  test("resolveDefaultRentPeriodForIncomeLine remains an alias of resolveLeaseIncomeRentPeriodKey", () => {
+    expect(resolveDefaultRentPeriodForIncomeLine).toBe(resolveLeaseIncomeRentPeriodKey);
+  });
+
+  test("resolveLeaseIncomeRentPeriodMonth delegates to resolveLeaseIncomeRentPeriodKey", () => {
+    const input = {
+      scheduleMonths: weeklySchedule,
+      transactionDate: "2026-01-20",
+    };
+
+    expect(resolveLeaseIncomeRentPeriodMonth(input)).toEqual(
+      resolveLeaseIncomeRentPeriodKey(input)
+    );
   });
 });

@@ -1,7 +1,10 @@
+import { type RefObject } from "react";
+
 export function scrollFormToFirstError(
-  formElement: HTMLFormElement | null,
+  formRef: RefObject<HTMLFormElement | null>,
   activeStep?: string
 ): void {
+  const formElement = formRef.current;
   if (!formElement) {
     return;
   }

@@ -124,7 +124,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-mid-start",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-06-16",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       term_months: 12,
     });
     currentIncomeRows = [];
@@ -132,7 +132,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
 
     const schedule = await propertyLongStaysDb.getRentSchedule("lease-mid-start", "2024-12-31");
 
-    expect(schedule.find((month) => month.month === "2024-06")).toEqual({
+    expect(schedule.find((month) => month.month === "2024-06")).toMatchObject({
       daysInMonth: 30,
       expectedRent: 500,
       isPaid: false,
@@ -154,7 +154,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-early-end",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-01-01",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       status: PropertyLongStayStatus.ENDED,
       term_months: 12,
     });
@@ -172,7 +172,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       "2024-06",
       "2024-07",
     ]);
-    expect(schedule.find((month) => month.month === "2024-07")).toEqual({
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
       daysInMonth: 31,
       expectedRent: 483.87,
       isPaid: false,
@@ -190,7 +190,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-holdover",
       lease_end_date: "2024-06-30",
       lease_start_date: "2024-01-01",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       status: PropertyLongStayStatus.ENDED,
       term_months: 6,
     });
@@ -203,7 +203,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       expectedRent: 1000,
       isProrated: false,
     });
-    expect(schedule.find((month) => month.month === "2024-07")).toEqual({
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
       daysInMonth: 31,
       expectedRent: 161.29,
       isPaid: false,
@@ -220,7 +220,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-active-holdover",
       lease_end_date: "2024-06-30",
       lease_start_date: "2024-01-01",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       status: PropertyLongStayStatus.ACTIVE,
       term_months: 6,
     });
@@ -241,7 +241,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       "2024-06",
       "2024-07",
     ]);
-    expect(schedule.find((month) => month.month === "2024-07")).toEqual({
+    expect(schedule.find((month) => month.month === "2024-07")).toMatchObject({
       daysInMonth: 31,
       expectedRent: 290.32,
       isPaid: false,
@@ -258,14 +258,14 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-rent-change",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-06-16",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       term_months: 12,
     });
     currentIncomeRows = [];
     currentRentPeriodRows = [
       {
-        effective_from_month: "2024-07",
-        monthly_rent: "1200.00",
+        effective_from_period: "2024-07",
+        rent_amount: "1200.00",
       },
     ];
 
@@ -287,19 +287,19 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-extended-partial-end",
       lease_end_date: "2025-06-15",
       lease_start_date: "2024-06-16",
-      monthly_rent: "1200.00",
+      rent_amount: "1200.00",
       status: PropertyLongStayStatus.ENDED,
       term_months: 12,
     });
     currentIncomeRows = [];
     currentRentPeriodRows = [
       {
-        effective_from_month: "2024-07",
-        monthly_rent: "1000.00",
+        effective_from_period: "2024-07",
+        rent_amount: "1000.00",
       },
       {
-        effective_from_month: "2025-06",
-        monthly_rent: "1200.00",
+        effective_from_period: "2025-06",
+        rent_amount: "1200.00",
       },
     ];
 
@@ -308,7 +308,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       "2025-06-15"
     );
 
-    expect(schedule.find((month) => month.month === "2025-06")).toEqual({
+    expect(schedule.find((month) => month.month === "2025-06")).toMatchObject({
       daysInMonth: 30,
       expectedRent: 600,
       isPaid: false,
@@ -325,7 +325,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-prorated-refund",
       lease_end_date: "2024-12-31",
       lease_start_date: "2024-06-16",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       term_months: 12,
     });
     currentIncomeRows = [
@@ -380,7 +380,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         id: "line-full-refund-jan",
         refunded_amount: "1500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-15",
       }),
     ];
@@ -407,7 +407,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     currentIncomeRows = [
       buildRentScheduleIncomeLineRow({
         id: "line-paid-jan",
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-15",
       }),
     ];
@@ -424,7 +424,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         id: "line-paid-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-15",
       }),
     ];
@@ -442,7 +442,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         id: "line-paid-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-15",
       }),
       buildRentScheduleIncomeLineRow({
@@ -450,7 +450,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         gross_income: "500.00",
         id: "line-rerecord-jan",
         net_income: "500.00",
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-02-10",
       }),
     ];
@@ -474,7 +474,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         id: "line-refunded-jan",
         refunded_amount: "500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-15",
       }),
     ];
@@ -489,7 +489,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     currentIncomeRows = [
       buildRentScheduleIncomeLineRow({
         id: "line-refunded-jan",
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-15",
       }),
     ];
@@ -570,7 +570,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         gross_income: "750.00",
         id: "line-partial-a",
         net_income: "750.00",
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-10",
       }),
       buildRentScheduleIncomeLineRow({
@@ -578,7 +578,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         gross_income: "750.00",
         id: "line-partial-b",
         net_income: "750.00",
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-20",
       }),
     ];
@@ -605,7 +605,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         gross_income: "500.00",
         id: "line-manual-jan",
         net_income: "500.00",
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         transaction_date: "2026-01-10",
       }),
     ];
@@ -654,7 +654,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-custom-end",
       lease_end_date: "2027-06-30",
       lease_start_date: "2026-07-01",
-      monthly_rent: "1000.00",
+      rent_amount: "1000.00",
       term_months: 12,
     });
     currentIncomeRows = [];
@@ -688,7 +688,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
         id: "line-stripe-jan",
         refunded_amount: "1500.00",
         refunded_at: new Date("2026-02-01T00:00:00.000Z"),
-        rent_period_month: "2026-01",
+        rent_period_key: "2026-01",
         tenant_rent_payment_id: "payment-1",
         transaction_date: "2026-01-15",
       }),
@@ -713,17 +713,12 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       id: "lease-weekly",
       lease_end_date: "2026-02-10",
       lease_start_date: "2026-01-15",
-      monthly_rent: "700.00",
+      rent_amount: "700.00",
       rent_billing_cadence: "weekly",
       term_months: 1,
     });
     currentIncomeRows = [];
-    currentRentPeriodRows = [
-      {
-        effective_from_month: "2026-01-15",
-        monthly_rent: "700.00",
-      },
-    ];
+    currentRentPeriodRows = [];
 
     const schedule = await propertyLongStaysDb.getRentSchedule("lease-weekly", "2026-02-10");
 
@@ -747,5 +742,65 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       paidRent: 0,
       remainingRent: 600,
     });
+  });
+
+  test("returns weekly schedule with mid-lease rent period change", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      id: "lease-weekly-rate-change",
+      lease_end_date: "2026-02-10",
+      lease_start_date: "2026-01-15",
+      rent_amount: "700.00",
+      rent_billing_cadence: "weekly",
+      term_months: 1,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      { effective_from_period: "2026-01-15", rent_amount: "700.00" },
+      { effective_from_period: "2026-01-29", rent_amount: "800.00" },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-weekly-rate-change",
+      "2026-02-10"
+    );
+
+    expect(schedule[0]?.expectedRent).toBe(700);
+    expect(schedule[1]?.expectedRent).toBe(700);
+    expect(schedule[2]?.expectedRent).toBe(800);
+    expect(schedule[3]).toMatchObject({
+      expectedRent: 685.71,
+      isProrated: true,
+      month: "2026-02-05",
+    });
+  });
+
+  test("reflects weekly extend rent change across original and extension weeks", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      id: "lease-weekly-extended",
+      lease_end_date: "2026-02-04",
+      lease_start_date: "2026-01-01",
+      rent_amount: "600.00",
+      rent_billing_cadence: "weekly",
+      term_months: 2,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      { effective_from_period: "2026-01-01", rent_amount: "500.00" },
+      { effective_from_period: "2026-01-15", rent_amount: "600.00" },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-weekly-extended",
+      "2026-02-04"
+    );
+
+    expect(schedule.map((item) => item.month)).toEqual([
+      "2026-01-01",
+      "2026-01-08",
+      "2026-01-15",
+      "2026-01-22",
+      "2026-01-29",
+    ]);
+    expect(schedule.map((item) => item.expectedRent)).toEqual([500, 500, 600, 600, 600]);
   });
 });

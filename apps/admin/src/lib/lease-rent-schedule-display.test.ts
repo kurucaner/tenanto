@@ -1,24 +1,28 @@
 import { describe, expect, test } from "bun:test";
 
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyLongStayRentMonth, RentBillingCadence } from "@/packages/shared";
+import {
+  formatRentPeriodLabel,
+  getRentSchedulePeriodKey,
+  type IPropertyLongStayRentMonth,
+  RentBillingCadence,
+} from "@/packages/shared";
 
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
 import {
-  formatRentSchedulePeriodLabel,
-  getExpectedRentForScheduleMonth,
+  getExpectedRentForSchedulePeriod,
   getLeaseBillingCadenceLabel,
   getLeaseExtendTermsDescription,
   getLeaseRentAmountSuffix,
   getLeaseTermDisplayLabel,
-  getRemainingRentForScheduleMonth,
+  getRemainingRentForSchedulePeriod,
   getVisibleLeaseRentPeriods,
   isRentMonthPartiallyPaid,
   partitionRentSchedule,
 } from "./lease-rent-schedule-display";
 
 function buildRentMonth(
-  overrides: Partial<IPropertyLongStayRentMonth> & Pick<IPropertyLongStayRentMonth, "month">
+  overrides: Partial<IPropertyLongStayRentMonth> & Pick<IPropertyLongStayRentMonth, "periodKey">
 ): IPropertyLongStayRentMonth {
   const expectedRent = overrides.expectedRent ?? 1000;
   const isPaid = overrides.isPaid ?? false;
@@ -41,28 +45,28 @@ const MID_MONTH_START_SCHEDULE: IPropertyLongStayRentMonth[] = [
     daysInMonth: 30,
     expectedRent: 500,
     isProrated: true,
-    month: "2024-06",
     occupiedDays: 15,
+    periodKey: "2024-06",
   }),
-  buildRentMonth({ expectedRent: 1000, month: "2024-07" }),
-  buildRentMonth({ expectedRent: 1000, isPaid: true, month: "2024-08" }),
+  buildRentMonth({ expectedRent: 1000, periodKey: "2024-07" }),
+  buildRentMonth({ expectedRent: 1000, isPaid: true, periodKey: "2024-08" }),
 ];
 
 const HOLD_OVER_SCHEDULE: IPropertyLongStayRentMonth[] = [
-  buildRentMonth({ expectedRent: 1000, isPaid: true, month: "2024-06" }),
+  buildRentMonth({ expectedRent: 1000, isPaid: true, periodKey: "2024-06" }),
   buildRentMonth({
     daysInMonth: 31,
     expectedRent: 161.29,
     isProrated: true,
-    month: "2024-07",
     occupiedDays: 5,
+    periodKey: "2024-07",
   }),
 ];
 
 const MIXED_DUE_UPCOMING_SCHEDULE: IPropertyLongStayRentMonth[] = [
-  buildRentMonth({ expectedRent: 500, month: "2024-06" }),
-  buildRentMonth({ expectedRent: 1000, month: "2024-07" }),
-  buildRentMonth({ expectedRent: 1000, month: "2024-09" }),
+  buildRentMonth({ expectedRent: 500, periodKey: "2024-06" }),
+  buildRentMonth({ expectedRent: 1000, periodKey: "2024-07" }),
+  buildRentMonth({ expectedRent: 1000, periodKey: "2024-09" }),
 ];
 
 describe("partitionRentSchedule", () => {
@@ -72,8 +76,11 @@ describe("partitionRentSchedule", () => {
       "2024-07-15"
     );
 
-    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
-    expect(paidMonths.map((item) => item.month)).toEqual(["2024-08"]);
+    expect(dueUnpaidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual([
+      "2024-06",
+      "2024-07",
+    ]);
+    expect(paidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2024-08"]);
     expect(unpaidSummary).toEqual({ count: 2, totalRemaining: 1500 });
   });
 
@@ -89,8 +96,11 @@ describe("partitionRentSchedule", () => {
       "2024-07-15"
     );
 
-    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-06", "2024-07"]);
-    expect(upcomingMonths.map((item) => item.month)).toEqual(["2024-09"]);
+    expect(dueUnpaidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual([
+      "2024-06",
+      "2024-07",
+    ]);
+    expect(upcomingMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2024-09"]);
     expect(unpaidSummary).toEqual({ count: 2, totalRemaining: 1500 });
   });
 
@@ -98,11 +108,11 @@ describe("partitionRentSchedule", () => {
     const schedule = [
       buildRentMonth({
         expectedRent: 1500,
-        month: "2024-07",
         paidRent: 500,
+        periodKey: "2024-07",
         remainingRent: 1000,
       }),
-      buildRentMonth({ expectedRent: 1000, isPaid: true, month: "2024-08" }),
+      buildRentMonth({ expectedRent: 1000, isPaid: true, periodKey: "2024-08" }),
     ];
 
     const { dueUnpaidMonths, paidMonths, unpaidSummary } = partitionRentSchedule(
@@ -110,8 +120,8 @@ describe("partitionRentSchedule", () => {
       "2024-07-15"
     );
 
-    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2024-07"]);
-    expect(paidMonths.map((item) => item.month)).toEqual(["2024-08"]);
+    expect(dueUnpaidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2024-07"]);
+    expect(paidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2024-08"]);
     expect(unpaidSummary).toEqual({ count: 1, totalRemaining: 1000 });
   });
 });
@@ -120,49 +130,57 @@ describe("isRentMonthPartiallyPaid", () => {
   test("returns true when some rent is paid but month is not fully paid", () => {
     expect(
       isRentMonthPartiallyPaid(
-        buildRentMonth({ expectedRent: 1500, month: "2024-07", paidRent: 500, remainingRent: 1000 })
+        buildRentMonth({
+          expectedRent: 1500,
+          paidRent: 500,
+          periodKey: "2024-07",
+          remainingRent: 1000,
+        })
       )
     ).toBe(true);
   });
 
   test("returns false when nothing is paid or month is fully paid", () => {
-    expect(isRentMonthPartiallyPaid(buildRentMonth({ expectedRent: 1500, month: "2024-07" }))).toBe(
-      false
-    );
+    expect(
+      isRentMonthPartiallyPaid(buildRentMonth({ expectedRent: 1500, periodKey: "2024-07" }))
+    ).toBe(false);
     expect(
       isRentMonthPartiallyPaid(
-        buildRentMonth({ expectedRent: 1500, isPaid: true, month: "2024-07", paidRent: 1500 })
+        buildRentMonth({ expectedRent: 1500, isPaid: true, paidRent: 1500, periodKey: "2024-07" })
       )
     ).toBe(false);
   });
 });
 
-describe("getExpectedRentForScheduleMonth", () => {
+describe("getExpectedRentForSchedulePeriod", () => {
   test("returns prorated expectedRent for a partial first month", () => {
-    expect(getExpectedRentForScheduleMonth(MID_MONTH_START_SCHEDULE, "2024-06")).toBe(500);
+    expect(getExpectedRentForSchedulePeriod(MID_MONTH_START_SCHEDULE, "2024-06")).toBe(500);
   });
 
-  test("returns undefined when the month is not in the schedule", () => {
-    expect(getExpectedRentForScheduleMonth(MID_MONTH_START_SCHEDULE, "2024-05")).toBeUndefined();
+  test("returns undefined when the period is not in the schedule", () => {
+    expect(getExpectedRentForSchedulePeriod(MID_MONTH_START_SCHEDULE, "2024-05")).toBeUndefined();
   });
 });
 
 const WEEKLY_SCHEDULE: IPropertyLongStayRentMonth[] = [
-  buildRentMonth({ expectedRent: 700, month: "2026-01-15" }),
-  buildRentMonth({ expectedRent: 700, month: "2026-01-22" }),
-  buildRentMonth({ expectedRent: 700, isPaid: true, month: "2026-01-29" }),
+  buildRentMonth({ expectedRent: 700, periodKey: "2026-01-15" }),
+  buildRentMonth({ expectedRent: 700, periodKey: "2026-01-22" }),
+  buildRentMonth({ expectedRent: 700, isPaid: true, periodKey: "2026-01-29" }),
 ];
 
 describe("partitionRentSchedule weekly", () => {
   test("partitions weekly schedule using week-start asOf keys", () => {
-    const { dueUnpaidMonths, paidMonths, upcomingMonths, unpaidSummary } = partitionRentSchedule(
+    const { dueUnpaidMonths, paidMonths, unpaidSummary, upcomingMonths } = partitionRentSchedule(
       WEEKLY_SCHEDULE,
       "2026-01-22"
     );
 
-    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2026-01-15", "2026-01-22"]);
-    expect(upcomingMonths.map((item) => item.month)).toEqual([]);
-    expect(paidMonths.map((item) => item.month)).toEqual(["2026-01-29"]);
+    expect(dueUnpaidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual([
+      "2026-01-15",
+      "2026-01-22",
+    ]);
+    expect(upcomingMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual([]);
+    expect(paidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2026-01-29"]);
     expect(unpaidSummary).toEqual({ count: 2, totalRemaining: 1400 });
   });
 
@@ -172,14 +190,14 @@ describe("partitionRentSchedule weekly", () => {
       "2026-01-18"
     );
 
-    expect(dueUnpaidMonths.map((item) => item.month)).toEqual(["2026-01-15"]);
-    expect(upcomingMonths.map((item) => item.month)).toEqual(["2026-01-22"]);
+    expect(dueUnpaidMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2026-01-15"]);
+    expect(upcomingMonths.map((item) => getRentSchedulePeriodKey(item))).toEqual(["2026-01-22"]);
   });
 });
 
-describe("formatRentSchedulePeriodLabel", () => {
+describe("formatRentPeriodLabel", () => {
   test("formats weekly period keys as week-of labels", () => {
-    expect(formatRentSchedulePeriodLabel("2026-01-15")).toMatch(/^Week of /);
+    expect(formatRentPeriodLabel("2026-01-15")).toMatch(/^Week of /);
   });
 });
 
@@ -187,23 +205,23 @@ describe("buildLeaseRecordRentPrefill", () => {
   const lease = {
     guestName: "Tenant",
     id: "lease-1",
-    monthlyRent: 1000,
+    rentAmount: 1000,
     unitId: "unit-1",
   };
 
   test("prefills prorated expectedRent from the rent schedule", () => {
     const prefill = buildLeaseRecordRentPrefill(lease, {
-      month: "2024-06",
+      periodKey: "2024-06",
       rentSchedule: MID_MONTH_START_SCHEDULE,
     });
 
     expect(prefill.amount).toBe("500");
     expect(prefill.longStayId).toBe("lease-1");
-    expect(prefill.rentPeriodMonth).toBe("2024-06");
+    expect(prefill.rentPeriodKey).toBe("2024-06");
     expect(prefill.transactionDate).toBe(getTodayLocalIsoDate());
   });
 
-  test("falls back to lease monthlyRent when no month is provided", () => {
+  test("falls back to lease rentAmount when no period is provided", () => {
     const prefill = buildLeaseRecordRentPrefill(lease);
 
     expect(prefill.amount).toBe("1000");
@@ -212,51 +230,51 @@ describe("buildLeaseRecordRentPrefill", () => {
   test("uses explicit expectedAmount when rent schedule is not provided", () => {
     const prefill = buildLeaseRecordRentPrefill(lease, {
       expectedAmount: 483.87,
-      month: "2024-07",
+      periodKey: "2024-07",
     });
 
     expect(prefill.amount).toBe("483.87");
   });
 
-  test("prefills remainingRent for partially paid schedule months", () => {
+  test("prefills remainingRent for partially paid schedule periods", () => {
     const schedule = [
       buildRentMonth({
         expectedRent: 1500,
-        month: "2024-07",
         paidRent: 500,
+        periodKey: "2024-07",
         remainingRent: 1000,
       }),
     ];
     const prefill = buildLeaseRecordRentPrefill(lease, {
-      month: "2024-07",
+      periodKey: "2024-07",
       rentSchedule: schedule,
     });
 
     expect(prefill.amount).toBe("1000");
-    expect(prefill.rentPeriodMonth).toBe("2024-07");
+    expect(prefill.rentPeriodKey).toBe("2024-07");
   });
 
-  test("prefills weekly rentPeriodMonth for a due week", () => {
-    const schedule = [buildRentMonth({ expectedRent: 700, month: "2026-01-15" })];
+  test("prefills weekly rentPeriodKey for a due week", () => {
+    const schedule = [buildRentMonth({ expectedRent: 700, periodKey: "2026-01-15" })];
     const prefill = buildLeaseRecordRentPrefill(lease, {
-      month: "2026-01-15",
+      periodKey: "2026-01-15",
       rentSchedule: schedule,
     });
 
     expect(prefill.amount).toBe("700");
-    expect(prefill.rentPeriodMonth).toBe("2026-01-15");
+    expect(prefill.rentPeriodKey).toBe("2026-01-15");
   });
 });
 
-describe("getRemainingRentForScheduleMonth", () => {
-  test("returns remainingRent for a schedule month", () => {
+describe("getRemainingRentForSchedulePeriod", () => {
+  test("returns remainingRent for a schedule period", () => {
     expect(
-      getRemainingRentForScheduleMonth(
+      getRemainingRentForSchedulePeriod(
         [
           buildRentMonth({
             expectedRent: 1500,
-            month: "2024-07",
             paidRent: 500,
+            periodKey: "2024-07",
             remainingRent: 1000,
           }),
         ],
@@ -310,10 +328,10 @@ describe("getVisibleLeaseRentPeriods", () => {
       getVisibleLeaseRentPeriods(
         {
           leaseStartDate: "2026-07-21",
-          monthlyRent: 1000,
+          rentAmount: 1000,
           rentBillingCadence: RentBillingCadence.WEEKLY,
         },
-        [{ effectiveFromMonth: "2026-07-21", monthlyRent: 1000 }]
+        [{ effectiveFromPeriod: "2026-07-21", rentAmount: 1000 }]
       )
     ).toEqual([]);
   });
@@ -323,36 +341,34 @@ describe("getVisibleLeaseRentPeriods", () => {
       getVisibleLeaseRentPeriods(
         {
           leaseStartDate: "2026-07-21",
-          monthlyRent: 1000,
+          rentAmount: 1000,
           rentBillingCadence: RentBillingCadence.WEEKLY,
         },
         [
-          { effectiveFromMonth: "2026-07-21", monthlyRent: 1000 },
-          { effectiveFromMonth: "2026-08-04", monthlyRent: 1100 },
+          { effectiveFromPeriod: "2026-07-21", rentAmount: 1000 },
+          { effectiveFromPeriod: "2026-08-04", rentAmount: 1100 },
         ]
       )
     ).toHaveLength(2);
   });
 
-  test("shows monthly rent history when effective month differs from start month", () => {
+  test("shows monthly rent history when effective period differs from start month", () => {
     expect(
       getVisibleLeaseRentPeriods(
         {
           leaseStartDate: "2026-01-15",
-          monthlyRent: 1500,
+          rentAmount: 1500,
           rentBillingCadence: RentBillingCadence.MONTHLY,
         },
-        [{ effectiveFromMonth: "2026-07", monthlyRent: 1700 }]
+        [{ effectiveFromPeriod: "2026-07", rentAmount: 1700 }]
       )
     ).toHaveLength(1);
   });
 });
 
 describe("getLeaseExtendTermsDescription", () => {
-  test("describes weekly extend constraints", () => {
+  test("describes weekly extend with optional rent change", () => {
     expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weeks");
-    expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain(
-      "cannot be changed"
-    );
+    expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weekly rent");
   });
 });

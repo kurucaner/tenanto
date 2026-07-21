@@ -5,6 +5,7 @@ import {
   findWeeklyPeriodStartContainingDate,
   formatProratedDaysLabel,
   formatRentPeriodLabel,
+  getRentSchedulePeriodKey,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
   isWeeklyRentBillingCadence,
@@ -73,13 +74,18 @@ function resolveFinalRentSchedulePeriod(
   lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentBillingCadence">
 ): IPropertyLongStayRentMonth | undefined {
   if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
-    const schedulePeriods = rentSchedule.map((item) => item.month);
+    const schedulePeriods = rentSchedule.map((item) => getRentSchedulePeriodKey(item));
     const periodKey =
       findWeeklyPeriodStartContainingDate(actualEndDate, schedulePeriods) ?? schedulePeriods.at(-1);
-    return rentSchedule.find((item) => item.month === periodKey);
+    if (!periodKey) {
+      return undefined;
+    }
+    return rentSchedule.find((item) => getRentSchedulePeriodKey(item) === periodKey);
   }
 
-  return rentSchedule.find((item) => item.month === transactionDateToMonth(actualEndDate));
+  return rentSchedule.find(
+    (item) => getRentSchedulePeriodKey(item) === transactionDateToMonth(actualEndDate)
+  );
 }
 
 function buildHoldoverContent(
@@ -106,7 +112,7 @@ function buildFinalPeriodContent(
   section: string;
 } {
   const periodHeading = getFinalRentPeriodHeading(rentBillingCadence);
-  const periodLabel = formatRentPeriodLabel(finalPeriod.month);
+  const periodLabel = formatRentPeriodLabel(getRentSchedulePeriodKey(finalPeriod));
   const amount = moneyFormatter.format(finalPeriod.expectedRent);
   const lines = [`${periodHeading}: ${periodLabel}`, `Amount: ${amount}`];
 

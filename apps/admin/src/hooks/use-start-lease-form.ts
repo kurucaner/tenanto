@@ -1,13 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { type BaseSyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import { getStartLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-display";
 import { buildLeaseTermApiPayload, resolveLeaseTermEndPreview } from "@/lib/lease-term-end-utils";
 import { scrollFormToFirstError } from "@/lib/scroll-form-to-first-error";
 import {
@@ -18,17 +17,23 @@ import {
 import { resolveStartLeaseInitialState } from "@/lib/start-lease-form-init";
 import {
   applyStartLeaseStepValidationErrors,
+  DEFAULT_START_LEASE_TERM_WEEKS,
   startLeaseSchema,
   type TStartLeaseFormValues,
   validateStartLeaseStep,
 } from "@/lib/start-lease-form-schema";
 import { resolveStartLeaseLockedUnit } from "@/lib/start-lease-locked-unit";
 import {
+  getStartLeaseFirstPeriodRentPreview,
+  normalizeStartLeaseRentBillingCadence,
+} from "@/lib/start-lease-rent-billing";
+import {
   getNextStartLeaseStep,
   getPreviousStartLeaseStep,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
 import {
+  deriveTermWeeksFromDates,
   type IPropertyUnit,
   normalizeToE164,
   RentBillingCadence,
@@ -101,10 +106,10 @@ export function useStartLeaseForm({
   });
   const {
     clearErrors,
+    control,
     formState: { errors, isSubmitting },
     getValues,
     handleSubmit,
-    watch,
   } = form;
 
   const _setCurrentStep = useCallback(
@@ -143,12 +148,56 @@ export function useStartLeaseForm({
     }
   }, [form, lockedUnitId]);
 
-  const guestName = watch("guestName");
-  const selectedUnitId = watch("unitId");
-  const termFields = watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
-  const monthlyRent = watch("monthlyRent");
-  const rentBillingCadence = watch("rentBillingCadence");
-  const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+  const [
+    guestName,
+    selectedUnitId,
+    rentAmount,
+    rentBillingCadence,
+    leaseEndDateValue,
+    leaseStartDate,
+    termMode,
+    termMonths,
+    termWeeks,
+  ] = useWatch({
+    control,
+    name: [
+      "guestName",
+      "unitId",
+      "rentAmount",
+      "rentBillingCadence",
+      "leaseEndDate",
+      "leaseStartDate",
+      "termMode",
+      "termMonths",
+      "termWeeks",
+    ],
+  });
+
+  useEffect(() => {
+    const cadence = normalizeStartLeaseRentBillingCadence(rentBillingCadence);
+    const mode = getValues("termMode");
+    if (cadence === RentBillingCadence.WEEKLY && mode === "months") {
+      const preview = resolveLeaseTermEndPreview({
+        leaseEndDate: getValues("leaseEndDate"),
+        leaseStartDate: getValues("leaseStartDate"),
+        termMode: "months",
+        termMonths: getValues("termMonths"),
+        termWeeks: getValues("termWeeks"),
+      });
+      const start = getValues("leaseStartDate");
+      if (preview && start) {
+        form.setValue("termWeeks", String(deriveTermWeeksFromDates(start, preview)));
+      } else {
+        form.setValue("termWeeks", DEFAULT_START_LEASE_TERM_WEEKS);
+      }
+      form.setValue("termMode", "weeks");
+      return;
+    }
+
+    if (cadence === RentBillingCadence.MONTHLY && mode === "weeks") {
+      form.setValue("termMode", "months");
+    }
+  }, [form, getValues, rentBillingCadence]);
 
   const leaseEndDate = useMemo(() => {
     return resolveLeaseTermEndPreview({
@@ -156,11 +205,12 @@ export function useStartLeaseForm({
       leaseStartDate,
       termMode,
       termMonths,
+      termWeeks,
     });
-  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths]);
+  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths, termWeeks]);
 
   const firstMonthRentPreview = useMemo(() => {
-    const parsedRentAmount = Number(monthlyRent);
+    const parsedRentAmount = Number(rentAmount);
     if (
       !leaseEndDate ||
       leaseStartDate === "" ||
@@ -174,12 +224,9 @@ export function useStartLeaseForm({
       leaseEndDate,
       leaseStartDate,
       rentAmount: parsedRentAmount,
-      rentBillingCadence:
-        rentBillingCadence === RentBillingCadence.WEEKLY
-          ? RentBillingCadence.WEEKLY
-          : RentBillingCadence.MONTHLY,
+      rentBillingCadence: normalizeStartLeaseRentBillingCadence(rentBillingCadence),
     });
-  }, [leaseEndDate, leaseStartDate, monthlyRent, rentBillingCadence]);
+  }, [leaseEndDate, leaseStartDate, rentAmount, rentBillingCadence]);
 
   const availableUnits = useMemo(
     () =>
@@ -197,11 +244,8 @@ export function useStartLeaseForm({
       longStaysApi.create(propertyId, {
         guestName: values.guestName,
         ...buildLeaseTermApiPayload(values),
-        monthlyRent: Number(values.monthlyRent),
-        rentBillingCadence:
-          values.rentBillingCadence === RentBillingCadence.WEEKLY
-            ? RentBillingCadence.WEEKLY
-            : RentBillingCadence.MONTHLY,
+        rentAmount: Number(values.rentAmount),
+        rentBillingCadence: normalizeStartLeaseRentBillingCadence(values.rentBillingCadence),
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
         unitId: values.unitId,
@@ -232,11 +276,13 @@ export function useStartLeaseForm({
     [mutation]
   );
 
-  const onInvalidSubmit = useCallback(() => {
-    scrollFormToFirstError(formRef.current, currentStep);
-  }, [currentStep]);
-
-  const onSubmit = handleSubmit(onValidSubmit, onInvalidSubmit);
+  const onSubmit = useCallback(
+    (event?: BaseSyntheticEvent) =>
+      handleSubmit(onValidSubmit, () => {
+        scrollFormToFirstError(formRef, currentStep);
+      })(event),
+    [currentStep, handleSubmit, onValidSubmit]
+  );
 
   const goToStep = useCallback(
     (step: TStartLeaseStep) => {
@@ -258,7 +304,7 @@ export function useStartLeaseForm({
       const result = validateStartLeaseStep(currentStep, values);
       if (!result.success) {
         applyStartLeaseStepValidationErrors(form, currentStep, result.error);
-        scrollFormToFirstError(formRef.current, currentStep);
+        scrollFormToFirstError(formRef, currentStep);
         return;
       }
 
@@ -298,11 +344,11 @@ export function useStartLeaseForm({
     leaseStartDate,
     lockedUnit,
     lockedUnitError,
-    monthlyRent,
     mutationPending: mutation.isPending,
     onBack,
     onContinue,
     onSubmit,
+    rentAmount,
     selectedUnitId,
   };
 }
