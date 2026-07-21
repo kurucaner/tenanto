@@ -686,10 +686,10 @@ Parent goal for Phase 12: change weekly rent during extend (and future amendment
 
 **Tasks**
 
-- [ ] Re-enable rent-change UI for weekly (remove `{!isWeekly ? …}` gate on rent fields).
-- [ ] Week-based effective-from picker (`formatRentPeriodLabel`; options from shared week helper).
-- [ ] Cadence-aware labels (“Weekly rent”, week “Rent effective from”).
-- [ ] Update Terms tab extend blurb (`getLeaseExtendTermsDescription`); dialog description no longer says rent cannot change on extend.
+- [x] Re-enable rent-change UI for weekly (remove `{!isWeekly ? …}` gate on rent fields).
+- [x] Week-based effective-from picker (`formatRentPeriodLabel`; options from shared week helper).
+- [x] Cadence-aware labels (“Weekly rent”, week “Rent effective from”).
+- [x] Update Terms tab extend blurb (`getLeaseExtendTermsDescription`); dialog description no longer says rent cannot change on extend.
 
 **Exit criteria:** Extend weekly lease with new rent from a chosen week in admin UI; schedule on lease detail reflects new rate from that week forward.
 

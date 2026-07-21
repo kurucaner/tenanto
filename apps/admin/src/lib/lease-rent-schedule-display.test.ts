@@ -352,10 +352,8 @@ describe("getVisibleLeaseRentPeriods", () => {
 });
 
 describe("getLeaseExtendTermsDescription", () => {
-  test("describes weekly extend constraints", () => {
+  test("describes weekly extend with optional rent change", () => {
     expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weeks");
-    expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain(
-      "cannot be changed"
-    );
+    expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weekly rent");
   });
 });

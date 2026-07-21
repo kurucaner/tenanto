@@ -51,10 +51,26 @@ export function getLeaseTermDisplayLabel(
 
 export function getLeaseExtendTermsDescription(cadence: TRentBillingCadence): string {
   if (cadence === RentBillingCadence.WEEKLY) {
-    return "Extend the lease term by adding weeks. Rent amount cannot be changed during extension.";
+    return "Extend the lease term by adding weeks. You can optionally set a new weekly rent effective from a week in the extension period.";
   }
 
   return "Extend the lease term by adding months. You can optionally set a new monthly rent effective from a month in the extension period.";
+}
+
+export function getExtendLeaseDialogDescription(cadence: TRentBillingCadence): string {
+  const rentCadenceLabel = cadence === RentBillingCadence.WEEKLY ? "weekly" : "monthly";
+
+  return `Extend this lease from the current contract end. You can optionally set a new ${rentCadenceLabel} rent for the extension period.`;
+}
+
+export function getExtendLeaseChangeRentLabel(cadence: TRentBillingCadence): string {
+  return cadence === RentBillingCadence.WEEKLY
+    ? "Change weekly rent for extension"
+    : "Change monthly rent for extension";
+}
+
+export function getExtendLeaseNewRentLabel(cadence: TRentBillingCadence): string {
+  return cadence === RentBillingCadence.WEEKLY ? "New weekly rent" : "New monthly rent";
 }
 
 export function getLeaseEditTermsDescription(cadence: TRentBillingCadence): string {
