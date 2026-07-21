@@ -1,13 +1,18 @@
 import { describe, expect, test } from "bun:test";
 
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyLongStayRentMonth } from "@/packages/shared";
+import { type IPropertyLongStayRentMonth, RentBillingCadence } from "@/packages/shared";
 
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
 import {
   formatRentSchedulePeriodLabel,
   getExpectedRentForScheduleMonth,
+  getLeaseBillingCadenceLabel,
+  getLeaseExtendTermsDescription,
+  getLeaseRentAmountSuffix,
+  getLeaseTermDisplayLabel,
   getRemainingRentForScheduleMonth,
+  getVisibleLeaseRentPeriods,
   isRentMonthPartiallyPaid,
   partitionRentSchedule,
 } from "./lease-rent-schedule-display";
@@ -258,5 +263,96 @@ describe("getRemainingRentForScheduleMonth", () => {
         "2024-07"
       )
     ).toBe(1000);
+  });
+});
+
+describe("getLeaseBillingCadenceLabel", () => {
+  test("returns cadence labels", () => {
+    expect(getLeaseBillingCadenceLabel(RentBillingCadence.WEEKLY)).toBe("Weekly");
+    expect(getLeaseBillingCadenceLabel(RentBillingCadence.MONTHLY)).toBe("Monthly");
+  });
+});
+
+describe("getLeaseRentAmountSuffix", () => {
+  test("returns cadence-specific suffixes", () => {
+    expect(getLeaseRentAmountSuffix(RentBillingCadence.WEEKLY)).toBe("/wk");
+    expect(getLeaseRentAmountSuffix(RentBillingCadence.MONTHLY)).toBe("/mo");
+  });
+});
+
+describe("getLeaseTermDisplayLabel", () => {
+  test("shows week count for weekly leases", () => {
+    expect(
+      getLeaseTermDisplayLabel({
+        leaseEndDate: "2026-01-28",
+        leaseStartDate: "2026-01-15",
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+        termMonths: 1,
+      })
+    ).toBe("2 weeks");
+  });
+
+  test("shows month count for monthly leases", () => {
+    expect(
+      getLeaseTermDisplayLabel({
+        leaseEndDate: "2026-12-31",
+        leaseStartDate: "2026-01-01",
+        rentBillingCadence: RentBillingCadence.MONTHLY,
+        termMonths: 12,
+      })
+    ).toBe("12 months");
+  });
+});
+
+describe("getVisibleLeaseRentPeriods", () => {
+  test("hides weekly bootstrap row matching lease start and base rent", () => {
+    expect(
+      getVisibleLeaseRentPeriods(
+        {
+          leaseStartDate: "2026-07-21",
+          monthlyRent: 1000,
+          rentBillingCadence: RentBillingCadence.WEEKLY,
+        },
+        [{ effectiveFromMonth: "2026-07-21", monthlyRent: 1000 }]
+      )
+    ).toEqual([]);
+  });
+
+  test("shows weekly rent changes", () => {
+    expect(
+      getVisibleLeaseRentPeriods(
+        {
+          leaseStartDate: "2026-07-21",
+          monthlyRent: 1000,
+          rentBillingCadence: RentBillingCadence.WEEKLY,
+        },
+        [
+          { effectiveFromMonth: "2026-07-21", monthlyRent: 1000 },
+          { effectiveFromMonth: "2026-08-04", monthlyRent: 1100 },
+        ]
+      )
+    ).toHaveLength(2);
+  });
+
+  test("shows monthly rent history when effective month differs from start month", () => {
+    expect(
+      getVisibleLeaseRentPeriods(
+        {
+          leaseStartDate: "2026-01-15",
+          monthlyRent: 1500,
+          rentBillingCadence: RentBillingCadence.MONTHLY,
+        },
+        [{ effectiveFromMonth: "2026-07", monthlyRent: 1700 }]
+      )
+    ).toHaveLength(1);
+  });
+});
+
+describe("getLeaseExtendTermsDescription", () => {
+  test("describes weekly extend constraints", () => {
+    expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weeks");
+    expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain(
+      "cannot be changed"
+    );
   });
 });

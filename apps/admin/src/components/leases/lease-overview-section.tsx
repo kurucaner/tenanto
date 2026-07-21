@@ -2,6 +2,10 @@ import { memo } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { getActiveLeaseHoldoverNotice } from "@/lib/lease-proration-display";
+import {
+  getLeaseBillingCadenceLabel,
+  getLeaseTermDisplayLabel,
+} from "@/lib/lease-rent-schedule-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   type IPropertyLongStay,
@@ -40,8 +44,12 @@ export const LeaseOverviewSection = memo(({ lease }: LeaseOverviewSectionProps) 
             </dd>
           </div>
           <div>
+            <dt className="text-muted-foreground">Rent billing</dt>
+            <dd className="font-medium">{getLeaseBillingCadenceLabel(lease.rentBillingCadence)}</dd>
+          </div>
+          <div>
             <dt className="text-muted-foreground">Term</dt>
-            <dd className="font-medium">{lease.termMonths} months</dd>
+            <dd className="font-medium">{getLeaseTermDisplayLabel(lease)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Lease start</dt>

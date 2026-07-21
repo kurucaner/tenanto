@@ -162,6 +162,15 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 | **6a** | End lease (weekly proration)          | 4           | Yes (admin)   |
 | **6b** | Extend lease & edit-terms guards      | 6           | Yes (admin)   |
 | **7**  | Release notes                         | 3           | Yes           |
+| **8**  | Admin detail UI polish (v2 early)     | 4           | Yes (admin)   |
+| **9**  | Rent-period history signals (v2 early)| 5           | No            |
+| **10** | Weekly create bootstrap row (v2 early)| 3           | No            |
+| **11** | Enable edit terms for weekly (v2 early)| 8          | Yes (admin)   |
+| **12** | Weekly mid-lease rent changes (v2 later)| 8+         | Yes (admin)   |
+| **13** | Shared period naming (v2 later)       | many        | No            |
+| **14** | API + DB rename migration (v2 later)  | many        | Breaking      |
+| **15** | Cadence conversion (v2 later)         | TBD         | Optional      |
+| **16** | Portfolio / reports audit (v2 later)  | TBD         | Yes           |
 
 ---
 
@@ -434,6 +443,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Safe boundaries for operations not ready in v1.
 
+**Status:** ✅ Complete
+
 **Files (6)**
 
 | #   | File                                                           |
@@ -471,6 +482,203 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 ---
 
+## v2 roadmap (post–Phase 7)
+
+Work after the initial weekly-billing launch. Split into **v2 early** (UI polish + correctness, no breaking API) and **v2 later** (rent changes, renames, migrations).
+
+### v2 non-goals (until explicitly scheduled)
+
+- Cadence conversion (monthly ↔ weekly after create) — high edge-case risk; product decision required.
+- ISO week numbers (`2026-W29`) — keep week-start ISO dates aligned to lease start weekday.
+- Breaking API/DB renames before operators are stable on v1 weekly flows.
+
+---
+
+### Phase 8 — Admin detail UI polish
+
+**Goal:** Weekly leases read correctly on lease detail; no API contract changes.
+
+**Status:** ✅ Complete
+
+**Files (4)**
+
+| #   | File                                                            |
+| --- | --------------------------------------------------------------- |
+| 1   | `apps/admin/src/components/leases/lease-terms-section.tsx`      |
+| 2   | `apps/admin/src/components/leases/lease-overview-section.tsx`   |
+| 3   | `apps/admin/src/lib/lease-rent-schedule-display.ts` _(if needed)_ |
+| 4   | `apps/admin/src/components/leases/start-lease-form.tsx` _(optional — neutral input id)_ |
+
+**Tasks**
+
+- [x] Terms tab rent history: use `formatRentPeriodLabel` instead of `formatLeaseMonthLabel` for period keys.
+- [x] Terms tab rent amounts: use `getLeaseRentAmountSuffix(lease.rentBillingCadence)` (`/wk` vs `/mo`).
+- [x] Terms tab extend blurb: cadence-aware copy (weeks + no rent change for weekly; match extend dialog).
+- [x] Overview tab: show billing cadence; clarify term display for weekly leases if needed.
+- [x] Optionally hide rent history when a single bootstrap row equals base rate on a pristine weekly lease.
+
+**Exit criteria:** Weekly lease Terms tab shows “Week of …” and `$X/wk`; monthly lease detail unchanged.
+
+---
+
+### Phase 9 — Rent-period history signals (weekly-correct)
+
+**Goal:** Pristine weekly leases are not treated as having rent period history.
+
+**Files (5)**
+
+| #   | File                                                         |
+| --- | ------------------------------------------------------------ |
+| 1   | `apps/server/src/db/property-long-stays.ts`                  |
+| 2   | `packages/shared/src/lease-terms-edit-utils.ts`              |
+| 3   | `packages/shared/src/lease-terms-edit-utils.test.ts`         |
+| 4   | `apps/server/src/db/property-long-stays-terms-edit.test.ts`  |
+| 5   | `packages/shared/src/property-long-stay-types.ts` _(JSDoc on `IPropertyLongStayRentPeriod` if added)_ |
+
+**Tasks**
+
+- [ ] Fix `getTermsEditSignals` SQL: for weekly cadence, compare `effective_from_month` to lease start **date** (`YYYY-MM-DD`), not `YYYY-MM`.
+- [ ] Fix `hasRentPeriodHistory()` in shared with the same cadence-aware comparison.
+- [ ] Document on `IPropertyLongStayRentPeriod`: `effectiveFromMonth` holds `YYYY-MM` or `YYYY-MM-DD` period keys; `monthlyRent` is recurring amount for the cadence.
+- [ ] Regression tests for weekly bootstrap row + monthly extend-with-rent.
+
+**Exit criteria:** New weekly lease with one bootstrap period → `hasRentPeriodHistory: false`; monthly extend-with-rent still `true`. Required before Phase 11.
+
+---
+
+### Phase 10 — Weekly create bootstrap row (optional cleanup)
+
+**Goal:** Avoid confusing `rentPeriods: [{ effectiveFromMonth: "<lease-start>", … }]` on brand-new weekly leases.
+
+**Files (3)**
+
+| #   | File                                                                |
+| --- | ------------------------------------------------------------------- |
+| 1   | `apps/server/src/db/property-long-stays.ts`                         |
+| 2   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
+| 3   | `apps/server/src/db/property-long-stays-rent-schedule.test.ts`      |
+
+**Tasks**
+
+- [ ] Remove or skip weekly bootstrap insert on create (schedule already falls back to `lease.monthlyRent` when `rentPeriods` is empty).
+- [ ] Only insert `rent_periods` rows when rent actually changes (extend/amendment flows).
+
+**Exit criteria:** New weekly lease returns `rentPeriods: []`; schedule, record rent, and tenant pay unchanged.
+
+---
+
+### Phase 11 — Enable edit terms for weekly
+
+**Goal:** Allow editing start/term/rent on weekly leases before any ledger activity (same gate as monthly).
+
+**Files (8)**
+
+| #   | File                                                           |
+| --- | -------------------------------------------------------------- |
+| 1   | `packages/shared/src/lease-terms-edit-utils.ts`              |
+| 2   | `packages/shared/src/property-long-stay-types.ts`              |
+| 3   | `apps/server/src/db/property-long-stays.ts`                    |
+| 4   | `apps/admin/src/components/leases/edit-lease-terms-dialog.tsx` |
+| 5   | `apps/admin/src/components/leases/lease-terms-section.tsx`   |
+| 6   | `apps/admin/src/lib/lease-proration-display.ts`                |
+| 7   | `packages/shared/src/lease-terms-edit-utils.test.ts`           |
+| 8   | `apps/server/src/db/property-long-stays-update-terms.test.ts`  |
+
+**Tasks**
+
+- [ ] Remove `WEEKLY_CADENCE` block from `deriveLeaseTermsEditability` (keep block after income/payments/history).
+- [ ] Cadence-aware `validateEditLeaseTerms` and first-period preview (first **week**, not first month).
+- [ ] Edit dialog labels: “Weekly rent” when cadence is weekly.
+- [ ] `updateTerms` writes week-start rent period keys when needed.
+
+**Exit criteria:** Pristine weekly lease can edit terms; after recording rent or extending, edit blocked with existing reasons (not `WEEKLY_CADENCE`). Depends on Phase 9.
+
+---
+
+## v2 later (breaking / migration-heavy)
+
+### Phase 12 — Weekly mid-lease rent changes
+
+**Goal:** Change weekly rent during extend (and future amendment flow).
+
+**Files (8+)**
+
+| #   | File                                                           |
+| --- | -------------------------------------------------------------- |
+| 1   | `packages/shared/src/lease-rent-utils.ts`                      |
+| 2   | `apps/server/src/db/property-long-stays.ts`                    |
+| 3   | `apps/admin/src/components/leases/extend-lease-dialog.tsx`     |
+| 4   | `packages/shared/src/lease-rent-utils.test.ts`                 |
+| 5   | `apps/server/src/db/property-long-stays-extend.test.ts`        |
+| 6   | `apps/admin/src/components/leases/lease-terms-section.tsx`     |
+| 7   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts` |
+| 8   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
+
+**Tasks**
+
+- [ ] Allow rent change on weekly extend; insert `rent_periods` with week-start keys (`YYYY-MM-DD`).
+- [ ] Effective-from picker: weeks in extension window, not calendar months.
+- [ ] Cadence-aware rent lookup in schedule builder (week keys, not `transactionDateToMonth` only).
+- [ ] Re-enable extend dialog rent-change UI for weekly with week-based effective period.
+
+**Exit criteria:** Extend weekly lease with new rent from a chosen week; schedule reflects new rate from that week forward.
+
+---
+
+### Phase 13 — Shared “period” naming (code-only)
+
+**Goal:** Reduce confusion without breaking API clients yet.
+
+**Tasks**
+
+- [ ] Add type aliases / parallel fields: `effectiveFromPeriod`, `periodKey`, `rentAmount`.
+- [ ] JSDoc deprecation on `effectiveFromMonth`, `monthlyRent`, `IPropertyLongStayRentMonth.month`.
+- [ ] Internal helpers and new code use neutral names; public API still accepts legacy field names.
+
+**Exit criteria:** New code reads clearly; no client breakage; prelude to Phase 14.
+
+---
+
+### Phase 14 — API + DB rename migration
+
+**Goal:** Align field names with meaning (breaking major version).
+
+**Tasks**
+
+- [ ] Migration: e.g. `monthly_rent` → `rent_amount`, `effective_from_month` → `effective_from_period`, `rent_period_month` → `rent_period_key`.
+- [ ] Update `packages/shared`, mappers, routes, admin, tenant.
+- [ ] Coexistence shim or versioned API if external consumers exist.
+
+**Exit criteria:** All apps use new names; legacy names removed or shimmed for one release.
+
+---
+
+### Phase 15 — Cadence conversion (optional)
+
+**Goal:** Convert an existing lease between monthly and weekly billing (currently immutable after create).
+
+**Tasks**
+
+- [ ] Product sign-off on conversion rules (open balances, partial periods, paid history).
+- [ ] New route + admin UI; rebuild schedule from conversion date.
+
+**Exit criteria:** Conversion does not corrupt paid history or allocations. **Defer unless operators request it.**
+
+---
+
+### Phase 16 — Portfolio / reports / email audit
+
+**Goal:** No monthly-only assumptions outside lease detail flows.
+
+**Tasks**
+
+- [ ] Audit property reports, exports, and transactional emails for `/mo`, “calendar month”, and month-only period logic.
+- [ ] Fix mixed monthly + weekly portfolio displays.
+
+**Exit criteria:** Operators see correct cadence everywhere they manage rent.
+
+---
+
 ## What not to do
 
 - Do **not** enable `WEEKLY_RENT_BILLING_ENABLED` before Phase 2b — you'd create leases the server can't schedule.
@@ -484,6 +692,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 ## Safest sequencing summary
 
+### v1 (initial release)
+
 1. **Phase 0** — cadence on lease + API; server blocks weekly create.
 2. **Phases 1a–1b** — pure shared math and period helpers (testable in isolation).
 3. **Phases 2a–2b** — DB period keys + server schedule.
@@ -491,9 +701,24 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 5. **Phase 4** — admin operate (record rent, detail, list).
 6. **Phases 5a–5b** — tenant pay.
 7. **Phases 6a–6b** — end/extend/guards.
-8. **Phase 7** — release notes.
+8. **Phase 7** — release notes + QA.
 
-Each phase is independently shippable behind the server gate until Phase 3.
+Each v1 phase is independently shippable behind the server gate until Phase 3.
+
+### v2 early (post-launch)
+
+9. **Phase 8** — admin detail UI polish (biggest user-visible win).
+10. **Phase 9** — rent-period history signals (unblocks Phase 11).
+11. **Phase 10** — optional bootstrap row cleanup.
+12. **Phase 11** — enable edit terms for weekly.
+
+### v2 later
+
+13. **Phase 12** — weekly mid-lease rent changes (extend + history).
+14. **Phase 13** — shared period naming (non-breaking).
+15. **Phase 14** — API + DB rename migration (breaking).
+16. **Phase 15** — cadence conversion (optional, product decision).
+17. **Phase 16** — portfolio / reports / email audit.
 
 ---
 
