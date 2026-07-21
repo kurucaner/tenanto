@@ -447,9 +447,9 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Add edit block reason for weekly cadence (e.g. `WEEKLY_CADENCE`).
-- [ ] Extend: append weeks only; block mid-lease rent change for weekly.
-- [ ] Edit terms dialog disabled + message for weekly leases.
+- [x] Add edit block reason for weekly cadence (e.g. `WEEKLY_CADENCE`).
+- [x] Extend: append weeks only; block mid-lease rent change for weekly.
+- [x] Edit terms dialog disabled + message for weekly leases.
 
 **Exit criteria:** Weekly leases can extend end date; edit terms blocked with clear reason; monthly extend/edit unchanged.
 

@@ -246,6 +246,7 @@ export {
   getFirstExtensionMonth,
   getLeaseRentForMonth,
   MAX_ADDITIONAL_TERM_MONTHS,
+  MAX_ADDITIONAL_TERM_WEEKS,
   MAX_TOTAL_LEASE_TERM_MONTHS,
   validateExtendLease,
 } from "./lease-rent-utils";

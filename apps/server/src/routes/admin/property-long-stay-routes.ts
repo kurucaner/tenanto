@@ -12,6 +12,7 @@ import {
   type IExtendPropertyLongStayBody,
   type IUpdatePropertyLongStayBody,
   MAX_ADDITIONAL_TERM_MONTHS,
+  MAX_ADDITIONAL_TERM_WEEKS,
   parseRentBillingCadence,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
@@ -214,6 +215,12 @@ function parsePositiveMoney(raw: unknown): number | null {
   return raw;
 }
 
+function parseTermWeeks(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isInteger(raw)) return null;
+  if (raw < 1 || raw > MAX_ADDITIONAL_TERM_WEEKS) return null;
+  return raw;
+}
+
 function parseExtendLongStayBody(
   raw: unknown
 ): { body: IExtendPropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -231,10 +238,15 @@ function parseExtendLongStayBody(
     "additionalTermMonths" in r &&
     r["additionalTermMonths"] !== undefined &&
     r["additionalTermMonths"] !== null;
+  const hasAdditionalWeeks =
+    "additionalWeeks" in r && r["additionalWeeks"] !== undefined && r["additionalWeeks"] !== null;
+  const extensionModeCount = [hasCustomEnd, hasAdditionalMonths, hasAdditionalWeeks].filter(
+    Boolean
+  ).length;
 
-  if (hasCustomEnd === hasAdditionalMonths) {
+  if (extensionModeCount !== 1) {
     return {
-      error: "Provide additionalTermMonths or newLeaseEndDate, but not both",
+      error: "Provide exactly one of additionalTermMonths, additionalWeeks, or newLeaseEndDate",
       ok: false,
     };
   }
@@ -247,6 +259,15 @@ function parseExtendLongStayBody(
       return { error: "newLeaseEndDate must be a YYYY-MM-DD date", ok: false };
     }
     body.newLeaseEndDate = newLeaseEndDate;
+  } else if (hasAdditionalWeeks) {
+    const additionalWeeks = parseTermWeeks(r["additionalWeeks"]);
+    if (additionalWeeks === null) {
+      return {
+        error: `additionalWeeks must be a whole number between 1 and ${MAX_ADDITIONAL_TERM_WEEKS}`,
+        ok: false,
+      };
+    }
+    body.additionalWeeks = additionalWeeks;
   } else {
     const additionalTermMonths = parseTermMonths(r["additionalTermMonths"]);
     if (additionalTermMonths === null) {

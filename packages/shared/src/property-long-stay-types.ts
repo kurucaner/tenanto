@@ -104,6 +104,7 @@ export interface IPropertyLongStayRentPeriod {
 
 export interface IExtendPropertyLongStayBody {
   additionalTermMonths?: number;
+  additionalWeeks?: number;
   newLeaseEndDate?: string;
   newMonthlyRent?: number;
   rentEffectiveFromMonth?: string;
@@ -125,6 +126,7 @@ export const LeaseTermsEditBlockReason = {
   HAS_RENT_PERIOD_HISTORY: "has_rent_period_history",
   HAS_SUCCEEDED_PAYMENTS: "has_succeeded_payments",
   LEASE_ENDED: "lease_ended",
+  WEEKLY_CADENCE: "weekly_cadence",
 } as const;
 
 export type TLeaseTermsEditBlockReason =

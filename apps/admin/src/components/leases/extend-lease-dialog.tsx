@@ -31,13 +31,15 @@ import {
   getFirstExtensionMonth,
   type IExtendPropertyLongStayBody,
   type IPropertyLongStay,
-  type LeaseExtendInputMode,
+  isWeeklyRentBillingCadence,
   MAX_ADDITIONAL_TERM_MONTHS,
+  MAX_ADDITIONAL_TERM_WEEKS,
   resolveExtendLeaseEndDate,
   validateExtendLease,
 } from "@/packages/shared";
 
 const DEFAULT_ADDITIONAL_TERM_MONTHS = "6";
+const DEFAULT_ADDITIONAL_TERM_WEEKS = "4";
 
 function formatMonthLabel(month: string): string {
   const parts = month.split("-").map(Number);
@@ -49,11 +51,18 @@ function formatMonthLabel(month: string): string {
   });
 }
 
+type TExtendLeaseInputMode = "customEnd" | "months" | "weeks";
+
+function getDefaultExtendMode(lease: IPropertyLongStay): TExtendLeaseInputMode {
+  return isWeeklyRentBillingCadence(lease.rentBillingCadence) ? "weeks" : "months";
+}
+
 function getDefaultValues(lease: IPropertyLongStay) {
   return {
     additionalTermMonths: DEFAULT_ADDITIONAL_TERM_MONTHS,
+    additionalTermWeeks: DEFAULT_ADDITIONAL_TERM_WEEKS,
     changeRent: false,
-    extendMode: "months" as LeaseExtendInputMode,
+    extendMode: getDefaultExtendMode(lease),
     newLeaseEndDate: "",
     newMonthlyRent: "",
     rentEffectiveFromMonth: getFirstExtensionMonth(lease.leaseEndDate),
@@ -65,6 +74,10 @@ type TExtendLeaseFormValues = ReturnType<typeof getDefaultValues>;
 function buildExtendLeaseApiPayload(values: TExtendLeaseFormValues): IExtendPropertyLongStayBody {
   if (values.extendMode === "customEnd") {
     return { newLeaseEndDate: values.newLeaseEndDate };
+  }
+
+  if (values.extendMode === "weeks") {
+    return { additionalWeeks: Number.parseInt(values.additionalTermWeeks, 10) };
   }
 
   return { additionalTermMonths: Number.parseInt(values.additionalTermMonths, 10) };
@@ -81,6 +94,7 @@ export const ExtendLeaseDialog = memo(
   ({ lease, onOpenChange, open, propertyId }: ExtendLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
+    const isWeekly = isWeeklyRentBillingCadence(lease.rentBillingCadence);
 
     const form = useForm<TExtendLeaseFormValues>({
       defaultValues: getDefaultValues(lease),
@@ -88,8 +102,9 @@ export const ExtendLeaseDialog = memo(
         z
           .object({
             additionalTermMonths: z.string(),
+            additionalTermWeeks: z.string(),
             changeRent: z.boolean(),
-            extendMode: z.enum(["months", "customEnd"]),
+            extendMode: z.enum(["months", "weeks", "customEnd"]),
             newLeaseEndDate: z.string(),
             newMonthlyRent: z.string(),
             rentEffectiveFromMonth: z.string(),
@@ -111,7 +126,11 @@ export const ExtendLeaseDialog = memo(
                 code: z.ZodIssueCode.custom,
                 message: error,
                 path: [
-                  values.extendMode === "customEnd" ? "newLeaseEndDate" : "additionalTermMonths",
+                  values.extendMode === "customEnd"
+                    ? "newLeaseEndDate"
+                    : values.extendMode === "weeks"
+                      ? "additionalTermWeeks"
+                      : "additionalTermMonths",
                 ],
               });
             }
@@ -130,6 +149,23 @@ export const ExtendLeaseDialog = memo(
                     code: z.ZodIssueCode.custom,
                     message: `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_MONTHS}`,
                     path: ["additionalTermMonths"],
+                  });
+                }
+              }
+            } else if (values.extendMode === "weeks") {
+              if (!/^\d+$/.test(values.additionalTermWeeks)) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: "Additional term must be a whole number",
+                  path: ["additionalTermWeeks"],
+                });
+              } else {
+                const parsed = Number.parseInt(values.additionalTermWeeks, 10);
+                if (parsed < 1 || parsed > MAX_ADDITIONAL_TERM_WEEKS) {
+                  ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_WEEKS}`,
+                    path: ["additionalTermWeeks"],
                   });
                 }
               }
@@ -159,6 +195,7 @@ export const ExtendLeaseDialog = memo(
 
     const extendMode = form.watch("extendMode");
     const additionalTermMonths = form.watch("additionalTermMonths");
+    const additionalTermWeeks = form.watch("additionalTermWeeks");
     const newLeaseEndDateValue = form.watch("newLeaseEndDate");
     const changeRent = form.watch("changeRent");
 
@@ -166,13 +203,14 @@ export const ExtendLeaseDialog = memo(
       () =>
         buildExtendLeaseApiPayload({
           additionalTermMonths,
+          additionalTermWeeks,
           changeRent,
           extendMode,
           newLeaseEndDate: newLeaseEndDateValue,
           newMonthlyRent: "",
           rentEffectiveFromMonth: "",
         }),
-      [additionalTermMonths, changeRent, extendMode, newLeaseEndDateValue]
+      [additionalTermMonths, additionalTermWeeks, changeRent, extendMode, newLeaseEndDateValue]
     );
 
     const newLeaseEndDate = useMemo(() => {
@@ -247,8 +285,9 @@ export const ExtendLeaseDialog = memo(
           <DialogHeader>
             <DialogTitle>Extend Lease</DialogTitle>
             <DialogDescription>
-              Extend {lease.guestName}&apos;s lease from the current contract end. You can
-              optionally set a new monthly rent for the extension period.
+              {isWeekly
+                ? "Extend this weekly-billed lease from the current contract end. Rent amount cannot be changed during extension."
+                : "Extend this lease from the current contract end. You can optionally set a new monthly rent for the extension period."}
             </DialogDescription>
           </DialogHeader>
 
@@ -257,33 +296,59 @@ export const ExtendLeaseDialog = memo(
               <RadioGroupFieldset
                 legend="Extension length"
                 onValueChange={(value) =>
-                  form.setValue("extendMode", value as LeaseExtendInputMode)
+                  form.setValue("extendMode", value as TExtendLeaseInputMode)
                 }
                 value={extendMode}
               >
-                <RadioOption label="Additional months" value="months">
-                  <div className="flex flex-col gap-1.5 pl-6">
-                    <Input
-                      disabled={extendMode !== "months"}
-                      id="extend-lease-term"
-                      inputMode="numeric"
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        if (nextValue === "" || isValidIntegerInput(nextValue)) {
-                          form.setValue("additionalTermMonths", nextValue, {
-                            shouldValidate: true,
-                          });
-                        }
-                      }}
-                      value={additionalTermMonths}
-                    />
-                    {errors.additionalTermMonths ? (
-                      <p className="text-xs text-destructive">
-                        {errors.additionalTermMonths.message}
-                      </p>
-                    ) : null}
-                  </div>
-                </RadioOption>
+                {isWeekly ? (
+                  <RadioOption label="Additional weeks" value="weeks">
+                    <div className="flex flex-col gap-1.5 pl-6">
+                      <Input
+                        disabled={extendMode !== "weeks"}
+                        id="extend-lease-term-weeks"
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          if (nextValue === "" || isValidIntegerInput(nextValue)) {
+                            form.setValue("additionalTermWeeks", nextValue, {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                        value={additionalTermWeeks}
+                      />
+                      {errors.additionalTermWeeks ? (
+                        <p className="text-xs text-destructive">
+                          {errors.additionalTermWeeks.message}
+                        </p>
+                      ) : null}
+                    </div>
+                  </RadioOption>
+                ) : (
+                  <RadioOption label="Additional months" value="months">
+                    <div className="flex flex-col gap-1.5 pl-6">
+                      <Input
+                        disabled={extendMode !== "months"}
+                        id="extend-lease-term"
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          if (nextValue === "" || isValidIntegerInput(nextValue)) {
+                            form.setValue("additionalTermMonths", nextValue, {
+                              shouldValidate: true,
+                            });
+                          }
+                        }}
+                        value={additionalTermMonths}
+                      />
+                      {errors.additionalTermMonths ? (
+                        <p className="text-xs text-destructive">
+                          {errors.additionalTermMonths.message}
+                        </p>
+                      ) : null}
+                    </div>
+                  </RadioOption>
+                )}
                 <RadioOption label="New end date" value="customEnd">
                   <div className="flex flex-col gap-1.5 pl-6">
                     <Input
@@ -313,63 +378,69 @@ export const ExtendLeaseDialog = memo(
                 </p>
               ) : null}
 
-              <div className="flex items-center gap-2">
-                <Controller
-                  control={form.control}
-                  name="changeRent"
-                  render={({ field }) => (
-                    <Checkbox
-                      checked={field.value}
-                      id="extend-lease-change-rent"
-                      onCheckedChange={(checked) => {
-                        const nextChecked = checked === true;
-                        field.onChange(nextChecked);
-                        if (nextChecked) {
-                          form.setValue("rentEffectiveFromMonth", defaultEffectiveMonth);
-                        }
-                      }}
-                    />
-                  )}
-                />
-                <Label className="font-normal" htmlFor="extend-lease-change-rent">
-                  Change monthly rent for extension
-                </Label>
-              </div>
-
-              {changeRent ? (
+              {!isWeekly ? (
                 <>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="extend-lease-rent">New monthly rent</Label>
-                    <Input
-                      id="extend-lease-rent"
-                      inputMode="decimal"
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        if (nextValue === "" || isValidDecimalInput(nextValue)) {
-                          form.setValue("newMonthlyRent", nextValue, { shouldValidate: true });
-                        }
-                      }}
-                      value={form.watch("newMonthlyRent")}
+                  <div className="flex items-center gap-2">
+                    <Controller
+                      control={form.control}
+                      name="changeRent"
+                      render={({ field }) => (
+                        <Checkbox
+                          checked={field.value}
+                          id="extend-lease-change-rent"
+                          onCheckedChange={(checked) => {
+                            const nextChecked = checked === true;
+                            field.onChange(nextChecked);
+                            if (nextChecked) {
+                              form.setValue("rentEffectiveFromMonth", defaultEffectiveMonth);
+                            }
+                          }}
+                        />
+                      )}
                     />
-                    {errors.newMonthlyRent ? (
-                      <p className="text-xs text-destructive">{errors.newMonthlyRent.message}</p>
-                    ) : null}
+                    <Label className="font-normal" htmlFor="extend-lease-change-rent">
+                      Change monthly rent for extension
+                    </Label>
                   </div>
 
-                  <FormSelectField
-                    id="extend-lease-effective-month"
-                    label="Rent effective from"
-                    onChange={(event) =>
-                      form.setValue("rentEffectiveFromMonth", event.target.value, {
-                        shouldValidate: true,
-                      })
-                    }
-                    options={effectiveMonthOptions.map((month) => ({
-                      label: formatMonthLabel(month),
-                      value: month,
-                    }))}
-                    value={form.watch("rentEffectiveFromMonth")}
-                  />
+                  {changeRent ? (
+                    <>
+                      <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="extend-lease-rent">New monthly rent</Label>
+                        <Input
+                          id="extend-lease-rent"
+                          inputMode="decimal"
+                          onChange={(event) => {
+                            const nextValue = event.target.value;
+                            if (nextValue === "" || isValidDecimalInput(nextValue)) {
+                              form.setValue("newMonthlyRent", nextValue, { shouldValidate: true });
+                            }
+                          }}
+                          value={form.watch("newMonthlyRent")}
+                        />
+                        {errors.newMonthlyRent ? (
+                          <p className="text-xs text-destructive">
+                            {errors.newMonthlyRent.message}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <FormSelectField
+                        id="extend-lease-effective-month"
+                        label="Rent effective from"
+                        onChange={(event) =>
+                          form.setValue("rentEffectiveFromMonth", event.target.value, {
+                            shouldValidate: true,
+                          })
+                        }
+                        options={effectiveMonthOptions.map((month) => ({
+                          label: formatMonthLabel(month),
+                          value: month,
+                        }))}
+                        value={form.watch("rentEffectiveFromMonth")}
+                      />
+                    </>
+                  ) : null}
                 </>
               ) : null}
             </DialogFormFields>

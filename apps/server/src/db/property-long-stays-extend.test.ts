@@ -95,4 +95,43 @@ describe("propertyLongStaysDb.extendLease", () => {
     expect(updated.leaseEndDate).toBe("2028-01-15");
     expect(updated.termMonths).toBeGreaterThan(12);
   });
+
+  test("extends weekly lease by additional weeks", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_end_date: "2026-01-07",
+      lease_start_date: "2026-01-01",
+      rent_billing_cadence: "weekly",
+      term_months: 1,
+    });
+    currentRentPeriodRows = [];
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    const updated = await propertyLongStaysDb.extendLease("lease-1", {
+      additionalWeeks: 4,
+    });
+
+    expect(updated).toMatchObject({
+      leaseEndDate: "2026-02-04",
+      termMonths: 2,
+    });
+  });
+
+  test("rejects weekly lease extension with rent change", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_end_date: "2026-01-07",
+      lease_start_date: "2026-01-01",
+      rent_billing_cadence: "weekly",
+      term_months: 1,
+    });
+    currentRentPeriodRows = [];
+
+    await expect(
+      propertyLongStaysDb.extendLease("lease-1", {
+        additionalWeeks: 2,
+        newMonthlyRent: 600,
+        rentEffectiveFromMonth: "2026-01",
+      })
+    ).rejects.toThrow("Rent amount cannot be changed when extending a weekly-billed lease");
+  });
 });
