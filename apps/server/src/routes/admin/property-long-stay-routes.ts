@@ -10,7 +10,6 @@ import {
   type IEditPropertyLongStayTermsBody,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
-  isWeeklyRentBillingCadence,
   type IUpdatePropertyLongStayBody,
   MAX_ADDITIONAL_TERM_MONTHS,
   parseRentBillingCadence,
@@ -143,9 +142,6 @@ function parseCreateLongStayBody(
   const rentBillingCadence = parseRentBillingCadence(r["rentBillingCadence"]);
   if (rentBillingCadence === null) {
     return { error: "rentBillingCadence must be 'monthly' or 'weekly'", ok: false };
-  }
-  if (isWeeklyRentBillingCadence(rentBillingCadence)) {
-    return { error: "Weekly rent billing is not available yet", ok: false };
   }
 
   const tenantEmail = parseOptionalString(r["tenantEmail"]);

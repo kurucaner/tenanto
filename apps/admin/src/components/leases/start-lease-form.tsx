@@ -138,9 +138,7 @@ const WhoStep = memo(
               id="start-lease-tenant-name"
               {...form.register("guestName")}
             />
-            {guestNameError ? (
-              <p className="text-destructive text-xs">{guestNameError}</p>
-            ) : null}
+            {guestNameError ? <p className="text-destructive text-xs">{guestNameError}</p> : null}
           </div>
           <div className="flex flex-col gap-1.5">
             <FieldLabel htmlFor="start-lease-email" optional>
@@ -310,10 +308,8 @@ const RentStep = memo(
               )}
             />
           </div>
-          {monthlyRentError ? (
-            <p className="text-destructive text-xs">{monthlyRentError}</p>
-          ) : null}
-          {rentBillingCadence === "monthly" && firstMonthRentPreview ? (
+          {monthlyRentError ? <p className="text-destructive text-xs">{monthlyRentError}</p> : null}
+          {firstMonthRentPreview ? (
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
           ) : null}
         </div>

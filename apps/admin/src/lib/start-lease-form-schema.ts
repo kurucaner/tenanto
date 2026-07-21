@@ -11,6 +11,7 @@ import {
 } from "@/lib/start-lease-rent-billing";
 import { type TStartLeaseStep } from "@/lib/start-lease-steps";
 import { createPersonNameSchema } from "@/packages/app-ui";
+import { RentBillingCadence } from "@/packages/shared";
 
 export type { TStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 
@@ -130,7 +131,7 @@ export function getStartLeaseDefaultValues(unitId?: string): TStartLeaseFormValu
     leaseEndDate: "",
     leaseStartDate: getTodayLocalIsoDate(),
     monthlyRent: "",
-    rentBillingCadence: "monthly",
+    rentBillingCadence: RentBillingCadence.MONTHLY,
     tenantEmail: "",
     tenantPhone: "",
     termMode: "months",

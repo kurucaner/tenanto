@@ -303,6 +303,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Operator can start a weekly lease; first-week proration preview; UI flag on.
 
+**Status:** ✅ Complete
+
 **Files (6)**
 
 | #   | File                                                        |
@@ -316,10 +318,10 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Set `WEEKLY_RENT_BILLING_ENABLED = true`; import shared cadence type.
-- [ ] Send `rentBillingCadence` in create mutation.
-- [ ] Add first-week rent preview (mirror monthly first-month block).
-- [ ] Remove server-side weekly 400 gate.
+- [x] Set `WEEKLY_RENT_BILLING_ENABLED = true`; import shared cadence type.
+- [x] Send `rentBillingCadence` in create mutation.
+- [x] Add first-week rent preview (mirror monthly first-month block).
+- [x] Remove server-side weekly 400 gate.
 
 **Exit criteria:** Create weekly lease → detail page loads with weekly schedule; monthly flow unchanged.
 

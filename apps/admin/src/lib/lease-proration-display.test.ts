@@ -7,6 +7,8 @@ import {
   getEndLeaseMoveOutBoundsHelperText,
   getEndLeaseMoveOutRentPreview,
   getStartLeaseFirstMonthRentPreview,
+  getStartLeaseFirstPeriodRentPreview,
+  getStartLeaseFirstWeekRentPreview,
 } from "./lease-proration-display";
 
 describe("getEndLeaseMoveOutRentPreview", () => {
@@ -55,6 +57,52 @@ describe("getStartLeaseFirstMonthRentPreview", () => {
         monthlyRent: 1000,
       })
     ).toBeNull();
+  });
+});
+
+describe("getStartLeaseFirstWeekRentPreview", () => {
+  test("returns prorated first week preview when lease ends mid-week", () => {
+    expect(
+      getStartLeaseFirstWeekRentPreview({
+        leaseEndDate: "2026-01-20",
+        leaseStartDate: "2026-01-15",
+        weeklyRent: 700,
+      })
+    ).toBe("First week rent: $600.00 (6/7 days)");
+  });
+
+  test("returns null when the first week is not prorated", () => {
+    expect(
+      getStartLeaseFirstWeekRentPreview({
+        leaseEndDate: "2026-03-31",
+        leaseStartDate: "2026-01-15",
+        weeklyRent: 700,
+      })
+    ).toBeNull();
+  });
+});
+
+describe("getStartLeaseFirstPeriodRentPreview", () => {
+  test("routes to weekly preview for weekly cadence", () => {
+    expect(
+      getStartLeaseFirstPeriodRentPreview({
+        leaseEndDate: "2026-01-20",
+        leaseStartDate: "2026-01-15",
+        rentAmount: 700,
+        rentBillingCadence: "weekly",
+      })
+    ).toBe("First week rent: $600.00 (6/7 days)");
+  });
+
+  test("routes to monthly preview for monthly cadence", () => {
+    expect(
+      getStartLeaseFirstPeriodRentPreview({
+        leaseEndDate: "2025-06-15",
+        leaseStartDate: "2024-06-16",
+        rentAmount: 1000,
+        rentBillingCadence: "monthly",
+      })
+    ).toBe("First month rent: $500.00 (15/30 days)");
   });
 });
 
