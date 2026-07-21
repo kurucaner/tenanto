@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { memo, type RefObject } from "react";
-import { Controller, type FieldErrors, type UseFormReturn } from "react-hook-form";
+import { Controller, type FieldErrors, type UseFormReturn, useWatch } from "react-hook-form";
 
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import { type TStartLeaseFormValues } from "@/lib/start-lease-form-schema";
 import {
   getStartLeaseRentAmountLabel,
   getStartLeaseRentBillingHelperText,
-  START_LEASE_RENT_BILLING_CADENCES,
   START_LEASE_RENT_BILLING_LABELS,
   WEEKLY_RENT_BILLING_ENABLED,
 } from "@/lib/start-lease-rent-billing";
@@ -29,7 +28,11 @@ import {
 } from "@/lib/start-lease-steps";
 import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/packages/app-ui";
-import { formatPropertyUnitSelectLabel, type IPropertyUnit } from "@/packages/shared";
+import {
+  formatPropertyUnitSelectLabel,
+  type IPropertyUnit,
+  RENT_BILLING_CADENCE_VALUES,
+} from "@/packages/shared";
 
 export const START_LEASE_FORM_ID = "start-lease-form";
 
@@ -223,7 +226,7 @@ const RentStep = memo(
     monthlyRentError,
     unitLabel,
   }: RentStepProps) => {
-    const rentBillingCadence = form.watch("rentBillingCadence");
+    const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
     const rentAmountLabel = getStartLeaseRentAmountLabel(rentBillingCadence);
 
     return (
@@ -255,7 +258,7 @@ const RentStep = memo(
                 onValueChange={field.onChange}
                 value={field.value}
               >
-                {START_LEASE_RENT_BILLING_CADENCES.map((cadence) => {
+                {RENT_BILLING_CADENCE_VALUES.map((cadence) => {
                   const isWeekly = cadence === "weekly";
                   const isDisabled = isWeekly && !WEEKLY_RENT_BILLING_ENABLED;
 

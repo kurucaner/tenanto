@@ -5,19 +5,16 @@ import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-
 import { refineLeaseTermEndFormValues } from "@/lib/lease-term-end-utils";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import {
-  getStartLeaseRentAmountLabel,
-  START_LEASE_RENT_BILLING_CADENCES,
-} from "@/lib/start-lease-rent-billing";
+import { getStartLeaseRentAmountLabel } from "@/lib/start-lease-rent-billing";
 import { type TStartLeaseStep } from "@/lib/start-lease-steps";
 import { createPersonNameSchema } from "@/packages/app-ui";
-import { RentBillingCadence } from "@/packages/shared";
+import { RENT_BILLING_CADENCE_VALUES, RentBillingCadence } from "@/packages/shared";
 
 export type { TStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 
 export const DEFAULT_START_LEASE_TERM_MONTHS = "12";
 
-const startLeaseRentBillingCadenceSchema = z.enum(START_LEASE_RENT_BILLING_CADENCES);
+const startLeaseRentBillingCadenceSchema = z.enum(RENT_BILLING_CADENCE_VALUES);
 
 const startLeaseWhoStepSchema = z.object({
   guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),

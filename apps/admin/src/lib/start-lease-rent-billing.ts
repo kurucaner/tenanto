@@ -1,11 +1,8 @@
 import {
   parseRentBillingCadence,
-  RENT_BILLING_CADENCE_VALUES,
   RentBillingCadence,
   type TRentBillingCadence,
 } from "@/packages/shared";
-
-export const START_LEASE_RENT_BILLING_CADENCES = RENT_BILLING_CADENCE_VALUES;
 
 export type TStartLeaseRentBillingCadence = TRentBillingCadence;
 
