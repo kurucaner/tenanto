@@ -36,6 +36,7 @@ import {
   normalizeStartLeaseRentBillingCadence,
 } from "@/lib/start-lease-rent-billing";
 import {
+  deriveTermWeeksFromDates,
   getLeaseRentAmount,
   type IPropertyLongStay,
   RentBillingCadence,
@@ -51,7 +52,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
       termMonths: lease.termMonths,
     }),
     rentAmount: String(getLeaseRentAmount(lease)),
-    termWeeks: "4",
+    termWeeks: String(deriveTermWeeksFromDates(lease.leaseStartDate, lease.leaseEndDate)),
   };
 }
 
