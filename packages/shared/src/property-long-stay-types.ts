@@ -29,6 +29,10 @@ export interface IPropertyLongStay {
   id: string;
   leaseEndDate: string;
   leaseStartDate: string;
+  /**
+   * @deprecated Use `rentAmount`. Shimmed on API responses for one release after Phase 14.
+   */
+  monthlyRent?: number;
   propertyId: string;
   rentAmount: number;
   rentBillingCadence: TRentBillingCadence;
@@ -43,24 +47,20 @@ export interface IPropertyLongStay {
   termMonths: number;
   unitId: string;
   updatedAt: string;
-  /**
-   * @deprecated Use `rentAmount`. Shimmed on API responses for one release after Phase 14.
-   */
-  monthlyRent?: number;
 }
 
 export interface ICreatePropertyLongStayBody {
   guestName: string;
   leaseEndDate?: string;
   leaseStartDate: string;
+  /** @deprecated Use `rentAmount`. Accepted on create for one release after Phase 14. */
+  monthlyRent?: number;
   rentAmount: number;
   rentBillingCadence?: TRentBillingCadence;
   tenantEmail?: string;
   tenantPhone?: string;
   termMonths?: number;
   unitId: string;
-  /** @deprecated Use `rentAmount`. Accepted on create for one release after Phase 14. */
-  monthlyRent?: number;
 }
 
 export interface ICreatePropertyLongStayResponse {
@@ -105,30 +105,30 @@ export interface IPropertyLongStayDetailResponse {
 
 /** A rent amount effective from a schedule period key onward. */
 export interface IPropertyLongStayRentPeriod {
-  /** Period key: `YYYY-MM` (monthly cadence) or `YYYY-MM-DD` week start (weekly cadence). */
-  effectiveFromPeriod: string;
-  /** Recurring rent amount for the lease's billing cadence. */
-  rentAmount: number;
   /**
    * @deprecated Use `effectiveFromPeriod`. Shimmed on API responses for one release after Phase 14.
    */
   effectiveFromMonth?: string;
+  /** Period key: `YYYY-MM` (monthly cadence) or `YYYY-MM-DD` week start (weekly cadence). */
+  effectiveFromPeriod: string;
   /**
    * @deprecated Use `rentAmount`. Shimmed on API responses for one release after Phase 14.
    */
   monthlyRent?: number;
+  /** Recurring rent amount for the lease's billing cadence. */
+  rentAmount: number;
 }
 
 export interface IExtendPropertyLongStayBody {
   additionalTermMonths?: number;
   additionalWeeks?: number;
   newLeaseEndDate?: string;
-  newRentAmount?: number;
-  rentEffectiveFromPeriod?: string;
   /** @deprecated Use `newRentAmount`. Accepted on extend for one release after Phase 14. */
   newMonthlyRent?: number;
+  newRentAmount?: number;
   /** @deprecated Use `rentEffectiveFromPeriod`. Accepted on extend for one release after Phase 14. */
   rentEffectiveFromMonth?: string;
+  rentEffectiveFromPeriod?: string;
 }
 
 export interface IEndPropertyLongStayBody {
@@ -167,10 +167,10 @@ export interface ILeaseTermsEditSignals {
 export interface IEditPropertyLongStayTermsBody {
   leaseEndDate?: string;
   leaseStartDate: string;
-  rentAmount: number;
-  termMonths?: number;
   /** @deprecated Use `rentAmount`. Accepted on edit terms for one release after Phase 14. */
   monthlyRent?: number;
+  rentAmount: number;
+  termMonths?: number;
 }
 
 export interface IEditPropertyLongStayTermsResponse {
@@ -184,11 +184,11 @@ export interface IPropertyLongStayRentMonth {
   incomeLineId?: string;
   isPaid: boolean;
   isProrated: boolean;
-  /** Schedule period key (`YYYY-MM` or week-start `YYYY-MM-DD`). */
-  periodKey: string;
-  occupiedDays: number;
-  paidRent: number;
-  remainingRent: number;
   /** @deprecated Use `periodKey`. Shimmed on API responses for one release after Phase 14. */
   month?: string;
+  occupiedDays: number;
+  paidRent: number;
+  /** Schedule period key (`YYYY-MM` or week-start `YYYY-MM-DD`). */
+  periodKey: string;
+  remainingRent: number;
 }

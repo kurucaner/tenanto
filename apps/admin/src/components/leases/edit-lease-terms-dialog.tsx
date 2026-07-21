@@ -25,6 +25,7 @@ import { getEditLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-displa
 import {
   buildLeaseTermApiPayload,
   getInitialLeaseTermEndValues,
+  getLeaseTermEndErrorPath,
   refineLeaseTermEndFormValues,
   resolveLeaseTermEndPreview,
 } from "@/lib/lease-term-end-utils";
@@ -50,6 +51,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
       termMonths: lease.termMonths,
     }),
     rentAmount: String(getLeaseRentAmount(lease)),
+    termWeeks: "4",
   };
 }
 
@@ -100,13 +102,7 @@ export const EditLeaseTermsDialog = memo(
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: error,
-                path: [
-                  values.termMode === "customEnd"
-                    ? "leaseEndDate"
-                    : values.termMode === "weeks"
-                      ? "termWeeks"
-                      : "termMonths",
-                ],
+                path: [getLeaseTermEndErrorPath(values.termMode)],
               });
             }
           })

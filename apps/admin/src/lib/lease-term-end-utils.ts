@@ -22,10 +22,23 @@ export type TLeaseTermEndFormValues = {
   termWeeks: string;
 };
 
+export function getLeaseTermEndErrorPath(
+  termMode: LeaseTermInputMode,
+  fallback: "termMonths" | "termWeeks" = "termMonths"
+): "leaseEndDate" | "termMonths" | "termWeeks" {
+  if (termMode === "customEnd") {
+    return "leaseEndDate";
+  }
+  if (termMode === "weeks") {
+    return "termWeeks";
+  }
+  return fallback;
+}
+
 export function refineLeaseTermEndFormValues(
   values: TLeaseTermEndFormValues,
   ctx: z.RefinementCtx,
-  errorPath: "leaseEndDate" | "termMonths" | "termWeeks" = "termMonths"
+  errorPath: "termMonths" | "termWeeks" = "termMonths"
 ): void {
   if (values.termMode === "customEnd" && values.leaseEndDate === "") {
     ctx.addIssue({
@@ -51,16 +64,10 @@ export function refineLeaseTermEndFormValues(
   const payload = buildLeaseTermApiPayload(values);
   const error = validateLeaseTermInput(payload);
   if (error) {
-    const path =
-      values.termMode === "customEnd"
-        ? "leaseEndDate"
-        : values.termMode === "weeks"
-          ? "termWeeks"
-          : errorPath;
     ctx.addIssue({
       code: "custom",
       message: error,
-      path: [path],
+      path: [getLeaseTermEndErrorPath(values.termMode, errorPath)],
     });
   }
 }
