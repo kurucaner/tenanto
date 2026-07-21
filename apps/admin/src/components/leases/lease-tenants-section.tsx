@@ -315,7 +315,7 @@ export const LeaseTenantsSection = memo(
     );
 
     const handleInviteSecondary = useCallback(
-      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+      (contact: ILeaseSecondaryTenantContact) => {
         if (!contact.membershipId) {
           return;
         }
@@ -335,7 +335,7 @@ export const LeaseTenantsSection = memo(
     );
 
     const handleResendSecondary = useCallback(
-      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+      (contact: ILeaseSecondaryTenantContact) => {
         if (!contact.membershipId) {
           return;
         }
@@ -359,7 +359,7 @@ export const LeaseTenantsSection = memo(
     );
 
     const handleRevokeSecondary = useCallback(
-      (contact: ILeaseSecondaryTenantContact, _index: number) => {
+      (contact: ILeaseSecondaryTenantContact) => {
         if (!contact.membershipId) {
           return;
         }

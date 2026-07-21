@@ -145,7 +145,8 @@ export function recordRecentProperty({
   id,
   lastPath,
   name,
-}: Pick<IRecentProperty, "address" | "id" | "name"> & Pick<Partial<IRecentProperty>, "lastPath">): void {
+}: Pick<IRecentProperty, "address" | "id" | "name"> &
+  Pick<Partial<IRecentProperty>, "lastPath">): void {
   const withoutCurrent = readRecentProperties().filter((entry) => entry.id !== id);
   const nextEntry: IRecentProperty = {
     address,

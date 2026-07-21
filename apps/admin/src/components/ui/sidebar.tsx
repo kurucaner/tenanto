@@ -94,6 +94,10 @@ function SidebarProvider({
         _setOpen(openState);
       }
 
+      if (openState) {
+        setIsHoverExpanded(false);
+      }
+
       if (!isMobile) {
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
       }
@@ -118,12 +122,6 @@ function SidebarProvider({
     globalThis.addEventListener("keydown", handleKeyDown);
     return () => globalThis.removeEventListener("keydown", handleKeyDown);
   }, [toggleSidebar]);
-
-  React.useEffect(() => {
-    if (open) {
-      setIsHoverExpanded(false);
-    }
-  }, [open]);
 
   const setHoverExpanded = React.useCallback(
     (expanded: boolean) => {

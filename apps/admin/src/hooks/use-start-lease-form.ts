@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { type BaseSyntheticEvent,useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
@@ -99,10 +99,10 @@ export function useStartLeaseForm({
   });
   const {
     clearErrors,
+    control,
     formState: { errors, isSubmitting },
     getValues,
     handleSubmit,
-    watch,
   } = form;
 
   const _setCurrentStep = useCallback(
@@ -141,12 +141,28 @@ export function useStartLeaseForm({
     }
   }, [form, lockedUnitId]);
 
-  const guestName = watch("guestName");
-  const selectedUnitId = watch("unitId");
-  const termFields = watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
-  const monthlyRent = watch("monthlyRent");
-  const rentBillingCadence = watch("rentBillingCadence");
-  const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
+  const [
+    guestName,
+    selectedUnitId,
+    monthlyRent,
+    rentBillingCadence,
+    leaseEndDateValue,
+    leaseStartDate,
+    termMode,
+    termMonths,
+  ] = useWatch({
+    control,
+    name: [
+      "guestName",
+      "unitId",
+      "monthlyRent",
+      "rentBillingCadence",
+      "leaseEndDate",
+      "leaseStartDate",
+      "termMode",
+      "termMonths",
+    ],
+  });
 
   const leaseEndDate = useMemo(() => {
     return resolveLeaseTermEndPreview({
@@ -224,11 +240,13 @@ export function useStartLeaseForm({
     [mutation]
   );
 
-  const onInvalidSubmit = useCallback(() => {
-    scrollFormToFirstError(formRef.current, currentStep);
-  }, [currentStep]);
-
-  const onSubmit = handleSubmit(onValidSubmit, onInvalidSubmit);
+  const onSubmit = useCallback(
+    (event?: BaseSyntheticEvent) =>
+      handleSubmit(onValidSubmit, () => {
+        scrollFormToFirstError(formRef, currentStep);
+      })(event),
+    [currentStep, handleSubmit, onValidSubmit]
+  );
 
   const goToStep = useCallback(
     (step: TStartLeaseStep) => {
@@ -250,7 +268,7 @@ export function useStartLeaseForm({
       const result = validateStartLeaseStep(currentStep, values);
       if (!result.success) {
         applyStartLeaseStepValidationErrors(form, currentStep, result.error);
-        scrollFormToFirstError(formRef.current, currentStep);
+        scrollFormToFirstError(formRef, currentStep);
         return;
       }
 

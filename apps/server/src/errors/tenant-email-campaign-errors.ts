@@ -20,10 +20,7 @@ export function isTenantEmailCampaignDomainError(error: unknown): error is Domai
 }
 
 export function getTenantEmailCampaignIdempotencyConflictId(error: unknown): string | null {
-  if (
-    isDomainError(error) &&
-    error.code === TenantEmailCampaignErrorCode.IDEMPOTENCY_CONFLICT
-  ) {
+  if (isDomainError(error) && error.code === TenantEmailCampaignErrorCode.IDEMPOTENCY_CONFLICT) {
     const existingCampaignId = error.body?.existingCampaignId;
     return typeof existingCampaignId === "string" ? existingCampaignId : null;
   }
@@ -48,14 +45,8 @@ export function tenantEmailCampaignNoRecipientsError(
   );
 }
 
-export function tenantEmailCampaignNotFoundError(
-  message = "Campaign not found"
-): DomainError {
-  return createDomainError(
-    TenantEmailCampaignErrorCode.NOT_FOUND,
-    message,
-    HttpStatus.NOT_FOUND
-  );
+export function tenantEmailCampaignNotFoundError(message = "Campaign not found"): DomainError {
+  return createDomainError(TenantEmailCampaignErrorCode.NOT_FOUND, message, HttpStatus.NOT_FOUND);
 }
 
 export function tenantEmailCampaignIdempotencyConflictError(

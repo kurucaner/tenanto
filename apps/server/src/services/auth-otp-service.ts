@@ -3,10 +3,7 @@ import { randomInt } from "node:crypto";
 import bcrypt from "bcrypt";
 
 import { authOtpsDb, type OtpPurpose } from "@/db/auth-otps";
-import {
-  otpAlreadySendingError,
-  otpCooldownActiveError,
-} from "@/errors/auth-otp-errors";
+import { otpAlreadySendingError, otpCooldownActiveError } from "@/errors/auth-otp-errors";
 import { OTP_COOLDOWN_SECONDS, OTP_EXPIRY_MINUTES } from "@/lib/auth-otp-config";
 import { sendOtpEmail } from "@/ses/transactional-emails";
 

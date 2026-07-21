@@ -51,9 +51,7 @@ describe("mergeHomeWorkspaceProperties", () => {
       makeProperty(String(index + 1), `Property ${index + 1}`)
     );
 
-    expect(mergeHomeWorkspaceProperties([], listItems)).toHaveLength(
-      HOME_WORKSPACE_PROPERTIES_MAX
-    );
+    expect(mergeHomeWorkspaceProperties([], listItems)).toHaveLength(HOME_WORKSPACE_PROPERTIES_MAX);
   });
 });
 
