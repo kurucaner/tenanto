@@ -17,6 +17,7 @@ import {
 import { resolveStartLeaseInitialState } from "@/lib/start-lease-form-init";
 import {
   applyStartLeaseStepValidationErrors,
+  DEFAULT_START_LEASE_TERM_WEEKS,
   startLeaseSchema,
   type TStartLeaseFormValues,
   validateStartLeaseStep,
@@ -31,7 +32,7 @@ import {
   getPreviousStartLeaseStep,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
-import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
+import { type IPropertyUnit, deriveTermWeeksFromDates, normalizeToE164, RentBillingCadence, UnitRentalType } from "@/packages/shared";
 
 interface UseStartLeaseFormOptions {
   initialStep?: TStartLeaseStep;
@@ -150,6 +151,7 @@ export function useStartLeaseForm({
     leaseStartDate,
     termMode,
     termMonths,
+    termWeeks,
   ] = useWatch({
     control,
     name: [
@@ -161,8 +163,35 @@ export function useStartLeaseForm({
       "leaseStartDate",
       "termMode",
       "termMonths",
+      "termWeeks",
     ],
   });
+
+  useEffect(() => {
+    const cadence = normalizeStartLeaseRentBillingCadence(rentBillingCadence);
+    const mode = getValues("termMode");
+    if (cadence === RentBillingCadence.WEEKLY && mode === "months") {
+      const preview = resolveLeaseTermEndPreview({
+        leaseEndDate: getValues("leaseEndDate"),
+        leaseStartDate: getValues("leaseStartDate"),
+        termMode: "months",
+        termMonths: getValues("termMonths"),
+        termWeeks: getValues("termWeeks"),
+      });
+      const start = getValues("leaseStartDate");
+      if (preview && start) {
+        form.setValue("termWeeks", String(deriveTermWeeksFromDates(start, preview)));
+      } else {
+        form.setValue("termWeeks", DEFAULT_START_LEASE_TERM_WEEKS);
+      }
+      form.setValue("termMode", "weeks");
+      return;
+    }
+
+    if (cadence === RentBillingCadence.MONTHLY && mode === "weeks") {
+      form.setValue("termMode", "months");
+    }
+  }, [form, getValues, rentBillingCadence]);
 
   const leaseEndDate = useMemo(() => {
     return resolveLeaseTermEndPreview({
@@ -170,8 +199,9 @@ export function useStartLeaseForm({
       leaseStartDate,
       termMode,
       termMonths,
+      termWeeks,
     });
-  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths]);
+  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths, termWeeks]);
 
   const firstMonthRentPreview = useMemo(() => {
     const parsedRentAmount = Number(rentAmount);

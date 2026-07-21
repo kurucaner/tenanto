@@ -196,12 +196,15 @@ export {
 // Property Long Stay Types
 export {
   calculateLeaseEndDate,
+  calculateLeaseEndDateFromWeeks,
+  deriveTermWeeksFromDates,
   enumerateLeaseMonths,
   enumerateLeaseWeeks,
   formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
   getLeaseWeekPeriodEnd,
   isActiveLeaseInHoldover,
+  isStandardWeeklyLeaseEndDate,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
@@ -289,6 +292,7 @@ export {
   getLeaseTermsEditBlockMessage,
   hasRentPeriodHistory,
   MAX_LEASE_TERM_MONTHS,
+  MAX_LEASE_TERM_WEEKS,
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
 export {
@@ -351,6 +355,28 @@ export {
   type TRentBillingCadence,
 } from "./rent-billing-cadence";
 export {
+  getLeaseRentAmount,
+  getRentPeriodAmount,
+  getRentPeriodEffectiveFrom,
+  getRentSchedulePeriodKey,
+  resolveCreateLeaseRentAmount,
+  resolveExtendNewRentAmount,
+  resolveExtendRentEffectivePeriod,
+  resolveIncomeLineRentPeriodKey,
+  resolveTermsEditRentAmount,
+  type TRentAmount,
+  type TRentPeriodKey,
+  /** @deprecated Use `withLeaseRentLegacyShims`. */
+  withLeaseRentAmountNeutralFields,
+  withLeaseRentLegacyShims,
+  withRentPeriodLegacyShims,
+  /** @deprecated Use `withRentPeriodLegacyShims`. */
+  withRentPeriodNeutralFields,
+  withRentScheduleLegacyShims,
+  /** @deprecated Use `withRentScheduleLegacyShims`. */
+  withRentScheduleNeutralFields,
+} from "./rent-period-field-utils";
+export {
   comparePeriodKeys,
   findWeeklyPeriodStartContainingDate,
   formatRentPeriodLabel,
@@ -365,28 +391,6 @@ export {
   resolveAsOfPeriodKey,
   resolveRentPeriodKeyForTransactionDate,
 } from "./rent-period-key-utils";
-export {
-  getLeaseRentAmount,
-  getRentPeriodAmount,
-  getRentPeriodEffectiveFrom,
-  getRentSchedulePeriodKey,
-  resolveCreateLeaseRentAmount,
-  resolveExtendNewRentAmount,
-  resolveExtendRentEffectivePeriod,
-  resolveIncomeLineRentPeriodKey,
-  resolveTermsEditRentAmount,
-  type TRentAmount,
-  type TRentPeriodKey,
-  withLeaseRentLegacyShims,
-  withRentPeriodLegacyShims,
-  withRentScheduleLegacyShims,
-  /** @deprecated Use `withLeaseRentLegacyShims`. */
-  withLeaseRentAmountNeutralFields,
-  /** @deprecated Use `withRentPeriodLegacyShims`. */
-  withRentPeriodNeutralFields,
-  /** @deprecated Use `withRentScheduleLegacyShims`. */
-  withRentScheduleNeutralFields,
-} from "./rent-period-field-utils";
 export {
   type TPrimaryTenantContactSource,
   type TSecondaryTenantContactSource,

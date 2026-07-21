@@ -5,7 +5,7 @@ import {
   type IPropertyLongStay,
 } from "./property-long-stay-types";
 
-export type LeaseTermInputMode = "customEnd" | "months";
+export type LeaseTermInputMode = "customEnd" | "months" | "weeks";
 
 export type LeaseExtendInputMode = "customEnd" | "months";
 

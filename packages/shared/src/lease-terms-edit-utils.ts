@@ -23,6 +23,7 @@ import { getPristineRentPeriodKey } from "./rent-period-key-utils";
 
 /** Matches create-lease route bounds in `property-long-stay-routes.ts`. */
 export const MAX_LEASE_TERM_MONTHS = 60;
+export const MAX_LEASE_TERM_WEEKS = 260;
 
 const LEASE_TERMS_EDIT_BLOCK_MESSAGES: Record<TLeaseTermsEditBlockReason, string> = {
   [LeaseTermsEditBlockReason.HAS_INCOME_LINES]:

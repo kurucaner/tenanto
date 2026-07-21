@@ -178,6 +178,7 @@ interface TermStepProps {
   leaseEndDateError?: string;
   leaseStartDateError?: string;
   termMonthsError?: string;
+  termWeeksError?: string;
 }
 
 const TermStep = memo(
@@ -187,19 +188,27 @@ const TermStep = memo(
     leaseEndDateError,
     leaseStartDateError,
     termMonthsError,
-  }: TermStepProps) => (
-    <LeaseTermEndFields<TStartLeaseFormValues>
-      control={form.control}
-      endDateFieldId="start-lease-end-date"
-      leaseEndDateError={leaseEndDateError}
-      leaseStartDateError={leaseStartDateError}
-      register={form.register}
-      resolvedEndDate={leaseEndDate}
-      startDateFieldId="start-lease-start-date"
-      termMonthsError={termMonthsError}
-      termMonthsFieldId="start-lease-term-months"
-    />
-  )
+    termWeeksError,
+  }: TermStepProps) => {
+    const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
+
+    return (
+      <LeaseTermEndFields<TStartLeaseFormValues>
+        control={form.control}
+        endDateFieldId="start-lease-end-date"
+        leaseEndDateError={leaseEndDateError}
+        leaseStartDateError={leaseStartDateError}
+        register={form.register}
+        rentBillingCadence={rentBillingCadence}
+        resolvedEndDate={leaseEndDate}
+        startDateFieldId="start-lease-start-date"
+        termMonthsError={termMonthsError}
+        termMonthsFieldId="start-lease-term-months"
+        termWeeksError={termWeeksError}
+        termWeeksFieldId="start-lease-term-weeks"
+      />
+    );
+  }
 );
 TermStep.displayName = "TermStep";
 
@@ -413,6 +422,7 @@ export const StartLeaseForm = memo(
                 leaseEndDateError={errors.leaseEndDate?.message}
                 leaseStartDateError={errors.leaseStartDate?.message}
                 termMonthsError={errors.termMonths?.message}
+                termWeeksError={errors.termWeeks?.message}
               />
             </section>
 

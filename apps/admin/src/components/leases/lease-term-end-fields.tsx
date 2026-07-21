@@ -12,7 +12,8 @@ import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { type TLeaseTermEndFormValues } from "@/lib/lease-term-end-utils";
-import { type LeaseTermInputMode } from "@/packages/shared";
+import { normalizeStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
+import { type LeaseTermInputMode, RentBillingCadence, type TRentBillingCadence } from "@/packages/shared";
 
 type TLeaseTermEndFieldsProps<TFieldValues extends FieldValues & TLeaseTermEndFormValues> = {
   control: Control<TFieldValues>;
@@ -20,10 +21,13 @@ type TLeaseTermEndFieldsProps<TFieldValues extends FieldValues & TLeaseTermEndFo
   leaseEndDateError?: string;
   leaseStartDateError?: string;
   register: UseFormRegister<TFieldValues>;
+  rentBillingCadence?: TRentBillingCadence | null;
   resolvedEndDate?: string | null;
   startDateFieldId: string;
   termMonthsError?: string;
   termMonthsFieldId: string;
+  termWeeksError?: string;
+  termWeeksFieldId: string;
 };
 
 export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTermEndFormValues>({
@@ -32,11 +36,22 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
   leaseEndDateError,
   leaseStartDateError,
   register,
+  rentBillingCadence = RentBillingCadence.MONTHLY,
   resolvedEndDate = null,
   startDateFieldId,
   termMonthsError,
   termMonthsFieldId,
+  termWeeksError,
+  termWeeksFieldId,
 }: Readonly<TLeaseTermEndFieldsProps<TFieldValues>>) {
+  const isWeekly =
+    normalizeStartLeaseRentBillingCadence(rentBillingCadence) === RentBillingCadence.WEEKLY;
+  const durationMode = isWeekly ? "weeks" : "months";
+  const durationLabel = isWeekly ? "Number of weeks" : "Number of months";
+  const durationFieldName = isWeekly ? "termWeeks" : "termMonths";
+  const durationFieldId = isWeekly ? termWeeksFieldId : termMonthsFieldId;
+  const durationError = isWeekly ? termWeeksError : termMonthsError;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-1.5">
@@ -54,21 +69,27 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
       <Controller
         control={control}
         name={"termMode" as never}
-        render={({ field: termModeField }) => (
+        render={({ field: termModeField }) => {
+          const isDurationModeActive =
+            termModeField.value === durationMode ||
+            (isWeekly && termModeField.value === "months") ||
+            (!isWeekly && termModeField.value === "weeks");
+
+          return (
           <RadioGroupFieldset
             legend="Lease length"
             onValueChange={(value) => termModeField.onChange(value as LeaseTermInputMode)}
-            value={termModeField.value}
+            value={termModeField.value === "customEnd" ? "customEnd" : durationMode}
           >
-            <RadioOption label="Number of months" value="months">
+            <RadioOption label={durationLabel} value={durationMode}>
               <div className="flex flex-col gap-1.5 pl-6">
                 <Controller
                   control={control}
-                  name={"termMonths" as never}
+                  name={durationFieldName as never}
                   render={({ field }) => (
                     <Input
-                      disabled={termModeField.value !== "months"}
-                      id={termMonthsFieldId}
+                      disabled={!isDurationModeActive}
+                      id={durationFieldId}
                       inputMode="numeric"
                       onChange={(event) => {
                         if (isValidIntegerInput(event.target.value)) {
@@ -80,10 +101,10 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
                     />
                   )}
                 />
-                {termMonthsError ? (
-                  <p className="text-xs text-destructive">{termMonthsError}</p>
+                {durationError ? (
+                  <p className="text-xs text-destructive">{durationError}</p>
                 ) : null}
-                {termModeField.value === "months" && resolvedEndDate ? (
+                {isDurationModeActive && resolvedEndDate ? (
                   <p className="text-muted-foreground text-sm">
                     Lease ends {formatIsoDateDisplay(resolvedEndDate)}
                   </p>
@@ -111,7 +132,8 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
               </div>
             </RadioOption>
           </RadioGroupFieldset>
-        )}
+          );
+        }}
       />
 
       <p className="text-muted-foreground text-xs">
