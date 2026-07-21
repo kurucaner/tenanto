@@ -87,7 +87,9 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       expectedRent: 1500,
       incomeLineId: "line-manual",
       isPaid: false,
+      month: "2026-01",
       paidRent: 1000,
+      periodKey: "2026-01",
       remainingRent: 500,
     });
   });

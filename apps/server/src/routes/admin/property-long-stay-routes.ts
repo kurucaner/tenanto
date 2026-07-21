@@ -284,39 +284,44 @@ function parseExtendLongStayBody(
     body.additionalTermMonths = additionalTermMonths;
   }
 
-  const hasNewRent = "newMonthlyRent" in r;
-  const hasEffectiveMonth = "rentEffectiveFromMonth" in r;
+  const hasNewRent = "newMonthlyRent" in r || "newRentAmount" in r;
+  const hasEffectivePeriod = "rentEffectiveFromMonth" in r || "rentEffectiveFromPeriod" in r;
 
-  if (hasNewRent !== hasEffectiveMonth) {
+  if (hasNewRent !== hasEffectivePeriod) {
     return {
-      error: "newMonthlyRent and rentEffectiveFromMonth must both be provided when changing rent",
+      error:
+        "newRentAmount and rentEffectiveFromPeriod must both be provided when changing rent (legacy: newMonthlyRent, rentEffectiveFromMonth)",
       ok: false,
     };
   }
 
   if (hasNewRent) {
-    const newMonthlyRent = parsePositiveMoney(r["newMonthlyRent"]);
+    const newRentRaw = r["newRentAmount"] ?? r["newMonthlyRent"];
+    const effectivePeriodRaw = r["rentEffectiveFromPeriod"] ?? r["rentEffectiveFromMonth"];
+    const newMonthlyRent = parsePositiveMoney(newRentRaw);
     if (newMonthlyRent === null) {
-      return { error: "newMonthlyRent must be a positive number", ok: false };
+      return { error: "newRentAmount must be a positive number", ok: false };
     }
 
     if (
-      typeof r["rentEffectiveFromMonth"] !== "string" ||
-      !isValidRentPeriodKey(r["rentEffectiveFromMonth"])
+      typeof effectivePeriodRaw !== "string" ||
+      !isValidRentPeriodKey(effectivePeriodRaw)
     ) {
-      return { error: "rentEffectiveFromMonth must be YYYY-MM or YYYY-MM-DD", ok: false };
+      return { error: "rentEffectiveFromPeriod must be YYYY-MM or YYYY-MM-DD", ok: false };
     }
 
     if (rentBillingCadence === RentBillingCadence.WEEKLY) {
-      if (!isWeeklyPeriodKey(r["rentEffectiveFromMonth"])) {
-        return { error: "rentEffectiveFromMonth must be YYYY-MM-DD for weekly leases", ok: false };
+      if (!isWeeklyPeriodKey(effectivePeriodRaw)) {
+        return { error: "rentEffectiveFromPeriod must be YYYY-MM-DD for weekly leases", ok: false };
       }
-    } else if (!MONTH_RE.test(r["rentEffectiveFromMonth"])) {
-      return { error: "rentEffectiveFromMonth must be YYYY-MM format", ok: false };
+    } else if (!MONTH_RE.test(effectivePeriodRaw)) {
+      return { error: "rentEffectiveFromPeriod must be YYYY-MM format", ok: false };
     }
 
     body.newMonthlyRent = newMonthlyRent;
-    body.rentEffectiveFromMonth = r["rentEffectiveFromMonth"];
+    body.newRentAmount = newMonthlyRent;
+    body.rentEffectiveFromMonth = effectivePeriodRaw;
+    body.rentEffectiveFromPeriod = effectivePeriodRaw;
   }
 
   return { body, ok: true };

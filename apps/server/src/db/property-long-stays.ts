@@ -22,12 +22,15 @@ import {
   enumerateLeaseSchedulePeriods,
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
+  getLeaseRentAmount,
   getPristineRentPeriodKey,
   hasRentPeriodHistory,
   parseRentBillingCadence,
   PropertyLongStayStatus,
   RentBillingCadence,
   resolveExtendLeaseEndDate,
+  resolveExtendNewRentAmount,
+  resolveExtendRentEffectivePeriod,
   resolveLeaseEndDate,
   validateExtendLease,
 } from "@/packages/shared";
@@ -189,8 +192,9 @@ export const propertyLongStaysDb = {
     }
 
     const { newLeaseEndDate, newTermMonths } = resolveExtendLeaseEndDate(existing, body);
-    const hasRentChange =
-      body.newMonthlyRent !== undefined && body.rentEffectiveFromMonth !== undefined;
+    const newRentAmount = resolveExtendNewRentAmount(body);
+    const rentEffectiveFromPeriod = resolveExtendRentEffectivePeriod(body);
+    const hasRentChange = newRentAmount !== undefined && rentEffectiveFromPeriod !== undefined;
 
     const client = await pool.connect();
     try {
@@ -210,7 +214,7 @@ export const propertyLongStaysDb = {
             [
               id,
               getPristineRentPeriodKey(existing.leaseStartDate, existing.rentBillingCadence),
-              existing.monthlyRent,
+              getLeaseRentAmount(existing),
             ]
           );
         }
@@ -219,7 +223,7 @@ export const propertyLongStaysDb = {
           `INSERT INTO property_long_stay_rent_periods
              (long_stay_id, effective_from_month, monthly_rent)
            VALUES ($1, $2, $3)`,
-          [id, body.rentEffectiveFromMonth, body.newMonthlyRent]
+          [id, rentEffectiveFromPeriod, newRentAmount]
         );
       }
 

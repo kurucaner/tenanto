@@ -703,9 +703,9 @@ Parent goal for Phase 12: change weekly rent during extend (and future amendment
 
 **Tasks**
 
-- [ ] Add type aliases / parallel fields: `effectiveFromPeriod`, `periodKey`, `rentAmount`.
-- [ ] JSDoc deprecation on `effectiveFromMonth`, `monthlyRent`, `IPropertyLongStayRentMonth.month`.
-- [ ] Internal helpers and new code use neutral names; public API still accepts legacy field names.
+- [x] Add type aliases / parallel fields: `effectiveFromPeriod`, `periodKey`, `rentAmount`.
+- [x] JSDoc deprecation on `effectiveFromMonth`, `monthlyRent`, `IPropertyLongStayRentMonth.month`.
+- [x] Internal helpers and new code use neutral names; public API still accepts legacy field names.
 
 **Exit criteria:** New code reads clearly; no client breakage; prelude to Phase 14.
 

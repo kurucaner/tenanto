@@ -11,6 +11,7 @@ import type {
 } from "./property-long-stay-types";
 import { getReportableIncomeLineAmounts } from "./property-partial-refund-utils";
 import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
+import { getLeaseRentAmount, withRentScheduleNeutralFields } from "./rent-period-field-utils";
 
 function indexFirstIncomeLineIdByPeriod(
   incomeLines: readonly IPropertyIncomeLine[],
@@ -64,12 +65,10 @@ function buildSchedulePeriodExpectations(input: {
   const isWeekly = isWeeklyRentBillingCadence(input.lease.rentBillingCadence);
 
   return input.periodKeys.map((periodKey) => {
+    const baseRentAmount = getLeaseRentAmount(input.lease);
+
     if (isWeekly) {
-      const weeklyRent = getLeaseRentForPeriod(
-        input.lease.monthlyRent,
-        input.rentPeriods,
-        periodKey
-      );
+      const weeklyRent = getLeaseRentForPeriod(baseRentAmount, input.rentPeriods, periodKey);
       const proration = calculateExpectedRentForLeaseWeek({
         effectiveEndDate: input.effectiveEndDate,
         leaseStartDate: input.lease.leaseStartDate,
@@ -87,7 +86,7 @@ function buildSchedulePeriodExpectations(input: {
     }
 
     const proration = calculateExpectedRentForLeaseMonth({
-      baseMonthlyRent: input.lease.monthlyRent,
+      baseMonthlyRent: baseRentAmount,
       effectiveEndDate: input.effectiveEndDate,
       leaseStartDate: input.lease.leaseStartDate,
       month: periodKey,
@@ -154,7 +153,7 @@ export function buildLeaseRentScheduleWithRollup(input: {
     const proration = prorationByMonth.get(item.month);
     const incomeLineId = incomeLineIdByPeriod.get(item.month);
 
-    return {
+    return withRentScheduleNeutralFields({
       daysInMonth: proration?.daysInMonth ?? 0,
       expectedRent: item.expectedRent,
       incomeLineId,
@@ -164,6 +163,6 @@ export function buildLeaseRentScheduleWithRollup(input: {
       occupiedDays: proration?.occupiedDays ?? 0,
       paidRent: item.paidRent,
       remainingRent: item.remainingRent,
-    };
+    });
   });
 }

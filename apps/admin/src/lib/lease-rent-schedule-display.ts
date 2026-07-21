@@ -1,6 +1,9 @@
 import {
   enumerateLeaseWeeks,
+  getLeaseRentAmount,
   getPristineRentPeriodKey,
+  getRentPeriodAmount,
+  getRentPeriodEffectiveFrom,
   inferRentScheduleCadence,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
@@ -90,21 +93,13 @@ export function getVisibleLeaseRentPeriods(
   }
 
   const [period] = rentPeriods;
-  if (!period || period.monthlyRent !== lease.monthlyRent) {
+  if (!period || getRentPeriodAmount(period) !== getLeaseRentAmount(lease)) {
     return [...rentPeriods];
   }
 
-  if (lease.rentBillingCadence === RentBillingCadence.WEEKLY) {
-    return period.effectiveFromMonth ===
-      getPristineRentPeriodKey(lease.leaseStartDate, lease.rentBillingCadence)
-      ? []
-      : [...rentPeriods];
-  }
+  const pristineKey = getPristineRentPeriodKey(lease.leaseStartDate, lease.rentBillingCadence);
 
-  return period.effectiveFromMonth ===
-    getPristineRentPeriodKey(lease.leaseStartDate, lease.rentBillingCadence)
-    ? []
-    : [...rentPeriods];
+  return getRentPeriodEffectiveFrom(period) === pristineKey ? [] : [...rentPeriods];
 }
 
 export function inferRentScheduleCadenceFromItems(

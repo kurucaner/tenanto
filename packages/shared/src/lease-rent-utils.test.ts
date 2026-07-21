@@ -160,6 +160,20 @@ describe("validateExtendLease", () => {
     ).toBeNull();
   });
 
+  test("accepts neutral rent change field names", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalTermMonths: 6,
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2027-01",
+        },
+        activeLease,
+        "2026-07-09"
+      )
+    ).toBeNull();
+  });
+
   test("rejects inactive lease", () => {
     expect(
       validateExtendLease(
@@ -177,7 +191,7 @@ describe("validateExtendLease", () => {
         activeLease,
         "2026-07-09"
       )
-    ).toBe("New monthly rent and effective month must both be provided when changing rent");
+    ).toBe("New rent amount and effective period must both be provided when changing rent");
   });
 
   test("rejects effective month before extension period", () => {

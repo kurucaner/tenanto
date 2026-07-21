@@ -14,6 +14,11 @@ import {
   RentBillingCadence,
   type TRentBillingCadence,
 } from "./rent-billing-cadence";
+import {
+  getLeaseRentAmount,
+  getRentPeriodEffectiveFrom,
+  resolveTermsEditRentAmount,
+} from "./rent-period-field-utils";
 import { getPristineRentPeriodKey } from "./rent-period-key-utils";
 
 /** Matches create-lease route bounds in `property-long-stay-routes.ts`. */
@@ -45,7 +50,7 @@ export function hasRentPeriodHistory(
   }
 
   const pristineKey = getPristineRentPeriodKey(leaseStartDate, cadence);
-  return periods.some((period) => period.effectiveFromMonth !== pristineKey);
+  return periods.some((period) => getRentPeriodEffectiveFrom(period) !== pristineKey);
 }
 
 export function deriveLeaseTermsEditability(
@@ -105,7 +110,9 @@ export function validateEditLeaseTerms(
     return termError;
   }
 
-  if (!Number.isFinite(body.monthlyRent) || body.monthlyRent < 0) {
+  const editedRentAmount = resolveTermsEditRentAmount(body);
+
+  if (!Number.isFinite(editedRentAmount) || editedRentAmount < 0) {
     return isWeeklyRentBillingCadence(lease.rentBillingCadence)
       ? "weekly rent must be a non-negative number"
       : "monthlyRent must be a non-negative number";
@@ -121,7 +128,7 @@ export function validateEditLeaseTerms(
   if (
     body.leaseStartDate === lease.leaseStartDate &&
     resolved.leaseEndDate === lease.leaseEndDate &&
-    body.monthlyRent === lease.monthlyRent
+    editedRentAmount === getLeaseRentAmount(lease)
   ) {
     return "At least one lease term field must change";
   }

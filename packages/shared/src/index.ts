@@ -362,6 +362,20 @@ export {
   resolveRentPeriodKeyForTransactionDate,
 } from "./rent-period-key-utils";
 export {
+  getLeaseRentAmount,
+  getRentPeriodAmount,
+  getRentPeriodEffectiveFrom,
+  getRentSchedulePeriodKey,
+  resolveExtendNewRentAmount,
+  resolveExtendRentEffectivePeriod,
+  resolveTermsEditRentAmount,
+  type TRentAmount,
+  type TRentPeriodKey,
+  withLeaseRentAmountNeutralFields,
+  withRentPeriodNeutralFields,
+  withRentScheduleNeutralFields,
+} from "./rent-period-field-utils";
+export {
   type TPrimaryTenantContactSource,
   type TSecondaryTenantContactSource,
   type TTenantContactLinkedUserSource,

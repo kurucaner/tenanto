@@ -31,6 +31,8 @@ import {
   type TTenantMembershipStatus,
   type TUnitRentalType,
   UserType,
+  withLeaseRentAmountNeutralFields,
+  withRentPeriodNeutralFields,
 } from "@/packages/shared";
 
 export const mapUserRow = (row: Record<string, unknown>): IUser => ({
@@ -264,12 +266,14 @@ export const parseSecondaryTenants = (raw: unknown): IPropertyLongStaySecondaryT
 
 export const mapPropertyLongStayRentPeriodRow = (
   row: Record<string, unknown>
-): IPropertyLongStayRentPeriod => ({
-  effectiveFromMonth: String(row.effective_from_month),
-  monthlyRent: Number(row.monthly_rent),
-});
+): IPropertyLongStayRentPeriod =>
+  withRentPeriodNeutralFields({
+    effectiveFromMonth: String(row.effective_from_month),
+    monthlyRent: Number(row.monthly_rent),
+  });
 
-export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay => ({
+export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay =>
+  withLeaseRentAmountNeutralFields({
   actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,
   createdAt: (row.created_at as Date).toISOString(),
   guestName: row.guest_name as string,
@@ -287,9 +291,9 @@ export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyL
   tenantEmail: (row.tenant_email as string | null) ?? null,
   tenantPhone: (row.tenant_phone as string | null) ?? null,
   termMonths: row.term_months as number,
-  unitId: row.unit_id as string,
-  updatedAt: (row.updated_at as Date).toISOString(),
-});
+    unitId: row.unit_id as string,
+    updatedAt: (row.updated_at as Date).toISOString(),
+  });
 
 export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropertyIncomeLine => ({
   amount: Number(row.amount),

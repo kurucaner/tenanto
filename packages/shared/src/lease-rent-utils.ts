@@ -17,6 +17,13 @@ import {
   PropertyLongStayStatus,
 } from "./property-long-stay-types";
 import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
+import {
+  getLeaseRentAmount,
+  getRentPeriodAmount,
+  getRentPeriodEffectiveFrom,
+  resolveExtendNewRentAmount,
+  resolveExtendRentEffectivePeriod,
+} from "./rent-period-field-utils";
 import { isWeeklyPeriodKey } from "./rent-period-key-utils";
 
 export const MAX_ADDITIONAL_TERM_MONTHS = 60;
@@ -83,18 +90,18 @@ export function getExtensionRentEffectiveWeekOptions(
 }
 
 export function getLeaseRentForPeriod(
-  baseMonthlyRent: number,
+  baseRentAmount: number,
   rentPeriods: readonly IPropertyLongStayRentPeriod[],
   periodKey: string
 ): number {
   if (rentPeriods.length === 0) {
-    return baseMonthlyRent;
+    return baseRentAmount;
   }
 
-  let applicableRent = baseMonthlyRent;
+  let applicableRent = baseRentAmount;
   for (const period of rentPeriods) {
-    if (period.effectiveFromMonth <= periodKey) {
-      applicableRent = period.monthlyRent;
+    if (getRentPeriodEffectiveFrom(period) <= periodKey) {
+      applicableRent = getRentPeriodAmount(period);
     } else {
       break;
     }
@@ -134,29 +141,26 @@ export function getExtensionRentEffectiveMonthOptions(
 }
 
 function validateMonthlyLeaseRentChange(
-  body: IExtendPropertyLongStayBody,
+  newRentAmount: number,
+  effectivePeriod: string,
   lease: Pick<IPropertyLongStay, "leaseEndDate">,
   newLeaseEndDate: string
 ): string | null {
-  if (
-    typeof body.newMonthlyRent !== "number" ||
-    !Number.isFinite(body.newMonthlyRent) ||
-    body.newMonthlyRent <= 0
-  ) {
+  if (!Number.isFinite(newRentAmount) || newRentAmount <= 0) {
     return "New monthly rent must be a positive number";
   }
 
-  if (!MONTH_RE.test(body.rentEffectiveFromMonth!)) {
+  if (!MONTH_RE.test(effectivePeriod)) {
     return "Rent effective month must be YYYY-MM format";
   }
 
   const firstExtensionMonth = getFirstExtensionMonth(lease.leaseEndDate);
   const lastExtensionMonth = transactionDateToMonth(newLeaseEndDate);
 
-  if (body.rentEffectiveFromMonth! < firstExtensionMonth) {
+  if (effectivePeriod < firstExtensionMonth) {
     return "Rent effective month cannot be before the extension period";
   }
-  if (body.rentEffectiveFromMonth! > lastExtensionMonth) {
+  if (effectivePeriod > lastExtensionMonth) {
     return "Rent effective month cannot be after the new lease end";
   }
 
@@ -164,19 +168,16 @@ function validateMonthlyLeaseRentChange(
 }
 
 function validateWeeklyLeaseRentChange(
-  body: IExtendPropertyLongStayBody,
+  newRentAmount: number,
+  effectivePeriod: string,
   lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate">,
   newLeaseEndDate: string
 ): string | null {
-  if (
-    typeof body.newMonthlyRent !== "number" ||
-    !Number.isFinite(body.newMonthlyRent) ||
-    body.newMonthlyRent <= 0
-  ) {
+  if (!Number.isFinite(newRentAmount) || newRentAmount <= 0) {
     return "New weekly rent must be a positive number";
   }
 
-  if (!isWeeklyPeriodKey(body.rentEffectiveFromMonth!)) {
+  if (!isWeeklyPeriodKey(effectivePeriod)) {
     return "Rent effective period must be YYYY-MM-DD format";
   }
 
@@ -186,7 +187,7 @@ function validateWeeklyLeaseRentChange(
     newLeaseEndDate
   );
 
-  if (!allowedWeeks.includes(body.rentEffectiveFromMonth!)) {
+  if (!allowedWeeks.includes(effectivePeriod)) {
     return "Rent effective period must be a week start within the extension window";
   }
 
@@ -198,25 +199,23 @@ function validateLeaseRentChange(
   lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate" | "rentBillingCadence">,
   newLeaseEndDate: string
 ): string | null {
-  const hasNewRent = body.newMonthlyRent !== undefined;
-  const hasEffectiveMonth = body.rentEffectiveFromMonth !== undefined;
+  const newRentAmount = resolveExtendNewRentAmount(body);
+  const effectivePeriod = resolveExtendRentEffectivePeriod(body);
+  const hasNewRent = newRentAmount !== undefined;
+  const hasEffectivePeriod = effectivePeriod !== undefined;
 
-  if (hasNewRent !== hasEffectiveMonth) {
-    return "New monthly rent and effective month must both be provided when changing rent";
+  if (hasNewRent !== hasEffectivePeriod) {
+    return "New rent amount and effective period must both be provided when changing rent";
   }
-  if (
-    !hasNewRent ||
-    body.newMonthlyRent === undefined ||
-    body.rentEffectiveFromMonth === undefined
-  ) {
+  if (newRentAmount === undefined || effectivePeriod === undefined) {
     return null;
   }
 
   if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
-    return validateWeeklyLeaseRentChange(body, lease, newLeaseEndDate);
+    return validateWeeklyLeaseRentChange(newRentAmount, effectivePeriod, lease, newLeaseEndDate);
   }
 
-  return validateMonthlyLeaseRentChange(body, lease, newLeaseEndDate);
+  return validateMonthlyLeaseRentChange(newRentAmount, effectivePeriod, lease, newLeaseEndDate);
 }
 
 export function validateExtendLease(
