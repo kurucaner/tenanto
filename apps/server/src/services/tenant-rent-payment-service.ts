@@ -62,6 +62,7 @@ async function computeLeaseBalanceFields(
   propertyId: string
 ): Promise<{
   amountDueCents: number;
+  duePeriodKeys: string[];
   paymentsEnabled: boolean;
   periods: ITenantLeaseBalancePeriod[];
 }> {
@@ -71,6 +72,7 @@ async function computeLeaseBalanceFields(
   ]);
   return {
     amountDueCents: balance.amountDueCents,
+    duePeriodKeys: balance.periodMonths,
     paymentsEnabled: isStripeConnectEnabled() && Boolean(connect?.chargesEnabled),
     periods: balance.periods,
   };
@@ -332,18 +334,20 @@ export const tenantRentPaymentService = {
         if (!lease) {
           return {
             amountDueCents: 0,
+            duePeriodKeys: [],
             leaseId: item.leaseId,
             paymentsEnabled: false,
             propertyName: item.propertyName,
             unitLabel: item.unitLabel,
           };
         }
-        const { amountDueCents, paymentsEnabled } = await computeLeaseBalanceFields(
+        const { amountDueCents, duePeriodKeys, paymentsEnabled } = await computeLeaseBalanceFields(
           item.leaseId,
           lease.propertyId
         );
         return {
           amountDueCents,
+          duePeriodKeys,
           leaseId: item.leaseId,
           paymentsEnabled,
           propertyName: item.propertyName,

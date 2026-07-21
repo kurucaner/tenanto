@@ -1,9 +1,30 @@
-import type { ITenantRentSummaryLease, ITenantRentSummaryResponse } from "@/packages/shared";
+import {
+  formatRentPeriodLabel,
+  type ITenantRentSummaryLease,
+  type ITenantRentSummaryResponse,
+} from "@/packages/shared";
 
 export type TRentPayAction =
   | { kind: "checkout"; leaseId: string }
   | { kind: "navigate"; href: string }
   | { kind: "pick-lease"; leases: ITenantRentSummaryLease[] };
+
+export function formatDuePeriodsLabel(periodKeys: readonly string[]): string | null {
+  if (periodKeys.length === 0) {
+    return null;
+  }
+
+  const labels = periodKeys.map((key) => formatRentPeriodLabel(key));
+  if (labels.length === 1) {
+    return labels[0] ?? null;
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  const last = labels.at(-1);
+  return `${labels.slice(0, -1).join(", ")}, and ${last}`;
+}
 
 export function getLeasesWithDue(leases: ITenantRentSummaryLease[]): ITenantRentSummaryLease[] {
   return leases.filter((lease) => lease.amountDueCents > 0);

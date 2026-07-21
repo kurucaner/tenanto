@@ -2,6 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
+import { formatDuePeriodsLabel } from "@/lib/rent-summary-utils";
 import { Button } from "@/packages/app-ui";
 import { type ITenantRentSummaryLease } from "@/packages/shared";
 
@@ -78,6 +79,7 @@ export const LeaseDueRow = memo(function LeaseDueRow({
   const isPayingThisLease = isStartingCheckout && checkoutLeaseId === lease.leaseId;
   const isCaughtUp = lease.amountDueCents <= 0;
   const isInline = variant === "inline";
+  const duePeriodsLabel = formatDuePeriodsLabel(lease.duePeriodKeys);
 
   return (
     <div
@@ -93,12 +95,17 @@ export const LeaseDueRow = memo(function LeaseDueRow({
         {isCaughtUp ? (
           <p className="text-sm text-muted-foreground">You&apos;re caught up.</p>
         ) : (
-          <p className="text-sm text-foreground">
-            Amount due:{" "}
-            <span className="font-medium">
-              {formatUsdFromCents(lease.amountDueCents, currency)}
-            </span>
-          </p>
+          <>
+            {duePeriodsLabel ? (
+              <p className="text-sm text-muted-foreground">Due: {duePeriodsLabel}</p>
+            ) : null}
+            <p className="text-sm text-foreground">
+              Amount due:{" "}
+              <span className="font-medium">
+                {formatUsdFromCents(lease.amountDueCents, currency)}
+              </span>
+            </p>
+          </>
         )}
       </div>
       <div className={isInline ? "shrink-0 sm:w-auto" : undefined}>

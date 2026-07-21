@@ -384,6 +384,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Home + Leases show weekly dues and Pay works.
 
+**Status:** ✅ Complete
+
 **Files (6)**
 
 | #   | File                                                           |
@@ -397,8 +399,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Period labels on due rows.
-- [ ] Verify multi-lease pay flow works with weekly leases mixed with monthly.
+- [x] Period labels on due rows.
+- [x] Verify multi-lease pay flow works with weekly leases mixed with monthly.
 
 **Exit criteria:** Tenant with weekly lease sees amount due and completes payment.
 

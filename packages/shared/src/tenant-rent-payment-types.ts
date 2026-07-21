@@ -43,6 +43,8 @@ export interface ITenantLeaseBalanceResponse {
 /** One active lease row in the Home rent summary. */
 export interface ITenantRentSummaryLease {
   amountDueCents: number;
+  /** Due period keys included in amountDueCents (`YYYY-MM` or week-start `YYYY-MM-DD`). */
+  duePeriodKeys: string[];
   leaseId: string;
   paymentsEnabled: boolean;
   propertyName: string;
