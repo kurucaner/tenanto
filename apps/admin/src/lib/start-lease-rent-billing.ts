@@ -6,8 +6,6 @@ import {
 
 export type TStartLeaseRentBillingCadence = TRentBillingCadence;
 
-export const WEEKLY_RENT_BILLING_ENABLED = true;
-
 export const START_LEASE_RENT_BILLING_LABELS: Record<TStartLeaseRentBillingCadence, string> = {
   [RentBillingCadence.MONTHLY]: "Monthly",
   [RentBillingCadence.WEEKLY]: "Weekly",
@@ -29,7 +27,7 @@ export function normalizeStartLeaseRentBillingCadence(
   value: unknown
 ): TStartLeaseRentBillingCadence {
   const parsed = parseRentBillingCadence(value);
-  if (parsed === RentBillingCadence.WEEKLY && !WEEKLY_RENT_BILLING_ENABLED) {
+  if (parsed === RentBillingCadence.WEEKLY) {
     return RentBillingCadence.MONTHLY;
   }
 

@@ -17,7 +17,6 @@ import {
   getStartLeaseRentAmountLabel,
   getStartLeaseRentBillingHelperText,
   START_LEASE_RENT_BILLING_LABELS,
-  WEEKLY_RENT_BILLING_ENABLED,
 } from "@/lib/start-lease-rent-billing";
 import {
   canNavigateToStartLeaseStep,
@@ -32,6 +31,7 @@ import {
   formatPropertyUnitSelectLabel,
   type IPropertyUnit,
   RENT_BILLING_CADENCE_VALUES,
+  RentBillingCadence,
 } from "@/packages/shared";
 
 export const START_LEASE_FORM_ID = "start-lease-form";
@@ -259,8 +259,8 @@ const RentStep = memo(
                 value={field.value}
               >
                 {RENT_BILLING_CADENCE_VALUES.map((cadence) => {
-                  const isWeekly = cadence === "weekly";
-                  const isDisabled = isWeekly && !WEEKLY_RENT_BILLING_ENABLED;
+                  const isWeekly = cadence === RentBillingCadence.WEEKLY;
+                  const isDisabled = isWeekly;
 
                   return (
                     <RadioOption
