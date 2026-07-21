@@ -55,6 +55,9 @@ export const GoogleSignInButton = memo(
         aria-busy={submitting}
         className={submitting ? "pointer-events-none opacity-60" : ""}
         ref={containerRef}
+        style={{
+          colorScheme: "dark",
+        }}
       >
         {buttonWidth ? (
           <GoogleLogin
@@ -67,11 +70,6 @@ export const GoogleSignInButton = memo(
             text={text}
             theme={resolvedDark ? "filled_black" : "outline"}
             width={buttonWidth}
-            containerProps={{
-              style: {
-                backgroundColor: "red",
-              },
-            }}
           />
         ) : null}
       </div>
