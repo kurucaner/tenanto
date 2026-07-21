@@ -14,7 +14,7 @@ import {
 import { RentBillingCadence } from "./rent-billing-cadence";
 
 const activeLease = {
-  leaseEndDate: "2027-01-01",
+  leaseEndDate: "2026-12-31",
   leaseStartDate: "2026-01-01",
   monthlyRent: 1500,
   rentBillingCadence: RentBillingCadence.MONTHLY,
@@ -108,6 +108,16 @@ describe("hasRentPeriodHistory", () => {
     ).toBe(false);
   });
 
+  test("returns false for single weekly period at lease start date", () => {
+    expect(
+      hasRentPeriodHistory(
+        [{ effectiveFromMonth: "2026-01-15", monthlyRent: 700 }],
+        "2026-01-15",
+        RentBillingCadence.WEEKLY
+      )
+    ).toBe(false);
+  });
+
   test("returns true when multiple rent periods exist", () => {
     expect(
       hasRentPeriodHistory(
@@ -123,6 +133,16 @@ describe("hasRentPeriodHistory", () => {
   test("returns true when a period starts after lease start month", () => {
     expect(
       hasRentPeriodHistory([{ effectiveFromMonth: "2026-07", monthlyRent: 1500 }], "2026-01-01")
+    ).toBe(true);
+  });
+
+  test("returns true when a weekly period starts after lease start date", () => {
+    expect(
+      hasRentPeriodHistory(
+        [{ effectiveFromMonth: "2026-01-22", monthlyRent: 700 }],
+        "2026-01-15",
+        RentBillingCadence.WEEKLY
+      )
     ).toBe(true);
   });
 });

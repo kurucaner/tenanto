@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
 import {
   buildLeaseTermApiPayload,
   getInitialLeaseTermEndValues,
@@ -30,6 +29,10 @@ import {
 } from "@/lib/lease-term-end-utils";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import {
+  getStartLeaseFirstPeriodRentPreview,
+  normalizeStartLeaseRentBillingCadence,
+} from "@/lib/start-lease-rent-billing";
 import {
   getLeaseTermsEditBlockMessage,
   type IPropertyLongStay,
@@ -136,12 +139,13 @@ export const EditLeaseTermsDialog = memo(
         return null;
       }
 
-      return getStartLeaseFirstMonthRentPreview({
+      return getStartLeaseFirstPeriodRentPreview({
         leaseEndDate: resolvedEnd,
         leaseStartDate,
-        monthlyRent: parsedMonthlyRent,
+        rentAmount: parsedMonthlyRent,
+        rentBillingCadence: normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence),
       });
-    }, [monthlyRent, termFields]);
+    }, [lease.rentBillingCadence, monthlyRent, termFields]);
 
     const mutation = useMutation({
       mutationFn: (values: TEditLeaseTermsFormValues) =>

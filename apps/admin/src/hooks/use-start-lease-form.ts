@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import { getStartLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-display";
 import { buildLeaseTermApiPayload, resolveLeaseTermEndPreview } from "@/lib/lease-term-end-utils";
 import { scrollFormToFirstError } from "@/lib/scroll-form-to-first-error";
 import {
@@ -24,16 +23,15 @@ import {
 } from "@/lib/start-lease-form-schema";
 import { resolveStartLeaseLockedUnit } from "@/lib/start-lease-locked-unit";
 import {
+  getStartLeaseFirstPeriodRentPreview,
+  normalizeStartLeaseRentBillingCadence,
+} from "@/lib/start-lease-rent-billing";
+import {
   getNextStartLeaseStep,
   getPreviousStartLeaseStep,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
-import {
-  type IPropertyUnit,
-  normalizeToE164,
-  RentBillingCadence,
-  UnitRentalType,
-} from "@/packages/shared";
+import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
 
 interface UseStartLeaseFormOptions {
   initialStep?: TStartLeaseStep;
@@ -174,10 +172,7 @@ export function useStartLeaseForm({
       leaseEndDate,
       leaseStartDate,
       rentAmount: parsedRentAmount,
-      rentBillingCadence:
-        rentBillingCadence === RentBillingCadence.WEEKLY
-          ? RentBillingCadence.WEEKLY
-          : RentBillingCadence.MONTHLY,
+      rentBillingCadence: normalizeStartLeaseRentBillingCadence(rentBillingCadence),
     });
   }, [leaseEndDate, leaseStartDate, monthlyRent, rentBillingCadence]);
 
@@ -198,10 +193,7 @@ export function useStartLeaseForm({
         guestName: values.guestName,
         ...buildLeaseTermApiPayload(values),
         monthlyRent: Number(values.monthlyRent),
-        rentBillingCadence:
-          values.rentBillingCadence === RentBillingCadence.WEEKLY
-            ? RentBillingCadence.WEEKLY
-            : RentBillingCadence.MONTHLY,
+        rentBillingCadence: normalizeStartLeaseRentBillingCadence(values.rentBillingCadence),
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
         unitId: values.unitId,

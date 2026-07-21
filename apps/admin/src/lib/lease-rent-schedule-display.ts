@@ -1,15 +1,14 @@
 import {
   enumerateLeaseWeeks,
-  formatRentPeriodLabel,
+  getPristineRentPeriodKey,
   inferRentScheduleCadence,
+  type IPropertyLongStay,
+  type IPropertyLongStayRentMonth,
+  type IPropertyLongStayRentPeriod,
   isPeriodKeyAfter,
   isPeriodKeyOnOrBefore,
-  type IPropertyLongStay,
-  type IPropertyLongStayRentPeriod,
   RentBillingCadence,
   resolveAsOfPeriodKey,
-  transactionDateToMonth,
-  type IPropertyLongStayRentMonth,
   type TRentBillingCadence,
 } from "@/packages/shared";
 
@@ -26,10 +25,6 @@ export interface ILeaseRentSchedulePartition {
     totalRemaining: number;
   };
   upcomingMonths: IPropertyLongStayRentMonth[];
-}
-
-export function formatRentSchedulePeriodLabel(periodKey: string): string {
-  return formatRentPeriodLabel(periodKey);
 }
 
 export function getLeaseRentAmountSuffix(cadence: TRentBillingCadence): string {
@@ -84,10 +79,14 @@ export function getVisibleLeaseRentPeriods(
   }
 
   if (lease.rentBillingCadence === RentBillingCadence.WEEKLY) {
-    return period.effectiveFromMonth === lease.leaseStartDate ? [] : [...rentPeriods];
+    return period.effectiveFromMonth ===
+      getPristineRentPeriodKey(lease.leaseStartDate, lease.rentBillingCadence)
+      ? []
+      : [...rentPeriods];
   }
 
-  return period.effectiveFromMonth === transactionDateToMonth(lease.leaseStartDate)
+  return period.effectiveFromMonth ===
+    getPristineRentPeriodKey(lease.leaseStartDate, lease.rentBillingCadence)
     ? []
     : [...rentPeriods];
 }

@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format-money";
 import { getActiveLeaseHoldoverScheduleNotice } from "@/lib/lease-proration-display";
 import {
-  formatRentSchedulePeriodLabel,
   getRentSchedulePeriodPluralLabel,
   getRentSchedulePeriodSingularLabel,
   hasOutstandingRent,
@@ -19,6 +18,7 @@ import {
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   formatProratedDaysLabel,
+  formatRentPeriodLabel,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
   isActiveLeaseInHoldover,
@@ -102,7 +102,7 @@ function RentScheduleRow({
         )}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-sm">{formatRentSchedulePeriodLabel(item.month)}</p>
+            <p className="text-sm">{formatRentPeriodLabel(item.month)}</p>
             {item.isProrated ? (
               <Badge className="text-[10px]" variant="outline">
                 Prorated

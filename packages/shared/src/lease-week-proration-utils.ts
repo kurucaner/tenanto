@@ -1,35 +1,10 @@
 import { addDaysToIsoDate } from "./lease-date-utils";
-import { roundMoney } from "./property-income-calculator";
+import {
+  getOccupiedDaysInBoundedPeriod,
+  prorateOccupiedPeriod,
+} from "./lease-occupancy-proration-utils";
 
-const MS_PER_DAY = 86_400_000;
 const DAYS_IN_WEEK = 7;
-
-function parseIsoDateParts(isoDate: string): { day: number; month: number; year: number } {
-  const parts = isoDate.split("-").map(Number);
-  return { day: parts[2] ?? 1, month: parts[1] ?? 1, year: parts[0] ?? 0 };
-}
-
-function toUtcMs(isoDate: string): number {
-  const { day, month, year } = parseIsoDateParts(isoDate);
-  return Date.UTC(year, month - 1, day);
-}
-
-function maxIsoDate(left: string, right: string): string {
-  return left >= right ? left : right;
-}
-
-function minIsoDate(left: string, right: string): string {
-  return left <= right ? left : right;
-}
-
-function daysBetweenInclusive(start: string, end: string): number {
-  const startMs = toUtcMs(start);
-  const endMs = toUtcMs(end);
-  if (endMs < startMs) {
-    return 0;
-  }
-  return Math.floor((endMs - startMs) / MS_PER_DAY) + 1;
-}
 
 export interface ILeaseWeekExpectedRent {
   daysInPeriod: number;
@@ -44,9 +19,7 @@ export function getOccupiedDaysInWeek(
   effectiveEndDate: string
 ): number {
   const periodEnd = addDaysToIsoDate(periodStart, DAYS_IN_WEEK - 1);
-  const occupancyStart = maxIsoDate(leaseStartDate, periodStart);
-  const occupancyEnd = minIsoDate(effectiveEndDate, periodEnd);
-  return daysBetweenInclusive(occupancyStart, occupancyEnd);
+  return getOccupiedDaysInBoundedPeriod(periodStart, periodEnd, leaseStartDate, effectiveEndDate);
 }
 
 export function calculateExpectedRentForLeaseWeek(input: {
@@ -55,23 +28,23 @@ export function calculateExpectedRentForLeaseWeek(input: {
   periodStart: string;
   weeklyRent: number;
 }): ILeaseWeekExpectedRent {
-  const daysInPeriod = DAYS_IN_WEEK;
   const occupiedDays = getOccupiedDaysInWeek(
     input.periodStart,
     input.leaseStartDate,
     input.effectiveEndDate
   );
+  const proration = prorateOccupiedPeriod({
+    daysInPeriod: DAYS_IN_WEEK,
+    occupiedDays,
+    recurringRent: input.weeklyRent,
+  });
 
-  if (occupiedDays <= 0) {
-    return { daysInPeriod, expectedRent: 0, isProrated: false, occupiedDays: 0 };
-  }
-
-  const isProrated = occupiedDays < daysInPeriod;
-  const expectedRent = isProrated
-    ? roundMoney((input.weeklyRent / daysInPeriod) * occupiedDays)
-    : input.weeklyRent;
-
-  return { daysInPeriod, expectedRent, isProrated, occupiedDays };
+  return {
+    daysInPeriod: proration.daysInPeriod,
+    expectedRent: proration.expectedRent,
+    isProrated: proration.isProrated,
+    occupiedDays: proration.occupiedDays,
+  };
 }
 
 export function isProratedLeaseWeek(
