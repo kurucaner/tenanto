@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import type { ITenantRentSummaryResponse } from "@/packages/shared";
 
-import { hasOnlinePayAvailable, resolveRentPayAction } from "./rent-summary-utils";
+import {
+  getLeasesWithDue,
+  getPayableLeases,
+  hasOnlinePayAvailable,
+  resolveRentPayAction,
+} from "./rent-summary-utils";
 
 function summary(overrides: Partial<ITenantRentSummaryResponse>): ITenantRentSummaryResponse {
   return {
@@ -14,6 +19,52 @@ function summary(overrides: Partial<ITenantRentSummaryResponse>): ITenantRentSum
     ...overrides,
   };
 }
+
+describe("getLeasesWithDue", () => {
+  test("returns leases with a positive balance", () => {
+    const leases = [
+      {
+        amountDueCents: 100_00,
+        leaseId: "lease-1",
+        paymentsEnabled: true,
+        propertyName: "A",
+        unitLabel: "1",
+      },
+      {
+        amountDueCents: 0,
+        leaseId: "lease-2",
+        paymentsEnabled: true,
+        propertyName: "B",
+        unitLabel: "2",
+      },
+    ];
+
+    expect(getLeasesWithDue(leases)).toEqual([leases[0]]);
+  });
+});
+
+describe("getPayableLeases", () => {
+  test("returns due leases with online pay enabled", () => {
+    const leases = [
+      {
+        amountDueCents: 100_00,
+        leaseId: "lease-1",
+        paymentsEnabled: true,
+        propertyName: "A",
+        unitLabel: "1",
+      },
+      {
+        amountDueCents: 50_00,
+        leaseId: "lease-2",
+        paymentsEnabled: false,
+        propertyName: "B",
+        unitLabel: "2",
+      },
+    ];
+
+    expect(getPayableLeases(leases)).toEqual([leases[0]]);
+  });
+});
 
 describe("resolveRentPayAction", () => {
   test("navigates to leases when nothing is due", () => {
@@ -80,7 +131,35 @@ describe("resolveRentPayAction", () => {
     ).toEqual({ href: "/leases/lease-1", kind: "navigate" });
   });
 
-  test("navigates to leases list when multiple leases have due", () => {
+  test("opens lease picker when multiple leases have due balances", () => {
+    const leases = [
+      {
+        amountDueCents: 50_00,
+        leaseId: "lease-1",
+        paymentsEnabled: true,
+        propertyName: "A",
+        unitLabel: "1",
+      },
+      {
+        amountDueCents: 50_00,
+        leaseId: "lease-2",
+        paymentsEnabled: true,
+        propertyName: "B",
+        unitLabel: "2",
+      },
+    ];
+
+    expect(
+      resolveRentPayAction(
+        summary({
+          leases,
+          totalAmountDueCents: 100_00,
+        })
+      )
+    ).toEqual({ kind: "pick-lease", leases });
+  });
+
+  test("starts checkout when only one lease is payable among multiple due leases", () => {
     expect(
       resolveRentPayAction(
         summary({
@@ -95,7 +174,7 @@ describe("resolveRentPayAction", () => {
             {
               amountDueCents: 50_00,
               leaseId: "lease-2",
-              paymentsEnabled: true,
+              paymentsEnabled: false,
               propertyName: "B",
               unitLabel: "2",
             },
@@ -103,7 +182,35 @@ describe("resolveRentPayAction", () => {
           totalAmountDueCents: 100_00,
         })
       )
-    ).toEqual({ href: "/leases", kind: "navigate" });
+    ).toEqual({ kind: "checkout", leaseId: "lease-1" });
+  });
+
+  test("opens lease picker when multiple leases are due but none are payable", () => {
+    const leases = [
+      {
+        amountDueCents: 50_00,
+        leaseId: "lease-1",
+        paymentsEnabled: false,
+        propertyName: "A",
+        unitLabel: "1",
+      },
+      {
+        amountDueCents: 50_00,
+        leaseId: "lease-2",
+        paymentsEnabled: false,
+        propertyName: "B",
+        unitLabel: "2",
+      },
+    ];
+
+    expect(
+      resolveRentPayAction(
+        summary({
+          leases,
+          totalAmountDueCents: 100_00,
+        })
+      )
+    ).toEqual({ kind: "pick-lease", leases });
   });
 });
 

@@ -78,37 +78,35 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
   const userType = currentUser?.userType ?? UserType.USER;
   const recentEntries = useRecentProperties();
   const [search, setSearch] = useState("");
-  const [debouncedPropertyQuery, setDebouncedPropertyQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const parsedQuery = useMemo(() => parseWorkspaceSearchQuery(search), [search]);
+  const debouncedParsedQuery = useMemo(
+    () => parseWorkspaceSearchQuery(debouncedSearch),
+    [debouncedSearch]
+  );
   const isSearching = search.trim().length > 0;
 
   useEffect(() => {
     const timeoutId = globalThis.setTimeout(() => {
-      setDebouncedPropertyQuery(parsedQuery.propertyQuery);
+      setDebouncedSearch(search);
     }, LIST_SEARCH_DEBOUNCE_MS);
 
     return () => globalThis.clearTimeout(timeoutId);
-  }, [parsedQuery.propertyQuery]);
+  }, [search]);
 
-  const isPropertyQueryReady =
-    parsedQuery.mode === "tabOnly" ||
-    (parsedQuery.propertyQuery !== "" && debouncedPropertyQuery === parsedQuery.propertyQuery) ||
-    (parsedQuery.propertyQuery === "" && debouncedPropertyQuery === "");
+  const isPropertyQueryReady = parsedQuery.mode === "tabOnly" || debouncedSearch === search;
 
   const propertiesQueryEnabled = enabled && isSearching && isPropertyQueryReady;
 
-  const {
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    isPending,
-    properties,
-  } = usePropertiesInfiniteList({
-    enabled: propertiesQueryEnabled,
-    q: parsedQuery.mode === "tabOnly" ? undefined : debouncedPropertyQuery || undefined,
-  });
+  const { fetchNextPage, hasNextPage, isFetching, isFetchingNextPage, isPending, properties } =
+    usePropertiesInfiniteList({
+      enabled: propertiesQueryEnabled,
+      q:
+        parsedQuery.mode === "tabOnly"
+          ? undefined
+          : debouncedParsedQuery.propertyQuery || undefined,
+    });
 
   useEffect(() => {
     if (
@@ -121,13 +119,7 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
     }
 
     fetchNextPage().catch(() => undefined);
-  }, [
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    parsedQuery.mode,
-    propertiesQueryEnabled,
-  ]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, parsedQuery.mode, propertiesQueryEnabled]);
 
   const propertyById = useMemo(
     () => new Map(properties.map((property) => [property.id, property])),
@@ -155,25 +147,34 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
     );
   }, [currentUser, isSearching, propertyById, recentEntries]);
 
+  const displayParsedQuery = parsedQuery.mode === "tabOnly" ? parsedQuery : debouncedParsedQuery;
+
   const propertyItems: IGlobalCommandPaletteItem[] = useMemo(() => {
-    if (!isSearching || !propertiesQueryEnabled) {
+    if (!isSearching || properties.length === 0) {
       return [];
     }
 
-    if (parsedQuery.matchedTabs.length > 0) {
+    const isPropertySearchDebouncing =
+      parsedQuery.mode !== "tabOnly" && debouncedSearch !== search;
+
+    if (isPropertySearchDebouncing && debouncedSearch.trim() === "") {
+      return [];
+    }
+
+    if (displayParsedQuery.matchedTabs.length > 0) {
       return properties.flatMap((property) =>
-        buildPropertyTabsPaletteCommandItems(property, parsedQuery.matchedTabs, currentUser)
+        buildPropertyTabsPaletteCommandItems(property, displayParsedQuery.matchedTabs, currentUser)
       );
     }
 
     return properties.flatMap((property) =>
       buildPropertyPaletteCommandItems(property, currentUser)
     );
-  }, [currentUser, isSearching, parsedQuery.matchedTabs, properties, propertiesQueryEnabled]);
+  }, [currentUser, debouncedSearch, displayParsedQuery, isSearching, parsedQuery.mode, properties, search]);
 
   const propertiesGroupHeading = useMemo(
-    () => buildPropertiesGroupHeading(parsedQuery.matchedTabs.map((tab) => tab.label)),
-    [parsedQuery.matchedTabs]
+    () => buildPropertiesGroupHeading(displayParsedQuery.matchedTabs.map((tab) => tab.label)),
+    [displayParsedQuery.matchedTabs]
   );
 
   const searchTips = useMemo(() => buildWorkspaceSearchTips(userType), [userType]);
@@ -183,7 +184,7 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
 
   const resetSearch = () => {
     setSearch("");
-    setDebouncedPropertyQuery("");
+    setDebouncedSearch("");
   };
 
   return {

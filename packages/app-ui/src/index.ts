@@ -103,3 +103,13 @@ export {
   SelectValue,
 } from "./ui/select";
 export { Separator } from "./ui/separator";
+export {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";

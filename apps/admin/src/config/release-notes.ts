@@ -35,6 +35,60 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     changes: [
       {
+        category: "new",
+        description:
+          "Home is now a workspace hub with search and three columns — pick up where you left off, open a property, and see recent tenant email campaigns across your portfolio.",
+      },
+      {
+        category: "new",
+        description:
+          "Press ⌘K or Ctrl+K anywhere to open a command palette — search navigation, find a property, and jump straight to Expenses, Leases, and other destinations.",
+      },
+      {
+        category: "improved",
+        description:
+          "Home search understands shortcuts — type a tab name like expenses or income: beach house to find properties faster.",
+      },
+      {
+        category: "improved",
+        description:
+          "Home shows a lightweight portfolio snapshot instead of charts, with a quick link to full reports.",
+      },
+      {
+        category: "improved",
+        description:
+          "When the sidebar is collapsed, hover to expand it temporarily so icon-only mode stays out of the way until you need labels.",
+      },
+      {
+        category: "improved",
+        description:
+          "Recent properties in the property switcher can be removed one at a time or cleared in one step.",
+      },
+      {
+        category: "improved",
+        description:
+          "Tenants with more than one active lease see each lease on Home and the leases list with its own Pay rent button — no extra taps through menus.",
+      },
+      {
+        category: "fixed",
+        description:
+          "Command palette and Home search keep showing property results while you type instead of briefly clearing the list.",
+      },
+      {
+        category: "fixed",
+        description:
+          "On Home, ⌘K or Ctrl+K focuses search, and Esc closes or clears search more predictably.",
+      },
+    ],
+    id: "2026.16.0",
+    publishedAt: "2026-07-21",
+    summary:
+      "Home workspace hub, global command palette, and faster multi-lease rent pay in the tenant portal.",
+    version: "2026.16.0",
+  },
+  {
+    changes: [
+      {
         category: "improved",
         description:
           "Starting a lease is now a short three-step flow — who, term, then rent — with a clean full-page layout and a live recap before you confirm.",
