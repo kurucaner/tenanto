@@ -22,8 +22,8 @@ export const HomeColumnEmptyState = memo(
     );
     const content = (
       <>
-        <Icon aria-hidden className="size-4 shrink-0" />
-        <p className="text-sm">{message}</p>
+        <Icon aria-hidden className="size-3 shrink-0" />
+        <p className="text-xs">{message}</p>
       </>
     );
 
