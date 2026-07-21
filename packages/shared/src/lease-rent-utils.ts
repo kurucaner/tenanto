@@ -1,4 +1,5 @@
 import { enumerateLeaseMonths, transactionDateToMonth } from "./lease-date-utils";
+import { resolveLeaseWeekPeriodStartContainingDate } from "./lease-week-proration-utils";
 import {
   deriveTermMonthsFromDates,
   parseLeaseIsoDate,
@@ -55,10 +56,10 @@ export function getFirstExtensionMonth(leaseEndDate: string): string {
   return addOneMonth(transactionDateToMonth(leaseEndDate));
 }
 
-export function getLeaseRentForMonth(
+export function getLeaseRentForPeriod(
   baseMonthlyRent: number,
   rentPeriods: readonly IPropertyLongStayRentPeriod[],
-  month: string
+  periodKey: string
 ): number {
   if (rentPeriods.length === 0) {
     return baseMonthlyRent;
@@ -66,7 +67,7 @@ export function getLeaseRentForMonth(
 
   let applicableRent = baseMonthlyRent;
   for (const period of rentPeriods) {
-    if (period.effectiveFromMonth <= month) {
+    if (period.effectiveFromMonth <= periodKey) {
       applicableRent = period.monthlyRent;
     } else {
       break;
@@ -75,12 +76,27 @@ export function getLeaseRentForMonth(
   return applicableRent;
 }
 
+/** @deprecated Prefer `getLeaseRentForPeriod` — period key is `YYYY-MM` or `YYYY-MM-DD`. */
+export function getLeaseRentForMonth(
+  baseMonthlyRent: number,
+  rentPeriods: readonly IPropertyLongStayRentPeriod[],
+  month: string
+): number {
+  return getLeaseRentForPeriod(baseMonthlyRent, rentPeriods, month);
+}
+
 export function getCurrentLeaseRent(
   baseMonthlyRent: number,
   rentPeriods: readonly IPropertyLongStayRentPeriod[],
-  today: string
+  today: string,
+  lease?: Pick<IPropertyLongStay, "leaseStartDate" | "rentBillingCadence">
 ): number {
-  return getLeaseRentForMonth(baseMonthlyRent, rentPeriods, transactionDateToMonth(today));
+  const periodKey =
+    lease && isWeeklyRentBillingCadence(lease.rentBillingCadence)
+      ? resolveLeaseWeekPeriodStartContainingDate(lease.leaseStartDate, today)
+      : transactionDateToMonth(today);
+
+  return getLeaseRentForPeriod(baseMonthlyRent, rentPeriods, periodKey);
 }
 
 export function getExtensionRentEffectiveMonthOptions(

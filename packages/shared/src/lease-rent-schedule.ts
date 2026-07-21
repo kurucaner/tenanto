@@ -1,7 +1,7 @@
 import { enumerateLeaseMonths, enumerateLeaseWeeks } from "./lease-date-utils";
 import { calculateExpectedRentForLeaseMonth } from "./lease-proration-utils";
 import { getEffectiveRentPeriodMonth, rollupLeaseRentByPeriod } from "./lease-rent-period-rollup";
-import { getLeaseRentForMonth } from "./lease-rent-utils";
+import { getLeaseRentForPeriod } from "./lease-rent-utils";
 import { calculateExpectedRentForLeaseWeek } from "./lease-week-proration-utils";
 import type { IPropertyIncomeLine } from "./property-income-line-types";
 import type {
@@ -65,7 +65,7 @@ function buildSchedulePeriodExpectations(input: {
 
   return input.periodKeys.map((periodKey) => {
     if (isWeekly) {
-      const weeklyRent = getLeaseRentForMonth(
+      const weeklyRent = getLeaseRentForPeriod(
         input.lease.monthlyRent,
         input.rentPeriods,
         periodKey

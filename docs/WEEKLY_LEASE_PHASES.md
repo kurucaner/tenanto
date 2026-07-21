@@ -166,7 +166,9 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 | **9**  | Rent-period history signals (v2 early)   | 5           | No            |
 | **10** | Weekly create bootstrap row (v2 early)   | 3           | No            |
 | **11** | Enable edit terms for weekly (v2 early)  | 8           | Yes (admin)   |
-| **12** | Weekly mid-lease rent changes (v2 later) | 8+          | Yes (admin)   |
+| **12a** | Weekly rent lookup + schedule (v2 later)   | 5           | No            |
+| **12b** | Weekly extend API + persist (v2 later)   | 6           | No (API only) |
+| **12c** | Weekly extend rent-change UI (v2 later)  | 3–4         | Yes (admin)   |
 | **13** | Shared period naming (v2 later)          | many        | No            |
 | **14** | API + DB rename migration (v2 later)     | many        | Breaking      |
 | **15** | Cadence conversion (v2 later)            | TBD         | Optional      |
@@ -605,31 +607,91 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 
 ## v2 later (breaking / migration-heavy)
 
-### Phase 12 — Weekly mid-lease rent changes
+Parent goal for Phase 12: change weekly rent during extend (and future amendment flow). Split into **12a → 12b → 12c** so schedule math, API/persistence, and admin UI ship independently.
 
-**Goal:** Change weekly rent during extend (and future amendment flow).
+**Deploy order:** Phases 9–11 first, then 12a → 12b → (API QA) → 12c. Admin + server for **12c** must deploy together with **12b** already live.
 
-**Files (8+)**
+**Note:** `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts` re-exports from `packages/shared`; schedule work lives in `lease-rent-schedule.ts` / `lease-rent-utils.ts`.
+
+---
+
+### Phase 12a — Schedule & rent lookup (shared)
+
+**Status:** ✅ Complete
+
+**Goal:** When `rent_periods` contain week-start keys (`YYYY-MM-DD`), rent schedule and “current rent” resolve correctly. **No change** to extend validation or admin UI yet.
+
+**Files (5)**
 
 | #   | File                                                                |
 | --- | ------------------------------------------------------------------- |
 | 1   | `packages/shared/src/lease-rent-utils.ts`                           |
-| 2   | `apps/server/src/db/property-long-stays.ts`                         |
-| 3   | `apps/admin/src/components/leases/extend-lease-dialog.tsx`          |
-| 4   | `packages/shared/src/lease-rent-utils.test.ts`                      |
-| 5   | `apps/server/src/db/property-long-stays-extend.test.ts`             |
-| 6   | `apps/admin/src/components/leases/lease-terms-section.tsx`          |
-| 7   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts`      |
-| 8   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
+| 2   | `packages/shared/src/lease-rent-utils.test.ts`                      |
+| 3   | `packages/shared/src/lease-rent-schedule.ts`                        |
+| 4   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
+| 5   | `apps/server/src/db/property-long-stays-rent-schedule.test.ts` _(optional)_ |
 
 **Tasks**
 
-- [ ] Allow rent change on weekly extend; insert `rent_periods` with week-start keys (`YYYY-MM-DD`).
-- [ ] Effective-from picker: weeks in extension window, not calendar months.
-- [ ] Cadence-aware rent lookup in schedule builder (week keys, not `transactionDateToMonth` only).
-- [ ] Re-enable extend dialog rent-change UI for weekly with week-based effective period.
+- [x] Cadence-aware `getCurrentLeaseRent` (today → containing week start for weekly).
+- [x] Confirm schedule builder + rollup behave with weekly `rentPeriods` (regression tests for mid-lease rate change).
+- [x] Optional: alias/clarify `getLeaseRentForPeriod` (keep `getLeaseRentForMonth` export for compatibility).
 
-**Exit criteria:** Extend weekly lease with new rent from a chosen week; schedule reflects new rate from that week forward.
+**Exit criteria:** In tests, weekly lease + two week-start `rentPeriods` → schedule shows old rate before effective week, new rate after. **Extend still rejects weekly rent change** (existing guard unchanged).
+
+---
+
+### Phase 12b — Extend API: validate + persist (server + shared, UI hidden)
+
+**Goal:** `POST …/extend` accepts weekly rent change with week-start `rentEffectiveFromMonth`; DB writes correct rows; schedule matches. Admin extend dialog still hides rent-change UI for weekly.
+
+**Files (6)**
+
+| #   | File                                                      |
+| --- | --------------------------------------------------------- |
+| 1   | `packages/shared/src/lease-rent-utils.ts`                 |
+| 2   | `packages/shared/src/lease-rent-utils.test.ts`            |
+| 3   | `apps/server/src/db/property-long-stays.ts`               |
+| 4   | `apps/server/src/db/property-long-stays-extend.test.ts`   |
+| 5   | `apps/server/src/routes/admin/property-long-stay-routes.ts` |
+| 6   | `apps/server/src/db/property-long-stays-rent-schedule.test.ts` _(post-extend schedule)_ |
+
+**Tasks**
+
+- [ ] Remove weekly block in `validateLeaseRentChange`.
+- [ ] Add `getFirstExtensionWeek` / `getExtensionRentEffectiveWeekOptions` (week starts in extension window, not calendar months).
+- [ ] Weekly rent-change validation: effective period is a schedule week start within the extension window.
+- [ ] `extendLease`: bootstrap row uses `getPristineRentPeriodKey`; new row uses submitted week key.
+- [ ] Route parser: cadence-aware effective-period format (`isValidRentPeriodKey` for weekly).
+
+**Exit criteria:** API extend with `additionalWeeks` + `newMonthlyRent` + week-start `rentEffectiveFromMonth` succeeds; schedule reflects new rate from that week; `hasRentPeriodHistory: true` afterward (edit terms blocked — expected).
+
+**Depends on:** Phase 12a; Phases 9–11 deployed.
+
+---
+
+### Phase 12c — Admin extend UI + copy
+
+**Goal:** Operators can change weekly rent when extending a lease.
+
+**Files (3–4)**
+
+| #   | File                                                       |
+| --- | ---------------------------------------------------------- |
+| 1   | `apps/admin/src/components/leases/extend-lease-dialog.tsx` |
+| 2   | `apps/admin/src/components/leases/lease-terms-section.tsx` |
+| 3   | `apps/admin/src/lib/lease-rent-schedule-display.ts` _(if extend copy/helpers live here)_ |
+
+**Tasks**
+
+- [ ] Re-enable rent-change UI for weekly (remove `{!isWeekly ? …}` gate on rent fields).
+- [ ] Week-based effective-from picker (`formatRentPeriodLabel`; options from shared week helper).
+- [ ] Cadence-aware labels (“Weekly rent”, week “Rent effective from”).
+- [ ] Update Terms tab extend blurb (`getLeaseExtendTermsDescription`); dialog description no longer says rent cannot change on extend.
+
+**Exit criteria:** Extend weekly lease with new rent from a chosen week in admin UI; schedule on lease detail reflects new rate from that week forward.
+
+**Depends on:** Phase 12b (deploy admin with server).
 
 ---
 
@@ -692,7 +754,7 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 - Do **not** enable `WEEKLY_RENT_BILLING_ENABLED` before Phase 2b — you'd create leases the server can't schedule.
 - Do **not** rename `monthly_rent` / `IPropertyLongStayRentMonth` in v1 — too many touchpoints; interpret by cadence instead.
 - Do **not** reuse `YYYY-MM` keys for weekly periods — collisions and wrong proration.
-- Do **not** allow edit terms or mid-lease rent changes for weekly in v1 — rent period history is month-shaped today.
+- Do **not** allow edit terms or mid-lease rent changes for weekly in v1 — use Phases 11 and 12a–12c instead.
 - Do **not** skip widening DB CHECK constraints before tenant checkout — allocations will fail at insert.
 - Do **not** change monthly `asOfMonth` logic — branch on cadence; keep the monthly code path identical.
 
@@ -722,11 +784,13 @@ Each v1 phase is independently shippable behind the server gate until Phase 3.
 
 ### v2 later
 
-13. **Phase 12** — weekly mid-lease rent changes (extend + history).
-14. **Phase 13** — shared period naming (non-breaking).
-15. **Phase 14** — API + DB rename migration (breaking).
-16. **Phase 15** — cadence conversion (optional, product decision).
-17. **Phase 16** — portfolio / reports / email audit.
+13. **Phase 12a** — weekly rent lookup + schedule correctness (extend guard unchanged).
+14. **Phase 12b** — weekly extend API + persist (UI still hidden; QA via API/staging).
+15. **Phase 12c** — weekly extend rent-change admin UI.
+16. **Phase 13** — shared period naming (non-breaking).
+17. **Phase 14** — API + DB rename migration (breaking).
+18. **Phase 15** — cadence conversion (optional, product decision).
+19. **Phase 16** — portfolio / reports / email audit.
 
 ---
 
@@ -739,5 +803,7 @@ Each v1 phase is independently shippable behind the server gate until Phase 3.
 - [ ] Tenant pays weekly rent — allocation on week key; balance clears.
 - [ ] End weekly lease mid-week — final week prorated.
 - [ ] Extend weekly lease — new weeks appear in schedule.
-- [ ] Edit terms on weekly lease — blocked with clear message.
+- [ ] Extend weekly lease with rent change (after Phase 12c) — schedule reflects new rate from chosen week.
+- [ ] Edit terms on pristine weekly lease — allowed before income/payments/history (Phase 11).
+- [ ] Edit terms after extend with rent change — blocked with rent-period history reason.
 - [ ] Mixed portfolio: one tenant with monthly + weekly leases — multi-lease pay still works.

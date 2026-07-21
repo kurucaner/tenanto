@@ -250,6 +250,7 @@ export {
   getExtensionRentEffectiveMonthOptions,
   getFirstExtensionMonth,
   getLeaseRentForMonth,
+  getLeaseRentForPeriod,
   MAX_ADDITIONAL_TERM_MONTHS,
   MAX_ADDITIONAL_TERM_WEEKS,
   MAX_TOTAL_LEASE_TERM_MONTHS,

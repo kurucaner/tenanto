@@ -233,7 +233,8 @@ export const propertyLongStaysDb = {
       const currentMonthlyRent = getCurrentLeaseRent(
         existing.monthlyRent,
         rentPeriods,
-        getTodayUtcIsoDate()
+        getTodayUtcIsoDate(),
+        existing
       );
 
       const result = await client.query(

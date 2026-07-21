@@ -29,7 +29,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
     if (!lease) {
       return 0;
     }
-    return getCurrentLeaseRent(lease.monthlyRent, rentPeriods, getTodayLocalIsoDate());
+    return getCurrentLeaseRent(lease.monthlyRent, rentPeriods, getTodayLocalIsoDate(), lease);
   }, [lease, rentPeriods]);
 
   return {

@@ -140,4 +140,31 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       remainingRent: 600,
     });
   });
+
+  test("builds weekly schedule with mid-lease rent period change", () => {
+    const schedule = buildLeaseRentScheduleWithRollup({
+      allocationCentsByMonth: new Map(),
+      effectiveEndDate: "2026-02-10",
+      incomeLines: [],
+      lease: {
+        leaseStartDate: "2026-01-15",
+        monthlyRent: 700,
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      },
+      months: ["2026-01-15", "2026-01-22", "2026-01-29", "2026-02-05"],
+      rentPeriods: [
+        { effectiveFromMonth: "2026-01-15", monthlyRent: 700 },
+        { effectiveFromMonth: "2026-01-29", monthlyRent: 800 },
+      ],
+    });
+
+    expect(schedule[0]?.expectedRent).toBe(700);
+    expect(schedule[1]?.expectedRent).toBe(700);
+    expect(schedule[2]?.expectedRent).toBe(800);
+    expect(schedule[3]).toMatchObject({
+      expectedRent: 685.71,
+      isProrated: true,
+      month: "2026-02-05",
+    });
+  });
 });

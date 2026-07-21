@@ -5,6 +5,7 @@ import {
   getExtensionRentEffectiveMonthOptions,
   getFirstExtensionMonth,
   getLeaseRentForMonth,
+  getLeaseRentForPeriod,
   validateExtendLease,
 } from "./lease-rent-utils";
 import { PropertyLongStayStatus } from "./property-long-stay-types";
@@ -49,11 +50,43 @@ describe("getLeaseRentForMonth", () => {
   });
 });
 
+describe("getLeaseRentForPeriod", () => {
+  test("applies latest weekly period at or before the week start", () => {
+    const periods = [
+      { effectiveFromMonth: "2026-01-15", monthlyRent: 700 },
+      { effectiveFromMonth: "2026-01-29", monthlyRent: 800 },
+    ];
+    expect(getLeaseRentForPeriod(700, periods, "2026-01-15")).toBe(700);
+    expect(getLeaseRentForPeriod(700, periods, "2026-01-22")).toBe(700);
+    expect(getLeaseRentForPeriod(700, periods, "2026-01-29")).toBe(800);
+    expect(getLeaseRentForPeriod(700, periods, "2026-02-05")).toBe(800);
+  });
+});
+
 describe("getCurrentLeaseRent", () => {
   test("uses today's month for lookup", () => {
     const periods = [{ effectiveFromMonth: "2027-01", monthlyRent: 1700 }];
     expect(getCurrentLeaseRent(1500, periods, "2026-07-09")).toBe(1500);
     expect(getCurrentLeaseRent(1500, periods, "2027-02-15")).toBe(1700);
+  });
+
+  test("uses containing week start for weekly leases", () => {
+    const periods = [
+      { effectiveFromMonth: "2026-01-15", monthlyRent: 700 },
+      { effectiveFromMonth: "2026-01-29", monthlyRent: 800 },
+    ];
+    expect(
+      getCurrentLeaseRent(700, periods, "2026-01-20", {
+        leaseStartDate: "2026-01-15",
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      })
+    ).toBe(700);
+    expect(
+      getCurrentLeaseRent(700, periods, "2026-01-30", {
+        leaseStartDate: "2026-01-15",
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      })
+    ).toBe(800);
   });
 });
 

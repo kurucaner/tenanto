@@ -743,4 +743,34 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       remainingRent: 600,
     });
   });
+
+  test("returns weekly schedule with mid-lease rent period change", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      id: "lease-weekly-rate-change",
+      lease_end_date: "2026-02-10",
+      lease_start_date: "2026-01-15",
+      monthly_rent: "700.00",
+      rent_billing_cadence: "weekly",
+      term_months: 1,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      { effective_from_month: "2026-01-15", monthly_rent: "700.00" },
+      { effective_from_month: "2026-01-29", monthly_rent: "800.00" },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule(
+      "lease-weekly-rate-change",
+      "2026-02-10"
+    );
+
+    expect(schedule[0]?.expectedRent).toBe(700);
+    expect(schedule[1]?.expectedRent).toBe(700);
+    expect(schedule[2]?.expectedRent).toBe(800);
+    expect(schedule[3]).toMatchObject({
+      expectedRent: 685.71,
+      isProrated: true,
+      month: "2026-02-05",
+    });
+  });
 });
