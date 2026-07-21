@@ -33,7 +33,7 @@ function parseOptionalRentPeriodKeyField(
     rentPeriodMonth: rentPeriodMonthResult.value,
   });
 
-  return { ok: true, value: resolved };
+  return { ok: true, value: resolved ?? undefined };
 }
 
 export function parseCreateIncomeLineBody(
