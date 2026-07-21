@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { derivePropertyPermissions } from "@/hooks/use-property-permissions";
-import type { IPropertyDetail, IPropertyMember, IUser } from "@/packages/shared";
+import {
+  derivePropertyPermissions,
+  derivePropertyPermissionsFromListItem,
+} from "@/hooks/use-property-permissions";
+import type { IProperty, IPropertyDetail, IPropertyMember, IUser } from "@/packages/shared";
 import { PropertyRole, UserType } from "@/packages/shared";
 
 const propertyId = "property-1";
@@ -45,6 +48,7 @@ function makeMember(userId: string, role: IPropertyMember["role"]): IPropertyMem
 function makeProperty(members: IPropertyMember[]): IPropertyDetail {
   return {
     address: "123 Main St",
+    callerRole: members[0]?.role ?? null,
     createdAt: "2026-01-01T00:00:00.000Z",
     createdBy: creatorId,
     creator: {
@@ -65,6 +69,100 @@ function makeProperty(members: IPropertyMember[]): IPropertyDetail {
     updatedAt: "2026-01-01T00:00:00.000Z",
   };
 }
+
+function makeListProperty(overrides: Partial<IProperty> = {}): IProperty {
+  return {
+    address: "123 Main St",
+    callerRole: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    createdBy: creatorId,
+    favoritedAt: null,
+    id: propertyId,
+    isFavorite: false,
+    legalName: null,
+    memberCount: 1,
+    name: "Test Property",
+    phoneNumber: null,
+    unitCount: 0,
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("derivePropertyPermissionsFromListItem", () => {
+  test("owner member matches detail-based permissions", () => {
+    const user = makeUser(ownerId, UserType.USER);
+    const listPermissions = derivePropertyPermissionsFromListItem(
+      makeListProperty({ callerRole: PropertyRole.OWNER }),
+      user
+    );
+    const detailPermissions = derivePropertyPermissions(
+      makeProperty([makeMember(ownerId, PropertyRole.OWNER)]),
+      user
+    );
+
+    expect(listPermissions).toEqual({
+      ...detailPermissions,
+      callerMembership: undefined,
+    });
+  });
+
+  test("manager member matches detail-based permissions", () => {
+    const user = makeUser(managerId, UserType.USER);
+    const listPermissions = derivePropertyPermissionsFromListItem(
+      makeListProperty({ callerRole: PropertyRole.MANAGER }),
+      user
+    );
+    const detailPermissions = derivePropertyPermissions(
+      makeProperty([makeMember(managerId, PropertyRole.MANAGER)]),
+      user
+    );
+
+    expect(listPermissions).toEqual({
+      ...detailPermissions,
+      callerMembership: undefined,
+    });
+  });
+
+  test("accountant member matches detail-based permissions", () => {
+    const user = makeUser(accountantId, UserType.USER);
+    const listPermissions = derivePropertyPermissionsFromListItem(
+      makeListProperty({ callerRole: PropertyRole.ACCOUNTANT }),
+      user
+    );
+    const detailPermissions = derivePropertyPermissions(
+      makeProperty([makeMember(accountantId, PropertyRole.ACCOUNTANT)]),
+      user
+    );
+
+    expect(listPermissions).toEqual({
+      ...detailPermissions,
+      callerMembership: undefined,
+    });
+  });
+
+  test("creator without membership matches detail-based permissions", () => {
+    const user = makeUser(creatorId, UserType.USER);
+    const listPermissions = derivePropertyPermissionsFromListItem(makeListProperty(), user);
+    const detailPermissions = derivePropertyPermissions(makeProperty([]), user);
+
+    expect(listPermissions).toEqual({
+      ...detailPermissions,
+      callerMembership: undefined,
+    });
+  });
+
+  test("platform admin matches detail-based permissions", () => {
+    const user = makeUser(adminId, UserType.ADMIN);
+    const listPermissions = derivePropertyPermissionsFromListItem(makeListProperty(), user);
+    const detailPermissions = derivePropertyPermissions(makeProperty([]), user);
+
+    expect(listPermissions).toEqual({
+      ...detailPermissions,
+      callerMembership: undefined,
+    });
+  });
+});
 
 describe("derivePropertyPermissions", () => {
   test("manager member can manage units and ledger but not structure", () => {

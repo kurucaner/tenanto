@@ -3,6 +3,7 @@ import { type IProperty, type IPropertyUnit, UnitRentalType } from "@/packages/s
 export function makeProperty(overrides: Partial<IProperty> = {}): IProperty {
   return {
     address: "123 Main",
+    callerRole: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     createdBy: "operator-1",
     favoritedAt: null,

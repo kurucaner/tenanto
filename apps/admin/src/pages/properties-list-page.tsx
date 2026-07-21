@@ -108,6 +108,7 @@ const PropertiesListTable = memo(
       items={properties}
       renderRow={(property) => (
         <PropertyTableRow
+          key={property.id}
           isFavoritePending={
             favoriteMutation.isPending && favoriteMutation.variables?.propertyId === property.id
           }

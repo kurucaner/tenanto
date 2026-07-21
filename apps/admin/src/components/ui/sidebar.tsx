@@ -46,6 +46,7 @@ type SidebarContextProps = {
   state: "expanded" | "collapsed";
   open: boolean;
   setOpen: (open: boolean) => void;
+  setHoverExpanded: (expanded: boolean) => void;
   openMobile: boolean;
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
@@ -78,6 +79,7 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [isHoverExpanded, setIsHoverExpanded] = React.useState(false);
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -117,21 +119,39 @@ function SidebarProvider({
     return () => globalThis.removeEventListener("keydown", handleKeyDown);
   }, [toggleSidebar]);
 
+  React.useEffect(() => {
+    if (open) {
+      setIsHoverExpanded(false);
+    }
+  }, [open]);
+
+  const setHoverExpanded = React.useCallback(
+    (expanded: boolean) => {
+      if (isMobile || open) {
+        return;
+      }
+
+      setIsHoverExpanded(expanded);
+    },
+    [isMobile, open]
+  );
+
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
-  const state = open ? "expanded" : "collapsed";
+  const state = open || isHoverExpanded ? "expanded" : "collapsed";
 
   const contextValue = React.useMemo<SidebarContextProps>(
     () => ({
       isMobile,
       open,
       openMobile,
+      setHoverExpanded,
       setOpen,
       setOpenMobile,
       state,
       toggleSidebar,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setHoverExpanded, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
   );
 
   return (
@@ -170,7 +190,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset";
   collapsible?: "offcanvas" | "icon" | "none";
 }) {
-  const { isMobile, openMobile, setOpenMobile, state } = useSidebar();
+  const { isMobile, openMobile, setHoverExpanded, setOpenMobile, state } = useSidebar();
 
   if (collapsible === "none") {
     return (
@@ -221,6 +241,8 @@ function Sidebar({
       data-variant={variant}
       data-side={side}
       data-slot="sidebar"
+      onMouseEnter={() => setHoverExpanded(true)}
+      onMouseLeave={() => setHoverExpanded(false)}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div

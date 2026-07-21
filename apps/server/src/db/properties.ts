@@ -21,11 +21,21 @@ import { propertyInvitesDb } from "./property-invites";
 
 type DbQueryable = Pool | PoolClient;
 
-const PROPERTY_LIST_SELECT = `
+function propertyListSelect(includeCallerRole: boolean): string {
+  const callerRoleSelect = includeCallerRole
+    ? `(SELECT pm_viewer.role::text
+        FROM property_members pm_viewer
+        WHERE pm_viewer.property_id = p.id AND pm_viewer.user_id = $1
+        LIMIT 1) AS caller_role`
+    : "NULL::text AS caller_role";
+
+  return `
   p.*, COUNT(pm.id)::int AS member_count,
   (SELECT COUNT(*)::int FROM property_units pu
    WHERE pu.property_id = p.id AND pu.is_deleted = false) AS unit_count,
-  MAX(puf.favorited_at) AS favorited_at`;
+  MAX(puf.favorited_at) AS favorited_at,
+  ${callerRoleSelect}`;
+}
 
 const PROPERTY_LIST_ORDER_BY = `
   COALESCE(MAX(puf.favorited_at), 'infinity'::timestamptz) ASC,
@@ -96,6 +106,7 @@ function encodePropertyListNextCursor(row: Record<string, unknown>): string {
 type TPropertyListPaginatedParams = {
   accessWhereFragments: string[];
   cursor?: string;
+  includeCallerRole: boolean;
   limit: number;
   q?: string;
   userId: string;
@@ -138,7 +149,7 @@ async function listPaginatedProperties(
   values.push(params.limit + 1);
 
   const result = await pool.query(
-    `SELECT ${PROPERTY_LIST_SELECT}
+    `SELECT ${propertyListSelect(params.includeCallerRole)}
      FROM properties p
      LEFT JOIN property_members pm ON pm.property_id = p.id
      ${propertyFavoriteJoin(1)}
@@ -280,6 +291,7 @@ export const propertiesDb = {
     return listPaginatedProperties({
       accessWhereFragments: [],
       cursor: params.cursor,
+      includeCallerRole: false,
       limit: params.limit,
       q: params.q,
       userId: params.userId,
@@ -300,6 +312,7 @@ export const propertiesDb = {
          ))`,
       ],
       cursor: params.cursor,
+      includeCallerRole: true,
       limit: params.limit,
       q: params.q,
       userId: params.userId,

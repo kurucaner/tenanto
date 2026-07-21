@@ -64,6 +64,9 @@ export const TenantEmailComposeCard = memo(
         queryClient.invalidateQueries({
           queryKey: queryKeys.propertyTenantEmailCampaigns(propertyId),
         });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.homeRecentTenantEmailCampaigns(),
+        });
         queryClient.prefetchQuery({
           queryFn: () => tenantEmailCampaignsApi.get(propertyId, response.campaignId),
           queryKey: queryKeys.propertyTenantEmailCampaign(propertyId, response.campaignId),

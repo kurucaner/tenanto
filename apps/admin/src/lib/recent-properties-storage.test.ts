@@ -50,6 +50,44 @@ describe("parseRecentProperties", () => {
   test("returns empty array for non-array json", () => {
     expect(parseRecentProperties('{"id":"1"}')).toEqual([]);
   });
+
+  test("accepts legacy entries without lastPath", () => {
+    expect(
+      parseRecentProperties(
+        JSON.stringify([
+          {
+            address: "123 Main",
+            id: "1",
+            name: "One",
+            visitedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ])
+      )
+    ).toEqual([
+      {
+        address: "123 Main",
+        id: "1",
+        name: "One",
+        visitedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  test("rejects entries with invalid lastPath", () => {
+    expect(
+      parseRecentProperties(
+        JSON.stringify([
+          {
+            address: "123 Main",
+            id: "1",
+            lastPath: 42,
+            name: "One",
+            visitedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ])
+      )
+    ).toEqual([]);
+  });
 });
 
 describe("recordRecentProperty", () => {
@@ -78,6 +116,38 @@ describe("recordRecentProperty", () => {
     const recent = readRecentProperties();
     expect(recent).toHaveLength(RECENT_PROPERTIES_MAX);
     expect(recent.map((entry) => entry.id)).toEqual(["6", "5", "4", "3", "2"]);
+  });
+
+  test("persists lastPath round-trip", () => {
+    recordRecentProperty({
+      ...property("a", "Alpha"),
+      lastPath: "/leases",
+    });
+
+    expect(readRecentProperties()[0]?.lastPath).toBe("/leases");
+    expect(storage.get(RECENT_PROPERTIES_STORAGE_KEY)).toContain('"/leases"');
+  });
+
+  test("updates lastPath when revisiting the same property", () => {
+    recordRecentProperty({
+      ...property("a", "Alpha"),
+      lastPath: "/leases",
+    });
+    recordRecentProperty({
+      ...property("a", "Alpha"),
+      lastPath: "/income",
+    });
+
+    expect(readRecentProperties()[0]?.lastPath).toBe("/income");
+  });
+
+  test("stores empty string lastPath for overview", () => {
+    recordRecentProperty({
+      ...property("a", "Alpha"),
+      lastPath: "",
+    });
+
+    expect(readRecentProperties()[0]?.lastPath).toBe("");
   });
 });
 
@@ -108,7 +178,7 @@ describe("clearRecentProperties", () => {
     clearRecentProperties();
 
     expect(readRecentProperties()).toEqual([]);
-    expect(storage.get(RECENT_PROPERTIES_STORAGE_KEY)).toBe(JSON.stringify([]));
+    expect(storage.has(RECENT_PROPERTIES_STORAGE_KEY)).toBe(false);
   });
 
   test("no-ops when already empty", () => {

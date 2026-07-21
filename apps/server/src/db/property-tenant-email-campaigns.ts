@@ -1,18 +1,20 @@
 import { tenantEmailCampaignIdempotencyConflictError } from "@/errors/tenant-email-campaign-errors";
 import { didTenantEmailCampaignTransitionToTerminal } from "@/lib/tenant-email-campaign-limits";
-import type {
-  ITenantEmailCampaign,
-  ITenantEmailCampaignListItem,
-  ITenantEmailCampaignRecipient,
-  ITenantEmailCampaignsListMeta,
-  ITenantEmailResolvedRecipient,
-  ITenantEmailSkippedRecipient,
-  TTenantEmailCampaignsListFilters,
-  TTenantEmailCampaignStatus,
-  TTenantEmailRecipientStatus,
-  TTenantEmailTenantRole,
+import {
+  type IHomeRecentTenantEmailCampaign,
+  type ITenantEmailCampaign,
+  type ITenantEmailCampaignListItem,
+  type ITenantEmailCampaignRecipient,
+  type ITenantEmailCampaignsListMeta,
+  type ITenantEmailResolvedRecipient,
+  type ITenantEmailSkippedRecipient,
+  PropertyRole,
+  toIso,
+  type TTenantEmailCampaignsListFilters,
+  type TTenantEmailCampaignStatus,
+  type TTenantEmailRecipientStatus,
+  type TTenantEmailTenantRole,
 } from "@/packages/shared";
-import { toIso } from "@/packages/shared";
 import { decodeKeysetCursor, encodeKeysetCursor } from "@/pagination/keyset-cursor";
 import { takePageWithNextCursor } from "@/pagination/limit-plus-one";
 import { shouldIncludeListMeta } from "@/pagination/should-include-list-meta";
@@ -78,6 +80,13 @@ function mapCampaignListItemRow(row: Record<string, unknown>): ITenantEmailCampa
     status: row.status as TTenantEmailCampaignStatus,
     subject: row.subject as string,
     updatedAt: (row.updated_at as Date).toISOString(),
+  };
+}
+
+function mapRecentCampaignRow(row: Record<string, unknown>): IHomeRecentTenantEmailCampaign {
+  return {
+    ...mapCampaignListItemRow(row),
+    propertyName: row.property_name as string,
   };
 }
 
@@ -391,6 +400,57 @@ export const propertyTenantEmailCampaignsDb = {
       [campaignId]
     );
     return result.rows.map((row) => (row as { id: string }).id);
+  },
+
+  async listRecentForAccessibleProperties(
+    userId: string,
+    isAdmin: boolean,
+    limit: number
+  ): Promise<IHomeRecentTenantEmailCampaign[]> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    let p = 1;
+
+    if (!isAdmin) {
+      conditions.push(
+        `(p.created_by = $${p++} OR EXISTS (
+           SELECT 1 FROM property_members pm
+           WHERE pm.property_id = p.id
+             AND pm.user_id = $${p++}
+             AND pm.role = $${p++}::property_role
+         ))`
+      );
+      values.push(userId, userId, PropertyRole.OWNER);
+    }
+
+    values.push(limit);
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const result = await pool.query(
+      `SELECT
+        c.id,
+        c.property_id,
+        c.created_by,
+        c.subject,
+        c.status,
+        c.recipient_count,
+        c.sent_count,
+        c.failed_count,
+        c.skipped_count,
+        c.idempotency_key,
+        c.completed_at,
+        c.created_at,
+        c.updated_at,
+        p.name AS property_name
+      FROM property_tenant_email_campaigns c
+      INNER JOIN properties p ON p.id = c.property_id
+      ${whereClause}
+      ORDER BY c.created_at DESC, c.id DESC
+      LIMIT $${p}`,
+      values
+    );
+
+    return result.rows.map((row) => mapRecentCampaignRow(row as Record<string, unknown>));
   },
 
   async listRecipients(campaignId: string): Promise<ITenantEmailCampaignRecipient[]> {
