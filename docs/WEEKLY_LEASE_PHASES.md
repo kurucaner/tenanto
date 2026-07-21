@@ -523,24 +523,27 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 
 ### Phase 9 — Rent-period history signals (weekly-correct)
 
+**Status:** ✅ Complete
+
 **Goal:** Pristine weekly leases are not treated as having rent period history.
 
-**Files (5)**
+**Files (6)**
 
 | #   | File                                                         |
 | --- | ------------------------------------------------------------ |
 | 1   | `apps/server/src/db/property-long-stays.ts`                  |
 | 2   | `packages/shared/src/lease-terms-edit-utils.ts`              |
-| 3   | `packages/shared/src/lease-terms-edit-utils.test.ts`         |
-| 4   | `apps/server/src/db/property-long-stays-terms-edit.test.ts`  |
-| 5   | `packages/shared/src/property-long-stay-types.ts` _(JSDoc on `IPropertyLongStayRentPeriod` if added)_ |
+| 3   | `packages/shared/src/rent-period-key-utils.ts`               |
+| 4   | `packages/shared/src/lease-terms-edit-utils.test.ts`         |
+| 5   | `apps/server/src/db/property-long-stays-terms-edit.test.ts`  |
+| 6   | `packages/shared/src/property-long-stay-types.ts`            |
 
 **Tasks**
 
-- [ ] Fix `getTermsEditSignals` SQL: for weekly cadence, compare `effective_from_month` to lease start **date** (`YYYY-MM-DD`), not `YYYY-MM`.
-- [ ] Fix `hasRentPeriodHistory()` in shared with the same cadence-aware comparison.
-- [ ] Document on `IPropertyLongStayRentPeriod`: `effectiveFromMonth` holds `YYYY-MM` or `YYYY-MM-DD` period keys; `monthlyRent` is recurring amount for the cadence.
-- [ ] Regression tests for weekly bootstrap row + monthly extend-with-rent.
+- [x] Refactor `getTermsEditSignals`: load rent periods and derive `hasRentPeriodHistory` via shared `hasRentPeriodHistory(rentPeriods, leaseStartDate, rentBillingCadence)` (replaces month-only SQL subquery).
+- [x] Cadence-aware `hasRentPeriodHistory()` using `getPristineRentPeriodKey` — `YYYY-MM` for monthly, lease start `YYYY-MM-DD` for weekly.
+- [x] Document on `IPropertyLongStayRentPeriod`: `effectiveFromMonth` holds `YYYY-MM` or `YYYY-MM-DD` period keys; `monthlyRent` is recurring amount for the cadence.
+- [x] Regression tests: shared weekly bootstrap + monthly extend-with-rent; server integration for both cadences.
 
 **Exit criteria:** New weekly lease with one bootstrap period → `hasRentPeriodHistory: false`; monthly extend-with-rent still `true`. Required before Phase 11.
 

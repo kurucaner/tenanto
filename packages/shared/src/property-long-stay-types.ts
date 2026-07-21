@@ -97,8 +97,11 @@ export interface IPropertyLongStayDetailResponse {
   termsEditability: ILeaseTermsEditability;
 }
 
+/** A rent amount effective from a schedule period key onward. */
 export interface IPropertyLongStayRentPeriod {
+  /** Period key: `YYYY-MM` (monthly cadence) or `YYYY-MM-DD` week start (weekly cadence). */
   effectiveFromMonth: string;
+  /** Recurring rent amount for the lease's billing cadence (field name is historical). */
   monthlyRent: number;
 }
 

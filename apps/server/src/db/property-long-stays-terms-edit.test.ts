@@ -71,4 +71,42 @@ describe("propertyLongStaysDb.getTermsEditSignals", () => {
       },
     });
   });
+
+  test("returns hasRentPeriodHistory false for weekly lease with single bootstrap period", async () => {
+    mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes("has_income_lines")) {
+        return Promise.resolve({
+          rows: [
+            {
+              has_income_lines: false,
+              has_succeeded_payments: false,
+              lease_start_date: "2026-01-15",
+              rent_billing_cadence: "weekly",
+            },
+          ],
+        });
+      }
+
+      if (sql.includes("property_long_stay_rent_periods")) {
+        return Promise.resolve({
+          rows: [{ effective_from_month: "2026-01-15", monthly_rent: "700" }],
+        });
+      }
+
+      return Promise.resolve({ rows: [] });
+    });
+
+    const result = await propertyLongStaysDb.getTermsEditSignals(
+      "22222222-2222-4222-8222-222222222222"
+    );
+
+    expect(result).toEqual({
+      leaseStartDate: "2026-01-15",
+      signals: {
+        hasIncomeLines: false,
+        hasRentPeriodHistory: false,
+        hasSucceededPayments: false,
+      },
+    });
+  });
 });
