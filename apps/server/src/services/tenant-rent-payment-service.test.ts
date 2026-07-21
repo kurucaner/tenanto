@@ -115,6 +115,10 @@ mock.module("@/services/winston", () => ({
   },
 }));
 
+mock.module("@/lib/date-utils", () => ({
+  getTodayUtcIsoDate: () => "2026-01-22",
+}));
+
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
 describe("tenantRentPaymentService.createCheckout idempotency", () => {
@@ -297,5 +301,52 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
     const balance = await tenantRentPaymentService.getBalance("lease-1", "tenant-1");
 
     expect(balance.paymentsEnabled).toBe(false);
+  });
+
+  test("createCheckout allocates due weeks with week-start period keys", async () => {
+    mockGetRentSchedule.mockResolvedValueOnce([
+      makeRentScheduleRow({
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-15",
+        paidRent: 0,
+        remainingRent: 700,
+      }),
+      makeRentScheduleRow({
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-22",
+        paidRent: 0,
+        remainingRent: 700,
+      }),
+      makeRentScheduleRow({
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-29",
+        paidRent: 0,
+        remainingRent: 700,
+      }),
+    ]);
+    mockCreateWithAllocations.mockResolvedValueOnce(makePayment({ amountCents: 1400_00 }));
+    mockUpdateStripeIds.mockResolvedValueOnce(makePayment({ amountCents: 1400_00 }));
+
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
+
+    expect(mockCreateWithAllocations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allocations: [
+          expect.objectContaining({
+            allocatedCents: 700_00,
+            periodMonth: "2026-01-15",
+          }),
+          expect.objectContaining({
+            allocatedCents: 700_00,
+            periodMonth: "2026-01-22",
+          }),
+        ],
+        amountCents: 1400_00,
+        idempotencyKey: "rent_checkout:lease-1:tenant-1:2026-01-15,2026-01-22:140000",
+      })
+    );
   });
 });

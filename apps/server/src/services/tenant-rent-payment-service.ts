@@ -4,12 +4,12 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
-import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   rentPaymentConnectNotReadyError,
   rentPaymentNotFoundError,
   rentPaymentValidationError,
 } from "@/errors/rent-payment-errors";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
@@ -20,6 +20,7 @@ import {
   centsToDollars,
   computeTenantBalanceFromRentSchedule,
   isLeaseRentPeriodFullyPaidCents,
+  isWeeklyPeriodKey,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
@@ -28,7 +29,6 @@ import {
   type ITenantRentSummaryResponse,
   TenantLeaseListStatus,
   TenantRentPaymentStatus,
-  transactionDateToMonth,
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
@@ -48,10 +48,13 @@ function requireStripeConfigured(): void {
   requireStripeConnectOperational();
 }
 
+function resolveIncomeTransactionDateForPeriodKey(periodKey: string): string {
+  return isWeeklyPeriodKey(periodKey) ? periodKey : `${periodKey}-01`;
+}
+
 async function loadTenantBalanceFromSchedule(leaseId: string) {
   const schedule = await propertyLongStaysDb.getRentSchedule(leaseId);
-  const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
-  return computeTenantBalanceFromRentSchedule(schedule, asOfMonth);
+  return computeTenantBalanceFromRentSchedule(schedule, getTodayUtcIsoDate());
 }
 
 async function computeLeaseBalanceFields(
@@ -131,7 +134,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
         rentPeriodMonth: allocation.periodMonth,
         reservationId: null,
         tenantRentPaymentId: payment.id,
-        transactionDate: `${allocation.periodMonth}-01`,
+        transactionDate: resolveIncomeTransactionDateForPeriodKey(allocation.periodMonth),
         unitId: lease.unitId,
       },
       computed

@@ -358,6 +358,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Tenant can pay weekly rent via Stripe; allocations use week keys.
 
+**Status:** ✅ Complete
+
 **Files (5)**
 
 | #   | File                                                                |
@@ -370,9 +372,9 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Cadence-aware due period selection (`asOf` = today for weekly).
-- [ ] Checkout idempotency + allocation uses week keys.
-- [ ] Tests for weekly checkout path.
+- [x] Cadence-aware due period selection (`asOf` = today for weekly).
+- [x] Checkout idempotency + allocation uses week keys.
+- [x] Tests for weekly checkout path.
 
 **Exit criteria:** Weekly lease checkout allocates to correct week keys; monthly checkout unchanged.
 
