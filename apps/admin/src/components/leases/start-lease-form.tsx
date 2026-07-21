@@ -17,7 +17,6 @@ import {
   getStartLeaseRentAmountLabel,
   getStartLeaseRentBillingHelperText,
   START_LEASE_RENT_BILLING_LABELS,
-  WEEKLY_RENT_BILLING_ENABLED,
 } from "@/lib/start-lease-rent-billing";
 import {
   canNavigateToStartLeaseStep,
@@ -259,18 +258,10 @@ const RentStep = memo(
                 value={field.value}
               >
                 {RENT_BILLING_CADENCE_VALUES.map((cadence) => {
-                  const isWeekly = cadence === "weekly";
-                  const isDisabled = isWeekly && !WEEKLY_RENT_BILLING_ENABLED;
-
                   return (
                     <RadioOption
-                      disabled={isDisabled}
                       key={cadence}
-                      label={
-                        isWeekly && isDisabled
-                          ? `${START_LEASE_RENT_BILLING_LABELS[cadence]} · Coming soon`
-                          : START_LEASE_RENT_BILLING_LABELS[cadence]
-                      }
+                      label={START_LEASE_RENT_BILLING_LABELS[cadence]}
                       value={cadence}
                     />
                   );
