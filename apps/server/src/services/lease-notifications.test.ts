@@ -210,9 +210,9 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         expectedRent: 161.29,
         isPaid: false,
         isProrated: true,
-        month: "2024-07",
         occupiedDays: 5,
         paidRent: 0,
+        periodKey: "2024-07",
         remainingRent: 161.29,
       },
     ]);
@@ -256,9 +256,9 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
         incomeLineId: "line-mar",
         isPaid: true,
         isProrated: false,
-        month: "2026-03",
         occupiedDays: 31,
         paidRent: 1500,
+        periodKey: "2026-03",
         remainingRent: 0,
       },
     ]);
@@ -299,11 +299,12 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       {
         daysInMonth: 7,
         expectedRent: 400,
+        incomeLineId: "line-jan",
         isPaid: false,
         isProrated: true,
-        month: "2026-01-22",
         occupiedDays: 4,
         paidRent: 0,
+        periodKey: "2026-01-22",
         remainingRent: 400,
       },
     ]);

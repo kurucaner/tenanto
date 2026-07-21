@@ -155,8 +155,8 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       },
       months: ["2026-01-15", "2026-01-22", "2026-01-29", "2026-02-05"],
       rentPeriods: [
-        { effectiveFromMonth: "2026-01-15", rentAmount: 700 },
-        { effectiveFromMonth: "2026-01-29", monthlyRent: 800 },
+        { effectiveFromPeriod: "2026-01-15", rentAmount: 700 },
+        { effectiveFromPeriod: "2026-01-29", rentAmount: 800 },
       ],
     });
 

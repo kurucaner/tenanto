@@ -276,10 +276,10 @@ describe("editLeaseTerms", () => {
     });
     mockEditableLease(lease);
 
-    await expect(
+    expect(
       editLeaseTerms("lease-1", {
         leaseStartDate: lease.leaseStartDate,
-        monthlyRent: lease.monthlyRent,
+        rentAmount: lease.rentAmount,
         termMonths: lease.termMonths,
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.LEASE_TERMS_VALIDATION });
