@@ -19,7 +19,7 @@ describe("resolvePropertyLongStaysListSort", () => {
 
   test("resolves rent asc", () => {
     const sort = resolvePropertyLongStaysListSort("rent", "asc");
-    expect(sort.sortColumn).toBe("pls.monthly_rent");
+    expect(sort.sortColumn).toBe("pls.rent_amount");
     expect(sort.sortDir).toBe("asc");
     expect(sort.sortKeyKind).toBe("num");
   });
@@ -55,7 +55,7 @@ describe("buildPropertyLongStaysCursorPredicate", () => {
     const sort = resolvePropertyLongStaysListSort("rent", "asc");
     const { predicate } = buildPropertyLongStaysCursorPredicate(sort, 2);
     expect(predicate).toBe(
-      "(pls.monthly_rent, pls.created_at, pls.id) > ($2::numeric, $3::timestamptz, $4::uuid)"
+      "(pls.rent_amount, pls.created_at, pls.id) > ($2::numeric, $3::timestamptz, $4::uuid)"
     );
   });
 });

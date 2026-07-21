@@ -21,7 +21,7 @@ describe("mapPropertyIncomeLineRow", () => {
       refunded_amount: null,
       refunded_at: null,
       refunded_by: null,
-      rent_period_month: "2026-01",
+      rent_period_key: "2026-01",
       reservation_id: null,
       tax_breakdown: [],
       tenant_rent_payment_id: "payment-1",
@@ -32,7 +32,7 @@ describe("mapPropertyIncomeLineRow", () => {
 
     expect(mapPropertyIncomeLineRow(row)).toMatchObject({
       id: "line-1",
-      rentPeriodMonth: "2026-01",
+      rentPeriodKey: "2026-01",
       tenantRentPaymentId: "payment-1",
     });
   });
@@ -55,7 +55,7 @@ describe("mapPropertyIncomeLineRow", () => {
       refunded_amount: null,
       refunded_at: null,
       refunded_by: null,
-      rent_period_month: null,
+      rent_period_key: null,
       reservation_id: null,
       tax_breakdown: [],
       transaction_date: "2026-01-15",

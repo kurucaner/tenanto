@@ -196,18 +196,23 @@ export {
 // Property Long Stay Types
 export {
   calculateLeaseEndDate,
+  calculateLeaseEndDateFromWeeks,
+  deriveTermWeeksFromDates,
   enumerateLeaseMonths,
   enumerateLeaseWeeks,
   formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
   getLeaseWeekPeriodEnd,
   isActiveLeaseInHoldover,
+  isStandardWeeklyLeaseEndDate,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
 export {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
   resolveDefaultRentPeriodForIncomeLine,
+  resolveLeaseIncomeRentPeriodKey,
+  /** @deprecated Use `resolveLeaseIncomeRentPeriodKey`. */
   resolveLeaseIncomeRentPeriodMonth,
 } from "./lease-income-rent-period";
 export {
@@ -233,6 +238,8 @@ export {
   LEASE_RENT_PAID_TOLERANCE_DOLLARS,
 } from "./lease-rent-paid-tolerance";
 export {
+  getEffectiveRentPeriodKey,
+  /** @deprecated Use `getEffectiveRentPeriodKey`. */
   getEffectiveRentPeriodMonth,
   type ILeaseRentPeriodAllocationInput,
   type ILeaseRentPeriodIncomeLineInput,
@@ -248,8 +255,11 @@ export {
 export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
+  getExtensionRentEffectiveWeekOptions,
   getFirstExtensionMonth,
+  getFirstExtensionWeek,
   getLeaseRentForMonth,
+  getLeaseRentForPeriod,
   MAX_ADDITIONAL_TERM_MONTHS,
   MAX_ADDITIONAL_TERM_WEEKS,
   MAX_TOTAL_LEASE_TERM_MONTHS,
@@ -282,6 +292,7 @@ export {
   getLeaseTermsEditBlockMessage,
   hasRentPeriodHistory,
   MAX_LEASE_TERM_MONTHS,
+  MAX_LEASE_TERM_WEEKS,
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
 export {
@@ -343,6 +354,28 @@ export {
   RentBillingCadence,
   type TRentBillingCadence,
 } from "./rent-billing-cadence";
+export {
+  getLeaseRentAmount,
+  getRentPeriodAmount,
+  getRentPeriodEffectiveFrom,
+  getRentSchedulePeriodKey,
+  resolveCreateLeaseRentAmount,
+  resolveExtendNewRentAmount,
+  resolveExtendRentEffectivePeriod,
+  resolveIncomeLineRentPeriodKey,
+  resolveTermsEditRentAmount,
+  type TRentAmount,
+  type TRentPeriodKey,
+  /** @deprecated Use `withLeaseRentLegacyShims`. */
+  withLeaseRentAmountNeutralFields,
+  withLeaseRentLegacyShims,
+  withRentPeriodLegacyShims,
+  /** @deprecated Use `withRentPeriodLegacyShims`. */
+  withRentPeriodNeutralFields,
+  withRentScheduleLegacyShims,
+  /** @deprecated Use `withRentScheduleLegacyShims`. */
+  withRentScheduleNeutralFields,
+} from "./rent-period-field-utils";
 export {
   comparePeriodKeys,
   findWeeklyPeriodStartContainingDate,

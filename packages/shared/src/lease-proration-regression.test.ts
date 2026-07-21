@@ -10,7 +10,7 @@ describe("lease proration manual QA regression matrix", () => {
   test("1. mid-month start prorates the first month", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-12-31",
         leaseStartDate: "2024-06-16",
         month: "2024-06",
@@ -27,7 +27,7 @@ describe("lease proration manual QA regression matrix", () => {
   test("2. early move-out prorates the last month", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-07-15",
         leaseStartDate: "2024-01-01",
         month: "2024-07",
@@ -44,7 +44,7 @@ describe("lease proration manual QA regression matrix", () => {
   test("3. five-day holdover prorates the month after contract end", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-07-05",
         leaseStartDate: "2024-01-01",
         month: "2024-07",
@@ -61,7 +61,7 @@ describe("lease proration manual QA regression matrix", () => {
   test("4. full-month start and end charges full rent", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-06-30",
         leaseStartDate: "2024-06-01",
         month: "2024-06",
@@ -80,7 +80,7 @@ describe("lease proration manual QA regression matrix", () => {
     expect(getDaysInMonth("2025-02")).toBe(28);
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-02-29",
         leaseStartDate: "2024-02-15",
         month: "2024-02",
@@ -89,7 +89,7 @@ describe("lease proration manual QA regression matrix", () => {
     ).toBe(517.24);
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2025-02-28",
         leaseStartDate: "2025-02-15",
         month: "2025-02",
@@ -101,11 +101,11 @@ describe("lease proration manual QA regression matrix", () => {
   test("6. extended lease proration uses the rent period rate for that month", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2025-06-15",
         leaseStartDate: "2024-06-16",
         month: "2025-06",
-        rentPeriods: [{ effectiveFromMonth: "2025-06", monthlyRent: 1200 }],
+        rentPeriods: [{ effectiveFromPeriod: "2025-06", rentAmount: 1200 }],
       })
     ).toMatchObject({
       daysInMonth: 30,
@@ -118,7 +118,7 @@ describe("lease proration manual QA regression matrix", () => {
   test("7. custom contract end on month boundary avoids extra partial month", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2027-06-30",
         leaseStartDate: "2026-07-01",
         month: "2027-07",
@@ -131,7 +131,7 @@ describe("lease proration manual QA regression matrix", () => {
     });
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2027-06-30",
         leaseStartDate: "2026-07-01",
         month: "2027-06",
@@ -147,7 +147,7 @@ describe("lease proration manual QA regression matrix", () => {
   test("8. mid-month start with custom end still prorates first and last months", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-12-20",
         leaseStartDate: "2024-06-16",
         month: "2024-06",
@@ -160,7 +160,7 @@ describe("lease proration manual QA regression matrix", () => {
     });
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-12-20",
         leaseStartDate: "2024-06-16",
         month: "2024-12",

@@ -1,40 +1,40 @@
 import { type CreateIncomeLineDialogPrefill } from "@/components/income/create-income-line-dialog";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyLongStay } from "@/packages/shared";
+import { getLeaseRentAmount, type IPropertyLongStay } from "@/packages/shared";
 
 import {
-  getExpectedRentForScheduleMonth,
-  getRemainingRentForScheduleMonth,
-  type TLeaseRentScheduleMonthAmount,
+  getExpectedRentForSchedulePeriod,
+  getRemainingRentForSchedulePeriod,
+  type TLeaseRentSchedulePeriodAmount,
 } from "./lease-rent-schedule-display";
 
 /**
- * Prefill for Record Rent on a lease schedule month.
+ * Prefill for Record Rent on a lease schedule period.
  * Each submission creates a new income line; partial payments for the same
- * `rentPeriodMonth` are additive and roll up to `paidRent` on the schedule.
+ * `rentPeriodKey` are additive and roll up to `paidRent` on the schedule.
  * Income type is resolved server-side for lease rent lines.
  */
 export function buildLeaseRecordRentPrefill(
-  lease: Pick<IPropertyLongStay, "guestName" | "id" | "monthlyRent" | "unitId">,
+  lease: Pick<IPropertyLongStay, "guestName" | "id" | "rentAmount" | "unitId">,
   options?: {
     expectedAmount?: number;
-    month?: string;
-    rentSchedule?: readonly TLeaseRentScheduleMonthAmount[];
+    periodKey?: string;
+    rentSchedule?: readonly TLeaseRentSchedulePeriodAmount[];
   }
 ): CreateIncomeLineDialogPrefill {
   const maxDate = getTodayLocalIsoDate();
-  const month = options?.month;
+  const periodKey = options?.periodKey;
   const scheduleAmount =
-    month && options?.rentSchedule
-      ? (getRemainingRentForScheduleMonth(options.rentSchedule, month) ??
-        getExpectedRentForScheduleMonth(options.rentSchedule, month))
+    periodKey && options?.rentSchedule
+      ? (getRemainingRentForSchedulePeriod(options.rentSchedule, periodKey) ??
+        getExpectedRentForSchedulePeriod(options.rentSchedule, periodKey))
       : options?.expectedAmount;
 
   return {
-    amount: String(scheduleAmount ?? lease.monthlyRent),
+    amount: String(scheduleAmount ?? getLeaseRentAmount(lease)),
     guestName: lease.guestName,
     longStayId: lease.id,
-    rentPeriodMonth: month,
+    rentPeriodKey: periodKey,
     transactionDate: maxDate,
     unitId: lease.unitId,
   };

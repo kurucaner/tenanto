@@ -21,15 +21,19 @@ import {
   buildLeaseRentSchedule,
   enumerateLeaseSchedulePeriods,
   getCurrentLeaseRent,
+  getLeaseRentAmount,
   getLeaseScheduleEffectiveEndDate,
+  getPristineRentPeriodKey,
   hasRentPeriodHistory,
-  isWeeklyRentBillingCadence,
   parseRentBillingCadence,
   PropertyLongStayStatus,
   RentBillingCadence,
+  resolveCreateLeaseRentAmount,
   resolveExtendLeaseEndDate,
+  resolveExtendNewRentAmount,
+  resolveExtendRentEffectivePeriod,
   resolveLeaseEndDate,
-  transactionDateToMonth,
+  resolveTermsEditRentAmount,
   validateExtendLease,
 } from "@/packages/shared";
 import { decodeLeaseKeysetCursor, encodeLeaseKeysetCursor } from "@/pagination/keyset-cursor";
@@ -129,9 +133,14 @@ export const propertyLongStaysDb = {
     const tenantPhone = input.tenantPhone?.trim() || null;
     const rentBillingCadence = input.rentBillingCadence ?? RentBillingCadence.MONTHLY;
 
+    const rentAmount = resolveCreateLeaseRentAmount(input);
+    if (rentAmount === undefined) {
+      throw new Error("rentAmount is required");
+    }
+
     const result = await pool.query(
       `INSERT INTO property_long_stays
-         (property_id, unit_id, guest_name, lease_start_date, term_months, monthly_rent,
+         (property_id, unit_id, guest_name, lease_start_date, term_months, rent_amount,
           lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status,
                $11::rent_billing_cadence)
@@ -142,7 +151,7 @@ export const propertyLongStaysDb = {
         input.guestName.trim(),
         input.leaseStartDate,
         termMonths,
-        input.monthlyRent,
+        rentAmount,
         leaseEndDate,
         tenantEmail,
         tenantPhone,
@@ -151,15 +160,6 @@ export const propertyLongStaysDb = {
       ]
     );
     const longStay = mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
-
-    if (isWeeklyRentBillingCadence(rentBillingCadence)) {
-      await pool.query(
-        `INSERT INTO property_long_stay_rent_periods
-           (long_stay_id, effective_from_month, monthly_rent)
-         VALUES ($1, $2, $3)`,
-        [longStay.id, input.leaseStartDate, input.monthlyRent]
-      );
-    }
 
     return longStay;
   },
@@ -199,8 +199,9 @@ export const propertyLongStaysDb = {
     }
 
     const { newLeaseEndDate, newTermMonths } = resolveExtendLeaseEndDate(existing, body);
-    const hasRentChange =
-      body.newMonthlyRent !== undefined && body.rentEffectiveFromMonth !== undefined;
+    const newRentAmount = resolveExtendNewRentAmount(body);
+    const rentEffectiveFromPeriod = resolveExtendRentEffectivePeriod(body);
+    const hasRentChange = newRentAmount !== undefined && rentEffectiveFromPeriod !== undefined;
 
     const client = await pool.connect();
     try {
@@ -215,45 +216,50 @@ export const propertyLongStaysDb = {
         if (existingPeriods.rows.length === 0) {
           await client.query(
             `INSERT INTO property_long_stay_rent_periods
-               (long_stay_id, effective_from_month, monthly_rent)
+               (long_stay_id, effective_from_period, rent_amount)
              VALUES ($1, $2, $3)`,
-            [id, transactionDateToMonth(existing.leaseStartDate), existing.monthlyRent]
+            [
+              id,
+              getPristineRentPeriodKey(existing.leaseStartDate, existing.rentBillingCadence),
+              getLeaseRentAmount(existing),
+            ]
           );
         }
 
         await client.query(
           `INSERT INTO property_long_stay_rent_periods
-             (long_stay_id, effective_from_month, monthly_rent)
+             (long_stay_id, effective_from_period, rent_amount)
            VALUES ($1, $2, $3)`,
-          [id, body.rentEffectiveFromMonth, body.newMonthlyRent]
+          [id, rentEffectiveFromPeriod, newRentAmount]
         );
       }
 
       const rentPeriodsResult = await client.query(
-        `SELECT effective_from_month, monthly_rent
+        `SELECT effective_from_period, rent_amount
          FROM property_long_stay_rent_periods
          WHERE long_stay_id = $1
-         ORDER BY effective_from_month ASC`,
+         ORDER BY effective_from_period ASC`,
         [id]
       );
       const rentPeriods = rentPeriodsResult.rows.map((row) =>
         mapPropertyLongStayRentPeriodRow(row as Record<string, unknown>)
       );
-      const currentMonthlyRent = getCurrentLeaseRent(
-        existing.monthlyRent,
+      const currentRentAmount = getCurrentLeaseRent(
+        getLeaseRentAmount(existing),
         rentPeriods,
-        getTodayUtcIsoDate()
+        getTodayUtcIsoDate(),
+        existing
       );
 
       const result = await client.query(
         `UPDATE property_long_stays
          SET term_months = $2,
              lease_end_date = $3,
-             monthly_rent = $4
+             rent_amount = $4
          WHERE id = $1
            AND status = $5::property_long_stay_status
          RETURNING *`,
-        [id, newTermMonths, newLeaseEndDate, currentMonthlyRent, PropertyLongStayStatus.ACTIVE]
+        [id, newTermMonths, newLeaseEndDate, currentRentAmount, PropertyLongStayStatus.ACTIVE]
       );
 
       if (result.rows.length === 0) {
@@ -501,10 +507,10 @@ export const propertyLongStaysDb = {
 
   async listRentPeriods(longStayId: string): Promise<IPropertyLongStayRentPeriod[]> {
     const result = await pool.query(
-      `SELECT effective_from_month, monthly_rent
+      `SELECT effective_from_period, rent_amount
        FROM property_long_stay_rent_periods
        WHERE long_stay_id = $1
-       ORDER BY effective_from_month ASC`,
+       ORDER BY effective_from_period ASC`,
       [longStayId]
     );
     return result.rows.map((row) =>
@@ -575,7 +581,12 @@ export const propertyLongStaysDb = {
     }
 
     const { leaseEndDate, termMonths } = resolvedTerms;
-    const startMonth = transactionDateToMonth(body.leaseStartDate);
+    const pristinePeriodKey = getPristineRentPeriodKey(
+      body.leaseStartDate,
+      existing.rentBillingCadence
+    );
+
+    const rentAmount = resolveTermsEditRentAmount(body);
 
     const client = await pool.connect();
     try {
@@ -585,17 +596,17 @@ export const propertyLongStaysDb = {
         `SELECT id
          FROM property_long_stay_rent_periods
          WHERE long_stay_id = $1
-         ORDER BY effective_from_month ASC`,
+         ORDER BY effective_from_period ASC`,
         [id]
       );
 
       if (rentPeriodsResult.rows.length === 1) {
         await client.query(
           `UPDATE property_long_stay_rent_periods
-           SET effective_from_month = $2,
-               monthly_rent = $3
+           SET effective_from_period = $2,
+               rent_amount = $3
            WHERE long_stay_id = $1`,
-          [id, startMonth, body.monthlyRent]
+          [id, pristinePeriodKey, rentAmount]
         );
       }
 
@@ -603,7 +614,7 @@ export const propertyLongStaysDb = {
         `UPDATE property_long_stays
          SET lease_start_date = $2,
              term_months = $3,
-             monthly_rent = $4,
+             rent_amount = $4,
              lease_end_date = $5
          WHERE id = $1
            AND status = $6::property_long_stay_status
@@ -612,7 +623,7 @@ export const propertyLongStaysDb = {
           id,
           body.leaseStartDate,
           termMonths,
-          body.monthlyRent,
+          rentAmount,
           leaseEndDate,
           PropertyLongStayStatus.ACTIVE,
         ]

@@ -21,7 +21,7 @@ const SORT_CONFIG: Record<
   { column: string; kind: TPropertyLongStaySortKeyKind }
 > = {
   end: { column: LEASE_EFFECTIVE_END, kind: "date" },
-  rent: { column: "pls.monthly_rent", kind: "num" },
+  rent: { column: "pls.rent_amount", kind: "num" },
   start: { column: "pls.lease_start_date", kind: "date" },
   status: { column: "pls.status::text", kind: "text" },
   tenant: { column: "pls.guest_name", kind: "text" },
@@ -106,12 +106,12 @@ export function readPropertyLongStaySortKeyFromRow(
   }
 
   if (sort.sortKeyKind === "num") {
-    const monthlyRent = row.monthly_rent;
-    if (typeof monthlyRent === "number") {
-      return monthlyRent;
+    const rentAmount = row.rent_amount;
+    if (typeof rentAmount === "number") {
+      return rentAmount;
     }
-    if (typeof monthlyRent === "string") {
-      const parsed = Number.parseFloat(monthlyRent);
+    if (typeof rentAmount === "string") {
+      const parsed = Number.parseFloat(rentAmount);
       return Number.isFinite(parsed) ? parsed : null;
     }
     return null;

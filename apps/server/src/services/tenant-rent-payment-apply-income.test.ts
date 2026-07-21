@@ -129,7 +129,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
       expect.objectContaining({
         incomeLineTypeId: "type-system-rent",
         longStayId: "lease-1",
-        rentPeriodMonth: "2026-01",
+        rentPeriodKey: "2026-01",
         tenantRentPaymentId: "payment-1",
       }),
       expect.any(Object)
@@ -208,7 +208,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
-        rentPeriodMonth: "2026-01-15",
+        rentPeriodKey: "2026-01-15",
         transactionDate: "2026-01-15",
       }),
       expect.any(Object)

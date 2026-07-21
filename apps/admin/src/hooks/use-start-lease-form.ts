@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type BaseSyntheticEvent,useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type BaseSyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import {
 import { resolveStartLeaseInitialState } from "@/lib/start-lease-form-init";
 import {
   applyStartLeaseStepValidationErrors,
+  DEFAULT_START_LEASE_TERM_WEEKS,
   startLeaseSchema,
   type TStartLeaseFormValues,
   validateStartLeaseStep,
@@ -31,7 +32,13 @@ import {
   getPreviousStartLeaseStep,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
-import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
+import {
+  deriveTermWeeksFromDates,
+  type IPropertyUnit,
+  normalizeToE164,
+  RentBillingCadence,
+  UnitRentalType,
+} from "@/packages/shared";
 
 interface UseStartLeaseFormOptions {
   initialStep?: TStartLeaseStep;
@@ -144,25 +151,53 @@ export function useStartLeaseForm({
   const [
     guestName,
     selectedUnitId,
-    monthlyRent,
+    rentAmount,
     rentBillingCadence,
     leaseEndDateValue,
     leaseStartDate,
     termMode,
     termMonths,
+    termWeeks,
   ] = useWatch({
     control,
     name: [
       "guestName",
       "unitId",
-      "monthlyRent",
+      "rentAmount",
       "rentBillingCadence",
       "leaseEndDate",
       "leaseStartDate",
       "termMode",
       "termMonths",
+      "termWeeks",
     ],
   });
+
+  useEffect(() => {
+    const cadence = normalizeStartLeaseRentBillingCadence(rentBillingCadence);
+    const mode = getValues("termMode");
+    if (cadence === RentBillingCadence.WEEKLY && mode === "months") {
+      const preview = resolveLeaseTermEndPreview({
+        leaseEndDate: getValues("leaseEndDate"),
+        leaseStartDate: getValues("leaseStartDate"),
+        termMode: "months",
+        termMonths: getValues("termMonths"),
+        termWeeks: getValues("termWeeks"),
+      });
+      const start = getValues("leaseStartDate");
+      if (preview && start) {
+        form.setValue("termWeeks", String(deriveTermWeeksFromDates(start, preview)));
+      } else {
+        form.setValue("termWeeks", DEFAULT_START_LEASE_TERM_WEEKS);
+      }
+      form.setValue("termMode", "weeks");
+      return;
+    }
+
+    if (cadence === RentBillingCadence.MONTHLY && mode === "weeks") {
+      form.setValue("termMode", "months");
+    }
+  }, [form, getValues, rentBillingCadence]);
 
   const leaseEndDate = useMemo(() => {
     return resolveLeaseTermEndPreview({
@@ -170,11 +205,12 @@ export function useStartLeaseForm({
       leaseStartDate,
       termMode,
       termMonths,
+      termWeeks,
     });
-  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths]);
+  }, [leaseEndDateValue, leaseStartDate, termMode, termMonths, termWeeks]);
 
   const firstMonthRentPreview = useMemo(() => {
-    const parsedRentAmount = Number(monthlyRent);
+    const parsedRentAmount = Number(rentAmount);
     if (
       !leaseEndDate ||
       leaseStartDate === "" ||
@@ -190,7 +226,7 @@ export function useStartLeaseForm({
       rentAmount: parsedRentAmount,
       rentBillingCadence: normalizeStartLeaseRentBillingCadence(rentBillingCadence),
     });
-  }, [leaseEndDate, leaseStartDate, monthlyRent, rentBillingCadence]);
+  }, [leaseEndDate, leaseStartDate, rentAmount, rentBillingCadence]);
 
   const availableUnits = useMemo(
     () =>
@@ -208,7 +244,7 @@ export function useStartLeaseForm({
       longStaysApi.create(propertyId, {
         guestName: values.guestName,
         ...buildLeaseTermApiPayload(values),
-        monthlyRent: Number(values.monthlyRent),
+        rentAmount: Number(values.rentAmount),
         rentBillingCadence: normalizeStartLeaseRentBillingCadence(values.rentBillingCadence),
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
@@ -308,11 +344,11 @@ export function useStartLeaseForm({
     leaseStartDate,
     lockedUnit,
     lockedUnitError,
-    monthlyRent,
     mutationPending: mutation.isPending,
     onBack,
     onContinue,
     onSubmit,
+    rentAmount,
     selectedUnitId,
   };
 }

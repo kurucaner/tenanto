@@ -3,24 +3,27 @@ import {
   isValidRentPeriodKey,
   resolveRentPeriodKeyForTransactionDate,
 } from "./rent-period-key-utils";
+import { resolveIncomeLineRentPeriodKey } from "./rent-period-field-utils";
 
 export const LEASE_UPCOMING_RENT_PERIOD_ERROR = "Cannot record rent for an upcoming lease month";
 
-export function resolveLeaseIncomeRentPeriodMonth(input: {
+export function resolveLeaseIncomeRentPeriodKey(input: {
   asOfMonth?: string;
+  rentPeriodKey?: string | null;
+  /** @deprecated Use `rentPeriodKey`. */
   rentPeriodMonth?: string | null;
   scheduleMonths: readonly string[];
   transactionDate: string;
 }): { ok: true; value: string } | { ok: false; error: string } {
-  const explicit = input.rentPeriodMonth?.trim() ?? "";
+  const explicit = resolveIncomeLineRentPeriodKey(input)?.trim() ?? "";
 
   if (explicit !== "") {
     if (!isValidRentPeriodKey(explicit)) {
-      return { error: "rentPeriodMonth must be YYYY-MM or YYYY-MM-DD", ok: false };
+      return { error: "rentPeriodKey must be YYYY-MM or YYYY-MM-DD", ok: false };
     }
     if (!input.scheduleMonths.includes(explicit)) {
       return {
-        error: "rentPeriodMonth must be a period in the lease rent schedule",
+        error: "rentPeriodKey must be a period in the lease rent schedule",
         ok: false,
       };
     }
@@ -37,7 +40,7 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
   );
   if (defaulted === null) {
     return {
-      error: "transactionDate falls outside the lease rent schedule; set rentPeriodMonth",
+      error: "transactionDate falls outside the lease rent schedule; set rentPeriodKey",
       ok: false,
     };
   }
@@ -46,7 +49,7 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
   }
   if (!input.scheduleMonths.includes(defaulted)) {
     return {
-      error: "transactionDate falls outside the lease rent schedule; set rentPeriodMonth",
+      error: "transactionDate falls outside the lease rent schedule; set rentPeriodKey",
       ok: false,
     };
   }
@@ -57,8 +60,18 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
   return { ok: true, value: defaulted };
 }
 
+/** @deprecated Use `resolveLeaseIncomeRentPeriodKey`. */
+export function resolveLeaseIncomeRentPeriodMonth(input: {
+  asOfMonth?: string;
+  rentPeriodMonth?: string | null;
+  scheduleMonths: readonly string[];
+  transactionDate: string;
+}): { ok: true; value: string } | { ok: false; error: string } {
+  return resolveLeaseIncomeRentPeriodKey(input);
+}
+
 /** Preferred name — resolves the rent period key for a lease income line. */
-export const resolveDefaultRentPeriodForIncomeLine = resolveLeaseIncomeRentPeriodMonth;
+export const resolveDefaultRentPeriodForIncomeLine = resolveLeaseIncomeRentPeriodKey;
 
 function rejectUpcomingLeaseRentPeriod(
   resolvedPeriod: string,

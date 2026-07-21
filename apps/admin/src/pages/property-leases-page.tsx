@@ -59,6 +59,7 @@ import {
   ExportResourceType,
   formatPropertyUnitSelectLabel,
   getLeaseOccupancyNames,
+  getLeaseRentAmount,
   type IPropertyLongStay,
   type IPropertyLongStayDetailResponse,
   isActiveLeaseInHoldover,
@@ -155,7 +156,7 @@ const LeaseRow = memo(
         <TableCell>{formatIsoDateDisplay(lease.leaseStartDate)}</TableCell>
         <TableCell>{formatIsoDateDisplay(endDate)}</TableCell>
         <TableCell className="text-right">
-          {formatMoney(lease.monthlyRent)}
+          {formatMoney(getLeaseRentAmount(lease))}
           {getLeaseRentAmountSuffix(lease.rentBillingCadence)}
         </TableCell>
         <TableCell>

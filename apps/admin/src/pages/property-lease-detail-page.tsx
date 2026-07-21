@@ -79,13 +79,13 @@ export const PropertyLeaseDetailPage = memo(() => {
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
 
   const handleRecordRent = useCallback(
-    (month?: string) => {
+    (periodKey?: string) => {
       if (!lease) {
         return;
       }
       setRecordRentPrefill(
         buildLeaseRecordRentPrefill(lease, {
-          month,
+          periodKey,
           rentSchedule,
         })
       );
@@ -213,7 +213,7 @@ export const PropertyLeaseDetailPage = memo(() => {
       {recordRentPrefill && lease ? (
         <CreateIncomeLineDialog
           incomeLineTypes={incomeLineTypes}
-          key={`${lease.id}-${recordRentPrefill.rentPeriodMonth ?? recordRentPrefill.transactionDate ?? "today"}`}
+          key={`${lease.id}-${recordRentPrefill.rentPeriodKey ?? recordRentPrefill.transactionDate ?? "today"}`}
           lockedLease={lease}
           onOpenChange={(open) => {
             if (!open) {

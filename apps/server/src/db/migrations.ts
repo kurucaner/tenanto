@@ -3339,4 +3339,124 @@ export const migrations: IMigration[] = [
     },
     version: 74,
   },
+  {
+    down: async (client: TDBClient) => {
+      const periodKeyPattern = "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$";
+
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_long_stay_rent_period_key;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_rent_period_key_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          RENAME COLUMN rent_period_key TO rent_period_month;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_rent_period_month_fmt
+            CHECK (
+              rent_period_month IS NULL
+              OR rent_period_month ~ '${periodKeyPattern}'
+            );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_long_stay_rent_period_month
+          ON property_income_lines (long_stay_id, rent_period_month)
+          WHERE long_stay_id IS NOT NULL AND rent_period_month IS NOT NULL;
+      `);
+
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_long_stay_rent_periods_long_stay;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          DROP CONSTRAINT IF EXISTS property_long_stay_rent_periods_long_stay_id_effective_from_period_key;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          RENAME COLUMN effective_from_period TO effective_from_month;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          RENAME COLUMN rent_amount TO monthly_rent;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          ADD CONSTRAINT property_long_stay_rent_periods_long_stay_id_effective_from_month_key
+            UNIQUE (long_stay_id, effective_from_month);
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_long_stay_rent_periods_long_stay
+          ON property_long_stay_rent_periods (long_stay_id, effective_from_month DESC);
+      `);
+
+      await client.query(`
+        ALTER TABLE property_long_stays
+          RENAME COLUMN rent_amount TO monthly_rent;
+      `);
+    },
+    name: "rename_rent_period_columns",
+    up: async (client: TDBClient) => {
+      const periodKeyPattern = "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$";
+
+      await client.query(`
+        ALTER TABLE property_long_stays
+          RENAME COLUMN monthly_rent TO rent_amount;
+      `);
+
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_long_stay_rent_periods_long_stay;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          DROP CONSTRAINT IF EXISTS property_long_stay_rent_periods_long_stay_id_effective_from_month_key;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          RENAME COLUMN effective_from_month TO effective_from_period;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          RENAME COLUMN monthly_rent TO rent_amount;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          ADD CONSTRAINT property_long_stay_rent_periods_long_stay_id_effective_from_period_key
+            UNIQUE (long_stay_id, effective_from_period);
+      `);
+      await client.query(`
+        CREATE INDEX idx_property_long_stay_rent_periods_long_stay
+          ON property_long_stay_rent_periods (long_stay_id, effective_from_period DESC);
+      `);
+
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_lines_long_stay_rent_period_month;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_rent_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          RENAME COLUMN rent_period_month TO rent_period_key;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_rent_period_key_fmt
+            CHECK (
+              rent_period_key IS NULL
+              OR rent_period_key ~ '${periodKeyPattern}'
+            );
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_property_income_lines_long_stay_rent_period_key
+          ON property_income_lines (long_stay_id, rent_period_key)
+          WHERE long_stay_id IS NOT NULL AND rent_period_key IS NOT NULL;
+      `);
+    },
+    version: 75,
+  },
 ];

@@ -9,11 +9,7 @@ export {
   resetMocks,
 } from "./async-mocks";
 export { getMockCallArg } from "./mock-call-utils";
-export {
-  mockPoolQuery,
-  type TPoolQueryFn,
-  type TPoolQueryResult,
-} from "./pool-query-mocks";
+export { mockPoolQuery, type TPoolQueryFn, type TPoolQueryResult } from "./pool-query-mocks";
 export {
   createPropertyMemberInviteActionMocks,
   createPropertyMemberInviteServiceMocks,

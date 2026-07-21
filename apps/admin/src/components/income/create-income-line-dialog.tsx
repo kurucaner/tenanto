@@ -39,6 +39,7 @@ import {
 } from "@/lib/reservation-date-utils";
 import {
   formatRentPeriodLabel,
+  getLeaseRentAmount,
   type IPropertyIncomeLineType,
   type IPropertyLongStay,
   type IPropertyReservation,
@@ -51,7 +52,7 @@ export interface CreateIncomeLineDialogPrefill {
   guestName?: string;
   incomeLineTypeId?: string;
   longStayId?: string;
-  rentPeriodMonth?: string;
+  rentPeriodKey?: string;
   reservationId?: string;
   transactionDate?: string;
   unitId?: string;
@@ -109,7 +110,7 @@ function getDefaultValues(
   const rawTransactionDate = prefill?.transactionDate ?? maxTransactionDate;
 
   return {
-    amount: prefill?.amount ?? (lockedLease ? String(lockedLease.monthlyRent) : ""),
+    amount: prefill?.amount ?? (lockedLease ? String(getLeaseRentAmount(lockedLease)) : ""),
     description: "",
     guestName: prefill?.guestName ?? lockedLease?.guestName ?? lockedStay?.guestName ?? "",
     incomeLineTypeId: lockedLease ? "" : (prefill?.incomeLineTypeId ?? defaultIncomeLineTypeId),
@@ -167,7 +168,7 @@ const CreateIncomeLineDialogForm = memo(
           description: values.description.trim() || undefined,
           guestName: values.guestName.trim() || undefined,
           longStayId: values.longStayId || undefined,
-          rentPeriodMonth: prefill?.rentPeriodMonth,
+          rentPeriodKey: prefill?.rentPeriodKey,
           reservationId: values.reservationId || undefined,
           transactionDate: values.transactionDate,
           unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,
@@ -262,14 +263,14 @@ const CreateIncomeLineDialogForm = memo(
             )}
           />
 
-          {isRentRecording && prefill?.rentPeriodMonth ? (
+          {isRentRecording && prefill?.rentPeriodKey ? (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor={`${FIELD_ID_PREFIX}-rent-period`}>Rent period</Label>
               <Input
                 disabled
                 id={`${FIELD_ID_PREFIX}-rent-period`}
                 readOnly
-                value={formatRentPeriodLabel(prefill.rentPeriodMonth)}
+                value={formatRentPeriodLabel(prefill.rentPeriodKey)}
               />
             </div>
           ) : null}

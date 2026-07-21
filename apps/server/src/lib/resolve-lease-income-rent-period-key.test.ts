@@ -9,8 +9,8 @@ const mockFindById = mock(() =>
       guestName: "Tenant",
       leaseEndDate: "2026-03-31",
       leaseStartDate: "2026-01-01",
-      monthlyRent: 1500,
       propertyId: "prop-1",
+      rentAmount: 1500,
       tenantEmail: null,
       termMonths: 3,
     })
@@ -23,12 +23,12 @@ mock.module("@/db/property-long-stays", () => ({
   },
 }));
 
-const { resolveLeaseIncomeRentPeriodMonthForLongStay } =
-  await import("./resolve-lease-income-rent-period-month");
+const { resolveLeaseIncomeRentPeriodKeyForLongStay } =
+  await import("./resolve-lease-income-rent-period-key");
 
-describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
+describe("resolveLeaseIncomeRentPeriodKeyForLongStay", () => {
   test("defaults to transactionDate month within lease schedule", async () => {
-    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+    const result = await resolveLeaseIncomeRentPeriodKeyForLongStay({
       longStayId: "lease-1",
       referenceDate: "2026-03-15",
       transactionDate: "2026-02-10",
@@ -37,7 +37,21 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
     expect(result).toEqual({ ok: true, value: "2026-02" });
   });
 
-  test("accepts explicit rentPeriodMonth from schedule", async () => {
+  test("accepts explicit rentPeriodKey from schedule", async () => {
+    const result = await resolveLeaseIncomeRentPeriodKeyForLongStay({
+      longStayId: "lease-1",
+      referenceDate: "2026-03-15",
+      rentPeriodKey: "2026-01",
+      transactionDate: "2026-02-10",
+    });
+
+    expect(result).toEqual({ ok: true, value: "2026-01" });
+  });
+
+  test("accepts legacy rentPeriodMonth via deprecated wrapper", async () => {
+    const { resolveLeaseIncomeRentPeriodMonthForLongStay } =
+      await import("./resolve-lease-income-rent-period-key");
+
     const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
       longStayId: "lease-1",
       referenceDate: "2026-03-15",
@@ -48,25 +62,25 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
     expect(result).toEqual({ ok: true, value: "2026-01" });
   });
 
-  test("rejects rentPeriodMonth outside lease schedule", async () => {
-    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+  test("rejects rentPeriodKey outside lease schedule", async () => {
+    const result = await resolveLeaseIncomeRentPeriodKeyForLongStay({
       longStayId: "lease-1",
       referenceDate: "2026-03-15",
-      rentPeriodMonth: "2026-04",
+      rentPeriodKey: "2026-04",
       transactionDate: "2026-02-10",
     });
 
     expect(result).toEqual({
-      error: "rentPeriodMonth must be a period in the lease rent schedule",
+      error: "rentPeriodKey must be a period in the lease rent schedule",
       ok: false,
     });
   });
 
-  test("rejects upcoming rentPeriodMonth on an active lease", async () => {
-    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+  test("rejects upcoming rentPeriodKey on an active lease", async () => {
+    const result = await resolveLeaseIncomeRentPeriodKeyForLongStay({
       longStayId: "lease-1",
       referenceDate: "2026-02-15",
-      rentPeriodMonth: "2026-03",
+      rentPeriodKey: "2026-03",
       transactionDate: "2026-02-10",
     });
 
@@ -77,10 +91,10 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
   });
 
   test("allows due-month resolution for partial rent recording", async () => {
-    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+    const result = await resolveLeaseIncomeRentPeriodKeyForLongStay({
       longStayId: "lease-1",
       referenceDate: "2026-02-15",
-      rentPeriodMonth: "2026-02",
+      rentPeriodKey: "2026-02",
       transactionDate: "2026-02-10",
     });
 
@@ -93,14 +107,14 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
         makeLongStay({
           leaseEndDate: "2026-02-10",
           leaseStartDate: "2026-01-15",
-          monthlyRent: 700,
+          rentAmount: 700,
           rentBillingCadence: RentBillingCadence.WEEKLY,
           termMonths: 1,
         })
       )
     );
 
-    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+    const result = await resolveLeaseIncomeRentPeriodKeyForLongStay({
       longStayId: "lease-weekly",
       referenceDate: "2026-02-10",
       transactionDate: "2026-01-20",

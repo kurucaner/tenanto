@@ -61,7 +61,7 @@ export interface ILeaseMonthExpectedRent {
 }
 
 export function calculateExpectedRentForLeaseMonth(input: {
-  baseMonthlyRent: number;
+  baseRentAmount: number;
   effectiveEndDate: string;
   leaseStartDate: string;
   month: string;
@@ -73,11 +73,11 @@ export function calculateExpectedRentForLeaseMonth(input: {
     input.leaseStartDate,
     input.effectiveEndDate
   );
-  const monthlyRent = getLeaseRentForMonth(input.baseMonthlyRent, input.rentPeriods, input.month);
+  const rentAmount = getLeaseRentForMonth(input.baseRentAmount, input.rentPeriods, input.month);
   const proration = prorateOccupiedPeriod({
     daysInPeriod: daysInMonth,
     occupiedDays,
-    recurringRent: monthlyRent,
+    recurringRent: rentAmount,
   });
 
   return {

@@ -18,7 +18,7 @@ function makeLease(
     guestName: "Primary Tenant",
     leaseEndDate: "2027-01-01",
     leaseStartDate: "2026-01-01",
-    monthlyRent: 1000,
+    rentAmount: 1000,
     propertyId: "property-1",
     secondaryTenants: [],
     status: "active",

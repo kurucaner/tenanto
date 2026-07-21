@@ -3,8 +3,11 @@ import { describe, expect, test } from "bun:test";
 import {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
+  getExtensionRentEffectiveWeekOptions,
   getFirstExtensionMonth,
+  getFirstExtensionWeek,
   getLeaseRentForMonth,
+  getLeaseRentForPeriod,
   validateExtendLease,
 } from "./lease-rent-utils";
 import { PropertyLongStayStatus } from "./property-long-stay-types";
@@ -40,8 +43,8 @@ describe("getLeaseRentForMonth", () => {
 
   test("applies latest period at or before the month", () => {
     const periods = [
-      { effectiveFromMonth: "2026-01", monthlyRent: 1500 },
-      { effectiveFromMonth: "2027-01", monthlyRent: 1700 },
+      { effectiveFromPeriod: "2026-01", rentAmount: 1500 },
+      { effectiveFromPeriod: "2027-01", rentAmount: 1700 },
     ];
     expect(getLeaseRentForMonth(1500, periods, "2026-12")).toBe(1500);
     expect(getLeaseRentForMonth(1500, periods, "2027-01")).toBe(1700);
@@ -49,11 +52,60 @@ describe("getLeaseRentForMonth", () => {
   });
 });
 
+describe("getLeaseRentForPeriod", () => {
+  test("applies latest weekly period at or before the week start", () => {
+    const periods = [
+      { effectiveFromPeriod: "2026-01-15", rentAmount: 700 },
+      { effectiveFromPeriod: "2026-01-29", rentAmount: 800 },
+    ];
+    expect(getLeaseRentForPeriod(700, periods, "2026-01-15")).toBe(700);
+    expect(getLeaseRentForPeriod(700, periods, "2026-01-22")).toBe(700);
+    expect(getLeaseRentForPeriod(700, periods, "2026-01-29")).toBe(800);
+    expect(getLeaseRentForPeriod(700, periods, "2026-02-05")).toBe(800);
+  });
+});
+
 describe("getCurrentLeaseRent", () => {
   test("uses today's month for lookup", () => {
-    const periods = [{ effectiveFromMonth: "2027-01", monthlyRent: 1700 }];
+    const periods = [{ effectiveFromPeriod: "2027-01", rentAmount: 1700 }];
     expect(getCurrentLeaseRent(1500, periods, "2026-07-09")).toBe(1500);
     expect(getCurrentLeaseRent(1500, periods, "2027-02-15")).toBe(1700);
+  });
+
+  test("uses containing week start for weekly leases", () => {
+    const periods = [
+      { effectiveFromPeriod: "2026-01-15", rentAmount: 700 },
+      { effectiveFromPeriod: "2026-01-29", rentAmount: 800 },
+    ];
+    expect(
+      getCurrentLeaseRent(700, periods, "2026-01-20", {
+        leaseStartDate: "2026-01-15",
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      })
+    ).toBe(700);
+    expect(
+      getCurrentLeaseRent(700, periods, "2026-01-30", {
+        leaseStartDate: "2026-01-15",
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      })
+    ).toBe(800);
+  });
+});
+
+describe("getFirstExtensionWeek", () => {
+  test("returns the first week start after the week containing contract end", () => {
+    expect(getFirstExtensionWeek("2026-01-01", "2026-01-07")).toBe("2026-01-08");
+  });
+});
+
+describe("getExtensionRentEffectiveWeekOptions", () => {
+  test("lists week starts in the extension window", () => {
+    expect(getExtensionRentEffectiveWeekOptions("2026-01-01", "2026-01-07", "2026-02-04")).toEqual([
+      "2026-01-08",
+      "2026-01-15",
+      "2026-01-22",
+      "2026-01-29",
+    ]);
   });
 });
 
@@ -99,8 +151,22 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalTermMonths: 6,
-          newMonthlyRent: 1800,
-          rentEffectiveFromMonth: "2027-01",
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2027-01",
+        },
+        activeLease,
+        "2026-07-09"
+      )
+    ).toBeNull();
+  });
+
+  test("accepts neutral rent change field names", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalTermMonths: 6,
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2027-01",
         },
         activeLease,
         "2026-07-09"
@@ -121,11 +187,11 @@ describe("validateExtendLease", () => {
   test("rejects partial rent change fields", () => {
     expect(
       validateExtendLease(
-        { additionalTermMonths: 6, newMonthlyRent: 1800 },
+        { additionalTermMonths: 6, newRentAmount: 1800 },
         activeLease,
         "2026-07-09"
       )
-    ).toBe("New monthly rent and effective month must both be provided when changing rent");
+    ).toBe("New rent amount and effective period must both be provided when changing rent");
   });
 
   test("rejects effective month before extension period", () => {
@@ -133,8 +199,8 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalTermMonths: 6,
-          newMonthlyRent: 1800,
-          rentEffectiveFromMonth: "2026-12",
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2026-12",
         },
         activeLease,
         "2026-07-09"
@@ -171,29 +237,55 @@ describe("validateExtendLease", () => {
   });
 
   test("accepts weekly extension by additional weeks", () => {
-    expect(
-      validateExtendLease({ additionalWeeks: 4 }, activeWeeklyLease, "2026-01-05")
-    ).toBeNull();
+    expect(validateExtendLease({ additionalWeeks: 4 }, activeWeeklyLease, "2026-01-05")).toBeNull();
   });
 
-  test("rejects weekly extension with rent change", () => {
+  test("accepts weekly extension with rent change", () => {
     expect(
       validateExtendLease(
         {
           additionalWeeks: 4,
-          newMonthlyRent: 500,
-          rentEffectiveFromMonth: "2026-01",
+          newRentAmount: 600,
+          rentEffectiveFromPeriod: "2026-01-15",
         },
         activeWeeklyLease,
         "2026-01-05"
       )
-    ).toBe("Rent amount cannot be changed when extending a weekly-billed lease");
+    ).toBeNull();
+  });
+
+  test("rejects weekly extension rent change with month-only effective period", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalWeeks: 4,
+          newRentAmount: 600,
+          rentEffectiveFromPeriod: "2026-01",
+        },
+        activeWeeklyLease,
+        "2026-01-05"
+      )
+    ).toBe("Rent effective period must be YYYY-MM-DD format");
+  });
+
+  test("rejects weekly extension rent change outside extension window", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalWeeks: 4,
+          newRentAmount: 600,
+          rentEffectiveFromPeriod: "2026-01-01",
+        },
+        activeWeeklyLease,
+        "2026-01-05"
+      )
+    ).toBe("Rent effective period must be a week start within the extension window");
   });
 
   test("rejects weekly extension by months", () => {
-    expect(
-      validateExtendLease({ additionalTermMonths: 4 }, activeWeeklyLease, "2026-01-05")
-    ).toBe("Weekly leases must be extended by additionalWeeks or newLeaseEndDate");
+    expect(validateExtendLease({ additionalTermMonths: 4 }, activeWeeklyLease, "2026-01-05")).toBe(
+      "Weekly leases must be extended by additionalWeeks or newLeaseEndDate"
+    );
   });
 
   test("rejects monthly extension by weeks", () => {
