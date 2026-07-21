@@ -346,6 +346,7 @@ export {
   isPeriodKeyOnOrBefore,
   isValidRentPeriodKey,
   isWeeklyPeriodKey,
+  RENT_PERIOD_KEY_SQL_PATTERN,
   resolveAsOfPeriodKey,
   resolveRentPeriodKeyForTransactionDate,
 } from "./rent-period-key-utils";
@@ -759,6 +760,7 @@ export {
   dollarsToCents,
   type IRentAllocation,
   type IRentPeriodInput,
+  isValidPeriodKey,
   isValidPeriodMonth,
   selectDuePeriodMonths,
   STRIPE_MIN_CHARGE_CENTS_USD,

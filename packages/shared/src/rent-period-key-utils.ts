@@ -3,6 +3,9 @@ import { formatLeaseMonthLabel, getLeaseWeekPeriodEnd } from "./lease-date-utils
 const PERIOD_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PERIOD_WEEK_START_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
+/** Postgres CHECK pattern — YYYY-MM or YYYY-MM-DD. */
+export const RENT_PERIOD_KEY_SQL_PATTERN = "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$";
+
 export function isMonthlyPeriodKey(periodKey: string): boolean {
   return PERIOD_MONTH_RE.test(periodKey);
 }

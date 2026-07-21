@@ -3259,4 +3259,84 @@ export const migrations: IMigration[] = [
     },
     version: 73,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_rent_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ALTER COLUMN rent_period_month TYPE VARCHAR(7);
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_rent_period_month_fmt
+            CHECK (
+              rent_period_month IS NULL
+              OR rent_period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'
+            );
+      `);
+
+      await client.query(`
+        ALTER TABLE tenant_rent_payment_allocations
+          DROP CONSTRAINT IF EXISTS tenant_rent_payment_allocations_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payment_allocations
+          ALTER COLUMN period_month TYPE CHAR(7);
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payment_allocations
+          ADD CONSTRAINT tenant_rent_payment_allocations_period_month_fmt
+            CHECK (period_month ~ '^[0-9]{4}-(0[1-9]|1[0-2])$');
+      `);
+
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          ALTER COLUMN effective_from_month TYPE CHAR(7);
+      `);
+    },
+    name: "widen_rent_period_key_columns",
+    up: async (client: TDBClient) => {
+      const periodKeyPattern = "^[0-9]{4}-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?$";
+
+      await client.query(`
+        ALTER TABLE property_long_stay_rent_periods
+          ALTER COLUMN effective_from_month TYPE VARCHAR(10);
+      `);
+
+      await client.query(`
+        ALTER TABLE tenant_rent_payment_allocations
+          DROP CONSTRAINT IF EXISTS tenant_rent_payment_allocations_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payment_allocations
+          ALTER COLUMN period_month TYPE VARCHAR(10);
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payment_allocations
+          ADD CONSTRAINT tenant_rent_payment_allocations_period_month_fmt
+            CHECK (period_month ~ '${periodKeyPattern}');
+      `);
+
+      await client.query(`
+        ALTER TABLE property_income_lines
+          DROP CONSTRAINT IF EXISTS property_income_lines_rent_period_month_fmt;
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ALTER COLUMN rent_period_month TYPE VARCHAR(10);
+      `);
+      await client.query(`
+        ALTER TABLE property_income_lines
+          ADD CONSTRAINT property_income_lines_rent_period_month_fmt
+            CHECK (
+              rent_period_month IS NULL
+              OR rent_period_month ~ '${periodKeyPattern}'
+            );
+      `);
+    },
+    version: 74,
+  },
 ];

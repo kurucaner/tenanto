@@ -250,6 +250,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** DB accepts weekly period keys without breaking monthly rows.
 
+**Status:** ✅ Complete
+
 **Files (4)**
 
 | #   | File                                               |
@@ -261,9 +263,9 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Widen `period_month`, `rent_period_month`, `effective_from_month` to `VARCHAR(10)`.
-- [ ] Relax CHECK constraints to `YYYY-MM` **or** `YYYY-MM-DD`.
-- [ ] Update period key validation regex in shared utils.
+- [x] Widen `period_month`, `rent_period_month`, `effective_from_month` to `VARCHAR(10)`.
+- [x] Relax CHECK constraints to `YYYY-MM` **or** `YYYY-MM-DD`.
+- [x] Update period key validation regex in shared utils.
 
 **Exit criteria:** Migration runs; existing monthly allocation/income rows unchanged; new weekly keys pass constraints.
 
