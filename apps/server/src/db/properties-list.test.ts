@@ -1,13 +1,27 @@
 import { describe, expect, mock, test } from "bun:test";
 
-import { PropertyRole } from "@/packages/shared";
-
-import { mockAsyncFn } from "@/test-fixtures/mocks";
+import { PropertyRole, type TPropertyRole } from "@/packages/shared";
+import { mockPoolQuery } from "@/test-fixtures/mocks";
 
 const PROPERTY_ID = "11111111-1111-4111-8111-111111111111";
 const USER_ID = "22222222-2222-4222-8222-222222222222";
 
-const mockQuery = mockAsyncFn((_sql: string, _values?: unknown[]) =>
+type TPropertyListQueryRow = {
+  address: string;
+  caller_role: TPropertyRole | null;
+  created_at: Date;
+  created_by: string;
+  favorited_at: Date | null;
+  id: string;
+  legal_name: null;
+  member_count: number;
+  name: string;
+  phone_number: null;
+  unit_count: number;
+  updated_at: Date;
+};
+
+const mockQuery = mockPoolQuery<TPropertyListQueryRow>((_sql: string, _values?: unknown[]) =>
   Promise.resolve({
     rows: [
       {

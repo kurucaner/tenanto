@@ -101,9 +101,7 @@ export function getVisiblePropertyLauncherDestinations(
 ): IPropertyLauncherDestination[] {
   const visiblePaths = new Set(getVisiblePropertyShellTabs(permissions).map((tab) => tab.path));
 
-  return PROPERTY_LAUNCHER_DESTINATIONS.filter((destination) =>
-    visiblePaths.has(destination.path)
-  );
+  return PROPERTY_LAUNCHER_DESTINATIONS.filter((destination) => visiblePaths.has(destination.path));
 }
 
 export function getHomePropertyLauncherShortcutPaths(

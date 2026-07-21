@@ -14,9 +14,7 @@ export function isStripeDomainError(error: unknown): error is DomainError {
   return isDomainError(error) && STRIPE_ERROR_CODES.has(error.code);
 }
 
-export function stripeConnectNotConfiguredError(
-  message = "Stripe is not configured"
-): DomainError {
+export function stripeConnectNotConfiguredError(message = "Stripe is not configured"): DomainError {
   return createDomainError(
     StripeErrorCode.CONNECT_NOT_CONFIGURED,
     message,

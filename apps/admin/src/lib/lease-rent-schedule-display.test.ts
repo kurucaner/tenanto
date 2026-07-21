@@ -1,11 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyLongStayRentMonth, RentBillingCadence } from "@/packages/shared";
+import {
+  formatRentPeriodLabel,
+  type IPropertyLongStayRentMonth,
+  RentBillingCadence,
+} from "@/packages/shared";
 
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
 import {
-  formatRentSchedulePeriodLabel,
   getExpectedRentForScheduleMonth,
   getLeaseBillingCadenceLabel,
   getLeaseExtendTermsDescription,
@@ -155,7 +158,7 @@ const WEEKLY_SCHEDULE: IPropertyLongStayRentMonth[] = [
 
 describe("partitionRentSchedule weekly", () => {
   test("partitions weekly schedule using week-start asOf keys", () => {
-    const { dueUnpaidMonths, paidMonths, upcomingMonths, unpaidSummary } = partitionRentSchedule(
+    const { dueUnpaidMonths, paidMonths, unpaidSummary, upcomingMonths } = partitionRentSchedule(
       WEEKLY_SCHEDULE,
       "2026-01-22"
     );
@@ -177,9 +180,9 @@ describe("partitionRentSchedule weekly", () => {
   });
 });
 
-describe("formatRentSchedulePeriodLabel", () => {
+describe("formatRentPeriodLabel", () => {
   test("formats weekly period keys as week-of labels", () => {
-    expect(formatRentSchedulePeriodLabel("2026-01-15")).toMatch(/^Week of /);
+    expect(formatRentPeriodLabel("2026-01-15")).toMatch(/^Week of /);
   });
 });
 

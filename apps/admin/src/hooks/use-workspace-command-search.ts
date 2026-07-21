@@ -154,8 +154,7 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
       return [];
     }
 
-    const isPropertySearchDebouncing =
-      parsedQuery.mode !== "tabOnly" && debouncedSearch !== search;
+    const isPropertySearchDebouncing = parsedQuery.mode !== "tabOnly" && debouncedSearch !== search;
 
     if (isPropertySearchDebouncing && debouncedSearch.trim() === "") {
       return [];
@@ -170,7 +169,15 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
     return properties.flatMap((property) =>
       buildPropertyPaletteCommandItems(property, currentUser)
     );
-  }, [currentUser, debouncedSearch, displayParsedQuery, isSearching, parsedQuery.mode, properties, search]);
+  }, [
+    currentUser,
+    debouncedSearch,
+    displayParsedQuery,
+    isSearching,
+    parsedQuery.mode,
+    properties,
+    search,
+  ]);
 
   const propertiesGroupHeading = useMemo(
     () => buildPropertiesGroupHeading(displayParsedQuery.matchedTabs.map((tab) => tab.label)),

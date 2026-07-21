@@ -10,7 +10,11 @@ import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list"
 import { useRecentProperties } from "@/hooks/use-recent-properties";
 import { getInfiniteListLoadMoreLabel } from "@/lib/infinite-list-label";
 import { buildPropertyResumePath, buildPropertySwitchPath } from "@/lib/property-switch-navigation";
-import { clearRecentProperties, type IRecentProperty, removeRecentProperty } from "@/lib/recent-properties-storage";
+import {
+  clearRecentProperties,
+  type IRecentProperty,
+  removeRecentProperty,
+} from "@/lib/recent-properties-storage";
 import { cn } from "@/lib/utils";
 import { type IProperty, LIST_SEARCH_DEBOUNCE_MS } from "@/packages/shared";
 
@@ -171,8 +175,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
     [hasNextPage, isFetchingNextPage]
   );
 
-  const showStaticName =
-    !isSearching && properties.length === 1 && !isPending;
+  const showStaticName = !isSearching && properties.length === 1 && !isPending;
   const showRecentSection = !isSearching && recentProperties.length > 0;
   const showAllPropertiesSection = !isSearching && (allProperties.length > 0 || showRecentSection);
   const showEmptyState =

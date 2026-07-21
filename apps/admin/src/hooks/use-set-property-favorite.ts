@@ -32,7 +32,9 @@ function updatePropertyFavoriteInListCache(
 ): InfiniteData<IAdminPropertiesListResponse> {
   return {
     ...data,
-    pages: data.pages.map((page) => updatePropertyFavoriteInListResponse(page, propertyId, favorite)),
+    pages: data.pages.map((page) =>
+      updatePropertyFavoriteInListResponse(page, propertyId, favorite)
+    ),
   };
 }
 

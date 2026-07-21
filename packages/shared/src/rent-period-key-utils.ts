@@ -1,4 +1,9 @@
-import { formatLeaseMonthLabel, getLeaseWeekPeriodEnd } from "./lease-date-utils";
+import {
+  formatLeaseMonthLabel,
+  getLeaseWeekPeriodEnd,
+  transactionDateToMonth,
+} from "./lease-date-utils";
+import { isWeeklyRentBillingCadence, type TRentBillingCadence } from "./rent-billing-cadence";
 
 const PERIOD_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const PERIOD_WEEK_START_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -80,6 +85,15 @@ export function formatRentPeriodLabel(periodKey: string): string {
   }
 
   return periodKey;
+}
+
+export function getPristineRentPeriodKey(
+  leaseStartDate: string,
+  cadence: TRentBillingCadence
+): string {
+  return isWeeklyRentBillingCadence(cadence)
+    ? leaseStartDate
+    : transactionDateToMonth(leaseStartDate);
 }
 
 export function findWeeklyPeriodStartContainingDate(

@@ -241,6 +241,11 @@ export {
   rollupLeaseRentByPeriod,
 } from "./lease-rent-period-rollup";
 export {
+  buildLeaseRentSchedule,
+  buildLeaseRentScheduleWithRollup,
+  enumerateLeaseSchedulePeriods,
+} from "./lease-rent-schedule";
+export {
   getCurrentLeaseRent,
   getExtensionRentEffectiveMonthOptions,
   getFirstExtensionMonth,
@@ -342,6 +347,7 @@ export {
   comparePeriodKeys,
   findWeeklyPeriodStartContainingDate,
   formatRentPeriodLabel,
+  getPristineRentPeriodKey,
   inferRentScheduleCadence,
   isMonthlyPeriodKey,
   isPeriodKeyAfter,

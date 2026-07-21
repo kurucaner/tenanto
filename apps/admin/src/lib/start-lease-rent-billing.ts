@@ -1,6 +1,13 @@
 import {
+  formatLeaseMonthRentPreviewLabel,
+  formatLeaseWeekRentPreviewLabel,
+} from "@/lib/lease-rent-preview-labels";
+import {
+  calculateExpectedRentForLeaseMonth,
+  calculateExpectedRentForLeaseWeek,
   parseRentBillingCadence,
   RentBillingCadence,
+  transactionDateToMonth,
   type TRentBillingCadence,
 } from "@/packages/shared";
 
@@ -26,10 +33,74 @@ export function getStartLeaseRentBillingHelperText(cadence: TStartLeaseRentBilli
 export function normalizeStartLeaseRentBillingCadence(
   value: unknown
 ): TStartLeaseRentBillingCadence {
-  const parsed = parseRentBillingCadence(value);
-  if (parsed === RentBillingCadence.WEEKLY) {
-    return RentBillingCadence.MONTHLY;
+  return parseRentBillingCadence(value) ?? RentBillingCadence.MONTHLY;
+}
+
+function getStartLeaseFirstMonthRentPreview(input: {
+  leaseEndDate: string;
+  leaseStartDate: string;
+  monthlyRent: number;
+}): string | null {
+  if (!input.leaseStartDate || input.monthlyRent <= 0 || !input.leaseEndDate) {
+    return null;
   }
 
-  return parsed ?? RentBillingCadence.MONTHLY;
+  const month = transactionDateToMonth(input.leaseStartDate);
+  const rent = calculateExpectedRentForLeaseMonth({
+    baseMonthlyRent: input.monthlyRent,
+    effectiveEndDate: input.leaseEndDate,
+    leaseStartDate: input.leaseStartDate,
+    month,
+    rentPeriods: [],
+  });
+
+  if (!rent.isProrated) {
+    return null;
+  }
+
+  return formatLeaseMonthRentPreviewLabel("First month rent", rent);
+}
+
+function getStartLeaseFirstWeekRentPreview(input: {
+  leaseEndDate: string;
+  leaseStartDate: string;
+  weeklyRent: number;
+}): string | null {
+  if (!input.leaseStartDate || input.weeklyRent <= 0 || !input.leaseEndDate) {
+    return null;
+  }
+
+  const rent = calculateExpectedRentForLeaseWeek({
+    effectiveEndDate: input.leaseEndDate,
+    leaseStartDate: input.leaseStartDate,
+    periodStart: input.leaseStartDate,
+    weeklyRent: input.weeklyRent,
+  });
+
+  if (!rent.isProrated) {
+    return null;
+  }
+
+  return formatLeaseWeekRentPreviewLabel("First week rent", rent);
+}
+
+export function getStartLeaseFirstPeriodRentPreview(input: {
+  leaseEndDate: string;
+  leaseStartDate: string;
+  rentAmount: number;
+  rentBillingCadence: TStartLeaseRentBillingCadence;
+}): string | null {
+  if (input.rentBillingCadence === RentBillingCadence.WEEKLY) {
+    return getStartLeaseFirstWeekRentPreview({
+      leaseEndDate: input.leaseEndDate,
+      leaseStartDate: input.leaseStartDate,
+      weeklyRent: input.rentAmount,
+    });
+  }
+
+  return getStartLeaseFirstMonthRentPreview({
+    leaseEndDate: input.leaseEndDate,
+    leaseStartDate: input.leaseStartDate,
+    monthlyRent: input.rentAmount,
+  });
 }

@@ -36,7 +36,9 @@ export function sanitizePropertySwitchSearchParams(search: string): string {
 
 function resolveResumeShellTabPath(propertyId: string, lastPath: string): string {
   const suffix = getPropertyTabSuffix(`/properties/${propertyId}${lastPath}`, propertyId);
-  const sortedTabs = [...PROPERTY_SHELL_TABS].sort((left, right) => right.path.length - left.path.length);
+  const sortedTabs = [...PROPERTY_SHELL_TABS].sort(
+    (left, right) => right.path.length - left.path.length
+  );
 
   for (const tab of sortedTabs) {
     if (tab.path === "") {

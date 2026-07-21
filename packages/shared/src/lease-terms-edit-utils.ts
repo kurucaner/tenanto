@@ -1,4 +1,3 @@
-import { transactionDateToMonth } from "./lease-date-utils";
 import { resolveLeaseEndDate, validateLeaseTermInput } from "./lease-term-input-utils";
 import {
   type IEditPropertyLongStayTermsBody,
@@ -10,7 +9,12 @@ import {
   PropertyLongStayStatus,
   type TLeaseTermsEditBlockReason,
 } from "./property-long-stay-types";
-import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
+import {
+  isWeeklyRentBillingCadence,
+  RentBillingCadence,
+  type TRentBillingCadence,
+} from "./rent-billing-cadence";
+import { getPristineRentPeriodKey } from "./rent-period-key-utils";
 
 /** Matches create-lease route bounds in `property-long-stay-routes.ts`. */
 export const MAX_LEASE_TERM_MONTHS = 60;
@@ -33,14 +37,15 @@ export function getLeaseTermsEditBlockMessage(reason: TLeaseTermsEditBlockReason
 
 export function hasRentPeriodHistory(
   periods: readonly IPropertyLongStayRentPeriod[],
-  leaseStartDate: string
+  leaseStartDate: string,
+  cadence: TRentBillingCadence = RentBillingCadence.MONTHLY
 ): boolean {
   if (periods.length > 1) {
     return true;
   }
 
-  const startMonth = transactionDateToMonth(leaseStartDate);
-  return periods.some((period) => period.effectiveFromMonth !== startMonth);
+  const pristineKey = getPristineRentPeriodKey(leaseStartDate, cadence);
+  return periods.some((period) => period.effectiveFromMonth !== pristineKey);
 }
 
 export function deriveLeaseTermsEditability(

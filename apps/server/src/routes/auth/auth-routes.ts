@@ -9,11 +9,7 @@ import { refreshTokenDb } from "@/db/refresh-tokens";
 import { userDb } from "@/db/users";
 import { HttpStatus, TPlatform } from "@/packages/shared";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
-import {
-  deleteOtpById,
-  sendOtpWithCooldown,
-  verifyOtpCode,
-} from "@/services/auth-otp-service";
+import { deleteOtpById, sendOtpWithCooldown, verifyOtpCode } from "@/services/auth-otp-service";
 import { platformEmailPasswordAuthRealm } from "@/services/auth-realms/platform-email-auth-realm";
 import { issuePlatformSession } from "@/services/platform-auth-service";
 
