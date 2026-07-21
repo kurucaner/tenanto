@@ -4,6 +4,10 @@ import {
   formatLeaseWeekRentPreviewLabel,
 } from "@/lib/lease-rent-preview-labels";
 import {
+  getStartLeaseFirstPeriodRentPreview,
+  normalizeStartLeaseRentBillingCadence,
+} from "@/lib/start-lease-rent-billing";
+import {
   calculateExpectedRentForLeaseMonth,
   calculateExpectedRentForLeaseWeek,
   type IPropertyLongStay,
@@ -13,6 +17,20 @@ import {
   transactionDateToMonth,
   type TRentBillingCadence,
 } from "@/packages/shared";
+
+export function getEditLeaseFirstPeriodRentPreview(input: {
+  leaseEndDate: string;
+  leaseStartDate: string;
+  rentAmount: number;
+  rentBillingCadence: TRentBillingCadence;
+}): string | null {
+  return getStartLeaseFirstPeriodRentPreview({
+    leaseEndDate: input.leaseEndDate,
+    leaseStartDate: input.leaseStartDate,
+    rentAmount: input.rentAmount,
+    rentBillingCadence: normalizeStartLeaseRentBillingCadence(input.rentBillingCadence),
+  });
+}
 
 export function getEndLeaseMoveOutRentPreview(input: {
   lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent" | "rentBillingCadence">;

@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import { getEditLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-display";
 import {
   buildLeaseTermApiPayload,
   getInitialLeaseTermEndValues,
@@ -30,14 +31,12 @@ import {
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
-  getStartLeaseFirstPeriodRentPreview,
+  getStartLeaseRentAmountLabel,
   normalizeStartLeaseRentBillingCadence,
 } from "@/lib/start-lease-rent-billing";
 import {
-  getLeaseTermsEditBlockMessage,
   type IPropertyLongStay,
-  isWeeklyRentBillingCadence,
-  LeaseTermsEditBlockReason,
+  RentBillingCadence,
   validateEditLeaseTerms,
 } from "@/packages/shared";
 
@@ -61,7 +60,11 @@ export const EditLeaseTermsDialog = memo(
   ({ lease, onOpenChange, open, propertyId }: EditLeaseTermsDialogProps) => {
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
-    const isWeeklyBlocked = isWeeklyRentBillingCadence(lease.rentBillingCadence);
+    const rentAmountLabel = getStartLeaseRentAmountLabel(
+      normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence)
+    );
+    const isWeeklyLease =
+      normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence) === RentBillingCadence.WEEKLY;
 
     const form = useForm<TEditLeaseTermsFormValues>({
       defaultValues: getDefaultValues(lease),
@@ -70,7 +73,7 @@ export const EditLeaseTermsDialog = memo(
           .object({
             leaseEndDate: z.string(),
             leaseStartDate: z.string().min(1, "Lease start date is required"),
-            monthlyRent: requiredNonNegativeMoneyField("Monthly rent"),
+            monthlyRent: requiredNonNegativeMoneyField(rentAmountLabel),
             termMode: z.enum(["months", "customEnd"]),
             termMonths: z.string(),
           })
@@ -139,7 +142,7 @@ export const EditLeaseTermsDialog = memo(
         return null;
       }
 
-      return getStartLeaseFirstPeriodRentPreview({
+      return getEditLeaseFirstPeriodRentPreview({
         leaseEndDate: resolvedEnd,
         leaseStartDate,
         rentAmount: parsedMonthlyRent,
@@ -169,35 +172,15 @@ export const EditLeaseTermsDialog = memo(
 
     const { errors, isSubmitting } = form.formState;
 
-    if (isWeeklyBlocked) {
-      return (
-        <Dialog onOpenChange={handleOpenChangeWithReset} open={open}>
-          <DialogContent className="sm:max-w-[440px]">
-            <DialogHeader>
-              <DialogTitle>Edit Lease Terms</DialogTitle>
-              <DialogDescription>
-                {getLeaseTermsEditBlockMessage(LeaseTermsEditBlockReason.WEEKLY_CADENCE)} Use Extend
-                lease or End lease instead.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => handleOpenChangeWithReset(false)} type="button">
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      );
-    }
-
     return (
       <Dialog onOpenChange={handleOpenChangeWithReset} open={open}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Edit Lease Terms</DialogTitle>
             <DialogDescription>
-              Correct the lease start date, term, or base monthly rent for {lease.guestName}. This
-              is only available before rent income or online payments are recorded.
+              Correct the lease start date, term, or base{" "}
+              {isWeeklyLease ? "weekly rent" : "monthly rent"} for {lease.guestName}. This is only
+              available before rent income or online payments are recorded.
             </DialogDescription>
           </DialogHeader>
 
@@ -215,7 +198,7 @@ export const EditLeaseTermsDialog = memo(
               />
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="edit-lease-monthly-rent">Monthly Rent</Label>
+                <Label htmlFor="edit-lease-monthly-rent">{rentAmountLabel}</Label>
                 <Controller
                   control={form.control}
                   name="monthlyRent"

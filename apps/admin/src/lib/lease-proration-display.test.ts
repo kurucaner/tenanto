@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
+import { RentBillingCadence } from "@/packages/shared";
+
 import {
   getActiveLeaseHoldoverNotice,
   getActiveLeaseHoldoverScheduleNotice,
+  getEditLeaseFirstPeriodRentPreview,
   getEndLeaseHoldoverHelperText,
   getEndLeaseMoveOutBoundsHelperText,
   getEndLeaseMoveOutRentPreview,
@@ -94,5 +97,18 @@ describe("getActiveLeaseHoldoverNotice", () => {
   test("mentions the contract end date", () => {
     expect(getActiveLeaseHoldoverNotice("2026-06-30")).toContain("06/30/2026");
     expect(getActiveLeaseHoldoverNotice("2026-06-30")).toContain("actual move-out date");
+  });
+});
+
+describe("getEditLeaseFirstPeriodRentPreview", () => {
+  test("returns first week rent preview for weekly cadence", () => {
+    expect(
+      getEditLeaseFirstPeriodRentPreview({
+        leaseEndDate: "2026-01-20",
+        leaseStartDate: "2026-01-15",
+        rentAmount: 700,
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      })
+    ).toBe("First week rent: $600.00 (6/7 days)");
   });
 });

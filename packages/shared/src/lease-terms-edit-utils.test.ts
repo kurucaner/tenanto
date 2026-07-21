@@ -33,7 +33,7 @@ describe("deriveLeaseTermsEditability", () => {
     expect(deriveLeaseTermsEditability(activeLease, editableSignals)).toEqual({ editable: true });
   });
 
-  test("blocks weekly-billed leases", () => {
+  test("allows pristine weekly-billed leases when no ledger signals exist", () => {
     expect(
       deriveLeaseTermsEditability(
         {
@@ -42,9 +42,24 @@ describe("deriveLeaseTermsEditability", () => {
         },
         editableSignals
       )
+    ).toEqual({ editable: true });
+  });
+
+  test("blocks weekly leases after rent income is recorded", () => {
+    expect(
+      deriveLeaseTermsEditability(
+        {
+          ...activeLease,
+          rentBillingCadence: RentBillingCadence.WEEKLY,
+        },
+        {
+          ...editableSignals,
+          hasIncomeLines: true,
+        }
+      )
     ).toEqual({
       editable: false,
-      reason: LeaseTermsEditBlockReason.WEEKLY_CADENCE,
+      reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES,
     });
   });
 
@@ -202,6 +217,23 @@ describe("validateEditLeaseTerms", () => {
         "2026-07-09"
       )
     ).toBe(`termMonths must be a whole number between 1 and ${MAX_LEASE_TERM_MONTHS}`);
+  });
+
+  test("rejects negative weekly rent", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: "2026-02-01",
+          monthlyRent: -1,
+          termMonths: 12,
+        },
+        {
+          ...activeLease,
+          rentBillingCadence: RentBillingCadence.WEEKLY,
+        },
+        "2026-07-09"
+      )
+    ).toBe("weekly rent must be a non-negative number");
   });
 
   test("rejects negative rent", () => {

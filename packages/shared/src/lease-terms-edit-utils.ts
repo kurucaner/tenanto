@@ -59,13 +59,6 @@ export function deriveLeaseTermsEditability(
     };
   }
 
-  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
-    return {
-      editable: false,
-      reason: LeaseTermsEditBlockReason.WEEKLY_CADENCE,
-    };
-  }
-
   if (signals.hasIncomeLines) {
     return {
       editable: false,
@@ -94,7 +87,12 @@ export function validateEditLeaseTerms(
   body: IEditPropertyLongStayTermsBody,
   lease: Pick<
     IPropertyLongStay,
-    "leaseEndDate" | "leaseStartDate" | "monthlyRent" | "status" | "termMonths"
+    | "leaseEndDate"
+    | "leaseStartDate"
+    | "monthlyRent"
+    | "rentBillingCadence"
+    | "status"
+    | "termMonths"
   >,
   _today: string
 ): string | null {
@@ -108,7 +106,9 @@ export function validateEditLeaseTerms(
   }
 
   if (!Number.isFinite(body.monthlyRent) || body.monthlyRent < 0) {
-    return "monthlyRent must be a non-negative number";
+    return isWeeklyRentBillingCadence(lease.rentBillingCadence)
+      ? "weekly rent must be a non-negative number"
+      : "monthlyRent must be a non-negative number";
   }
 
   let resolved;

@@ -107,7 +107,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
     });
 
     expect(updated).toMatchObject({
-      leaseEndDate: "2026-08-01",
+      leaseEndDate: "2026-07-31",
       leaseStartDate: "2026-02-01",
       monthlyRent: 1800,
       termMonths: 6,
@@ -136,6 +136,29 @@ describe("propertyLongStaysDb.updateTerms", () => {
       {
         effective_from_month: "2026-02",
         monthly_rent: "1800",
+      },
+    ]);
+  });
+
+  test("syncs a single rent period row with week-start key for weekly leases", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_start_date: "2026-01-15",
+      rent_billing_cadence: "weekly",
+    });
+    currentRentPeriodRows = [{ id: "period-1" }];
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    await propertyLongStaysDb.updateTerms("lease-1", {
+      leaseStartDate: "2026-01-22",
+      monthlyRent: 750,
+      termMonths: 13,
+    });
+
+    expect(currentRentPeriodRows).toEqual([
+      {
+        effective_from_month: "2026-01-22",
+        monthly_rent: "750",
       },
     ]);
   });

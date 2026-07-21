@@ -22,6 +22,7 @@ import {
   enumerateLeaseSchedulePeriods,
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
+  getPristineRentPeriodKey,
   hasRentPeriodHistory,
   parseRentBillingCadence,
   PropertyLongStayStatus,
@@ -565,7 +566,10 @@ export const propertyLongStaysDb = {
     }
 
     const { leaseEndDate, termMonths } = resolvedTerms;
-    const startMonth = transactionDateToMonth(body.leaseStartDate);
+    const pristinePeriodKey = getPristineRentPeriodKey(
+      body.leaseStartDate,
+      existing.rentBillingCadence
+    );
 
     const client = await pool.connect();
     try {
@@ -585,7 +589,7 @@ export const propertyLongStaysDb = {
            SET effective_from_month = $2,
                monthly_rent = $3
            WHERE long_stay_id = $1`,
-          [id, startMonth, body.monthlyRent]
+          [id, pristinePeriodKey, body.monthlyRent]
         );
       }
 

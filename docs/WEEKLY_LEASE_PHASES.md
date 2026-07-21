@@ -148,29 +148,29 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 ## Scope overview
 
-| Phase  | Scope                                 | Files (max) | User-facing?  |
-| ------ | ------------------------------------- | ----------- | ------------- |
-| **0**  | Persist cadence; server blocks weekly | 7           | No            |
-| **1a** | Shared week math (pure)               | 4           | No            |
-| **1b** | Shared period key helpers             | 4           | No            |
-| **2a** | DB widen period key columns           | 4           | No            |
-| **2b** | Server rent schedule for weekly       | 6           | No (API only) |
-| **3**  | Admin create weekly lease             | 6           | Yes (admin)   |
-| **4**  | Admin detail, record rent, list       | 6           | Yes (admin)   |
-| **5a** | Tenant balance & checkout (server)    | 5           | No            |
-| **5b** | Tenant portal UI                      | 6           | Yes (tenant)  |
-| **6a** | End lease (weekly proration)          | 4           | Yes (admin)   |
-| **6b** | Extend lease & edit-terms guards      | 6           | Yes (admin)   |
-| **7**  | Release notes                         | 3           | Yes           |
-| **8**  | Admin detail UI polish (v2 early)     | 4           | Yes (admin)   |
-| **9**  | Rent-period history signals (v2 early)| 5           | No            |
-| **10** | Weekly create bootstrap row (v2 early)| 3           | No            |
-| **11** | Enable edit terms for weekly (v2 early)| 8          | Yes (admin)   |
-| **12** | Weekly mid-lease rent changes (v2 later)| 8+         | Yes (admin)   |
-| **13** | Shared period naming (v2 later)       | many        | No            |
-| **14** | API + DB rename migration (v2 later)  | many        | Breaking      |
-| **15** | Cadence conversion (v2 later)         | TBD         | Optional      |
-| **16** | Portfolio / reports audit (v2 later)  | TBD         | Yes           |
+| Phase  | Scope                                    | Files (max) | User-facing?  |
+| ------ | ---------------------------------------- | ----------- | ------------- |
+| **0**  | Persist cadence; server blocks weekly    | 7           | No            |
+| **1a** | Shared week math (pure)                  | 4           | No            |
+| **1b** | Shared period key helpers                | 4           | No            |
+| **2a** | DB widen period key columns              | 4           | No            |
+| **2b** | Server rent schedule for weekly          | 6           | No (API only) |
+| **3**  | Admin create weekly lease                | 6           | Yes (admin)   |
+| **4**  | Admin detail, record rent, list          | 6           | Yes (admin)   |
+| **5a** | Tenant balance & checkout (server)       | 5           | No            |
+| **5b** | Tenant portal UI                         | 6           | Yes (tenant)  |
+| **6a** | End lease (weekly proration)             | 4           | Yes (admin)   |
+| **6b** | Extend lease & edit-terms guards         | 6           | Yes (admin)   |
+| **7**  | Release notes                            | 3           | Yes           |
+| **8**  | Admin detail UI polish (v2 early)        | 4           | Yes (admin)   |
+| **9**  | Rent-period history signals (v2 early)   | 5           | No            |
+| **10** | Weekly create bootstrap row (v2 early)   | 3           | No            |
+| **11** | Enable edit terms for weekly (v2 early)  | 8           | Yes (admin)   |
+| **12** | Weekly mid-lease rent changes (v2 later) | 8+          | Yes (admin)   |
+| **13** | Shared period naming (v2 later)          | many        | No            |
+| **14** | API + DB rename migration (v2 later)     | many        | Breaking      |
+| **15** | Cadence conversion (v2 later)            | TBD         | Optional      |
+| **16** | Portfolio / reports audit (v2 later)     | TBD         | Yes           |
 
 ---
 
@@ -502,11 +502,11 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 
 **Files (4)**
 
-| #   | File                                                            |
-| --- | --------------------------------------------------------------- |
-| 1   | `apps/admin/src/components/leases/lease-terms-section.tsx`      |
-| 2   | `apps/admin/src/components/leases/lease-overview-section.tsx`   |
-| 3   | `apps/admin/src/lib/lease-rent-schedule-display.ts` _(if needed)_ |
+| #   | File                                                                                    |
+| --- | --------------------------------------------------------------------------------------- |
+| 1   | `apps/admin/src/components/leases/lease-terms-section.tsx`                              |
+| 2   | `apps/admin/src/components/leases/lease-overview-section.tsx`                           |
+| 3   | `apps/admin/src/lib/lease-rent-schedule-display.ts` _(if needed)_                       |
 | 4   | `apps/admin/src/components/leases/start-lease-form.tsx` _(optional — neutral input id)_ |
 
 **Tasks**
@@ -529,14 +529,14 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 
 **Files (6)**
 
-| #   | File                                                         |
-| --- | ------------------------------------------------------------ |
-| 1   | `apps/server/src/db/property-long-stays.ts`                  |
-| 2   | `packages/shared/src/lease-terms-edit-utils.ts`              |
-| 3   | `packages/shared/src/rent-period-key-utils.ts`               |
-| 4   | `packages/shared/src/lease-terms-edit-utils.test.ts`         |
-| 5   | `apps/server/src/db/property-long-stays-terms-edit.test.ts`  |
-| 6   | `packages/shared/src/property-long-stay-types.ts`            |
+| #   | File                                                        |
+| --- | ----------------------------------------------------------- |
+| 1   | `apps/server/src/db/property-long-stays.ts`                 |
+| 2   | `packages/shared/src/lease-terms-edit-utils.ts`             |
+| 3   | `packages/shared/src/rent-period-key-utils.ts`              |
+| 4   | `packages/shared/src/lease-terms-edit-utils.test.ts`        |
+| 5   | `apps/server/src/db/property-long-stays-terms-edit.test.ts` |
+| 6   | `packages/shared/src/property-long-stay-types.ts`           |
 
 **Tasks**
 
@@ -575,27 +575,29 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 
 ### Phase 11 — Enable edit terms for weekly
 
+**Status:** ✅ Complete
+
 **Goal:** Allow editing start/term/rent on weekly leases before any ledger activity (same gate as monthly).
 
 **Files (8)**
 
 | #   | File                                                           |
 | --- | -------------------------------------------------------------- |
-| 1   | `packages/shared/src/lease-terms-edit-utils.ts`              |
+| 1   | `packages/shared/src/lease-terms-edit-utils.ts`                |
 | 2   | `packages/shared/src/property-long-stay-types.ts`              |
 | 3   | `apps/server/src/db/property-long-stays.ts`                    |
 | 4   | `apps/admin/src/components/leases/edit-lease-terms-dialog.tsx` |
-| 5   | `apps/admin/src/components/leases/lease-terms-section.tsx`   |
+| 5   | `apps/admin/src/components/leases/lease-terms-section.tsx`     |
 | 6   | `apps/admin/src/lib/lease-proration-display.ts`                |
 | 7   | `packages/shared/src/lease-terms-edit-utils.test.ts`           |
 | 8   | `apps/server/src/db/property-long-stays-update-terms.test.ts`  |
 
 **Tasks**
 
-- [ ] Remove `WEEKLY_CADENCE` block from `deriveLeaseTermsEditability` (keep block after income/payments/history).
-- [ ] Cadence-aware `validateEditLeaseTerms` and first-period preview (first **week**, not first month).
-- [ ] Edit dialog labels: “Weekly rent” when cadence is weekly.
-- [ ] `updateTerms` writes week-start rent period keys when needed.
+- [x] Remove `WEEKLY_CADENCE` block from `deriveLeaseTermsEditability` (keep block after income/payments/history).
+- [x] Cadence-aware `validateEditLeaseTerms` and first-period preview (first **week**, not first month).
+- [x] Edit dialog labels: “Weekly rent” when cadence is weekly.
+- [x] `updateTerms` writes week-start rent period keys when needed.
 
 **Exit criteria:** Pristine weekly lease can edit terms; after recording rent or extending, edit blocked with existing reasons (not `WEEKLY_CADENCE`). Depends on Phase 9.
 
@@ -609,15 +611,15 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 
 **Files (8+)**
 
-| #   | File                                                           |
-| --- | -------------------------------------------------------------- |
-| 1   | `packages/shared/src/lease-rent-utils.ts`                      |
-| 2   | `apps/server/src/db/property-long-stays.ts`                    |
-| 3   | `apps/admin/src/components/leases/extend-lease-dialog.tsx`     |
-| 4   | `packages/shared/src/lease-rent-utils.test.ts`                 |
-| 5   | `apps/server/src/db/property-long-stays-extend.test.ts`        |
-| 6   | `apps/admin/src/components/leases/lease-terms-section.tsx`     |
-| 7   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts` |
+| #   | File                                                                |
+| --- | ------------------------------------------------------------------- |
+| 1   | `packages/shared/src/lease-rent-utils.ts`                           |
+| 2   | `apps/server/src/db/property-long-stays.ts`                         |
+| 3   | `apps/admin/src/components/leases/extend-lease-dialog.tsx`          |
+| 4   | `packages/shared/src/lease-rent-utils.test.ts`                      |
+| 5   | `apps/server/src/db/property-long-stays-extend.test.ts`             |
+| 6   | `apps/admin/src/components/leases/lease-terms-section.tsx`          |
+| 7   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts`      |
 | 8   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
 
 **Tasks**

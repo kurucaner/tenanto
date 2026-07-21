@@ -269,7 +269,9 @@ describe("editLeaseTerms", () => {
   test("rejects no-op updates", async () => {
     const lease = makeLease({
       guestName: "Tenant A",
-      leaseEndDate: "2027-01-01",
+      leaseEndDate: "2026-12-31",
+      leaseStartDate: "2026-01-01",
+      termMonths: 12,
       tenantEmail: null,
     });
     mockEditableLease(lease);
