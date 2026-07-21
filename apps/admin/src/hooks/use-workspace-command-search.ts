@@ -5,9 +5,15 @@ import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list"
 import { useRecentProperties } from "@/hooks/use-recent-properties";
 import {
   buildPropertyPaletteCommandItems,
+  buildPropertyTabsPaletteCommandItems,
   buildRecentPaletteCommandItems,
   type IGlobalCommandPaletteItem,
 } from "@/lib/global-command-palette-items";
+import {
+  getPropertyShellTabSearchTerms,
+  getSearchablePropertyShellTabs,
+} from "@/lib/property-launcher-destinations";
+import { parseWorkspaceSearchQuery } from "@/lib/workspace-search-query";
 import { LIST_SEARCH_DEBOUNCE_MS, UserType } from "@/packages/shared";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -31,7 +37,18 @@ function filterNavigationItems(search: string, userType: UserType) {
 }
 
 export function buildWorkspaceSearchTips(userType: UserType): IWorkspaceCommandSearchTip[] {
-  return getNavItemsForRole(userType)
+  const tabTips = getSearchablePropertyShellTabs().map((tab) => {
+    const searchTerms = getPropertyShellTabSearchTerms(tab);
+
+    return {
+      description: `Open ${tab.label} on any property`,
+      id: `tip-tab-${tab.path === "" ? "overview" : tab.path}`,
+      keyword: searchTerms[0] ?? tab.label.toLowerCase(),
+      path: "/properties",
+    };
+  });
+
+  const navTips = getNavItemsForRole(userType)
     .filter((item) => item.href !== "/home")
     .slice(0, 6)
     .map((item) => ({
@@ -40,6 +57,20 @@ export function buildWorkspaceSearchTips(userType: UserType): IWorkspaceCommandS
       keyword: item.title.toLowerCase().replace(/\s+/g, ""),
       path: item.href,
     }));
+
+  return [...tabTips, ...navTips];
+}
+
+function buildPropertiesGroupHeading(matchedTabLabels: string[]): string | undefined {
+  if (matchedTabLabels.length === 0) {
+    return undefined;
+  }
+
+  if (matchedTabLabels.length === 1) {
+    return `Properties → ${matchedTabLabels[0]}`;
+  }
+
+  return `Properties → ${matchedTabLabels.join(", ")}`;
 }
 
 export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
@@ -47,22 +78,56 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
   const userType = currentUser?.userType ?? UserType.USER;
   const recentEntries = useRecentProperties();
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedPropertyQuery, setDebouncedPropertyQuery] = useState("");
+
+  const parsedQuery = useMemo(() => parseWorkspaceSearchQuery(search), [search]);
+  const isSearching = search.trim().length > 0;
 
   useEffect(() => {
     const timeoutId = globalThis.setTimeout(() => {
-      setDebouncedSearch(search.trim());
+      setDebouncedPropertyQuery(parsedQuery.propertyQuery);
     }, LIST_SEARCH_DEBOUNCE_MS);
 
     return () => globalThis.clearTimeout(timeoutId);
-  }, [search]);
+  }, [parsedQuery.propertyQuery]);
 
-  const isSearching = debouncedSearch.length > 0;
+  const isPropertyQueryReady =
+    parsedQuery.mode === "tabOnly" ||
+    (parsedQuery.propertyQuery !== "" && debouncedPropertyQuery === parsedQuery.propertyQuery) ||
+    (parsedQuery.propertyQuery === "" && debouncedPropertyQuery === "");
 
-  const { isPending, properties } = usePropertiesInfiniteList({
-    enabled,
-    q: isSearching ? debouncedSearch : undefined,
+  const propertiesQueryEnabled = enabled && isSearching && isPropertyQueryReady;
+
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isPending,
+    properties,
+  } = usePropertiesInfiniteList({
+    enabled: propertiesQueryEnabled,
+    q: parsedQuery.mode === "tabOnly" ? undefined : debouncedPropertyQuery || undefined,
   });
+
+  useEffect(() => {
+    if (
+      !propertiesQueryEnabled ||
+      parsedQuery.mode !== "tabOnly" ||
+      !hasNextPage ||
+      isFetchingNextPage
+    ) {
+      return;
+    }
+
+    fetchNextPage().catch(() => undefined);
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    parsedQuery.mode,
+    propertiesQueryEnabled,
+  ]);
 
   const propertyById = useMemo(
     () => new Map(properties.map((property) => [property.id, property])),
@@ -91,14 +156,25 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
   }, [currentUser, isSearching, propertyById, recentEntries]);
 
   const propertyItems: IGlobalCommandPaletteItem[] = useMemo(() => {
-    if (!isSearching) {
+    if (!isSearching || !propertiesQueryEnabled) {
       return [];
+    }
+
+    if (parsedQuery.matchedTabs.length > 0) {
+      return properties.flatMap((property) =>
+        buildPropertyTabsPaletteCommandItems(property, parsedQuery.matchedTabs, currentUser)
+      );
     }
 
     return properties.flatMap((property) =>
       buildPropertyPaletteCommandItems(property, currentUser)
     );
-  }, [currentUser, isSearching, properties]);
+  }, [currentUser, isSearching, parsedQuery.matchedTabs, properties, propertiesQueryEnabled]);
+
+  const propertiesGroupHeading = useMemo(
+    () => buildPropertiesGroupHeading(parsedQuery.matchedTabs.map((tab) => tab.label)),
+    [parsedQuery.matchedTabs]
+  );
 
   const searchTips = useMemo(() => buildWorkspaceSearchTips(userType), [userType]);
 
@@ -107,14 +183,16 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
 
   const resetSearch = () => {
     setSearch("");
-    setDebouncedSearch("");
+    setDebouncedPropertyQuery("");
   };
 
   return {
     hasResults,
+    isFetching,
     isPending,
     isSearching,
     navigationItems,
+    propertiesGroupHeading,
     propertyItems,
     recentItems,
     resetSearch,

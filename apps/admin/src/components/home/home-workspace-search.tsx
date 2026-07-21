@@ -96,9 +96,12 @@ export const HomeWorkspaceSearch = memo(({ onActiveChange }: HomeWorkspaceSearch
             )}
           >
             <WorkspaceCommandResults
+              isFetching={searchState.isFetching}
+              isPending={searchState.isPending}
               isSearching={searchState.isSearching}
               navigationItems={searchState.navigationItems}
               onSelect={handleSelect}
+              propertiesGroupHeading={searchState.propertiesGroupHeading}
               propertyItems={searchState.propertyItems}
               recentItems={searchState.recentItems}
               searchTips={searchState.searchTips}

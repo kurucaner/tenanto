@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildPropertyPaletteCommandItems,
+  buildPropertyTabPaletteCommandItems,
   buildRecentPaletteCommandItems,
 } from "@/lib/global-command-palette-items";
 import type { IProperty } from "@/packages/shared";
@@ -57,6 +58,28 @@ describe("buildPropertyPaletteCommandItems", () => {
       path: "/properties/property-1/expenses",
       value: "Test Property 123 Main St Expenses",
     });
+  });
+});
+
+describe("buildPropertyTabPaletteCommandItems", () => {
+  test("returns only the requested tab destination when visible", () => {
+    const property = makeListProperty();
+    const currentUser = makeUser(ownerId, UserType.USER);
+
+    const items = buildPropertyTabPaletteCommandItems(
+      property,
+      { label: "Exports", path: "exports" },
+      currentUser
+    );
+
+    expect(items).toEqual([
+      {
+        id: "property-1-Exports",
+        label: "Test Property → Exports",
+        path: "/properties/property-1/exports",
+        value: "Test Property 123 Main St Exports",
+      },
+    ]);
   });
 });
 
