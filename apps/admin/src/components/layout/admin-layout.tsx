@@ -1,9 +1,10 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { AdminDarkPaletteMenu } from "@/components/admin-dark-palette-menu";
 import { AdminThemeSwitcher } from "@/components/admin-theme-switcher";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { GlobalCommandPaletteHost } from "@/components/layout/global-command-palette";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -11,6 +12,7 @@ import {
   MOBILE_ADMIN_SHELL_HEIGHT_CLASS,
   MOBILE_ADMIN_SHELL_OVERFLOW_CLASS,
 } from "@/config/mobile-layout";
+import { HomeSearchFocusContext } from "@/contexts/home-search-focus-context";
 import { LayoutScrollContext } from "@/contexts/layout-scroll-context";
 import { NotificationStreamContext } from "@/contexts/notification-stream-context";
 import { useNotificationStream } from "@/hooks/use-notification-stream";
@@ -19,6 +21,18 @@ import { cn } from "@/lib/utils";
 
 const AdminLayoutInner = memo(() => {
   const resolvedDark = useResolvedAdminDark();
+  const focusHandlerRef = useRef<(() => void) | null>(null);
+  const homeSearchFocusValue = useMemo(
+    () => ({
+      focusSearch: () => {
+        focusHandlerRef.current?.();
+      },
+      registerFocusHandler: (handler: (() => void) | null) => {
+        focusHandlerRef.current = handler;
+      },
+    }),
+    []
+  );
   const [suppressToasts, setSuppressToasts] = useState(false);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   const streamStatus = useNotificationStream({ suppressToasts });
@@ -55,7 +69,10 @@ const AdminLayoutInner = memo(() => {
             ref={setScrollElement}
           >
             <LayoutScrollContext.Provider value={scrollElement}>
-              <Outlet />
+              <HomeSearchFocusContext.Provider value={homeSearchFocusValue}>
+                <Outlet />
+                <GlobalCommandPaletteHost />
+              </HomeSearchFocusContext.Provider>
             </LayoutScrollContext.Provider>
           </div>
           <MobileBottomNav />

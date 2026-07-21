@@ -2,7 +2,6 @@
   - property-export-list-constants
   - RentPaymentValidationError, RentPaymentNotFoundError, TenantLeaseAccessDeniedError etc all errors are the same
 
-- Do I need turbo?
 - Eslint configuration merge
 - SMS flow at the beginning with campaign opt in compatability
 - Typescript 7 implementation
@@ -11,7 +10,6 @@
 - A dialog when the users log in to the app for the first time.
 - Add security deposit flow
 - Add weekly long term stays
-- Fix 1 day mismatch in monthly long term stays
 - Sub category implementation for expenses
 - Add Stripe commission to long stay payments
 - ACH

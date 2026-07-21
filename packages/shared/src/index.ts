@@ -255,19 +255,12 @@ export {
 } from "./lease-secondary-tenant-contact";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
-  deriveLeaseTermsEditability,
-  getLeaseTermsEditBlockMessage,
-  hasRentPeriodHistory,
-  MAX_LEASE_TERM_MONTHS,
-  validateEditLeaseTerms,
-} from "./lease-terms-edit-utils";
-export {
   addMonthsToIsoDate,
   deriveTermMonthsFromDates,
-  isCustomLeaseEndDate,
-  type IResolveLeaseEndDateInput,
   type IResolvedExtendLeaseTerm,
   type IResolvedLeaseTerm,
+  type IResolveLeaseEndDateInput,
+  isCustomLeaseEndDate,
   type LeaseExtendInputMode,
   type LeaseTermInputMode,
   parseLeaseIsoDate,
@@ -275,6 +268,13 @@ export {
   resolveLeaseEndDate,
   validateLeaseTermInput,
 } from "./lease-term-input-utils";
+export {
+  deriveLeaseTermsEditability,
+  getLeaseTermsEditBlockMessage,
+  hasRentPeriodHistory,
+  MAX_LEASE_TERM_MONTHS,
+  validateEditLeaseTerms,
+} from "./lease-terms-edit-utils";
 export {
   type IListTotalCountMeta,
   type IPropertyExpensesListMeta,
@@ -458,6 +458,11 @@ export { UNITS_LIST_LIMIT, UNITS_LIST_MAX_LIMIT } from "./property-unit-list-con
 
 // Home Financial Overview Types
 export type { IHomeFinancialOverview } from "./home-financial-overview-types";
+export {
+  HOME_RECENT_TENANT_EMAIL_CAMPAIGNS_LIMIT,
+  type IHomeRecentTenantEmailCampaign,
+  type IHomeRecentTenantEmailCampaignsResponse,
+} from "./home-recent-tenant-email-campaigns-types";
 
 // Property Report Types
 export {

@@ -12,6 +12,12 @@ mock.module("./show-property-export-queued-toast", () => ({
   showPropertyExportQueuedToast: mock(() => undefined),
 }));
 
+mock.module("@/lib/query-persist-config", () => ({
+  queryPersistOptions: {},
+  queryPersistPersister: {},
+  removePersistedQueryCache: mock(() => undefined),
+}));
+
 const { handleTenantEmailCampaignUpdated, parseTenantEmailCampaignUpdatedData } =
   await import("./notification-stream-handlers");
 
@@ -160,6 +166,7 @@ describe("handleTenantEmailCampaignUpdated", () => {
     expect(invalidatedKeys).toContainEqual([
       ...queryKeys.propertyTenantEmailCampaigns("property-1"),
     ]);
+    expect(invalidatedKeys).toContainEqual([...queryKeys.homeRecentTenantEmailCampaigns()]);
   });
 
   test("does not invalidate campaign detail cache on in-progress updates", () => {
@@ -175,6 +182,7 @@ describe("handleTenantEmailCampaignUpdated", () => {
     expect(invalidatedKeys).toContainEqual([
       ...queryKeys.propertyTenantEmailCampaigns("property-1"),
     ]);
+    expect(invalidatedKeys).toContainEqual([...queryKeys.homeRecentTenantEmailCampaigns()]);
     expect(invalidatedKeys).not.toContainEqual([
       ...queryKeys.propertyTenantEmailCampaign("property-1", "campaign-1"),
     ]);

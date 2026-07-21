@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { propertiesApi } from "@/lib/api-client";
 import { isPropertyLeaseFocusedPath } from "@/lib/property-shell-routes";
+import { getPropertyTabSuffix } from "@/lib/property-switch-navigation";
 import { queryKeys } from "@/lib/query-keys";
 import { recordRecentProperty } from "@/lib/recent-properties-storage";
 import { type IPropertyDetail } from "@/packages/shared";
@@ -86,13 +87,16 @@ PropertyPageShell.displayName = "PropertyPageShell";
 
 const PropertyShellLayoutContent = memo(
   ({ property, propertyId }: { property: IPropertyDetail; propertyId: string }) => {
+    const { pathname } = useLocation();
+
     useEffect(() => {
       recordRecentProperty({
         address: property.address,
         id: property.id,
+        lastPath: getPropertyTabSuffix(pathname, property.id),
         name: property.name,
       });
-    }, [property.address, property.id, property.name]);
+    }, [pathname, property.address, property.id, property.name]);
 
     return (
       <PropertyShellProvider property={property} propertyId={propertyId}>

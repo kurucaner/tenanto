@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  buildPropertyResumePath,
   buildPropertySwitchPath,
   getPropertyTabSuffix,
   sanitizePropertySwitchSearchParams,
@@ -58,5 +59,25 @@ describe("buildPropertySwitchPath", () => {
         search: "?from=2026-01-01&unitId=unit-1",
       })
     ).toBe("/properties/next-id/income?from=2026-01-01");
+  });
+});
+
+describe("buildPropertyResumePath", () => {
+  const propertyId = "abc-123";
+
+  test("returns overview path when lastPath is absent or empty", () => {
+    expect(buildPropertyResumePath(propertyId)).toBe(`/properties/${propertyId}`);
+    expect(buildPropertyResumePath(propertyId, "")).toBe(`/properties/${propertyId}`);
+  });
+
+  test("returns tab path for top-level shell tabs", () => {
+    expect(buildPropertyResumePath(propertyId, "/income")).toBe(`/properties/${propertyId}/income`);
+    expect(buildPropertyResumePath(propertyId, "/leases")).toBe(`/properties/${propertyId}/leases`);
+  });
+
+  test("falls back to list tab for nested routes in v1", () => {
+    expect(buildPropertyResumePath(propertyId, "/leases/lease-456")).toBe(
+      `/properties/${propertyId}/leases`
+    );
   });
 });

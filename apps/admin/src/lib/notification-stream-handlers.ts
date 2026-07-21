@@ -185,6 +185,10 @@ export function handleTenantEmailCampaignUpdated(
     queryKey: queryKeys.propertyTenantEmailCampaigns(data.propertyId),
   });
 
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.homeRecentTenantEmailCampaigns(),
+  });
+
   if (isTenantEmailCampaignTerminal(data.status)) {
     queryClient.invalidateQueries({
       queryKey: queryKeys.propertyTenantEmailCampaign(data.propertyId, data.campaignId),
