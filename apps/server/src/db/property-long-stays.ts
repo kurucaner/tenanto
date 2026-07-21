@@ -23,6 +23,7 @@ import {
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
   PropertyLongStayStatus,
+  RentBillingCadence,
   resolveExtendLeaseEndDate,
   resolveLeaseEndDate,
   transactionDateToMonth,
@@ -123,12 +124,14 @@ export const propertyLongStaysDb = {
     const { leaseEndDate, termMonths } = resolveLeaseEndDate(input);
     const tenantEmail = input.tenantEmail?.trim() || null;
     const tenantPhone = input.tenantPhone?.trim() || null;
+    const rentBillingCadence = input.rentBillingCadence ?? RentBillingCadence.MONTHLY;
 
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, monthly_rent,
-          lease_end_date, tenant_email, tenant_phone, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status)
+          lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status,
+               $11::rent_billing_cadence)
        RETURNING *`,
       [
         propertyId,
@@ -141,6 +144,7 @@ export const propertyLongStaysDb = {
         tenantEmail,
         tenantPhone,
         PropertyLongStayStatus.ACTIVE,
+        rentBillingCadence,
       ]
     );
     return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);

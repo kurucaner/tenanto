@@ -20,6 +20,7 @@ import {
   type ISupportRequest,
   type ITenantUser,
   type IUser,
+  RentBillingCadence,
   type SupportCategory,
   type SupportRequestStatus,
   toIso,
@@ -66,9 +67,7 @@ export const mapSupportRequestRow = (row: Record<string, unknown>): ISupportRequ
 export const mapPropertyRow = (row: Record<string, unknown>): IProperty => ({
   address: row.address as string,
   callerRole:
-    row.caller_role != null && row.caller_role !== ""
-      ? (row.caller_role as TPropertyRole)
-      : null,
+    row.caller_role != null && row.caller_role !== "" ? (row.caller_role as TPropertyRole) : null,
   createdAt: (row.created_at as Date).toISOString(),
   createdBy: row.created_by as string,
   favoritedAt: row.favorited_at != null ? (row.favorited_at as Date).toISOString() : null,
@@ -279,6 +278,10 @@ export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyL
   leaseStartDate: formatDateColumn(row.lease_start_date),
   monthlyRent: Number(row.monthly_rent),
   propertyId: row.property_id as string,
+  rentBillingCadence:
+    row.rent_billing_cadence === RentBillingCadence.WEEKLY
+      ? RentBillingCadence.WEEKLY
+      : RentBillingCadence.MONTHLY,
   secondaryTenants: parseSecondaryTenants(row.secondary_tenants),
   status: row.status as IPropertyLongStay["status"],
   tenantEmail: (row.tenant_email as string | null) ?? null,

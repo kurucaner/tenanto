@@ -5,6 +5,7 @@ import type {
   TPropertyLongStaysListSortBy,
   TPropertyLongStaysListSortDir,
 } from "./property-long-stay-list-constants";
+import type { TRentBillingCadence } from "./rent-billing-cadence";
 import type { ICreateLeasePortalInviteResult } from "./tenant-portal-types";
 
 export type TPropertyLongStayStatus = "active" | "ended";
@@ -30,6 +31,7 @@ export interface IPropertyLongStay {
   leaseStartDate: string;
   monthlyRent: number;
   propertyId: string;
+  rentBillingCadence: TRentBillingCadence;
   /** Populated on list/export reads from non-terminal secondary memberships. */
   secondaryOccupantNames?: string[];
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
@@ -48,6 +50,7 @@ export interface ICreatePropertyLongStayBody {
   leaseEndDate?: string;
   leaseStartDate: string;
   monthlyRent: number;
+  rentBillingCadence?: TRentBillingCadence;
   tenantEmail?: string;
   tenantPhone?: string;
   termMonths?: number;

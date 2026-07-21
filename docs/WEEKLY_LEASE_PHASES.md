@@ -36,13 +36,13 @@ Work is split into **small phases (≤ 8 files each)** with sub-phases where nee
 
 ### Backend (month-only)
 
-| Layer | Month-centric detail |
-| ----- | -------------------- |
-| DB | `property_long_stays.monthly_rent`; rent periods use `effective_from_month CHAR(7)` |
-| Schedule | `enumerateLeaseMonths` → `calculateExpectedRentForLeaseMonth` → `IPropertyLongStayRentMonth.month` (`YYYY-MM`) |
-| Income | `property_income_lines.rent_period_month` constrained to `YYYY-MM` |
-| Payments | `tenant_rent_payment_allocations.period_month` constrained to `YYYY-MM` |
-| Tenant balance | `tenant-rent-payment-utils.ts`, `tenant-rent-balance-from-schedule.ts` — due by month |
+| Layer          | Month-centric detail                                                                                           |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| DB             | `property_long_stays.monthly_rent`; rent periods use `effective_from_month CHAR(7)`                            |
+| Schedule       | `enumerateLeaseMonths` → `calculateExpectedRentForLeaseMonth` → `IPropertyLongStayRentMonth.month` (`YYYY-MM`) |
+| Income         | `property_income_lines.rent_period_month` constrained to `YYYY-MM`                                             |
+| Payments       | `tenant_rent_payment_allocations.period_month` constrained to `YYYY-MM`                                        |
+| Tenant balance | `tenant-rent-payment-utils.ts`, `tenant-rent-balance-from-schedule.ts` — due by month                          |
 
 ---
 
@@ -95,10 +95,10 @@ property_income_lines.rent_period_month  +  tenant_rent_payment_allocations.peri
 
 ### Period key model
 
-| Cadence | Period key format | Example | Due alignment |
-| ------- | ----------------- | ------- | ------------- |
-| Monthly | `YYYY-MM` | `2026-07` | Calendar month |
-| Weekly | `YYYY-MM-DD` (period start) | `2026-07-15` | Same weekday as lease start |
+| Cadence | Period key format           | Example      | Due alignment               |
+| ------- | --------------------------- | ------------ | --------------------------- |
+| Monthly | `YYYY-MM`                   | `2026-07`    | Calendar month              |
+| Weekly  | `YYYY-MM-DD` (period start) | `2026-07-15` | Same weekday as lease start |
 
 - Keep `monthlyRent` API/DB field name; meaning is **recurring rent amount** for the cadence.
 - First/last week prorated: `weeklyRent × occupiedDays / 7`.
@@ -115,17 +115,17 @@ property_income_lines.rent_period_month  +  tenant_rent_payment_allocations.peri
 
 ### `property_long_stays` (migration)
 
-| Column | Notes |
-| ------ | ----- |
+| Column                 | Notes                                              |
+| ---------------------- | -------------------------------------------------- |
 | `rent_billing_cadence` | New enum: `monthly` \| `weekly`, default `monthly` |
 
 ### Period key columns (migration — widen constraints)
 
-| Table / column | Change |
-| -------------- | ------ |
+| Table / column                                         | Change                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
 | `property_long_stay_rent_periods.effective_from_month` | Widen to `VARCHAR(10)`; CHECK accepts `YYYY-MM` or `YYYY-MM-DD` |
-| `property_income_lines.rent_period_month` | Same |
-| `tenant_rent_payment_allocations.period_month` | Same |
+| `property_income_lines.rent_period_month`              | Same                                                            |
+| `tenant_rent_payment_allocations.period_month`         | Same                                                            |
 
 Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern).
 
@@ -133,14 +133,14 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 ## Shared contract (`packages/shared`)
 
-| Type / module | Purpose |
-| ------------- | ------- |
-| `TRentBillingCadence` | `'monthly' \| 'weekly'` enum + labels |
-| `IPropertyLongStay.rentBillingCadence` | Returned on all lease reads |
-| `ICreatePropertyLongStayBody.rentBillingCadence` | Optional on create; default `monthly` |
-| `rent-period-key-utils.ts` | Detect format, compare `<= asOf`, format display label |
-| `lease-week-proration-utils.ts` | `calculateExpectedRentForLeaseWeek` |
-| `lease-date-utils.ts` | `enumerateLeaseWeeks(start, end)` |
+| Type / module                                    | Purpose                                                |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| `TRentBillingCadence`                            | `'monthly' \| 'weekly'` enum + labels                  |
+| `IPropertyLongStay.rentBillingCadence`           | Returned on all lease reads                            |
+| `ICreatePropertyLongStayBody.rentBillingCadence` | Optional on create; default `monthly`                  |
+| `rent-period-key-utils.ts`                       | Detect format, compare `<= asOf`, format display label |
+| `lease-week-proration-utils.ts`                  | `calculateExpectedRentForLeaseWeek`                    |
+| `lease-date-utils.ts`                            | `enumerateLeaseWeeks(start, end)`                      |
 
 `IPropertyLongStayRentMonth` keeps its name in v1; `month` field holds the period key for either cadence.
 
@@ -148,20 +148,20 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 ## Scope overview
 
-| Phase | Scope | Files (max) | User-facing? |
-| ----- | ----- | ----------- | -------------- |
-| **0** | Persist cadence; server blocks weekly | 7 | No |
-| **1a** | Shared week math (pure) | 4 | No |
-| **1b** | Shared period key helpers | 4 | No |
-| **2a** | DB widen period key columns | 4 | No |
-| **2b** | Server rent schedule for weekly | 6 | No (API only) |
-| **3** | Admin create weekly lease | 6 | Yes (admin) |
-| **4** | Admin detail, record rent, list | 6 | Yes (admin) |
-| **5a** | Tenant balance & checkout (server) | 5 | No |
-| **5b** | Tenant portal UI | 6 | Yes (tenant) |
-| **6a** | End lease (weekly proration) | 4 | Yes (admin) |
-| **6b** | Extend lease & edit-terms guards | 6 | Yes (admin) |
-| **7** | Release notes | 3 | Yes |
+| Phase  | Scope                                 | Files (max) | User-facing?  |
+| ------ | ------------------------------------- | ----------- | ------------- |
+| **0**  | Persist cadence; server blocks weekly | 7           | No            |
+| **1a** | Shared week math (pure)               | 4           | No            |
+| **1b** | Shared period key helpers             | 4           | No            |
+| **2a** | DB widen period key columns           | 4           | No            |
+| **2b** | Server rent schedule for weekly       | 6           | No (API only) |
+| **3**  | Admin create weekly lease             | 6           | Yes (admin)   |
+| **4**  | Admin detail, record rent, list       | 6           | Yes (admin)   |
+| **5a** | Tenant balance & checkout (server)    | 5           | No            |
+| **5b** | Tenant portal UI                      | 6           | Yes (tenant)  |
+| **6a** | End lease (weekly proration)          | 4           | Yes (admin)   |
+| **6b** | Extend lease & edit-terms guards      | 6           | Yes (admin)   |
+| **7**  | Release notes                         | 3           | Yes           |
 
 ---
 
@@ -171,24 +171,26 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Lease records carry cadence; API contract exists; weekly create is rejected server-side.
 
+**Status:** ✅ Complete
+
 **Files (7)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/server/src/db/migrations.ts` |
-| 2 | `packages/shared/src/rent-billing-cadence.ts` *(new)* |
-| 3 | `packages/shared/src/property-long-stay-types.ts` |
-| 4 | `packages/shared/src/index.ts` |
-| 5 | `apps/server/src/db/mappers.ts` |
-| 6 | `apps/server/src/db/property-long-stays.ts` |
-| 7 | `apps/server/src/routes/admin/property-long-stay-routes.ts` |
+| #   | File                                                        |
+| --- | ----------------------------------------------------------- |
+| 1   | `apps/server/src/db/migrations.ts`                          |
+| 2   | `packages/shared/src/rent-billing-cadence.ts` _(new)_       |
+| 3   | `packages/shared/src/property-long-stay-types.ts`           |
+| 4   | `packages/shared/src/index.ts`                              |
+| 5   | `apps/server/src/db/mappers.ts`                             |
+| 6   | `apps/server/src/db/property-long-stays.ts`                 |
+| 7   | `apps/server/src/routes/admin/property-long-stay-routes.ts` |
 
 **Tasks**
 
-- [ ] Migration: add `rent_billing_cadence` enum column, default `monthly`.
-- [ ] Shared types: `TRentBillingCadence`, add to `IPropertyLongStay` and `ICreatePropertyLongStayBody`.
-- [ ] Mapper + DB create/read/list return cadence.
-- [ ] Route: parse `rentBillingCadence`; return **400** if `weekly` until Phase 2b.
+- [x] Migration: add `rent_billing_cadence` enum column, default `monthly`.
+- [x] Shared types: `TRentBillingCadence`, add to `IPropertyLongStay` and `ICreatePropertyLongStayBody`.
+- [x] Mapper + DB create/read/list return cadence.
+- [x] Route: parse `rentBillingCadence`; return **400** if `weekly` until Phase 2b.
 
 **Exit criteria:** Existing monthly create/read unchanged; API returns `rentBillingCadence: 'monthly'` everywhere; weekly POST returns a clear error.
 
@@ -198,20 +200,22 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Week enumeration + proration utilities with no server/UI wiring.
 
+**Status:** ✅ Complete
+
 **Files (4)**
 
-| # | File |
-| - | ---- |
-| 1 | `packages/shared/src/lease-date-utils.ts` |
-| 2 | `packages/shared/src/lease-week-proration-utils.ts` *(new)* |
-| 3 | `packages/shared/src/lease-week-proration-utils.test.ts` *(new)* |
-| 4 | `packages/shared/src/index.ts` |
+| #   | File                                                             |
+| --- | ---------------------------------------------------------------- |
+| 1   | `packages/shared/src/lease-date-utils.ts`                        |
+| 2   | `packages/shared/src/lease-week-proration-utils.ts` _(new)_      |
+| 3   | `packages/shared/src/lease-week-proration-utils.test.ts` _(new)_ |
+| 4   | `packages/shared/src/index.ts`                                   |
 
 **Tasks**
 
-- [ ] `enumerateLeaseWeeks(leaseStartDate, leaseEndDate)` — week starts on lease-start weekday.
-- [ ] `calculateExpectedRentForLeaseWeek({ weeklyRent, leaseStartDate, effectiveEndDate, periodStart })`.
-- [ ] Tests: full weeks, partial first/last week, lease ending mid-week.
+- [x] `enumerateLeaseWeeks(leaseStartDate, leaseEndDate)` — week starts on lease-start weekday.
+- [x] `calculateExpectedRentForLeaseWeek({ weeklyRent, leaseStartDate, effectiveEndDate, periodStart })`.
+- [x] Tests: full weeks, partial first/last week, lease ending mid-week.
 
 **Exit criteria:** All new unit tests pass; no imports from server/admin.
 
@@ -223,12 +227,12 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (4)**
 
-| # | File |
-| - | ---- |
-| 1 | `packages/shared/src/rent-period-key-utils.ts` *(new)* |
-| 2 | `packages/shared/src/rent-period-key-utils.test.ts` *(new)* |
-| 3 | `packages/shared/src/lease-income-rent-period.ts` |
-| 4 | `packages/shared/src/index.ts` |
+| #   | File                                                        |
+| --- | ----------------------------------------------------------- |
+| 1   | `packages/shared/src/rent-period-key-utils.ts` _(new)_      |
+| 2   | `packages/shared/src/rent-period-key-utils.test.ts` _(new)_ |
+| 3   | `packages/shared/src/lease-income-rent-period.ts`           |
+| 4   | `packages/shared/src/index.ts`                              |
 
 **Tasks**
 
@@ -246,12 +250,12 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (4)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/server/src/db/migrations.ts` |
-| 2 | `apps/server/src/db/mappers.ts` |
-| 3 | `packages/shared/src/tenant-rent-payment-utils.ts` |
-| 4 | `apps/server/src/db/tenant-rent-payments.ts` |
+| #   | File                                               |
+| --- | -------------------------------------------------- |
+| 1   | `apps/server/src/db/migrations.ts`                 |
+| 2   | `apps/server/src/db/mappers.ts`                    |
+| 3   | `packages/shared/src/tenant-rent-payment-utils.ts` |
+| 4   | `apps/server/src/db/tenant-rent-payments.ts`       |
 
 **Tasks**
 
@@ -269,14 +273,14 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (6)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts` |
-| 2 | `apps/server/src/db/property-long-stays.ts` |
-| 3 | `packages/shared/src/lease-rent-period-rollup.ts` |
-| 4 | `apps/server/src/lib/resolve-lease-income-rent-period-month.ts` |
-| 5 | `apps/server/src/db/property-long-stays-rent-schedule.test.ts` |
-| 6 | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
+| #   | File                                                                |
+| --- | ------------------------------------------------------------------- |
+| 1   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.ts`      |
+| 2   | `apps/server/src/db/property-long-stays.ts`                         |
+| 3   | `packages/shared/src/lease-rent-period-rollup.ts`                   |
+| 4   | `apps/server/src/lib/resolve-lease-income-rent-period-month.ts`     |
+| 5   | `apps/server/src/db/property-long-stays-rent-schedule.test.ts`      |
+| 6   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
 
 **Tasks**
 
@@ -295,14 +299,14 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (6)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/admin/src/lib/start-lease-rent-billing.ts` |
-| 2 | `apps/admin/src/hooks/use-start-lease-form.ts` |
-| 3 | `apps/admin/src/lib/lease-proration-display.ts` |
-| 4 | `apps/admin/src/components/leases/start-lease-form.tsx` |
-| 5 | `apps/admin/src/lib/start-lease-form-schema.ts` |
-| 6 | `apps/server/src/routes/admin/property-long-stay-routes.ts` |
+| #   | File                                                        |
+| --- | ----------------------------------------------------------- |
+| 1   | `apps/admin/src/lib/start-lease-rent-billing.ts`            |
+| 2   | `apps/admin/src/hooks/use-start-lease-form.ts`              |
+| 3   | `apps/admin/src/lib/lease-proration-display.ts`             |
+| 4   | `apps/admin/src/components/leases/start-lease-form.tsx`     |
+| 5   | `apps/admin/src/lib/start-lease-form-schema.ts`             |
+| 6   | `apps/server/src/routes/admin/property-long-stay-routes.ts` |
 
 **Tasks**
 
@@ -321,14 +325,14 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (6)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/admin/src/lib/lease-rent-schedule-display.ts` |
-| 2 | `apps/admin/src/components/leases/lease-payments-section.tsx` |
-| 3 | `apps/admin/src/pages/property-leases-page.tsx` |
-| 4 | `apps/admin/src/pages/property-lease-detail-page.tsx` |
-| 5 | `apps/admin/src/components/income/create-income-line-dialog.tsx` |
-| 6 | `apps/server/src/db/property-income-lines.ts` |
+| #   | File                                                             |
+| --- | ---------------------------------------------------------------- |
+| 1   | `apps/admin/src/lib/lease-rent-schedule-display.ts`              |
+| 2   | `apps/admin/src/components/leases/lease-payments-section.tsx`    |
+| 3   | `apps/admin/src/pages/property-leases-page.tsx`                  |
+| 4   | `apps/admin/src/pages/property-lease-detail-page.tsx`            |
+| 5   | `apps/admin/src/components/income/create-income-line-dialog.tsx` |
+| 6   | `apps/server/src/db/property-income-lines.ts`                    |
 
 **Tasks**
 
@@ -346,13 +350,13 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (5)**
 
-| # | File |
-| - | ---- |
-| 1 | `packages/shared/src/tenant-rent-balance-from-schedule.ts` |
-| 2 | `packages/shared/src/tenant-rent-balance-from-schedule.test.ts` |
-| 3 | `apps/server/src/services/tenant-rent-payment-service.ts` |
-| 4 | `apps/server/src/services/tenant-rent-payment-service.test.ts` |
-| 5 | `apps/server/src/services/tenant-rent-payment-apply-income.test.ts` |
+| #   | File                                                                |
+| --- | ------------------------------------------------------------------- |
+| 1   | `packages/shared/src/tenant-rent-balance-from-schedule.ts`          |
+| 2   | `packages/shared/src/tenant-rent-balance-from-schedule.test.ts`     |
+| 3   | `apps/server/src/services/tenant-rent-payment-service.ts`           |
+| 4   | `apps/server/src/services/tenant-rent-payment-service.test.ts`      |
+| 5   | `apps/server/src/services/tenant-rent-payment-apply-income.test.ts` |
 
 **Tasks**
 
@@ -370,14 +374,14 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (6)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/tenant/src/lib/rent-summary-utils.ts` |
-| 2 | `apps/tenant/src/lib/rent-summary-utils.test.ts` |
-| 3 | `apps/tenant/src/pages/home-dashboard-page.tsx` |
-| 4 | `apps/tenant/src/components/lease-due-row.tsx` |
-| 5 | `apps/tenant/src/pages/leases-page.tsx` |
-| 6 | `apps/server/src/services/tenant-portal-membership-service.ts` |
+| #   | File                                                           |
+| --- | -------------------------------------------------------------- |
+| 1   | `apps/tenant/src/lib/rent-summary-utils.ts`                    |
+| 2   | `apps/tenant/src/lib/rent-summary-utils.test.ts`               |
+| 3   | `apps/tenant/src/pages/home-dashboard-page.tsx`                |
+| 4   | `apps/tenant/src/components/lease-due-row.tsx`                 |
+| 5   | `apps/tenant/src/pages/leases-page.tsx`                        |
+| 6   | `apps/server/src/services/tenant-portal-membership-service.ts` |
 
 **Tasks**
 
@@ -394,12 +398,12 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (4)**
 
-| # | File |
-| - | ---- |
-| 1 | `packages/shared/src/lease-week-proration-utils.ts` |
-| 2 | `apps/admin/src/lib/lease-proration-display.ts` |
-| 3 | `apps/server/src/services/lease-notifications.ts` |
-| 4 | `apps/server/src/services/lease-notifications.test.ts` |
+| #   | File                                                   |
+| --- | ------------------------------------------------------ |
+| 1   | `packages/shared/src/lease-week-proration-utils.ts`    |
+| 2   | `apps/admin/src/lib/lease-proration-display.ts`        |
+| 3   | `apps/server/src/services/lease-notifications.ts`      |
+| 4   | `apps/server/src/services/lease-notifications.test.ts` |
 
 **Tasks**
 
@@ -416,14 +420,14 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (6)**
 
-| # | File |
-| - | ---- |
-| 1 | `packages/shared/src/property-long-stay-types.ts` |
-| 2 | `apps/server/src/db/property-long-stays.ts` |
-| 3 | `apps/server/src/routes/admin/property-long-stay-routes.ts` |
-| 4 | `apps/admin/src/components/leases/edit-lease-terms-dialog.tsx` |
-| 5 | `apps/admin/src/components/leases/extend-lease-dialog.tsx` |
-| 6 | `apps/server/src/db/property-long-stays-extend.test.ts` |
+| #   | File                                                           |
+| --- | -------------------------------------------------------------- |
+| 1   | `packages/shared/src/property-long-stay-types.ts`              |
+| 2   | `apps/server/src/db/property-long-stays.ts`                    |
+| 3   | `apps/server/src/routes/admin/property-long-stay-routes.ts`    |
+| 4   | `apps/admin/src/components/leases/edit-lease-terms-dialog.tsx` |
+| 5   | `apps/admin/src/components/leases/extend-lease-dialog.tsx`     |
+| 6   | `apps/server/src/db/property-long-stays-extend.test.ts`        |
 
 **Tasks**
 
@@ -441,11 +445,11 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Files (3)**
 
-| # | File |
-| - | ---- |
-| 1 | `apps/admin/src/config/release-notes.ts` |
-| 2 | `package.json` |
-| 3 | `docs/WEEKLY_LEASE_PHASES.md` *(this doc — mark phases complete)* |
+| #   | File                                                              |
+| --- | ----------------------------------------------------------------- |
+| 1   | `apps/admin/src/config/release-notes.ts`                          |
+| 2   | `package.json`                                                    |
+| 3   | `docs/WEEKLY_LEASE_PHASES.md` _(this doc — mark phases complete)_ |
 
 **Exit criteria:** Version bumped; release notes describe weekly leases; QA checklist signed off.
 

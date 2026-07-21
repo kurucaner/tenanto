@@ -3239,4 +3239,24 @@ export const migrations: IMigration[] = [
     },
     version: 72,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP COLUMN IF EXISTS rent_billing_cadence;
+      `);
+      await client.query(`DROP TYPE IF EXISTS rent_billing_cadence;`);
+    },
+    name: "property_long_stays_rent_billing_cadence",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        CREATE TYPE rent_billing_cadence AS ENUM ('monthly', 'weekly');
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN rent_billing_cadence rent_billing_cadence NOT NULL DEFAULT 'monthly';
+      `);
+    },
+    version: 73,
+  },
 ];

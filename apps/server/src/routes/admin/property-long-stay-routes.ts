@@ -10,8 +10,10 @@ import {
   type IEditPropertyLongStayTermsBody,
   type IEndPropertyLongStayBody,
   type IExtendPropertyLongStayBody,
+  isWeeklyRentBillingCadence,
   type IUpdatePropertyLongStayBody,
   MAX_ADDITIONAL_TERM_MONTHS,
+  parseRentBillingCadence,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
   validateLeaseTermInput,
@@ -138,6 +140,14 @@ function parseCreateLongStayBody(
     return { error: "monthlyRent must be a non-negative number", ok: false };
   }
 
+  const rentBillingCadence = parseRentBillingCadence(r["rentBillingCadence"]);
+  if (rentBillingCadence === null) {
+    return { error: "rentBillingCadence must be 'monthly' or 'weekly'", ok: false };
+  }
+  if (isWeeklyRentBillingCadence(rentBillingCadence)) {
+    return { error: "Weekly rent billing is not available yet", ok: false };
+  }
+
   const tenantEmail = parseOptionalString(r["tenantEmail"]);
   if (r["tenantEmail"] !== undefined && r["tenantEmail"] !== null && tenantEmail === null) {
     return { error: "tenantEmail must be a string", ok: false };
@@ -153,6 +163,7 @@ function parseCreateLongStayBody(
       guestName: r["guestName"].trim(),
       ...leaseTermFields.body,
       monthlyRent,
+      rentBillingCadence,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
       unitId,

@@ -197,8 +197,10 @@ export {
 export {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  enumerateLeaseWeeks,
   formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
+  getLeaseWeekPeriodEnd,
   isActiveLeaseInHoldover,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
@@ -276,6 +278,13 @@ export {
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
 export {
+  calculateExpectedRentForLeaseWeek,
+  formatProratedWeekDaysLabel,
+  getOccupiedDaysInWeek,
+  type ILeaseWeekExpectedRent,
+  isProratedLeaseWeek,
+} from "./lease-week-proration-utils";
+export {
   type IListTotalCountMeta,
   type IPropertyExpensesListMeta,
   type IPropertyExportsListMeta,
@@ -319,6 +328,13 @@ export {
   type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
+export {
+  isWeeklyRentBillingCadence,
+  parseRentBillingCadence,
+  RENT_BILLING_CADENCE_VALUES,
+  RentBillingCadence,
+  type TRentBillingCadence,
+} from "./rent-billing-cadence";
 export {
   type TPrimaryTenantContactSource,
   type TSecondaryTenantContactSource,
