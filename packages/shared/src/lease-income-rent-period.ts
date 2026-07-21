@@ -1,5 +1,8 @@
-import { transactionDateToMonth } from "./lease-date-utils";
-import { isValidPeriodMonth } from "./tenant-rent-payment-utils";
+import {
+  comparePeriodKeys,
+  isValidRentPeriodKey,
+  resolveRentPeriodKeyForTransactionDate,
+} from "./rent-period-key-utils";
 
 export const LEASE_UPCOMING_RENT_PERIOD_ERROR = "Cannot record rent for an upcoming lease month";
 
@@ -12,12 +15,12 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
   const explicit = input.rentPeriodMonth?.trim() ?? "";
 
   if (explicit !== "") {
-    if (!isValidPeriodMonth(explicit)) {
-      return { error: "rentPeriodMonth must be YYYY-MM", ok: false };
+    if (!isValidRentPeriodKey(explicit)) {
+      return { error: "rentPeriodMonth must be YYYY-MM or YYYY-MM-DD", ok: false };
     }
     if (!input.scheduleMonths.includes(explicit)) {
       return {
-        error: "rentPeriodMonth must be a month in the lease rent schedule",
+        error: "rentPeriodMonth must be a period in the lease rent schedule",
         ok: false,
       };
     }
@@ -28,8 +31,17 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
     return { ok: true, value: explicit };
   }
 
-  const defaulted = transactionDateToMonth(input.transactionDate);
-  if (!isValidPeriodMonth(defaulted)) {
+  const defaulted = resolveRentPeriodKeyForTransactionDate(
+    input.transactionDate,
+    input.scheduleMonths
+  );
+  if (defaulted === null) {
+    return {
+      error: "transactionDate falls outside the lease rent schedule; set rentPeriodMonth",
+      ok: false,
+    };
+  }
+  if (!isValidRentPeriodKey(defaulted)) {
     return { error: "transactionDate must be a YYYY-MM-DD date", ok: false };
   }
   if (!input.scheduleMonths.includes(defaulted)) {
@@ -45,15 +57,18 @@ export function resolveLeaseIncomeRentPeriodMonth(input: {
   return { ok: true, value: defaulted };
 }
 
+/** Preferred name — resolves the rent period key for a lease income line. */
+export const resolveDefaultRentPeriodForIncomeLine = resolveLeaseIncomeRentPeriodMonth;
+
 function rejectUpcomingLeaseRentPeriod(
-  resolvedMonth: string,
-  asOfMonth: string | undefined
+  resolvedPeriod: string,
+  asOfPeriod: string | undefined
 ): { error: string; ok: false } | null {
-  if (asOfMonth === undefined || !isValidPeriodMonth(asOfMonth)) {
+  if (asOfPeriod === undefined || !isValidRentPeriodKey(asOfPeriod)) {
     return null;
   }
 
-  if (resolvedMonth > asOfMonth) {
+  if (comparePeriodKeys(resolvedPeriod, asOfPeriod) > 0) {
     return { error: LEASE_UPCOMING_RENT_PERIOD_ERROR, ok: false };
   }
 

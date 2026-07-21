@@ -207,6 +207,7 @@ export {
 } from "./lease-date-utils";
 export {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
+  resolveDefaultRentPeriodForIncomeLine,
   resolveLeaseIncomeRentPeriodMonth,
 } from "./lease-income-rent-period";
 export {
@@ -335,6 +336,19 @@ export {
   RentBillingCadence,
   type TRentBillingCadence,
 } from "./rent-billing-cadence";
+export {
+  comparePeriodKeys,
+  findWeeklyPeriodStartContainingDate,
+  formatRentPeriodLabel,
+  inferRentScheduleCadence,
+  isMonthlyPeriodKey,
+  isPeriodKeyAfter,
+  isPeriodKeyOnOrBefore,
+  isValidRentPeriodKey,
+  isWeeklyPeriodKey,
+  resolveAsOfPeriodKey,
+  resolveRentPeriodKeyForTransactionDate,
+} from "./rent-period-key-utils";
 export {
   type TPrimaryTenantContactSource,
   type TSecondaryTenantContactSource,

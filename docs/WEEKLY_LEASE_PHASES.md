@@ -225,6 +225,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** Cadence-aware period keys and labels (still no DB changes).
 
+**Status:** ✅ Complete
+
 **Files (4)**
 
 | #   | File                                                        |
@@ -236,9 +238,9 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Helpers: `isMonthlyPeriodKey`, `isWeeklyPeriodKey`, `comparePeriodKeys`, `formatRentPeriodLabel`.
-- [ ] `resolveDefaultRentPeriodForIncomeLine` accepts weekly keys in schedule.
-- [ ] Tests for lexicographic compare (`2026-07` vs `2026-07-15`) and label formatting.
+- [x] Helpers: `isMonthlyPeriodKey`, `isWeeklyPeriodKey`, `comparePeriodKeys`, `formatRentPeriodLabel`.
+- [x] `resolveDefaultRentPeriodForIncomeLine` accepts weekly keys in schedule.
+- [x] Tests for lexicographic compare (`2026-07` vs `2026-07-15`) and label formatting.
 
 **Exit criteria:** Schedule partition logic can branch on cadence using shared helpers.
 
