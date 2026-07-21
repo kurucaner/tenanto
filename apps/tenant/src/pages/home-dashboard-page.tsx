@@ -1,13 +1,18 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileText, KeyRound, Users, Wrench } from "lucide-react";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { PayRentLeasePickerSheet } from "@/components/portal/pay-rent-lease-picker-sheet";
 import { QuickActionCard } from "@/components/portal/quick-action-card";
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { hasOnlinePayAvailable, resolveRentPayAction } from "@/lib/rent-summary-utils";
+import {
+  hasOnlinePayAvailable,
+  resolveRentPayAction,
+  type TRentPayAction,
+} from "@/lib/rent-summary-utils";
 import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
 import { Button } from "@/packages/app-ui";
 import { centsToDollars } from "@/packages/shared";
@@ -35,11 +40,14 @@ function amountDueHint(totalDue: number, onlinePayAvailable: boolean): string {
   return "Online payments aren't available for these leases yet. Open your lease for details.";
 }
 
-function primaryDueCtaLabel(isStartingCheckout: boolean, onlinePayAvailable: boolean): string {
+function primaryDueCtaLabel(isStartingCheckout: boolean, payAction: TRentPayAction): string {
   if (isStartingCheckout) {
     return "Starting checkout…";
   }
-  return onlinePayAvailable ? "Pay rent" : "View leases";
+  if (payAction.kind === "checkout" || payAction.kind === "pick-lease") {
+    return "Pay rent";
+  }
+  return "View leases";
 }
 
 interface NoActiveLeaseSectionProps {
@@ -66,6 +74,7 @@ function NoActiveLeaseSection({ hasPastLeases }: Readonly<NoActiveLeaseSectionPr
 
 export const HomeDashboardPage = memo(function HomeDashboardPage() {
   const navigate = useNavigate();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const summaryQuery = useQuery({
     queryFn: () => tenantPortalApi.getRentSummary(),
     queryKey: queryKeys.rentSummary(),
@@ -90,6 +99,10 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
   const handlePayRent = () => {
     if (payAction.kind === "checkout") {
       checkoutMutation.mutate(payAction.leaseId);
+      return;
+    }
+    if (payAction.kind === "pick-lease") {
+      setPickerOpen(true);
       return;
     }
     navigate(payAction.href);
@@ -128,7 +141,7 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
             </div>
             {totalDue > 0 ? (
               <Button disabled={isStartingCheckout} onClick={handlePayRent} type="button">
-                {primaryDueCtaLabel(isStartingCheckout, onlinePayAvailable)}
+                {primaryDueCtaLabel(isStartingCheckout, payAction)}
               </Button>
             ) : (
               <Button asChild type="button" variant="outline">
@@ -136,6 +149,18 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
               </Button>
             )}
           </section>
+
+          {payAction.kind === "pick-lease" ? (
+            <PayRentLeasePickerSheet
+              checkoutLeaseId={checkoutMutation.variables}
+              currency={summary.currency}
+              isStartingCheckout={isStartingCheckout}
+              leases={payAction.leases}
+              onOpenChange={setPickerOpen}
+              onPay={(leaseId) => checkoutMutation.mutate(leaseId)}
+              open={pickerOpen}
+            />
+          ) : null}
 
           <section className="flex flex-col gap-6">
             <div className="space-y-1">

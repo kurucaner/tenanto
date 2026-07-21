@@ -1,20 +1,30 @@
 import type { ITenantRentSummaryLease, ITenantRentSummaryResponse } from "@/packages/shared";
 
 export type TRentPayAction =
-  { kind: "checkout"; leaseId: string } | { kind: "navigate"; href: string };
+  | { kind: "checkout"; leaseId: string }
+  | { kind: "navigate"; href: string }
+  | { kind: "pick-lease"; leases: ITenantRentSummaryLease[] };
+
+export function getLeasesWithDue(leases: ITenantRentSummaryLease[]): ITenantRentSummaryLease[] {
+  return leases.filter((lease) => lease.amountDueCents > 0);
+}
+
+export function getPayableLeases(leases: ITenantRentSummaryLease[]): ITenantRentSummaryLease[] {
+  return leases.filter((lease) => lease.amountDueCents > 0 && lease.paymentsEnabled);
+}
 
 /**
- * Home Pay rent: start Checkout when a single due lease has payments enabled;
- * otherwise navigate (lease list or lease detail when online pay is unavailable).
+ * Home Pay rent: start Checkout when exactly one lease is payable; open a picker when
+ * multiple leases have a balance; otherwise navigate to lease list or detail.
  */
 export function resolveRentPayAction(summary: ITenantRentSummaryResponse): TRentPayAction {
-  const withDue = summary.leases.filter((lease) => lease.amountDueCents > 0);
+  const withDue = getLeasesWithDue(summary.leases);
   if (withDue.length === 0) {
     return { href: "/leases", kind: "navigate" };
   }
 
-  const payable = withDue.filter((lease) => lease.paymentsEnabled);
-  if (withDue.length === 1 && payable.length === 1) {
+  const payable = getPayableLeases(summary.leases);
+  if (payable.length === 1) {
     const only = payable[0];
     return only
       ? { kind: "checkout", leaseId: only.leaseId }
@@ -28,7 +38,7 @@ export function resolveRentPayAction(summary: ITenantRentSummaryResponse): TRent
       : { href: "/leases", kind: "navigate" };
   }
 
-  return { href: "/leases", kind: "navigate" };
+  return { kind: "pick-lease", leases: withDue };
 }
 
 export function hasOnlinePayAvailable(leases: ITenantRentSummaryLease[]): boolean {
