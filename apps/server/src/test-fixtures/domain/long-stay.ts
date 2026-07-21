@@ -1,4 +1,8 @@
-import { type IPropertyLongStay, PropertyLongStayStatus } from "@/packages/shared";
+import {
+  type IPropertyLongStay,
+  PropertyLongStayStatus,
+  RentBillingCadence,
+} from "@/packages/shared";
 
 export function makeLongStay(overrides: Partial<IPropertyLongStay> = {}): IPropertyLongStay {
   return {
@@ -10,6 +14,7 @@ export function makeLongStay(overrides: Partial<IPropertyLongStay> = {}): IPrope
     leaseStartDate: "2026-01-01",
     monthlyRent: 1500,
     propertyId: "property-1",
+    rentBillingCadence: RentBillingCadence.MONTHLY,
     secondaryTenants: [],
     status: PropertyLongStayStatus.ACTIVE,
     tenantEmail: "jane@example.com",

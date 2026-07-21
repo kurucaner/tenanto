@@ -275,6 +275,8 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Goal:** `getRentSchedule` returns correct weekly rows for weekly cadence; monthly unchanged.
 
+**Status:** ✅ Complete
+
 **Files (6)**
 
 | #   | File                                                                |
@@ -288,10 +290,10 @@ Existing monthly rows remain valid (`YYYY-MM` is a prefix of the relaxed pattern
 
 **Tasks**
 
-- [ ] Branch schedule builder on `rentBillingCadence`.
-- [ ] Weekly create inserts initial rent period row (week-start key).
-- [ ] Income period resolution defaults to correct week for weekly leases.
-- [ ] Add weekly test cases; all existing monthly schedule tests still pass.
+- [x] Branch schedule builder on `rentBillingCadence`.
+- [x] Weekly create inserts initial rent period row (week-start key).
+- [x] Income period resolution defaults to correct week for weekly leases.
+- [x] Add weekly test cases; all existing monthly schedule tests still pass.
 
 **Exit criteria:** Weekly lease detail API returns schedule with week-start keys, expected/paid/remaining; monthly schedule unchanged.
 

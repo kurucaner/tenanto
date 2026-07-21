@@ -20,8 +20,10 @@ import type {
 } from "@/packages/shared";
 import {
   enumerateLeaseMonths,
+  enumerateLeaseWeeks,
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
+  isWeeklyRentBillingCadence,
   PropertyLongStayStatus,
   RentBillingCadence,
   resolveExtendLeaseEndDate,
@@ -147,7 +149,18 @@ export const propertyLongStaysDb = {
         rentBillingCadence,
       ]
     );
-    return mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+    const longStay = mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
+
+    if (isWeeklyRentBillingCadence(rentBillingCadence)) {
+      await pool.query(
+        `INSERT INTO property_long_stay_rent_periods
+           (long_stay_id, effective_from_month, monthly_rent)
+         VALUES ($1, $2, $3)`,
+        [longStay.id, input.leaseStartDate, input.monthlyRent]
+      );
+    }
+
+    return longStay;
   },
 
   async endLease(id: string, actualEndDate: string): Promise<IPropertyLongStay> {
@@ -314,7 +327,9 @@ export const propertyLongStaysDb = {
 
     const rentPeriods = await propertyLongStaysDb.listRentPeriods(longStayId);
     const effectiveEndDate = getLeaseScheduleEffectiveEndDate(longStay, referenceDate);
-    const months = enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
+    const schedulePeriods = isWeeklyRentBillingCadence(longStay.rentBillingCadence)
+      ? enumerateLeaseWeeks(longStay.leaseStartDate, effectiveEndDate)
+      : enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
 
     const incomeResult = await pool.query(
       `SELECT *
@@ -331,7 +346,7 @@ export const propertyLongStaysDb = {
 
     const allocationTotals = await tenantRentPaymentsDb.sumSucceededAllocatedCentsByMonths(
       longStayId,
-      months
+      schedulePeriods
     );
 
     return buildLeaseRentScheduleWithRollup({
@@ -339,7 +354,7 @@ export const propertyLongStaysDb = {
       effectiveEndDate,
       incomeLines,
       lease: longStay,
-      months,
+      months: schedulePeriods,
       rentPeriods,
     });
   },

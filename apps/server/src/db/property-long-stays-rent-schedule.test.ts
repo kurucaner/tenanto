@@ -707,4 +707,45 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
     });
     expect(january?.incomeLineId).toBeUndefined();
   });
+
+  test("returns weekly schedule with week-start keys and prorated final week", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      id: "lease-weekly",
+      lease_end_date: "2026-02-10",
+      lease_start_date: "2026-01-15",
+      monthly_rent: "700.00",
+      rent_billing_cadence: "weekly",
+      term_months: 1,
+    });
+    currentIncomeRows = [];
+    currentRentPeriodRows = [
+      {
+        effective_from_month: "2026-01-15",
+        monthly_rent: "700.00",
+      },
+    ];
+
+    const schedule = await propertyLongStaysDb.getRentSchedule("lease-weekly", "2026-02-10");
+
+    expect(schedule.map((item) => item.month)).toEqual([
+      "2026-01-15",
+      "2026-01-22",
+      "2026-01-29",
+      "2026-02-05",
+    ]);
+    expect(schedule[0]).toMatchObject({
+      expectedRent: 700,
+      isProrated: false,
+      month: "2026-01-15",
+      occupiedDays: 7,
+    });
+    expect(schedule[3]).toMatchObject({
+      expectedRent: 600,
+      isProrated: true,
+      month: "2026-02-05",
+      occupiedDays: 6,
+      paidRent: 0,
+      remainingRent: 600,
+    });
+  });
 });

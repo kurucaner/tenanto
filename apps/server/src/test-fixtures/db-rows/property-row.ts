@@ -77,6 +77,7 @@ export function buildRentScheduleLeaseRow(
     lease_start_date: "2026-01-01",
     monthly_rent: "1500.00",
     property_id: "prop-1",
+    rentBillingCadence: "monthly",
     secondary_tenants: [],
     status: "active",
     tenant_email: null,

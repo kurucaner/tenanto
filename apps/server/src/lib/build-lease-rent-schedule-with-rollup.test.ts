@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { RentBillingCadence } from "@/packages/shared";
 import { makeIncomeLine } from "@/test-fixtures/domain";
 
 import { buildLeaseRentScheduleWithRollup } from "./build-lease-rent-schedule-with-rollup";
@@ -38,6 +39,7 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       lease: {
         leaseStartDate: "2026-01-01",
         monthlyRent: 1500,
+        rentBillingCadence: RentBillingCadence.MONTHLY,
       },
       months: ["2026-01"],
       rentPeriods: [],
@@ -75,6 +77,7 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       lease: {
         leaseStartDate: "2026-01-01",
         monthlyRent: 1500,
+        rentBillingCadence: RentBillingCadence.MONTHLY,
       },
       months: ["2026-01"],
       rentPeriods: [],
@@ -86,6 +89,55 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       isPaid: false,
       paidRent: 1000,
       remainingRent: 500,
+    });
+  });
+
+  test("builds weekly schedule with week-start keys and proration", () => {
+    const schedule = buildLeaseRentScheduleWithRollup({
+      allocationCentsByMonth: new Map(),
+      effectiveEndDate: "2026-02-10",
+      incomeLines: [
+        makeIncomeLine({
+          amount: 700,
+          createdAt: "2026-01-20T00:00:00.000Z",
+          grossIncome: 700,
+          id: "line-week-1",
+          incomeLineTypeId: "type-rent",
+          longStayId: "lease-weekly",
+          netIncome: 700,
+          rentPeriodMonth: "2026-01-15",
+          transactionDate: "2026-01-20",
+          updatedAt: "2026-01-20T00:00:00.000Z",
+        }),
+      ],
+      lease: {
+        leaseStartDate: "2026-01-15",
+        monthlyRent: 700,
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+      },
+      months: ["2026-01-15", "2026-01-22", "2026-01-29", "2026-02-05"],
+      rentPeriods: [{ effectiveFromMonth: "2026-01-15", monthlyRent: 700 }],
+    });
+
+    expect(schedule).toHaveLength(4);
+    expect(schedule[0]).toMatchObject({
+      expectedRent: 700,
+      incomeLineId: "line-week-1",
+      isPaid: true,
+      isProrated: false,
+      month: "2026-01-15",
+      occupiedDays: 7,
+      paidRent: 700,
+      remainingRent: 0,
+    });
+    expect(schedule[3]).toMatchObject({
+      expectedRent: 600,
+      isPaid: false,
+      isProrated: true,
+      month: "2026-02-05",
+      occupiedDays: 6,
+      paidRent: 0,
+      remainingRent: 600,
     });
   });
 });
