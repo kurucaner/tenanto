@@ -51,9 +51,11 @@ describe("propertyLongStaysDb.create", () => {
     });
 
     expect(created.rentBillingCadence).toBe(RentBillingCadence.WEEKLY);
-    expect(capturedSql.some((sql) => sql.includes("INSERT INTO property_long_stay_rent_periods"))).toBe(
-      false
-    );
-    expect(capturedSql.filter((sql) => sql.includes("INSERT INTO property_long_stays"))).toHaveLength(1);
+    expect(
+      capturedSql.some((sql) => sql.includes("INSERT INTO property_long_stay_rent_periods"))
+    ).toBe(false);
+    expect(
+      capturedSql.filter((sql) => sql.includes("INSERT INTO property_long_stays"))
+    ).toHaveLength(1);
   });
 });

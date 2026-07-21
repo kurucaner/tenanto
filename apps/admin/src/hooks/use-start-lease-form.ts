@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { type BaseSyntheticEvent,useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type BaseSyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -32,7 +32,13 @@ import {
   getPreviousStartLeaseStep,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
-import { type IPropertyUnit, deriveTermWeeksFromDates, normalizeToE164, RentBillingCadence, UnitRentalType } from "@/packages/shared";
+import {
+  deriveTermWeeksFromDates,
+  type IPropertyUnit,
+  normalizeToE164,
+  RentBillingCadence,
+  UnitRentalType,
+} from "@/packages/shared";
 
 interface UseStartLeaseFormOptions {
   initialStep?: TStartLeaseStep;

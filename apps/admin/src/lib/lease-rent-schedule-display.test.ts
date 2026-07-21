@@ -142,9 +142,9 @@ describe("isRentMonthPartiallyPaid", () => {
   });
 
   test("returns false when nothing is paid or month is fully paid", () => {
-    expect(isRentMonthPartiallyPaid(buildRentMonth({ expectedRent: 1500, periodKey: "2024-07" }))).toBe(
-      false
-    );
+    expect(
+      isRentMonthPartiallyPaid(buildRentMonth({ expectedRent: 1500, periodKey: "2024-07" }))
+    ).toBe(false);
     expect(
       isRentMonthPartiallyPaid(
         buildRentMonth({ expectedRent: 1500, isPaid: true, paidRent: 1500, periodKey: "2024-07" })

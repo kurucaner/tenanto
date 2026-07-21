@@ -261,8 +261,7 @@ function mergeIncomeLineInput(existing: IPropertyIncomeLine, patch: IUpdatePrope
     guestName: patch.guestName === undefined ? existing.guestName : patch.guestName,
     incomeLineTypeId: patch.incomeLineTypeId ?? existing.incomeLineTypeId,
     longStayId: patch.longStayId === undefined ? existing.longStayId : patch.longStayId,
-    rentPeriodKey:
-      patch.rentPeriodKey === undefined ? existing.rentPeriodKey : patch.rentPeriodKey,
+    rentPeriodKey: patch.rentPeriodKey === undefined ? existing.rentPeriodKey : patch.rentPeriodKey,
     reservationId: patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
     transactionDate: patch.transactionDate ?? existing.transactionDate,
     unitId: patch.unitId === undefined ? existing.unitId : patch.unitId,

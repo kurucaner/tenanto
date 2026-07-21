@@ -29,7 +29,12 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
     if (!lease) {
       return 0;
     }
-    return getCurrentLeaseRent(getLeaseRentAmount(lease), rentPeriods, getTodayLocalIsoDate(), lease);
+    return getCurrentLeaseRent(
+      getLeaseRentAmount(lease),
+      rentPeriods,
+      getTodayLocalIsoDate(),
+      lease
+    );
   }, [lease, rentPeriods]);
 
   return {

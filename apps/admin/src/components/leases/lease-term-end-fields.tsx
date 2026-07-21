@@ -13,7 +13,11 @@ import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
 import { type TLeaseTermEndFormValues } from "@/lib/lease-term-end-utils";
 import { normalizeStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
-import { type LeaseTermInputMode, RentBillingCadence, type TRentBillingCadence } from "@/packages/shared";
+import {
+  type LeaseTermInputMode,
+  RentBillingCadence,
+  type TRentBillingCadence,
+} from "@/packages/shared";
 
 type TLeaseTermEndFieldsProps<TFieldValues extends FieldValues & TLeaseTermEndFormValues> = {
   control: Control<TFieldValues>;
@@ -76,62 +80,62 @@ export function LeaseTermEndFields<TFieldValues extends FieldValues & TLeaseTerm
             (!isWeekly && termModeField.value === "weeks");
 
           return (
-          <RadioGroupFieldset
-            legend="Lease length"
-            onValueChange={(value) => termModeField.onChange(value as LeaseTermInputMode)}
-            value={termModeField.value === "customEnd" ? "customEnd" : durationMode}
-          >
-            <RadioOption label={durationLabel} value={durationMode}>
-              <div className="flex flex-col gap-1.5 pl-6">
-                <Controller
-                  control={control}
-                  name={durationFieldName as never}
-                  render={({ field }) => (
-                    <Input
-                      disabled={!isDurationModeActive}
-                      id={durationFieldId}
-                      inputMode="numeric"
-                      onChange={(event) => {
-                        if (isValidIntegerInput(event.target.value)) {
-                          field.onChange(event.target.value);
-                        }
-                      }}
-                      type="text"
-                      value={field.value}
-                    />
-                  )}
-                />
-                {durationError ? (
-                  <p className="text-xs text-destructive">{durationError}</p>
-                ) : null}
-                {isDurationModeActive && resolvedEndDate ? (
-                  <p className="text-muted-foreground text-sm">
-                    Lease ends {formatIsoDateDisplay(resolvedEndDate)}
-                  </p>
-                ) : null}
-              </div>
-            </RadioOption>
-            <RadioOption label="End date" value="customEnd">
-              <div className="flex flex-col gap-1.5 pl-6">
-                <Controller
-                  control={control}
-                  name={"leaseEndDate" as never}
-                  render={({ field }) => (
-                    <Input
-                      disabled={termModeField.value !== "customEnd"}
-                      id={endDateFieldId}
-                      onChange={field.onChange}
-                      type="date"
-                      value={field.value}
-                    />
-                  )}
-                />
-                {leaseEndDateError ? (
-                  <p className="text-xs text-destructive">{leaseEndDateError}</p>
-                ) : null}
-              </div>
-            </RadioOption>
-          </RadioGroupFieldset>
+            <RadioGroupFieldset
+              legend="Lease length"
+              onValueChange={(value) => termModeField.onChange(value as LeaseTermInputMode)}
+              value={termModeField.value === "customEnd" ? "customEnd" : durationMode}
+            >
+              <RadioOption label={durationLabel} value={durationMode}>
+                <div className="flex flex-col gap-1.5 pl-6">
+                  <Controller
+                    control={control}
+                    name={durationFieldName as never}
+                    render={({ field }) => (
+                      <Input
+                        disabled={!isDurationModeActive}
+                        id={durationFieldId}
+                        inputMode="numeric"
+                        onChange={(event) => {
+                          if (isValidIntegerInput(event.target.value)) {
+                            field.onChange(event.target.value);
+                          }
+                        }}
+                        type="text"
+                        value={field.value}
+                      />
+                    )}
+                  />
+                  {durationError ? (
+                    <p className="text-xs text-destructive">{durationError}</p>
+                  ) : null}
+                  {isDurationModeActive && resolvedEndDate ? (
+                    <p className="text-muted-foreground text-sm">
+                      Lease ends {formatIsoDateDisplay(resolvedEndDate)}
+                    </p>
+                  ) : null}
+                </div>
+              </RadioOption>
+              <RadioOption label="End date" value="customEnd">
+                <div className="flex flex-col gap-1.5 pl-6">
+                  <Controller
+                    control={control}
+                    name={"leaseEndDate" as never}
+                    render={({ field }) => (
+                      <Input
+                        disabled={termModeField.value !== "customEnd"}
+                        id={endDateFieldId}
+                        onChange={field.onChange}
+                        type="date"
+                        value={field.value}
+                      />
+                    )}
+                  />
+                  {leaseEndDateError ? (
+                    <p className="text-xs text-destructive">{leaseEndDateError}</p>
+                  ) : null}
+                </div>
+              </RadioOption>
+            </RadioGroupFieldset>
           );
         }}
       />

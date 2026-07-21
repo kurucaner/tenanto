@@ -1,4 +1,7 @@
-import { type ICreatePropertyIncomeLineBody,resolveIncomeLineRentPeriodKey } from "@/packages/shared";
+import {
+  type ICreatePropertyIncomeLineBody,
+  resolveIncomeLineRentPeriodKey,
+} from "@/packages/shared";
 import { parseDateString, parseUuidParam } from "@/routes/admin/admin-query-utils";
 import {
   parseJsonObject,

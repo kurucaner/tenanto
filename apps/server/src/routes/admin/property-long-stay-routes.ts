@@ -165,10 +165,11 @@ function parseCreateLongStayBody(
     body: {
       guestName: r["guestName"].trim(),
       ...leaseTermFields.body,
-      rentAmount: resolveCreateLeaseRentAmount({
-        monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
-        rentAmount: rentAmountValue,
-      }) ?? rentAmountValue,
+      rentAmount:
+        resolveCreateLeaseRentAmount({
+          monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
+          rentAmount: rentAmountValue,
+        }) ?? rentAmountValue,
       rentBillingCadence,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
@@ -311,10 +312,7 @@ function parseExtendLongStayBody(
       return { error: "newRentAmount must be a positive number", ok: false };
     }
 
-    if (
-      typeof effectivePeriodRaw !== "string" ||
-      !isValidRentPeriodKey(effectivePeriodRaw)
-    ) {
+    if (typeof effectivePeriodRaw !== "string" || !isValidRentPeriodKey(effectivePeriodRaw)) {
       return { error: "rentEffectiveFromPeriod must be YYYY-MM or YYYY-MM-DD", ok: false };
     }
 

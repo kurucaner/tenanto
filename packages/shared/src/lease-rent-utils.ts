@@ -18,7 +18,6 @@ import {
 } from "./property-long-stay-types";
 import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
 import {
-  getLeaseRentAmount,
   getRentPeriodAmount,
   getRentPeriodEffectiveFrom,
   resolveExtendNewRentAmount,

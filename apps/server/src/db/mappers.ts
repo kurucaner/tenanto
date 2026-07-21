@@ -274,23 +274,23 @@ export const mapPropertyLongStayRentPeriodRow = (
 
 export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay =>
   withLeaseRentLegacyShims({
-  actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,
-  createdAt: (row.created_at as Date).toISOString(),
-  guestName: row.guest_name as string,
-  id: row.id as string,
-  leaseEndDate: formatDateColumn(row.lease_end_date),
-  leaseStartDate: formatDateColumn(row.lease_start_date),
-  propertyId: row.property_id as string,
-  rentAmount: Number(row.rent_amount),
-  rentBillingCadence:
-    row.rent_billing_cadence === RentBillingCadence.WEEKLY
-      ? RentBillingCadence.WEEKLY
-      : RentBillingCadence.MONTHLY,
-  secondaryTenants: parseSecondaryTenants(row.secondary_tenants),
-  status: row.status as IPropertyLongStay["status"],
-  tenantEmail: (row.tenant_email as string | null) ?? null,
-  tenantPhone: (row.tenant_phone as string | null) ?? null,
-  termMonths: row.term_months as number,
+    actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,
+    createdAt: (row.created_at as Date).toISOString(),
+    guestName: row.guest_name as string,
+    id: row.id as string,
+    leaseEndDate: formatDateColumn(row.lease_end_date),
+    leaseStartDate: formatDateColumn(row.lease_start_date),
+    propertyId: row.property_id as string,
+    rentAmount: Number(row.rent_amount),
+    rentBillingCadence:
+      row.rent_billing_cadence === RentBillingCadence.WEEKLY
+        ? RentBillingCadence.WEEKLY
+        : RentBillingCadence.MONTHLY,
+    secondaryTenants: parseSecondaryTenants(row.secondary_tenants),
+    status: row.status as IPropertyLongStay["status"],
+    tenantEmail: (row.tenant_email as string | null) ?? null,
+    tenantPhone: (row.tenant_phone as string | null) ?? null,
+    termMonths: row.term_months as number,
     unitId: row.unit_id as string,
     updatedAt: (row.updated_at as Date).toISOString(),
   });

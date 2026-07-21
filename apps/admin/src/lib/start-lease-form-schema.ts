@@ -13,7 +13,7 @@ import { RENT_BILLING_CADENCE_VALUES, RentBillingCadence } from "@/packages/shar
 export type { TStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 
 export const DEFAULT_START_LEASE_TERM_MONTHS = "12";
-export const DEFAULT_START_LEASE_TERM_WEEKS = "52";
+export const DEFAULT_START_LEASE_TERM_WEEKS = "4";
 
 const startLeaseRentBillingCadenceSchema = z.enum(RENT_BILLING_CADENCE_VALUES);
 

@@ -38,11 +38,7 @@ export function refineLeaseTermEndFormValues(
 
   if (values.termMode === "weeks") {
     const termWeeks = Number.parseInt(values.termWeeks, 10);
-    if (
-      !Number.isInteger(termWeeks) ||
-      termWeeks < 1 ||
-      termWeeks > MAX_LEASE_TERM_WEEKS
-    ) {
+    if (!Number.isInteger(termWeeks) || termWeeks < 1 || termWeeks > MAX_LEASE_TERM_WEEKS) {
       ctx.addIssue({
         code: "custom",
         message: `Number of weeks must be a whole number between 1 and ${MAX_LEASE_TERM_WEEKS}`,
@@ -112,10 +108,7 @@ export function getInitialLeaseTermEndValues(input: {
   const cadence = parseRentBillingCadence(input.rentBillingCadence) ?? RentBillingCadence.MONTHLY;
 
   if (cadence === RentBillingCadence.WEEKLY) {
-    const usesCustomEnd = !isStandardWeeklyLeaseEndDate(
-      input.leaseStartDate,
-      input.leaseEndDate
-    );
+    const usesCustomEnd = !isStandardWeeklyLeaseEndDate(input.leaseStartDate, input.leaseEndDate);
 
     if (usesCustomEnd) {
       return {

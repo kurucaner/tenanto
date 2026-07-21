@@ -44,8 +44,8 @@ const mockFindUnitById = mockAsyncFn(() =>
 const mockSendRentPaymentRecordedEmail = mockAsyncFn(
   (_to: string, _opts: RentPaymentRecordedEmailOptions) => Promise.resolve(true)
 );
-const mockSendLeaseEndedEmail = mockAsyncFn(
-  (_to: string, _opts: LeaseEndedEmailOptions) => Promise.resolve(true)
+const mockSendLeaseEndedEmail = mockAsyncFn((_to: string, _opts: LeaseEndedEmailOptions) =>
+  Promise.resolve(true)
 );
 
 mock.module("@/db/property-long-stays", () => ({
