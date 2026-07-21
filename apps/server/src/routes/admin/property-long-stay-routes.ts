@@ -17,6 +17,8 @@ import {
   MAX_ADDITIONAL_TERM_WEEKS,
   parseRentBillingCadence,
   RentBillingCadence,
+  resolveCreateLeaseRentAmount,
+  resolveTermsEditRentAmount,
   type TRentBillingCadence,
   UnitRentalType,
   validateEndLeaseMoveOutDate,
@@ -139,9 +141,9 @@ function parseCreateLongStayBody(
     return leaseTermFields;
   }
 
-  const monthlyRent = parseMoney(r["monthlyRent"]);
-  if (monthlyRent === null) {
-    return { error: "monthlyRent must be a non-negative number", ok: false };
+  const rentAmountValue = parseMoney(r["rentAmount"] ?? r["monthlyRent"]);
+  if (rentAmountValue === null) {
+    return { error: "rentAmount must be a non-negative number", ok: false };
   }
 
   const rentBillingCadence = parseRentBillingCadence(r["rentBillingCadence"]);
@@ -163,7 +165,10 @@ function parseCreateLongStayBody(
     body: {
       guestName: r["guestName"].trim(),
       ...leaseTermFields.body,
-      monthlyRent,
+      rentAmount: resolveCreateLeaseRentAmount({
+        monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
+        rentAmount: rentAmountValue,
+      }) ?? rentAmountValue,
       rentBillingCadence,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
@@ -200,15 +205,18 @@ function parseEditLeaseTermsBody(
     return leaseTermFields;
   }
 
-  const monthlyRent = parseMoney(r["monthlyRent"]);
-  if (monthlyRent === null) {
-    return { error: "monthlyRent must be a non-negative number", ok: false };
+  const rentAmountValue = parseMoney(r["rentAmount"] ?? r["monthlyRent"]);
+  if (rentAmountValue === null) {
+    return { error: "rentAmount must be a non-negative number", ok: false };
   }
 
   return {
     body: {
       ...leaseTermFields.body,
-      monthlyRent,
+      rentAmount: resolveTermsEditRentAmount({
+        monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
+        rentAmount: rentAmountValue,
+      }),
     },
     ok: true,
   };

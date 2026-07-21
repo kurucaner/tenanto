@@ -6,8 +6,8 @@ describe("computeTenantBalanceFromRentSchedule", () => {
   test("sums remaining cents for due months from schedule paidRent rollup", () => {
     const balance = computeTenantBalanceFromRentSchedule(
       [
-        { expectedRent: 1500, month: "2026-01", paidRent: 0 },
-        { expectedRent: 1500, month: "2026-02", paidRent: 500 },
+        { expectedRent: 1500, paidRent: 0, periodKey: "2026-01" },
+        { expectedRent: 1500, paidRent: 500, periodKey: "2026-02" },
       ],
       "2026-02"
     );
@@ -23,7 +23,7 @@ describe("computeTenantBalanceFromRentSchedule", () => {
 
   test("returns zero due when schedule months are fully paid", () => {
     const balance = computeTenantBalanceFromRentSchedule(
-      [{ expectedRent: 1500, month: "2026-01", paidRent: 1500 }],
+      [{ expectedRent: 1500, paidRent: 1500, periodKey: "2026-01" }],
       "2026-01"
     );
 
@@ -34,8 +34,8 @@ describe("computeTenantBalanceFromRentSchedule", () => {
   test("excludes upcoming months beyond asOfMonth", () => {
     const balance = computeTenantBalanceFromRentSchedule(
       [
-        { expectedRent: 1500, month: "2026-01", paidRent: 500 },
-        { expectedRent: 1500, month: "2026-03", paidRent: 0 },
+        { expectedRent: 1500, paidRent: 500, periodKey: "2026-01" },
+        { expectedRent: 1500, paidRent: 0, periodKey: "2026-03" },
       ],
       "2026-01"
     );
@@ -46,7 +46,7 @@ describe("computeTenantBalanceFromRentSchedule", () => {
 
   test("reflects partial refund already included in paidRent", () => {
     const balance = computeTenantBalanceFromRentSchedule(
-      [{ expectedRent: 1500, month: "2026-01", paidRent: 1000 }],
+      [{ expectedRent: 1500, paidRent: 1000, periodKey: "2026-01" }],
       "2026-01"
     );
 
@@ -60,7 +60,7 @@ describe("computeTenantBalanceFromRentSchedule", () => {
 
   test("returns zero due after unrefund restores full paidRent", () => {
     const balance = computeTenantBalanceFromRentSchedule(
-      [{ expectedRent: 1500, month: "2026-01", paidRent: 1500 }],
+      [{ expectedRent: 1500, paidRent: 1500, periodKey: "2026-01" }],
       "2026-01"
     );
 
@@ -70,7 +70,7 @@ describe("computeTenantBalanceFromRentSchedule", () => {
 
   test("returns zero due when schedule month is paid within tolerance", () => {
     const balance = computeTenantBalanceFromRentSchedule(
-      [{ expectedRent: 1500, month: "2026-01", paidRent: 1499.99 }],
+      [{ expectedRent: 1500, paidRent: 1499.99, periodKey: "2026-01" }],
       "2026-01"
     );
 
@@ -84,7 +84,7 @@ describe("computeTenantBalanceFromRentSchedule", () => {
 
   test("reflects partial Stripe allocation already included in paidRent", () => {
     const balance = computeTenantBalanceFromRentSchedule(
-      [{ expectedRent: 1500, month: "2026-01", paidRent: 500 }],
+      [{ expectedRent: 1500, paidRent: 500, periodKey: "2026-01" }],
       "2026-01"
     );
 
@@ -99,9 +99,9 @@ describe("computeTenantBalanceFromRentSchedule", () => {
   test("sums remaining cents for due weeks using today as asOf", () => {
     const balance = computeTenantBalanceFromRentSchedule(
       [
-        { expectedRent: 700, month: "2026-01-15", paidRent: 0 },
-        { expectedRent: 700, month: "2026-01-22", paidRent: 0 },
-        { expectedRent: 700, month: "2026-01-29", paidRent: 0 },
+        { expectedRent: 700, paidRent: 0, periodKey: "2026-01-15" },
+        { expectedRent: 700, paidRent: 0, periodKey: "2026-01-22" },
+        { expectedRent: 700, paidRent: 0, periodKey: "2026-01-29" },
       ],
       "2026-01-22"
     );
@@ -113,8 +113,8 @@ describe("computeTenantBalanceFromRentSchedule", () => {
   test("excludes upcoming weeks beyond asOf reference date", () => {
     const balance = computeTenantBalanceFromRentSchedule(
       [
-        { expectedRent: 700, month: "2026-01-15", paidRent: 0 },
-        { expectedRent: 700, month: "2026-01-29", paidRent: 0 },
+        { expectedRent: 700, paidRent: 0, periodKey: "2026-01-15" },
+        { expectedRent: 700, paidRent: 0, periodKey: "2026-01-29" },
       ],
       "2026-01-18"
     );

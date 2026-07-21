@@ -4,6 +4,7 @@ import {
   getPristineRentPeriodKey,
   getRentPeriodAmount,
   getRentPeriodEffectiveFrom,
+  getRentSchedulePeriodKey,
   inferRentScheduleCadence,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
@@ -15,9 +16,9 @@ import {
   type TRentBillingCadence,
 } from "@/packages/shared";
 
-export type TLeaseRentScheduleMonthAmount = Pick<
+export type TLeaseRentSchedulePeriodAmount = Pick<
   IPropertyLongStayRentMonth,
-  "expectedRent" | "month" | "paidRent" | "remainingRent"
+  "expectedRent" | "paidRent" | "periodKey" | "remainingRent"
 >;
 
 export interface ILeaseRentSchedulePartition {
@@ -85,7 +86,7 @@ export function getLeaseEditTermsDescription(cadence: TRentBillingCadence): stri
 }
 
 export function getVisibleLeaseRentPeriods(
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent" | "rentBillingCadence">,
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentAmount" | "rentBillingCadence">,
   rentPeriods: readonly IPropertyLongStayRentPeriod[]
 ): IPropertyLongStayRentPeriod[] {
   if (rentPeriods.length !== 1) {
@@ -103,9 +104,9 @@ export function getVisibleLeaseRentPeriods(
 }
 
 export function inferRentScheduleCadenceFromItems(
-  rentSchedule: readonly Pick<IPropertyLongStayRentMonth, "month">[]
+  rentSchedule: readonly Pick<IPropertyLongStayRentMonth, "month" | "periodKey">[]
 ): ReturnType<typeof inferRentScheduleCadence> {
-  return inferRentScheduleCadence(rentSchedule.map((item) => item.month));
+  return inferRentScheduleCadence(rentSchedule.map((item) => getRentSchedulePeriodKey(item)));
 }
 
 export function getRentSchedulePeriodPluralLabel(
@@ -121,12 +122,12 @@ export function getRentSchedulePeriodSingularLabel(
 }
 
 export function resolveRentScheduleAsOfKey(
-  rentSchedule: readonly Pick<IPropertyLongStayRentMonth, "month">[],
+  rentSchedule: readonly Pick<IPropertyLongStayRentMonth, "month" | "periodKey">[],
   referenceDate: string
 ): string {
   return resolveAsOfPeriodKey(
     referenceDate,
-    rentSchedule.map((item) => item.month)
+    rentSchedule.map((item) => getRentSchedulePeriodKey(item))
   );
 }
 
@@ -149,8 +150,12 @@ export function partitionRentSchedule(
   const asOfKey = resolveRentScheduleAsOfKey(rentSchedule, asOfReferenceDate);
   const paidMonths = rentSchedule.filter((item) => item.isPaid);
   const unpaid = rentSchedule.filter((item) => !item.isPaid);
-  const dueUnpaidMonths = unpaid.filter((item) => isPeriodKeyOnOrBefore(item.month, asOfKey));
-  const upcomingMonths = unpaid.filter((item) => isPeriodKeyAfter(item.month, asOfKey));
+  const dueUnpaidMonths = unpaid.filter((item) =>
+    isPeriodKeyOnOrBefore(getRentSchedulePeriodKey(item), asOfKey)
+  );
+  const upcomingMonths = unpaid.filter((item) =>
+    isPeriodKeyAfter(getRentSchedulePeriodKey(item), asOfKey)
+  );
   const totalRemaining = dueUnpaidMonths.reduce((sum, item) => sum + item.remainingRent, 0);
 
   return {
@@ -161,16 +166,16 @@ export function partitionRentSchedule(
   };
 }
 
-export function getExpectedRentForScheduleMonth(
-  rentSchedule: readonly TLeaseRentScheduleMonthAmount[],
-  month: string
+export function getExpectedRentForSchedulePeriod(
+  rentSchedule: readonly TLeaseRentSchedulePeriodAmount[],
+  periodKey: string
 ): number | undefined {
-  return rentSchedule.find((item) => item.month === month)?.expectedRent;
+  return rentSchedule.find((item) => getRentSchedulePeriodKey(item) === periodKey)?.expectedRent;
 }
 
-export function getRemainingRentForScheduleMonth(
-  rentSchedule: readonly TLeaseRentScheduleMonthAmount[],
-  month: string
+export function getRemainingRentForSchedulePeriod(
+  rentSchedule: readonly TLeaseRentSchedulePeriodAmount[],
+  periodKey: string
 ): number | undefined {
-  return rentSchedule.find((item) => item.month === month)?.remainingRent;
+  return rentSchedule.find((item) => getRentSchedulePeriodKey(item) === periodKey)?.remainingRent;
 }

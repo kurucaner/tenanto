@@ -6,13 +6,14 @@ import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import { parseCreateIncomeLineBody } from "@/lib/parse-create-income-line-body";
-import { resolveLeaseIncomeRentPeriodMonthForLongStay } from "@/lib/resolve-lease-income-rent-period-month";
+import { resolveLeaseIncomeRentPeriodKeyForLongStay } from "@/lib/resolve-lease-income-rent-period-key";
 import {
   getIncomeLineRefundableCap,
   HttpStatus,
   type IPropertyIncomeLine,
   type IRefundLedgerEntryBody,
   type IUpdatePropertyIncomeLineBody,
+  resolveIncomeLineRentPeriodKey as resolveIncomeLineRentPeriodKeyFromBody,
 } from "@/packages/shared";
 import { notifyPrimaryTenantRentRecorded } from "@/services/lease-notifications";
 import { calculateMiscIncomeLine } from "@/services/property-income-calculator";
@@ -59,6 +60,7 @@ const UPDATE_FIELDS = [
   "transactionDate",
   "description",
   "guestName",
+  "rentPeriodKey",
   "rentPeriodMonth",
 ] as const;
 
@@ -118,13 +120,29 @@ function applyUpdateIncomeLineField(
       body.guestName = guestName.value;
       return null;
     }
+    case "rentPeriodKey":
     case "rentPeriodMonth": {
-      const rentPeriodMonth = parseNullablePeriodMonthField(
-        r["rentPeriodMonth"],
-        "rentPeriodMonth"
-      );
+      if (body.rentPeriodKey !== undefined) {
+        return null;
+      }
+
+      const rentPeriodKey =
+        "rentPeriodKey" in r
+          ? parseNullablePeriodMonthField(r["rentPeriodKey"], "rentPeriodKey")
+          : { ok: true as const, value: undefined };
+      if (!rentPeriodKey.ok) return rentPeriodKey.error;
+
+      const rentPeriodMonth =
+        "rentPeriodMonth" in r
+          ? parseNullablePeriodMonthField(r["rentPeriodMonth"], "rentPeriodMonth")
+          : { ok: true as const, value: undefined };
       if (!rentPeriodMonth.ok) return rentPeriodMonth.error;
-      body.rentPeriodMonth = rentPeriodMonth.value;
+
+      body.rentPeriodKey =
+        resolveIncomeLineRentPeriodKeyFromBody({
+          rentPeriodKey: rentPeriodKey.value ?? undefined,
+          rentPeriodMonth: rentPeriodMonth.value ?? undefined,
+        }) ?? null;
       return null;
     }
     default:
@@ -243,15 +261,15 @@ function mergeIncomeLineInput(existing: IPropertyIncomeLine, patch: IUpdatePrope
     guestName: patch.guestName === undefined ? existing.guestName : patch.guestName,
     incomeLineTypeId: patch.incomeLineTypeId ?? existing.incomeLineTypeId,
     longStayId: patch.longStayId === undefined ? existing.longStayId : patch.longStayId,
-    rentPeriodMonth:
-      patch.rentPeriodMonth === undefined ? existing.rentPeriodMonth : patch.rentPeriodMonth,
+    rentPeriodKey:
+      patch.rentPeriodKey === undefined ? existing.rentPeriodKey : patch.rentPeriodKey,
     reservationId: patch.reservationId === undefined ? existing.reservationId : patch.reservationId,
     transactionDate: patch.transactionDate ?? existing.transactionDate,
     unitId: patch.unitId === undefined ? existing.unitId : patch.unitId,
   };
 }
 
-async function resolveIncomeLineRentPeriodMonth(
+async function resolveUpdatedIncomeLineRentPeriodKey(
   merged: ReturnType<typeof mergeIncomeLineInput>,
   patch: IUpdatePropertyIncomeLineBody
 ): Promise<{ ok: true; value: string | null } | { error: string; ok: false }> {
@@ -259,12 +277,12 @@ async function resolveIncomeLineRentPeriodMonth(
     return { ok: true, value: null };
   }
 
-  const rentPeriodMonth =
-    patch.rentPeriodMonth !== undefined ? patch.rentPeriodMonth : merged.rentPeriodMonth;
+  const rentPeriodKey =
+    patch.rentPeriodKey !== undefined ? patch.rentPeriodKey : merged.rentPeriodKey;
 
-  const resolved = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+  const resolved = await resolveLeaseIncomeRentPeriodKeyForLongStay({
     longStayId: merged.longStayId,
-    rentPeriodMonth,
+    rentPeriodKey,
     transactionDate: merged.transactionDate,
   });
 
@@ -411,17 +429,17 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       );
       if (guestName === undefined) return;
 
-      let rentPeriodMonth: string | null = null;
+      let rentPeriodKey: string | null = null;
       if (longStayId) {
-        const resolvedRentPeriod = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+        const resolvedRentPeriod = await resolveLeaseIncomeRentPeriodKeyForLongStay({
           longStayId,
-          rentPeriodMonth: parsed.body.rentPeriodMonth,
+          rentPeriodKey: parsed.body.rentPeriodKey,
           transactionDate: parsed.body.transactionDate,
         });
         if (!resolvedRentPeriod.ok) {
           return reply.status(HttpStatus.BAD_REQUEST).send({ error: resolvedRentPeriod.error });
         }
-        rentPeriodMonth = resolvedRentPeriod.value;
+        rentPeriodKey = resolvedRentPeriod.value;
       }
 
       const computed = calculateMiscIncomeLine(parsed.body.amount);
@@ -433,7 +451,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
           guestName,
           incomeLineTypeId,
           longStayId,
-          rentPeriodMonth,
+          rentPeriodKey,
           reservationId,
           transactionDate: parsed.body.transactionDate,
           unitId,
@@ -532,7 +550,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       if (resolvedGuestName === undefined) return;
       merged.guestName = resolvedGuestName;
 
-      const resolvedRentPeriod = await resolveIncomeLineRentPeriodMonth(merged, parsed.body);
+      const resolvedRentPeriod = await resolveUpdatedIncomeLineRentPeriodKey(merged, parsed.body);
       if (!resolvedRentPeriod.ok) {
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: resolvedRentPeriod.error });
       }
@@ -540,7 +558,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       const computed = calculateMiscIncomeLine(merged.amount);
       const incomeLine = await propertyIncomeLinesDb.update(
         lineId,
-        { ...parsed.body, rentPeriodMonth: resolvedRentPeriod.value },
+        { ...parsed.body, rentPeriodKey: resolvedRentPeriod.value },
         computed
       );
 

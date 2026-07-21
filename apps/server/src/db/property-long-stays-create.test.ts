@@ -19,7 +19,7 @@ const mockQuery = mock((sql: string) => {
           id: "lease-weekly-new",
           lease_end_date: "2026-04-14",
           lease_start_date: "2026-01-15",
-          monthly_rent: "700.00",
+          rent_amount: "700.00",
           rent_billing_cadence: "weekly",
           term_months: 13,
         }),
@@ -44,7 +44,7 @@ describe("propertyLongStaysDb.create", () => {
     const created = await propertyLongStaysDb.create("prop-1", {
       guestName: "Tenant",
       leaseStartDate: "2026-01-15",
-      monthlyRent: 700,
+      rentAmount: 700,
       rentBillingCadence: RentBillingCadence.WEEKLY,
       termMonths: 13,
       unitId: "unit-1",

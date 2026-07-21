@@ -65,8 +65,8 @@ function getDefaultValues(lease: IPropertyLongStay) {
     changeRent: false,
     extendMode: getDefaultExtendMode(lease),
     newLeaseEndDate: "",
-    newMonthlyRent: "",
-    rentEffectiveFromMonth: isWeekly
+    newRentAmount: "",
+    rentEffectiveFromPeriod: isWeekly
       ? getFirstExtensionWeek(lease.leaseStartDate, lease.leaseEndDate)
       : getFirstExtensionMonth(lease.leaseEndDate),
   };
@@ -113,16 +113,16 @@ export const ExtendLeaseDialog = memo(
             changeRent: z.boolean(),
             extendMode: z.enum(["months", "weeks", "customEnd"]),
             newLeaseEndDate: z.string(),
-            newMonthlyRent: z.string(),
-            rentEffectiveFromMonth: z.string(),
+            newRentAmount: z.string(),
+            rentEffectiveFromPeriod: z.string(),
           })
           .superRefine((values, ctx) => {
             const body: IExtendPropertyLongStayBody = {
               ...buildExtendLeaseApiPayload(values),
               ...(values.changeRent
                 ? {
-                    newMonthlyRent: Number(values.newMonthlyRent),
-                    rentEffectiveFromMonth: values.rentEffectiveFromMonth,
+                    newRentAmount: Number(values.newRentAmount),
+                    rentEffectiveFromPeriod: values.rentEffectiveFromPeriod,
                   }
                 : {}),
             };
@@ -186,14 +186,14 @@ export const ExtendLeaseDialog = memo(
 
             if (values.changeRent) {
               const rentResult = requiredPositiveMoneyField(newRentLabel).safeParse(
-                values.newMonthlyRent
+                values.newRentAmount
               );
               if (!rentResult.success) {
                 ctx.addIssue({
                   code: z.ZodIssueCode.custom,
                   message:
                     rentResult.error.issues[0]?.message ?? `Invalid ${newRentLabel.toLowerCase()}`,
-                  path: ["newMonthlyRent"],
+                  path: ["newRentAmount"],
                 });
               }
             }
@@ -215,8 +215,8 @@ export const ExtendLeaseDialog = memo(
           changeRent,
           extendMode,
           newLeaseEndDate: newLeaseEndDateValue,
-          newMonthlyRent: "",
-          rentEffectiveFromMonth: "",
+          newRentAmount: "",
+          rentEffectiveFromPeriod: "",
         }),
       [additionalTermMonths, additionalTermWeeks, changeRent, extendMode, newLeaseEndDateValue]
     );
@@ -253,10 +253,10 @@ export const ExtendLeaseDialog = memo(
       if (!changeRent || effectivePeriodOptions.length === 0) {
         return;
       }
-      const currentValue = form.getValues("rentEffectiveFromMonth");
+      const currentValue = form.getValues("rentEffectiveFromPeriod");
       if (!effectivePeriodOptions.includes(currentValue)) {
         form.setValue(
-          "rentEffectiveFromMonth",
+          "rentEffectiveFromPeriod",
           effectivePeriodOptions[0] ?? defaultEffectivePeriod
         );
       }
@@ -268,8 +268,8 @@ export const ExtendLeaseDialog = memo(
           ...buildExtendLeaseApiPayload(values),
           ...(values.changeRent
             ? {
-                newMonthlyRent: Number(values.newMonthlyRent),
-                rentEffectiveFromMonth: values.rentEffectiveFromMonth,
+                newRentAmount: Number(values.newRentAmount),
+                rentEffectiveFromPeriod: values.rentEffectiveFromPeriod,
               }
             : {}),
         };
@@ -408,7 +408,7 @@ export const ExtendLeaseDialog = memo(
                         const nextChecked = checked === true;
                         field.onChange(nextChecked);
                         if (nextChecked) {
-                          form.setValue("rentEffectiveFromMonth", defaultEffectivePeriod);
+                          form.setValue("rentEffectiveFromPeriod", defaultEffectivePeriod);
                         }
                       }}
                     />
@@ -429,13 +429,13 @@ export const ExtendLeaseDialog = memo(
                       onChange={(event) => {
                         const nextValue = event.target.value;
                         if (nextValue === "" || isValidDecimalInput(nextValue)) {
-                          form.setValue("newMonthlyRent", nextValue, { shouldValidate: true });
+                          form.setValue("newRentAmount", nextValue, { shouldValidate: true });
                         }
                       }}
-                      value={form.watch("newMonthlyRent")}
+                      value={form.watch("newRentAmount")}
                     />
-                    {errors.newMonthlyRent ? (
-                      <p className="text-xs text-destructive">{errors.newMonthlyRent.message}</p>
+                    {errors.newRentAmount ? (
+                      <p className="text-xs text-destructive">{errors.newRentAmount.message}</p>
                     ) : null}
                   </div>
 
@@ -443,7 +443,7 @@ export const ExtendLeaseDialog = memo(
                     id="extend-lease-effective-period"
                     label="Rent effective from"
                     onChange={(event) =>
-                      form.setValue("rentEffectiveFromMonth", event.target.value, {
+                      form.setValue("rentEffectiveFromPeriod", event.target.value, {
                         shouldValidate: true,
                       })
                     }
@@ -451,7 +451,7 @@ export const ExtendLeaseDialog = memo(
                       label: formatRentPeriodLabel(periodKey),
                       value: periodKey,
                     }))}
-                    value={form.watch("rentEffectiveFromMonth")}
+                    value={form.watch("rentEffectiveFromPeriod")}
                   />
                 </>
               ) : null}

@@ -19,6 +19,7 @@ import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   formatProratedDaysLabel,
   formatRentPeriodLabel,
+  getRentSchedulePeriodKey,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
   isActiveLeaseInHoldover,
@@ -29,7 +30,7 @@ interface LeasePaymentsSectionProps {
   canManage: boolean;
   isPending: boolean;
   lease: IPropertyLongStay;
-  onRecordRent: (month?: string) => void;
+  onRecordRent: (periodKey?: string) => void;
   rentSchedule: IPropertyLongStayRentMonth[];
 }
 
@@ -70,7 +71,7 @@ function RentScheduleRow({
 }: Readonly<{
   canRecord: boolean;
   item: IPropertyLongStayRentMonth;
-  onRecordRent: (month: string) => void;
+  onRecordRent: (periodKey: string) => void;
   variant: TRentScheduleRowVariant;
 }>) {
   const showRecord = variant === "due" && canRecord && hasOutstandingRent(item);
@@ -82,7 +83,12 @@ function RentScheduleRow({
     action = <Badge variant="outline">Upcoming</Badge>;
   } else if (showRecord) {
     action = (
-      <Button onClick={() => onRecordRent(item.month)} size="sm" type="button" variant="outline">
+      <Button
+        onClick={() => onRecordRent(getRentSchedulePeriodKey(item))}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
         Record
       </Button>
     );
@@ -102,7 +108,7 @@ function RentScheduleRow({
         )}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <p className="text-sm">{formatRentPeriodLabel(item.month)}</p>
+            <p className="text-sm">{formatRentPeriodLabel(getRentSchedulePeriodKey(item))}</p>
             {item.isProrated ? (
               <Badge className="text-[10px]" variant="outline">
                 Prorated
@@ -172,7 +178,7 @@ function UnpaidMonthsList({
 }: Readonly<{
   canRecord: boolean;
   dueUnpaidMonths: IPropertyLongStayRentMonth[];
-  onRecordRent: (month: string) => void;
+  onRecordRent: (periodKey: string) => void;
 }>) {
   if (dueUnpaidMonths.length === 0) {
     return null;
@@ -186,7 +192,7 @@ function UnpaidMonthsList({
           <RentScheduleRow
             canRecord={canRecord}
             item={item}
-            key={item.month}
+            key={getRentSchedulePeriodKey(item)}
             onRecordRent={onRecordRent}
             variant="due"
           />
@@ -211,7 +217,7 @@ function UpcomingMonthsList({
           <RentScheduleRow
             canRecord={false}
             item={item}
-            key={item.month}
+            key={getRentSchedulePeriodKey(item)}
             onRecordRent={() => {}}
             variant="upcoming"
           />
@@ -230,7 +236,7 @@ const PaidMonthsSection = memo(
     periodPluralLabel,
   }: Readonly<{
     canRecord: boolean;
-    onRecordRent: (month: string) => void;
+    onRecordRent: (periodKey: string) => void;
     paidMonths: IPropertyLongStayRentMonth[];
     periodLabel: string;
     periodPluralLabel: string;
@@ -268,7 +274,7 @@ const PaidMonthsSection = memo(
               <RentScheduleRow
                 canRecord={canRecord}
                 item={item}
-                key={item.month}
+                key={getRentSchedulePeriodKey(item)}
                 onRecordRent={onRecordRent}
                 variant="paid"
               />
@@ -293,7 +299,7 @@ function LeasePaymentsScheduleContent({
 }: Readonly<{
   canRecord: boolean;
   dueUnpaidMonths: IPropertyLongStayRentMonth[];
-  onRecordRent: (month: string) => void;
+  onRecordRent: (periodKey: string) => void;
   paidMonths: IPropertyLongStayRentMonth[];
   periodLabel: string;
   periodPluralLabel: string;
@@ -339,7 +345,7 @@ function renderScheduleContent({
   canRecord: boolean;
   dueUnpaidMonths: IPropertyLongStayRentMonth[];
   isPending: boolean;
-  onRecordRent: (month: string) => void;
+  onRecordRent: (periodKey: string) => void;
   paidMonths: IPropertyLongStayRentMonth[];
   periodLabel: string;
   periodPluralLabel: string;

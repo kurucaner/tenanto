@@ -94,7 +94,7 @@ export function validateEditLeaseTerms(
     IPropertyLongStay,
     | "leaseEndDate"
     | "leaseStartDate"
-    | "monthlyRent"
+    | "rentAmount"
     | "rentBillingCadence"
     | "status"
     | "termMonths"
@@ -115,7 +115,7 @@ export function validateEditLeaseTerms(
   if (!Number.isFinite(editedRentAmount) || editedRentAmount < 0) {
     return isWeeklyRentBillingCadence(lease.rentBillingCadence)
       ? "weekly rent must be a non-negative number"
-      : "monthlyRent must be a non-negative number";
+      : "rentAmount must be a non-negative number";
   }
 
   let resolved;

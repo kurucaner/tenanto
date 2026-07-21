@@ -10,6 +10,7 @@ import {
 import {
   calculateExpectedRentForLeaseMonth,
   calculateExpectedRentForLeaseWeek,
+  getLeaseRentAmount,
   type IPropertyLongStay,
   type IPropertyLongStayRentPeriod,
   RentBillingCadence,
@@ -33,7 +34,7 @@ export function getEditLeaseFirstPeriodRentPreview(input: {
 }
 
 export function getEndLeaseMoveOutRentPreview(input: {
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent" | "rentBillingCadence">;
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentAmount" | "rentBillingCadence">;
   moveOutDate: string;
   rentPeriods: readonly IPropertyLongStayRentPeriod[];
 }): string | null {
@@ -50,7 +51,7 @@ export function getEndLeaseMoveOutRentPreview(input: {
 
   const month = transactionDateToMonth(input.moveOutDate);
   const rent = calculateExpectedRentForLeaseMonth({
-    baseMonthlyRent: input.lease.monthlyRent,
+    baseRentAmount: getLeaseRentAmount(input.lease),
     effectiveEndDate: input.moveOutDate,
     leaseStartDate: input.lease.leaseStartDate,
     month,
@@ -65,7 +66,7 @@ export function getEndLeaseMoveOutRentPreview(input: {
 }
 
 export function getEndLeaseMoveOutWeekRentPreview(input: {
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent">;
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentAmount">;
   moveOutDate: string;
 }): string | null {
   const periodStart = resolveLeaseWeekPeriodStartContainingDate(
@@ -76,7 +77,7 @@ export function getEndLeaseMoveOutWeekRentPreview(input: {
     effectiveEndDate: input.moveOutDate,
     leaseStartDate: input.lease.leaseStartDate,
     periodStart,
-    weeklyRent: input.lease.monthlyRent,
+    weeklyRent: getLeaseRentAmount(input.lease),
   });
 
   if (rent.occupiedDays <= 0) {

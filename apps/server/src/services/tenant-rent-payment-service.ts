@@ -133,7 +133,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
         guestName: null,
         incomeLineTypeId,
         longStayId: payment.leaseId,
-        rentPeriodMonth: allocation.periodMonth,
+        rentPeriodKey: allocation.periodMonth,
         reservationId: null,
         tenantRentPaymentId: payment.id,
         transactionDate: resolveIncomeTransactionDateForPeriodKey(allocation.periodMonth),

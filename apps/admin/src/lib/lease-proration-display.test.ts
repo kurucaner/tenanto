@@ -14,7 +14,7 @@ import {
 describe("getEndLeaseMoveOutRentPreview", () => {
   const lease = {
     leaseStartDate: "2024-01-01",
-    monthlyRent: 1000,
+    rentAmount: 1000,
     rentBillingCadence: "monthly" as const,
   };
 
@@ -33,7 +33,7 @@ describe("getEndLeaseMoveOutRentPreview", () => {
       getEndLeaseMoveOutRentPreview({
         lease: {
           leaseStartDate: "2026-01-15",
-          monthlyRent: 700,
+          rentAmount: 700,
           rentBillingCadence: "weekly",
         },
         moveOutDate: "2026-01-20",

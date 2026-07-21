@@ -210,7 +210,7 @@ interface RentStepProps {
   guestName: string;
   leaseEndDate: string | null;
   leaseStartDate: string;
-  monthlyRentError?: string;
+  rentAmountError?: string;
   unitLabel: string | null;
 }
 
@@ -222,7 +222,7 @@ const RentStep = memo(
     guestName,
     leaseEndDate,
     leaseStartDate,
-    monthlyRentError,
+    rentAmountError,
     unitLabel,
   }: RentStepProps) => {
     const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
@@ -284,7 +284,7 @@ const RentStep = memo(
             </span>
             <Controller
               control={form.control}
-              name="monthlyRent"
+              name="rentAmount"
               render={({ field }) => (
                 <Input
                   autoFocus={autoFocusRent}
@@ -302,7 +302,7 @@ const RentStep = memo(
               )}
             />
           </div>
-          {monthlyRentError ? <p className="text-destructive text-xs">{monthlyRentError}</p> : null}
+          {rentAmountError ? <p className="text-destructive text-xs">{rentAmountError}</p> : null}
           {firstMonthRentPreview ? (
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
           ) : null}
@@ -428,7 +428,7 @@ export const StartLeaseForm = memo(
                 guestName={guestName}
                 leaseEndDate={leaseEndDate}
                 leaseStartDate={leaseStartDate}
-                monthlyRentError={errors.monthlyRent?.message}
+                rentAmountError={errors.rentAmount?.message}
                 unitLabel={unitLabel}
               />
             </section>

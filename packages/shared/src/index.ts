@@ -208,6 +208,8 @@ export {
 export {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
   resolveDefaultRentPeriodForIncomeLine,
+  resolveLeaseIncomeRentPeriodKey,
+  /** @deprecated Use `resolveLeaseIncomeRentPeriodKey`. */
   resolveLeaseIncomeRentPeriodMonth,
 } from "./lease-income-rent-period";
 export {
@@ -233,6 +235,8 @@ export {
   LEASE_RENT_PAID_TOLERANCE_DOLLARS,
 } from "./lease-rent-paid-tolerance";
 export {
+  getEffectiveRentPeriodKey,
+  /** @deprecated Use `getEffectiveRentPeriodKey`. */
   getEffectiveRentPeriodMonth,
   type ILeaseRentPeriodAllocationInput,
   type ILeaseRentPeriodIncomeLineInput,
@@ -366,13 +370,21 @@ export {
   getRentPeriodAmount,
   getRentPeriodEffectiveFrom,
   getRentSchedulePeriodKey,
+  resolveCreateLeaseRentAmount,
   resolveExtendNewRentAmount,
   resolveExtendRentEffectivePeriod,
+  resolveIncomeLineRentPeriodKey,
   resolveTermsEditRentAmount,
   type TRentAmount,
   type TRentPeriodKey,
+  withLeaseRentLegacyShims,
+  withRentPeriodLegacyShims,
+  withRentScheduleLegacyShims,
+  /** @deprecated Use `withLeaseRentLegacyShims`. */
   withLeaseRentAmountNeutralFields,
+  /** @deprecated Use `withRentPeriodLegacyShims`. */
   withRentPeriodNeutralFields,
+  /** @deprecated Use `withRentScheduleLegacyShims`. */
   withRentScheduleNeutralFields,
 } from "./rent-period-field-utils";
 export {

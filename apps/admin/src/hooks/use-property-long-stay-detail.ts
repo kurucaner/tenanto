@@ -5,7 +5,7 @@ import { longStaysApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { resolveSecondaryTenantContactsForDisplay } from "@/lib/resolve-secondary-tenant-contacts-for-display";
-import { getCurrentLeaseRent } from "@/packages/shared";
+import { getCurrentLeaseRent, getLeaseRentAmount } from "@/packages/shared";
 
 export function usePropertyLongStayDetail(propertyId: string, leaseId: string | undefined) {
   const detailQuery = useQuery({
@@ -29,7 +29,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
     if (!lease) {
       return 0;
     }
-    return getCurrentLeaseRent(lease.monthlyRent, rentPeriods, getTodayLocalIsoDate(), lease);
+    return getCurrentLeaseRent(getLeaseRentAmount(lease), rentPeriods, getTodayLocalIsoDate(), lease);
   }, [lease, rentPeriods]);
 
   return {

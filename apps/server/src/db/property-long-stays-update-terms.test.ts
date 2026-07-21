@@ -24,8 +24,8 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
   if (sql.includes("UPDATE property_long_stay_rent_periods")) {
     currentRentPeriodRows = [
       {
-        effective_from_month: params?.[1],
-        monthly_rent: String(params?.[2]),
+        effective_from_period: params?.[1],
+        rent_amount: String(params?.[2]),
       },
     ];
     return Promise.resolve({ rows: [] });
@@ -35,7 +35,7 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
     currentLeaseRow = buildRentScheduleLeaseRow({
       lease_end_date: params?.[4],
       lease_start_date: params?.[1],
-      monthly_rent: String(params?.[3]),
+      rent_amount: String(params?.[3]),
       term_months: params?.[2],
     });
     return Promise.resolve({ rows: [currentLeaseRow] });
@@ -102,14 +102,14 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     const updated = await propertyLongStaysDb.updateTerms("lease-1", {
       leaseStartDate: "2026-02-01",
-      monthlyRent: 1800,
+      rentAmount: 1800,
       termMonths: 6,
     });
 
     expect(updated).toMatchObject({
       leaseEndDate: "2026-07-31",
       leaseStartDate: "2026-02-01",
-      monthlyRent: 1800,
+      rentAmount: 1800,
       termMonths: 6,
     });
     expect(capturedClientSql[0]).toBe("BEGIN");
@@ -125,7 +125,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     await propertyLongStaysDb.updateTerms("lease-1", {
       leaseStartDate: "2026-02-01",
-      monthlyRent: 1800,
+      rentAmount: 1800,
       termMonths: 6,
     });
 
@@ -134,8 +134,8 @@ describe("propertyLongStaysDb.updateTerms", () => {
     ).toBe(true);
     expect(currentRentPeriodRows).toEqual([
       {
-        effective_from_month: "2026-02",
-        monthly_rent: "1800",
+        effective_from_period: "2026-02",
+        rent_amount: "1800",
       },
     ]);
   });
@@ -151,14 +151,14 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     await propertyLongStaysDb.updateTerms("lease-1", {
       leaseStartDate: "2026-01-22",
-      monthlyRent: 750,
+      rentAmount: 750,
       termMonths: 13,
     });
 
     expect(currentRentPeriodRows).toEqual([
       {
-        effective_from_month: "2026-01-22",
-        monthly_rent: "750",
+        effective_from_period: "2026-01-22",
+        rent_amount: "750",
       },
     ]);
   });
@@ -170,7 +170,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     await propertyLongStaysDb.updateTerms("lease-1", {
       leaseStartDate: "2026-01-01",
-      monthlyRent: 2000,
+      rentAmount: 2000,
       termMonths: 2,
     });
 
@@ -193,7 +193,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
     await expect(
       propertyLongStaysDb.updateTerms("lease-1", {
         leaseStartDate: "2026-02-01",
-        monthlyRent: 1800,
+        rentAmount: 1800,
         termMonths: 6,
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.ACTIVE_LONG_STAY_CONFLICT });
@@ -209,7 +209,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     const updated = await propertyLongStaysDb.updateTerms("lease-1", {
       leaseStartDate: "2026-01-01",
-      monthlyRent: 1750,
+      rentAmount: 1750,
       termMonths: 3,
     });
 
@@ -229,7 +229,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
 
     const updated = await propertyLongStaysDb.updateTerms("lease-1", {
       leaseStartDate: "2026-01-01",
-      monthlyRent: 1600,
+      rentAmount: 1600,
       termMonths: 3,
     });
 
@@ -251,7 +251,7 @@ describe("propertyLongStaysDb.updateTerms", () => {
     const updated = await propertyLongStaysDb.updateTerms("lease-1", {
       leaseEndDate: "2027-06-30",
       leaseStartDate: "2026-07-01",
-      monthlyRent: 1500,
+      rentAmount: 1500,
     });
 
     expect(updated).toMatchObject({

@@ -77,14 +77,14 @@ describe("getLeaseScheduleEffectiveEndDate", () => {
 describe("calculateExpectedRentForLeaseMonth", () => {
   test("prorates the first month when the lease starts mid-month", () => {
     const june = calculateExpectedRentForLeaseMonth({
-      baseMonthlyRent: 1000,
+      baseRentAmount: 1000,
       effectiveEndDate: "2024-12-31",
       leaseStartDate: "2024-06-16",
       month: "2024-06",
       rentPeriods: [],
     });
     const july = calculateExpectedRentForLeaseMonth({
-      baseMonthlyRent: 1000,
+      baseRentAmount: 1000,
       effectiveEndDate: "2024-12-31",
       leaseStartDate: "2024-06-16",
       month: "2024-07",
@@ -108,7 +108,7 @@ describe("calculateExpectedRentForLeaseMonth", () => {
   test("prorates the last month for an early move-out", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-07-15",
         leaseStartDate: "2024-01-01",
         month: "2024-07",
@@ -124,14 +124,14 @@ describe("calculateExpectedRentForLeaseMonth", () => {
 
   test("prorates holdover days in the month after lease end", () => {
     const june = calculateExpectedRentForLeaseMonth({
-      baseMonthlyRent: 1000,
+      baseRentAmount: 1000,
       effectiveEndDate: "2024-07-05",
       leaseStartDate: "2024-01-01",
       month: "2024-06",
       rentPeriods: [],
     });
     const july = calculateExpectedRentForLeaseMonth({
-      baseMonthlyRent: 1000,
+      baseRentAmount: 1000,
       effectiveEndDate: "2024-07-05",
       leaseStartDate: "2024-01-01",
       month: "2024-07",
@@ -155,7 +155,7 @@ describe("calculateExpectedRentForLeaseMonth", () => {
   test("prorates a same-month start and end lease", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-06-25",
         leaseStartDate: "2024-06-16",
         month: "2024-06",
@@ -172,7 +172,7 @@ describe("calculateExpectedRentForLeaseMonth", () => {
   test("handles February in leap and non-leap years", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-02-29",
         leaseStartDate: "2024-02-15",
         month: "2024-02",
@@ -182,7 +182,7 @@ describe("calculateExpectedRentForLeaseMonth", () => {
 
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2025-02-28",
         leaseStartDate: "2025-02-15",
         month: "2025-02",
@@ -194,7 +194,7 @@ describe("calculateExpectedRentForLeaseMonth", () => {
   test("charges full rent when occupancy covers the full month", () => {
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-06-30",
         leaseStartDate: "2024-06-01",
         month: "2024-06",
@@ -209,11 +209,11 @@ describe("calculateExpectedRentForLeaseMonth", () => {
   });
 
   test("uses the rent period rate for a prorated month after a rent change", () => {
-    const periods = [{ effectiveFromMonth: "2024-07", monthlyRent: 1200 }];
+    const periods = [{ effectiveFromPeriod: "2024-07", rentAmount: 1200 }];
 
     expect(
       calculateExpectedRentForLeaseMonth({
-        baseMonthlyRent: 1000,
+        baseRentAmount: 1000,
         effectiveEndDate: "2024-12-31",
         leaseStartDate: "2024-06-16",
         month: "2024-07",

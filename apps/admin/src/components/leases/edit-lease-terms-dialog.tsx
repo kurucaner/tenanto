@@ -35,6 +35,7 @@ import {
   normalizeStartLeaseRentBillingCadence,
 } from "@/lib/start-lease-rent-billing";
 import {
+  getLeaseRentAmount,
   type IPropertyLongStay,
   RentBillingCadence,
   validateEditLeaseTerms,
@@ -43,7 +44,7 @@ import {
 function getDefaultValues(lease: IPropertyLongStay) {
   return {
     ...getInitialLeaseTermEndValues(lease),
-    monthlyRent: String(lease.monthlyRent),
+    rentAmount: String(getLeaseRentAmount(lease)),
   };
 }
 
@@ -73,18 +74,18 @@ export const EditLeaseTermsDialog = memo(
           .object({
             leaseEndDate: z.string(),
             leaseStartDate: z.string().min(1, "Lease start date is required"),
-            monthlyRent: requiredNonNegativeMoneyField(rentAmountLabel),
+            rentAmount: requiredNonNegativeMoneyField(rentAmountLabel),
             termMode: z.enum(["months", "customEnd"]),
             termMonths: z.string(),
           })
           .superRefine((values, ctx) => {
             refineLeaseTermEndFormValues(values, ctx);
 
-            const monthlyRent = Number(values.monthlyRent);
+            const rentAmount = Number(values.rentAmount);
             const error = validateEditLeaseTerms(
               {
                 ...buildLeaseTermApiPayload(values),
-                monthlyRent,
+                rentAmount,
               },
               lease,
               today
@@ -111,7 +112,7 @@ export const EditLeaseTermsDialog = memo(
     );
 
     const termFields = form.watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
-    const monthlyRent = form.watch("monthlyRent");
+    const rentAmount = form.watch("rentAmount");
 
     const leaseEndDate = useMemo(() => {
       const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
@@ -124,7 +125,7 @@ export const EditLeaseTermsDialog = memo(
     }, [termFields]);
 
     const firstMonthRentPreview = useMemo(() => {
-      const parsedMonthlyRent = Number(monthlyRent);
+      const parsedRentAmount = Number(rentAmount);
       const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
       const resolvedEnd = resolveLeaseTermEndPreview({
         leaseEndDate: leaseEndDateValue,
@@ -136,8 +137,8 @@ export const EditLeaseTermsDialog = memo(
       if (
         !resolvedEnd ||
         leaseStartDate === "" ||
-        !Number.isFinite(parsedMonthlyRent) ||
-        parsedMonthlyRent < 0
+        !Number.isFinite(parsedRentAmount) ||
+        parsedRentAmount < 0
       ) {
         return null;
       }
@@ -145,16 +146,16 @@ export const EditLeaseTermsDialog = memo(
       return getEditLeaseFirstPeriodRentPreview({
         leaseEndDate: resolvedEnd,
         leaseStartDate,
-        rentAmount: parsedMonthlyRent,
+        rentAmount: parsedRentAmount,
         rentBillingCadence: normalizeStartLeaseRentBillingCadence(lease.rentBillingCadence),
       });
-    }, [lease.rentBillingCadence, monthlyRent, termFields]);
+    }, [lease.rentBillingCadence, rentAmount, termFields]);
 
     const mutation = useMutation({
       mutationFn: (values: TEditLeaseTermsFormValues) =>
         longStaysApi.updateTerms(propertyId, lease.id, {
           ...buildLeaseTermApiPayload(values),
-          monthlyRent: Number(values.monthlyRent),
+          rentAmount: Number(values.rentAmount),
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update lease terms");
@@ -201,7 +202,7 @@ export const EditLeaseTermsDialog = memo(
                 <Label htmlFor="edit-lease-monthly-rent">{rentAmountLabel}</Label>
                 <Controller
                   control={form.control}
-                  name="monthlyRent"
+                  name="rentAmount"
                   render={({ field }) => (
                     <Input
                       id="edit-lease-monthly-rent"
@@ -216,8 +217,8 @@ export const EditLeaseTermsDialog = memo(
                     />
                   )}
                 />
-                {errors.monthlyRent ? (
-                  <p className="text-xs text-destructive">{errors.monthlyRent.message}</p>
+                {errors.rentAmount ? (
+                  <p className="text-xs text-destructive">{errors.rentAmount.message}</p>
                 ) : null}
               </div>
 

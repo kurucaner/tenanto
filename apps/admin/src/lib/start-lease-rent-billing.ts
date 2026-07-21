@@ -39,15 +39,15 @@ export function normalizeStartLeaseRentBillingCadence(
 function getStartLeaseFirstMonthRentPreview(input: {
   leaseEndDate: string;
   leaseStartDate: string;
-  monthlyRent: number;
+  rentAmount: number;
 }): string | null {
-  if (!input.leaseStartDate || input.monthlyRent <= 0 || !input.leaseEndDate) {
+  if (!input.leaseStartDate || input.rentAmount <= 0 || !input.leaseEndDate) {
     return null;
   }
 
   const month = transactionDateToMonth(input.leaseStartDate);
   const rent = calculateExpectedRentForLeaseMonth({
-    baseMonthlyRent: input.monthlyRent,
+    baseRentAmount: input.rentAmount,
     effectiveEndDate: input.leaseEndDate,
     leaseStartDate: input.leaseStartDate,
     month,
@@ -101,6 +101,6 @@ export function getStartLeaseFirstPeriodRentPreview(input: {
   return getStartLeaseFirstMonthRentPreview({
     leaseEndDate: input.leaseEndDate,
     leaseStartDate: input.leaseStartDate,
-    monthlyRent: input.rentAmount,
+    rentAmount: input.rentAmount,
   });
 }

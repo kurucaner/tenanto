@@ -17,8 +17,8 @@ const mockQuery = mock((sql: string) => {
   if (sql.includes("property_long_stay_rent_periods")) {
     return Promise.resolve({
       rows: [
-        { effective_from_month: "2026-07", monthly_rent: "1500" },
-        { effective_from_month: "2027-07", monthly_rent: "1700" },
+        { effective_from_period: "2026-07", rent_amount: "1500" },
+        { effective_from_period: "2027-07", rent_amount: "1700" },
       ],
     });
   }

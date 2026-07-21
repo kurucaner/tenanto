@@ -87,8 +87,12 @@ export interface ITenantLeaseDetailResponse {
   leaseEndDate: string;
   leaseId: string;
   leaseStartDate: string;
-  monthlyRent: number;
   propertyName: string;
+  rentAmount: number;
+  /**
+   * @deprecated Use `rentAmount`. Shimmed on API responses for one release after Phase 14.
+   */
+  monthlyRent?: number;
   rentSchedule: readonly {
     amount: number;
     dueDate: string;

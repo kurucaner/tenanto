@@ -36,17 +36,17 @@ const startLeaseTermStepSchema = z
 
 const startLeaseRentStepSchema = z
   .object({
-    monthlyRent: z.string(),
+    rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
   })
   .superRefine((values, ctx) => {
     const rentResult = requiredPositiveMoneyField(
       getStartLeaseRentAmountLabel(values.rentBillingCadence)
-    ).safeParse(values.monthlyRent);
+    ).safeParse(values.rentAmount);
 
     if (!rentResult.success) {
       for (const issue of rentResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["monthlyRent"] });
+        ctx.addIssue({ ...issue, path: ["rentAmount"] });
       }
     }
   });
@@ -56,7 +56,7 @@ export const startLeaseSchema = z
     guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
     leaseEndDate: z.string(),
     leaseStartDate: z.string().min(1, "Lease start date is required"),
-    monthlyRent: z.string(),
+    rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
     tenantEmail: z.string(),
     tenantPhone: tenantPhoneFieldSchema,
@@ -69,11 +69,11 @@ export const startLeaseSchema = z
 
     const rentResult = requiredPositiveMoneyField(
       getStartLeaseRentAmountLabel(values.rentBillingCadence)
-    ).safeParse(values.monthlyRent);
+    ).safeParse(values.rentAmount);
 
     if (!rentResult.success) {
       for (const issue of rentResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["monthlyRent"] });
+        ctx.addIssue({ ...issue, path: ["rentAmount"] });
       }
     }
   });
@@ -83,7 +83,7 @@ export type TStartLeaseFormValues = z.infer<typeof startLeaseSchema>;
 export type TStartLeaseFormField = keyof TStartLeaseFormValues;
 
 export const START_LEASE_STEP_FIELDS: Record<TStartLeaseStep, readonly TStartLeaseFormField[]> = {
-  rent: ["rentBillingCadence", "monthlyRent"],
+  rent: ["rentBillingCadence", "rentAmount"],
   term: ["leaseStartDate", "termMode", "termMonths", "leaseEndDate"],
   who: ["unitId", "guestName", "tenantEmail", "tenantPhone"],
 };
@@ -127,7 +127,7 @@ export function getStartLeaseDefaultValues(unitId?: string): TStartLeaseFormValu
     guestName: "",
     leaseEndDate: "",
     leaseStartDate: getTodayLocalIsoDate(),
-    monthlyRent: "",
+    rentAmount: "",
     rentBillingCadence: RentBillingCadence.MONTHLY,
     tenantEmail: "",
     tenantPhone: "",

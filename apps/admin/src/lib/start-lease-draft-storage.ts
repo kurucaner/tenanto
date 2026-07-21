@@ -45,7 +45,12 @@ function mergeDraftValues(raw: unknown, lockedUnitId?: string): TStartLeaseFormV
       typeof raw.leaseStartDate === "string" && raw.leaseStartDate !== ""
         ? raw.leaseStartDate
         : defaults.leaseStartDate,
-    monthlyRent: typeof raw.monthlyRent === "string" ? raw.monthlyRent : defaults.monthlyRent,
+    rentAmount:
+      typeof raw.rentAmount === "string"
+        ? raw.rentAmount
+        : typeof raw.monthlyRent === "string"
+          ? raw.monthlyRent
+          : defaults.rentAmount,
     rentBillingCadence: normalizeStartLeaseRentBillingCadence(raw.rentBillingCadence),
     tenantEmail: typeof raw.tenantEmail === "string" ? raw.tenantEmail : defaults.tenantEmail,
     tenantPhone: typeof raw.tenantPhone === "string" ? raw.tenantPhone : defaults.tenantPhone,

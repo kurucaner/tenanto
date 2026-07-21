@@ -1,21 +1,21 @@
 /**
- * One-time script to backfill rent_period_month on existing lease income lines.
+ * One-time script to backfill rent_period_key on existing lease income lines.
  *
  * Usage:
  *   bun apps/server/scripts/backfill-income-line-rent-period-month.ts
  */
 import { pool } from "../src/db/pool";
 
-async function backfillIncomeLineRentPeriodMonth(): Promise<void> {
+async function backfillIncomeLineRentPeriodKey(): Promise<void> {
   const client = await pool.connect();
 
   try {
     const result = await client.query<{ updated_count: number }>(
       `WITH updated AS (
          UPDATE property_income_lines
-         SET rent_period_month = left(transaction_date::text, 7)
+         SET rent_period_key = left(transaction_date::text, 7)
          WHERE long_stay_id IS NOT NULL
-           AND rent_period_month IS NULL
+           AND rent_period_key IS NULL
          RETURNING id
        )
        SELECT COUNT(*)::int AS updated_count FROM updated`
@@ -29,7 +29,7 @@ async function backfillIncomeLineRentPeriodMonth(): Promise<void> {
   }
 }
 
-backfillIncomeLineRentPeriodMonth().catch((error: unknown) => {
+backfillIncomeLineRentPeriodKey().catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });

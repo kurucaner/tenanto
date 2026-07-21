@@ -43,8 +43,8 @@ describe("getLeaseRentForMonth", () => {
 
   test("applies latest period at or before the month", () => {
     const periods = [
-      { effectiveFromMonth: "2026-01", monthlyRent: 1500 },
-      { effectiveFromMonth: "2027-01", monthlyRent: 1700 },
+      { effectiveFromPeriod: "2026-01", rentAmount: 1500 },
+      { effectiveFromPeriod: "2027-01", rentAmount: 1700 },
     ];
     expect(getLeaseRentForMonth(1500, periods, "2026-12")).toBe(1500);
     expect(getLeaseRentForMonth(1500, periods, "2027-01")).toBe(1700);
@@ -55,8 +55,8 @@ describe("getLeaseRentForMonth", () => {
 describe("getLeaseRentForPeriod", () => {
   test("applies latest weekly period at or before the week start", () => {
     const periods = [
-      { effectiveFromMonth: "2026-01-15", monthlyRent: 700 },
-      { effectiveFromMonth: "2026-01-29", monthlyRent: 800 },
+      { effectiveFromPeriod: "2026-01-15", rentAmount: 700 },
+      { effectiveFromPeriod: "2026-01-29", rentAmount: 800 },
     ];
     expect(getLeaseRentForPeriod(700, periods, "2026-01-15")).toBe(700);
     expect(getLeaseRentForPeriod(700, periods, "2026-01-22")).toBe(700);
@@ -67,15 +67,15 @@ describe("getLeaseRentForPeriod", () => {
 
 describe("getCurrentLeaseRent", () => {
   test("uses today's month for lookup", () => {
-    const periods = [{ effectiveFromMonth: "2027-01", monthlyRent: 1700 }];
+    const periods = [{ effectiveFromPeriod: "2027-01", rentAmount: 1700 }];
     expect(getCurrentLeaseRent(1500, periods, "2026-07-09")).toBe(1500);
     expect(getCurrentLeaseRent(1500, periods, "2027-02-15")).toBe(1700);
   });
 
   test("uses containing week start for weekly leases", () => {
     const periods = [
-      { effectiveFromMonth: "2026-01-15", monthlyRent: 700 },
-      { effectiveFromMonth: "2026-01-29", monthlyRent: 800 },
+      { effectiveFromPeriod: "2026-01-15", rentAmount: 700 },
+      { effectiveFromPeriod: "2026-01-29", rentAmount: 800 },
     ];
     expect(
       getCurrentLeaseRent(700, periods, "2026-01-20", {
@@ -151,8 +151,8 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalTermMonths: 6,
-          newMonthlyRent: 1800,
-          rentEffectiveFromMonth: "2027-01",
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2027-01",
         },
         activeLease,
         "2026-07-09"
@@ -187,7 +187,7 @@ describe("validateExtendLease", () => {
   test("rejects partial rent change fields", () => {
     expect(
       validateExtendLease(
-        { additionalTermMonths: 6, newMonthlyRent: 1800 },
+        { additionalTermMonths: 6, newRentAmount: 1800 },
         activeLease,
         "2026-07-09"
       )
@@ -199,8 +199,8 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalTermMonths: 6,
-          newMonthlyRent: 1800,
-          rentEffectiveFromMonth: "2026-12",
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2026-12",
         },
         activeLease,
         "2026-07-09"
@@ -245,8 +245,8 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalWeeks: 4,
-          newMonthlyRent: 600,
-          rentEffectiveFromMonth: "2026-01-15",
+          newRentAmount: 600,
+          rentEffectiveFromPeriod: "2026-01-15",
         },
         activeWeeklyLease,
         "2026-01-05"
@@ -259,8 +259,8 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalWeeks: 4,
-          newMonthlyRent: 600,
-          rentEffectiveFromMonth: "2026-01",
+          newRentAmount: 600,
+          rentEffectiveFromPeriod: "2026-01",
         },
         activeWeeklyLease,
         "2026-01-05"
@@ -273,8 +273,8 @@ describe("validateExtendLease", () => {
       validateExtendLease(
         {
           additionalWeeks: 4,
-          newMonthlyRent: 600,
-          rentEffectiveFromMonth: "2026-01-01",
+          newRentAmount: 600,
+          rentEffectiveFromPeriod: "2026-01-01",
         },
         activeWeeklyLease,
         "2026-01-05"

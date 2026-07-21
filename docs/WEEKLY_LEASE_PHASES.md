@@ -717,9 +717,9 @@ Parent goal for Phase 12: change weekly rent during extend (and future amendment
 
 **Tasks**
 
-- [ ] Migration: e.g. `monthly_rent` → `rent_amount`, `effective_from_month` → `effective_from_period`, `rent_period_month` → `rent_period_key`.
-- [ ] Update `packages/shared`, mappers, routes, admin, tenant.
-- [ ] Coexistence shim or versioned API if external consumers exist.
+- [x] Migration: e.g. `monthly_rent` → `rent_amount`, `effective_from_month` → `effective_from_period`, `rent_period_month` → `rent_period_key`.
+- [x] Update `packages/shared`, mappers, routes, admin, tenant.
+- [x] Coexistence shim or versioned API if external consumers exist.
 
 **Exit criteria:** All apps use new names; legacy names removed or shimmed for one release.
 

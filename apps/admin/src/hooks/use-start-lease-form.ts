@@ -144,7 +144,7 @@ export function useStartLeaseForm({
   const [
     guestName,
     selectedUnitId,
-    monthlyRent,
+    rentAmount,
     rentBillingCadence,
     leaseEndDateValue,
     leaseStartDate,
@@ -155,7 +155,7 @@ export function useStartLeaseForm({
     name: [
       "guestName",
       "unitId",
-      "monthlyRent",
+      "rentAmount",
       "rentBillingCadence",
       "leaseEndDate",
       "leaseStartDate",
@@ -174,7 +174,7 @@ export function useStartLeaseForm({
   }, [leaseEndDateValue, leaseStartDate, termMode, termMonths]);
 
   const firstMonthRentPreview = useMemo(() => {
-    const parsedRentAmount = Number(monthlyRent);
+    const parsedRentAmount = Number(rentAmount);
     if (
       !leaseEndDate ||
       leaseStartDate === "" ||
@@ -190,7 +190,7 @@ export function useStartLeaseForm({
       rentAmount: parsedRentAmount,
       rentBillingCadence: normalizeStartLeaseRentBillingCadence(rentBillingCadence),
     });
-  }, [leaseEndDate, leaseStartDate, monthlyRent, rentBillingCadence]);
+  }, [leaseEndDate, leaseStartDate, rentAmount, rentBillingCadence]);
 
   const availableUnits = useMemo(
     () =>
@@ -208,7 +208,7 @@ export function useStartLeaseForm({
       longStaysApi.create(propertyId, {
         guestName: values.guestName,
         ...buildLeaseTermApiPayload(values),
-        monthlyRent: Number(values.monthlyRent),
+        rentAmount: Number(values.rentAmount),
         rentBillingCadence: normalizeStartLeaseRentBillingCadence(values.rentBillingCadence),
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
@@ -308,11 +308,11 @@ export function useStartLeaseForm({
     leaseStartDate,
     lockedUnit,
     lockedUnitError,
-    monthlyRent,
     mutationPending: mutation.isPending,
     onBack,
     onContinue,
     onSubmit,
+    rentAmount,
     selectedUnitId,
   };
 }

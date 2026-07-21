@@ -7,7 +7,7 @@ type TLeaseRow = Record<string, unknown>;
 let currentLeaseRow: TLeaseRow;
 let currentRentPeriodRows: Record<string, unknown>[] = [];
 const capturedClientSql: string[] = [];
-const capturedRentPeriodInserts: Array<{ effective_from_month: unknown; monthly_rent: unknown }> =
+const capturedRentPeriodInserts: Array<{ effective_from_period: unknown; rent_amount: unknown }> =
   [];
 
 const mockClientQuery = mock((sql: string, params?: unknown[]) => {
@@ -23,8 +23,8 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
 
   if (sql.includes("INSERT INTO property_long_stay_rent_periods")) {
     const row = {
-      effective_from_month: params?.[1],
-      monthly_rent: String(params?.[2]),
+      effective_from_period: params?.[1],
+      rent_amount: String(params?.[2]),
     };
     currentRentPeriodRows = [...currentRentPeriodRows, row];
     capturedRentPeriodInserts.push(row);
@@ -38,7 +38,7 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
   if (sql.includes("UPDATE property_long_stays")) {
     currentLeaseRow = buildRentScheduleLeaseRow({
       lease_end_date: params?.[2],
-      monthly_rent: String(params?.[3]),
+      rent_amount: String(params?.[3]),
       term_months: params?.[1],
     });
     return Promise.resolve({ rows: [currentLeaseRow] });
@@ -134,7 +134,7 @@ describe("propertyLongStaysDb.extendLease", () => {
     currentLeaseRow = buildRentScheduleLeaseRow({
       lease_end_date: "2026-01-07",
       lease_start_date: "2026-01-01",
-      monthly_rent: "500.00",
+      rent_amount: "500.00",
       rent_billing_cadence: "weekly",
       term_months: 1,
     });
@@ -151,11 +151,11 @@ describe("propertyLongStaysDb.extendLease", () => {
 
     expect(updated).toMatchObject({
       leaseEndDate: "2026-02-04",
-      monthlyRent: 600,
+      rentAmount: 600,
     });
     expect(capturedRentPeriodInserts).toEqual([
-      { effective_from_month: "2026-01-01", monthly_rent: "500" },
-      { effective_from_month: "2026-01-15", monthly_rent: "600" },
+      { effective_from_period: "2026-01-01", rent_amount: "500" },
+      { effective_from_period: "2026-01-15", rent_amount: "600" },
     ]);
   });
 });

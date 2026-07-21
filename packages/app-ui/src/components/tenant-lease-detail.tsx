@@ -1,6 +1,6 @@
 import { memo } from "react";
 
-import { type ITenantLeaseDetailResponse } from "@/packages/shared";
+import { getLeaseRentAmount, type ITenantLeaseDetailResponse } from "@/packages/shared";
 
 import { formatIsoDateDisplay } from "../lib/format-iso-date";
 import {
@@ -90,7 +90,7 @@ export const TenantLeaseDetailSummary = memo(function TenantLeaseDetailSummary({
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Monthly rent</span>
-          <span className="font-medium text-foreground">{formatCurrency(lease.monthlyRent)}</span>
+          <span className="font-medium text-foreground">{formatCurrency(getLeaseRentAmount(lease))}</span>
         </div>
       </CardContent>
     </Card>

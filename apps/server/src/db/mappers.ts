@@ -31,8 +31,8 @@ import {
   type TTenantMembershipStatus,
   type TUnitRentalType,
   UserType,
-  withLeaseRentAmountNeutralFields,
-  withRentPeriodNeutralFields,
+  withLeaseRentLegacyShims,
+  withRentPeriodLegacyShims,
 } from "@/packages/shared";
 
 export const mapUserRow = (row: Record<string, unknown>): IUser => ({
@@ -267,21 +267,21 @@ export const parseSecondaryTenants = (raw: unknown): IPropertyLongStaySecondaryT
 export const mapPropertyLongStayRentPeriodRow = (
   row: Record<string, unknown>
 ): IPropertyLongStayRentPeriod =>
-  withRentPeriodNeutralFields({
-    effectiveFromMonth: String(row.effective_from_month),
-    monthlyRent: Number(row.monthly_rent),
+  withRentPeriodLegacyShims({
+    effectiveFromPeriod: String(row.effective_from_period),
+    rentAmount: Number(row.rent_amount),
   });
 
 export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyLongStay =>
-  withLeaseRentAmountNeutralFields({
+  withLeaseRentLegacyShims({
   actualEndDate: row.actual_end_date ? formatDateColumn(row.actual_end_date) : null,
   createdAt: (row.created_at as Date).toISOString(),
   guestName: row.guest_name as string,
   id: row.id as string,
   leaseEndDate: formatDateColumn(row.lease_end_date),
   leaseStartDate: formatDateColumn(row.lease_start_date),
-  monthlyRent: Number(row.monthly_rent),
   propertyId: row.property_id as string,
+  rentAmount: Number(row.rent_amount),
   rentBillingCadence:
     row.rent_billing_cadence === RentBillingCadence.WEEKLY
       ? RentBillingCadence.WEEKLY
@@ -317,7 +317,8 @@ export const mapPropertyIncomeLineRow = (row: Record<string, unknown>): IPropert
       : null,
   refundedAt: toIso(row.refunded_at),
   refundedBy: (row.refunded_by as string | null) ?? null,
-  rentPeriodMonth: typeof row.rent_period_month === "string" ? row.rent_period_month : null,
+  rentPeriodKey: typeof row.rent_period_key === "string" ? row.rent_period_key : null,
+  rentPeriodMonth: typeof row.rent_period_key === "string" ? row.rent_period_key : null,
   reservationId: (row.reservation_id as string) ?? null,
   taxBreakdown: parseTaxBreakdown(row.tax_breakdown),
   tenantRentPaymentId: (row.tenant_rent_payment_id as string | null) ?? null,

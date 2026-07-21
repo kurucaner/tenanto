@@ -25,13 +25,15 @@ export interface IPropertyIncomeLine {
   refundedAmount: number | null;
   refundedAt: string | null;
   refundedBy: string | null;
-  rentPeriodMonth: string | null;
+  rentPeriodKey: string | null;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   tenantRentPaymentId: string | null;
   transactionDate: string;
   unitId: string | null;
   updatedAt: string;
+  /** @deprecated Use `rentPeriodKey`. Shimmed on API responses for one release after Phase 14. */
+  rentPeriodMonth?: string | null;
 }
 
 export interface IPropertyIncomeLineComputedFields {
@@ -48,10 +50,12 @@ export interface ICreatePropertyIncomeLineBody {
   /** Required for misc income; omit for lease rent — server assigns the system Long-term rent type. */
   incomeLineTypeId?: string;
   longStayId?: string;
-  rentPeriodMonth?: string;
+  rentPeriodKey?: string;
   reservationId?: string;
   transactionDate: string;
   unitId?: string | null;
+  /** @deprecated Use `rentPeriodKey`. Accepted on create for one release after Phase 14. */
+  rentPeriodMonth?: string;
 }
 
 export interface IUpdatePropertyIncomeLineBody {
@@ -60,10 +64,12 @@ export interface IUpdatePropertyIncomeLineBody {
   guestName?: string | null;
   incomeLineTypeId?: string;
   longStayId?: string | null;
-  rentPeriodMonth?: string | null;
+  rentPeriodKey?: string | null;
   reservationId?: string | null;
   transactionDate?: string;
   unitId?: string | null;
+  /** @deprecated Use `rentPeriodKey`. Accepted on update for one release after Phase 14. */
+  rentPeriodMonth?: string | null;
 }
 
 export interface IPropertyIncomeLinesListQuery {

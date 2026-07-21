@@ -1,4 +1,4 @@
-import { type ICreatePropertyIncomeLineBody } from "@/packages/shared";
+import { type ICreatePropertyIncomeLineBody,resolveIncomeLineRentPeriodKey } from "@/packages/shared";
 import { parseDateString, parseUuidParam } from "@/routes/admin/admin-query-utils";
 import {
   parseJsonObject,
@@ -11,6 +11,26 @@ import {
 function parseIncomeLineTypeId(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   return parseUuidParam(raw);
+}
+
+function parseOptionalRentPeriodKeyField(
+  r: Record<string, unknown>
+): { ok: true; value: string | undefined } | { error: string; ok: false } {
+  const rentPeriodKeyResult = parseOptionalPeriodMonthField(r["rentPeriodKey"], "rentPeriodKey");
+  if (!rentPeriodKeyResult.ok) return rentPeriodKeyResult;
+
+  const rentPeriodMonthResult = parseOptionalPeriodMonthField(
+    r["rentPeriodMonth"],
+    "rentPeriodMonth"
+  );
+  if (!rentPeriodMonthResult.ok) return rentPeriodMonthResult;
+
+  const resolved = resolveIncomeLineRentPeriodKey({
+    rentPeriodKey: rentPeriodKeyResult.value,
+    rentPeriodMonth: rentPeriodMonthResult.value,
+  });
+
+  return { ok: true, value: resolved };
 }
 
 export function parseCreateIncomeLineBody(
@@ -59,11 +79,8 @@ export function parseCreateIncomeLineBody(
   const guestNameResult = parseOptionalTrimmedStringField(r["guestName"], "guestName");
   if (!guestNameResult.ok) return guestNameResult;
 
-  const rentPeriodMonthResult = parseOptionalPeriodMonthField(
-    r["rentPeriodMonth"],
-    "rentPeriodMonth"
-  );
-  if (!rentPeriodMonthResult.ok) return rentPeriodMonthResult;
+  const rentPeriodKeyResult = parseOptionalRentPeriodKeyField(r);
+  if (!rentPeriodKeyResult.ok) return rentPeriodKeyResult;
 
   return {
     body: {
@@ -72,7 +89,7 @@ export function parseCreateIncomeLineBody(
       guestName: guestNameResult.value,
       incomeLineTypeId,
       longStayId: longStayResult.value,
-      rentPeriodMonth: rentPeriodMonthResult.value,
+      rentPeriodKey: rentPeriodKeyResult.value,
       reservationId: reservationResult.value,
       transactionDate,
       unitId,

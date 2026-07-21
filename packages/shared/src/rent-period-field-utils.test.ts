@@ -5,11 +5,13 @@ import {
   getRentPeriodAmount,
   getRentPeriodEffectiveFrom,
   getRentSchedulePeriodKey,
+  resolveCreateLeaseRentAmount,
   resolveExtendNewRentAmount,
   resolveExtendRentEffectivePeriod,
-  withLeaseRentAmountNeutralFields,
-  withRentPeriodNeutralFields,
-  withRentScheduleNeutralFields,
+  resolveIncomeLineRentPeriodKey,
+  withLeaseRentLegacyShims,
+  withRentPeriodLegacyShims,
+  withRentScheduleLegacyShims,
 } from "./rent-period-field-utils";
 import type {
   IExtendPropertyLongStayBody,
@@ -19,7 +21,7 @@ import type {
 } from "./property-long-stay-types";
 
 describe("rent period field accessors", () => {
-  test("prefers neutral rent period fields when present", () => {
+  test("prefers primary rent period fields when present", () => {
     const period: IPropertyLongStayRentPeriod = {
       effectiveFromMonth: "2026-01",
       effectiveFromPeriod: "2026-01-15",
@@ -57,28 +59,38 @@ describe("rent period field accessors", () => {
     expect(getRentSchedulePeriodKey(item)).toBe("2026-01-15");
   });
 
-  test("resolves extend body from legacy or neutral field names", () => {
+  test("resolves create lease rent amount from primary or legacy field names", () => {
+    expect(resolveCreateLeaseRentAmount({ rentAmount: 900 })).toBe(900);
+    expect(resolveCreateLeaseRentAmount({ monthlyRent: 800 })).toBe(800);
+  });
+
+  test("resolves income line rent period key from primary or legacy field names", () => {
+    expect(resolveIncomeLineRentPeriodKey({ rentPeriodKey: "2026-02" })).toBe("2026-02");
+    expect(resolveIncomeLineRentPeriodKey({ rentPeriodMonth: "2026-01" })).toBe("2026-01");
+  });
+
+  test("resolves extend body from legacy or primary field names", () => {
     const legacy: IExtendPropertyLongStayBody = {
       newMonthlyRent: 800,
       rentEffectiveFromMonth: "2026-02-01",
     };
-    const neutral: IExtendPropertyLongStayBody = {
+    const primary: IExtendPropertyLongStayBody = {
       newRentAmount: 900,
       rentEffectiveFromPeriod: "2026-03-01",
     };
 
     expect(resolveExtendNewRentAmount(legacy)).toBe(800);
     expect(resolveExtendRentEffectivePeriod(legacy)).toBe("2026-02-01");
-    expect(resolveExtendNewRentAmount(neutral)).toBe(900);
-    expect(resolveExtendRentEffectivePeriod(neutral)).toBe("2026-03-01");
+    expect(resolveExtendNewRentAmount(primary)).toBe(900);
+    expect(resolveExtendRentEffectivePeriod(primary)).toBe("2026-03-01");
   });
 });
 
-describe("rent period field enrichers", () => {
-  test("adds parallel neutral fields without dropping legacy names", () => {
-    const period = withRentPeriodNeutralFields({
-      effectiveFromMonth: "2026-01-15",
-      monthlyRent: 700,
+describe("rent period legacy shims", () => {
+  test("adds parallel legacy fields without dropping primary names", () => {
+    const period = withRentPeriodLegacyShims({
+      effectiveFromPeriod: "2026-01-15",
+      rentAmount: 700,
     });
 
     expect(period).toEqual({
@@ -89,15 +101,15 @@ describe("rent period field enrichers", () => {
     });
   });
 
-  test("adds periodKey to rent schedule rows", () => {
-    const item = withRentScheduleNeutralFields({
+  test("adds periodKey and month to rent schedule rows", () => {
+    const item = withRentScheduleLegacyShims({
       daysInMonth: 7,
       expectedRent: 700,
       isPaid: false,
       isProrated: false,
-      month: "2026-01-15",
       occupiedDays: 7,
       paidRent: 0,
+      periodKey: "2026-01-15",
       remainingRent: 700,
     });
 
@@ -105,16 +117,16 @@ describe("rent period field enrichers", () => {
     expect(item.month).toBe("2026-01-15");
   });
 
-  test("adds rentAmount to lease records", () => {
-    const lease = withLeaseRentAmountNeutralFields({
+  test("adds rentAmount and monthlyRent to lease records", () => {
+    const lease = withLeaseRentLegacyShims({
       actualEndDate: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       guestName: "Guest",
       id: "lease-1",
       leaseEndDate: "2026-06-30",
       leaseStartDate: "2026-01-01",
-      monthlyRent: 1500,
       propertyId: "property-1",
+      rentAmount: 1500,
       rentBillingCadence: "monthly",
       secondaryTenants: [],
       status: "active",

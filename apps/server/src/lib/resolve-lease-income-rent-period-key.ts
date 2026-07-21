@@ -3,15 +3,15 @@ import {
   enumerateLeaseSchedulePeriods,
   getLeaseScheduleEffectiveEndDate,
   resolveAsOfPeriodKey,
-  resolveLeaseIncomeRentPeriodMonth,
+  resolveLeaseIncomeRentPeriodKey,
 } from "@/packages/shared";
 
 import { getTodayUtcIsoDate } from "./date-utils";
 
-export async function resolveLeaseIncomeRentPeriodMonthForLongStay(input: {
+export async function resolveLeaseIncomeRentPeriodKeyForLongStay(input: {
   longStayId: string;
   referenceDate?: string;
-  rentPeriodMonth?: string | null;
+  rentPeriodKey?: string | null;
   transactionDate: string;
 }): Promise<{ ok: true; value: string } | { ok: false; error: string }> {
   const longStay = await propertyLongStaysDb.findById(input.longStayId);
@@ -23,10 +23,27 @@ export async function resolveLeaseIncomeRentPeriodMonthForLongStay(input: {
   const effectiveEndDate = getLeaseScheduleEffectiveEndDate(longStay, referenceDate);
   const schedulePeriods = enumerateLeaseSchedulePeriods(longStay, effectiveEndDate);
 
-  return resolveLeaseIncomeRentPeriodMonth({
+  return resolveLeaseIncomeRentPeriodKey({
     asOfMonth: resolveAsOfPeriodKey(referenceDate, schedulePeriods),
-    rentPeriodMonth: input.rentPeriodMonth,
+    rentPeriodKey: input.rentPeriodKey,
     scheduleMonths: schedulePeriods,
+    transactionDate: input.transactionDate,
+  });
+}
+
+/** @deprecated Use `resolveLeaseIncomeRentPeriodKeyForLongStay`. */
+export async function resolveLeaseIncomeRentPeriodMonthForLongStay(input: {
+  longStayId: string;
+  referenceDate?: string;
+  rentPeriodKey?: string | null;
+  /** @deprecated Use `rentPeriodKey`. */
+  rentPeriodMonth?: string | null;
+  transactionDate: string;
+}): Promise<{ ok: true; value: string } | { ok: false; error: string }> {
+  return resolveLeaseIncomeRentPeriodKeyForLongStay({
+    longStayId: input.longStayId,
+    referenceDate: input.referenceDate,
+    rentPeriodKey: input.rentPeriodKey ?? input.rentPeriodMonth,
     transactionDate: input.transactionDate,
   });
 }
