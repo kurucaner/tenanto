@@ -35,7 +35,6 @@ function buildRentMonth(
     isProrated: false,
     occupiedDays: 30,
     paidRent,
-    periodKey: overrides.periodKey,
     remainingRent: overrides.remainingRent ?? Math.max(0, expectedRent - paidRent),
     ...overrides,
   };
