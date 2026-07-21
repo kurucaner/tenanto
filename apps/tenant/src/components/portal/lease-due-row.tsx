@@ -5,7 +5,7 @@ import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { Button } from "@/packages/app-ui";
 import { type ITenantRentSummaryLease } from "@/packages/shared";
 
-interface LeaseDueRowActionProps {
+interface LeasePayActionsProps {
   isCaughtUp: boolean;
   isInline: boolean;
   isPayingThisLease: boolean;
@@ -14,14 +14,14 @@ interface LeaseDueRowActionProps {
   onPay: (leaseId: string) => void;
 }
 
-const LeaseDueRowAction = memo(function LeaseDueRowAction({
+export const LeasePayActions = memo(function LeasePayActions({
   isCaughtUp,
   isInline,
   isPayingThisLease,
   isStartingCheckout,
   lease,
   onPay,
-}: LeaseDueRowActionProps) {
+}: LeasePayActionsProps) {
   const buttonClassName = isInline ? "w-full sm:w-auto" : "w-full";
 
   if (isCaughtUp) {
@@ -56,7 +56,7 @@ const LeaseDueRowAction = memo(function LeaseDueRowAction({
     </Button>
   );
 });
-LeaseDueRowAction.displayName = "LeaseDueRowAction";
+LeasePayActions.displayName = "LeasePayActions";
 
 interface LeaseDueRowProps {
   checkoutLeaseId: string | undefined;
@@ -102,7 +102,7 @@ export const LeaseDueRow = memo(function LeaseDueRow({
         )}
       </div>
       <div className={isInline ? "shrink-0 sm:w-auto" : undefined}>
-        <LeaseDueRowAction
+        <LeasePayActions
           isCaughtUp={isCaughtUp}
           isInline={isInline}
           isPayingThisLease={isPayingThisLease}
