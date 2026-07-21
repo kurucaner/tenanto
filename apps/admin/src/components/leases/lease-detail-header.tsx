@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/format-money";
+import { getLeaseRentAmountSuffix } from "@/lib/lease-rent-schedule-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   type IPropertyLongStay,
@@ -69,7 +70,8 @@ export const LeaseDetailHeader = memo(
           {isInHoldover ? <Badge variant="outline">Holdover</Badge> : null}
         </div>
         <p className="text-muted-foreground text-sm">
-          Unit {unitLabel} · {formatMoney(currentRent)}/mo
+          Unit {unitLabel} · {formatMoney(currentRent)}
+          {getLeaseRentAmountSuffix(lease.rentBillingCadence)}
           {isInHoldover ? " · Contract ended" : null}
         </p>
       </div>

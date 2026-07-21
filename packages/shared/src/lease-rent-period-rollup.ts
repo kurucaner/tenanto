@@ -3,7 +3,11 @@ import { isLeaseRentMonthFullyPaid } from "./lease-rent-paid-tolerance";
 import { roundMoney } from "./property-income-calculator";
 import { getReportableIncomeLineAmounts } from "./property-partial-refund-utils";
 import type { IPropertyTaxBreakdownItem } from "./property-settings-types";
-import { centsToDollars, isValidPeriodMonth } from "./tenant-rent-payment-utils";
+import {
+  isValidRentPeriodKey,
+  resolveRentPeriodKeyForTransactionDate,
+} from "./rent-period-key-utils";
+import { centsToDollars } from "./tenant-rent-payment-utils";
 
 export {
   isLeaseRentMonthFullyPaid,
@@ -43,17 +47,30 @@ export interface ILeaseRentPeriodRollupMonth {
 
 export function getEffectiveRentPeriodMonth(input: {
   rentPeriodMonth?: string | null;
+  schedulePeriods?: readonly string[];
   transactionDate: string;
 }): string {
   const explicit = input.rentPeriodMonth?.trim() ?? "";
-  if (explicit !== "" && isValidPeriodMonth(explicit)) {
+  if (explicit !== "" && isValidRentPeriodKey(explicit)) {
     return explicit;
   }
+
+  if (input.schedulePeriods && input.schedulePeriods.length > 0) {
+    const resolved = resolveRentPeriodKeyForTransactionDate(
+      input.transactionDate,
+      input.schedulePeriods
+    );
+    if (resolved !== null) {
+      return resolved;
+    }
+  }
+
   return transactionDateToMonth(input.transactionDate);
 }
 
 function sumIncomePaidByPeriod(
-  incomeLines: readonly ILeaseRentPeriodIncomeLineInput[]
+  incomeLines: readonly ILeaseRentPeriodIncomeLineInput[],
+  schedulePeriods: readonly string[]
 ): Map<string, number> {
   const byPeriod = new Map<string, number>();
 
@@ -67,7 +84,11 @@ function sumIncomePaidByPeriod(
       continue;
     }
 
-    const period = getEffectiveRentPeriodMonth(line);
+    const period = getEffectiveRentPeriodMonth({
+      rentPeriodMonth: line.rentPeriodMonth,
+      schedulePeriods,
+      transactionDate: line.transactionDate,
+    });
     byPeriod.set(period, roundMoney((byPeriod.get(period) ?? 0) + reportable));
   }
 
@@ -105,7 +126,8 @@ export function rollupLeaseRentByPeriod(input: {
   incomeLines: readonly ILeaseRentPeriodIncomeLineInput[];
   scheduleMonths: readonly ILeaseRentPeriodScheduleMonth[];
 }): ILeaseRentPeriodRollupMonth[] {
-  const incomeByPeriod = sumIncomePaidByPeriod(input.incomeLines);
+  const schedulePeriods = input.scheduleMonths.map((item) => item.month);
+  const incomeByPeriod = sumIncomePaidByPeriod(input.incomeLines, schedulePeriods);
   const allocationByPeriod = sumAllocationPaidByPeriod(input.allocations ?? []);
 
   return input.scheduleMonths.map(({ expectedRent, month }) => {

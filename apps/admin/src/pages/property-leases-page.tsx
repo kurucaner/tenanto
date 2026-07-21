@@ -36,6 +36,7 @@ import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
 import { formatMoney } from "@/lib/format-money";
+import { getLeaseRentAmountSuffix } from "@/lib/lease-rent-schedule-display";
 import {
   buildLeaseToolbarClearAllPatch,
   buildLeaseToolbarClearOnePatch,
@@ -78,7 +79,7 @@ const LEASE_COLUMNS: DataTableColumn[] = [
   { id: "tenant", label: "Tenant", sortable: true },
   { id: "start", label: "Start", sortable: true },
   { id: "end", label: "End", sortable: true },
-  { align: "right", id: "rent", label: "Rent/mo", sortable: true },
+  { align: "right", id: "rent", label: "Rent", sortable: true },
   { id: "status", label: "Status", sortable: true },
   { id: "actions", label: "Actions" },
 ];
@@ -153,7 +154,10 @@ const LeaseRow = memo(
         </TableCell>
         <TableCell>{formatIsoDateDisplay(lease.leaseStartDate)}</TableCell>
         <TableCell>{formatIsoDateDisplay(endDate)}</TableCell>
-        <TableCell className="text-right">{formatMoney(lease.monthlyRent)}</TableCell>
+        <TableCell className="text-right">
+          {formatMoney(lease.monthlyRent)}
+          {getLeaseRentAmountSuffix(lease.rentBillingCadence)}
+        </TableCell>
         <TableCell>
           <div className="flex flex-wrap items-center gap-1">
             <Badge

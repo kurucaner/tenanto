@@ -30,7 +30,13 @@ import {
 } from "@/lib/lease-term-end-utils";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { type IPropertyLongStay, validateEditLeaseTerms } from "@/packages/shared";
+import {
+  getLeaseTermsEditBlockMessage,
+  type IPropertyLongStay,
+  isWeeklyRentBillingCadence,
+  LeaseTermsEditBlockReason,
+  validateEditLeaseTerms,
+} from "@/packages/shared";
 
 function getDefaultValues(lease: IPropertyLongStay) {
   return {
@@ -52,6 +58,7 @@ export const EditLeaseTermsDialog = memo(
   ({ lease, onOpenChange, open, propertyId }: EditLeaseTermsDialogProps) => {
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
+    const isWeeklyBlocked = isWeeklyRentBillingCadence(lease.rentBillingCadence);
 
     const form = useForm<TEditLeaseTermsFormValues>({
       defaultValues: getDefaultValues(lease),
@@ -86,6 +93,16 @@ export const EditLeaseTermsDialog = memo(
           })
       ),
     });
+
+    const handleOpenChangeWithReset = useCallback(
+      (nextOpen: boolean) => {
+        if (!nextOpen) {
+          form.reset(getDefaultValues(lease));
+        }
+        onOpenChange(nextOpen);
+      },
+      [form, lease, onOpenChange]
+    );
 
     const termFields = form.watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
     const monthlyRent = form.watch("monthlyRent");
@@ -138,19 +155,9 @@ export const EditLeaseTermsDialog = memo(
       onSuccess: () => {
         toast.success("Lease terms updated");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
-        handleOpenChange(false);
+        handleOpenChangeWithReset(false);
       },
     });
-
-    const handleOpenChange = useCallback(
-      (nextOpen: boolean) => {
-        if (!nextOpen) {
-          form.reset(getDefaultValues(lease));
-        }
-        onOpenChange(nextOpen);
-      },
-      [form, lease, onOpenChange]
-    );
 
     const onSubmit = form.handleSubmit((values) => {
       mutation.mutate(values);
@@ -158,8 +165,29 @@ export const EditLeaseTermsDialog = memo(
 
     const { errors, isSubmitting } = form.formState;
 
+    if (isWeeklyBlocked) {
+      return (
+        <Dialog onOpenChange={handleOpenChangeWithReset} open={open}>
+          <DialogContent className="sm:max-w-[440px]">
+            <DialogHeader>
+              <DialogTitle>Edit Lease Terms</DialogTitle>
+              <DialogDescription>
+                {getLeaseTermsEditBlockMessage(LeaseTermsEditBlockReason.WEEKLY_CADENCE)} Use Extend
+                lease or End lease instead.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => handleOpenChangeWithReset(false)} type="button">
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      );
+    }
+
     return (
-      <Dialog onOpenChange={handleOpenChange} open={open}>
+      <Dialog onOpenChange={handleOpenChangeWithReset} open={open}>
         <DialogContent className="sm:max-w-[440px]">
           <DialogHeader>
             <DialogTitle>Edit Lease Terms</DialogTitle>
@@ -220,7 +248,7 @@ export const EditLeaseTermsDialog = memo(
             <DialogFooter>
               <Button
                 disabled={mutation.isPending}
-                onClick={() => handleOpenChange(false)}
+                onClick={() => handleOpenChangeWithReset(false)}
                 type="button"
                 variant="outline"
               >

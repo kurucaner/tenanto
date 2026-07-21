@@ -10,6 +10,7 @@ import { tenantPortalApi } from "@/lib/api-client";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { queryKeys } from "@/lib/query-keys";
 import {
+  formatDuePeriodsLabel,
   hasOnlinePayAvailable,
   resolveRentPayAction,
   type TRentPayAction,
@@ -79,6 +80,7 @@ function NoActiveLeaseSection({ hasPastLeases }: Readonly<NoActiveLeaseSectionPr
 
 interface SingleLeaseDueSectionProps {
   currency: string;
+  duePeriodsLabel: string | null;
   isStartingCheckout: boolean;
   onlinePayAvailable: boolean;
   onPayRent: () => void;
@@ -88,6 +90,7 @@ interface SingleLeaseDueSectionProps {
 
 const SingleLeaseDueSection = memo(function SingleLeaseDueSection({
   currency,
+  duePeriodsLabel,
   isStartingCheckout,
   onlinePayAvailable,
   onPayRent,
@@ -101,6 +104,9 @@ const SingleLeaseDueSection = memo(function SingleLeaseDueSection({
         <p className="font-display text-4xl font-semibold tracking-tight text-foreground">
           {formatUsdFromCents(totalDue, currency)}
         </p>
+        {duePeriodsLabel ? (
+          <p className="text-sm text-muted-foreground">Due: {duePeriodsLabel}</p>
+        ) : null}
         <p className="text-sm text-muted-foreground">
           {amountDueHint(totalDue, onlinePayAvailable)}
         </p>
@@ -249,6 +255,7 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
           ) : (
             <SingleLeaseDueSection
               currency={summary.currency}
+              duePeriodsLabel={formatDuePeriodsLabel(summary.leases[0]?.duePeriodKeys ?? [])}
               isStartingCheckout={isStartingCheckout}
               onPayRent={handlePayRent}
               onlinePayAvailable={onlinePayAvailable}

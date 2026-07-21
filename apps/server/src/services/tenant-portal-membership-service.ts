@@ -27,7 +27,8 @@ import type {
   TTenantMembershipStatus,
 } from "@/packages/shared";
 import {
-  formatLeaseMonthLabel,
+  formatRentPeriodLabel,
+  isWeeklyPeriodKey,
   JwtAudience,
   normalizeTenantEmail,
   requireMembershipInviteEmail,
@@ -225,8 +226,8 @@ export const tenantPortalMembershipService = {
       propertyName: property.name,
       rentSchedule: rentScheduleMonths.map((item) => ({
         amount: item.expectedRent,
-        dueDate: `${item.month}-01`,
-        periodLabel: formatLeaseMonthLabel(item.month),
+        dueDate: isWeeklyPeriodKey(item.month) ? item.month : `${item.month}-01`,
+        periodLabel: formatRentPeriodLabel(item.month),
       })),
       role: membership.role,
       status: membership.status,

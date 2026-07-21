@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { LeasePayActions } from "@/components/portal/lease-due-row";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
+import { formatDuePeriodsLabel } from "@/lib/rent-summary-utils";
 import { Button, TenantLeaseCard } from "@/packages/app-ui";
 import { type ITenantLeaseListItem, type ITenantRentSummaryLease } from "@/packages/shared";
 
@@ -31,22 +32,28 @@ export const ActiveLeaseCard = memo(function ActiveLeaseCard({
     hasDue && rentSummaryLease
       ? formatUsdFromCents(rentSummaryLease.amountDueCents, currency)
       : undefined;
+  const duePeriodsLabel =
+    hasDue && rentSummaryLease ? formatDuePeriodsLabel(rentSummaryLease.duePeriodKeys) : null;
 
-  const footer = hasDue && rentSummaryLease ? (
-    <>
-      <LeasePayActions
-        isCaughtUp={false}
-        isInline={false}
-        isPayingThisLease={isStartingCheckout && checkoutLeaseId === lease.leaseId}
-        isStartingCheckout={isStartingCheckout}
-        lease={rentSummaryLease}
-        onPay={onPay}
-      />
-      <Button asChild className="w-full sm:ms-auto sm:w-auto" type="button" variant="ghost">
-        <Link to={leaseDetailPath}>View lease details</Link>
-      </Button>
-    </>
-  ) : undefined;
+  const footer =
+    hasDue && rentSummaryLease ? (
+      <>
+        {duePeriodsLabel ? (
+          <p className="text-sm text-muted-foreground">Due: {duePeriodsLabel}</p>
+        ) : null}
+        <LeasePayActions
+          isCaughtUp={false}
+          isInline={false}
+          isPayingThisLease={isStartingCheckout && checkoutLeaseId === lease.leaseId}
+          isStartingCheckout={isStartingCheckout}
+          lease={rentSummaryLease}
+          onPay={onPay}
+        />
+        <Button asChild className="w-full sm:ms-auto sm:w-auto" type="button" variant="ghost">
+          <Link to={leaseDetailPath}>View lease details</Link>
+        </Button>
+      </>
+    ) : undefined;
 
   return (
     <TenantLeaseCard

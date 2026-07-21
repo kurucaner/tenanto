@@ -1,4 +1,5 @@
 import type { IPropertyLongStayRentMonth } from "./property-long-stay-types";
+import { resolveAsOfPeriodKey } from "./rent-period-key-utils";
 import type { ITenantLeaseBalancePeriod } from "./tenant-rent-payment-types";
 import {
   computeRemainingByMonth,
@@ -21,8 +22,10 @@ export interface ITenantRentScheduleBalance {
 /** Map Phase 1 rent schedule rollup rows to tenant balance due amounts. */
 export function computeTenantBalanceFromRentSchedule(
   schedule: readonly TTenantRentScheduleBalanceMonth[],
-  asOfMonth: string
+  asOfReferenceDate: string
 ): ITenantRentScheduleBalance {
+  const schedulePeriods = schedule.map((row) => row.month);
+  const asOfKey = resolveAsOfPeriodKey(asOfReferenceDate, schedulePeriods);
   const periods = computeRemainingByMonth(
     schedule.map((row) => ({
       expectedCents: dollarsToCents(row.expectedRent),
@@ -32,8 +35,8 @@ export function computeTenantBalanceFromRentSchedule(
   );
 
   return {
-    amountDueCents: sumAmountDueCents(periods, asOfMonth),
-    periodMonths: selectDuePeriodMonths(periods, asOfMonth),
+    amountDueCents: sumAmountDueCents(periods, asOfKey),
+    periodMonths: selectDuePeriodMonths(periods, asOfKey),
     periods,
   };
 }

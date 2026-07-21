@@ -34,7 +34,7 @@ describe("resolveLeaseIncomeRentPeriodMonth", () => {
         scheduleMonths: SCHEDULE_MONTHS,
         transactionDate: "2026-02-15",
       })
-    ).toEqual({ error: "rentPeriodMonth must be YYYY-MM", ok: false });
+    ).toEqual({ error: "rentPeriodMonth must be YYYY-MM or YYYY-MM-DD", ok: false });
   });
 
   test("rejects rentPeriodMonth outside lease schedule", () => {
@@ -45,7 +45,7 @@ describe("resolveLeaseIncomeRentPeriodMonth", () => {
         transactionDate: "2026-02-15",
       })
     ).toEqual({
-      error: "rentPeriodMonth must be a month in the lease rent schedule",
+      error: "rentPeriodMonth must be a period in the lease rent schedule",
       ok: false,
     });
   });

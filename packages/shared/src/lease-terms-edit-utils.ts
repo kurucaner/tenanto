@@ -1,8 +1,5 @@
 import { transactionDateToMonth } from "./lease-date-utils";
-import {
-  resolveLeaseEndDate,
-  validateLeaseTermInput,
-} from "./lease-term-input-utils";
+import { resolveLeaseEndDate, validateLeaseTermInput } from "./lease-term-input-utils";
 import {
   type IEditPropertyLongStayTermsBody,
   type ILeaseTermsEditability,
@@ -13,6 +10,7 @@ import {
   PropertyLongStayStatus,
   type TLeaseTermsEditBlockReason,
 } from "./property-long-stay-types";
+import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
 
 /** Matches create-lease route bounds in `property-long-stay-routes.ts`. */
 export const MAX_LEASE_TERM_MONTHS = 60;
@@ -25,6 +23,8 @@ const LEASE_TERMS_EDIT_BLOCK_MESSAGES: Record<TLeaseTermsEditBlockReason, string
   [LeaseTermsEditBlockReason.HAS_SUCCEEDED_PAYMENTS]:
     "Lease terms cannot be edited after an online rent payment has succeeded",
   [LeaseTermsEditBlockReason.LEASE_ENDED]: "Only active leases can have terms edited",
+  [LeaseTermsEditBlockReason.WEEKLY_CADENCE]:
+    "Lease terms cannot be edited for weekly-billed leases",
 };
 
 export function getLeaseTermsEditBlockMessage(reason: TLeaseTermsEditBlockReason): string {
@@ -44,13 +44,20 @@ export function hasRentPeriodHistory(
 }
 
 export function deriveLeaseTermsEditability(
-  lease: Pick<IPropertyLongStay, "status">,
+  lease: Pick<IPropertyLongStay, "rentBillingCadence" | "status">,
   signals: ILeaseTermsEditSignals
 ): ILeaseTermsEditability {
   if (lease.status !== PropertyLongStayStatus.ACTIVE) {
     return {
       editable: false,
       reason: LeaseTermsEditBlockReason.LEASE_ENDED,
+    };
+  }
+
+  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
+    return {
+      editable: false,
+      reason: LeaseTermsEditBlockReason.WEEKLY_CADENCE,
     };
   }
 

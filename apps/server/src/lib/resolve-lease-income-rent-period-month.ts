@@ -1,9 +1,11 @@
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import {
   enumerateLeaseMonths,
+  enumerateLeaseWeeks,
   getLeaseScheduleEffectiveEndDate,
+  isWeeklyRentBillingCadence,
+  resolveAsOfPeriodKey,
   resolveLeaseIncomeRentPeriodMonth,
-  transactionDateToMonth,
 } from "@/packages/shared";
 
 import { getTodayUtcIsoDate } from "./date-utils";
@@ -21,12 +23,14 @@ export async function resolveLeaseIncomeRentPeriodMonthForLongStay(input: {
 
   const referenceDate = input.referenceDate ?? getTodayUtcIsoDate();
   const effectiveEndDate = getLeaseScheduleEffectiveEndDate(longStay, referenceDate);
-  const scheduleMonths = enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
+  const schedulePeriods = isWeeklyRentBillingCadence(longStay.rentBillingCadence)
+    ? enumerateLeaseWeeks(longStay.leaseStartDate, effectiveEndDate)
+    : enumerateLeaseMonths(longStay.leaseStartDate, effectiveEndDate);
 
   return resolveLeaseIncomeRentPeriodMonth({
-    asOfMonth: transactionDateToMonth(referenceDate),
+    asOfMonth: resolveAsOfPeriodKey(referenceDate, schedulePeriods),
     rentPeriodMonth: input.rentPeriodMonth,
-    scheduleMonths,
+    scheduleMonths: schedulePeriods,
     transactionDate: input.transactionDate,
   });
 }

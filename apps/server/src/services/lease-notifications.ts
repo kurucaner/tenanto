@@ -2,9 +2,14 @@ import { propertiesDb } from "@/db/properties";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
 import {
+  findWeeklyPeriodStartContainingDate,
   formatProratedDaysLabel,
+  formatRentPeriodLabel,
+  type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
+  isWeeklyRentBillingCadence,
   transactionDateToMonth,
+  type TRentBillingCadence,
 } from "@/packages/shared";
 import { sendLeaseEndedEmail, sendRentPaymentRecordedEmail } from "@/ses/transactional-emails";
 
@@ -54,17 +59,38 @@ function formatRentMonthLabel(isoDate: string): string {
   });
 }
 
-function formatRentMonthLabelFromMonth(month: string): string {
-  return formatRentMonthLabel(`${month}-01`);
+function getFinalRentPeriodHeading(rentBillingCadence: TRentBillingCadence): string {
+  return isWeeklyRentBillingCadence(rentBillingCadence) ? "Final rent week" : "Final rent month";
+}
+
+function getFinalRentPaymentStatusHeading(rentBillingCadence: TRentBillingCadence): string {
+  return isWeeklyRentBillingCadence(rentBillingCadence) ? "Final week rent" : "Final month rent";
+}
+
+function resolveFinalRentSchedulePeriod(
+  rentSchedule: readonly IPropertyLongStayRentMonth[],
+  actualEndDate: string,
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "rentBillingCadence">
+): IPropertyLongStayRentMonth | undefined {
+  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
+    const schedulePeriods = rentSchedule.map((item) => item.month);
+    const periodKey =
+      findWeeklyPeriodStartContainingDate(actualEndDate, schedulePeriods) ?? schedulePeriods.at(-1);
+    return rentSchedule.find((item) => item.month === periodKey);
+  }
+
+  return rentSchedule.find((item) => item.month === transactionDateToMonth(actualEndDate));
 }
 
 function buildHoldoverContent(
   contractEndDate: string,
-  moveOutDate: string
+  moveOutDate: string,
+  rentBillingCadence: TRentBillingCadence
 ): { plain: string; section: string } {
   const contractEndLabel = formatPaymentDate(contractEndDate);
   const moveOutLabel = formatPaymentDate(moveOutDate);
-  const plain = `Your contract ended on ${contractEndLabel}, and your move-out was recorded on ${moveOutLabel}. Holdover days are included in the final month's prorated rent.`;
+  const periodLabel = isWeeklyRentBillingCadence(rentBillingCadence) ? "week's" : "month's";
+  const plain = `Your contract ended on ${contractEndLabel}, and your move-out was recorded on ${moveOutLabel}. Holdover days are included in the final ${periodLabel} prorated rent.`;
 
   return {
     plain,
@@ -72,29 +98,33 @@ function buildHoldoverContent(
   };
 }
 
-function buildFinalMonthContent(finalMonth: IPropertyLongStayRentMonth): {
+function buildFinalPeriodContent(
+  finalPeriod: IPropertyLongStayRentMonth,
+  rentBillingCadence: TRentBillingCadence
+): {
   plain: string;
   section: string;
 } {
-  const monthLabel = formatRentMonthLabelFromMonth(finalMonth.month);
-  const amount = moneyFormatter.format(finalMonth.expectedRent);
-  const lines = [`Final rent month: ${monthLabel}`, `Amount: ${amount}`];
+  const periodHeading = getFinalRentPeriodHeading(rentBillingCadence);
+  const periodLabel = formatRentPeriodLabel(finalPeriod.month);
+  const amount = moneyFormatter.format(finalPeriod.expectedRent);
+  const lines = [`${periodHeading}: ${periodLabel}`, `Amount: ${amount}`];
 
-  if (finalMonth.isProrated) {
+  if (finalPeriod.isProrated) {
     lines.push(
-      `Days billed: ${formatProratedDaysLabel(finalMonth.occupiedDays, finalMonth.daysInMonth)}`
+      `Days billed: ${formatProratedDaysLabel(finalPeriod.occupiedDays, finalPeriod.daysInMonth)}`
     );
   }
 
   const plain = lines.join("\n");
   const htmlLines = [
-    `<div><strong>Final rent month:</strong> ${monthLabel}</div>`,
+    `<div><strong>${periodHeading}:</strong> ${periodLabel}</div>`,
     `<div><strong>Amount:</strong> ${amount}</div>`,
   ];
 
-  if (finalMonth.isProrated) {
+  if (finalPeriod.isProrated) {
     htmlLines.push(
-      `<div><strong>Days billed:</strong> ${formatProratedDaysLabel(finalMonth.occupiedDays, finalMonth.daysInMonth)}</div>`
+      `<div><strong>Days billed:</strong> ${formatProratedDaysLabel(finalPeriod.occupiedDays, finalPeriod.daysInMonth)}</div>`
     );
   }
 
@@ -104,16 +134,21 @@ function buildFinalMonthContent(finalMonth: IPropertyLongStayRentMonth): {
   };
 }
 
-function buildPaymentStatusLine(finalMonth: IPropertyLongStayRentMonth | undefined): string {
-  if (!finalMonth) {
+function buildPaymentStatusLine(
+  finalPeriod: IPropertyLongStayRentMonth | undefined,
+  rentBillingCadence: TRentBillingCadence
+): string {
+  if (!finalPeriod) {
     return "Your lease is closed. If you have questions, contact your property manager.";
   }
 
-  if (finalMonth.isPaid) {
-    return "Final month rent is recorded — you're all set.";
+  const periodHeading = getFinalRentPaymentStatusHeading(rentBillingCadence);
+
+  if (finalPeriod.isPaid) {
+    return `${periodHeading} is recorded — you're all set.`;
   }
 
-  return `Final month rent of ${moneyFormatter.format(finalMonth.expectedRent)} is still outstanding. Please contact your property manager.`;
+  return `${periodHeading} of ${moneyFormatter.format(finalPeriod.expectedRent)} is still outstanding. Please contact your property manager.`;
 }
 
 export async function notifyPrimaryTenantRentRecorded(
@@ -179,27 +214,25 @@ export async function notifyPrimaryTenantLeaseEnded(
   }
 
   const unitLabel = unit ? `Unit ${unit.unitNumber}` : "Unit";
-  const finalMonth = rentSchedule.find(
-    (item) => item.month === transactionDateToMonth(actualEndDate)
-  );
+  const finalPeriod = resolveFinalRentSchedulePeriod(rentSchedule, actualEndDate, lease);
   const isHoldover = actualEndDate > lease.leaseEndDate;
 
   const holdover = isHoldover
-    ? buildHoldoverContent(lease.leaseEndDate, actualEndDate)
+    ? buildHoldoverContent(lease.leaseEndDate, actualEndDate, lease.rentBillingCadence)
     : { plain: "", section: "" };
-  const finalMonthContent = finalMonth
-    ? buildFinalMonthContent(finalMonth)
+  const finalPeriodContent = finalPeriod
+    ? buildFinalPeriodContent(finalPeriod, lease.rentBillingCadence)
     : { plain: "", section: "" };
 
   await sendLeaseEndedEmail(tenantEmail, {
     contractEndDate: formatPaymentDate(lease.leaseEndDate),
-    finalMonthPlain: finalMonthContent.plain,
-    finalMonthSection: finalMonthContent.section,
+    finalMonthPlain: finalPeriodContent.plain,
+    finalMonthSection: finalPeriodContent.section,
     holdoverPlain: holdover.plain,
     holdoverSection: holdover.section,
     leaseStartDate: formatPaymentDate(lease.leaseStartDate),
     moveOutDate: formatPaymentDate(actualEndDate),
-    paymentStatusLine: buildPaymentStatusLine(finalMonth),
+    paymentStatusLine: buildPaymentStatusLine(finalPeriod, lease.rentBillingCadence),
     propertyName: property.name,
     tenantName: lease.guestName,
     unitLabel,

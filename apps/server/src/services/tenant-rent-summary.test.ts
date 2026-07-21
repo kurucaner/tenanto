@@ -98,6 +98,10 @@ mock.module("@/services/winston", () => ({
   },
 }));
 
+mock.module("@/lib/date-utils", () => ({
+  getTodayUtcIsoDate: () => "2026-01-22",
+}));
+
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
 describe("tenantRentPaymentService.getRentSummary", () => {
@@ -148,6 +152,7 @@ describe("tenantRentPaymentService.getRentSummary", () => {
     expect(summary.hasPastLeases).toBe(true);
     expect(summary.leases).toHaveLength(1);
     expect(summary.leases[0]?.leaseId).toBe("lease-1");
+    expect(summary.leases[0]?.duePeriodKeys).toEqual(["2026-01"]);
     expect(summary.totalAmountDueCents).toBe(200_00);
   });
 
@@ -178,7 +183,51 @@ describe("tenantRentPaymentService.getRentSummary", () => {
 
     expect(summary.totalAmountDueCents).toBe(1000_00);
     expect(summary.leases[0]?.amountDueCents).toBe(1000_00);
+    expect(summary.leases[0]?.duePeriodKeys).toEqual(["2026-01"]);
     expect(mockSumSucceededByMonths).not.toHaveBeenCalled();
+  });
+
+  test("includes week-start duePeriodKeys for weekly leases", async () => {
+    mockListLeases.mockImplementation((_tenantUserId: string, status: string) => {
+      if (status === TenantLeaseListStatus.ACTIVE) {
+        return Promise.resolve([
+          makeLeaseListItem({
+            leaseId: "lease-weekly",
+            propertyName: "Weekly Property",
+            unitLabel: "A",
+          }),
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-15",
+        paidRent: 0,
+        remainingRent: 700,
+      },
+      {
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-22",
+        paidRent: 0,
+        remainingRent: 700,
+      },
+      {
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-29",
+        paidRent: 0,
+        remainingRent: 700,
+      },
+    ]);
+
+    const summary = await tenantRentPaymentService.getRentSummary("tenant-1");
+
+    expect(summary.leases[0]?.duePeriodKeys).toEqual(["2026-01-15", "2026-01-22"]);
+    expect(summary.totalAmountDueCents).toBe(1400_00);
   });
 
   test("flags false when tenant has no leases", async () => {

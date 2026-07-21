@@ -1,7 +1,4 @@
-import {
-  enumerateLeaseMonths,
-  transactionDateToMonth,
-} from "./lease-date-utils";
+import { enumerateLeaseMonths, transactionDateToMonth } from "./lease-date-utils";
 import {
   deriveTermMonthsFromDates,
   parseLeaseIsoDate,
@@ -13,11 +10,35 @@ import {
   type IPropertyLongStayRentPeriod,
   PropertyLongStayStatus,
 } from "./property-long-stay-types";
+import { isWeeklyRentBillingCadence } from "./rent-billing-cadence";
 
 export const MAX_ADDITIONAL_TERM_MONTHS = 60;
+export const MAX_ADDITIONAL_TERM_WEEKS = 260;
 export const MAX_TOTAL_LEASE_TERM_MONTHS = 120;
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
+
+function daysBetweenIsoDates(fromDate: string, toDate: string): number {
+  const fromMs = Date.parse(`${fromDate}T00:00:00`);
+  const toMs = Date.parse(`${toDate}T00:00:00`);
+  return Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000));
+}
+
+function validateWeeklyExtensionSpan(
+  currentLeaseEndDate: string,
+  newLeaseEndDate: string
+): string | null {
+  const extensionDays = daysBetweenIsoDates(currentLeaseEndDate, newLeaseEndDate);
+  if (extensionDays <= 0) {
+    return "New lease end date must be after the current contract end date";
+  }
+
+  if (extensionDays % 7 !== 0) {
+    return "Weekly lease extensions must add whole weeks";
+  }
+
+  return null;
+}
 
 function addOneMonth(yyyyMm: string): string {
   const parts = yyyyMm.split("-").map(Number);
@@ -72,7 +93,7 @@ export function getExtensionRentEffectiveMonthOptions(
 
 function validateLeaseRentChange(
   body: IExtendPropertyLongStayBody,
-  lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate">,
+  lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate" | "rentBillingCadence">,
   newLeaseEndDate: string
 ): string | null {
   const hasNewRent = body.newMonthlyRent !== undefined;
@@ -87,6 +108,10 @@ function validateLeaseRentChange(
     body.rentEffectiveFromMonth === undefined
   ) {
     return null;
+  }
+
+  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
+    return "Rent amount cannot be changed when extending a weekly-billed lease";
   }
 
   if (
@@ -116,18 +141,36 @@ function validateLeaseRentChange(
 
 export function validateExtendLease(
   body: IExtendPropertyLongStayBody,
-  lease: Pick<IPropertyLongStay, "leaseEndDate" | "leaseStartDate" | "status" | "termMonths">,
+  lease: Pick<
+    IPropertyLongStay,
+    "leaseEndDate" | "leaseStartDate" | "rentBillingCadence" | "status" | "termMonths"
+  >,
   _today: string
 ): string | null {
   if (lease.status !== PropertyLongStayStatus.ACTIVE) {
     return "Only active leases can be extended";
   }
 
+  const isWeekly = isWeeklyRentBillingCadence(lease.rentBillingCadence);
   const hasCustomEnd = body.newLeaseEndDate !== undefined && body.newLeaseEndDate !== "";
   const hasAdditionalMonths = body.additionalTermMonths !== undefined;
+  const hasAdditionalWeeks = body.additionalWeeks !== undefined;
+  const extensionModeCount = [hasCustomEnd, hasAdditionalMonths, hasAdditionalWeeks].filter(
+    Boolean
+  ).length;
 
-  if (hasCustomEnd === hasAdditionalMonths) {
-    return "Provide additionalTermMonths or newLeaseEndDate, but not both";
+  if (extensionModeCount !== 1) {
+    return isWeekly
+      ? "Provide additionalWeeks or newLeaseEndDate, but not both"
+      : "Provide additionalTermMonths or newLeaseEndDate, but not both";
+  }
+
+  if (isWeekly && hasAdditionalMonths) {
+    return "Weekly leases must be extended by additionalWeeks or newLeaseEndDate";
+  }
+
+  if (!isWeekly && hasAdditionalWeeks) {
+    return "Monthly leases must be extended by additionalTermMonths or newLeaseEndDate";
   }
 
   if (hasCustomEnd) {
@@ -136,8 +179,38 @@ export function validateExtendLease(
       return "newLeaseEndDate must be a YYYY-MM-DD date";
     }
 
-    if (newLeaseEndDate <= lease.leaseEndDate) {
-      return "New lease end date must be after the current contract end date";
+    const endDateError = isWeekly
+      ? validateWeeklyExtensionSpan(lease.leaseEndDate, newLeaseEndDate)
+      : newLeaseEndDate <= lease.leaseEndDate
+        ? "New lease end date must be after the current contract end date"
+        : null;
+    if (endDateError) {
+      return endDateError;
+    }
+
+    const newTermMonths = deriveTermMonthsFromDates(lease.leaseStartDate, newLeaseEndDate);
+    if (newTermMonths > MAX_TOTAL_LEASE_TERM_MONTHS) {
+      return `Total lease term cannot exceed ${MAX_TOTAL_LEASE_TERM_MONTHS} months`;
+    }
+
+    return validateLeaseRentChange(body, lease, newLeaseEndDate);
+  }
+
+  if (hasAdditionalWeeks) {
+    const { additionalWeeks } = body;
+    if (
+      !Number.isInteger(additionalWeeks) ||
+      additionalWeeks! < 1 ||
+      additionalWeeks! > MAX_ADDITIONAL_TERM_WEEKS
+    ) {
+      return `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_WEEKS} weeks`;
+    }
+
+    let newLeaseEndDate: string;
+    try {
+      newLeaseEndDate = resolveExtendLeaseEndDate(lease, body).newLeaseEndDate;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Invalid extend lease input";
     }
 
     const newTermMonths = deriveTermMonthsFromDates(lease.leaseStartDate, newLeaseEndDate);

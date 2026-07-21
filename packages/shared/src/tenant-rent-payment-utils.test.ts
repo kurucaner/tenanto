@@ -6,6 +6,7 @@ import {
   computePeriodRemainingCents,
   computeRemainingByMonth,
   dollarsToCents,
+  isValidPeriodKey,
   isValidPeriodMonth,
   selectDuePeriodMonths,
   STRIPE_MIN_CHARGE_CENTS_USD,
@@ -114,6 +115,16 @@ describe("isValidPeriodMonth", () => {
     expect(isValidPeriodMonth("2026-07")).toBe(true);
     expect(isValidPeriodMonth("2026-13")).toBe(false);
     expect(isValidPeriodMonth("2026-7")).toBe(false);
+    expect(isValidPeriodMonth("2026-07-15")).toBe(false);
+  });
+});
+
+describe("isValidPeriodKey", () => {
+  test("accepts monthly and weekly period keys", () => {
+    expect(isValidPeriodKey("2026-07")).toBe(true);
+    expect(isValidPeriodKey("2026-07-15")).toBe(true);
+    expect(isValidPeriodKey("2026-13-01")).toBe(false);
+    expect(isValidPeriodKey("invalid")).toBe(false);
   });
 });
 
@@ -218,5 +229,18 @@ describe("validateCreateRentCheckoutBody", () => {
       periods: paid,
     });
     expect(result.ok).toBe(false);
+  });
+
+  test("accepts weekly period keys", () => {
+    const weeklyPeriods = computeRemainingByMonth([
+      { expectedCents: 700_00, month: "2026-01-15", paidCents: 0 },
+    ]);
+    const result = validateCreateRentCheckoutBody({
+      amountCents: 700_00,
+      leaseId: "lease-1",
+      periodMonths: ["2026-01-15"],
+      periods: weeklyPeriods,
+    });
+    expect(result.ok).toBe(true);
   });
 });

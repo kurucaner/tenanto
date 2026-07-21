@@ -8,12 +8,22 @@ import {
   validateExtendLease,
 } from "./lease-rent-utils";
 import { PropertyLongStayStatus } from "./property-long-stay-types";
+import { RentBillingCadence } from "./rent-billing-cadence";
 
 const activeLease = {
   leaseEndDate: "2026-12-31",
   leaseStartDate: "2026-01-01",
+  rentBillingCadence: RentBillingCadence.MONTHLY,
   status: PropertyLongStayStatus.ACTIVE,
   termMonths: 12,
+} as const;
+
+const activeWeeklyLease = {
+  leaseEndDate: "2026-01-07",
+  leaseStartDate: "2026-01-01",
+  rentBillingCadence: RentBillingCadence.WEEKLY,
+  status: PropertyLongStayStatus.ACTIVE,
+  termMonths: 1,
 } as const;
 
 describe("getFirstExtensionMonth", () => {
@@ -158,5 +168,49 @@ describe("validateExtendLease", () => {
         "2026-07-09"
       )
     ).toBe("Provide additionalTermMonths or newLeaseEndDate, but not both");
+  });
+
+  test("accepts weekly extension by additional weeks", () => {
+    expect(
+      validateExtendLease({ additionalWeeks: 4 }, activeWeeklyLease, "2026-01-05")
+    ).toBeNull();
+  });
+
+  test("rejects weekly extension with rent change", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalWeeks: 4,
+          newMonthlyRent: 500,
+          rentEffectiveFromMonth: "2026-01",
+        },
+        activeWeeklyLease,
+        "2026-01-05"
+      )
+    ).toBe("Rent amount cannot be changed when extending a weekly-billed lease");
+  });
+
+  test("rejects weekly extension by months", () => {
+    expect(
+      validateExtendLease({ additionalTermMonths: 4 }, activeWeeklyLease, "2026-01-05")
+    ).toBe("Weekly leases must be extended by additionalWeeks or newLeaseEndDate");
+  });
+
+  test("rejects monthly extension by weeks", () => {
+    expect(validateExtendLease({ additionalWeeks: 4 }, activeLease, "2026-07-09")).toBe(
+      "Monthly leases must be extended by additionalTermMonths or newLeaseEndDate"
+    );
+  });
+
+  test("rejects weekly custom end date that is not whole weeks", () => {
+    expect(
+      validateExtendLease({ newLeaseEndDate: "2026-01-10" }, activeWeeklyLease, "2026-01-05")
+    ).toBe("Weekly lease extensions must add whole weeks");
+  });
+
+  test("accepts weekly custom end date aligned to whole weeks", () => {
+    expect(
+      validateExtendLease({ newLeaseEndDate: "2026-01-14" }, activeWeeklyLease, "2026-01-05")
+    ).toBeNull();
   });
 });

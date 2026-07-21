@@ -151,7 +151,7 @@ export const PropertyLeaseDetailPage = memo(() => {
           tabs={LEASE_DETAIL_TAB_DEFINITIONS}
         >
           <UrlSyncedTabsContent value="overview">
-            <LeaseOverviewSection currentRent={currentRent} lease={lease} />
+            <LeaseOverviewSection lease={lease} />
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="tenants">
@@ -213,7 +213,7 @@ export const PropertyLeaseDetailPage = memo(() => {
       {recordRentPrefill && lease ? (
         <CreateIncomeLineDialog
           incomeLineTypes={incomeLineTypes}
-          key={`${lease.id}-${recordRentPrefill.transactionDate ?? "today"}`}
+          key={`${lease.id}-${recordRentPrefill.rentPeriodMonth ?? recordRentPrefill.transactionDate ?? "today"}`}
           lockedLease={lease}
           onOpenChange={(open) => {
             if (!open) {

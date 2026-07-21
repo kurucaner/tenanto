@@ -177,4 +177,41 @@ describe("applyIncomeForFullyCoveredMonths", () => {
 
     expect(mockCreateIncomeLine).not.toHaveBeenCalled();
   });
+
+  test("creates income with week-start transactionDate for weekly allocations", async () => {
+    mockListAllocations.mockResolvedValueOnce([
+      {
+        allocatedCents: 700_00,
+        expectedCentsSnapshot: 700_00,
+        periodMonth: "2026-01-15",
+      },
+    ]);
+    mockSumSucceededAllocatedCents.mockResolvedValueOnce(700_00);
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        expectedRent: 700,
+        isPaid: false,
+        month: "2026-01-15",
+        paidRent: 0,
+        remainingRent: 700,
+      },
+    ]);
+
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_1",
+        stripePaymentIntentId: "pi_1",
+      })
+    );
+
+    expect(mockCreateIncomeLine).toHaveBeenCalledWith(
+      "property-1",
+      expect.objectContaining({
+        rentPeriodMonth: "2026-01-15",
+        transactionDate: "2026-01-15",
+      }),
+      expect.any(Object)
+    );
+  });
 });

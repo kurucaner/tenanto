@@ -138,9 +138,7 @@ const WhoStep = memo(
               id="start-lease-tenant-name"
               {...form.register("guestName")}
             />
-            {guestNameError ? (
-              <p className="text-destructive text-xs">{guestNameError}</p>
-            ) : null}
+            {guestNameError ? <p className="text-destructive text-xs">{guestNameError}</p> : null}
           </div>
           <div className="flex flex-col gap-1.5">
             <FieldLabel htmlFor="start-lease-email" optional>
@@ -285,7 +283,7 @@ const RentStep = memo(
         <div className="border-border/60 border-t" />
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="start-lease-monthly-rent">{rentAmountLabel}</Label>
+          <Label htmlFor="start-lease-rent-amount">{rentAmountLabel}</Label>
           <div className="relative max-w-xs">
             <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
               $
@@ -297,7 +295,7 @@ const RentStep = memo(
                 <Input
                   autoFocus={autoFocusRent}
                   className="pl-7 tabular-nums"
-                  id="start-lease-monthly-rent"
+                  id="start-lease-rent-amount"
                   inputMode="decimal"
                   onChange={(e) => {
                     if (isValidDecimalInput(e.target.value)) {
@@ -310,10 +308,8 @@ const RentStep = memo(
               )}
             />
           </div>
-          {monthlyRentError ? (
-            <p className="text-destructive text-xs">{monthlyRentError}</p>
-          ) : null}
-          {rentBillingCadence === "monthly" && firstMonthRentPreview ? (
+          {monthlyRentError ? <p className="text-destructive text-xs">{monthlyRentError}</p> : null}
+          {firstMonthRentPreview ? (
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
           ) : null}
         </div>

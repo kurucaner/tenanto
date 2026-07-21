@@ -218,7 +218,7 @@ export const tenantRentPaymentsDb = {
        FROM tenant_rent_payment_allocations a
        INNER JOIN tenant_rent_payments p ON p.id = a.payment_id
        WHERE p.lease_id = $1
-         AND a.period_month = ANY($2::char(7)[])
+         AND a.period_month = ANY($2::varchar(10)[])
          AND p.status = $3
        GROUP BY a.period_month`,
       [leaseId, periodMonths, TenantRentPaymentStatus.SUCCEEDED]
