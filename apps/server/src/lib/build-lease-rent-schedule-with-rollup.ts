@@ -6,13 +6,17 @@ import type {
 } from "@/packages/shared";
 import {
   calculateExpectedRentForLeaseMonth,
+  calculateExpectedRentForLeaseWeek,
   getEffectiveRentPeriodMonth,
+  getLeaseRentForMonth,
   getReportableIncomeLineAmounts,
+  RentBillingCadence,
   rollupLeaseRentByPeriod,
 } from "@/packages/shared";
 
 function indexFirstIncomeLineIdByPeriod(
-  incomeLines: readonly IPropertyIncomeLine[]
+  incomeLines: readonly IPropertyIncomeLine[],
+  schedulePeriods: readonly string[]
 ): Map<string, string> {
   const byPeriod = new Map<string, string>();
 
@@ -25,7 +29,11 @@ function indexFirstIncomeLineIdByPeriod(
       continue;
     }
 
-    const period = getEffectiveRentPeriodMonth(line);
+    const period = getEffectiveRentPeriodMonth({
+      rentPeriodMonth: line.rentPeriodMonth,
+      schedulePeriods,
+      transactionDate: line.transactionDate,
+    });
     if (!byPeriod.has(period)) {
       byPeriod.set(period, line.id);
     }
@@ -38,16 +46,40 @@ export function buildLeaseRentScheduleWithRollup(input: {
   allocationCentsByMonth: ReadonlyMap<string, number>;
   effectiveEndDate: string;
   incomeLines: readonly IPropertyIncomeLine[];
-  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent">;
+  lease: Pick<IPropertyLongStay, "leaseStartDate" | "monthlyRent" | "rentBillingCadence">;
   months: readonly string[];
   rentPeriods: readonly IPropertyLongStayRentPeriod[];
 }): IPropertyLongStayRentMonth[] {
-  const scheduleMonths = input.months.map((month) => {
+  const isWeekly = input.lease.rentBillingCadence === RentBillingCadence.WEEKLY;
+
+  const scheduleMonths = input.months.map((periodKey) => {
+    if (isWeekly) {
+      const weeklyRent = getLeaseRentForMonth(
+        input.lease.monthlyRent,
+        input.rentPeriods,
+        periodKey
+      );
+      const proration = calculateExpectedRentForLeaseWeek({
+        effectiveEndDate: input.effectiveEndDate,
+        leaseStartDate: input.lease.leaseStartDate,
+        periodStart: periodKey,
+        weeklyRent,
+      });
+
+      return {
+        daysInMonth: proration.daysInPeriod,
+        expectedRent: proration.expectedRent,
+        isProrated: proration.isProrated,
+        month: periodKey,
+        occupiedDays: proration.occupiedDays,
+      };
+    }
+
     const proration = calculateExpectedRentForLeaseMonth({
       baseMonthlyRent: input.lease.monthlyRent,
       effectiveEndDate: input.effectiveEndDate,
       leaseStartDate: input.lease.leaseStartDate,
-      month,
+      month: periodKey,
       rentPeriods: input.rentPeriods,
     });
 
@@ -55,7 +87,7 @@ export function buildLeaseRentScheduleWithRollup(input: {
       daysInMonth: proration.daysInMonth,
       expectedRent: proration.expectedRent,
       isProrated: proration.isProrated,
-      month,
+      month: periodKey,
       occupiedDays: proration.occupiedDays,
     };
   });
@@ -74,7 +106,7 @@ export function buildLeaseRentScheduleWithRollup(input: {
     scheduleMonths,
   });
 
-  const incomeLineIdByPeriod = indexFirstIncomeLineIdByPeriod(input.incomeLines);
+  const incomeLineIdByPeriod = indexFirstIncomeLineIdByPeriod(input.incomeLines, input.months);
   const prorationByMonth = new Map(scheduleMonths.map((item) => [item.month, item]));
 
   return rolledUp.map((item) => {

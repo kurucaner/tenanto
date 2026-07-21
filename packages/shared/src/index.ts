@@ -197,14 +197,17 @@ export {
 export {
   calculateLeaseEndDate,
   enumerateLeaseMonths,
+  enumerateLeaseWeeks,
   formatLeaseMonthLabel,
   getEndLeaseMoveOutDateBounds,
+  getLeaseWeekPeriodEnd,
   isActiveLeaseInHoldover,
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
 export {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
+  resolveDefaultRentPeriodForIncomeLine,
   resolveLeaseIncomeRentPeriodMonth,
 } from "./lease-income-rent-period";
 export {
@@ -243,6 +246,7 @@ export {
   getFirstExtensionMonth,
   getLeaseRentForMonth,
   MAX_ADDITIONAL_TERM_MONTHS,
+  MAX_ADDITIONAL_TERM_WEEKS,
   MAX_TOTAL_LEASE_TERM_MONTHS,
   validateExtendLease,
 } from "./lease-rent-utils";
@@ -275,6 +279,14 @@ export {
   MAX_LEASE_TERM_MONTHS,
   validateEditLeaseTerms,
 } from "./lease-terms-edit-utils";
+export {
+  calculateExpectedRentForLeaseWeek,
+  formatProratedWeekDaysLabel,
+  getOccupiedDaysInWeek,
+  type ILeaseWeekExpectedRent,
+  isProratedLeaseWeek,
+  resolveLeaseWeekPeriodStartContainingDate,
+} from "./lease-week-proration-utils";
 export {
   type IListTotalCountMeta,
   type IPropertyExpensesListMeta,
@@ -319,6 +331,27 @@ export {
   type TPropertyLongStaysListFilters,
   type TPropertyLongStayStatus,
 } from "./property-long-stay-types";
+export {
+  isWeeklyRentBillingCadence,
+  parseRentBillingCadence,
+  RENT_BILLING_CADENCE_VALUES,
+  RentBillingCadence,
+  type TRentBillingCadence,
+} from "./rent-billing-cadence";
+export {
+  comparePeriodKeys,
+  findWeeklyPeriodStartContainingDate,
+  formatRentPeriodLabel,
+  inferRentScheduleCadence,
+  isMonthlyPeriodKey,
+  isPeriodKeyAfter,
+  isPeriodKeyOnOrBefore,
+  isValidRentPeriodKey,
+  isWeeklyPeriodKey,
+  RENT_PERIOD_KEY_SQL_PATTERN,
+  resolveAsOfPeriodKey,
+  resolveRentPeriodKeyForTransactionDate,
+} from "./rent-period-key-utils";
 export {
   type TPrimaryTenantContactSource,
   type TSecondaryTenantContactSource,
@@ -729,6 +762,7 @@ export {
   dollarsToCents,
   type IRentAllocation,
   type IRentPeriodInput,
+  isValidPeriodKey,
   isValidPeriodMonth,
   selectDuePeriodMonths,
   STRIPE_MIN_CHARGE_CENTS_USD,

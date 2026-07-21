@@ -141,8 +141,18 @@ export function resolveExtendLeaseEndDate(
     };
   }
 
+  if (body.additionalWeeks !== undefined) {
+    return {
+      newLeaseEndDate: addDaysToIsoDate(lease.leaseEndDate, body.additionalWeeks * 7),
+      newTermMonths: deriveTermMonthsFromDates(
+        lease.leaseStartDate,
+        addDaysToIsoDate(lease.leaseEndDate, body.additionalWeeks * 7)
+      ),
+    };
+  }
+
   if (body.additionalTermMonths === undefined) {
-    throw new Error("additionalTermMonths or newLeaseEndDate is required");
+    throw new Error("additionalTermMonths, additionalWeeks, or newLeaseEndDate is required");
   }
 
   return {

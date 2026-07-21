@@ -5,6 +5,7 @@ import type {
   TPropertyLongStaysListSortBy,
   TPropertyLongStaysListSortDir,
 } from "./property-long-stay-list-constants";
+import type { TRentBillingCadence } from "./rent-billing-cadence";
 import type { ICreateLeasePortalInviteResult } from "./tenant-portal-types";
 
 export type TPropertyLongStayStatus = "active" | "ended";
@@ -30,6 +31,7 @@ export interface IPropertyLongStay {
   leaseStartDate: string;
   monthlyRent: number;
   propertyId: string;
+  rentBillingCadence: TRentBillingCadence;
   /** Populated on list/export reads from non-terminal secondary memberships. */
   secondaryOccupantNames?: string[];
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
@@ -48,6 +50,7 @@ export interface ICreatePropertyLongStayBody {
   leaseEndDate?: string;
   leaseStartDate: string;
   monthlyRent: number;
+  rentBillingCadence?: TRentBillingCadence;
   tenantEmail?: string;
   tenantPhone?: string;
   termMonths?: number;
@@ -101,6 +104,7 @@ export interface IPropertyLongStayRentPeriod {
 
 export interface IExtendPropertyLongStayBody {
   additionalTermMonths?: number;
+  additionalWeeks?: number;
   newLeaseEndDate?: string;
   newMonthlyRent?: number;
   rentEffectiveFromMonth?: string;
@@ -122,6 +126,7 @@ export const LeaseTermsEditBlockReason = {
   HAS_RENT_PERIOD_HISTORY: "has_rent_period_history",
   HAS_SUCCEEDED_PAYMENTS: "has_succeeded_payments",
   LEASE_ENDED: "lease_ended",
+  WEEKLY_CADENCE: "weekly_cadence",
 } as const;
 
 export type TLeaseTermsEditBlockReason =

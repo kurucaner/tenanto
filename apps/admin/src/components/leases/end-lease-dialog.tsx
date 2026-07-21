@@ -97,8 +97,9 @@ export const EndLeaseDialog = memo(
     );
 
     const holdoverHelperText = useMemo(
-      () => getEndLeaseHoldoverHelperText(moveOutDate, lease.leaseEndDate),
-      [lease.leaseEndDate, moveOutDate]
+      () =>
+        getEndLeaseHoldoverHelperText(moveOutDate, lease.leaseEndDate, lease.rentBillingCadence),
+      [lease.leaseEndDate, lease.rentBillingCadence, moveOutDate]
     );
 
     const finalMonthRentPreview = useMemo(

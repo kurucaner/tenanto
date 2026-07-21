@@ -73,8 +73,10 @@ const DashboardSidebarInner = memo(() => {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <div className="mt-auto">
+          <SidebarWhatsChanged />
+        </div>
       </SidebarContent>
-      <SidebarWhatsChanged />
       <SidebarFooter className="gap-2 p-2">
         <Button
           className="w-full gap-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0"

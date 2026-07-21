@@ -1,5 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 
+import { RentBillingCadence } from "@/packages/shared";
 import { makeLongStay } from "@/test-fixtures/domain";
 
 const mockFindById = mock(() =>
@@ -56,7 +57,7 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
     });
 
     expect(result).toEqual({
-      error: "rentPeriodMonth must be a month in the lease rent schedule",
+      error: "rentPeriodMonth must be a period in the lease rent schedule",
       ok: false,
     });
   });
@@ -84,5 +85,27 @@ describe("resolveLeaseIncomeRentPeriodMonthForLongStay", () => {
     });
 
     expect(result).toEqual({ ok: true, value: "2026-02" });
+  });
+
+  test("defaults to weekly period containing transactionDate", async () => {
+    mockFindById.mockImplementationOnce(() =>
+      Promise.resolve(
+        makeLongStay({
+          leaseEndDate: "2026-02-10",
+          leaseStartDate: "2026-01-15",
+          monthlyRent: 700,
+          rentBillingCadence: RentBillingCadence.WEEKLY,
+          termMonths: 1,
+        })
+      )
+    );
+
+    const result = await resolveLeaseIncomeRentPeriodMonthForLongStay({
+      longStayId: "lease-weekly",
+      referenceDate: "2026-02-10",
+      transactionDate: "2026-01-20",
+    });
+
+    expect(result).toEqual({ ok: true, value: "2026-01-15" });
   });
 });

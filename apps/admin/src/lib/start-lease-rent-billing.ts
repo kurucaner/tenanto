@@ -1,25 +1,24 @@
-export const START_LEASE_RENT_BILLING_CADENCES = ["monthly", "weekly"] as const;
+import {
+  parseRentBillingCadence,
+  RentBillingCadence,
+  type TRentBillingCadence,
+} from "@/packages/shared";
 
-export type TStartLeaseRentBillingCadence = (typeof START_LEASE_RENT_BILLING_CADENCES)[number];
+export type TStartLeaseRentBillingCadence = TRentBillingCadence;
 
-/** UI-only gate until weekly rent schedule is implemented server-side. */
-export const WEEKLY_RENT_BILLING_ENABLED = false;
+export const WEEKLY_RENT_BILLING_ENABLED = true;
 
 export const START_LEASE_RENT_BILLING_LABELS: Record<TStartLeaseRentBillingCadence, string> = {
-  monthly: "Monthly",
-  weekly: "Weekly",
+  [RentBillingCadence.MONTHLY]: "Monthly",
+  [RentBillingCadence.WEEKLY]: "Weekly",
 };
 
-export function getStartLeaseRentAmountLabel(
-  cadence: TStartLeaseRentBillingCadence
-): string {
-  return cadence === "weekly" ? "Weekly rent" : "Monthly rent";
+export function getStartLeaseRentAmountLabel(cadence: TStartLeaseRentBillingCadence): string {
+  return cadence === RentBillingCadence.WEEKLY ? "Weekly rent" : "Monthly rent";
 }
 
-export function getStartLeaseRentBillingHelperText(
-  cadence: TStartLeaseRentBillingCadence
-): string {
-  if (cadence === "weekly") {
+export function getStartLeaseRentBillingHelperText(cadence: TStartLeaseRentBillingCadence): string {
+  if (cadence === RentBillingCadence.WEEKLY) {
     return "Rent is due every week on the same weekday as the lease start.";
   }
 
@@ -29,9 +28,10 @@ export function getStartLeaseRentBillingHelperText(
 export function normalizeStartLeaseRentBillingCadence(
   value: unknown
 ): TStartLeaseRentBillingCadence {
-  if (value === "weekly" && WEEKLY_RENT_BILLING_ENABLED) {
-    return "weekly";
+  const parsed = parseRentBillingCadence(value);
+  if (parsed === RentBillingCadence.WEEKLY && !WEEKLY_RENT_BILLING_ENABLED) {
+    return RentBillingCadence.MONTHLY;
   }
 
-  return "monthly";
+  return parsed ?? RentBillingCadence.MONTHLY;
 }

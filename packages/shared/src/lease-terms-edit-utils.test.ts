@@ -11,11 +11,13 @@ import {
   LeaseTermsEditBlockReason,
   PropertyLongStayStatus,
 } from "./property-long-stay-types";
+import { RentBillingCadence } from "./rent-billing-cadence";
 
 const activeLease = {
   leaseEndDate: "2027-01-01",
   leaseStartDate: "2026-01-01",
   monthlyRent: 1500,
+  rentBillingCadence: RentBillingCadence.MONTHLY,
   status: PropertyLongStayStatus.ACTIVE,
   termMonths: 12,
 } as const;
@@ -31,9 +33,27 @@ describe("deriveLeaseTermsEditability", () => {
     expect(deriveLeaseTermsEditability(activeLease, editableSignals)).toEqual({ editable: true });
   });
 
+  test("blocks weekly-billed leases", () => {
+    expect(
+      deriveLeaseTermsEditability(
+        {
+          ...activeLease,
+          rentBillingCadence: RentBillingCadence.WEEKLY,
+        },
+        editableSignals
+      )
+    ).toEqual({
+      editable: false,
+      reason: LeaseTermsEditBlockReason.WEEKLY_CADENCE,
+    });
+  });
+
   test("blocks ended leases first", () => {
     expect(
-      deriveLeaseTermsEditability({ status: PropertyLongStayStatus.ENDED }, editableSignals)
+      deriveLeaseTermsEditability(
+        { rentBillingCadence: RentBillingCadence.MONTHLY, status: PropertyLongStayStatus.ENDED },
+        editableSignals
+      )
     ).toEqual({
       editable: false,
       reason: LeaseTermsEditBlockReason.LEASE_ENDED,

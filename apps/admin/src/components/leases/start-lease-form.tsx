@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { memo, type RefObject } from "react";
-import { Controller, type FieldErrors, type UseFormReturn } from "react-hook-form";
+import { Controller, type FieldErrors, type UseFormReturn, useWatch } from "react-hook-form";
 
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import { type TStartLeaseFormValues } from "@/lib/start-lease-form-schema";
 import {
   getStartLeaseRentAmountLabel,
   getStartLeaseRentBillingHelperText,
-  START_LEASE_RENT_BILLING_CADENCES,
   START_LEASE_RENT_BILLING_LABELS,
   WEEKLY_RENT_BILLING_ENABLED,
 } from "@/lib/start-lease-rent-billing";
@@ -29,7 +28,11 @@ import {
 } from "@/lib/start-lease-steps";
 import { cn } from "@/lib/utils";
 import { PhoneInput } from "@/packages/app-ui";
-import { formatPropertyUnitSelectLabel, type IPropertyUnit } from "@/packages/shared";
+import {
+  formatPropertyUnitSelectLabel,
+  type IPropertyUnit,
+  RENT_BILLING_CADENCE_VALUES,
+} from "@/packages/shared";
 
 export const START_LEASE_FORM_ID = "start-lease-form";
 
@@ -138,9 +141,7 @@ const WhoStep = memo(
               id="start-lease-tenant-name"
               {...form.register("guestName")}
             />
-            {guestNameError ? (
-              <p className="text-destructive text-xs">{guestNameError}</p>
-            ) : null}
+            {guestNameError ? <p className="text-destructive text-xs">{guestNameError}</p> : null}
           </div>
           <div className="flex flex-col gap-1.5">
             <FieldLabel htmlFor="start-lease-email" optional>
@@ -225,7 +226,7 @@ const RentStep = memo(
     monthlyRentError,
     unitLabel,
   }: RentStepProps) => {
-    const rentBillingCadence = form.watch("rentBillingCadence");
+    const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
     const rentAmountLabel = getStartLeaseRentAmountLabel(rentBillingCadence);
 
     return (
@@ -257,7 +258,7 @@ const RentStep = memo(
                 onValueChange={field.onChange}
                 value={field.value}
               >
-                {START_LEASE_RENT_BILLING_CADENCES.map((cadence) => {
+                {RENT_BILLING_CADENCE_VALUES.map((cadence) => {
                   const isWeekly = cadence === "weekly";
                   const isDisabled = isWeekly && !WEEKLY_RENT_BILLING_ENABLED;
 
@@ -285,7 +286,7 @@ const RentStep = memo(
         <div className="border-border/60 border-t" />
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="start-lease-monthly-rent">{rentAmountLabel}</Label>
+          <Label htmlFor="start-lease-rent-amount">{rentAmountLabel}</Label>
           <div className="relative max-w-xs">
             <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
               $
@@ -297,7 +298,7 @@ const RentStep = memo(
                 <Input
                   autoFocus={autoFocusRent}
                   className="pl-7 tabular-nums"
-                  id="start-lease-monthly-rent"
+                  id="start-lease-rent-amount"
                   inputMode="decimal"
                   onChange={(e) => {
                     if (isValidDecimalInput(e.target.value)) {
@@ -310,10 +311,8 @@ const RentStep = memo(
               )}
             />
           </div>
-          {monthlyRentError ? (
-            <p className="text-destructive text-xs">{monthlyRentError}</p>
-          ) : null}
-          {rentBillingCadence === "monthly" && firstMonthRentPreview ? (
+          {monthlyRentError ? <p className="text-destructive text-xs">{monthlyRentError}</p> : null}
+          {firstMonthRentPreview ? (
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
           ) : null}
         </div>

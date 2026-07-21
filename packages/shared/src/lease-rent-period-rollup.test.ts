@@ -53,6 +53,16 @@ describe("getEffectiveRentPeriodMonth", () => {
       })
     ).toBe("2026-03");
   });
+
+  test("resolves weekly period from schedule when rentPeriodMonth is omitted", () => {
+    expect(
+      getEffectiveRentPeriodMonth({
+        rentPeriodMonth: null,
+        schedulePeriods: ["2026-01-15", "2026-01-22"],
+        transactionDate: "2026-01-20",
+      })
+    ).toBe("2026-01-15");
+  });
 });
 
 describe("isLeaseRentMonthFullyPaid", () => {

@@ -1,4 +1,5 @@
 import { isLeaseRentPeriodFullyPaidCents } from "./lease-rent-paid-tolerance";
+import { isMonthlyPeriodKey, isValidRentPeriodKey } from "./rent-period-key-utils";
 import type { ITenantLeaseBalancePeriod } from "./tenant-rent-payment-types";
 
 /** Stripe's minimum charge for USD (card). */
@@ -24,8 +25,6 @@ export function buildRentCheckoutIdempotencyKey(input: {
   const months = [...input.periodMonths].sort((a, b) => a.localeCompare(b)).join(",");
   return `rent_checkout:${input.leaseId}:${input.tenantUserId}:${months}:${input.amountCents}`;
 }
-
-const PERIOD_MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export interface IRentPeriodInput {
   expectedCents: number;
@@ -102,7 +101,12 @@ export function selectDuePeriodMonths(
 }
 
 export function isValidPeriodMonth(month: string): boolean {
-  return PERIOD_MONTH_RE.test(month);
+  return isMonthlyPeriodKey(month);
+}
+
+/** Accepts monthly (`YYYY-MM`) or weekly (`YYYY-MM-DD`) rent period keys. */
+export function isValidPeriodKey(periodKey: string): boolean {
+  return isValidRentPeriodKey(periodKey);
 }
 
 /**
@@ -164,8 +168,8 @@ export function validateCreateRentCheckoutBody(input: {
 
   const uniqueMonths = new Set<string>();
   for (const month of input.periodMonths) {
-    if (!isValidPeriodMonth(month)) {
-      return { error: `Invalid period month: ${month}`, ok: false };
+    if (!isValidPeriodKey(month)) {
+      return { error: `Invalid period key: ${month}`, ok: false };
     }
     if (uniqueMonths.has(month)) {
       return { error: `Duplicate period month: ${month}`, ok: false };

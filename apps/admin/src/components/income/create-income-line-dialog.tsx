@@ -30,7 +30,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { incomeLinesApi } from "@/lib/api-client";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
-import { formatLeaseMonthLabel } from "@/lib/lease-month-label";
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { PROPERTY_AMENITY_UNIT_VALUE } from "@/lib/property-amenity-unit";
 import {
@@ -39,6 +38,7 @@ import {
   isDateOnOrBefore,
 } from "@/lib/reservation-date-utils";
 import {
+  formatRentPeriodLabel,
   type IPropertyIncomeLineType,
   type IPropertyLongStay,
   type IPropertyReservation,
@@ -269,7 +269,7 @@ const CreateIncomeLineDialogForm = memo(
                 disabled
                 id={`${FIELD_ID_PREFIX}-rent-period`}
                 readOnly
-                value={formatLeaseMonthLabel(prefill.rentPeriodMonth)}
+                value={formatRentPeriodLabel(prefill.rentPeriodMonth)}
               />
             </div>
           ) : null}

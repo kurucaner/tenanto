@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
-import { PropertyLongStayStatus, UnitRentalType } from "@/packages/shared";
+import { PropertyLongStayStatus, RentBillingCadence, UnitRentalType } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
 import { makeLease } from "@/test-fixtures/domain";
 import {
@@ -274,6 +274,52 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       tenantName: "Jane Tenant",
       unitLabel: "Unit 101",
     });
+  });
+
+  test("sends weekly end email with week period label and holdover copy", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2026-01-23",
+        leaseEndDate: "2026-01-20",
+        leaseStartDate: "2026-01-15",
+        propertyId: "prop-1",
+        rentBillingCadence: RentBillingCadence.WEEKLY,
+        status: PropertyLongStayStatus.ENDED,
+      })
+    );
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        daysInMonth: 7,
+        expectedRent: 400,
+        isPaid: false,
+        isProrated: true,
+        month: "2026-01-22",
+        occupiedDays: 4,
+        paidRent: 0,
+        remainingRent: 400,
+      },
+    ]);
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
+    const emailPayload = mockSendLeaseEndedEmail.mock.calls[0]?.[1];
+    expect(emailPayload).toMatchObject({
+      contractEndDate: "January 20, 2026",
+      holdoverPlain: expect.stringContaining("final week's prorated rent"),
+      leaseStartDate: "January 15, 2026",
+      moveOutDate: "January 23, 2026",
+      paymentStatusLine:
+        "Final week rent of $400.00 is still outstanding. Please contact your property manager.",
+      propertyName: "Sunset Apartments",
+      tenantName: "Jane Tenant",
+      unitLabel: "Unit 101",
+    });
+    expect(emailPayload?.finalMonthPlain).toContain("Final rent week:");
+    expect(emailPayload?.finalMonthPlain).toMatch(/Week of /);
   });
 
   test("no-ops when tenant email is missing", async () => {

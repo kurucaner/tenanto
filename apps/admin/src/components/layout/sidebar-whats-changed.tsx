@@ -28,7 +28,7 @@ const SidebarWhatsChangedInner = memo(() => {
 
   return (
     <>
-      <SidebarMenu className="px-2 pb-2">
+      <SidebarMenu className="pb-2">
         <SidebarMenuItem>
           <SidebarMenuButton
             className="relative"
@@ -37,11 +37,12 @@ const SidebarWhatsChangedInner = memo(() => {
             type="button"
           >
             <Sparkles className="size-4" />
-            <span>What&apos;s changed</span>
+            <span className="min-w-0 truncate">What&apos;s changed</span>
             {hasUnread ? (
-              <span
+              <div
                 aria-label="Unread updates"
                 className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary ring-2 ring-sidebar group-data-[collapsible=icon]:top-1 group-data-[collapsible=icon]:right-1"
+                role="img"
               />
             ) : null}
           </SidebarMenuButton>

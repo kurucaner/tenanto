@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { usePropertyActiveLeases } from "@/hooks/use-property-active-leases";
 import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
-import { getStartLeaseFirstMonthRentPreview } from "@/lib/lease-proration-display";
+import { getStartLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-display";
 import { buildLeaseTermApiPayload, resolveLeaseTermEndPreview } from "@/lib/lease-term-end-utils";
 import { scrollFormToFirstError } from "@/lib/scroll-form-to-first-error";
 import {
@@ -28,7 +28,12 @@ import {
   getPreviousStartLeaseStep,
   type TStartLeaseStep,
 } from "@/lib/start-lease-steps";
-import { type IPropertyUnit, normalizeToE164, UnitRentalType } from "@/packages/shared";
+import {
+  type IPropertyUnit,
+  normalizeToE164,
+  RentBillingCadence,
+  UnitRentalType,
+} from "@/packages/shared";
 
 interface UseStartLeaseFormOptions {
   initialStep?: TStartLeaseStep;
@@ -142,6 +147,7 @@ export function useStartLeaseForm({
   const selectedUnitId = watch("unitId");
   const termFields = watch(["leaseEndDate", "leaseStartDate", "termMode", "termMonths"]);
   const monthlyRent = watch("monthlyRent");
+  const rentBillingCadence = watch("rentBillingCadence");
   const [leaseEndDateValue, leaseStartDate, termMode, termMonths] = termFields;
 
   const leaseEndDate = useMemo(() => {
@@ -154,22 +160,26 @@ export function useStartLeaseForm({
   }, [leaseEndDateValue, leaseStartDate, termMode, termMonths]);
 
   const firstMonthRentPreview = useMemo(() => {
-    const parsedMonthlyRent = Number(monthlyRent);
+    const parsedRentAmount = Number(monthlyRent);
     if (
       !leaseEndDate ||
       leaseStartDate === "" ||
-      !Number.isFinite(parsedMonthlyRent) ||
-      parsedMonthlyRent <= 0
+      !Number.isFinite(parsedRentAmount) ||
+      parsedRentAmount <= 0
     ) {
       return null;
     }
 
-    return getStartLeaseFirstMonthRentPreview({
+    return getStartLeaseFirstPeriodRentPreview({
       leaseEndDate,
       leaseStartDate,
-      monthlyRent: parsedMonthlyRent,
+      rentAmount: parsedRentAmount,
+      rentBillingCadence:
+        rentBillingCadence === RentBillingCadence.WEEKLY
+          ? RentBillingCadence.WEEKLY
+          : RentBillingCadence.MONTHLY,
     });
-  }, [leaseEndDate, leaseStartDate, monthlyRent]);
+  }, [leaseEndDate, leaseStartDate, monthlyRent, rentBillingCadence]);
 
   const availableUnits = useMemo(
     () =>
@@ -188,6 +198,10 @@ export function useStartLeaseForm({
         guestName: values.guestName,
         ...buildLeaseTermApiPayload(values),
         monthlyRent: Number(values.monthlyRent),
+        rentBillingCadence:
+          values.rentBillingCadence === RentBillingCadence.WEEKLY
+            ? RentBillingCadence.WEEKLY
+            : RentBillingCadence.MONTHLY,
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
         unitId: values.unitId,

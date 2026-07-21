@@ -6,6 +6,7 @@ import type {
   IPropertyIncomeLinesListQuery,
   IUpdatePropertyIncomeLineBody,
 } from "@/packages/shared";
+import { isValidRentPeriodKey } from "@/packages/shared";
 import {
   decodeIncomeLineKeysetCursor,
   encodeIncomeLineKeysetCursor,
@@ -97,6 +98,12 @@ function formatTransactionDateForCursor(transactionDate: unknown): string {
   throw new TypeError("Invalid transaction_date for cursor");
 }
 
+function assertValidRentPeriodMonth(rentPeriodMonth: string | null | undefined): void {
+  if (rentPeriodMonth != null && rentPeriodMonth !== "" && !isValidRentPeriodKey(rentPeriodMonth)) {
+    throw new Error(`Invalid rent_period_month: ${rentPeriodMonth}`);
+  }
+}
+
 export const propertyIncomeLinesDb = {
   async create(
     propertyId: string,
@@ -114,6 +121,7 @@ export const propertyIncomeLinesDb = {
     },
     computed: IPropertyIncomeLineComputedFields
   ): Promise<IPropertyIncomeLine> {
+    assertValidRentPeriodMonth(input.rentPeriodMonth);
     const result = await pool.query(
       `INSERT INTO property_income_lines (
          property_id,
@@ -380,6 +388,7 @@ export const propertyIncomeLinesDb = {
       values.push(input.amount);
     }
     if (input.rentPeriodMonth !== undefined) {
+      assertValidRentPeriodMonth(input.rentPeriodMonth);
       setClauses.push(`rent_period_month = $${param++}`);
       values.push(input.rentPeriodMonth);
     }

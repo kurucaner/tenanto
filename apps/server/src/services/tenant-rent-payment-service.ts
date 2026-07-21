@@ -4,12 +4,12 @@ import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
-import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   rentPaymentConnectNotReadyError,
   rentPaymentNotFoundError,
   rentPaymentValidationError,
 } from "@/errors/rent-payment-errors";
+import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import {
   isStripeConnectEnabled,
   requireStripeConnectOperational,
@@ -20,6 +20,7 @@ import {
   centsToDollars,
   computeTenantBalanceFromRentSchedule,
   isLeaseRentPeriodFullyPaidCents,
+  isWeeklyPeriodKey,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
@@ -28,7 +29,6 @@ import {
   type ITenantRentSummaryResponse,
   TenantLeaseListStatus,
   TenantRentPaymentStatus,
-  transactionDateToMonth,
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
@@ -48,10 +48,13 @@ function requireStripeConfigured(): void {
   requireStripeConnectOperational();
 }
 
+function resolveIncomeTransactionDateForPeriodKey(periodKey: string): string {
+  return isWeeklyPeriodKey(periodKey) ? periodKey : `${periodKey}-01`;
+}
+
 async function loadTenantBalanceFromSchedule(leaseId: string) {
   const schedule = await propertyLongStaysDb.getRentSchedule(leaseId);
-  const asOfMonth = transactionDateToMonth(getTodayUtcIsoDate());
-  return computeTenantBalanceFromRentSchedule(schedule, asOfMonth);
+  return computeTenantBalanceFromRentSchedule(schedule, getTodayUtcIsoDate());
 }
 
 async function computeLeaseBalanceFields(
@@ -59,6 +62,7 @@ async function computeLeaseBalanceFields(
   propertyId: string
 ): Promise<{
   amountDueCents: number;
+  duePeriodKeys: string[];
   paymentsEnabled: boolean;
   periods: ITenantLeaseBalancePeriod[];
 }> {
@@ -68,6 +72,7 @@ async function computeLeaseBalanceFields(
   ]);
   return {
     amountDueCents: balance.amountDueCents,
+    duePeriodKeys: balance.periodMonths,
     paymentsEnabled: isStripeConnectEnabled() && Boolean(connect?.chargesEnabled),
     periods: balance.periods,
   };
@@ -131,7 +136,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
         rentPeriodMonth: allocation.periodMonth,
         reservationId: null,
         tenantRentPaymentId: payment.id,
-        transactionDate: `${allocation.periodMonth}-01`,
+        transactionDate: resolveIncomeTransactionDateForPeriodKey(allocation.periodMonth),
         unitId: lease.unitId,
       },
       computed
@@ -329,18 +334,20 @@ export const tenantRentPaymentService = {
         if (!lease) {
           return {
             amountDueCents: 0,
+            duePeriodKeys: [],
             leaseId: item.leaseId,
             paymentsEnabled: false,
             propertyName: item.propertyName,
             unitLabel: item.unitLabel,
           };
         }
-        const { amountDueCents, paymentsEnabled } = await computeLeaseBalanceFields(
+        const { amountDueCents, duePeriodKeys, paymentsEnabled } = await computeLeaseBalanceFields(
           item.leaseId,
           lease.propertyId
         );
         return {
           amountDueCents,
+          duePeriodKeys,
           leaseId: item.leaseId,
           paymentsEnabled,
           propertyName: item.propertyName,

@@ -3,11 +3,26 @@ import { describe, expect, test } from "bun:test";
 import type { ITenantRentSummaryResponse } from "@/packages/shared";
 
 import {
+  formatDuePeriodsLabel,
   getLeasesWithDue,
   getPayableLeases,
   hasOnlinePayAvailable,
   resolveRentPayAction,
 } from "./rent-summary-utils";
+
+function lease(
+  overrides: Partial<ITenantRentSummaryResponse["leases"][number]> &
+    Pick<ITenantRentSummaryResponse["leases"][number], "leaseId">
+): ITenantRentSummaryResponse["leases"][number] {
+  return {
+    amountDueCents: 0,
+    duePeriodKeys: [],
+    paymentsEnabled: true,
+    propertyName: "Property",
+    unitLabel: "Unit",
+    ...overrides,
+  };
+}
 
 function summary(overrides: Partial<ITenantRentSummaryResponse>): ITenantRentSummaryResponse {
   return {
@@ -20,23 +35,29 @@ function summary(overrides: Partial<ITenantRentSummaryResponse>): ITenantRentSum
   };
 }
 
+describe("formatDuePeriodsLabel", () => {
+  test("formats a single monthly period", () => {
+    expect(formatDuePeriodsLabel(["2026-01"])).toBe("January 2026");
+  });
+
+  test("formats a single weekly period", () => {
+    expect(formatDuePeriodsLabel(["2026-01-15"])).toMatch(/^Week of /);
+  });
+
+  test("joins two periods with and", () => {
+    expect(formatDuePeriodsLabel(["2026-01-15", "2026-01-22"])).toContain(" and ");
+  });
+
+  test("returns null for empty period keys", () => {
+    expect(formatDuePeriodsLabel([])).toBeNull();
+  });
+});
+
 describe("getLeasesWithDue", () => {
   test("returns leases with a positive balance", () => {
     const leases = [
-      {
-        amountDueCents: 100_00,
-        leaseId: "lease-1",
-        paymentsEnabled: true,
-        propertyName: "A",
-        unitLabel: "1",
-      },
-      {
-        amountDueCents: 0,
-        leaseId: "lease-2",
-        paymentsEnabled: true,
-        propertyName: "B",
-        unitLabel: "2",
-      },
+      lease({ amountDueCents: 100_00, leaseId: "lease-1" }),
+      lease({ amountDueCents: 0, leaseId: "lease-2" }),
     ];
 
     expect(getLeasesWithDue(leases)).toEqual([leases[0]]);
@@ -46,20 +67,8 @@ describe("getLeasesWithDue", () => {
 describe("getPayableLeases", () => {
   test("returns due leases with online pay enabled", () => {
     const leases = [
-      {
-        amountDueCents: 100_00,
-        leaseId: "lease-1",
-        paymentsEnabled: true,
-        propertyName: "A",
-        unitLabel: "1",
-      },
-      {
-        amountDueCents: 50_00,
-        leaseId: "lease-2",
-        paymentsEnabled: false,
-        propertyName: "B",
-        unitLabel: "2",
-      },
+      lease({ amountDueCents: 100_00, leaseId: "lease-1", paymentsEnabled: true }),
+      lease({ amountDueCents: 50_00, leaseId: "lease-2", paymentsEnabled: false }),
     ];
 
     expect(getPayableLeases(leases)).toEqual([leases[0]]);
@@ -71,15 +80,7 @@ describe("resolveRentPayAction", () => {
     expect(
       resolveRentPayAction(
         summary({
-          leases: [
-            {
-              amountDueCents: 0,
-              leaseId: "lease-1",
-              paymentsEnabled: true,
-              propertyName: "A",
-              unitLabel: "1",
-            },
-          ],
+          leases: [lease({ amountDueCents: 0, leaseId: "lease-1" })],
           totalAmountDueCents: 0,
         })
       )
@@ -91,20 +92,12 @@ describe("resolveRentPayAction", () => {
       resolveRentPayAction(
         summary({
           leases: [
-            {
+            lease({
               amountDueCents: 100_00,
+              duePeriodKeys: ["2026-01"],
               leaseId: "lease-1",
-              paymentsEnabled: true,
-              propertyName: "A",
-              unitLabel: "1",
-            },
-            {
-              amountDueCents: 0,
-              leaseId: "lease-2",
-              paymentsEnabled: true,
-              propertyName: "B",
-              unitLabel: "2",
-            },
+            }),
+            lease({ amountDueCents: 0, leaseId: "lease-2" }),
           ],
           totalAmountDueCents: 100_00,
         })
@@ -117,13 +110,12 @@ describe("resolveRentPayAction", () => {
       resolveRentPayAction(
         summary({
           leases: [
-            {
+            lease({
               amountDueCents: 100_00,
+              duePeriodKeys: ["2026-01-15"],
               leaseId: "lease-1",
               paymentsEnabled: false,
-              propertyName: "A",
-              unitLabel: "1",
-            },
+            }),
           ],
           totalAmountDueCents: 100_00,
         })
@@ -133,20 +125,16 @@ describe("resolveRentPayAction", () => {
 
   test("opens lease picker when multiple leases have due balances", () => {
     const leases = [
-      {
+      lease({
         amountDueCents: 50_00,
+        duePeriodKeys: ["2026-01"],
         leaseId: "lease-1",
-        paymentsEnabled: true,
-        propertyName: "A",
-        unitLabel: "1",
-      },
-      {
+      }),
+      lease({
         amountDueCents: 50_00,
+        duePeriodKeys: ["2026-01-15"],
         leaseId: "lease-2",
-        paymentsEnabled: true,
-        propertyName: "B",
-        unitLabel: "2",
-      },
+      }),
     ];
 
     expect(
@@ -164,20 +152,18 @@ describe("resolveRentPayAction", () => {
       resolveRentPayAction(
         summary({
           leases: [
-            {
+            lease({
               amountDueCents: 50_00,
+              duePeriodKeys: ["2026-01-15"],
               leaseId: "lease-1",
               paymentsEnabled: true,
-              propertyName: "A",
-              unitLabel: "1",
-            },
-            {
+            }),
+            lease({
               amountDueCents: 50_00,
+              duePeriodKeys: ["2026-01"],
               leaseId: "lease-2",
               paymentsEnabled: false,
-              propertyName: "B",
-              unitLabel: "2",
-            },
+            }),
           ],
           totalAmountDueCents: 100_00,
         })
@@ -187,20 +173,18 @@ describe("resolveRentPayAction", () => {
 
   test("opens lease picker when multiple leases are due but none are payable", () => {
     const leases = [
-      {
+      lease({
         amountDueCents: 50_00,
+        duePeriodKeys: ["2026-01-15"],
         leaseId: "lease-1",
         paymentsEnabled: false,
-        propertyName: "A",
-        unitLabel: "1",
-      },
-      {
+      }),
+      lease({
         amountDueCents: 50_00,
+        duePeriodKeys: ["2026-01"],
         leaseId: "lease-2",
         paymentsEnabled: false,
-        propertyName: "B",
-        unitLabel: "2",
-      },
+      }),
     ];
 
     expect(
@@ -218,13 +202,12 @@ describe("hasOnlinePayAvailable", () => {
   test("true when a due lease has payments enabled", () => {
     expect(
       hasOnlinePayAvailable([
-        {
+        lease({
           amountDueCents: 10_00,
+          duePeriodKeys: ["2026-01-15"],
           leaseId: "lease-1",
           paymentsEnabled: true,
-          propertyName: "A",
-          unitLabel: "1",
-        },
+        }),
       ])
     ).toBe(true);
   });
@@ -232,13 +215,12 @@ describe("hasOnlinePayAvailable", () => {
   test("false when due but payments disabled", () => {
     expect(
       hasOnlinePayAvailable([
-        {
+        lease({
           amountDueCents: 10_00,
+          duePeriodKeys: ["2026-01"],
           leaseId: "lease-1",
           paymentsEnabled: false,
-          propertyName: "A",
-          unitLabel: "1",
-        },
+        }),
       ])
     ).toBe(false);
   });

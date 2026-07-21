@@ -48,6 +48,29 @@ export function enumerateLeaseMonths(leaseStartDate: string, leaseEndDate: strin
   return months;
 }
 
+const DAYS_IN_LEASE_WEEK = 7;
+
+export function getLeaseWeekPeriodEnd(periodStart: string): string {
+  return addDaysToIsoDate(periodStart, DAYS_IN_LEASE_WEEK - 1);
+}
+
+/** Week period starts aligned to the lease start weekday (first period begins on `leaseStartDate`). */
+export function enumerateLeaseWeeks(leaseStartDate: string, leaseEndDate: string): string[] {
+  if (leaseEndDate < leaseStartDate) {
+    return [];
+  }
+
+  const weeks: string[] = [];
+  let periodStart = leaseStartDate;
+
+  while (periodStart <= leaseEndDate) {
+    weeks.push(periodStart);
+    periodStart = addDaysToIsoDate(periodStart, DAYS_IN_LEASE_WEEK);
+  }
+
+  return weeks;
+}
+
 export function formatLeaseMonthLabel(month: string): string {
   const parts = month.split("-").map(Number);
   const year = parts[0] ?? 0;

@@ -95,4 +95,31 @@ describe("computeTenantBalanceFromRentSchedule", () => {
       remainingCents: 1000_00,
     });
   });
+
+  test("sums remaining cents for due weeks using today as asOf", () => {
+    const balance = computeTenantBalanceFromRentSchedule(
+      [
+        { expectedRent: 700, month: "2026-01-15", paidRent: 0 },
+        { expectedRent: 700, month: "2026-01-22", paidRent: 0 },
+        { expectedRent: 700, month: "2026-01-29", paidRent: 0 },
+      ],
+      "2026-01-22"
+    );
+
+    expect(balance.amountDueCents).toBe(1400_00);
+    expect(balance.periodMonths).toEqual(["2026-01-15", "2026-01-22"]);
+  });
+
+  test("excludes upcoming weeks beyond asOf reference date", () => {
+    const balance = computeTenantBalanceFromRentSchedule(
+      [
+        { expectedRent: 700, month: "2026-01-15", paidRent: 0 },
+        { expectedRent: 700, month: "2026-01-29", paidRent: 0 },
+      ],
+      "2026-01-18"
+    );
+
+    expect(balance.amountDueCents).toBe(700_00);
+    expect(balance.periodMonths).toEqual(["2026-01-15"]);
+  });
 });

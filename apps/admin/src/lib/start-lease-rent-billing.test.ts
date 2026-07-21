@@ -3,7 +3,6 @@ import { describe, expect, test } from "bun:test";
 import {
   getStartLeaseRentAmountLabel,
   normalizeStartLeaseRentBillingCadence,
-  WEEKLY_RENT_BILLING_ENABLED,
 } from "./start-lease-rent-billing";
 
 describe("normalizeStartLeaseRentBillingCadence", () => {
@@ -12,10 +11,8 @@ describe("normalizeStartLeaseRentBillingCadence", () => {
     expect(normalizeStartLeaseRentBillingCadence("daily")).toBe("monthly");
   });
 
-  test("keeps weekly only when feature is enabled", () => {
-    expect(normalizeStartLeaseRentBillingCadence("weekly")).toBe(
-      WEEKLY_RENT_BILLING_ENABLED ? "weekly" : "monthly"
-    );
+  test("keeps weekly when feature is enabled", () => {
+    expect(normalizeStartLeaseRentBillingCadence("weekly")).toBe("weekly");
   });
 });
 
