@@ -31,7 +31,6 @@ import {
   formatPropertyUnitSelectLabel,
   type IPropertyUnit,
   RENT_BILLING_CADENCE_VALUES,
-  RentBillingCadence,
 } from "@/packages/shared";
 
 export const START_LEASE_FORM_ID = "start-lease-form";
@@ -259,18 +258,10 @@ const RentStep = memo(
                 value={field.value}
               >
                 {RENT_BILLING_CADENCE_VALUES.map((cadence) => {
-                  const isWeekly = cadence === RentBillingCadence.WEEKLY;
-                  const isDisabled = isWeekly;
-
                   return (
                     <RadioOption
-                      disabled={isDisabled}
                       key={cadence}
-                      label={
-                        isWeekly && isDisabled
-                          ? `${START_LEASE_RENT_BILLING_LABELS[cadence]} · Coming soon`
-                          : START_LEASE_RENT_BILLING_LABELS[cadence]
-                      }
+                      label={START_LEASE_RENT_BILLING_LABELS[cadence]}
                       value={cadence}
                     />
                   );
