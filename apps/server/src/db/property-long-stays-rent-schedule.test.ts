@@ -718,12 +718,7 @@ describe("propertyLongStaysDb.getRentSchedule", () => {
       term_months: 1,
     });
     currentIncomeRows = [];
-    currentRentPeriodRows = [
-      {
-        effective_from_month: "2026-01-15",
-        monthly_rent: "700.00",
-      },
-    ];
+    currentRentPeriodRows = [];
 
     const schedule = await propertyLongStaysDb.getRentSchedule("lease-weekly", "2026-02-10");
 

@@ -23,7 +23,6 @@ import {
   getCurrentLeaseRent,
   getLeaseScheduleEffectiveEndDate,
   hasRentPeriodHistory,
-  isWeeklyRentBillingCadence,
   parseRentBillingCadence,
   PropertyLongStayStatus,
   RentBillingCadence,
@@ -151,15 +150,6 @@ export const propertyLongStaysDb = {
       ]
     );
     const longStay = mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
-
-    if (isWeeklyRentBillingCadence(rentBillingCadence)) {
-      await pool.query(
-        `INSERT INTO property_long_stay_rent_periods
-           (long_stay_id, effective_from_month, monthly_rent)
-         VALUES ($1, $2, $3)`,
-        [longStay.id, input.leaseStartDate, input.monthlyRent]
-      );
-    }
 
     return longStay;
   },

@@ -72,7 +72,7 @@ describe("propertyLongStaysDb.getTermsEditSignals", () => {
     });
   });
 
-  test("returns hasRentPeriodHistory false for weekly lease with single bootstrap period", async () => {
+  test("returns hasRentPeriodHistory false for weekly lease with no rent periods", async () => {
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes("has_income_lines")) {
         return Promise.resolve({
@@ -88,9 +88,7 @@ describe("propertyLongStaysDb.getTermsEditSignals", () => {
       }
 
       if (sql.includes("property_long_stay_rent_periods")) {
-        return Promise.resolve({
-          rows: [{ effective_from_month: "2026-01-15", monthly_rent: "700" }],
-        });
+        return Promise.resolve({ rows: [] });
       }
 
       return Promise.resolve({ rows: [] });

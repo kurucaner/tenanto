@@ -116,7 +116,7 @@ describe("buildLeaseRentScheduleWithRollup", () => {
         rentBillingCadence: RentBillingCadence.WEEKLY,
       },
       months: ["2026-01-15", "2026-01-22", "2026-01-29", "2026-02-05"],
-      rentPeriods: [{ effectiveFromMonth: "2026-01-15", monthlyRent: 700 }],
+      rentPeriods: [],
     });
 
     expect(schedule).toHaveLength(4);

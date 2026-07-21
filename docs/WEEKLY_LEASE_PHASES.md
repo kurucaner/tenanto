@@ -545,26 +545,29 @@ Work after the initial weekly-billing launch. Split into **v2 early** (UI polish
 - [x] Document on `IPropertyLongStayRentPeriod`: `effectiveFromMonth` holds `YYYY-MM` or `YYYY-MM-DD` period keys; `monthlyRent` is recurring amount for the cadence.
 - [x] Regression tests: shared weekly bootstrap + monthly extend-with-rent; server integration for both cadences.
 
-**Exit criteria:** New weekly lease with one bootstrap period → `hasRentPeriodHistory: false`; monthly extend-with-rent still `true`. Required before Phase 11.
+**Exit criteria:** New weekly lease with no rent periods → `hasRentPeriodHistory: false`; monthly extend-with-rent still `true`. Required before Phase 11.
 
 ---
 
 ### Phase 10 — Weekly create bootstrap row (optional cleanup)
 
+**Status:** ✅ Complete
+
 **Goal:** Avoid confusing `rentPeriods: [{ effectiveFromMonth: "<lease-start>", … }]` on brand-new weekly leases.
 
-**Files (3)**
+**Files (4)**
 
 | #   | File                                                                |
 | --- | ------------------------------------------------------------------- |
 | 1   | `apps/server/src/db/property-long-stays.ts`                         |
 | 2   | `apps/server/src/lib/build-lease-rent-schedule-with-rollup.test.ts` |
 | 3   | `apps/server/src/db/property-long-stays-rent-schedule.test.ts`      |
+| 4   | `apps/server/src/db/property-long-stays-create.test.ts`             |
 
 **Tasks**
 
-- [ ] Remove or skip weekly bootstrap insert on create (schedule already falls back to `lease.monthlyRent` when `rentPeriods` is empty).
-- [ ] Only insert `rent_periods` rows when rent actually changes (extend/amendment flows).
+- [x] Remove weekly bootstrap insert on create (schedule falls back to `lease.monthlyRent` when `rentPeriods` is empty).
+- [x] Only insert `rent_periods` rows when rent actually changes (extend/amendment flows).
 
 **Exit criteria:** New weekly lease returns `rentPeriods: []`; schedule, record rent, and tenant pay unchanged.
 
