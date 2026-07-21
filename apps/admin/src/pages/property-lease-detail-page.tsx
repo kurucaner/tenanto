@@ -151,7 +151,7 @@ export const PropertyLeaseDetailPage = memo(() => {
           tabs={LEASE_DETAIL_TAB_DEFINITIONS}
         >
           <UrlSyncedTabsContent value="overview">
-            <LeaseOverviewSection currentRent={currentRent} lease={lease} />
+            <LeaseOverviewSection lease={lease} />
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="tenants">

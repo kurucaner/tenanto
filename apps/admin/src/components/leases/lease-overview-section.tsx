@@ -1,23 +1,19 @@
 import { memo } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format-money";
 import { getActiveLeaseHoldoverNotice } from "@/lib/lease-proration-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   type IPropertyLongStay,
   isActiveLeaseInHoldover,
   isCustomLeaseEndDate,
-  PropertyLongStayStatus,
 } from "@/packages/shared";
 
 interface LeaseOverviewSectionProps {
-  currentRent: number;
   lease: IPropertyLongStay;
 }
 
-export const LeaseOverviewSection = memo(({ currentRent, lease }: LeaseOverviewSectionProps) => {
+export const LeaseOverviewSection = memo(({ lease }: LeaseOverviewSectionProps) => {
   const today = getTodayLocalIsoDate();
   const isInHoldover = isActiveLeaseInHoldover(lease, today);
   const endDate = lease.actualEndDate ?? lease.leaseEndDate;
@@ -29,14 +25,7 @@ export const LeaseOverviewSection = memo(({ currentRent, lease }: LeaseOverviewS
 
   return (
     <Card>
-      <CardContent className="space-y-4 p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={lease.status === PropertyLongStayStatus.ACTIVE ? "default" : "secondary"}>
-            {lease.status === PropertyLongStayStatus.ACTIVE ? "Active" : "Ended"}
-          </Badge>
-          {isInHoldover ? <Badge variant="outline">Holdover</Badge> : null}
-          <span className="text-muted-foreground text-sm">{formatMoney(currentRent)}/mo</span>
-        </div>
+      <CardContent className="space-y-4 p-4">
         {isInHoldover ? (
           <p className="text-muted-foreground text-sm">
             {getActiveLeaseHoldoverNotice(lease.leaseEndDate)}
