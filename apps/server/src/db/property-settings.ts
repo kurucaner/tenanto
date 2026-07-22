@@ -41,6 +41,7 @@ export const propertySettingsDb = {
     ]);
 
     await propertyIncomeLineTypesDb.ensureSystemIncomeLineTypes(propertyId);
+    await propertyExpenseCategoryTypesDb.ensureSystemPaymentProcessingExpenseCategory(propertyId);
 
     const settings = await propertySettingsDb.findByProperty(propertyId);
     if (!settings) {

@@ -172,9 +172,9 @@ No new public API required for v1. Internal:
 
 **Goal:** Idempotent ensure helper (insert or restore archived-by-name → set `is_system`).
 
-- [ ] `ensureSystemPaymentProcessingExpenseCategory(propertyId)` in expense category DAO (mirror income `ensureSystemIncomeLineType`)
-- [ ] Call from the same lifecycle points as expense defaults / property create (keep call sites minimal)
-- [ ] DAO / service tests
+- [x] `ensureSystemPaymentProcessingExpenseCategory(propertyId)` in expense category DAO (mirror income `ensureSystemIncomeLineType`)
+- [x] Call from `seedDefaults` + `propertySettingsDb.getOrCreateDefaults` (same lifecycle as income system types)
+- [x] DAO tests (`property-expense-category-types-system.test.ts`)
 
 **Files (≤5).**
 
