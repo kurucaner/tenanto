@@ -15,8 +15,8 @@ import { getTenantEmailCampaignStatusLabel } from "@/lib/tenant-email-campaign-u
 import { type IHomeRecentTenantEmailCampaign } from "@/packages/shared";
 
 const COMMUNICATIONS_EMPTY_MESSAGE = "Send something new";
-const COMMUNICATIONS_EMPTY_TOOLTIP = "Create a property first to send tenant emails.";
-const COMMUNICATIONS_TAB = { label: "Communications", path: "communications" } as const;
+const COMMUNICATIONS_EMPTY_TOOLTIP = "Create a property first to send an announcement.";
+const COMMUNICATIONS_TAB = { label: "Announcements", path: "communications" } as const;
 
 const HomeCommunicationRow = memo(({ campaign }: { campaign: IHomeRecentTenantEmailCampaign }) => {
   const showStatusHint = isHomeRecentTenantEmailCampaignInProgress(campaign.status);
@@ -52,7 +52,7 @@ export const HomeCommunicationsColumn = memo(() => {
 
   if (isPending) {
     return (
-      <HomeColumnPanel title="Communications">
+      <HomeColumnPanel title="Announcements">
         {Array.from({ length: 4 }, (_, index) => (
           <div className="flex min-h-11 items-center gap-2.5 px-3 py-2" key={index}>
             <Skeleton className="size-4 shrink-0 rounded-sm" />
@@ -65,7 +65,7 @@ export const HomeCommunicationsColumn = memo(() => {
 
   if (isError && campaigns.length === 0) {
     return (
-      <HomeColumnPanel title="Communications">
+      <HomeColumnPanel title="Announcements">
         <div className="flex flex-col gap-2 px-3 py-4">
           <p className="text-destructive text-xs">
             {error instanceof Error ? error.message : "Could not load tenant emails."}
@@ -84,7 +84,7 @@ export const HomeCommunicationsColumn = memo(() => {
         <HomeColumnPanel
           emptyHref={buildPropertyShellTabPath(firstProperty.id, COMMUNICATIONS_TAB)}
           emptyMessage={COMMUNICATIONS_EMPTY_MESSAGE}
-          title="Communications"
+          title="Announcements"
         />
       );
     }
@@ -93,13 +93,13 @@ export const HomeCommunicationsColumn = memo(() => {
       <HomeColumnPanel
         emptyMessage={COMMUNICATIONS_EMPTY_MESSAGE}
         emptyTooltip={COMMUNICATIONS_EMPTY_TOOLTIP}
-        title="Communications"
+        title="Announcements"
       />
     );
   }
 
   return (
-    <HomeColumnPanel title="Communications">
+    <HomeColumnPanel title="Announcements">
       {campaigns.map((campaign) => (
         <HomeCommunicationRow campaign={campaign} key={campaign.id} />
       ))}

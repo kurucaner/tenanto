@@ -8,7 +8,7 @@
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
 - A dialog when the users log in to the app for the first time.
-- ~~Add security deposit flow~~ (v1.5 done — set/record, balance, end-lease settle, refund + email)
+- ~~Add security deposit flow~~ (v1.5 done — set/record, balance, end-lease settle, refund + email; v2 Phase 8 = extend top-up)
 - Add weekly long term stays
 - Sub category implementation for expenses
 - Add Stripe commission to long stay payments
