@@ -18,6 +18,7 @@ const activeLease = {
   leaseStartDate: "2026-01-01",
   rentAmount: 1500,
   rentBillingCadence: RentBillingCadence.MONTHLY,
+  securityDepositAmount: null as number | null,
   status: PropertyLongStayStatus.ACTIVE,
   termMonths: 12,
 } as const;
@@ -262,6 +263,81 @@ describe("validateEditLeaseTerms", () => {
         "2026-07-09"
       )
     ).toBe("At least one lease term field must change");
+  });
+
+  test("rejects no-op when deposit is omitted and other fields match", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: activeLease.leaseStartDate,
+          rentAmount: activeLease.rentAmount,
+          securityDepositAmount: undefined,
+          termMonths: activeLease.termMonths,
+        },
+        { ...activeLease, securityDepositAmount: 1500 },
+        "2026-07-09"
+      )
+    ).toBe("At least one lease term field must change");
+  });
+
+  test("rejects no-op when deposit matches existing amount", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: activeLease.leaseStartDate,
+          rentAmount: activeLease.rentAmount,
+          securityDepositAmount: 1500,
+          termMonths: activeLease.termMonths,
+        },
+        { ...activeLease, securityDepositAmount: 1500 },
+        "2026-07-09"
+      )
+    ).toBe("At least one lease term field must change");
+  });
+
+  test("accepts deposit-only changes", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: activeLease.leaseStartDate,
+          rentAmount: activeLease.rentAmount,
+          securityDepositAmount: 1500,
+          termMonths: activeLease.termMonths,
+        },
+        activeLease,
+        "2026-07-09"
+      )
+    ).toBeNull();
+  });
+
+  test("accepts clearing deposit when previously set", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: activeLease.leaseStartDate,
+          rentAmount: activeLease.rentAmount,
+          securityDepositAmount: null,
+          termMonths: activeLease.termMonths,
+        },
+        { ...activeLease, securityDepositAmount: 1500 },
+        "2026-07-09"
+      )
+    ).toBeNull();
+  });
+
+  test("rejects negative deposit amounts", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: activeLease.leaseStartDate,
+          rentAmount: activeLease.rentAmount,
+          securityDepositAmount: -1,
+          termMonths: activeLease.termMonths,
+        },
+        activeLease,
+        "2026-07-09"
+      )
+    ).toBe("securityDepositAmount must be a non-negative number");
   });
 
   test("rejects ended lease updates", () => {

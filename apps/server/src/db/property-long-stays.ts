@@ -138,12 +138,16 @@ export const propertyLongStaysDb = {
       throw new Error("rentAmount is required");
     }
 
+    const securityDepositAmount =
+      input.securityDepositAmount === undefined ? null : input.securityDepositAmount;
+
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, rent_amount,
-          lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence)
+          lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence,
+          security_deposit_amount)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status,
-               $11::rent_billing_cadence)
+               $11::rent_billing_cadence, $12)
        RETURNING *`,
       [
         propertyId,
@@ -157,6 +161,7 @@ export const propertyLongStaysDb = {
         tenantPhone,
         PropertyLongStayStatus.ACTIVE,
         rentBillingCadence,
+        securityDepositAmount,
       ]
     );
     const longStay = mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
@@ -587,6 +592,10 @@ export const propertyLongStaysDb = {
     );
 
     const rentAmount = resolveTermsEditRentAmount(body);
+    const securityDepositAmount =
+      body.securityDepositAmount === undefined
+        ? existing.securityDepositAmount
+        : body.securityDepositAmount;
 
     const client = await pool.connect();
     try {
@@ -615,9 +624,10 @@ export const propertyLongStaysDb = {
          SET lease_start_date = $2,
              term_months = $3,
              rent_amount = $4,
-             lease_end_date = $5
+             lease_end_date = $5,
+             security_deposit_amount = $6
          WHERE id = $1
-           AND status = $6::property_long_stay_status
+           AND status = $7::property_long_stay_status
          RETURNING *`,
         [
           id,
@@ -625,6 +635,7 @@ export const propertyLongStaysDb = {
           termMonths,
           rentAmount,
           leaseEndDate,
+          securityDepositAmount,
           PropertyLongStayStatus.ACTIVE,
         ]
       );

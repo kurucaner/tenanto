@@ -1,4 +1,6 @@
+import { validateSecurityDepositAmount } from "./lease-deposit-utils";
 import { resolveLeaseEndDate, validateLeaseTermInput } from "./lease-term-input-utils";
+import { roundMoney } from "./property-income-calculator";
 import {
   type IEditPropertyLongStayTermsBody,
   type ILeaseTermsEditability,
@@ -89,6 +91,22 @@ export function deriveLeaseTermsEditability(
   return { editable: true };
 }
 
+function isSecurityDepositUnchanged(
+  bodyAmount: number | null | undefined,
+  existingAmount: number | null
+): boolean {
+  if (bodyAmount === undefined) {
+    return true;
+  }
+  if (bodyAmount === null && existingAmount === null) {
+    return true;
+  }
+  if (bodyAmount === null || existingAmount === null) {
+    return false;
+  }
+  return roundMoney(bodyAmount) === roundMoney(existingAmount);
+}
+
 export function validateEditLeaseTerms(
   body: IEditPropertyLongStayTermsBody,
   lease: Pick<
@@ -97,6 +115,7 @@ export function validateEditLeaseTerms(
     | "leaseStartDate"
     | "rentAmount"
     | "rentBillingCadence"
+    | "securityDepositAmount"
     | "status"
     | "termMonths"
   >,
@@ -109,6 +128,11 @@ export function validateEditLeaseTerms(
   const termError = validateLeaseTermInput(body);
   if (termError) {
     return termError;
+  }
+
+  const depositError = validateSecurityDepositAmount(body.securityDepositAmount);
+  if (depositError) {
+    return depositError;
   }
 
   const editedRentAmount = resolveTermsEditRentAmount(body);
@@ -129,7 +153,8 @@ export function validateEditLeaseTerms(
   if (
     body.leaseStartDate === lease.leaseStartDate &&
     resolved.leaseEndDate === lease.leaseEndDate &&
-    editedRentAmount === getLeaseRentAmount(lease)
+    editedRentAmount === getLeaseRentAmount(lease) &&
+    isSecurityDepositUnchanged(body.securityDepositAmount, lease.securityDepositAmount)
   ) {
     return "At least one lease term field must change";
   }

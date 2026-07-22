@@ -34,7 +34,7 @@ import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observ
 import { updatePrimaryTenantContact } from "@/services/update-primary-tenant-contact-service";
 
 import { parseDateString, parseUuidParam } from "./admin-query-utils";
-import { parseJsonObject, parseMoney } from "./parse-body-utils";
+import { parseJsonObject, parseMoney, parseOptionalNullableMoney } from "./parse-body-utils";
 import { buildPaginatedListResponse } from "./parse-list-query-pagination";
 import { parsePropertyLongStaysListQuery } from "./parse-property-long-stays-list-query";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
@@ -161,6 +161,14 @@ function parseCreateLongStayBody(
     return tenantPhoneResult;
   }
 
+  const securityDepositAmount = parseOptionalNullableMoney(
+    r["securityDepositAmount"],
+    "securityDepositAmount"
+  );
+  if (!securityDepositAmount.ok) {
+    return securityDepositAmount;
+  }
+
   return {
     body: {
       guestName: r["guestName"].trim(),
@@ -171,6 +179,7 @@ function parseCreateLongStayBody(
           rentAmount: rentAmountValue,
         }) ?? rentAmountValue,
       rentBillingCadence,
+      securityDepositAmount: securityDepositAmount.value,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
       unitId,
@@ -211,6 +220,14 @@ function parseEditLeaseTermsBody(
     return { error: "rentAmount must be a non-negative number", ok: false };
   }
 
+  const securityDepositAmount = parseOptionalNullableMoney(
+    r["securityDepositAmount"],
+    "securityDepositAmount"
+  );
+  if (!securityDepositAmount.ok) {
+    return securityDepositAmount;
+  }
+
   return {
     body: {
       ...leaseTermFields.body,
@@ -218,6 +235,7 @@ function parseEditLeaseTermsBody(
         monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
         rentAmount: rentAmountValue,
       }),
+      securityDepositAmount: securityDepositAmount.value,
     },
     ok: true,
   };

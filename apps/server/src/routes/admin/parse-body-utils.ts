@@ -12,6 +12,24 @@ export function parseMoney(raw: unknown): number | null {
   return raw;
 }
 
+/** `undefined` = omit; `null` = clear/none; number = non-negative money. */
+export function parseOptionalNullableMoney(
+  raw: unknown,
+  fieldLabel: string
+): TParseResult<number | null | undefined> {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (raw === null) {
+    return { ok: true, value: null };
+  }
+  const money = parseMoney(raw);
+  if (money === null) {
+    return { error: `${fieldLabel} must be a non-negative number`, ok: false };
+  }
+  return { ok: true, value: money };
+}
+
 export function parseOptionalUuidField(
   raw: unknown,
   fieldLabel: string

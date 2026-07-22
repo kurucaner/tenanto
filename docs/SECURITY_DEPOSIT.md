@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: phase-1b-server
     content: "Phase 1b: property-long-stays create/updateTerms + routes + tests"
-    status: pending
+    status: completed
   - id: phase-2a-system-type
     content: "Phase 2a: Migration v77 multi-system index + ensureLeaseDepositIncomeLineType"
     status: pending

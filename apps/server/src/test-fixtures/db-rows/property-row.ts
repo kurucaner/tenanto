@@ -79,6 +79,7 @@ export function buildRentScheduleLeaseRow(
     rent_amount: "1500.00",
     rent_billing_cadence: "monthly",
     secondary_tenants: [],
+    security_deposit_amount: null,
     status: "active",
     tenant_email: null,
     tenant_phone: null,
