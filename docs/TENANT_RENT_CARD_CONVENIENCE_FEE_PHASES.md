@@ -8,6 +8,8 @@ Ship **locked Checkout** first (method chosen in-app), then **Payment Element + 
 
 **Parent rent plan:** [`TENANT_STRIPE_RENT_PAYMENTS.md`](./TENANT_STRIPE_RENT_PAYMENTS.md).
 
+**Follow-on ledger:** auto-book Stripe processing fees as property expenses — [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md).
+
 **Related code today**
 
 - [`apps/server/src/services/tenant-rent-payment-service.ts`](../apps/server/src/services/tenant-rent-payment-service.ts) — Checkout create, succeed → income
