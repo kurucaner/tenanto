@@ -168,9 +168,7 @@ export const ExtendLeaseDialog = memo(
             const error = validateExtendLease(body, lease, today);
             if (error) {
               let extendModeErrorPath:
-                | "additionalTermMonths"
-                | "additionalTermWeeks"
-                | "newLeaseEndDate";
+                "additionalTermMonths" | "additionalTermWeeks" | "newLeaseEndDate";
               if (values.extendMode === "customEnd") {
                 extendModeErrorPath = "newLeaseEndDate";
               } else if (values.extendMode === "weeks") {
@@ -180,7 +178,7 @@ export const ExtendLeaseDialog = memo(
               }
 
               ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+                code: "custom",
                 message: error,
                 path: [extendModeErrorPath],
               });
@@ -189,7 +187,7 @@ export const ExtendLeaseDialog = memo(
             if (values.extendMode === "months") {
               if (!/^\d+$/.test(values.additionalTermMonths)) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: "custom",
                   message: "Additional term must be a whole number",
                   path: ["additionalTermMonths"],
                 });
@@ -197,7 +195,7 @@ export const ExtendLeaseDialog = memo(
                 const parsed = Number.parseInt(values.additionalTermMonths, 10);
                 if (parsed < 1 || parsed > MAX_ADDITIONAL_TERM_MONTHS) {
                   ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                     message: `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_MONTHS}`,
                     path: ["additionalTermMonths"],
                   });
@@ -206,7 +204,7 @@ export const ExtendLeaseDialog = memo(
             } else if (values.extendMode === "weeks") {
               if (!/^\d+$/.test(values.additionalTermWeeks)) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: "custom",
                   message: "Additional term must be a whole number",
                   path: ["additionalTermWeeks"],
                 });
@@ -214,7 +212,7 @@ export const ExtendLeaseDialog = memo(
                 const parsed = Number.parseInt(values.additionalTermWeeks, 10);
                 if (parsed < 1 || parsed > MAX_ADDITIONAL_TERM_WEEKS) {
                   ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                    code: "custom",
                     message: `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_WEEKS}`,
                     path: ["additionalTermWeeks"],
                   });
@@ -222,7 +220,7 @@ export const ExtendLeaseDialog = memo(
               }
             } else if (values.newLeaseEndDate === "") {
               ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+                code: "custom",
                 message: "New lease end date is required",
                 path: ["newLeaseEndDate"],
               });
@@ -234,7 +232,7 @@ export const ExtendLeaseDialog = memo(
               );
               if (!rentResult.success) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: "custom",
                   message:
                     rentResult.error.issues[0]?.message ?? `Invalid ${newRentLabel.toLowerCase()}`,
                   path: ["newRentAmount"],
