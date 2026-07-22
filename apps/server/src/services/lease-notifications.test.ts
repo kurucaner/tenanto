@@ -261,7 +261,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       leaseStartDate: "January 1, 2026",
       moveOutDate: "July 5, 2024",
       paymentStatusLine:
-        "Final month rent of $161.29 is still outstanding. Please contact your property manager.",
+        "Final month rent of $161.29 is still outstanding. Someone from our team will contact you.",
       propertyName: "Sunset Apartments",
       tenantName: "Jane Tenant",
       unitLabel: "Unit 101",
@@ -352,7 +352,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
     expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
     const emailPayload = getMockCallArg<LeaseEndedEmailOptions>(mockSendLeaseEndedEmail, 1);
     expect(emailPayload?.depositPlain).toBe(
-      "Security deposit: $1,500.00 was collected. Your property manager will settle any refund or amount withheld for damages."
+      "Security deposit: $1,500.00 was collected. Someone from our team will settle any refund or amount withheld for damages."
     );
     expect(emailPayload?.depositSection).toContain("Security deposit: $1,500.00 was collected");
   });
@@ -422,7 +422,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       leaseStartDate: "January 15, 2026",
       moveOutDate: "January 23, 2026",
       paymentStatusLine:
-        "Final week rent of $400.00 is still outstanding. Please contact your property manager.",
+        "Final week rent of $400.00 is still outstanding. Someone from our team will contact you.",
       propertyName: "Sunset Apartments",
       tenantName: "Jane Tenant",
       unitLabel: "Unit 101",

@@ -205,7 +205,7 @@ export async function sendLeaseEndedEmail(
     "",
     opts.paymentStatusLine,
     "",
-    "If you have questions about your final rent or move-out, contact your property manager.",
+    "If you have questions about your final rent or move-out, someone from our team will be in touch.",
   ]
     .filter((line): line is string => line !== null)
     .join("\n");

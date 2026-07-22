@@ -148,7 +148,7 @@ function buildPaymentStatusLine(
   rentBillingCadence: TRentBillingCadence
 ): string {
   if (!finalPeriod) {
-    return "Your lease is closed. If you have questions, contact your property manager.";
+    return "Your lease is closed. Someone from our team will be in touch if you have questions.";
   }
 
   const periodHeading = getFinalRentPaymentStatusHeading(rentBillingCadence);
@@ -157,7 +157,7 @@ function buildPaymentStatusLine(
     return `${periodHeading} is recorded — you're all set.`;
   }
 
-  return `${periodHeading} of ${moneyFormatter.format(finalPeriod.expectedRent)} is still outstanding. Please contact your property manager.`;
+  return `${periodHeading} of ${moneyFormatter.format(finalPeriod.expectedRent)} is still outstanding. Someone from our team will contact you.`;
 }
 
 function buildDepositContent(summary: ILeaseDepositSummary): { plain: string; section: string } {
@@ -168,8 +168,8 @@ function buildDepositContent(summary: ILeaseDepositSummary): { plain: string; se
   const amount = moneyFormatter.format(summary.collected);
   const plain =
     summary.status === LeaseDepositBalanceStatus.REFUNDED
-      ? `Security deposit: ${amount} was collected and a refund has been recorded. Contact your property manager with questions about the final settlement.`
-      : `Security deposit: ${amount} was collected. Your property manager will settle any refund or amount withheld for damages.`;
+      ? `Security deposit: ${amount} was collected and a refund has been recorded. Someone from our team will be in touch with any questions about the final settlement.`
+      : `Security deposit: ${amount} was collected. Someone from our team will settle any refund or amount withheld for damages.`;
 
   return {
     plain,
