@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { memo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { tenantPortalApi } from "@/lib/api-client";
@@ -16,6 +17,7 @@ import {
 } from "@/packages/app-ui";
 
 export const PendingInvitesPage = memo(function PendingInvitesPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [actingMembershipId, setActingMembershipId] = useState<string | null>(null);
   const [actingType, setActingType] = useState<"accept" | "decline" | null>(null);
@@ -32,6 +34,7 @@ export const PendingInvitesPage = memo(function PendingInvitesPage() {
       await tenantPortalApi.acceptInvite(membershipId);
       await invalidateTenantPortalCaches(queryClient);
       toast.success("Invitation accepted");
+      navigate(`/home`);
     } catch (error) {
       toast.error(getAuthApiErrorMessage(error, "Failed to accept invitation"));
     } finally {
