@@ -10,7 +10,7 @@ import {
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
 import { longStaysApi } from "@/lib/api-client";
-import { invalidatePropertyLongStayDetailQuery } from "@/lib/invalidate-property-long-stay-caches";
+import { invalidatePropertyLongStayDetailCaches } from "@/lib/invalidate-property-long-stay-caches";
 import type { ILeasePrimaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 
 interface EditPrimaryTenantDialogProps {
@@ -40,7 +40,7 @@ export const EditPrimaryTenantDialog = memo(
       },
       onSuccess: () => {
         toast.success("Primary tenant updated");
-        invalidatePropertyLongStayDetailQuery(queryClient, propertyId, lease.id);
+        invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
         onOpenChange(false);
       },
     });

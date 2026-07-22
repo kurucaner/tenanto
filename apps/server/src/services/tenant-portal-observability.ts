@@ -27,6 +27,10 @@ export function logTenantPortalResent(membership: ILeaseTenantMembership): void 
   WinstonLogger.info("tenant_portal.resent", buildTenantPortalMembershipLogContext(membership));
 }
 
+export function logTenantPortalRetargeted(membership: ILeaseTenantMembership): void {
+  WinstonLogger.info("tenant_portal.retargeted", buildTenantPortalMembershipLogContext(membership));
+}
+
 export function logTenantPortalRevoked(membership: ILeaseTenantMembership): void {
   WinstonLogger.info("tenant_portal.revoked", buildTenantPortalMembershipLogContext(membership));
 }

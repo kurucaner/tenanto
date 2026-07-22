@@ -434,6 +434,47 @@ export const leaseTenantMembershipsDb = {
     return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
   },
 
+  /**
+   * Atomically retarget a pending invite to a new email: reclassify status/user,
+   * rotate token, and refresh expiry. Does not use transitionStatus (pending↔pending
+   * is not in the general transition matrix).
+   */
+  async retargetPendingInvite(
+    id: string,
+    input: {
+      inviteEmail: string;
+      inviteTokenHash: string;
+      status:
+        | typeof TenantMembershipStatus.PENDING_ACCEPTANCE
+        | typeof TenantMembershipStatus.PENDING_INVITE;
+      tenantUserId: string | null;
+    },
+    db: DbQueryable = pool
+  ): Promise<ILeaseTenantMembership | null> {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + PORTAL_INVITE_EXPIRY_DAYS);
+
+    const result = await db.query(
+      `UPDATE lease_tenant_memberships
+       SET invite_email = LOWER(TRIM($1)),
+           status = $2::tenant_membership_status,
+           tenant_user_id = $3,
+           invite_token_hash = $4,
+           expires_at = $5,
+           invited_at = NOW(),
+           updated_at = NOW()
+       WHERE id = $6
+         AND status IN (
+           'pending_invite'::tenant_membership_status,
+           'pending_acceptance'::tenant_membership_status
+         )
+       RETURNING *`,
+      [input.inviteEmail, input.status, input.tenantUserId, input.inviteTokenHash, expiresAt, id]
+    );
+    if (result.rows.length === 0) return null;
+    return mapLeaseTenantMembershipRow(result.rows[0] as Record<string, unknown>);
+  },
+
   async transitionStatus(
     id: string,
     toStatus: TTenantMembershipStatus,

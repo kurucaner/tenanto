@@ -22,16 +22,16 @@ todos:
     status: completed
   - id: phase-3b-terms-ui
     content: "Phase 3b: Lease terms display + edit-lease-terms-dialog"
-    status: pending
+    status: completed
   - id: phase-4a-record-ux
     content: "Phase 4a: Record deposit prefill + lease-deposit-section + income dialog"
-    status: pending
+    status: completed
   - id: phase-4b-income-api
     content: "Phase 4b: Server income POST for deposit lines + tests"
-    status: pending
+    status: completed
   - id: phase-5-income-table
     content: "Phase 5: Income badges/filters + release notes (v1 complete)"
-    status: pending
+    status: completed
   - id: phase-6a-balance
     content: "Phase 6a: lease-deposit-balance-utils + GET detail depositSummary"
     status: pending
