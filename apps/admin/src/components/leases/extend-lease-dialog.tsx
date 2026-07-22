@@ -167,16 +167,22 @@ export const ExtendLeaseDialog = memo(
             const body = buildExtendLeaseMutationBody(values, topUpOffer?.eligible === true);
             const error = validateExtendLease(body, lease, today);
             if (error) {
+              let extendModeErrorPath:
+                | "additionalTermMonths"
+                | "additionalTermWeeks"
+                | "newLeaseEndDate";
+              if (values.extendMode === "customEnd") {
+                extendModeErrorPath = "newLeaseEndDate";
+              } else if (values.extendMode === "weeks") {
+                extendModeErrorPath = "additionalTermWeeks";
+              } else {
+                extendModeErrorPath = "additionalTermMonths";
+              }
+
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: error,
-                path: [
-                  values.extendMode === "customEnd"
-                    ? "newLeaseEndDate"
-                    : values.extendMode === "weeks"
-                      ? "additionalTermWeeks"
-                      : "additionalTermMonths",
-                ],
+                path: [extendModeErrorPath],
               });
             }
 
