@@ -94,7 +94,7 @@ export const EditLeaseTenantContactDialog = memo(
       }
     );
 
-    const { errors, isDirty, isSubmitting } = form.formState;
+    const { errors, isSubmitting } = form.formState;
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -124,7 +124,7 @@ export const EditLeaseTenantContactDialog = memo(
               >
                 Cancel
               </Button>
-              <Button disabled={isPending || isSubmitting || !isDirty} type="submit">
+              <Button disabled={isPending || isSubmitting} type="submit">
                 {isPending ? "Saving…" : "Save Changes"}
               </Button>
             </DialogFooter>
