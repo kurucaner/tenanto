@@ -41,9 +41,9 @@ export const SmsConsentField = memo(function SmsConsentField({
         className="block min-w-0 flex-1 text-sm leading-relaxed font-normal text-muted-foreground"
         htmlFor={consentId}
       >
-        I agree to receive transactional SMS from PropertyOS, including verification codes and
-        account notifications. Message frequency varies. Message and data rates may apply. Reply
-        STOP to opt out or HELP for help. See our{" "}
+        I agree to receive transactional SMS from PropertyOS, operated by Edgium LLC, including
+        verification codes and account notifications. Message frequency varies. Message and data
+        rates may apply. Reply STOP to opt out or HELP for help. See our{" "}
         <a
           className={linkClassName}
           href={`${baseUrl}/terms-of-service`}
