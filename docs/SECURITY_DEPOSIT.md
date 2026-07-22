@@ -43,7 +43,7 @@ todos:
     status: completed
   - id: phase-7b-refund-email
     content: "Phase 7b: Refund dialog copy + end-lease email (v1.5 complete)"
-    status: pending
+    status: completed
 isProject: false
 ---
 

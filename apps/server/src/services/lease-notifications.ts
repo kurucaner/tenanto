@@ -1,14 +1,17 @@
 import { propertiesDb } from "@/db/properties";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyUnitsDb } from "@/db/property-units";
+import { loadLeaseDepositSummary } from "@/lib/lease-deposit-summary";
 import {
   findWeeklyPeriodStartContainingDate,
   formatProratedDaysLabel,
   formatRentPeriodLabel,
   getRentSchedulePeriodKey,
+  type ILeaseDepositSummary,
   type IPropertyLongStay,
   type IPropertyLongStayRentMonth,
   isWeeklyRentBillingCadence,
+  LeaseDepositBalanceStatus,
   transactionDateToMonth,
   type TRentBillingCadence,
 } from "@/packages/shared";
@@ -157,6 +160,23 @@ function buildPaymentStatusLine(
   return `${periodHeading} of ${moneyFormatter.format(finalPeriod.expectedRent)} is still outstanding. Please contact your property manager.`;
 }
 
+function buildDepositContent(summary: ILeaseDepositSummary): { plain: string; section: string } {
+  if (summary.collected <= 0) {
+    return { plain: "", section: "" };
+  }
+
+  const amount = moneyFormatter.format(summary.collected);
+  const plain =
+    summary.status === LeaseDepositBalanceStatus.REFUNDED
+      ? `Security deposit: ${amount} was collected and a refund has been recorded. Contact your property manager with questions about the final settlement.`
+      : `Security deposit: ${amount} was collected. Your property manager will settle any refund or amount withheld for damages.`;
+
+  return {
+    plain,
+    section: `<div class="text-muted" style="font-size: 14px; line-height: 1.6; margin-bottom: 24px; text-align: left;">${plain}</div>`,
+  };
+}
+
 export async function notifyPrimaryTenantRentRecorded(
   params: NotifyPrimaryTenantRentRecordedParams
 ): Promise<void> {
@@ -209,10 +229,11 @@ export async function notifyPrimaryTenantLeaseEnded(
     return;
   }
 
-  const [property, unit, rentSchedule] = await Promise.all([
+  const [property, unit, rentSchedule, depositSummary] = await Promise.all([
     propertiesDb.findById(params.propertyId),
     propertyUnitsDb.findById(lease.unitId),
     propertyLongStaysDb.getRentSchedule(params.longStayId, actualEndDate),
+    loadLeaseDepositSummary(lease),
   ]);
 
   if (!property) {
@@ -229,9 +250,12 @@ export async function notifyPrimaryTenantLeaseEnded(
   const finalPeriodContent = finalPeriod
     ? buildFinalPeriodContent(finalPeriod, lease.rentBillingCadence)
     : { plain: "", section: "" };
+  const deposit = buildDepositContent(depositSummary);
 
   await sendLeaseEndedEmail(tenantEmail, {
     contractEndDate: formatPaymentDate(lease.leaseEndDate),
+    depositPlain: deposit.plain,
+    depositSection: deposit.section,
     finalMonthPlain: finalPeriodContent.plain,
     finalMonthSection: finalPeriodContent.section,
     holdoverPlain: holdover.plain,

@@ -24,22 +24,28 @@ export type TRefundEntryConfirmPayload =
 
 interface RefundEntryDialogProps {
   cap: number;
+  confirmLabel?: string;
   description: string;
+  fullOptionLabel?: string;
   isPending?: boolean;
   onConfirm: (payload: TRefundEntryConfirmPayload) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  partialOptionLabel?: string;
   title: string;
 }
 
 export const RefundEntryDialog = memo(
   ({
     cap,
+    confirmLabel = "Refund",
     description,
+    fullOptionLabel = "Full refund",
     isPending = false,
     onConfirm,
     onOpenChange,
     open,
+    partialOptionLabel = "Partial refund",
     title,
   }: RefundEntryDialogProps) => {
     const amountInputId = useId();
@@ -104,8 +110,8 @@ export const RefundEntryDialog = memo(
 
           <DialogFormFields>
             <RadioGroupFieldset legend="Refund type" onValueChange={handleModeChange} value={mode}>
-              <RadioOption label="Full refund" value="full" />
-              <RadioOption label="Partial refund" value="partial">
+              <RadioOption label={fullOptionLabel} value="full" />
+              <RadioOption label={partialOptionLabel} value="partial">
                 <div className="ml-6 space-y-1.5">
                   <Label htmlFor={amountInputId}>Refund amount</Label>
                   <Input
@@ -132,7 +138,7 @@ export const RefundEntryDialog = memo(
               Cancel
             </Button>
             <Button disabled={isPending || !canSubmit} onClick={handleConfirm} type="button">
-              {isPending ? "Refund…" : "Refund"}
+              {isPending ? "Refund…" : confirmLabel}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -353,6 +353,10 @@ function isRefundEntryPending(
   return false;
 }
 
+function isDepositLineRefundRequest(request: TRefundEntryRequest | null): boolean {
+  return request?.kind === "line" && isDepositIncomeLine(request.target);
+}
+
 function buildStayRefundEntryRequest(stay: IPropertyReservation): TRefundEntryRequest {
   return {
     cap: getStayRefundableCap(stay),
@@ -364,6 +368,17 @@ function buildStayRefundEntryRequest(stay: IPropertyReservation): TRefundEntryRe
 }
 
 function buildLineRefundEntryRequest(line: IPropertyIncomeLine): TRefundEntryRequest {
+  if (isDepositIncomeLine(line)) {
+    return {
+      cap: getIncomeLineRefundableCap(line),
+      description:
+        "Return part or all of the held deposit to the tenant. Any amount you don't refund stays withheld (for example, for damages). Refunded amounts are excluded from reports but remain visible here.",
+      kind: "line",
+      target: line,
+      title: "Refund security deposit",
+    };
+  }
+
   const label = line.incomeLineTypeName ?? line.incomeLineTypeId;
 
   return {
@@ -1874,7 +1889,13 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
 
       <RefundEntryDialog
         cap={refundEntryRequest?.cap ?? 0}
+        confirmLabel={isDepositLineRefundRequest(refundEntryRequest) ? "Refund deposit" : undefined}
         description={refundEntryRequest?.description ?? ""}
+        fullOptionLabel={
+          isDepositLineRefundRequest(refundEntryRequest)
+            ? "Full refund (return entire remaining amount)"
+            : undefined
+        }
         isPending={isRefundEntryPending(
           refundEntryRequest,
           isRefundStayPending,
@@ -1887,6 +1908,11 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
           }
         }}
         open={refundEntryRequest !== null}
+        partialOptionLabel={
+          isDepositLineRefundRequest(refundEntryRequest)
+            ? "Partial refund (return some; remainder withheld)"
+            : undefined
+        }
         title={refundEntryRequest?.title ?? ""}
       />
 
