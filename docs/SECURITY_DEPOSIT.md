@@ -46,7 +46,7 @@ todos:
     status: completed
   - id: phase-8a-tracks-rent
     content: "Phase 8a: Persist tracks-rent intent + top-up utils + backfill"
-    status: pending
+    status: completed
   - id: phase-8b-extend-api
     content: "Phase 8b: Extend API optional deposit top-up"
     status: pending

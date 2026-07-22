@@ -5,6 +5,7 @@ import {
   isLeaseDepositPreset,
   LeaseDepositPreset,
   resolveSecurityDepositAmount,
+  resolveSecurityDepositTracksRent,
   validateSecurityDepositAmount,
 } from "./lease-deposit-utils";
 
@@ -96,15 +97,31 @@ describe("resolveSecurityDepositAmount", () => {
   });
 });
 
+describe("resolveSecurityDepositTracksRent", () => {
+  test("only one_month_rent tracks rent", () => {
+    expect(resolveSecurityDepositTracksRent(LeaseDepositPreset.NONE)).toBe(false);
+    expect(resolveSecurityDepositTracksRent(LeaseDepositPreset.CUSTOM)).toBe(false);
+    expect(resolveSecurityDepositTracksRent(LeaseDepositPreset.ONE_MONTH_RENT)).toBe(true);
+  });
+});
+
 describe("inferLeaseDepositPreset", () => {
   test("null or undefined → none", () => {
     expect(inferLeaseDepositPreset(null, 2000)).toBe(LeaseDepositPreset.NONE);
     expect(inferLeaseDepositPreset(undefined, 2000)).toBe(LeaseDepositPreset.NONE);
   });
 
-  test("amount matching rent → one_month_rent", () => {
+  test("amount matching rent → one_month_rent when tracksRent omitted", () => {
     expect(inferLeaseDepositPreset(2000, 2000)).toBe(LeaseDepositPreset.ONE_MONTH_RENT);
     expect(inferLeaseDepositPreset(2000.004, 2000)).toBe(LeaseDepositPreset.ONE_MONTH_RENT);
+  });
+
+  test("tracksRent true → one_month_rent even when amount differs from rent", () => {
+    expect(inferLeaseDepositPreset(1500, 2000, true)).toBe(LeaseDepositPreset.ONE_MONTH_RENT);
+  });
+
+  test("tracksRent false → custom even when amount matches rent", () => {
+    expect(inferLeaseDepositPreset(2000, 2000, false)).toBe(LeaseDepositPreset.CUSTOM);
   });
 
   test("other amounts → custom", () => {

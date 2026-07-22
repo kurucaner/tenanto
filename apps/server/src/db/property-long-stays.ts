@@ -140,14 +140,16 @@ export const propertyLongStaysDb = {
 
     const securityDepositAmount =
       input.securityDepositAmount === undefined ? null : input.securityDepositAmount;
+    const securityDepositTracksRent =
+      securityDepositAmount == null ? false : (input.securityDepositTracksRent ?? false);
 
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, rent_amount,
           lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence,
-          security_deposit_amount)
+          security_deposit_amount, security_deposit_tracks_rent)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status,
-               $11::rent_billing_cadence, $12)
+               $11::rent_billing_cadence, $12, $13)
        RETURNING *`,
       [
         propertyId,
@@ -162,6 +164,7 @@ export const propertyLongStaysDb = {
         PropertyLongStayStatus.ACTIVE,
         rentBillingCadence,
         securityDepositAmount,
+        securityDepositTracksRent,
       ]
     );
     const longStay = mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
@@ -597,6 +600,10 @@ export const propertyLongStaysDb = {
       body.securityDepositAmount === undefined
         ? existing.securityDepositAmount
         : body.securityDepositAmount;
+    const securityDepositTracksRent =
+      securityDepositAmount == null
+        ? false
+        : (body.securityDepositTracksRent ?? existing.securityDepositTracksRent);
 
     const client = await pool.connect();
     try {
@@ -626,9 +633,10 @@ export const propertyLongStaysDb = {
              term_months = $3,
              rent_amount = $4,
              lease_end_date = $5,
-             security_deposit_amount = $6
+             security_deposit_amount = $6,
+             security_deposit_tracks_rent = $7
          WHERE id = $1
-           AND status = $7::property_long_stay_status
+           AND status = $8::property_long_stay_status
          RETURNING *`,
         [
           id,
@@ -637,6 +645,7 @@ export const propertyLongStaysDb = {
           rentAmount,
           leaseEndDate,
           securityDepositAmount,
+          securityDepositTracksRent,
           PropertyLongStayStatus.ACTIVE,
         ]
       );

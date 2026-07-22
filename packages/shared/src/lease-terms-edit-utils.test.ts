@@ -19,6 +19,7 @@ const activeLease = {
   rentAmount: 1500,
   rentBillingCadence: RentBillingCadence.MONTHLY,
   securityDepositAmount: null as number | null,
+  securityDepositTracksRent: false,
   status: PropertyLongStayStatus.ACTIVE,
   termMonths: 12,
 } as const;
@@ -293,6 +294,26 @@ describe("validateEditLeaseTerms", () => {
         "2026-07-09"
       )
     ).toBe("At least one lease term field must change");
+  });
+
+  test("accepts tracksRent-only changes when amount is unchanged", () => {
+    expect(
+      validateEditLeaseTerms(
+        {
+          leaseStartDate: activeLease.leaseStartDate,
+          rentAmount: activeLease.rentAmount,
+          securityDepositAmount: 1500,
+          securityDepositTracksRent: true,
+          termMonths: activeLease.termMonths,
+        },
+        {
+          ...activeLease,
+          securityDepositAmount: 1500,
+          securityDepositTracksRent: false,
+        },
+        "2026-07-09"
+      )
+    ).toBeNull();
   });
 
   test("accepts deposit-only changes", () => {

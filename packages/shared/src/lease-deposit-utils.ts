@@ -86,15 +86,33 @@ export function resolveSecurityDepositAmount(
 }
 
 /**
+ * Resolves whether a form preset should persist as rent-tracking.
+ * Only `one_month_rent` tracks rent; none and custom are fixed.
+ */
+export function resolveSecurityDepositTracksRent(preset: TLeaseDepositPreset): boolean {
+  return preset === LeaseDepositPreset.ONE_MONTH_RENT;
+}
+
+/**
  * Infers which preset best matches a stored deposit + current rent (for edit forms).
- * Exact rent match → `one_month_rent`; otherwise custom when amount is set.
+ * When `tracksRent` is known, prefer it over amount≈rent (amount can diverge after rent changes).
+ * Exact rent match → `one_month_rent` when `tracksRent` is omitted; otherwise custom when amount is set.
  */
 export function inferLeaseDepositPreset(
   securityDepositAmount: number | null | undefined,
-  rentAmount: number
+  rentAmount: number,
+  tracksRent?: boolean
 ): TLeaseDepositPreset {
   if (securityDepositAmount == null) {
     return LeaseDepositPreset.NONE;
+  }
+
+  if (tracksRent === true) {
+    return LeaseDepositPreset.ONE_MONTH_RENT;
+  }
+
+  if (tracksRent === false) {
+    return LeaseDepositPreset.CUSTOM;
   }
 
   if (

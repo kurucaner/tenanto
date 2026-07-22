@@ -21,11 +21,16 @@ export function formatLeaseSecurityDepositDisplay(
 export function getLeaseDepositFormDefaults(input: {
   rentAmount: number;
   securityDepositAmount: number | null | undefined;
+  securityDepositTracksRent?: boolean;
 }): {
   securityDepositCustomAmount: string;
   securityDepositPreset: TLeaseDepositPreset;
 } {
-  const preset = inferLeaseDepositPreset(input.securityDepositAmount, input.rentAmount);
+  const preset = inferLeaseDepositPreset(
+    input.securityDepositAmount,
+    input.rentAmount,
+    input.securityDepositTracksRent
+  );
   return {
     securityDepositCustomAmount:
       preset === LeaseDepositPreset.CUSTOM && input.securityDepositAmount != null

@@ -289,6 +289,7 @@ export const mapPropertyLongStayRow = (row: Record<string, unknown>): IPropertyL
     secondaryTenants: parseSecondaryTenants(row.secondary_tenants),
     securityDepositAmount:
       row.security_deposit_amount == null ? null : Number(row.security_deposit_amount),
+    securityDepositTracksRent: Boolean(row.security_deposit_tracks_rent),
     status: row.status as IPropertyLongStay["status"],
     tenantEmail: (row.tenant_email as string | null) ?? null,
     tenantPhone: (row.tenant_phone as string | null) ?? null,

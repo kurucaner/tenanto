@@ -40,6 +40,29 @@ describe("getLeaseDepositFormDefaults", () => {
     });
   });
 
+  test("prefers tracksRent over amount≈rent inference", () => {
+    expect(
+      getLeaseDepositFormDefaults({
+        rentAmount: 2000,
+        securityDepositAmount: 1500,
+        securityDepositTracksRent: true,
+      })
+    ).toEqual({
+      securityDepositCustomAmount: "",
+      securityDepositPreset: "one_month_rent",
+    });
+    expect(
+      getLeaseDepositFormDefaults({
+        rentAmount: 1500,
+        securityDepositAmount: 1500,
+        securityDepositTracksRent: false,
+      })
+    ).toEqual({
+      securityDepositCustomAmount: "1500",
+      securityDepositPreset: "custom",
+    });
+  });
+
   test("maps other amounts to custom with the stored value", () => {
     expect(getLeaseDepositFormDefaults({ rentAmount: 1500, securityDepositAmount: 2000 })).toEqual({
       securityDepositCustomAmount: "2000",

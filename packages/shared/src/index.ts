@@ -235,12 +235,18 @@ export {
   sqlIsSecurityDepositIncomeLineType,
 } from "./lease-deposit-income-utils";
 export {
+  canOfferDepositTopUp,
+  type ICanOfferDepositTopUpInput,
+  type IDepositTopUpOffer,
+} from "./lease-deposit-top-up-utils";
+export {
   inferLeaseDepositPreset,
   type IResolveSecurityDepositAmountInput,
   isLeaseDepositPreset,
   LEASE_DEPOSIT_PRESETS,
   LeaseDepositPreset,
   resolveSecurityDepositAmount,
+  resolveSecurityDepositTracksRent,
   type TLeaseDepositPreset,
   validateSecurityDepositAmount,
 } from "./lease-deposit-utils";

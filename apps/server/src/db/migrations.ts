@@ -3529,4 +3529,26 @@ export const migrations: IMigration[] = [
     },
     version: 77,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP COLUMN IF EXISTS security_deposit_tracks_rent;
+      `);
+    },
+    name: "property_long_stays_security_deposit_tracks_rent",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS security_deposit_tracks_rent BOOLEAN NOT NULL DEFAULT false;
+      `);
+      await client.query(`
+        UPDATE property_long_stays
+        SET security_deposit_tracks_rent = true
+        WHERE security_deposit_amount IS NOT NULL
+          AND security_deposit_amount = rent_amount;
+      `);
+    },
+    version: 78,
+  },
 ];

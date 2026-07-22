@@ -47,6 +47,7 @@ import {
   getLeaseRentAmount,
   type IPropertyLongStay,
   RentBillingCadence,
+  resolveSecurityDepositTracksRent,
   validateEditLeaseTerms,
 } from "@/packages/shared";
 
@@ -62,6 +63,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
     ...getLeaseDepositFormDefaults({
       rentAmount,
       securityDepositAmount: lease.securityDepositAmount,
+      securityDepositTracksRent: lease.securityDepositTracksRent,
     }),
     rentAmount: String(rentAmount),
     termWeeks: String(deriveTermWeeksFromDates(lease.leaseStartDate, lease.leaseEndDate)),
@@ -116,6 +118,9 @@ export const EditLeaseTermsDialog = memo(
                 ...buildLeaseTermApiPayload(values),
                 rentAmount,
                 securityDepositAmount,
+                securityDepositTracksRent: resolveSecurityDepositTracksRent(
+                  values.securityDepositPreset
+                ),
               },
               lease,
               today
@@ -199,6 +204,7 @@ export const EditLeaseTermsDialog = memo(
             securityDepositCustomAmount: values.securityDepositCustomAmount,
             securityDepositPreset: values.securityDepositPreset,
           }),
+          securityDepositTracksRent: resolveSecurityDepositTracksRent(values.securityDepositPreset),
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update lease terms");

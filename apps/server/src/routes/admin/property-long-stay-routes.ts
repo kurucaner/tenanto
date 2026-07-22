@@ -122,6 +122,19 @@ function parseLeaseTermFields(r: Record<string, unknown>):
   };
 }
 
+function parseOptionalBoolean(
+  raw: unknown,
+  fieldName: string
+): { ok: true; value: boolean | undefined } | { error: string; ok: false } {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (typeof raw !== "boolean") {
+    return { error: `${fieldName} must be a boolean`, ok: false };
+  }
+  return { ok: true, value: raw };
+}
+
 function parseCreateLongStayBody(
   raw: unknown
 ): { body: ICreatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -170,6 +183,14 @@ function parseCreateLongStayBody(
     return securityDepositAmount;
   }
 
+  const securityDepositTracksRent = parseOptionalBoolean(
+    r["securityDepositTracksRent"],
+    "securityDepositTracksRent"
+  );
+  if (!securityDepositTracksRent.ok) {
+    return securityDepositTracksRent;
+  }
+
   return {
     body: {
       guestName: r["guestName"].trim(),
@@ -181,6 +202,7 @@ function parseCreateLongStayBody(
         }) ?? rentAmountValue,
       rentBillingCadence,
       securityDepositAmount: securityDepositAmount.value,
+      securityDepositTracksRent: securityDepositTracksRent.value,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
       unitId,
@@ -229,6 +251,14 @@ function parseEditLeaseTermsBody(
     return securityDepositAmount;
   }
 
+  const securityDepositTracksRent = parseOptionalBoolean(
+    r["securityDepositTracksRent"],
+    "securityDepositTracksRent"
+  );
+  if (!securityDepositTracksRent.ok) {
+    return securityDepositTracksRent;
+  }
+
   return {
     body: {
       ...leaseTermFields.body,
@@ -237,6 +267,7 @@ function parseEditLeaseTermsBody(
         rentAmount: rentAmountValue,
       }),
       securityDepositAmount: securityDepositAmount.value,
+      securityDepositTracksRent: securityDepositTracksRent.value,
     },
     ok: true,
   };

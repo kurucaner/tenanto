@@ -42,9 +42,14 @@ export interface IPropertyLongStay {
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
   /**
    * Contractual security deposit amount. `null` means no deposit is required.
-   * Snapshot at agreement time — not recomputed on extend.
+   * Snapshot at agreement time — not recomputed on extend unless Phase 8 top-up.
    */
   securityDepositAmount: number | null;
+  /**
+   * When true, deposit was set via the 1× rent preset and may be offered a top-up
+   * when rent increases on Extend. Fixed custom / none are always false.
+   */
+  securityDepositTracksRent: boolean;
   status: TPropertyLongStayStatus;
   /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
   tenantEmail: string | null;
@@ -65,6 +70,8 @@ export interface ICreatePropertyLongStayBody {
   rentBillingCadence?: TRentBillingCadence;
   /** Optional contractual deposit; omit or `null` for none. */
   securityDepositAmount?: number | null;
+  /** When true, deposit tracks rent (1× rent preset). Forced false when amount is null. */
+  securityDepositTracksRent?: boolean;
   tenantEmail?: string;
   tenantPhone?: string;
   termMonths?: number;
@@ -182,6 +189,8 @@ export interface IEditPropertyLongStayTermsBody {
   rentAmount: number;
   /** Optional contractual deposit; omit to leave unchanged, `null` to clear. */
   securityDepositAmount?: number | null;
+  /** When provided with a deposit amount, whether the deposit tracks rent. Cleared with null amount. */
+  securityDepositTracksRent?: boolean;
   termMonths?: number;
 }
 

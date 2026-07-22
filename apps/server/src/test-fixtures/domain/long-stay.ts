@@ -17,6 +17,7 @@ export function makeLongStay(overrides: Partial<IPropertyLongStay> = {}): IPrope
     rentBillingCadence: RentBillingCadence.MONTHLY,
     secondaryTenants: [],
     securityDepositAmount: null,
+    securityDepositTracksRent: false,
     status: PropertyLongStayStatus.ACTIVE,
     tenantEmail: "jane@example.com",
     tenantPhone: null,

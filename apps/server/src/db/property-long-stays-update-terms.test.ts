@@ -38,6 +38,7 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
       rent_amount: String(params?.[3]),
       security_deposit_amount:
         params?.[5] === undefined || params?.[5] === null ? null : String(params?.[5]),
+      security_deposit_tracks_rent: params?.[6] === true,
       term_months: params?.[2],
     });
     return Promise.resolve({ rows: [currentLeaseRow] });

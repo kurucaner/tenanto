@@ -38,6 +38,7 @@ import {
   type IPropertyUnit,
   normalizeToE164,
   RentBillingCadence,
+  resolveSecurityDepositTracksRent,
   UnitRentalType,
 } from "@/packages/shared";
 
@@ -248,6 +249,7 @@ export function useStartLeaseForm({
         rentAmount: Number(values.rentAmount),
         rentBillingCadence: normalizeStartLeaseRentBillingCadence(values.rentBillingCadence),
         securityDepositAmount: resolveStartLeaseSecurityDepositAmount(values),
+        securityDepositTracksRent: resolveSecurityDepositTracksRent(values.securityDepositPreset),
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
         unitId: values.unitId,

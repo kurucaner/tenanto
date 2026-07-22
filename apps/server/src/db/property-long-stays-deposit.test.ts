@@ -28,6 +28,7 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
       rent_amount: String(params?.[3]),
       security_deposit_amount:
         params?.[5] === undefined || params?.[5] === null ? null : String(params?.[5]),
+      security_deposit_tracks_rent: params?.[6] === true,
       term_months: params?.[2],
     });
     return Promise.resolve({ rows: [currentLeaseRow] });
@@ -49,6 +50,7 @@ const mockQuery = mock((sql: string, params?: unknown[]) => {
   if (sql.includes("INSERT INTO property_long_stays")) {
     insertParams = params;
     const securityDepositAmount = params?.[11];
+    const securityDepositTracksRent = params?.[12] === true;
     return Promise.resolve({
       rows: [
         buildRentScheduleLeaseRow({
@@ -60,6 +62,7 @@ const mockQuery = mock((sql: string, params?: unknown[]) => {
             securityDepositAmount === undefined || securityDepositAmount === null
               ? null
               : String(securityDepositAmount),
+          security_deposit_tracks_rent: securityDepositTracksRent,
           term_months: params?.[4],
           unit_id: params?.[1],
         }),
@@ -97,15 +100,18 @@ describe("propertyLongStaysDb security deposit", () => {
       leaseStartDate: "2026-01-01",
       rentAmount: 1500,
       securityDepositAmount: 1500,
+      securityDepositTracksRent: true,
       termMonths: 12,
       unitId: "unit-1",
     });
 
     expect(created.securityDepositAmount).toBe(1500);
+    expect(created.securityDepositTracksRent).toBe(true);
     expect(insertParams![11]).toBe(1500);
+    expect(insertParams![12]).toBe(true);
     expect(
       String(mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT"))?.[0])
-    ).toContain("security_deposit_amount");
+    ).toContain("security_deposit_tracks_rent");
   });
 
   test("create defaults omitted deposit to null", async () => {
@@ -121,7 +127,9 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(created.securityDepositAmount).toBeNull();
+    expect(created.securityDepositTracksRent).toBe(false);
     expect(insertParams![11]).toBeNull();
+    expect(insertParams![12]).toBe(false);
   });
 
   test("updateTerms sets securityDepositAmount when provided", async () => {
@@ -134,15 +142,21 @@ describe("propertyLongStaysDb security deposit", () => {
       leaseStartDate: "2026-01-01",
       rentAmount: 1500,
       securityDepositAmount: 2000,
+      securityDepositTracksRent: false,
       termMonths: 3,
     });
 
     expect(updated.securityDepositAmount).toBe(2000);
+    expect(updated.securityDepositTracksRent).toBe(false);
     expect(updateTermsParams![5]).toBe(2000);
+    expect(updateTermsParams![6]).toBe(false);
   });
 
   test("updateTerms leaves deposit unchanged when omitted", async () => {
-    currentLeaseRow = buildRentScheduleLeaseRow({ security_deposit_amount: "1800.00" });
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      security_deposit_amount: "1800.00",
+      security_deposit_tracks_rent: true,
+    });
     updateTermsParams = undefined;
     capturedClientSql.length = 0;
     mockClientQuery.mockClear();
@@ -154,11 +168,16 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(updated.securityDepositAmount).toBe(1800);
+    expect(updated.securityDepositTracksRent).toBe(true);
     expect(updateTermsParams![5]).toBe(1800);
+    expect(updateTermsParams![6]).toBe(true);
   });
 
   test("updateTerms clears deposit when null", async () => {
-    currentLeaseRow = buildRentScheduleLeaseRow({ security_deposit_amount: "1500.00" });
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      security_deposit_amount: "1500.00",
+      security_deposit_tracks_rent: true,
+    });
     updateTermsParams = undefined;
     capturedClientSql.length = 0;
     mockClientQuery.mockClear();
@@ -171,6 +190,8 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(updated.securityDepositAmount).toBeNull();
+    expect(updated.securityDepositTracksRent).toBe(false);
     expect(updateTermsParams![5]).toBeNull();
+    expect(updateTermsParams![6]).toBe(false);
   });
 });

@@ -93,18 +93,22 @@ export function deriveLeaseTermsEditability(
 
 function isSecurityDepositUnchanged(
   bodyAmount: number | null | undefined,
-  existingAmount: number | null
+  existingAmount: number | null,
+  bodyTracksRent: boolean | undefined,
+  existingTracksRent: boolean
 ): boolean {
-  if (bodyAmount === undefined) {
-    return true;
-  }
-  if (bodyAmount === null && existingAmount === null) {
-    return true;
-  }
-  if (bodyAmount === null || existingAmount === null) {
-    return false;
-  }
-  return roundMoney(bodyAmount) === roundMoney(existingAmount);
+  const amountUnchanged =
+    bodyAmount === undefined
+      ? true
+      : bodyAmount === null && existingAmount === null
+        ? true
+        : bodyAmount === null || existingAmount === null
+          ? false
+          : roundMoney(bodyAmount) === roundMoney(existingAmount);
+
+  const tracksRentUnchanged = bodyTracksRent === undefined || bodyTracksRent === existingTracksRent;
+
+  return amountUnchanged && tracksRentUnchanged;
 }
 
 export function validateEditLeaseTerms(
@@ -116,6 +120,7 @@ export function validateEditLeaseTerms(
     | "rentAmount"
     | "rentBillingCadence"
     | "securityDepositAmount"
+    | "securityDepositTracksRent"
     | "status"
     | "termMonths"
   >,
@@ -154,7 +159,12 @@ export function validateEditLeaseTerms(
     body.leaseStartDate === lease.leaseStartDate &&
     resolved.leaseEndDate === lease.leaseEndDate &&
     editedRentAmount === getLeaseRentAmount(lease) &&
-    isSecurityDepositUnchanged(body.securityDepositAmount, lease.securityDepositAmount)
+    isSecurityDepositUnchanged(
+      body.securityDepositAmount,
+      lease.securityDepositAmount,
+      body.securityDepositTracksRent,
+      lease.securityDepositTracksRent
+    )
   ) {
     return "At least one lease term field must change";
   }
