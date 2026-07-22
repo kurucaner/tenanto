@@ -31,7 +31,10 @@ import {
   TenantRentPaymentStatus,
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
-import { bookStripeProcessingFeeExpenseForRentPayment } from "@/services/book-stripe-processing-fee-expense";
+import {
+  bookAchReturnFeeExpenseForRentPayment,
+  bookStripeProcessingFeeExpenseForRentPayment,
+} from "@/services/book-stripe-processing-fee-expense";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 import { WinstonLogger } from "@/services/winston";
@@ -385,7 +388,23 @@ export const tenantRentPaymentService = {
     ) {
       return payment;
     }
-    return tenantRentPaymentsDb.updateStatus(payment.id, TenantRentPaymentStatus.FAILED);
+    const updated = await tenantRentPaymentsDb.updateStatus(
+      payment.id,
+      TenantRentPaymentStatus.FAILED
+    );
+    const target = updated ?? payment;
+    try {
+      await bookAchReturnFeeExpenseForRentPayment(target);
+    } catch (error) {
+      WinstonLogger.error({
+        err: error,
+        msg: "tenant_payments.ach_return_fee_expense_failed",
+        paymentId: target.id,
+        propertyId: target.propertyId,
+        stripePaymentIntentId: target.stripePaymentIntentId,
+      });
+    }
+    return updated;
   },
 
   async markRefunded(

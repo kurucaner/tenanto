@@ -257,8 +257,9 @@ No new public API required for v1. Internal:
 
 **Goal:** Book Stripe failure-related fees when present.
 
-- [ ] On payment failed / return balance activity linked to rent payment, if Stripe assesses a fee, create expense (same category; description distinguishes “ACH return fee”)
-- [ ] Idempotent on balance txn id
+- [x] On payment failed / return balance activity linked to rent payment, if Stripe assesses a fee, create expense (same category; description distinguishes “ACH return fee”)
+- [x] Idempotent on balance txn id
+- [x] Webhooks: `payment_intent.payment_failed` (via `markFailed`), `checkout.session.async_payment_failed`, `charge.failed` (late BT fee)
 
 **Files (≤4).**
 
@@ -325,8 +326,8 @@ No new public API required for v1. Internal:
 
 ## Deploy checklist
 
-| Checkpoint | Ship         | Notes                                                                                                                                     |
-| ---------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkpoint | Ship         | Notes                                                                                                                                 |
+| ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | **A**      | Phases 0c–1c | System category exists and cannot be removed. **v80** backfills every property with active `is_system` **Payment processing** on migrate. |
-| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                         |
-| **C**      | Phases 3–4   | Failure/refund policy + docs                                                                                                              |
+| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                     |
+| **C**      | Phases 3–4   | Failure/refund policy + docs. **Enable** `checkout.session.async_payment_failed` + `charge.failed` (plus ACH success events) on the Stripe destination / `stripe listen`. |

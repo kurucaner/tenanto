@@ -5,6 +5,7 @@ import { stripeWebhookEventsDb } from "@/db/stripe-webhook-events";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
 import { stripeWebhookSignatureError } from "@/errors/stripe-errors";
 import { stripeConnectAccountFlagsFromStripeAccount } from "@/lib/stripe-connect-account-flags";
+import { bookAchReturnFeeExpenseForRentPayment } from "@/services/book-stripe-processing-fee-expense";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
@@ -166,6 +167,67 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): P
   await tenantRentPaymentService.markFailed(payment);
 }
 
+async function handleCheckoutSessionAsyncPaymentFailed(
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const payment = await resolvePaymentFromCheckoutSession(session);
+  if (!payment) {
+    WinstonLogger.warn({
+      msg: "tenant_payments.async_payment_failed_unknown_payment",
+      sessionId: session.id,
+    });
+    return;
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+
+  let target = payment;
+  if (paymentIntentId && !payment.stripePaymentIntentId) {
+    await tenantRentPaymentsDb.updateStripeIds(payment.id, {
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: paymentIntentId,
+    });
+    const refreshed = await tenantRentPaymentsDb.findById(payment.id);
+    if (refreshed) {
+      target = refreshed;
+    } else {
+      target = { ...payment, stripePaymentIntentId: paymentIntentId };
+    }
+  }
+
+  await tenantRentPaymentService.markFailed(target);
+}
+
+async function handleChargeFailed(charge: Stripe.Charge): Promise<void> {
+  const payment = await resolvePaymentFromCharge(charge);
+  if (!payment) {
+    WinstonLogger.info({
+      chargeId: charge.id,
+      msg: "tenant_payments.charge_failed_unknown_payment",
+      paymentIntentId:
+        typeof charge.payment_intent === "string"
+          ? charge.payment_intent
+          : (charge.payment_intent?.id ?? null),
+    });
+    return;
+  }
+
+  try {
+    await bookAchReturnFeeExpenseForRentPayment(payment, { charge });
+  } catch (error) {
+    WinstonLogger.error({
+      chargeId: charge.id,
+      err: error,
+      msg: "tenant_payments.ach_return_fee_expense_failed",
+      paymentId: payment.id,
+      propertyId: payment.propertyId,
+    });
+  }
+}
+
 async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
   const payment = await resolvePaymentFromCharge(charge);
   if (!payment) {
@@ -285,6 +347,14 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
           break;
         case "payment_intent.payment_failed":
           await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+          break;
+        case "checkout.session.async_payment_failed":
+          await handleCheckoutSessionAsyncPaymentFailed(
+            event.data.object as Stripe.Checkout.Session
+          );
+          break;
+        case "charge.failed":
+          await handleChargeFailed(event.data.object as Stripe.Charge);
           break;
         case "charge.refunded":
           await handleChargeRefunded(event.data.object as Stripe.Charge);

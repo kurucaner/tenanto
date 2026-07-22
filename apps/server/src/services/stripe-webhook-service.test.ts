@@ -16,6 +16,7 @@ const mockMarkSucceeded = mockResolvedNull<unknown>();
 const mockMarkFailed = mockResolvedNull<unknown>();
 const mockMarkCanceled = mockResolvedNull<unknown>();
 const mockMarkRefunded = mockResolvedNull<unknown>();
+const mockBookAchReturnFeeExpense = mockResolvedNull<unknown>();
 const mockPostDiscordWebhook = mockResolvedVoid();
 const mockLoggerInfo = mockSyncVoid();
 const mockLoggerWarn = mockSyncVoid();
@@ -62,6 +63,10 @@ mock.module("@/services/tenant-rent-payment-service", () => ({
   },
 }));
 
+mock.module("@/services/book-stripe-processing-fee-expense", () => ({
+  bookAchReturnFeeExpenseForRentPayment: mockBookAchReturnFeeExpense,
+}));
+
 mock.module("@/services/discord-webhook", () => ({
   postDiscordWebhook: mockPostDiscordWebhook,
 }));
@@ -101,6 +106,7 @@ describe("processStripeWebhookEvent", () => {
     mockMarkFailed.mockReset();
     mockMarkCanceled.mockReset();
     mockMarkRefunded.mockReset();
+    mockBookAchReturnFeeExpense.mockReset();
     mockPostDiscordWebhook.mockReset();
     mockLoggerInfo.mockReset();
     mockLoggerWarn.mockReset();
@@ -240,6 +246,81 @@ describe("processStripeWebhookEvent", () => {
     } as never);
 
     expect(mockMarkFailed).toHaveBeenCalledWith(payment);
+  });
+
+  test("marks failed on checkout.session.async_payment_failed", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_async_fail",
+      type: "checkout.session.async_payment_failed",
+    });
+    const payment = makePayment({
+      stripeCheckoutSessionId: "cs_ach_1",
+      stripePaymentIntentId: "pi_ach_1",
+    });
+    mockFindByCheckoutSessionId.mockResolvedValueOnce(payment);
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "cs_ach_1",
+          metadata: {},
+          object: "checkout.session",
+          payment_intent: "pi_ach_1",
+        },
+      },
+      id: "evt_async_fail",
+      livemode: false,
+      object: "event",
+      type: "checkout.session.async_payment_failed",
+    } as never);
+
+    expect(mockMarkFailed).toHaveBeenCalledWith(payment);
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_async_fail");
+  });
+
+  test("books ACH return fee on charge.failed without re-marking status", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_charge_failed",
+      type: "charge.failed",
+    });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.FAILED,
+      stripePaymentIntentId: "pi_1",
+    });
+    mockFindByPaymentIntentId.mockResolvedValueOnce(payment);
+    mockBookAchReturnFeeExpense.mockResolvedValueOnce({ id: "expense-ach-1" });
+
+    const charge = {
+      balance_transaction: {
+        fee_details: [{ amount: 400, type: "stripe_fee" }],
+        id: "txn_ach_return",
+      },
+      id: "ch_failed_1",
+      object: "charge",
+      payment_intent: "pi_1",
+    };
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: { object: charge },
+      id: "evt_charge_failed",
+      livemode: false,
+      object: "event",
+      type: "charge.failed",
+    } as never);
+
+    expect(mockMarkFailed).not.toHaveBeenCalled();
+    expect(mockBookAchReturnFeeExpense).toHaveBeenCalledWith(payment, { charge });
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_charge_failed");
   });
 
   test("marks refunded on charge.refunded", async () => {
