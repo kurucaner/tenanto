@@ -396,7 +396,7 @@ export const StartLeaseForm = memo(
         onSubmit={onSubmit}
         ref={formRef}
       >
-        <div className="flex-1 space-y-8 px-1 pb-28 pt-2 md:pb-8 max-w-xl mx-auto">
+        <div className="mx-auto min-h-0 w-full max-w-xl flex-1 space-y-8 overflow-y-auto px-1 pb-6 pt-2">
           <StartLeaseProgress currentStep={currentStep} onStepSelect={onStepSelect} />
 
           <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
@@ -457,31 +457,33 @@ export const StartLeaseForm = memo(
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 px-1 py-3">
-          <Button disabled={mutationPending} onClick={onCancel} type="button" variant="ghost">
-            Cancel
-          </Button>
-          <div className="flex flex-wrap gap-2">
-            {!isFirstStep ? (
-              <Button disabled={mutationPending} onClick={onBack} type="button" variant="outline">
-                Back
-              </Button>
-            ) : null}
-            {isLastStep ? (
-              <Button
-                disabled={submitDisabled}
-                onClick={() => {
-                  void onSubmit();
-                }}
-                type="button"
-              >
-                {mutationPending ? "Starting…" : "Start Lease"}
-              </Button>
-            ) : (
-              <Button disabled={continueDisabled} onClick={onContinue} type="button">
-                {isContinuing ? "Continuing…" : "Continue"}
-              </Button>
-            )}
+        <div className="shrink-0 border-t border-border bg-muted/30 -mx-6 px-6 py-4 md:-mx-8 md:px-8">
+          <div className="mx-auto flex w-full max-w-xl flex-wrap items-center justify-between gap-2">
+            <Button disabled={mutationPending} onClick={onCancel} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              {!isFirstStep ? (
+                <Button disabled={mutationPending} onClick={onBack} type="button" variant="outline">
+                  Back
+                </Button>
+              ) : null}
+              {isLastStep ? (
+                <Button
+                  disabled={submitDisabled}
+                  onClick={() => {
+                    void onSubmit();
+                  }}
+                  type="button"
+                >
+                  {mutationPending ? "Starting…" : "Start Lease"}
+                </Button>
+              ) : (
+                <Button disabled={continueDisabled} onClick={onContinue} type="button">
+                  {isContinuing ? "Continuing…" : "Continue"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </form>

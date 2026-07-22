@@ -66,8 +66,11 @@ const PropertyStartLeaseFormLoaded = memo(
     }, [startLeaseForm.availableUnits, startLeaseForm.lockedUnit, startLeaseForm.selectedUnitId]);
 
     return (
-      <>
-        <Link className="text-muted-foreground mb-6 w-fit text-sm hover:underline" to={backPath}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Link
+          className="text-muted-foreground mb-4 w-fit shrink-0 text-sm hover:underline md:mb-6"
+          to={backPath}
+        >
           ← {backLabel}
         </Link>
 
@@ -95,7 +98,7 @@ const PropertyStartLeaseFormLoaded = memo(
           onSubmit={startLeaseForm.onSubmit}
           unitLabel={selectedUnitLabel}
         />
-      </>
+      </div>
     );
   }
 );
@@ -186,10 +189,12 @@ export const PropertyStartLeasePage = memo(() => {
   return (
     <div
       className={cn(
-        "relative -m-6 flex min-h-[calc(100svh-3.5rem-4rem)] flex-col md:-m-8 md:min-h-[calc(100svh-3.5rem)]"
+        "relative -m-6 flex min-h-0 flex-col overflow-hidden md:-m-8",
+        "max-md:h-[calc(100svh-3.5rem-4rem-env(safe-area-inset-bottom))]",
+        "md:h-[calc(100svh-3.5rem)]"
       )}
     >
-      <div className="relative mx-auto flex w-full flex-1 flex-col px-6 py-5 md:px-8 md:py-8">
+      <div className="relative mx-auto flex min-h-0 w-full flex-1 flex-col px-6 pt-5 md:px-8 md:pt-8">
         <PropertyStartLeaseFormLoaded
           backLabel={back.label}
           backPath={back.path}
