@@ -214,6 +214,14 @@ export {
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
 export {
+  buildLeaseDepositSummary,
+  type IBuildLeaseDepositSummaryInput,
+  type ILeaseDepositBalanceLineInput,
+  type ILeaseDepositSummary,
+  LeaseDepositBalanceStatus,
+  type TLeaseDepositBalanceStatus,
+} from "./lease-deposit-balance-utils";
+export {
   excludeDepositOtherIncomeRows,
   filterOutDepositIncomeLines,
   isDepositIncomeLine,

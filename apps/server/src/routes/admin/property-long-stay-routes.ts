@@ -4,6 +4,7 @@ import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { getTodayUtcIsoDate } from "@/lib/date-utils";
+import { loadLeaseDepositSummary } from "@/lib/lease-deposit-summary";
 import {
   HttpStatus,
   type ICreatePropertyLongStayBody,
@@ -510,7 +511,9 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       const primaryTenantContact = await resolvePrimaryTenantContactForLongStay(longStay);
       const secondaryTenantContacts = await resolveSecondaryTenantContactsForLongStay(longStay);
       const termsEditability = await getLeaseTermsEditability(longStayId);
+      const depositSummary = await loadLeaseDepositSummary(longStay);
       return reply.send({
+        depositSummary,
         longStay,
         primaryTenantContact,
         rentPeriods,

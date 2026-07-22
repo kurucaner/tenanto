@@ -1,3 +1,4 @@
+import type { ILeaseDepositSummary } from "./lease-deposit-balance-utils";
 import type { ILeasePrimaryTenantContact } from "./lease-primary-tenant-contact";
 import type { ILeaseSecondaryTenantContact } from "./lease-secondary-tenant-contact";
 import type { IPropertyLongStaysListMeta } from "./list-meta-types";
@@ -100,6 +101,8 @@ export interface IPropertyLongStaysListResponse {
 }
 
 export interface IPropertyLongStayDetailResponse {
+  /** Deposit balance from contractual amount + deposit income lines (v1.5). */
+  depositSummary: ILeaseDepositSummary;
   longStay: IPropertyLongStay;
   /** Effective primary tenant contact (linked user, pending invite, or lease fallback). */
   primaryTenantContact: ILeasePrimaryTenantContact;

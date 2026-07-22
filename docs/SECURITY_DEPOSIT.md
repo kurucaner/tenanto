@@ -34,7 +34,7 @@ todos:
     status: completed
   - id: phase-6a-balance
     content: "Phase 6a: lease-deposit-balance-utils + GET detail depositSummary"
-    status: pending
+    status: completed
   - id: phase-6b-balance-ui
     content: "Phase 6b: Deposit balance card on lease detail"
     status: pending
