@@ -106,6 +106,17 @@ Do **not** change extractor logic for `ENOENT`.
 
 **Exit criteria:** Hotel Tax CSV describe is green (~8 fails cleared).
 
+### Phase 2 results (2026-07-22)
+
+Committed a small sample fixture and pointed tests at it:
+
+- New: [`apps/server/src/lib/fixtures/hotel-tax-calculator-sample.csv`](apps/server/src/lib/fixtures/hotel-tax-calculator-sample.csv) (6 importable rows + 1 `Err:522` junk row)
+- Updated [`income-hotel-tax-calculator-csv-extractor.test.ts`](apps/server/src/lib/income-hotel-tax-calculator-csv-extractor.test.ts) path + counts (`6` rows; stayed/canceled/no-show/refunded = 3/2/1/1)
+
+Extractor logic unchanged. **Verify:** `bun test src/lib/income-hotel-tax-calculator-csv-extractor.test.ts` → **14 pass / 0 fail**.
+
+**Phase 2 complete.** Proceed to Phase 3 (`mappers` / mock cascade).
+
 ---
 
 ## Phase 3 — `mappers` SyntaxError / mock cascade

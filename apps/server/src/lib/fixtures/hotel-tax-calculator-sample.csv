@@ -1,0 +1,8 @@
+Month,Guess Name,Room No,Check In Date,Check Out Date,Number of Night,Status,Room Rate,Cleaning Fee,Channel
+Feb,Alexandar Kopilovic,210,02-07-2026,02-08-2026,1,Checked,$121.63,$0.00,Booking
+Feb,Monica Marichal,101,2/14/2026,2/15/2026,1,Refund,$0.00,$0.00,Expedia EC
+Feb,Isaac Suero,102,2/14/2026,02-15-2026,1,Canceled,$90.00,$0.00,Airbnb
+Feb,Jalen Moye,103,02-14-2026,2/15/2026,1,Cancelled,$95.00,$0.00,Direct
+Feb,Dorie Sliverman,305,02-10-2026,02-14-2026,4,Checked,"$1,375.20",$75.00,Booking
+Feb,No Show Guest,201,02-20-2026,02-21-2026,1,No Show,$110.00,$0.00,Booking
+Feb,Err:522 junk,999,02-22-2026,02-23-2026,1,Checked,$10.00,$0.00,Booking
