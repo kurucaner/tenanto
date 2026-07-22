@@ -1,33 +1,89 @@
 import { memo } from "react";
+import { Link } from "react-router-dom";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { canRecordLeaseSecurityDeposit } from "@/lib/build-lease-record-deposit-prefill";
-import { formatLeaseSecurityDepositDisplay } from "@/lib/lease-deposit-display";
-import { type IPropertyLongStay, PropertyLongStayStatus } from "@/packages/shared";
+import {
+  canShowRecordLeaseDepositCta,
+  formatLeaseDepositBalanceStatusLabel,
+  getLeaseDepositBalanceRows,
+} from "@/lib/lease-deposit-display";
+import {
+  type ILeaseDepositSummary,
+  type IPropertyLongStay,
+  LeaseDepositBalanceStatus,
+  PropertyLongStayStatus,
+} from "@/packages/shared";
 
 interface LeaseDepositSectionProps {
   canManage: boolean;
+  depositSummary: ILeaseDepositSummary;
   lease: IPropertyLongStay;
   onRecordDeposit: () => void;
+  propertyId: string;
+}
+
+function depositStatusBadgeVariant(
+  status: ILeaseDepositSummary["status"]
+): "default" | "outline" | "secondary" {
+  switch (status) {
+    case LeaseDepositBalanceStatus.HELD:
+      return "default";
+    case LeaseDepositBalanceStatus.REFUNDED:
+      return "secondary";
+    case LeaseDepositBalanceStatus.DUE:
+    case LeaseDepositBalanceStatus.PARTIAL:
+    case LeaseDepositBalanceStatus.NONE:
+      return "outline";
+  }
 }
 
 export const LeaseDepositSection = memo(
-  ({ canManage, lease, onRecordDeposit }: LeaseDepositSectionProps) => {
+  ({ canManage, depositSummary, lease, onRecordDeposit, propertyId }: LeaseDepositSectionProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
-    const canRecord = canManage && isActive && canRecordLeaseSecurityDeposit(lease);
+    const canRecord = canManage && isActive && canShowRecordLeaseDepositCta(depositSummary);
+    const rows = getLeaseDepositBalanceRows(depositSummary);
+    const showIncomeLink =
+      depositSummary.status === LeaseDepositBalanceStatus.HELD ||
+      depositSummary.status === LeaseDepositBalanceStatus.REFUNDED ||
+      depositSummary.collected > 0;
 
     return (
       <Card>
         <CardContent className="space-y-4 p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Security deposit
-              </p>
-              <p className="text-sm font-medium">
-                Expected: {formatLeaseSecurityDepositDisplay(lease.securityDepositAmount)}
-              </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                  Security deposit
+                </p>
+                {depositSummary.status !== LeaseDepositBalanceStatus.NONE ? (
+                  <Badge variant={depositStatusBadgeVariant(depositSummary.status)}>
+                    {formatLeaseDepositBalanceStatusLabel(depositSummary.status)}
+                  </Badge>
+                ) : null}
+              </div>
+              <dl className="grid gap-1 text-sm sm:grid-cols-[auto_1fr] sm:gap-x-4">
+                <dt className="text-muted-foreground">Expected</dt>
+                <dd className="font-medium">{rows.expectedLabel}</dd>
+                <dt className="text-muted-foreground">Collected</dt>
+                <dd className="font-medium">{rows.collectedLabel}</dd>
+                <dt className="text-muted-foreground">Outstanding</dt>
+                <dd className="font-medium">{rows.outstandingLabel}</dd>
+              </dl>
+              {showIncomeLink ? (
+                <p className="text-muted-foreground text-xs">
+                  Refunds are managed from{" "}
+                  <Link
+                    className="text-foreground underline-offset-4 hover:underline"
+                    to={`/properties/${encodeURIComponent(propertyId)}/income`}
+                  >
+                    Income
+                  </Link>
+                  .
+                </p>
+              ) : null}
             </div>
             {canRecord ? (
               <Button onClick={onRecordDeposit} type="button" variant="outline">

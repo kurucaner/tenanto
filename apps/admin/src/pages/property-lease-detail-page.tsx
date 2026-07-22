@@ -44,6 +44,7 @@ export const PropertyLeaseDetailPage = memo(() => {
 
   const {
     currentRent,
+    depositSummary,
     isError,
     isPending,
     lease,
@@ -119,7 +120,7 @@ export const PropertyLeaseDetailPage = memo(() => {
     );
   }
 
-  if (isError || !lease || !primaryTenantContact) {
+  if (isError || !lease || !primaryTenantContact || !depositSummary) {
     return (
       <div className="space-y-4">
         <Link
@@ -176,8 +177,10 @@ export const PropertyLeaseDetailPage = memo(() => {
             <div className="space-y-4">
               <LeaseDepositSection
                 canManage={canManage}
+                depositSummary={depositSummary}
                 lease={lease}
                 onRecordDeposit={handleRecordDeposit}
+                propertyId={propertyId}
               />
               <LeasePaymentsSection
                 canManage={canManage}

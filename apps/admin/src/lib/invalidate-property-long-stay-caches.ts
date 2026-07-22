@@ -35,6 +35,16 @@ export function invalidatePropertyLongStayDetailQuery(
   });
 }
 
+/** After income changes that affect lease detail (deposit balance, rent schedule). */
+export function invalidatePropertyLongStayAfterIncomeChange(
+  queryClient: QueryClient,
+  propertyId: string,
+  longStayId: string
+) {
+  invalidatePropertyLongStayCaches(queryClient, propertyId);
+  invalidatePropertyLongStayDetailQuery(queryClient, propertyId, longStayId);
+}
+
 export function invalidatePropertyLongStayDetailCaches(
   queryClient: QueryClient,
   propertyId: string,

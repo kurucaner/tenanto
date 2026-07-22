@@ -37,7 +37,7 @@ todos:
     status: completed
   - id: phase-6b-balance-ui
     content: "Phase 6b: Deposit balance card on lease detail"
-    status: pending
+    status: completed
   - id: phase-7a-end-lease
     content: "Phase 7a: End lease deposit callout + close-out dialog"
     status: pending

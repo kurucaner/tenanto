@@ -1,7 +1,10 @@
 import { formatMoney } from "@/lib/format-money";
 import {
+  type ILeaseDepositSummary,
   inferLeaseDepositPreset,
+  LeaseDepositBalanceStatus,
   LeaseDepositPreset,
+  type TLeaseDepositBalanceStatus,
   type TLeaseDepositPreset,
 } from "@/packages/shared";
 
@@ -29,5 +32,40 @@ export function getLeaseDepositFormDefaults(input: {
         ? String(input.securityDepositAmount)
         : "",
     securityDepositPreset: preset,
+  };
+}
+
+export function formatLeaseDepositBalanceStatusLabel(status: TLeaseDepositBalanceStatus): string {
+  switch (status) {
+    case LeaseDepositBalanceStatus.DUE:
+      return "Due";
+    case LeaseDepositBalanceStatus.PARTIAL:
+      return "Partial";
+    case LeaseDepositBalanceStatus.HELD:
+      return "Held";
+    case LeaseDepositBalanceStatus.REFUNDED:
+      return "Refunded";
+    case LeaseDepositBalanceStatus.NONE:
+      return "None";
+  }
+}
+
+/**
+ * Record deposit CTA: hide when no contractual amount or already fully collected
+ * (`outstanding === 0` with an expected amount).
+ */
+export function canShowRecordLeaseDepositCta(summary: ILeaseDepositSummary): boolean {
+  return summary.expected != null && summary.expected > 0 && summary.outstanding > 0;
+}
+
+export function getLeaseDepositBalanceRows(summary: ILeaseDepositSummary): {
+  collectedLabel: string;
+  expectedLabel: string;
+  outstandingLabel: string;
+} {
+  return {
+    collectedLabel: formatMoney(summary.collected),
+    expectedLabel: formatLeaseSecurityDepositDisplay(summary.expected),
+    outstandingLabel: formatMoney(summary.outstanding),
   };
 }
