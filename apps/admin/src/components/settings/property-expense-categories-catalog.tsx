@@ -1,6 +1,8 @@
-import { memo, type MouseEvent, useState } from "react";
+import { memo, type MouseEvent, useCallback, useState } from "react";
 
 import { PropertyExpenseCategoryDialog } from "@/components/settings/property-expense-category-dialog";
+import { usePropertySettingsCatalogDialog } from "@/components/settings/property-settings-catalog-dialog-context";
+import { PropertySettingsCatalogDialogScope } from "@/components/settings/property-settings-catalog-dialog-scope";
 import { PropertySettingsCatalogList } from "@/components/settings/property-settings-catalog-list";
 import { PropertySettingsCatalogRow } from "@/components/settings/property-settings-catalog-row";
 import {
@@ -20,6 +22,78 @@ type TPropertyExpenseCategoriesCatalogProps = {
   onUpsertRow: (row: PropertyExpenseCategoryTypeFormRow) => void;
 };
 
+const ExpenseCategoryCatalogRow = memo(function ExpenseCategoryCatalogRow({
+  disabled,
+  isPending,
+  isQuickDeleteActive,
+  onDeleteRow,
+  row,
+}: {
+  disabled: boolean;
+  isPending: boolean;
+  isQuickDeleteActive: boolean;
+  onDeleteRow: TPropertyExpenseCategoriesCatalogProps["onDeleteRow"];
+  row: PropertyExpenseCategoryTypeFormRow;
+}) {
+  const { openEdit } = usePropertySettingsCatalogDialog<PropertyExpenseCategoryTypeFormRow>();
+
+  return (
+    <PropertySettingsCatalogRow
+      disabled={disabled}
+      isDeletePending={isPending}
+      meta={row.isAnnualAmount ? "Annual" : undefined}
+      onDelete={(event) => onDeleteRow(row, event)}
+      onEdit={() => openEdit(row)}
+      quickDeleteActive={isQuickDeleteActive}
+      title={row.name}
+    />
+  );
+});
+ExpenseCategoryCatalogRow.displayName = "ExpenseCategoryCatalogRow";
+
+const ExpenseCategoriesCatalogList = memo(function ExpenseCategoriesCatalogList({
+  disabled,
+  expenseCategoryTypes,
+  isPending,
+  isQuickDeleteActive,
+  onDeleteRow,
+}: Omit<TPropertyExpenseCategoriesCatalogProps, "onUpsertRow">) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const { openAdd } = usePropertySettingsCatalogDialog<PropertyExpenseCategoryTypeFormRow>();
+
+  const filtered = expenseCategoryTypes.filter((row) =>
+    row.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
+  const showSearch = expenseCategoryTypes.length > PROPERTY_SETTINGS_CATALOG_SEARCH_THRESHOLD;
+
+  return (
+    <PropertySettingsCatalogList
+      addLabel="Add category"
+      count={expenseCategoryTypes.length}
+      description="Categories available when adding expenses. Annual categories are spread across months in reports."
+      disabled={disabled || isPending}
+      emptyLabel="No expense categories configured."
+      onAdd={openAdd}
+      onSearchChange={setSearchQuery}
+      searchQuery={searchQuery}
+      showSearch={showSearch}
+      title="Expense categories"
+    >
+      {filtered.map((row) => (
+        <ExpenseCategoryCatalogRow
+          disabled={disabled ?? false}
+          isPending={isPending ?? false}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={row.clientId}
+          onDeleteRow={onDeleteRow}
+          row={row}
+        />
+      ))}
+    </PropertySettingsCatalogList>
+  );
+});
+ExpenseCategoriesCatalogList.displayName = "ExpenseCategoriesCatalogList";
+
 export const PropertyExpenseCategoriesCatalog = memo(function PropertyExpenseCategoriesCatalog({
   disabled = false,
   expenseCategoryTypes,
@@ -28,59 +102,31 @@ export const PropertyExpenseCategoriesCatalog = memo(function PropertyExpenseCat
   onDeleteRow,
   onUpsertRow,
 }: TPropertyExpenseCategoriesCatalogProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dialogRow, setDialogRow] = useState<PropertyExpenseCategoryTypeFormRow | null | undefined>(
-    undefined
+  const renderDialog = useCallback(
+    (props: {
+      isPending: boolean;
+      onOpenChange: (open: boolean) => void;
+      onSubmit: (row: PropertyExpenseCategoryTypeFormRow) => void;
+      open: boolean;
+      row: PropertyExpenseCategoryTypeFormRow | null;
+    }) => <PropertyExpenseCategoryDialog {...props} />,
+    []
   );
-
-  const filtered = expenseCategoryTypes.filter((row) =>
-    row.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-  );
-  const showSearch = expenseCategoryTypes.length > PROPERTY_SETTINGS_CATALOG_SEARCH_THRESHOLD;
-  const dialogOpen = dialogRow !== undefined;
 
   return (
-    <>
-      <PropertySettingsCatalogList
-        addLabel="Add category"
-        count={expenseCategoryTypes.length}
-        description="Categories available when adding expenses. Annual categories are spread across months in reports."
-        disabled={disabled || isPending}
-        emptyLabel="No expense categories configured."
-        onAdd={() => setDialogRow(null)}
-        onSearchChange={setSearchQuery}
-        searchQuery={searchQuery}
-        showSearch={showSearch}
-        title="Expense categories"
-      >
-        {filtered.map((row) => (
-          <PropertySettingsCatalogRow
-            disabled={disabled}
-            isDeletePending={isPending}
-            key={row.clientId}
-            meta={row.isAnnualAmount ? "Annual" : undefined}
-            onDelete={(event) => onDeleteRow(row, event)}
-            onEdit={() => setDialogRow(row)}
-            quickDeleteActive={isQuickDeleteActive}
-            title={row.name}
-          />
-        ))}
-      </PropertySettingsCatalogList>
-      <PropertyExpenseCategoryDialog
+    <PropertySettingsCatalogDialogScope
+      isPending={isPending}
+      onUpsertRow={onUpsertRow}
+      renderDialog={renderDialog}
+    >
+      <ExpenseCategoriesCatalogList
+        disabled={disabled}
+        expenseCategoryTypes={expenseCategoryTypes}
         isPending={isPending}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDialogRow(undefined);
-          }
-        }}
-        onSubmit={(row) => {
-          onUpsertRow(row);
-          setDialogRow(undefined);
-        }}
-        open={dialogOpen}
-        row={dialogRow ?? null}
+        isQuickDeleteActive={isQuickDeleteActive}
+        onDeleteRow={onDeleteRow}
       />
-    </>
+    </PropertySettingsCatalogDialogScope>
   );
 });
 PropertyExpenseCategoriesCatalog.displayName = "PropertyExpenseCategoriesCatalog";
