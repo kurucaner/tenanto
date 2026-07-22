@@ -39,6 +39,7 @@ import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { normalizeStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 import {
+  addDaysToIsoDate,
   formatRentPeriodLabel,
   getExtensionRentEffectiveMonthOptions,
   getExtensionRentEffectiveWeekOptions,
@@ -63,6 +64,18 @@ function getDefaultExtendMode(lease: IPropertyLongStay): TExtendLeaseInputMode {
   return isWeeklyRentBillingCadence(lease.rentBillingCadence) ? "weeks" : "months";
 }
 
+function getMinNewLeaseEndDate(leaseEndDate: string): string {
+  return addDaysToIsoDate(leaseEndDate, 1);
+}
+
+function getDefaultNewLeaseEndDate(lease: IPropertyLongStay): string {
+  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
+    return resolveExtendLeaseEndDate(lease, { additionalWeeks: 1 }).newLeaseEndDate;
+  }
+
+  return resolveExtendLeaseEndDate(lease, { additionalTermMonths: 1 }).newLeaseEndDate;
+}
+
 function getDefaultValues(lease: IPropertyLongStay) {
   const isWeekly = isWeeklyRentBillingCadence(lease.rentBillingCadence);
 
@@ -71,7 +84,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
     additionalTermWeeks: DEFAULT_ADDITIONAL_TERM_WEEKS,
     changeRent: false,
     extendMode: getDefaultExtendMode(lease),
-    newLeaseEndDate: "",
+    newLeaseEndDate: getDefaultNewLeaseEndDate(lease),
     newRentAmount: String(getLeaseRentAmount(lease)),
     rentEffectiveFromPeriod: isWeekly
       ? getFirstExtensionWeek(lease.leaseStartDate, lease.leaseEndDate)
@@ -410,6 +423,7 @@ export const ExtendLeaseDialog = memo(
                 <div className="flex flex-col gap-1.5">
                   <Input
                     id="extend-lease-end-date"
+                    min={getMinNewLeaseEndDate(lease.leaseEndDate)}
                     onChange={(event) =>
                       form.setValue("newLeaseEndDate", event.target.value, {
                         shouldValidate: true,
