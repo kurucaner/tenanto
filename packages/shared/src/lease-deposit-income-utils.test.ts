@@ -1,12 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  isDepositIncomeLineType,
-  SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
-} from "./lease-deposit-income-utils";
+import { isDepositIncomeLineType } from "./lease-deposit-income-utils";
 import {
   isSystemSecurityDepositIncomeLineTypeName,
   SYSTEM_LEASE_RENT_INCOME_TYPE_NAME,
+  SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
 } from "./property-income-line-type-config";
 
 describe("SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME", () => {

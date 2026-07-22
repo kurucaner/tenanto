@@ -151,10 +151,12 @@ export {
 // Property Settings Types
 export {
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
-  DEFAULT_PROPERTY_TAX_RATES,
-  formatRateAsPercent,
   type IPropertyChannelCommission,
   type IPropertyChannelCommissionInput,
+} from "./property-channel-commission-config";
+export {
+  DEFAULT_PROPERTY_TAX_RATES,
+  formatRateAsPercent,
   type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
@@ -197,6 +199,7 @@ export {
 
 // Property Long Stay Types
 export {
+  addMonthsToIsoDate,
   calculateLeaseEndDate,
   calculateLeaseEndDateFromWeeks,
   deriveTermWeeksFromDates,
@@ -287,7 +290,6 @@ export {
 } from "./lease-secondary-tenant-contact";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
-  addMonthsToIsoDate,
   deriveTermMonthsFromDates,
   type IResolvedExtendLeaseTerm,
   type IResolvedLeaseTerm,
