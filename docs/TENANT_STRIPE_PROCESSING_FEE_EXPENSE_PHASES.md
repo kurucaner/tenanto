@@ -186,8 +186,8 @@ No new public API required for v1. Internal:
 
 **Goal:** Every existing property has the category.
 
-- [ ] Migration `INSERT … SELECT` from `properties` where missing (or script invoked once)
-- [ ] Short note in this doc’s deploy checklist
+- [x] Migration `INSERT … SELECT` from `properties` where missing (v80; also promotes existing active “Payment processing” rows to `is_system`)
+- [x] Short note in this doc’s deploy checklist
 
 **Files (≤3).**
 
@@ -325,8 +325,8 @@ No new public API required for v1. Internal:
 
 ## Deploy checklist
 
-| Checkpoint | Ship         | Notes                                             |
-| ---------- | ------------ | ------------------------------------------------- |
-| **A**      | Phases 0c–1c | System category exists and cannot be removed      |
-| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense |
-| **C**      | Phases 3–4   | Failure/refund policy + docs                      |
+| Checkpoint | Ship         | Notes                                                                                                                                 |
+| ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **A**      | Phases 0c–1c | System category exists and cannot be removed. **v80** backfills every property with active `is_system` **Payment processing** on migrate. |
+| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                     |
+| **C**      | Phases 3–4   | Failure/refund policy + docs                                                                                                          |

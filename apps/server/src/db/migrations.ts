@@ -3567,4 +3567,43 @@ export const migrations: IMigration[] = [
     },
     version: 79,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DELETE FROM property_expense_category_types
+        WHERE is_system = true
+          AND lower(name) = lower('Payment processing');
+      `);
+    },
+    name: "property_expense_category_types_backfill_payment_processing",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        UPDATE property_expense_category_types
+        SET is_system = true,
+            name = 'Payment processing',
+            sort_order = -1,
+            is_annual_amount = false,
+            updated_at = NOW()
+        WHERE is_deleted = false
+          AND lower(name) = lower('Payment processing')
+          AND is_system = false;
+      `);
+
+      await client.query(`
+        INSERT INTO property_expense_category_types
+          (property_id, name, sort_order, is_annual_amount, is_system)
+        SELECT p.id, 'Payment processing', -1, false, true
+        FROM properties p
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM property_expense_category_types t
+          WHERE t.property_id = p.id
+            AND t.is_system = true
+            AND t.is_deleted = false
+            AND lower(t.name) = lower('Payment processing')
+        );
+      `);
+    },
+    version: 80,
+  },
 ];
