@@ -123,6 +123,128 @@ function buildExtendLeaseMutationBody(
   };
 }
 
+type TExtendTermFieldPath = "additionalTermMonths" | "additionalTermWeeks";
+
+function getExtendModeErrorPath(
+  extendMode: TExtendLeaseInputMode
+): TExtendTermFieldPath | "newLeaseEndDate" {
+  if (extendMode === "customEnd") {
+    return "newLeaseEndDate";
+  }
+  if (extendMode === "weeks") {
+    return "additionalTermWeeks";
+  }
+  return "additionalTermMonths";
+}
+
+function refineAdditionalTermField(
+  ctx: z.RefinementCtx,
+  value: string,
+  path: TExtendTermFieldPath,
+  max: number
+): void {
+  if (!/^\d+$/.test(value)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Additional term must be a whole number",
+      path: [path],
+    });
+    return;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (parsed < 1 || parsed > max) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Additional term must be between 1 and ${max}`,
+      path: [path],
+    });
+  }
+}
+
+function refineExtendLeaseLength(values: TExtendLeaseFormValues, ctx: z.RefinementCtx): void {
+  if (values.extendMode === "months") {
+    refineAdditionalTermField(
+      ctx,
+      values.additionalTermMonths,
+      "additionalTermMonths",
+      MAX_ADDITIONAL_TERM_MONTHS
+    );
+    return;
+  }
+
+  if (values.extendMode === "weeks") {
+    refineAdditionalTermField(
+      ctx,
+      values.additionalTermWeeks,
+      "additionalTermWeeks",
+      MAX_ADDITIONAL_TERM_WEEKS
+    );
+    return;
+  }
+
+  if (values.newLeaseEndDate === "") {
+    ctx.addIssue({
+      code: "custom",
+      message: "New lease end date is required",
+      path: ["newLeaseEndDate"],
+    });
+  }
+}
+
+function refineExtendLeaseChangeRent(
+  values: TExtendLeaseFormValues,
+  ctx: z.RefinementCtx,
+  newRentLabel: string
+): void {
+  if (!values.changeRent) {
+    return;
+  }
+
+  const rentResult = requiredPositiveMoneyField(newRentLabel).safeParse(values.newRentAmount);
+  if (!rentResult.success) {
+    ctx.addIssue({
+      code: "custom",
+      message:
+        rentResult.error.issues[0]?.message ?? `Invalid ${newRentLabel.toLowerCase()}`,
+      path: ["newRentAmount"],
+    });
+  }
+}
+
+function refineExtendLeaseFormValues(
+  values: TExtendLeaseFormValues,
+  ctx: z.RefinementCtx,
+  options: {
+    lease: IPropertyLongStay;
+    newRentLabel: string;
+    today: string;
+  }
+): void {
+  const { lease, newRentLabel, today } = options;
+  const includeTopUp =
+    values.changeRent &&
+    values.newRentAmount !== "" &&
+    getExtendDepositTopUpPreview({
+      currentExpected: lease.securityDepositAmount,
+      newRentAmount: Number(values.newRentAmount),
+      tracksRent: lease.securityDepositTracksRent,
+    }).eligible;
+
+  const body = buildExtendLeaseMutationBody(values, includeTopUp === true);
+  const error = validateExtendLease(body, lease, today);
+  if (error) {
+    ctx.addIssue({
+      code: "custom",
+      message: error,
+      path: [getExtendModeErrorPath(values.extendMode)],
+    });
+  }
+
+  refineExtendLeaseLength(values, ctx);
+  refineExtendLeaseChangeRent(values, ctx, newRentLabel);
+}
+
 interface ExtendLeaseDialogProps {
   lease: IPropertyLongStay;
   onOpenChange: (open: boolean) => void;
@@ -155,90 +277,7 @@ export const ExtendLeaseDialog = memo(
             topUpSecurityDeposit: z.boolean(),
           })
           .superRefine((values, ctx) => {
-            const topUpOffer =
-              values.changeRent && values.newRentAmount !== ""
-                ? getExtendDepositTopUpPreview({
-                    currentExpected: lease.securityDepositAmount,
-                    newRentAmount: Number(values.newRentAmount),
-                    tracksRent: lease.securityDepositTracksRent,
-                  })
-                : null;
-
-            const body = buildExtendLeaseMutationBody(values, topUpOffer?.eligible === true);
-            const error = validateExtendLease(body, lease, today);
-            if (error) {
-              let extendModeErrorPath:
-                "additionalTermMonths" | "additionalTermWeeks" | "newLeaseEndDate";
-              if (values.extendMode === "customEnd") {
-                extendModeErrorPath = "newLeaseEndDate";
-              } else if (values.extendMode === "weeks") {
-                extendModeErrorPath = "additionalTermWeeks";
-              } else {
-                extendModeErrorPath = "additionalTermMonths";
-              }
-
-              ctx.addIssue({
-                code: "custom",
-                message: error,
-                path: [extendModeErrorPath],
-              });
-            }
-
-            if (values.extendMode === "months") {
-              if (!/^\d+$/.test(values.additionalTermMonths)) {
-                ctx.addIssue({
-                  code: "custom",
-                  message: "Additional term must be a whole number",
-                  path: ["additionalTermMonths"],
-                });
-              } else {
-                const parsed = Number.parseInt(values.additionalTermMonths, 10);
-                if (parsed < 1 || parsed > MAX_ADDITIONAL_TERM_MONTHS) {
-                  ctx.addIssue({
-                    code: "custom",
-                    message: `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_MONTHS}`,
-                    path: ["additionalTermMonths"],
-                  });
-                }
-              }
-            } else if (values.extendMode === "weeks") {
-              if (!/^\d+$/.test(values.additionalTermWeeks)) {
-                ctx.addIssue({
-                  code: "custom",
-                  message: "Additional term must be a whole number",
-                  path: ["additionalTermWeeks"],
-                });
-              } else {
-                const parsed = Number.parseInt(values.additionalTermWeeks, 10);
-                if (parsed < 1 || parsed > MAX_ADDITIONAL_TERM_WEEKS) {
-                  ctx.addIssue({
-                    code: "custom",
-                    message: `Additional term must be between 1 and ${MAX_ADDITIONAL_TERM_WEEKS}`,
-                    path: ["additionalTermWeeks"],
-                  });
-                }
-              }
-            } else if (values.newLeaseEndDate === "") {
-              ctx.addIssue({
-                code: "custom",
-                message: "New lease end date is required",
-                path: ["newLeaseEndDate"],
-              });
-            }
-
-            if (values.changeRent) {
-              const rentResult = requiredPositiveMoneyField(newRentLabel).safeParse(
-                values.newRentAmount
-              );
-              if (!rentResult.success) {
-                ctx.addIssue({
-                  code: "custom",
-                  message:
-                    rentResult.error.issues[0]?.message ?? `Invalid ${newRentLabel.toLowerCase()}`,
-                  path: ["newRentAmount"],
-                });
-              }
-            }
+            refineExtendLeaseFormValues(values, ctx, { lease, newRentLabel, today });
           })
       ),
     });
