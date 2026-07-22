@@ -35,7 +35,7 @@ import { longStaysApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
-import { formatMoneyOptionalCents } from "@/lib/format-money";
+import { formatMoney } from "@/lib/format-money";
 import { getLeaseRentAmountSuffix } from "@/lib/lease-rent-schedule-display";
 import {
   buildLeaseToolbarClearAllPatch,
@@ -156,7 +156,7 @@ const LeaseRow = memo(
         <TableCell>{formatIsoDateDisplay(lease.leaseStartDate)}</TableCell>
         <TableCell>{formatIsoDateDisplay(endDate)}</TableCell>
         <TableCell className="text-right">
-          {formatMoneyOptionalCents(getLeaseRentAmount(lease))}
+          {formatMoney(getLeaseRentAmount(lease))}
           {getLeaseRentAmountSuffix(lease.rentBillingCadence)}
         </TableCell>
         <TableCell>
