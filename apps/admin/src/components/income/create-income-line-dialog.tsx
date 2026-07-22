@@ -51,6 +51,8 @@ export interface CreateIncomeLineDialogPrefill {
   amount?: string;
   guestName?: string;
   incomeLineTypeId?: string;
+  /** When true with a locked lease, records system Security deposit (no rent period). */
+  isSecurityDeposit?: boolean;
   longStayId?: string;
   rentPeriodKey?: string;
   reservationId?: string;
@@ -143,7 +145,9 @@ const CreateIncomeLineDialogForm = memo(
     units,
   }: CreateIncomeLineDialogFormProps) => {
     const queryClient = useQueryClient();
-    const isRentRecording = Boolean(lockedLease);
+    const isDepositRecording = Boolean(lockedLease && prefill?.isSecurityDeposit);
+    const isRentRecording = Boolean(lockedLease) && !isDepositRecording;
+    const isSystemAssignedLeaseIncome = isRentRecording || isDepositRecording;
 
     const form = useForm<TCreateIncomeLineFormValues>({
       defaultValues: getDefaultValues(incomeLineTypes, prefill, lockedStay, lockedLease),
@@ -168,7 +172,7 @@ const CreateIncomeLineDialogForm = memo(
           description: values.description.trim() || undefined,
           guestName: values.guestName.trim() || undefined,
           longStayId: values.longStayId || undefined,
-          rentPeriodKey: prefill?.rentPeriodKey,
+          rentPeriodKey: isDepositRecording ? undefined : prefill?.rentPeriodKey,
           reservationId: values.reservationId || undefined,
           transactionDate: values.transactionDate,
           unitId: values.unitId === PROPERTY_AMENITY_UNIT_VALUE ? null : values.unitId,
@@ -187,7 +191,7 @@ const CreateIncomeLineDialogForm = memo(
         toast.error(e instanceof Error ? e.message : "Failed to create income entry");
       },
       onSuccess: (_data, values) => {
-        toast.success(isRentRecording ? "Rent recorded" : "Other income created");
+        toast.success(getSuccessToast(isRentRecording, isDepositRecording));
         invalidatePropertyIncomeCaches(queryClient, propertyId, {
           longStayId: values.longStayId || undefined,
         });
@@ -205,12 +209,14 @@ const CreateIncomeLineDialogForm = memo(
     return (
       <form onSubmit={onSubmit}>
         <DialogHeader>
-          <DialogTitle>{getDialogTitle(isRentRecording)}</DialogTitle>
-          <DialogDescription>{getDialogDescription(lockedLease, lockedStay)}</DialogDescription>
+          <DialogTitle>{getDialogTitle(isRentRecording, isDepositRecording)}</DialogTitle>
+          <DialogDescription>
+            {getDialogDescription(lockedLease, lockedStay, isDepositRecording)}
+          </DialogDescription>
         </DialogHeader>
 
         <DialogFormFields>
-          {!isRentRecording ? (
+          {!isSystemAssignedLeaseIncome ? (
             <Controller
               control={form.control}
               name="incomeLineTypeId"
@@ -292,7 +298,9 @@ const CreateIncomeLineDialogForm = memo(
                       onAmountChange={amountField.onChange}
                       onDateChange={dateField.onChange}
                       transactionDate={dateField.value}
-                      transactionDateLabel={isRentRecording ? "Payment date" : "Date"}
+                      transactionDateLabel={
+                        isRentRecording || isDepositRecording ? "Payment date" : "Date"
+                      }
                     />
                     {errors.amount ? (
                       <p className="text-xs text-destructive">{errors.amount.message}</p>
@@ -332,7 +340,7 @@ const CreateIncomeLineDialogForm = memo(
             )}
           />
 
-          {!isRentRecording ? (
+          {!isSystemAssignedLeaseIncome ? (
             <p className="text-muted-foreground text-xs">
               {formatIncomeLineTypeLabel(incomeLineTypeId, incomeLineTypes)}: no taxes or channel
               commission applied.
@@ -345,7 +353,7 @@ const CreateIncomeLineDialogForm = memo(
             Cancel
           </Button>
           <Button disabled={mutation.isPending || isSubmitting} type="submit">
-            {getSubmitLabel(mutation.isPending, isRentRecording)}
+            {getSubmitLabel(mutation.isPending, isRentRecording, isDepositRecording)}
           </Button>
         </DialogFooter>
       </form>
@@ -354,21 +362,51 @@ const CreateIncomeLineDialogForm = memo(
 );
 CreateIncomeLineDialogForm.displayName = "CreateIncomeLineDialogForm";
 
-function getDialogTitle(isRentRecording: boolean): string {
-  return isRentRecording ? "Record Rent" : "Add Other Income";
+function getDialogTitle(isRentRecording: boolean, isDepositRecording: boolean): string {
+  if (isDepositRecording) {
+    return "Record Deposit";
+  }
+  if (isRentRecording) {
+    return "Record Rent";
+  }
+  return "Add Other Income";
 }
 
-function getSubmitLabel(isPending: boolean, isRentRecording: boolean): string {
-  if (isPending) return isRentRecording ? "Recording…" : "Creating…";
-  return getDialogTitle(isRentRecording);
+function getSubmitLabel(
+  isPending: boolean,
+  isRentRecording: boolean,
+  isDepositRecording: boolean
+): string {
+  if (isPending) {
+    return isRentRecording || isDepositRecording ? "Recording…" : "Creating…";
+  }
+  return getDialogTitle(isRentRecording, isDepositRecording);
+}
+
+function getSuccessToast(isRentRecording: boolean, isDepositRecording: boolean): string {
+  if (isDepositRecording) {
+    return "Deposit recorded";
+  }
+  if (isRentRecording) {
+    return "Rent recorded";
+  }
+  return "Other income created";
 }
 
 function getDialogDescription(
   lockedLease: IPropertyLongStay | null | undefined,
-  lockedStay: IPropertyReservation | null | undefined
+  lockedStay: IPropertyReservation | null | undefined,
+  isDepositRecording: boolean
 ): string {
-  if (lockedLease) return `Record rent for ${lockedLease.guestName}'s lease.`;
-  if (lockedStay) return `Add income linked to ${lockedStay.guestName}'s stay.`;
+  if (lockedLease && isDepositRecording) {
+    return `Record security deposit for ${lockedLease.guestName}'s lease.`;
+  }
+  if (lockedLease) {
+    return `Record rent for ${lockedLease.guestName}'s lease.`;
+  }
+  if (lockedStay) {
+    return `Add income linked to ${lockedStay.guestName}'s stay.`;
+  }
   return "Record cleaning, extra services, or other non-stay revenue.";
 }
 

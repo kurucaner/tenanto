@@ -8,6 +8,7 @@ import {
 } from "@/components/income/create-income-line-dialog";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
+import { LeaseDepositSection } from "@/components/leases/lease-deposit-section";
 import { LeaseDetailActions, LeaseDetailHeader } from "@/components/leases/lease-detail-header";
 import { LeaseOverviewSection } from "@/components/leases/lease-overview-section";
 import { LeasePaymentsSection } from "@/components/leases/lease-payments-section";
@@ -19,6 +20,7 @@ import { usePropertyLongStayDetail } from "@/hooks/use-property-long-stay-detail
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { useUrlTabState } from "@/hooks/use-url-tab-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
+import { buildLeaseRecordDepositPrefill } from "@/lib/build-lease-record-deposit-prefill";
 import { LEASE_DETAIL_TAB_DEFINITIONS, LEASE_DETAIL_TABS } from "@/lib/lease-detail-tab-schema";
 import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import { queryKeys } from "@/lib/query-keys";
@@ -37,9 +39,8 @@ export const PropertyLeaseDetailPage = memo(() => {
 
   const [endLeaseOpen, setEndLeaseOpen] = useState(false);
   const [extendLeaseOpen, setExtendLeaseOpen] = useState(false);
-  const [recordRentPrefill, setRecordRentPrefill] = useState<CreateIncomeLineDialogPrefill | null>(
-    null
-  );
+  const [recordIncomePrefill, setRecordIncomePrefill] =
+    useState<CreateIncomeLineDialogPrefill | null>(null);
 
   const {
     currentRent,
@@ -83,7 +84,7 @@ export const PropertyLeaseDetailPage = memo(() => {
       if (!lease) {
         return;
       }
-      setRecordRentPrefill(
+      setRecordIncomePrefill(
         buildLeaseRecordRentPrefill(lease, {
           periodKey,
           rentSchedule,
@@ -92,6 +93,13 @@ export const PropertyLeaseDetailPage = memo(() => {
     },
     [lease, rentSchedule]
   );
+
+  const handleRecordDeposit = useCallback(() => {
+    if (!lease) {
+      return;
+    }
+    setRecordIncomePrefill(buildLeaseRecordDepositPrefill(lease));
+  }, [lease]);
 
   const handleEndLeaseSuccess = useCallback(() => {
     setEndLeaseOpen(false);
@@ -165,13 +173,20 @@ export const PropertyLeaseDetailPage = memo(() => {
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="payments">
-            <LeasePaymentsSection
-              canManage={canManage}
-              isPending={isPending}
-              lease={lease}
-              onRecordRent={handleRecordRent}
-              rentSchedule={rentSchedule}
-            />
+            <div className="space-y-4">
+              <LeaseDepositSection
+                canManage={canManage}
+                lease={lease}
+                onRecordDeposit={handleRecordDeposit}
+              />
+              <LeasePaymentsSection
+                canManage={canManage}
+                isPending={isPending}
+                lease={lease}
+                onRecordRent={handleRecordRent}
+                rentSchedule={rentSchedule}
+              />
+            </div>
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="terms">
@@ -210,18 +225,18 @@ export const PropertyLeaseDetailPage = memo(() => {
         />
       ) : null}
 
-      {recordRentPrefill && lease ? (
+      {recordIncomePrefill && lease ? (
         <CreateIncomeLineDialog
           incomeLineTypes={incomeLineTypes}
-          key={`${lease.id}-${recordRentPrefill.rentPeriodKey ?? recordRentPrefill.transactionDate ?? "today"}`}
+          key={`${lease.id}-${recordIncomePrefill.isSecurityDeposit ? "deposit" : "rent"}-${recordIncomePrefill.rentPeriodKey ?? recordIncomePrefill.transactionDate ?? "today"}`}
           lockedLease={lease}
           onOpenChange={(open) => {
             if (!open) {
-              setRecordRentPrefill(null);
+              setRecordIncomePrefill(null);
             }
           }}
           open={true}
-          prefill={recordRentPrefill}
+          prefill={recordIncomePrefill}
           propertyId={propertyId}
           units={units}
         />
