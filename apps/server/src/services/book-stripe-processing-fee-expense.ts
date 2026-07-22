@@ -41,6 +41,7 @@ async function bookStripeFeeExpense(input: {
 
   if (fee.feeCents <= 0) {
     WinstonLogger.info({
+      balanceTxnId: fee.balanceTransactionId,
       feeCents: fee.feeCents,
       msg: `tenant_payments.${logPrefix}_expense_skipped_zero`,
       paymentId: payment.id,
@@ -52,6 +53,7 @@ async function bookStripeFeeExpense(input: {
 
   if (fee.balanceTransactionId == null) {
     WinstonLogger.warn({
+      balanceTxnId: null,
       feeCents: fee.feeCents,
       msg: `tenant_payments.${logPrefix}_expense_missing_balance_txn`,
       paymentId: payment.id,
@@ -76,7 +78,7 @@ async function bookStripeFeeExpense(input: {
   });
 
   WinstonLogger.info({
-    balanceTransactionId: fee.balanceTransactionId,
+    balanceTxnId: fee.balanceTransactionId,
     expenseId: expense.id,
     feeCents: fee.feeCents,
     msg: `tenant_payments.${logPrefix}_expense_booked`,
@@ -232,7 +234,9 @@ export async function reverseProcessingFeeExpenseOnRentRefund(
 
   if (reversedCents <= 0) {
     WinstonLogger.info({
+      balanceTxnId: originalChargeBalanceTransactionId(charge),
       chargeId: charge.id,
+      feeCents: 0,
       msg: "tenant_payments.processing_fee_expense_left_on_refund",
       paymentId: payment.id,
       propertyId: payment.propertyId,
@@ -244,11 +248,12 @@ export async function reverseProcessingFeeExpenseOnRentRefund(
   const originalBalanceTransactionId = originalChargeBalanceTransactionId(charge);
   if (originalBalanceTransactionId == null) {
     WinstonLogger.warn({
+      balanceTxnId: null,
       chargeId: charge.id,
+      feeCents: reversedCents,
       msg: "tenant_payments.processing_fee_expense_refund_missing_original_bt",
       paymentId: payment.id,
       propertyId: payment.propertyId,
-      reversedCents,
     });
     return "no_expense";
   }
@@ -258,11 +263,11 @@ export async function reverseProcessingFeeExpenseOnRentRefund(
   );
   if (expense == null) {
     WinstonLogger.info({
-      balanceTransactionId: originalBalanceTransactionId,
+      balanceTxnId: originalBalanceTransactionId,
+      feeCents: reversedCents,
       msg: "tenant_payments.processing_fee_expense_refund_no_expense",
       paymentId: payment.id,
       propertyId: payment.propertyId,
-      reversedCents,
     });
     return "no_expense";
   }
@@ -274,12 +279,12 @@ export async function reverseProcessingFeeExpenseOnRentRefund(
   await propertyExpensesDb.softDelete(expense.id);
 
   WinstonLogger.info({
-    balanceTransactionId: originalBalanceTransactionId,
+    balanceTxnId: originalBalanceTransactionId,
     expenseId: expense.id,
+    feeCents: reversedCents,
     msg: "tenant_payments.processing_fee_expense_soft_deleted_on_refund",
     paymentId: payment.id,
     propertyId: payment.propertyId,
-    reversedCents,
   });
 
   return "soft_deleted";

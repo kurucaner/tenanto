@@ -287,13 +287,26 @@ No new public API required for v1. Internal:
 
 **Goal:** Observability and operator guidance.
 
-- [ ] Winston: propertyId, paymentId, balanceTxnId, feeCents
-- [ ] Doc note: importing Stripe/bank CSV that includes the same fees will double-count
-- [ ] Cross-link from card-fee phases “post-settle ledger”
+- [x] Winston: `propertyId`, `paymentId`, `balanceTxnId`, `feeCents` on fee-expense book / skip / refund paths
+- [x] Doc note: importing Stripe/bank CSV that includes the same fees will double-count (see **Operator guidance** below)
+- [x] Cross-link from card-fee phases “post-settle ledger”
 
 **Files (≤3).**
 
 **Exit criteria:** Checklist complete in this doc.
+
+---
+
+## Operator guidance
+
+### CSV / bank import double-count
+
+Auto-booked **Payment processing** expenses come from Stripe balance-transaction `stripe_fee` on rent succeed (and optionally ACH return). If operators also import Stripe payouts, bank exports, or CSV lines that already include those same processing fees, **property P&L will double-count** the cost.
+
+**v1:** no auto-dedupe against imports. Prefer either:
+
+- Rely on automation for Stripe rent processing fees and exclude those lines from CSV imports, or
+- Import fees manually and accept that automation may also create rows (unique only on `stripe_balance_transaction_id`, not on description/amount).
 
 ---
 
@@ -332,4 +345,4 @@ No new public API required for v1. Internal:
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **A**      | Phases 0c–1c | System category exists and cannot be removed. **v80** backfills every property with active `is_system` **Payment processing** on migrate.                                 |
 | **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                                                         |
-| **C**      | Phases 3–4   | Failure/refund policy + docs. **Enable** `checkout.session.async_payment_failed` + `charge.failed` (plus ACH success events) on the Stripe destination / `stripe listen`. |
+| **C**      | Phases 3–4   | Failure/refund policy + hardening. Enable `async_payment_failed` + `charge.failed` (+ ACH success events). Avoid CSV double-count of auto Payment processing fees. |

@@ -8,7 +8,7 @@ Ship **locked Checkout** first (method chosen in-app), then **Payment Element + 
 
 **Parent rent plan:** [`TENANT_STRIPE_RENT_PAYMENTS.md`](./TENANT_STRIPE_RENT_PAYMENTS.md).
 
-**Follow-on ledger:** auto-book Stripe processing fees as property expenses — [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md).
+**Follow-on ledger (post-settle):** after rent payment **succeeds**, auto-book Stripe **processing** fees (`stripe_fee` only — never platform `application_fee` / card convenience fee) as property expenses under system category **Payment processing**. See [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md). Do not import the same fees again via CSV (double-count risk documented there).
 
 **Related code today**
 
@@ -384,8 +384,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 | --- | --- |
 | Method/amount mismatch | Lock Checkout PMs; PE updates PI before confirm |
 | Fee vs rent ledger | Income uses `amount_cents` only |
+| Post-settle Stripe processing fee | Property expense under **Payment processing** — [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md); never book `application_fee` as that expense |
 | ACH delay | Status `processing`; UI + reconcile |
-| ACH returns | Existing refund/dispute path; clawback income if refunded |
+| ACH returns | Existing refund/dispute path; clawback income if refunded; optional ACH return fee expense (same processing-fee plan) |
 | Double checkout | Idempotency includes method + chargeCents |
 | Webhook config drift | Ops checklist; parent doc event table |
 | Existing Connect accounts | Phase 1d capability backfill |
