@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { PropertySwitcherTrigger } from "@/components/properties/property-switcher-trigger";
@@ -117,19 +117,32 @@ const PropertySwitcherRecentSectionHeader = memo(
 );
 PropertySwitcherRecentSectionHeader.displayName = "PropertySwitcherRecentSectionHeader";
 
-interface PropertySwitcherProps {
-  propertyId: string;
-  propertyName: string;
+function getPropertySwitcherListFlags(input: {
+  allPropertiesCount: number;
+  isError: boolean;
+  isPending: boolean;
+  isSearching: boolean;
+  propertiesCount: number;
+  recentCount: number;
+}) {
+  const { allPropertiesCount, isError, isPending, isSearching, propertiesCount, recentCount } =
+    input;
+  const showRecentSection = !isSearching && recentCount > 0;
+  const showAllPropertiesSection = !isSearching && (allPropertiesCount > 0 || showRecentSection);
+  const showEmptyState =
+    !isPending &&
+    !isError &&
+    (isSearching ? propertiesCount === 0 : recentCount === 0 && allPropertiesCount === 0);
+
+  return { showAllPropertiesSection, showEmptyState, showRecentSection };
 }
 
-export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwitcherProps) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
+function usePropertySwitcherSearch(
+  open: boolean,
+  searchInputRef: RefObject<HTMLInputElement | null>
+) {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const recentProperties = useRecentProperties();
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -140,20 +153,159 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
 
   useEffect(() => {
     if (!open) {
-      setSearchInput("");
-      setDebouncedQuery("");
+      return undefined;
     }
-  }, [open]);
+    const id = requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, searchInputRef]);
 
-  useEffect(() => {
-    if (open) {
-      const id = requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
-      });
-      return () => cancelAnimationFrame(id);
-    }
-    return undefined;
-  }, [open]);
+  const resetSearch = () => {
+    setSearchInput("");
+    setDebouncedQuery("");
+  };
+
+  return { debouncedQuery, resetSearch, searchInput, setSearchInput };
+}
+
+interface PropertySwitcherMenuProps {
+  allProperties: TPropertySwitcherRow[];
+  error: Error | null;
+  fetchNextPage: () => void;
+  hasNextPage: boolean;
+  isError: boolean;
+  isFetchingNextPage: boolean;
+  isPending: boolean;
+  isSearching: boolean;
+  loadMoreButtonLabel: string;
+  onClearRecent: () => void;
+  onRemoveRecent: (propertyId: string) => void;
+  onSelect: (propertyId: string) => void;
+  onSelectRecent: (recent: IRecentProperty) => void;
+  properties: TPropertySwitcherRow[];
+  propertyId: string;
+  recentProperties: IRecentProperty[];
+  showAllPropertiesSection: boolean;
+  showEmptyState: boolean;
+  showRecentSection: boolean;
+}
+
+const PropertySwitcherMenu = memo(
+  ({
+    allProperties,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isError,
+    isFetchingNextPage,
+    isPending,
+    isSearching,
+    loadMoreButtonLabel,
+    onClearRecent,
+    onRemoveRecent,
+    onSelect,
+    onSelectRecent,
+    properties,
+    propertyId,
+    recentProperties,
+    showAllPropertiesSection,
+    showEmptyState,
+    showRecentSection,
+  }: PropertySwitcherMenuProps) => {
+    const errorMessage = error instanceof Error ? error.message : "Failed to load properties";
+    const canShowResults = !isPending && !isError;
+    const showSearchResults = canShowResults && isSearching;
+    const showBrowseResults = canShowResults && showAllPropertiesSection;
+    const showLoadMore = canShowResults && properties.length > 0;
+
+    return (
+      <>
+        {isPending ? (
+          <div className="space-y-1 p-1">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : null}
+        {isError ? <p className="text-destructive px-2 py-3 text-sm">{errorMessage}</p> : null}
+        {showEmptyState ? (
+          <p className="text-muted-foreground px-2 py-3 text-sm">No properties found</p>
+        ) : null}
+        {showRecentSection ? (
+          <>
+            <PropertySwitcherRecentSectionHeader onClearAll={onClearRecent} />
+            {recentProperties.map((property) => (
+              <PropertySwitcherRecentOption
+                isSelected={property.id === propertyId}
+                key={property.id}
+                onRemove={onRemoveRecent}
+                onSelect={onSelectRecent}
+                property={property}
+              />
+            ))}
+          </>
+        ) : null}
+        {showSearchResults
+          ? properties.map((property) => (
+              <PropertySwitcherOption
+                isSelected={property.id === propertyId}
+                key={property.id}
+                onSelect={onSelect}
+                property={property}
+              />
+            ))
+          : null}
+        {showBrowseResults ? (
+          <>
+            {showRecentSection ? (
+              <PropertySwitcherSectionLabel>All properties</PropertySwitcherSectionLabel>
+            ) : null}
+            {allProperties.map((property) => (
+              <PropertySwitcherOption
+                isSelected={property.id === propertyId}
+                key={property.id}
+                onSelect={onSelect}
+                property={property}
+              />
+            ))}
+          </>
+        ) : null}
+        {showLoadMore ? (
+          <div className="border-border border-t p-1">
+            <Button
+              className="w-full"
+              disabled={!hasNextPage || isFetchingNextPage}
+              onClick={() => fetchNextPage()}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              {loadMoreButtonLabel}
+            </Button>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+);
+PropertySwitcherMenu.displayName = "PropertySwitcherMenu";
+
+interface PropertySwitcherProps {
+  propertyId: string;
+  propertyName: string;
+}
+
+export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwitcherProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const { debouncedQuery, resetSearch, searchInput, setSearchInput } = usePropertySwitcherSearch(
+    open,
+    searchInputRef
+  );
+  const recentProperties = useRecentProperties();
 
   const { error, fetchNextPage, hasNextPage, isError, isFetchingNextPage, isPending, properties } =
     usePropertiesInfiniteList({ q: debouncedQuery });
@@ -175,23 +327,28 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
     [hasNextPage, isFetchingNextPage]
   );
 
+  const { showAllPropertiesSection, showEmptyState, showRecentSection } =
+    getPropertySwitcherListFlags({
+      allPropertiesCount: allProperties.length,
+      isError,
+      isPending,
+      isSearching,
+      propertiesCount: properties.length,
+      recentCount: recentProperties.length,
+    });
+
   const showStaticName = !isSearching && properties.length === 1 && !isPending;
-  const showRecentSection = !isSearching && recentProperties.length > 0;
-  const showAllPropertiesSection = !isSearching && (allProperties.length > 0 || showRecentSection);
-  const showEmptyState =
-    !isPending &&
-    !isError &&
-    (isSearching
-      ? properties.length === 0
-      : recentProperties.length === 0 && allProperties.length === 0);
+
+  const closeSwitcher = () => {
+    setOpen(false);
+    resetSearch();
+  };
 
   const handleSelect = (nextPropertyId: string) => {
-    setOpen(false);
-
+    closeSwitcher();
     if (nextPropertyId === propertyId) {
       return;
     }
-
     navigate(
       buildPropertySwitchPath({
         nextPropertyId,
@@ -203,16 +360,15 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   };
 
   const handleSelectRecent = (recent: IRecentProperty) => {
-    setOpen(false);
+    closeSwitcher();
     navigate(buildPropertyResumePath(recent.id, recent.lastPath));
   };
 
-  const handleRemoveRecent = (removedPropertyId: string) => {
-    removeRecentProperty(removedPropertyId);
-  };
-
-  const handleClearRecent = () => {
-    clearRecentProperties();
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      resetSearch();
+    }
   };
 
   if (showStaticName) {
@@ -222,7 +378,7 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
   return (
     <PropertySwitcherTrigger
       label={propertyName}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       open={open}
       searchField={
         <Input
@@ -235,74 +391,27 @@ export const PropertySwitcher = memo(({ propertyId, propertyName }: PropertySwit
         />
       }
     >
-      {isPending ? (
-        <div className="space-y-1 p-1">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      ) : null}
-      {isError ? (
-        <p className="text-destructive px-2 py-3 text-sm">
-          {error instanceof Error ? error.message : "Failed to load properties"}
-        </p>
-      ) : null}
-      {showEmptyState ? (
-        <p className="text-muted-foreground px-2 py-3 text-sm">No properties found</p>
-      ) : null}
-      {showRecentSection ? (
-        <>
-          <PropertySwitcherRecentSectionHeader onClearAll={handleClearRecent} />
-          {recentProperties.map((property) => (
-            <PropertySwitcherRecentOption
-              isSelected={property.id === propertyId}
-              key={property.id}
-              onRemove={handleRemoveRecent}
-              onSelect={handleSelectRecent}
-              property={property}
-            />
-          ))}
-        </>
-      ) : null}
-      {!isPending && !isError && isSearching
-        ? properties.map((property) => (
-            <PropertySwitcherOption
-              isSelected={property.id === propertyId}
-              key={property.id}
-              onSelect={handleSelect}
-              property={property}
-            />
-          ))
-        : null}
-      {!isPending && !isError && showAllPropertiesSection ? (
-        <>
-          {showRecentSection ? (
-            <PropertySwitcherSectionLabel>All properties</PropertySwitcherSectionLabel>
-          ) : null}
-          {allProperties.map((property) => (
-            <PropertySwitcherOption
-              isSelected={property.id === propertyId}
-              key={property.id}
-              onSelect={handleSelect}
-              property={property}
-            />
-          ))}
-        </>
-      ) : null}
-      {!isPending && !isError && properties.length > 0 ? (
-        <div className="border-border border-t p-1">
-          <Button
-            className="w-full"
-            disabled={!hasNextPage || isFetchingNextPage}
-            onClick={() => fetchNextPage()}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            {loadMoreButtonLabel}
-          </Button>
-        </div>
-      ) : null}
+      <PropertySwitcherMenu
+        allProperties={allProperties}
+        error={error instanceof Error ? error : null}
+        fetchNextPage={fetchNextPage}
+        hasNextPage={hasNextPage ?? false}
+        isError={isError}
+        isFetchingNextPage={isFetchingNextPage}
+        isPending={isPending}
+        isSearching={isSearching}
+        loadMoreButtonLabel={loadMoreButtonLabel}
+        onClearRecent={clearRecentProperties}
+        onRemoveRecent={removeRecentProperty}
+        onSelect={handleSelect}
+        onSelectRecent={handleSelectRecent}
+        properties={properties}
+        propertyId={propertyId}
+        recentProperties={recentProperties}
+        showAllPropertiesSection={showAllPropertiesSection}
+        showEmptyState={showEmptyState}
+        showRecentSection={showRecentSection}
+      />
     </PropertySwitcherTrigger>
   );
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getNavItemsForRole } from "@/config/admin-nav";
 import { usePropertiesInfiniteList } from "@/hooks/use-properties-infinite-list";
@@ -189,10 +189,10 @@ export function useWorkspaceCommandSearch({ enabled }: { enabled: boolean }) {
   const hasResults =
     navigationItems.length > 0 || recentItems.length > 0 || propertyItems.length > 0;
 
-  const resetSearch = () => {
+  const resetSearch = useCallback(() => {
     setSearch("");
     setDebouncedSearch("");
-  };
+  }, []);
 
   return {
     hasResults,
