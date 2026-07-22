@@ -242,10 +242,10 @@ No new public API required for v1. Internal:
 
 **Goal:** Wire automation after rent success.
 
-- [ ] After income apply in `markSucceeded` (or dedicated helper called from there): ensure category → fetch fee → if `> 0` create expense
-- [ ] Description e.g. `Stripe processing fee` + payment id reference
-- [ ] `expenseDate` = payment success date (UTC date from Stripe or local convention used elsewhere)
-- [ ] Service tests: succeed with fee; succeed with 0 fee; duplicate webhook
+- [x] After income apply in `markSucceeded`: `bookStripeProcessingFeeExpenseForRentPayment` (ensure → fee → create if `> 0`)
+- [x] Description `Stripe processing fee (rent payment …)`
+- [x] `expenseDate` = `getTodayUtcIsoDate()` (same UTC date convention as other rent paths)
+- [x] Service tests: succeed with fee; succeed with 0 fee; duplicate create no-op
 
 **Files (≤5):** rent payment service; new small helper module; expense DAO usage; tests.
 

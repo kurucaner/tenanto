@@ -31,6 +31,7 @@ import {
   TenantRentPaymentStatus,
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
+import { bookStripeProcessingFeeExpenseForRentPayment } from "@/services/book-stripe-processing-fee-expense";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 import { WinstonLogger } from "@/services/winston";
@@ -448,6 +449,17 @@ export const tenantRentPaymentService = {
       if (next) updated = next;
     }
     await applyIncomeForFullyCoveredMonths(updated);
+    try {
+      await bookStripeProcessingFeeExpenseForRentPayment(updated);
+    } catch (error) {
+      WinstonLogger.error({
+        err: error,
+        msg: "tenant_payments.processing_fee_expense_failed",
+        paymentId: updated.id,
+        propertyId: updated.propertyId,
+        stripePaymentIntentId: updated.stripePaymentIntentId,
+      });
+    }
     return updated;
   },
 };
