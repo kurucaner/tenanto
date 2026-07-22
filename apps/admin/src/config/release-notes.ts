@@ -41,6 +41,40 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     changes: [
       {
+        category: "improved",
+        description:
+          "You can settle a held security deposit from the lease — refund full or partial in place — without switching to Income.",
+      },
+      {
+        category: "improved",
+        description:
+          "Choosing a 1× rent deposit explains that you can top it up later if you raise rent when extending.",
+      },
+      {
+        category: "improved",
+        description:
+          "Start Lease actions stay pinned at the bottom with a solid bar so they don’t overlap the form on mobile.",
+      },
+      {
+        category: "improved",
+        description:
+          "Whole-dollar amounts hide trailing cents in money displays (for example $1,500 instead of $1,500.00).",
+      },
+      {
+        category: "fixed",
+        description:
+          "Extending a lease prefills the new rent with the current rent so you aren’t starting from a blank field.",
+      },
+    ],
+    id: "2026.19.0",
+    publishedAt: "2026-07-22",
+    summary:
+      "Settle deposits on the lease, clearer rent-linked deposit copy, and a sturdier Start Lease footer.",
+    version: "2026.19.0",
+  },
+  {
+    changes: [
+      {
         category: "new",
         description:
           "Lease detail shows deposit expected, collected, and outstanding so you can see what’s still due at a glance.",

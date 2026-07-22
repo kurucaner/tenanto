@@ -98,7 +98,6 @@ const WhoStep = memo(
   }: WhoStepProps) => (
     <div className="space-y-6">
       <div className="space-y-3">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Unit</p>
         {lockedUnit ? (
           <>
             <input type="hidden" {...form.register("unitId")} />
@@ -127,12 +126,7 @@ const WhoStep = memo(
         )}
       </div>
 
-      <div className="border-border/60 border-t" />
-
       <div className="space-y-3">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-          Primary tenant
-        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="start-lease-tenant-name">Name</Label>
