@@ -143,10 +143,10 @@ No new public API required for v1. Internal:
 
 **Goal:** Canonical name and predicates; defaults list updated if needed.
 
-- [ ] `SYSTEM_PAYMENT_PROCESSING_EXPENSE_CATEGORY_NAME` + `isSystemPaymentProcessingExpenseCategoryName`
-- [ ] Unit tests
-- [ ] Export from `packages/shared/src/index.ts`
-- [ ] Add to default expense category config **or** document ensure-only (prefer ensure-only system row like income types, not a normal default the user can wipe via replaceAll)
+- [x] `SYSTEM_PAYMENT_PROCESSING_EXPENSE_CATEGORY_NAME` + `isSystemPaymentProcessingExpenseCategoryName`
+- [x] Unit tests
+- [x] Export from `packages/shared/src/index.ts`
+- [x] Ensure-only system row (not in `DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES`, like income system types)
 
 **Files (≤4).**
 

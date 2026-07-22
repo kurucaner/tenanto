@@ -486,6 +486,8 @@ export {
   DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES,
   type IPropertyExpenseCategoryType,
   type IPropertyExpenseCategoryTypeInput,
+  isSystemPaymentProcessingExpenseCategoryName,
+  SYSTEM_PAYMENT_PROCESSING_EXPENSE_CATEGORY_NAME,
 } from "./property-expense-category-type-config";
 
 // Property Expense Types
