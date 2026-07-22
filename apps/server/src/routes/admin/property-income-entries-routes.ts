@@ -79,7 +79,7 @@ function parseIncomeEntriesListQuery(query: Record<string, unknown>):
     const incomeType = parseIncomeTypeFilter(query["incomeType"]);
     if (incomeType === null) {
       return {
-        error: "incomeType must be 'stay', 'longTerm', or a valid income line type id",
+        error: "incomeType must be 'stay', 'longTerm', 'deposit', or a valid income line type id",
         ok: false,
       };
     }

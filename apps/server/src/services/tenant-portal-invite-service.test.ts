@@ -12,7 +12,13 @@ import type {
 } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
-import { makeLease, makeMembership, makeProperty, makeUnit } from "@/test-fixtures/domain";
+import {
+  makeLease,
+  makeMembership,
+  makeProperty,
+  makeTenant,
+  makeUnit,
+} from "@/test-fixtures/domain";
 import {
   mockAsyncFn,
   mockResolved,
@@ -37,6 +43,18 @@ const mockTransitionStatus = mockAsyncFn(
 const mockUpdateInviteToken = mockAsyncFn(
   (_id: string, _hash: string): Promise<ILeaseTenantMembership | null> => Promise.resolve(null)
 );
+const mockRetargetPendingInvite = mockAsyncFn(
+  (
+    _id: string,
+    _input: {
+      inviteEmail: string;
+      inviteTokenHash: string;
+      status: string;
+      tenantUserId: string | null;
+    }
+  ): Promise<ILeaseTenantMembership | null> => Promise.resolve(null)
+);
+const mockFindNonTerminalByLeaseEmailRole = mockResolvedNull<ILeaseTenantMembership>();
 const mockLinkTenantUser = mockAsyncFn(
   (_id: string, _tenantUserId: string): Promise<ILeaseTenantMembership | null> =>
     Promise.resolve(null)
@@ -75,7 +93,9 @@ mock.module("@/db/lease-tenant-memberships", () => ({
     expirePendingPortalInvites: mockExpirePendingPortalInvites,
     findById: mockFindByIdMembership,
     findByInviteToken: mockFindByTokenHash,
+    findNonTerminalByLeaseEmailRole: mockFindNonTerminalByLeaseEmailRole,
     linkTenantUser: mockLinkTenantUser,
+    retargetPendingInvite: mockRetargetPendingInvite,
     transitionStatus: mockTransitionStatus,
     updateInviteToken: mockUpdateInviteToken,
   },
@@ -570,6 +590,132 @@ describe("tenantPortalInviteService.revokeInvite", () => {
       TenantMembershipStatus.REVOKED
     );
     expect(revoked.status).toBe(TenantMembershipStatus.REVOKED);
+  });
+});
+
+describe("tenantPortalInviteService.retargetPendingInvite", () => {
+  beforeEach(() => {
+    mockFindByIdLease.mockReset();
+    mockFindByIdProperty.mockReset();
+    mockFindByIdUnit.mockReset();
+    mockFindByIdMembership.mockReset();
+    mockFindByEmail.mockReset();
+    mockFindNonTerminalByLeaseEmailRole.mockReset();
+    mockRetargetPendingInvite.mockReset();
+    mockSendNewEmail.mockReset();
+    mockSendExistingEmail.mockReset();
+
+    mockFindByIdLease.mockResolvedValue(makeLease());
+    mockFindByIdProperty.mockResolvedValue(makeProperty());
+    mockFindByIdUnit.mockResolvedValue(makeUnit());
+    mockFindNonTerminalByLeaseEmailRole.mockResolvedValue(null);
+    mockSendNewEmail.mockResolvedValue(true);
+    mockSendExistingEmail.mockResolvedValue(true);
+  });
+
+  test("retargets pending_invite to pending_acceptance when account exists", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "old@example.com",
+        status: TenantMembershipStatus.PENDING_INVITE,
+        tenantUserId: null,
+      })
+    );
+    mockFindByEmail.mockResolvedValue(
+      makeTenant({
+        email: "new@example.com",
+        id: "tenant-new",
+        name: "New Tenant",
+      })
+    );
+    mockRetargetPendingInvite.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "new@example.com",
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-new",
+      })
+    );
+
+    const result = await tenantPortalInviteService.retargetPendingInvite({
+      inviteEmail: "New@Example.com",
+      leaseId: "lease-1",
+      membershipId: "membership-1",
+      propertyId: "property-1",
+    });
+
+    expect(mockRetargetPendingInvite).toHaveBeenCalledWith(
+      "membership-1",
+      expect.objectContaining({
+        inviteEmail: "new@example.com",
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-new",
+      })
+    );
+    expect(mockSendExistingEmail).toHaveBeenCalled();
+    expect(result.emailSent).toBe(true);
+    expect(result.membership.status).toBe(TenantMembershipStatus.PENDING_ACCEPTANCE);
+  });
+
+  test("retargets pending_acceptance to pending_invite when account is absent", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "old@example.com",
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-old",
+      })
+    );
+    mockFindByEmail.mockResolvedValue(null);
+    mockRetargetPendingInvite.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "brand-new@example.com",
+        status: TenantMembershipStatus.PENDING_INVITE,
+        tenantUserId: null,
+      })
+    );
+
+    const result = await tenantPortalInviteService.retargetPendingInvite({
+      inviteEmail: "brand-new@example.com",
+      leaseId: "lease-1",
+      membershipId: "membership-1",
+      propertyId: "property-1",
+    });
+
+    expect(mockRetargetPendingInvite).toHaveBeenCalledWith(
+      "membership-1",
+      expect.objectContaining({
+        inviteEmail: "brand-new@example.com",
+        status: TenantMembershipStatus.PENDING_INVITE,
+        tenantUserId: null,
+      })
+    );
+    expect(mockSendNewEmail).toHaveBeenCalled();
+    expect(result.membership.tenantUserId).toBeNull();
+  });
+
+  test("rejects duplicate non-terminal email for another membership", async () => {
+    mockFindByIdMembership.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "old@example.com",
+        status: TenantMembershipStatus.PENDING_INVITE,
+      })
+    );
+    mockFindNonTerminalByLeaseEmailRole.mockResolvedValue(
+      makeMembership({
+        id: "membership-other",
+        inviteEmail: "taken@example.com",
+        status: TenantMembershipStatus.LISTED,
+      })
+    );
+
+    await expect(
+      tenantPortalInviteService.retargetPendingInvite({
+        inviteEmail: "taken@example.com",
+        leaseId: "lease-1",
+        membershipId: "membership-1",
+        propertyId: "property-1",
+      })
+    ).rejects.toMatchObject({ code: PortalInviteErrorCode.DUPLICATE });
+    expect(mockRetargetPendingInvite).not.toHaveBeenCalled();
   });
 });
 

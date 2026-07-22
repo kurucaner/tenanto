@@ -23,13 +23,33 @@ export function invalidatePropertyLongStayPortalCaches(
   });
 }
 
-export function invalidatePropertyLongStayDetailCaches(
+/** Lease detail only — exact match so portal-access is not invalidated by prefix. */
+export function invalidatePropertyLongStayDetailQuery(
   queryClient: QueryClient,
   propertyId: string,
   longStayId: string
 ) {
   queryClient.invalidateQueries({
+    exact: true,
     queryKey: queryKeys.propertyLongStay(propertyId, longStayId),
   });
+}
+
+/** After income changes that affect lease detail (deposit balance, rent schedule). */
+export function invalidatePropertyLongStayAfterIncomeChange(
+  queryClient: QueryClient,
+  propertyId: string,
+  longStayId: string
+) {
+  invalidatePropertyLongStayCaches(queryClient, propertyId);
+  invalidatePropertyLongStayDetailQuery(queryClient, propertyId, longStayId);
+}
+
+export function invalidatePropertyLongStayDetailCaches(
+  queryClient: QueryClient,
+  propertyId: string,
+  longStayId: string
+) {
+  invalidatePropertyLongStayDetailQuery(queryClient, propertyId, longStayId);
   invalidatePropertyLongStayPortalCaches(queryClient, propertyId, longStayId);
 }

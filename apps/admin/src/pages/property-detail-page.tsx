@@ -31,6 +31,7 @@ import { handlePropertyMemberInviteMutationSuccess } from "@/lib/property-member
 import { queryKeys } from "@/lib/query-keys";
 import {
   formatPhoneDisplay,
+  type IPropertyDetail,
   type IPropertyInvite,
   type IPropertyMember,
   type IPropertyMemberUser,
@@ -151,18 +152,163 @@ const CreatorTableRow = memo(
 );
 CreatorTableRow.displayName = "CreatorTableRow";
 
+const PropertyDetailOverviewCards = memo(function PropertyDetailOverviewCards({
+  property,
+}: {
+  property: IPropertyDetail;
+}) {
+  const totalMembers = useMemo(
+    () => property.members.filter((member) => member.userId !== property.createdBy).length + 1,
+    [property.createdBy, property.members]
+  );
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Details</CardTitle>
+          <CardDescription>Property information.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>
+            <span className="text-muted-foreground">Name:</span> {property.name}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Legal name:</span> {property.legalName ?? "—"}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Address:</span> {property.address}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Phone:</span>{" "}
+            {formatPhoneDisplay(property.phoneNumber)}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Created:</span>{" "}
+            {new Date(property.createdAt).toLocaleString()}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Stats</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p>
+            <span className="text-muted-foreground">Total members:</span> {totalMembers}
+          </p>
+          <p>
+            <span className="text-muted-foreground">Total units:</span> {property.unitCount}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+});
+
+const PropertyDetailShellActions = memo(function PropertyDetailShellActions({
+  canManageStructure,
+  property,
+  propertyId,
+}: {
+  canManageStructure: boolean;
+  property: IPropertyDetail;
+  propertyId: string;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const deleteMutation = useMutation({
+    mutationFn: () => propertiesApi.delete(propertyId),
+    onError: (e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to delete property");
+    },
+    onSuccess: () => {
+      toast.success("Property deleted");
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      navigate("/properties");
+    },
+  });
+
+  const handleDelete = useCallback(() => {
+    if (!globalThis.confirm("Delete this property? This cannot be undone.")) return;
+    deleteMutation.mutate();
+  }, [deleteMutation]);
+
+  const headerActions = useMemo(
+    () =>
+      canManageStructure ? (
+        <>
+          <Button
+            className="gap-1.5"
+            onClick={() => setEditOpen(true)}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Pencil className="size-3.5" />
+            Edit
+          </Button>
+          <Button
+            className="gap-1.5"
+            disabled={deleteMutation.isPending}
+            onClick={handleDelete}
+            size="sm"
+            type="button"
+            variant="destructive"
+          >
+            <Trash2 className="size-3.5" />
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </Button>
+        </>
+      ) : null,
+    [canManageStructure, deleteMutation.isPending, handleDelete]
+  );
+
+  usePropertyShellActions(headerActions);
+
+  return <EditPropertyDialog onOpenChange={setEditOpen} open={editOpen} property={property} />;
+});
+
 interface IPropertyMemberInviteRevokeTarget {
   invite: IPropertyInvite;
 }
 
-export const PropertyDetailPage = memo(() => {
-  const { permissions, property, propertyId } = usePropertyShell();
-  const { canManageMembers, canManageStructure } = permissions;
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const currentUser = useAuthStore((s) => s.user);
-  const [editOpen, setEditOpen] = useState(false);
+const PropertyMembersAddButton = memo(function PropertyMembersAddButton({
+  propertyId,
+}: {
+  propertyId: string;
+}) {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+
+  return (
+    <>
+      <Button className="gap-1.5" onClick={() => setAddMemberOpen(true)} size="sm" type="button">
+        <Plus className="size-3.5" />
+        Add Member
+      </Button>
+      <AddPropertyMemberDialog
+        onOpenChange={setAddMemberOpen}
+        open={addMemberOpen}
+        propertyId={propertyId}
+      />
+    </>
+  );
+});
+
+const PropertyMembersSection = memo(function PropertyMembersSection({
+  canManageMembers,
+  property,
+  propertyId,
+}: {
+  canManageMembers: boolean;
+  property: IPropertyDetail;
+  propertyId: string;
+}) {
+  const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
   const [actingInviteAction, setActingInviteAction] =
     useState<TPropertyMemberInviteRowAction | null>(null);
   const [actingInviteId, setActingInviteId] = useState<string | null>(null);
@@ -187,18 +333,6 @@ export const PropertyDetailPage = memo(() => {
   const inviteRows = useMemo(() => property.invites ?? [], [property.invites]);
   const showStatusColumn = inviteRows.length > 0;
   const showActionsColumn = canManageMembers;
-
-  const deleteMutation = useMutation({
-    mutationFn: () => propertiesApi.delete(propertyId),
-    onError: (e) => {
-      toast.error(e instanceof Error ? e.message : "Failed to delete property");
-    },
-    onSuccess: () => {
-      toast.success("Property deleted");
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
-      navigate("/properties");
-    },
-  });
 
   const updateRoleMutation = useMutation({
     mutationFn: ({ role, userId }: { role: TPropertyRole; userId: string }) =>
@@ -283,6 +417,17 @@ export const PropertyDetailPage = memo(() => {
     revokeInviteMutation.isPending ||
     inviteAgainMutation.isPending;
 
+  const removingUserId = removeMemberMutation.isPending
+    ? removeMemberMutation.variables
+    : undefined;
+
+  const handleChangeRole = useCallback(
+    (userId: string, role: TPropertyRole) => {
+      updateRoleMutation.mutate({ role, userId });
+    },
+    [updateRoleMutation]
+  );
+
   const runInviteAction = useCallback(
     async (action: TPropertyMemberInviteRowAction, invite: IPropertyInvite) => {
       setActingInviteAction(action);
@@ -348,87 +493,10 @@ export const PropertyDetailPage = memo(() => {
     [requestRevokeInvite]
   );
 
-  const handleDelete = useCallback(() => {
-    if (!globalThis.confirm("Delete this property? This cannot be undone.")) return;
-    deleteMutation.mutate();
-  }, [deleteMutation]);
-
-  const headerActions = useMemo(
-    () =>
-      canManageStructure ? (
-        <>
-          <Button
-            className="gap-1.5"
-            onClick={() => setEditOpen(true)}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <Pencil className="size-3.5" />
-            Edit
-          </Button>
-          <Button
-            className="gap-1.5"
-            disabled={deleteMutation.isPending}
-            onClick={handleDelete}
-            size="sm"
-            type="button"
-            variant="destructive"
-          >
-            <Trash2 className="size-3.5" />
-            {deleteMutation.isPending ? "Deleting…" : "Delete"}
-          </Button>
-        </>
-      ) : null,
-    [canManageStructure, deleteMutation.isPending, handleDelete]
-  );
-
-  usePropertyShellActions(headerActions);
+  const isCurrentUserCreator = currentUser?.id === property.createdBy;
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Details</CardTitle>
-            <CardDescription>Property information.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">Name:</span> {property.name}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Legal name:</span> {property.legalName ?? "—"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Address:</span> {property.address}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Phone:</span>{" "}
-              {formatPhoneDisplay(property.phoneNumber)}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Created:</span>{" "}
-              {new Date(property.createdAt).toLocaleString()}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              <span className="text-muted-foreground">Total members:</span> {memberRows.length + 1}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Total units:</span> {property.unitCount}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -437,17 +505,7 @@ export const PropertyDetailPage = memo(() => {
               Users assigned to this property and pending email invites.
             </CardDescription>
           </div>
-          {canManageMembers ? (
-            <Button
-              className="gap-1.5"
-              onClick={() => setAddMemberOpen(true)}
-              size="sm"
-              type="button"
-            >
-              <Plus className="size-3.5" />
-              Add Member
-            </Button>
-          ) : null}
+          {canManageMembers ? <PropertyMembersAddButton propertyId={propertyId} /> : null}
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -464,7 +522,7 @@ export const PropertyDetailPage = memo(() => {
               <CreatorTableRow
                 createdAt={property.createdAt}
                 creator={property.creator}
-                isCurrentUser={currentUser?.id === property.createdBy}
+                isCurrentUser={isCurrentUserCreator}
                 showActionsColumn={showActionsColumn}
                 showStatusColumn={showStatusColumn}
               />
@@ -473,10 +531,10 @@ export const PropertyDetailPage = memo(() => {
                   canManageMembers={canManageMembers}
                   creatorUserId={property.createdBy}
                   isQuickDeleteActive={isQuickDeleteActive}
-                  isRemovePending={removeMemberMutation.isPending}
+                  isRemovePending={removingUserId === member.userId}
                   key={member.id}
                   member={member}
-                  onChangeRole={(userId, role) => updateRoleMutation.mutate({ role, userId })}
+                  onChangeRole={handleChangeRole}
                   onRemove={handleRemoveMember}
                   showActionsColumn={showActionsColumn}
                   showStatusColumn={showStatusColumn}
@@ -503,14 +561,27 @@ export const PropertyDetailPage = memo(() => {
 
       {deleteConfirmationDialog}
       {revokeInviteConfirmationDialog}
+    </>
+  );
+});
 
-      <EditPropertyDialog onOpenChange={setEditOpen} open={editOpen} property={property} />
-      <AddPropertyMemberDialog
-        onOpenChange={setAddMemberOpen}
-        open={addMemberOpen}
+export const PropertyDetailPage = memo(function PropertyDetailPage() {
+  const { permissions, property, propertyId } = usePropertyShell();
+  const { canManageMembers, canManageStructure } = permissions;
+
+  return (
+    <>
+      <PropertyDetailShellActions
+        canManageStructure={canManageStructure}
+        property={property}
+        propertyId={propertyId}
+      />
+      <PropertyDetailOverviewCards property={property} />
+      <PropertyMembersSection
+        canManageMembers={canManageMembers}
+        property={property}
         propertyId={propertyId}
       />
     </>
   );
 });
-PropertyDetailPage.displayName = "PropertyDetailPage";

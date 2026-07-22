@@ -1,53 +1,62 @@
 ---
 name: Security Deposit Phases
-overview: "Phased rollout of lease security deposits through v1.5: store contractual amount on the lease, capture at Start lease / Edit terms, record collections via a system income type (separate from rent schedule), show in Income with report exclusions, then close out via partial/full refund at end lease."
+overview: "Phased rollout of lease security deposits through v1.5, then v2 extend top-up: store contractual amount, record collections, balance + end-lease close-out, then optionally raise expected deposit when extending a rent-linked deposit."
 todos:
   - id: phase-0-doc
     content: "Phase 0: Add docs/SECURITY_DEPOSIT_PHASES.md scaffold"
     status: pending
   - id: phase-1a-schema
-    content: "Phase 1a: Migration v75 + shared lease-deposit-utils + types/mappers"
-    status: pending
+    content: "Phase 1a: Migration v76 + shared lease-deposit-utils + types/mappers"
+    status: completed
   - id: phase-1b-server
     content: "Phase 1b: property-long-stays create/updateTerms + routes + tests"
-    status: pending
+    status: completed
   - id: phase-2a-system-type
-    content: "Phase 2a: Migration v76 multi-system index + ensureLeaseDepositIncomeLineType"
-    status: pending
+    content: "Phase 2a: Migration v77 multi-system index + ensureLeaseDepositIncomeLineType"
+    status: completed
   - id: phase-2b-isolation
     content: "Phase 2b: Exclude deposit from reports and rent rollup tests"
-    status: pending
+    status: completed
   - id: phase-3a-start-lease
     content: "Phase 3a: Start lease deposit fields (schema, form, hook, draft)"
-    status: pending
+    status: completed
   - id: phase-3b-terms-ui
     content: "Phase 3b: Lease terms display + edit-lease-terms-dialog"
-    status: pending
+    status: completed
   - id: phase-4a-record-ux
     content: "Phase 4a: Record deposit prefill + lease-deposit-section + income dialog"
-    status: pending
+    status: completed
   - id: phase-4b-income-api
     content: "Phase 4b: Server income POST for deposit lines + tests"
-    status: pending
+    status: completed
   - id: phase-5-income-table
     content: "Phase 5: Income badges/filters + release notes (v1 complete)"
-    status: pending
+    status: completed
   - id: phase-6a-balance
     content: "Phase 6a: lease-deposit-balance-utils + GET detail depositSummary"
-    status: pending
+    status: completed
   - id: phase-6b-balance-ui
     content: "Phase 6b: Deposit balance card on lease detail"
-    status: pending
+    status: completed
   - id: phase-7a-end-lease
     content: "Phase 7a: End lease deposit callout + close-out dialog"
-    status: pending
+    status: completed
   - id: phase-7b-refund-email
     content: "Phase 7b: Refund dialog copy + end-lease email (v1.5 complete)"
-    status: pending
+    status: completed
+  - id: phase-8a-tracks-rent
+    content: "Phase 8a: Persist tracks-rent intent + top-up utils + backfill"
+    status: completed
+  - id: phase-8b-extend-api
+    content: "Phase 8b: Extend API optional deposit top-up"
+    status: completed
+  - id: phase-8c-extend-ui
+    content: "Phase 8c: Extend dialog opt-in + release notes (v2)"
+    status: completed
 isProject: false
 ---
 
-# Security Deposit — Phased Plan (v1 → v1.5)
+# Security Deposit — Phased Plan (v1 → v1.5 → v2)
 
 Write the living doc at [`docs/SECURITY_DEPOSIT_PHASES.md`](docs/SECURITY_DEPOSIT_PHASES.md) in Phase 0 (same structure as [`docs/LEASE_TERMS_EDIT_PHASES.md`](docs/LEASE_TERMS_EDIT_PHASES.md)).
 
@@ -65,20 +74,35 @@ Write the living doc at [`docs/SECURITY_DEPOSIT_PHASES.md`](docs/SECURITY_DEPOSI
 - At **End lease**, guide operator to **refund / withhold** deposit using existing **partial refund** flow on the deposit income line ([`refund-entry-dialog.tsx`](apps/admin/src/components/income/refund-entry-dialog.tsx)).
 - End-lease email mentions deposit settlement status when relevant.
 
+## Goals (v2 — Phase 8)
+
+- Remember whether the contractual deposit is **rent-linked** (“1× rent”) vs **fixed custom** vs **none**.
+- On **Extend**, when rent **increases** and the deposit is rent-linked, offer an **opt-in top-up** that raises `security_deposit_amount` to the new rent (outstanding grows; collect via existing Record deposit).
+- **No top-up** when deposit is none or fixed custom; **no silent auto-bump** without operator confirmation.
+
 ## Non-goals (through v1.5)
 
 - Stripe / tenant portal deposit payment ([`docs/TENANT_STRIPE_RENT_PAYMENTS.md`](docs/TENANT_STRIPE_RENT_PAYMENTS.md) already defers deposits).
 - Pet deposit as separate product, deposit interest, state compliance engine, trust-account tracking.
-- Auto-increase deposit when rent increases on **Extend** (amount is frozen at agreement; top-up is a future amendment flow).
+- Auto-increase deposit when rent increases on **Extend** (deferred to **v2 / Phase 8**).
 - Negative-amount income lines (server enforces non-negative [`property-income-line-routes.ts`](apps/server/src/routes/admin/property-income-line-routes.ts)); refunds use existing `refundedAmount` / `refundedAt`.
+
+## Non-goals (through v2 / Phase 8)
+
+- Auto top-up **without** an Extend opt-in (no background job rewriting deposits when rent periods change).
+- Lowering contractual deposit automatically when rent **decreases** on extend (operator edits terms / custom amount separately if needed).
+- Auto-creating a deposit **income line** on extend (only updates expected; collection stays manual / existing CTA).
+- Changing deposit on rent-period edits outside Extend (e.g. pristine rent history tools).
+- Stripe / tenant portal deposit payment; pet deposit; interest / trust compliance (unchanged).
 
 ## Guiding principles
 
 1. **Deposit ≠ rent** — never set `rentPeriodMonth`; never include in [`buildLeaseRentSchedule`](packages/shared/src/lease-rent-schedule.ts) or [`rollupLeaseRentByPeriod`](packages/shared/src/lease-rent-period-rollup.ts).
-2. **Snapshot amount** — preset “1× rent” resolves to a **fixed dollar** at save time; extend does not recompute.
-3. **Same ledger gate as terms edit** — editable while [`deriveLeaseTermsEditability`](packages/shared/src/lease-terms-edit-utils.ts) is `editable`; blocked once income / succeeded Stripe / rent-period history exists.
-4. **System income type** — follow [`ensureLeaseRentIncomeLineType`](apps/server/src/db/property-income-line-types.ts) pattern; requires **migration** to allow **multiple** `is_system` rows per property (today’s unique index allows only one — see Phase 2a).
-5. **≤8 files per sub-phase** — counts include new test files; shared `index.ts` re-exports count when touched.
+2. **Snapshot amount** — preset “1× rent” resolves to a **fixed dollar** at save time; through v1.5 extend does not recompute. **v2:** rent-linked leases may opt in to a new snapshot (= new rent) on Extend.
+3. **Intent ≠ inference** — do not rely on `amount === rent` after a rent change; persist **tracks rent** (boolean) when the operator chooses the 1× rent preset.
+4. **Same ledger gate as terms edit** — editable while [`deriveLeaseTermsEditability`](packages/shared/src/lease-terms-edit-utils.ts) is `editable`; blocked once income / succeeded Stripe / rent-period history exists. Top-up on Extend is an **amendment** of expected only (allowed after ledger exists); it does not reopen full terms edit.
+5. **System income type** — follow [`ensureLeaseRentIncomeLineType`](apps/server/src/db/property-income-line-types.ts) pattern; requires **migration** to allow **multiple** `is_system` rows per property (today’s unique index allows only one — see Phase 2a).
+6. **≤8 files per sub-phase** — counts include new test files; shared `index.ts` re-exports count when touched.
 
 ```mermaid
 flowchart TB
@@ -115,7 +139,7 @@ flowchart TB
 
 ## Data model
 
-### Migration v75 — lease column
+### Migration v76 — lease column
 
 | Column                    | Type                 | Notes                        |
 | ------------------------- | -------------------- | ---------------------------- |
@@ -123,7 +147,9 @@ flowchart TB
 
 Add to [`IPropertyLongStay`](packages/shared/src/property-long-stay-types.ts), [`ICreatePropertyLongStayBody`](packages/shared/src/property-long-stay-types.ts), [`IEditPropertyLongStayTermsBody`](packages/shared/src/property-long-stay-types.ts) (optional field).
 
-### Migration v76 — multiple system income types
+> Note: Plan originally said v75; that version was taken by `rename_rent_period_columns`, so the deposit column ships as **v76**.
+
+### Migration v77 — multiple system income types
 
 Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/migrations.ts) (v72) with uniqueness on `(property_id, lower(name)) WHERE is_system AND NOT is_deleted`. Backfill `Security deposit` system row per property. Update `ensureLeaseRentIncomeLineType` queries to filter by name (not “any system row”).
 
@@ -155,7 +181,7 @@ Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/mi
 
 | #   | File                                                                                                         |
 | --- | ------------------------------------------------------------------------------------------------------------ |
-| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v75                                 |
+| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v76                                 |
 | 2   | [`packages/shared/src/property-long-stay-types.ts`](packages/shared/src/property-long-stay-types.ts)         |
 | 3   | [`packages/shared/src/lease-deposit-utils.ts`](packages/shared/src/lease-deposit-utils.ts) _(new)_           |
 | 4   | [`packages/shared/src/lease-deposit-utils.test.ts`](packages/shared/src/lease-deposit-utils.test.ts) _(new)_ |
@@ -188,7 +214,7 @@ Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/mi
 
 | #   | File                                                                                                                                                         |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v76                                                                                 |
+| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v77                                                                                 |
 | 2   | [`packages/shared/src/property-income-line-type-config.ts`](packages/shared/src/property-income-line-type-config.ts)                                         |
 | 3   | [`packages/shared/src/property-income-line-type-config.test.ts`](packages/shared/src/property-income-line-type-config.test.ts)                               |
 | 4   | [`apps/server/src/db/property-income-line-types.ts`](apps/server/src/db/property-income-line-types.ts) — `ensureLeaseDepositIncomeLineType`, fix rent ensure |
@@ -363,25 +389,120 @@ Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/mi
 
 ---
 
+## Phase 8a — Tracks-rent intent (v2 foundation)
+
+**Goal:** Persist whether the contractual deposit should follow rent; stop relying on amount≈rent inference after extends.
+
+**Product rules**
+
+| Deposit choice                         | `security_deposit_tracks_rent` | On extend + rent ↑                                      |
+| -------------------------------------- | ------------------------------ | ------------------------------------------------------- |
+| None                                   | `false`                        | No deposit UI / no top-up                               |
+| Custom / fixed $                       | `false`                        | No top-up (fixed agreement)                             |
+| 1× rent (weekly or monthly rent field) | `true`                         | Offer opt-in top-up to new rent (Phase 8b/8c)           |
+
+**Backfill:** `true` where `security_deposit_amount IS NOT NULL` and amount equals current `rent_amount`; else `false`.
+
+| #   | File                                                                                                                                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — next version: `security_deposit_tracks_rent BOOLEAN NOT NULL DEFAULT false` + backfill               |
+| 2   | [`packages/shared/src/property-long-stay-types.ts`](packages/shared/src/property-long-stay-types.ts) — field on lease + create/edit-terms bodies                              |
+| 3   | [`packages/shared/src/lease-deposit-utils.ts`](packages/shared/src/lease-deposit-utils.ts) — set flag from preset; `resolveSecurityDepositTracksRent(preset)`                  |
+| 4   | [`packages/shared/src/lease-deposit-top-up-utils.ts`](packages/shared/src/lease-deposit-top-up-utils.ts) _(new)_ — eligibility + proposed expected / delta                      |
+| 5   | [`packages/shared/src/lease-deposit-top-up-utils.test.ts`](packages/shared/src/lease-deposit-top-up-utils.test.ts) _(new)_                                                    |
+| 6   | [`packages/shared/src/index.ts`](packages/shared/src/index.ts)                                                                                                                 |
+| 7   | [`apps/server/src/db/mappers.ts`](apps/server/src/db/mappers.ts) + create / `updateTerms` persistence                                                                          |
+| 8   | Start lease + edit-terms forms: when preset is `one_month_rent`, write `tracksRent: true`; `none`/`custom` → `false` (same save path as amount)                                |
+
+**Shared sketch (`lease-deposit-top-up-utils`):**
+
+```ts
+// Pseudocode — eligibility for Extend opt-in
+canOfferDepositTopUp({
+  tracksRent: boolean;
+  currentExpected: number | null; // securityDepositAmount
+  newRentAmount: number;          // rent after extend change
+}): { eligible: boolean; proposedExpected: number; topUpDelta: number }
+// eligible only when tracksRent && currentExpected != null
+//   && newRentAmount > currentExpected (rounded money)
+// topUpDelta = proposedExpected - currentExpected (= newRent - expected)
+```
+
+**Exit criteria:** New leases with 1× rent preset persist `tracksRent: true`; custom/none persist `false`; GET lease returns the flag; unit tests cover eligibility (none / custom / rent↓ / rent↑).
+
+---
+
+## Phase 8b — Extend API top-up (v2)
+
+**Goal:** Extend can optionally raise contractual deposit when the operator opts in; never invent income.
+
+| #   | File                                                                                                                                                                         |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | [`packages/shared/src/property-long-stay-types.ts`](packages/shared/src/property-long-stay-types.ts) — `IExtendPropertyLongStayBody.topUpSecurityDeposit?: boolean`         |
+| 2   | [`packages/shared/src/lease-rent-utils.ts`](packages/shared/src/lease-rent-utils.ts) (or extend validators) — reject `topUpSecurityDeposit: true` when ineligible             |
+| 3   | [`apps/server/src/db/property-long-stays.ts`](apps/server/src/db/property-long-stays.ts) — `extendLease`: if opted in, set `security_deposit_amount = newRentAmount`         |
+| 4   | [`apps/server/src/routes/admin/property-long-stay-routes.ts`](apps/server/src/routes/admin/property-long-stay-routes.ts) — parse/forward flag                                 |
+| 5   | [`apps/server/src/db/property-long-stays-extend.test.ts`](apps/server/src/db/property-long-stays-extend.test.ts) — top-up / no-op / reject cases                              |
+
+**Server rules**
+
+1. Require an actual rent **increase** on this extend (`newRentAmount` present and greater than current contractual deposit expected).
+2. Require `security_deposit_tracks_rent === true` and `security_deposit_amount IS NOT NULL`.
+3. If `topUpSecurityDeposit !== true` → leave deposit unchanged (today’s behavior).
+4. If opted in → `UPDATE ... SET security_deposit_amount = $newRentAmount` in the same transaction as the extend (flag stays `true`).
+5. Do **not** insert a deposit income line; `depositSummary.outstanding` will reflect the gap after GET detail.
+
+**Exit criteria:** Opt-in extend raises expected; omit/false leaves deposit; ineligible true → 400 with clear message; balance outstanding increases without a new income row.
+
+---
+
+## Phase 8c — Extend UI + release notes (v2 complete)
+
+**Goal:** Operator sees a clear opt-in when changing rent upward on a rent-linked deposit; path to collect top-up unchanged.
+
+| #   | File                                                                                                                                                      |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | [`apps/admin/src/components/leases/extend-lease-dialog.tsx`](apps/admin/src/components/leases/extend-lease-dialog.tsx) — checkbox when eligible           |
+| 2   | [`apps/admin/src/lib/lease-rent-schedule-display.ts`](apps/admin/src/lib/lease-rent-schedule-display.ts) — copy helpers for top-up label/description     |
+| 3   | [`apps/admin/src/lib/lease-deposit-display.ts`](apps/admin/src/lib/lease-deposit-display.ts) — preview delta using shared utils (optional thin wrapper) |
+| 4   | [`apps/admin/src/lib/api-client.ts`](apps/admin/src/lib/api-client.ts) — extend body typing                                                              |
+| 5   | [`apps/admin/src/components/leases/lease-deposit-section.tsx`](apps/admin/src/components/leases/lease-deposit-section.tsx) — outstanding / Record CTA    |
+| 6   | [`apps/admin/src/config/release-notes.ts`](apps/admin/src/config/release-notes.ts) + root `package.json` version bump                                    |
+
+**UI rules**
+
+- Show “Increase security deposit to match new rent (+$X)” only when `changeRent` and shared `canOfferDepositTopUp` is true.
+- Default checkbox **checked** when shown (operator can uncheck to keep old expected).
+- Hide for none / custom / rent unchanged / rent decrease / no deposit.
+- After success, invalidate long-stay detail so deposit card shows new outstanding; existing Record deposit CTA covers collection.
+
+**Exit criteria (v2):** Extending a 1×-rent lease with higher rent can raise expected in one confirm; custom/none never offer top-up; collection still via Income / Record deposit; release notes published.
+
+---
+
 ## Deploy order
 
 | Checkpoint | Ship                                                                                       |
 | ---------- | ------------------------------------------------------------------------------------------ |
-| **A**      | Phase 1a + 1b (migration v75 + API) — backward compatible (`NULL` deposit)                 |
-| **B**      | Phase 2a + 2b (migration v76 + report guards) — deploy server before deposit income writes |
+| **A**      | Phase 1a + 1b (migration v76 + API) — backward compatible (`NULL` deposit)                 |
+| **B**      | Phase 2a + 2b (migration v77 + report guards) — deploy server before deposit income writes |
 | **C**      | Phase 3–5 admin — **v1**                                                                   |
 | **D**      | Phase 6–7 — **v1.5**                                                                       |
+| **E**      | Phase 8a → 8b → 8c — **v2** (migration for `tracks_rent` before create/edit write the flag)|
 
-**Hard rule:** migration v76 before any code calling `ensureLeaseDepositIncomeLineType`.
+**Hard rule:** migration v77 before any code calling `ensureLeaseDepositIncomeLineType`.  
+**Hard rule (v2):** Phase 8a migration before admin/server start writing `securityDepositTracksRent`.
 
 ---
 
 ## Key product answers (encoded in plan)
 
-| Question                 | Answer in this plan                                    |
-| ------------------------ | ------------------------------------------------------ |
-| Start lease form?        | Yes — Rent step, optional                              |
-| Income table?            | Yes — system type + badge/filter; not in rent schedule |
-| 1× rent preset + extend? | Snapshot at save; **no auto bump** on extend           |
-| Custom deposit?          | Yes — always allow custom $                            |
-| Extend top-up?           | Non-goal through v1.5                                  |
+| Question                 | Answer in this plan                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| Start lease form?        | Yes — Rent step, optional                                                           |
+| Income table?            | Yes — system type + badge/filter; not in rent schedule                              |
+| 1× rent preset + extend? | Snapshot at save; **v1.5:** no auto bump; **v2:** opt-in top-up when tracks rent    |
+| Custom deposit?          | Yes — always allow custom $; **never** auto top-up on extend                        |
+| None?                    | No deposit UI on extend                                                             |
+| Extend top-up?           | **v2:** opt-in only; raises expected to new rent; collect via Record deposit        |
+| Persist preset intent?   | **v2:** `security_deposit_tracks_rent` (boolean); do not re-infer after rent change |

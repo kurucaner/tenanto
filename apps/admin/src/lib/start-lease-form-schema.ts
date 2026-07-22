@@ -5,6 +5,12 @@ import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-
 import { refineLeaseTermEndFormValues } from "@/lib/lease-term-end-utils";
 import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import {
+  LeaseDepositPreset,
+  leaseDepositPresetSchema,
+  refineLeaseDepositFormValues,
+  type TLeaseDepositPreset,
+} from "@/lib/start-lease-deposit-field";
 import { getStartLeaseRentAmountLabel } from "@/lib/start-lease-rent-billing";
 import { type TStartLeaseStep } from "@/lib/start-lease-steps";
 import { createPersonNameSchema } from "@/packages/app-ui";
@@ -36,21 +42,37 @@ const startLeaseTermStepSchema = z
     refineLeaseTermEndFormValues(values, ctx);
   });
 
+function refineStartLeaseRentAndDeposit(
+  values: {
+    rentAmount: string;
+    rentBillingCadence: z.infer<typeof startLeaseRentBillingCadenceSchema>;
+    securityDepositCustomAmount: string;
+    securityDepositPreset: TLeaseDepositPreset;
+  },
+  ctx: z.RefinementCtx
+): void {
+  const rentResult = requiredPositiveMoneyField(
+    getStartLeaseRentAmountLabel(values.rentBillingCadence)
+  ).safeParse(values.rentAmount);
+
+  if (!rentResult.success) {
+    for (const issue of rentResult.error.issues) {
+      ctx.addIssue({ ...issue, path: ["rentAmount"] });
+    }
+  }
+
+  refineLeaseDepositFormValues(values, ctx);
+}
+
 const startLeaseRentStepSchema = z
   .object({
     rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
+    securityDepositCustomAmount: z.string(),
+    securityDepositPreset: leaseDepositPresetSchema,
   })
   .superRefine((values, ctx) => {
-    const rentResult = requiredPositiveMoneyField(
-      getStartLeaseRentAmountLabel(values.rentBillingCadence)
-    ).safeParse(values.rentAmount);
-
-    if (!rentResult.success) {
-      for (const issue of rentResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["rentAmount"] });
-      }
-    }
+    refineStartLeaseRentAndDeposit(values, ctx);
   });
 
 export const startLeaseSchema = z
@@ -60,6 +82,8 @@ export const startLeaseSchema = z
     leaseStartDate: z.string().min(1, "Lease start date is required"),
     rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
+    securityDepositCustomAmount: z.string(),
+    securityDepositPreset: leaseDepositPresetSchema,
     tenantEmail: z.string(),
     tenantPhone: tenantPhoneFieldSchema,
     termMode: z.enum(["months", "weeks", "customEnd"]),
@@ -69,16 +93,7 @@ export const startLeaseSchema = z
   })
   .superRefine((values, ctx) => {
     refineLeaseTermEndFormValues(values, ctx);
-
-    const rentResult = requiredPositiveMoneyField(
-      getStartLeaseRentAmountLabel(values.rentBillingCadence)
-    ).safeParse(values.rentAmount);
-
-    if (!rentResult.success) {
-      for (const issue of rentResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["rentAmount"] });
-      }
-    }
+    refineStartLeaseRentAndDeposit(values, ctx);
   });
 
 export type TStartLeaseFormValues = z.infer<typeof startLeaseSchema>;
@@ -86,7 +101,12 @@ export type TStartLeaseFormValues = z.infer<typeof startLeaseSchema>;
 export type TStartLeaseFormField = keyof TStartLeaseFormValues;
 
 export const START_LEASE_STEP_FIELDS: Record<TStartLeaseStep, readonly TStartLeaseFormField[]> = {
-  rent: ["rentBillingCadence", "rentAmount"],
+  rent: [
+    "rentAmount",
+    "rentBillingCadence",
+    "securityDepositCustomAmount",
+    "securityDepositPreset",
+  ],
   term: ["leaseEndDate", "leaseStartDate", "termMode", "termMonths", "termWeeks"],
   who: ["unitId", "guestName", "tenantEmail", "tenantPhone"],
 };
@@ -132,6 +152,8 @@ export function getStartLeaseDefaultValues(unitId?: string): TStartLeaseFormValu
     leaseStartDate: getTodayLocalIsoDate(),
     rentAmount: "",
     rentBillingCadence: RentBillingCadence.MONTHLY,
+    securityDepositCustomAmount: "",
+    securityDepositPreset: LeaseDepositPreset.NONE,
     tenantEmail: "",
     tenantPhone: "",
     termMode: "months",

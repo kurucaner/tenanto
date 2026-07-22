@@ -52,6 +52,8 @@ describe("tenant email-gated transactional emails", () => {
 
     const sent = await sendLeaseEndedEmail("jane@example.com", {
       contractEndDate: "March 31, 2026",
+      depositPlain: "",
+      depositSection: "",
       finalMonthPlain: "",
       finalMonthSection: "",
       holdoverPlain: "",

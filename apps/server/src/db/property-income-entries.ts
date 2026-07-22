@@ -5,7 +5,7 @@ import type {
   IPropertyReservationsListQuery,
   TPropertyIncomeEntry,
 } from "@/packages/shared";
-import { IncomeEntryKind } from "@/packages/shared";
+import { IncomeEntryKind, sqlIsSecurityDepositIncomeLineType } from "@/packages/shared";
 import {
   decodeIncomeEntryKeysetCursor,
   encodeIncomeEntryKeysetCursor,
@@ -33,6 +33,17 @@ const RESERVATION_CHANNEL_JOIN = `
   INNER JOIN property_channel_commissions pcc ON pcc.id = pr.channel_commission_id
 `;
 
+const INCOME_LINE_TYPE_JOIN =
+  "INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id";
+
+const DEPOSIT_INCOME_TYPE_SQL = sqlIsSecurityDepositIncomeLineType();
+/** Lease-linked rent (and similar) — excludes Security deposit system type. */
+const LONG_TERM_INCOME_LINE_SQL = `pil.long_stay_id IS NOT NULL AND NOT (${DEPOSIT_INCOME_TYPE_SQL})`;
+/** Misc lines plus lease-linked Security deposit (not rent schedule). */
+const LINE_INCOME_LINE_SQL = `(pil.long_stay_id IS NULL OR ${DEPOSIT_INCOME_TYPE_SQL})`;
+/** Security deposit system type only (Income type filter = Deposit). */
+const DEPOSIT_ONLY_INCOME_LINE_SQL = DEPOSIT_INCOME_TYPE_SQL;
+
 const STAY_BRANCH_SELECT = `
   pr.*,
   pcc.name AS channel_name,
@@ -43,6 +54,7 @@ const STAY_BRANCH_SELECT = `
 type TIncomeEntriesListDbFilters = Omit<IPropertyIncomeEntriesListQuery, "cursor" | "limit">;
 
 interface IIncomeEntryBranchPlan {
+  depositOnly?: boolean;
   includeLines: boolean;
   includeLongTerm: boolean;
   includeStays: boolean;
@@ -58,6 +70,14 @@ function resolveIncomeTypeFilter(incomeType?: string): IIncomeEntryBranchPlan {
   }
   if (incomeType === IncomeEntryKind.LONG_TERM) {
     return { includeLines: false, includeLongTerm: true, includeStays: false };
+  }
+  if (incomeType === IncomeEntryKind.DEPOSIT) {
+    return {
+      depositOnly: true,
+      includeLines: true,
+      includeLongTerm: false,
+      includeStays: false,
+    };
   }
   return {
     includeLines: true,
@@ -178,7 +198,7 @@ function buildIncomeLineEntryBranchSql(
   includeDeleted: boolean,
   entryKind: typeof IncomeEntryKind.LINE | typeof IncomeEntryKind.LONG_TERM,
   lineTypeId: string | undefined,
-  longStayIdConstraint: "is_null" | "is_not_null",
+  lineScopeSql: string,
   sort: IIncomeEntryListSortOptions
 ): { sql: string; values: unknown[] } {
   const { conditions, joinUnits, values } = buildIncomeLineListParts(
@@ -186,11 +206,7 @@ function buildIncomeLineEntryBranchSql(
     toLineListFilters(filters, lineTypeId),
     includeDeleted
   );
-  const longStayCondition =
-    longStayIdConstraint === "is_null"
-      ? "pil.long_stay_id IS NULL"
-      : "pil.long_stay_id IS NOT NULL";
-  const branchConditions = [...conditions, longStayCondition];
+  const branchConditions = [...conditions, lineScopeSql];
   const { sortKeyDate, sortKeyNum, sortKeyText } =
     entryKind === IncomeEntryKind.LONG_TERM
       ? getLongTermSortKeySelects(sort.sortBy)
@@ -217,7 +233,7 @@ function buildIncomeLineEntryBranchSql(
           (${sortKeyNum}) AS sort_key_num,
           (${sortKeyText}) AS sort_key_text
         FROM property_income_lines pil
-        INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
+        ${INCOME_LINE_TYPE_JOIN}
         ${unitJoin}
         ${joinUnits}
         WHERE ${branchConditions.join(" AND ")}
@@ -231,7 +247,8 @@ function buildLineBranchSql(
   filters: TIncomeEntriesListDbFilters,
   includeDeleted: boolean,
   lineTypeId: string | undefined,
-  sort: IIncomeEntryListSortOptions
+  sort: IIncomeEntryListSortOptions,
+  depositOnly = false
 ): { sql: string; values: unknown[] } {
   return buildIncomeLineEntryBranchSql(
     propertyId,
@@ -239,7 +256,7 @@ function buildLineBranchSql(
     includeDeleted,
     IncomeEntryKind.LINE,
     lineTypeId,
-    "is_null",
+    depositOnly ? DEPOSIT_ONLY_INCOME_LINE_SQL : LINE_INCOME_LINE_SQL,
     sort
   );
 }
@@ -256,7 +273,7 @@ function buildLongTermBranchSql(
     includeDeleted,
     IncomeEntryKind.LONG_TERM,
     undefined,
-    "is_not_null",
+    LONG_TERM_INCOME_LINE_SQL,
     sort
   );
 }
@@ -289,7 +306,8 @@ function buildMergedUnionSql(
       filters,
       includeDeleted,
       branchPlan.lineTypeId,
-      sort
+      sort,
+      branchPlan.depositOnly === true
     );
     branches.push(offsetSqlPlaceholders(lineBranch.sql, values.length));
     values.push(...lineBranch.values);
@@ -406,13 +424,13 @@ export const propertyIncomeEntriesDb = {
         toLineListFilters(filters),
         includeDeleted
       );
-      const longTermConditions = [...conditions, "pil.long_stay_id IS NOT NULL"];
+      const longTermConditions = [...conditions, LONG_TERM_INCOME_LINE_SQL];
       counts.push(
         pool
           .query<{ total_count: number }>(
             `SELECT COUNT(*)::int AS total_count
              FROM property_income_lines pil
-             ${joinLineTypes}
+             ${joinLineTypes || INCOME_LINE_TYPE_JOIN}
              ${joinUnits}
              WHERE ${longTermConditions.join(" AND ")}`,
             values
@@ -427,13 +445,15 @@ export const propertyIncomeEntriesDb = {
         toLineListFilters(filters, branchPlan.lineTypeId),
         includeDeleted
       );
-      const lineConditions = [...conditions, "pil.long_stay_id IS NULL"];
+      const lineScopeSql =
+        branchPlan.depositOnly === true ? DEPOSIT_ONLY_INCOME_LINE_SQL : LINE_INCOME_LINE_SQL;
+      const lineConditions = [...conditions, lineScopeSql];
       counts.push(
         pool
           .query<{ total_count: number }>(
             `SELECT COUNT(*)::int AS total_count
              FROM property_income_lines pil
-             ${joinLineTypes}
+             ${joinLineTypes || INCOME_LINE_TYPE_JOIN}
              ${joinUnits}
              WHERE ${lineConditions.join(" AND ")}`,
             values

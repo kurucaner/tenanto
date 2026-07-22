@@ -105,6 +105,12 @@ mock.module("./lease-primary-tenant-contact-service", () => ({
   resolvePrimaryTenantContactForLongStay: mockResolvePrimaryTenantContactForLongStay,
 }));
 
+const mockApplyPendingPortalInviteEmailChange = mockAsyncFn(() => Promise.resolve());
+
+mock.module("./pending-portal-invite-email-change", () => ({
+  applyPendingPortalInviteEmailChange: mockApplyPendingPortalInviteEmailChange,
+}));
+
 const { createSecondaryOccupant, deleteSecondaryOccupant, updateSecondaryOccupant } =
   await import("./secondary-occupant-service");
 
@@ -248,6 +254,8 @@ describe("updateSecondaryOccupant", () => {
     mockUpdateName.mockReset();
     mockUpdateUnverifiedPhone.mockReset();
     mockBuildSecondaryOccupantMutationResponse.mockReset();
+    mockApplyPendingPortalInviteEmailChange.mockReset();
+    mockApplyPendingPortalInviteEmailChange.mockResolvedValue(undefined);
     mockResolvePrimaryTenantContactForLongStay.mockReset();
     mockResolvePrimaryTenantContactForLongStay.mockImplementation(async (lease) => ({
       effectiveEmail: lease.tenantEmail,
@@ -314,6 +322,88 @@ describe("updateSecondaryOccupant", () => {
     expect(mockUpdateSecondaryContact).toHaveBeenCalledWith("membership-1", {
       inviteEmail: null,
     });
+    expect(mockApplyPendingPortalInviteEmailChange).not.toHaveBeenCalled();
+  });
+
+  test("retargets pending invite when secondary email changes", async () => {
+    const pending = makeMembership({
+      inviteEmail: "old-secondary@example.com",
+      role: TenantMembershipRole.SECONDARY,
+      status: TenantMembershipStatus.PENDING_INVITE,
+      tenantUserId: null,
+    });
+    mockFindById.mockResolvedValueOnce(pending);
+    mockFindById.mockResolvedValueOnce(
+      makeMembership({
+        ...pending,
+        inviteEmail: "new-secondary@example.com",
+      })
+    );
+
+    await updateSecondaryOccupant({
+      body: { email: "new-secondary@example.com" },
+      lease: makeLease({
+        guestName: "Lease Primary",
+        leaseEndDate: "2027-01-01",
+        tenantEmail: "lease@example.com",
+        tenantPhone: "+13055550100",
+      }),
+      membershipId: "membership-1",
+    });
+
+    expect(mockUpdateSecondaryContact).not.toHaveBeenCalled();
+    expect(mockApplyPendingPortalInviteEmailChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextInviteEmail: "new-secondary@example.com",
+        previousInviteEmail: "old-secondary@example.com",
+      })
+    );
+  });
+
+  test("clears email then revokes when pending secondary email is cleared", async () => {
+    mockFindById.mockResolvedValueOnce(
+      makeMembership({
+        inviteEmail: "old-secondary@example.com",
+        role: TenantMembershipRole.SECONDARY,
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-1",
+      })
+    );
+    mockUpdateSecondaryContact.mockResolvedValueOnce(
+      makeMembership({
+        inviteEmail: null,
+        role: TenantMembershipRole.SECONDARY,
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+      })
+    );
+    mockFindById.mockResolvedValueOnce(
+      makeMembership({
+        inviteEmail: null,
+        role: TenantMembershipRole.SECONDARY,
+        status: TenantMembershipStatus.REVOKED,
+      })
+    );
+
+    await updateSecondaryOccupant({
+      body: { email: null },
+      lease: makeLease({
+        guestName: "Lease Primary",
+        leaseEndDate: "2027-01-01",
+        tenantEmail: "lease@example.com",
+        tenantPhone: "+13055550100",
+      }),
+      membershipId: "membership-1",
+    });
+
+    expect(mockUpdateSecondaryContact).toHaveBeenCalledWith("membership-1", {
+      inviteEmail: null,
+    });
+    expect(mockApplyPendingPortalInviteEmailChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextInviteEmail: null,
+        previousInviteEmail: "old-secondary@example.com",
+      })
+    );
   });
 
   test("rejects linked email changes", async () => {

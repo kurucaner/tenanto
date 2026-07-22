@@ -1,0 +1,38 @@
+---
+description: Do not re-export sibling module symbols — import from the defining source
+alwaysApply: true
+---
+
+# No Sibling Re-exports
+
+Modules must **own** what they export. Do not re-export symbols defined in a sibling module.
+
+## Rules
+
+- **Export** only what this module defines (functions, types, constants authored here).
+- **Import** shared symbols from their defining module (or from the package public entry).
+- **Do not** `export { x } from "./sibling"` or `import { x } from "./sibling"; export { x }` in utils/components/services.
+- **Exception:** package barrels such as `packages/*/src/index.ts` (and similar public API entrypoints) may re-export the package surface.
+
+## Why
+
+Re-exports create multiple “homes” for the same symbol, obscure ownership, and tempt callers to import from the wrong module.
+
+## Examples
+
+```typescript
+// BAD — sibling re-export
+export { SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME } from "./property-income-line-type-config";
+export { addMonthsToIsoDate } from "./lease-date-utils";
+
+// GOOD — import for local use only; callers import from the defining module
+import { isSystemSecurityDepositIncomeLineTypeName } from "./property-income-line-type-config";
+
+export function isDepositIncomeLineType(type: { name: string }): boolean {
+  return isSystemSecurityDepositIncomeLineTypeName(type.name);
+}
+
+// GOOD — package barrel (packages/shared/src/index.ts)
+export { SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME } from "./property-income-line-type-config";
+export { addMonthsToIsoDate } from "./lease-date-utils";
+```

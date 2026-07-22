@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   RELEASE_CHANGE_LABELS,
+  RELEASE_NOTABLE_LABEL,
   RELEASE_NOTES,
   type ReleaseChange,
   type ReleaseChangeCategory,
@@ -36,42 +37,82 @@ function formatPublishedDate(isoDate: string): string {
   }).format(date);
 }
 
-const ReleaseChangeItem = memo(({ change }: Readonly<{ change: ReleaseChange }>) => (
-  <li className="flex gap-2.5 text-sm leading-relaxed text-foreground">
-    <Badge
-      className={cn(
-        "mt-0.5 h-5 shrink-0 px-2 text-[0.65rem] uppercase tracking-wide",
-        CATEGORY_BADGE_CLASS[change.category]
-      )}
-      variant="outline"
-    >
-      {RELEASE_CHANGE_LABELS[change.category]}
-    </Badge>
-    <span className="min-w-0 flex-1 pt-px">{change.description}</span>
-  </li>
-));
+/** Latest release only: float notable items to the top while preserving relative order. */
+function orderReleaseChanges(
+  changes: ReleaseChange[],
+  prioritizeNotable: boolean
+): ReleaseChange[] {
+  if (!prioritizeNotable) return changes;
+
+  const notable: ReleaseChange[] = [];
+  const rest: ReleaseChange[] = [];
+  for (const change of changes) {
+    if (change.isBreaking) {
+      notable.push(change);
+    } else {
+      rest.push(change);
+    }
+  }
+  return [...notable, ...rest];
+}
+
+const ReleaseChangeItem = memo(({ change }: Readonly<{ change: ReleaseChange }>) => {
+  if (change.isBreaking) {
+    return (
+      <li className="rounded-md border-l-2 border-foreground/25 bg-muted/40 px-3 py-2.5">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+            {RELEASE_NOTABLE_LABEL}
+          </span>
+          <p className="text-sm leading-relaxed text-foreground">{change.description}</p>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex gap-2.5 text-sm leading-relaxed text-foreground">
+      <Badge
+        className={cn(
+          "mt-0.5 h-5 shrink-0 px-2 text-[0.65rem] uppercase tracking-wide",
+          CATEGORY_BADGE_CLASS[change.category]
+        )}
+        variant="outline"
+      >
+        {RELEASE_CHANGE_LABELS[change.category]}
+      </Badge>
+      <span className="min-w-0 flex-1 pt-px">{change.description}</span>
+    </li>
+  );
+});
 ReleaseChangeItem.displayName = "ReleaseChangeItem";
 
-const ReleaseNoteSection = memo(({ note }: Readonly<{ note: ReleaseNote }>) => (
-  <section className="flex flex-col gap-3">
-    <div className="flex flex-col gap-1">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <h3 className="font-display text-base font-semibold tracking-tight text-foreground">
-          Version {note.version}
-        </h3>
-        <time className="text-xs text-muted-foreground" dateTime={note.publishedAt}>
-          {formatPublishedDate(note.publishedAt)}
-        </time>
-      </div>
-      {note.summary ? <p className="text-sm text-muted-foreground">{note.summary}</p> : null}
-    </div>
-    <ul className="flex flex-col gap-2.5">
-      {note.changes.map((change, index) => (
-        <ReleaseChangeItem change={change} key={`${note.id}-${change.category}-${index}`} />
-      ))}
-    </ul>
-  </section>
-));
+const ReleaseNoteSection = memo(
+  ({ note, prioritizeNotable }: Readonly<{ note: ReleaseNote; prioritizeNotable: boolean }>) => {
+    const orderedChanges = orderReleaseChanges(note.changes, prioritizeNotable);
+
+    return (
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <h3 className="font-display text-base font-semibold tracking-tight text-foreground">
+              Version {note.version}
+            </h3>
+            <time className="text-xs text-muted-foreground" dateTime={note.publishedAt}>
+              {formatPublishedDate(note.publishedAt)}
+            </time>
+          </div>
+          {note.summary ? <p className="text-sm text-muted-foreground">{note.summary}</p> : null}
+        </div>
+        <ul className="flex flex-col gap-2.5">
+          {orderedChanges.map((change, index) => (
+            <ReleaseChangeItem change={change} key={`${note.id}-${change.category}-${index}`} />
+          ))}
+        </ul>
+      </section>
+    );
+  }
+);
 ReleaseNoteSection.displayName = "ReleaseNoteSection";
 
 interface WhatsChangedDialogProps {
@@ -89,7 +130,7 @@ export const WhatsChangedDialog = memo(({ onOpenChange, open }: WhatsChangedDial
       <DialogFormFields>
         {RELEASE_NOTES.map((note, index) => (
           <div className="flex flex-col gap-6" key={note.id}>
-            <ReleaseNoteSection note={note} />
+            <ReleaseNoteSection note={note} prioritizeNotable={index === 0} />
             {index < RELEASE_NOTES.length - 1 ? (
               <div aria-hidden className="h-px bg-border/70" />
             ) : null}

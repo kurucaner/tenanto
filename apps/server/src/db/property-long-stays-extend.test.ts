@@ -39,6 +39,9 @@ const mockClientQuery = mock((sql: string, params?: unknown[]) => {
     currentLeaseRow = buildRentScheduleLeaseRow({
       lease_end_date: params?.[2],
       rent_amount: String(params?.[3]),
+      security_deposit_amount:
+        params?.[4] === undefined || params?.[4] === null ? null : String(params?.[4]),
+      security_deposit_tracks_rent: currentLeaseRow.security_deposit_tracks_rent === true,
       term_months: params?.[1],
     });
     return Promise.resolve({ rows: [currentLeaseRow] });
@@ -157,5 +160,77 @@ describe("propertyLongStaysDb.extendLease", () => {
       { effective_from_period: "2026-01-01", rent_amount: "500" },
       { effective_from_period: "2026-01-15", rent_amount: "600" },
     ]);
+  });
+
+  test("tops up security deposit when opted in with eligible rent increase", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_end_date: "2026-06-30",
+      lease_start_date: "2026-01-01",
+      rent_amount: "1500.00",
+      security_deposit_amount: "1500.00",
+      security_deposit_tracks_rent: true,
+      term_months: 6,
+    });
+    currentRentPeriodRows = [];
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    const updated = await propertyLongStaysDb.extendLease("lease-1", {
+      additionalTermMonths: 6,
+      newRentAmount: 1800,
+      rentEffectiveFromPeriod: "2026-07",
+      topUpSecurityDeposit: true,
+    });
+
+    expect(updated.securityDepositAmount).toBe(1800);
+    expect(updated.securityDepositTracksRent).toBe(true);
+    expect(updated.rentAmount).toBe(1800);
+  });
+
+  test("leaves security deposit unchanged when top-up is omitted", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_end_date: "2026-06-30",
+      lease_start_date: "2026-01-01",
+      rent_amount: "1500.00",
+      security_deposit_amount: "1500.00",
+      security_deposit_tracks_rent: true,
+      term_months: 6,
+    });
+    currentRentPeriodRows = [];
+    capturedClientSql.length = 0;
+    mockClientQuery.mockClear();
+
+    const updated = await propertyLongStaysDb.extendLease("lease-1", {
+      additionalTermMonths: 6,
+      newRentAmount: 1800,
+      rentEffectiveFromPeriod: "2026-07",
+    });
+
+    expect(updated.securityDepositAmount).toBe(1500);
+    expect(updated.rentAmount).toBe(1800);
+  });
+
+  test("rejects ineligible top-up with clear error", async () => {
+    currentLeaseRow = buildRentScheduleLeaseRow({
+      lease_end_date: "2026-06-30",
+      lease_start_date: "2026-01-01",
+      rent_amount: "1500.00",
+      security_deposit_amount: "1500.00",
+      security_deposit_tracks_rent: false,
+      term_months: 6,
+    });
+    currentRentPeriodRows = [];
+    mockClientQuery.mockClear();
+
+    await expect(
+      propertyLongStaysDb.extendLease("lease-1", {
+        additionalTermMonths: 6,
+        newRentAmount: 1800,
+        rentEffectiveFromPeriod: "2026-07",
+        topUpSecurityDeposit: true,
+      })
+    ).rejects.toMatchObject({
+      message: "Deposit top-up is only available when the security deposit tracks rent",
+    });
   });
 });

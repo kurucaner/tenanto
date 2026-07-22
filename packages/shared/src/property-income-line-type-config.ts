@@ -15,7 +15,10 @@ export interface IPropertyIncomeLineTypeInput {
 /** Fixed name for the server-managed lease rent type (not shown in property settings). */
 export const SYSTEM_LEASE_RENT_INCOME_TYPE_NAME = "Long-term rent";
 
-/** User-managed misc income types seeded for new properties (excludes system lease rent). */
+/** Fixed name for the server-managed security deposit type (not shown in property settings). */
+export const SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME = "Security deposit";
+
+/** User-managed misc income types seeded for new properties (excludes system types). */
 export const DEFAULT_PROPERTY_INCOME_LINE_TYPES: Pick<IPropertyIncomeLineTypeInput, "name">[] = [
   { name: "Extra cleaning" },
   { name: "Beach equipment rental" },
@@ -72,4 +75,8 @@ export function isRentIncomeLineType(type: Pick<IPropertyIncomeLineType, "name">
 
 export function isSystemLeaseRentIncomeLineTypeName(name: string): boolean {
   return name.toLowerCase() === SYSTEM_LEASE_RENT_INCOME_TYPE_NAME.toLowerCase();
+}
+
+export function isSystemSecurityDepositIncomeLineTypeName(name: string): boolean {
+  return name.toLowerCase() === SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME.toLowerCase();
 }

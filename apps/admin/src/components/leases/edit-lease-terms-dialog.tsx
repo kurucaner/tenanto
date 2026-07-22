@@ -5,6 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { LeaseDepositPresetFields } from "@/components/leases/lease-deposit-preset-fields";
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import { getLeaseDepositFormDefaults } from "@/lib/lease-deposit-display";
 import { getEditLeaseFirstPeriodRentPreview } from "@/lib/lease-proration-display";
 import {
   buildLeaseTermApiPayload,
@@ -32,6 +34,11 @@ import {
 import { requiredNonNegativeMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
+  leaseDepositPresetSchema,
+  refineLeaseDepositFormValues,
+  resolveStartLeaseSecurityDepositAmount,
+} from "@/lib/start-lease-deposit-field";
+import {
   getStartLeaseRentAmountLabel,
   normalizeStartLeaseRentBillingCadence,
 } from "@/lib/start-lease-rent-billing";
@@ -40,10 +47,12 @@ import {
   getLeaseRentAmount,
   type IPropertyLongStay,
   RentBillingCadence,
+  resolveSecurityDepositTracksRent,
   validateEditLeaseTerms,
 } from "@/packages/shared";
 
 function getDefaultValues(lease: IPropertyLongStay) {
+  const rentAmount = getLeaseRentAmount(lease);
   return {
     ...getInitialLeaseTermEndValues({
       leaseEndDate: lease.leaseEndDate,
@@ -51,7 +60,12 @@ function getDefaultValues(lease: IPropertyLongStay) {
       rentBillingCadence: lease.rentBillingCadence,
       termMonths: lease.termMonths,
     }),
-    rentAmount: String(getLeaseRentAmount(lease)),
+    ...getLeaseDepositFormDefaults({
+      rentAmount,
+      securityDepositAmount: lease.securityDepositAmount,
+      securityDepositTracksRent: lease.securityDepositTracksRent,
+    }),
+    rentAmount: String(rentAmount),
     termWeeks: String(deriveTermWeeksFromDates(lease.leaseStartDate, lease.leaseEndDate)),
   };
 }
@@ -83,18 +97,30 @@ export const EditLeaseTermsDialog = memo(
             leaseEndDate: z.string(),
             leaseStartDate: z.string().min(1, "Lease start date is required"),
             rentAmount: requiredNonNegativeMoneyField(rentAmountLabel),
+            securityDepositCustomAmount: z.string(),
+            securityDepositPreset: leaseDepositPresetSchema,
             termMode: z.enum(["months", "weeks", "customEnd"]),
             termMonths: z.string(),
             termWeeks: z.string(),
           })
           .superRefine((values, ctx) => {
             refineLeaseTermEndFormValues(values, ctx);
+            refineLeaseDepositFormValues(values, ctx);
 
             const rentAmount = Number(values.rentAmount);
+            const securityDepositAmount = resolveStartLeaseSecurityDepositAmount({
+              rentAmount: values.rentAmount,
+              securityDepositCustomAmount: values.securityDepositCustomAmount,
+              securityDepositPreset: values.securityDepositPreset,
+            });
             const error = validateEditLeaseTerms(
               {
                 ...buildLeaseTermApiPayload(values),
                 rentAmount,
+                securityDepositAmount,
+                securityDepositTracksRent: resolveSecurityDepositTracksRent(
+                  values.securityDepositPreset
+                ),
               },
               lease,
               today
@@ -173,6 +199,12 @@ export const EditLeaseTermsDialog = memo(
         longStaysApi.updateTerms(propertyId, lease.id, {
           ...buildLeaseTermApiPayload(values),
           rentAmount: Number(values.rentAmount),
+          securityDepositAmount: resolveStartLeaseSecurityDepositAmount({
+            rentAmount: values.rentAmount,
+            securityDepositCustomAmount: values.securityDepositCustomAmount,
+            securityDepositPreset: values.securityDepositPreset,
+          }),
+          securityDepositTracksRent: resolveSecurityDepositTracksRent(values.securityDepositPreset),
         }),
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to update lease terms");
@@ -242,6 +274,12 @@ export const EditLeaseTermsDialog = memo(
                   <p className="text-xs text-destructive">{errors.rentAmount.message}</p>
                 ) : null}
               </div>
+
+              <LeaseDepositPresetFields<TEditLeaseTermsFormValues>
+                control={form.control}
+                customAmountError={errors.securityDepositCustomAmount?.message}
+                customAmountFieldId="edit-lease-deposit-custom"
+              />
 
               {leaseEndDate ? (
                 <p className="text-muted-foreground text-xs">

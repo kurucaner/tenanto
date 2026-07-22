@@ -39,6 +39,7 @@ import { resolveSecondaryTenantContactsForLongStay } from "./resolve-secondary-t
 import {
   logTenantPortalInvited,
   logTenantPortalResent,
+  logTenantPortalRetargeted,
   logTenantPortalRevoked,
 } from "./tenant-portal-observability";
 import { WinstonLogger } from "./winston";
@@ -454,6 +455,83 @@ export const tenantPortalInviteService = {
     const emailResult = await sendPortalInviteEmail(updated, summary, rawToken, hasExistingAccount);
 
     logTenantPortalResent(updated);
+
+    return {
+      emailError: emailResult.emailError,
+      emailSent: emailResult.emailSent,
+      membership: updated,
+    };
+  },
+
+  /**
+   * Retarget a pending invite to a new email on the same membership row:
+   * reclassify pending_invite ↔ pending_acceptance, relink tenant_user_id,
+   * rotate token, and send invite email. Does not use create rate limits.
+   */
+  async retargetPendingInvite(input: {
+    inviteEmail: string;
+    leaseId: string;
+    membershipId: string;
+    propertyId: string;
+  }): Promise<ICreateLeasePortalInviteResult> {
+    const context = await loadLeaseContext(input.leaseId, input.propertyId);
+    if (!context) {
+      throw portalInviteNotFoundError("Long stay not found");
+    }
+
+    const membership = await leaseTenantMembershipsDb.findById(input.membershipId);
+    if (!membership || membership.leaseId !== input.leaseId) {
+      throw portalInviteLeaseMismatchError();
+    }
+
+    if (!PENDING_INVITE_STATUSES.has(membership.status)) {
+      throw portalInviteInvalidStateError("Only pending portal invites can be retargeted");
+    }
+
+    const inviteEmail = normalizeTenantEmail(input.inviteEmail.trim());
+    if (!isValidTenantEmail(inviteEmail)) {
+      throw portalInviteTargetError("A valid invite email is required");
+    }
+
+    const duplicate = await leaseTenantMembershipsDb.findNonTerminalByLeaseEmailRole(
+      input.leaseId,
+      inviteEmail,
+      membership.role
+    );
+    if (duplicate && duplicate.id !== membership.id) {
+      throw duplicatePortalInviteError(duplicate);
+    }
+
+    const status = await resolveInitialStatus(inviteEmail);
+    const existingUser = await tenantUsersDb.findByEmail(inviteEmail);
+    const rawToken = generatePortalInviteToken();
+    const updated = await leaseTenantMembershipsDb.retargetPendingInvite(membership.id, {
+      inviteEmail,
+      inviteTokenHash: hashPortalInviteToken(rawToken),
+      status,
+      tenantUserId:
+        status === TenantMembershipStatus.PENDING_ACCEPTANCE && existingUser
+          ? existingUser.id
+          : null,
+    });
+    if (!updated) {
+      throw portalInviteNotFoundError("Portal invite not found");
+    }
+
+    const summary = buildTenantInviteLeaseSummary(
+      updated,
+      context.lease,
+      context.property,
+      context.unit
+    );
+    const emailResult = await sendPortalInviteEmail(
+      updated,
+      summary,
+      rawToken,
+      existingUser != null
+    );
+
+    logTenantPortalRetargeted(updated);
 
     return {
       emailError: emailResult.emailError,

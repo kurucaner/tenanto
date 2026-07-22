@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
+import type {
+  IExtendPropertyLongStayBody,
+  IPropertyLongStay,
+  IPropertyLongStayRentMonth,
+  IPropertyLongStayRentPeriod,
+} from "./property-long-stay-types";
 import {
   getLeaseRentAmount,
   getRentPeriodAmount,
@@ -13,12 +19,6 @@ import {
   withRentPeriodLegacyShims,
   withRentScheduleLegacyShims,
 } from "./rent-period-field-utils";
-import type {
-  IExtendPropertyLongStayBody,
-  IPropertyLongStay,
-  IPropertyLongStayRentMonth,
-  IPropertyLongStayRentPeriod,
-} from "./property-long-stay-types";
 
 describe("rent period field accessors", () => {
   test("prefers primary rent period fields when present", () => {
@@ -129,6 +129,8 @@ describe("rent period legacy shims", () => {
       rentAmount: 1500,
       rentBillingCadence: "monthly",
       secondaryTenants: [],
+      securityDepositAmount: null,
+      securityDepositTracksRent: false,
       status: "active",
       tenantEmail: null,
       tenantPhone: null,

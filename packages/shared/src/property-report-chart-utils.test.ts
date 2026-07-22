@@ -97,6 +97,33 @@ describe("buildIncomeCompositionBreakdown", () => {
       shortTerm: 0,
     });
   });
+
+  test("excludes Security deposit from other income total", () => {
+    const breakdown = buildIncomeCompositionBreakdown(
+      [
+        makeUnitRow({
+          grossIncome: 1000,
+          rentalType: UnitRentalType.LONG_TERM,
+          stayGrossIncome: 1000,
+          unitId: "lt-1",
+        }),
+      ],
+      {
+        cleaningFromStays: 0,
+        otherIncomeByType: [
+          { amount: 1500, incomeLineTypeId: "type-deposit", name: "Security deposit" },
+          { amount: 50, incomeLineTypeId: "type-fee", name: "Late fee" },
+        ],
+        room: 0,
+      }
+    );
+
+    expect(breakdown).toEqual({
+      longTerm: 1000,
+      other: 50,
+      shortTerm: 0,
+    });
+  });
 });
 
 describe("buildReportChartSegments", () => {
@@ -187,6 +214,21 @@ describe("otherIncomeTypeToSegments", () => {
     });
 
     expect(segments).toEqual([]);
+  });
+
+  test("excludes Security deposit from other-income type segments", () => {
+    const segments = otherIncomeTypeToSegments({
+      cleaningFromStays: 0,
+      otherIncomeByType: [
+        { amount: 1500, incomeLineTypeId: "type-deposit", name: "Security deposit" },
+        { amount: 200, incomeLineTypeId: "type-fee", name: "Late fee" },
+      ],
+      room: 0,
+    });
+
+    expect(segments).toHaveLength(1);
+    expect(segments[0]?.label).toBe("Late fee");
+    expect(segments[0]?.value).toBe(200);
   });
 });
 

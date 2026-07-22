@@ -50,12 +50,25 @@ describe("start lease draft storage", () => {
   test("writes and reads a draft", () => {
     const values = getStartLeaseDefaultValues("unit-1");
     values.guestName = "Ada";
+    values.securityDepositPreset = "one_month_rent";
     writeStartLeaseDraft("prop-1", "unit-1", { step: "term", values });
 
     const draft = readStartLeaseDraft("prop-1", "unit-1", { lockedUnitId: "unit-1" });
     expect(draft?.step).toBe("term");
     expect(draft?.values.guestName).toBe("Ada");
     expect(draft?.values.unitId).toBe("unit-1");
+    expect(draft?.values.securityDepositPreset).toBe("one_month_rent");
+  });
+
+  test("round-trips custom deposit draft fields", () => {
+    const values = getStartLeaseDefaultValues("unit-1");
+    values.securityDepositPreset = "custom";
+    values.securityDepositCustomAmount = "2500";
+    writeStartLeaseDraft("prop-1", "unit-1", { step: "rent", values });
+
+    const draft = readStartLeaseDraft("prop-1", "unit-1", { lockedUnitId: "unit-1" });
+    expect(draft?.values.securityDepositPreset).toBe("custom");
+    expect(draft?.values.securityDepositCustomAmount).toBe("2500");
   });
 
   test("URL locked unit wins over draft unitId", () => {

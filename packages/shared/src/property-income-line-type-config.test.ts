@@ -5,16 +5,18 @@ import {
   DEFAULT_RENT_TYPE_NAME,
   isRentIncomeLineType,
   isSystemLeaseRentIncomeLineTypeName,
+  isSystemSecurityDepositIncomeLineTypeName,
   resolveLeaseIncomeLineTypeId,
   SYSTEM_LEASE_RENT_INCOME_TYPE_NAME,
 } from "./property-income-line-type-config";
 
 describe("DEFAULT_PROPERTY_INCOME_LINE_TYPES", () => {
-  test("seeds user misc types only without Rent", () => {
+  test("seeds user misc types only without system types", () => {
     const names = DEFAULT_PROPERTY_INCOME_LINE_TYPES.map((type) => type.name);
     expect(names).toEqual(["Extra cleaning", "Beach equipment rental"]);
     expect(names).not.toContain("Rent");
     expect(names).not.toContain(SYSTEM_LEASE_RENT_INCOME_TYPE_NAME);
+    expect(names).not.toContain("Security deposit");
   });
 });
 
@@ -26,6 +28,19 @@ describe("isSystemLeaseRentIncomeLineTypeName", () => {
 
   test("returns false for legacy Rent name", () => {
     expect(isSystemLeaseRentIncomeLineTypeName(DEFAULT_RENT_TYPE_NAME)).toBe(false);
+  });
+});
+
+describe("isSystemSecurityDepositIncomeLineTypeName", () => {
+  test("matches Security deposit case-insensitively", () => {
+    expect(isSystemSecurityDepositIncomeLineTypeName("Security deposit")).toBe(true);
+    expect(isSystemSecurityDepositIncomeLineTypeName("SECURITY DEPOSIT")).toBe(true);
+  });
+
+  test("returns false for rent names", () => {
+    expect(isSystemSecurityDepositIncomeLineTypeName(SYSTEM_LEASE_RENT_INCOME_TYPE_NAME)).toBe(
+      false
+    );
   });
 });
 

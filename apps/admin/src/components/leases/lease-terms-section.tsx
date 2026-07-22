@@ -6,6 +6,7 @@ import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format-money";
+import { formatLeaseSecurityDepositDisplay } from "@/lib/lease-deposit-display";
 import {
   getLeaseEditTermsDescription,
   getLeaseExtendTermsDescription,
@@ -47,7 +48,6 @@ export const LeaseTermsSection = memo(
     const canExtend = canManage && isActive;
     const canEditTerms = canManage && isActive && termsEditability.editable;
     const showBlockedCopy = isActive && !termsEditability.editable;
-    const showTermsDivider = canEditTerms || showBlockedCopy;
     const rentAmountSuffix = getLeaseRentAmountSuffix(lease.rentBillingCadence);
     const visibleRentPeriods = useMemo(
       () => getVisibleLeaseRentPeriods(lease, rentPeriods),
@@ -58,10 +58,19 @@ export const LeaseTermsSection = memo(
       <>
         <Card>
           <CardContent className="space-y-4 p-6">
+            <dl className="text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted-foreground">Security deposit</dt>
+                <dd className="font-medium">
+                  {formatLeaseSecurityDepositDisplay(lease.securityDepositAmount)}
+                </dd>
+              </div>
+            </dl>
+
             {isActive ? (
               <>
                 {canEditTerms ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 border-t pt-4">
                     <p className="text-muted-foreground text-sm">
                       {getLeaseEditTermsDescription(lease.rentBillingCadence)}
                     </p>
@@ -78,14 +87,14 @@ export const LeaseTermsSection = memo(
                 ) : null}
 
                 {showBlockedCopy ? (
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground border-t pt-4 text-sm">
                     {getLeaseTermsBlockedCopy(termsEditability)} Use Extend lease or End lease
                     instead.
                   </p>
                 ) : null}
 
                 {canExtend ? (
-                  <div className={showTermsDivider ? "space-y-3 border-t pt-4" : "space-y-3"}>
+                  <div className="space-y-3 border-t pt-4">
                     <p className="text-muted-foreground text-sm">
                       {getLeaseExtendTermsDescription(lease.rentBillingCadence)}
                     </p>
@@ -102,7 +111,7 @@ export const LeaseTermsSection = memo(
                 ) : null}
               </>
             ) : (
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground border-t pt-4 text-sm">
                 This lease has ended. Term changes are not available.
               </p>
             )}

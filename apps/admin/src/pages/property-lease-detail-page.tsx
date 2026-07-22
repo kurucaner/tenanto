@@ -8,21 +8,31 @@ import {
 } from "@/components/income/create-income-line-dialog";
 import { EndLeaseDialog } from "@/components/leases/end-lease-dialog";
 import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
+import { LeaseDepositCloseOutDialog } from "@/components/leases/lease-deposit-close-out-dialog";
+import { LeaseDepositSection } from "@/components/leases/lease-deposit-section";
 import { LeaseDetailActions, LeaseDetailHeader } from "@/components/leases/lease-detail-header";
 import { LeaseOverviewSection } from "@/components/leases/lease-overview-section";
 import { LeasePaymentsSection } from "@/components/leases/lease-payments-section";
 import { LeaseTenantsSection } from "@/components/leases/lease-tenants-section";
 import { LeaseTermsSection } from "@/components/leases/lease-terms-section";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UrlSyncedTabs, UrlSyncedTabsContent } from "@/components/url-synced-tabs";
 import { usePropertyLongStayDetail } from "@/hooks/use-property-long-stay-detail";
 import { usePropertyShell } from "@/hooks/use-property-shell";
 import { useUrlTabState } from "@/hooks/use-url-tab-state";
 import { settingsApi, unitsApi } from "@/lib/api-client";
+import { buildLeaseRecordDepositPrefill } from "@/lib/build-lease-record-deposit-prefill";
+import { formatMoney } from "@/lib/format-money";
 import { LEASE_DETAIL_TAB_DEFINITIONS, LEASE_DETAIL_TABS } from "@/lib/lease-detail-tab-schema";
 import { buildLeaseRecordRentPrefill } from "@/lib/lease-record-rent-prefill";
 import { queryKeys } from "@/lib/query-keys";
-import { formatPropertyUnitSelectLabel } from "@/packages/shared";
+import {
+  formatPropertyUnitSelectLabel,
+  needsLeaseDepositCloseOut,
+  PropertyLongStayStatus,
+} from "@/packages/shared";
 
 export const PropertyLeaseDetailPage = memo(() => {
   const { leaseId, propertyId: routePropertyId } = useParams<{
@@ -37,12 +47,13 @@ export const PropertyLeaseDetailPage = memo(() => {
 
   const [endLeaseOpen, setEndLeaseOpen] = useState(false);
   const [extendLeaseOpen, setExtendLeaseOpen] = useState(false);
-  const [recordRentPrefill, setRecordRentPrefill] = useState<CreateIncomeLineDialogPrefill | null>(
-    null
-  );
+  const [depositCloseOutOpen, setDepositCloseOutOpen] = useState(false);
+  const [recordIncomePrefill, setRecordIncomePrefill] =
+    useState<CreateIncomeLineDialogPrefill | null>(null);
 
   const {
     currentRent,
+    depositSummary,
     isError,
     isPending,
     lease,
@@ -78,12 +89,21 @@ export const PropertyLeaseDetailPage = memo(() => {
 
   const units = useMemo(() => unitsQuery.data?.units ?? [], [unitsQuery.data?.units]);
 
+  const showDepositCloseOutCta = useMemo(() => {
+    if (!lease || !depositSummary || !canManage) {
+      return false;
+    }
+    return (
+      lease.status === PropertyLongStayStatus.ENDED && needsLeaseDepositCloseOut(depositSummary)
+    );
+  }, [canManage, depositSummary, lease]);
+
   const handleRecordRent = useCallback(
     (periodKey?: string) => {
       if (!lease) {
         return;
       }
-      setRecordRentPrefill(
+      setRecordIncomePrefill(
         buildLeaseRecordRentPrefill(lease, {
           periodKey,
           rentSchedule,
@@ -93,8 +113,15 @@ export const PropertyLeaseDetailPage = memo(() => {
     [lease, rentSchedule]
   );
 
-  const handleEndLeaseSuccess = useCallback(() => {
-    setEndLeaseOpen(false);
+  const handleRecordDeposit = useCallback(() => {
+    if (!lease || !depositSummary) {
+      return;
+    }
+    setRecordIncomePrefill(buildLeaseRecordDepositPrefill(lease, depositSummary));
+  }, [depositSummary, lease]);
+
+  const handleEndedWithDepositCloseOut = useCallback(() => {
+    setDepositCloseOutOpen(true);
   }, []);
 
   if (!leaseId) {
@@ -111,7 +138,7 @@ export const PropertyLeaseDetailPage = memo(() => {
     );
   }
 
-  if (isError || !lease || !primaryTenantContact) {
+  if (isError || !lease || !primaryTenantContact || !depositSummary) {
     return (
       <div className="space-y-4">
         <Link
@@ -145,6 +172,30 @@ export const PropertyLeaseDetailPage = memo(() => {
 
         <LeaseDetailHeader currentRent={currentRent} lease={lease} unitLabel={unitLabel} />
 
+        {showDepositCloseOutCta ? (
+          <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                  Security deposit still needs settlement
+                </p>
+                <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
+                  {formatMoney(depositSummary.collected)} collected — refund and/or withhold to
+                  settle.
+                </p>
+              </div>
+              <Button
+                className="shrink-0"
+                onClick={() => setDepositCloseOutOpen(true)}
+                type="button"
+                variant="outline"
+              >
+                Settle deposit
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <UrlSyncedTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -165,13 +216,22 @@ export const PropertyLeaseDetailPage = memo(() => {
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="payments">
-            <LeasePaymentsSection
-              canManage={canManage}
-              isPending={isPending}
-              lease={lease}
-              onRecordRent={handleRecordRent}
-              rentSchedule={rentSchedule}
-            />
+            <div className="space-y-4">
+              <LeaseDepositSection
+                canManage={canManage}
+                depositSummary={depositSummary}
+                lease={lease}
+                onRecordDeposit={handleRecordDeposit}
+                onSettleDeposit={() => setDepositCloseOutOpen(true)}
+              />
+              <LeasePaymentsSection
+                canManage={canManage}
+                isPending={isPending}
+                lease={lease}
+                onRecordRent={handleRecordRent}
+                rentSchedule={rentSchedule}
+              />
+            </div>
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="terms">
@@ -188,13 +248,10 @@ export const PropertyLeaseDetailPage = memo(() => {
 
       {endLeaseOpen ? (
         <EndLeaseDialog
+          depositSummary={depositSummary}
           lease={lease}
-          onOpenChange={(open) => {
-            setEndLeaseOpen(open);
-            if (!open) {
-              handleEndLeaseSuccess();
-            }
-          }}
+          onEndedWithDepositCloseOut={handleEndedWithDepositCloseOut}
+          onOpenChange={setEndLeaseOpen}
           open={true}
           propertyId={propertyId}
           rentPeriods={rentPeriods}
@@ -210,18 +267,28 @@ export const PropertyLeaseDetailPage = memo(() => {
         />
       ) : null}
 
-      {recordRentPrefill && lease ? (
+      {depositCloseOutOpen ? (
+        <LeaseDepositCloseOutDialog
+          depositSummary={depositSummary}
+          longStayId={lease.id}
+          onOpenChange={setDepositCloseOutOpen}
+          open={true}
+          propertyId={propertyId}
+        />
+      ) : null}
+
+      {recordIncomePrefill && lease ? (
         <CreateIncomeLineDialog
           incomeLineTypes={incomeLineTypes}
-          key={`${lease.id}-${recordRentPrefill.rentPeriodKey ?? recordRentPrefill.transactionDate ?? "today"}`}
+          key={`${lease.id}-${recordIncomePrefill.isSecurityDeposit ? "deposit" : "rent"}-${recordIncomePrefill.rentPeriodKey ?? recordIncomePrefill.transactionDate ?? "today"}`}
           lockedLease={lease}
           onOpenChange={(open) => {
             if (!open) {
-              setRecordRentPrefill(null);
+              setRecordIncomePrefill(null);
             }
           }}
           open={true}
-          prefill={recordRentPrefill}
+          prefill={recordIncomePrefill}
           propertyId={propertyId}
           units={units}
         />

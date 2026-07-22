@@ -12,4 +12,21 @@ describe("getPropertyShellTabSearchTerms", () => {
     expect(exportsTab).toBeDefined();
     expect(getPropertyShellTabSearchTerms(exportsTab!)).toEqual(["exports", "export"]);
   });
+
+  test("announcements tab keeps communications path with Announcements label", () => {
+    const announcementsTab = getSearchablePropertyShellTabs().find(
+      (tab) => tab.path === "communications"
+    );
+
+    expect(announcementsTab).toBeDefined();
+    expect(announcementsTab!.label).toBe("Announcements");
+    expect(announcementsTab!.path).toBe("communications");
+    expect(getPropertyShellTabSearchTerms(announcementsTab!)).toEqual([
+      "announcements",
+      "communications",
+      "announcement",
+      "comm",
+      "communication",
+    ]);
+  });
 });

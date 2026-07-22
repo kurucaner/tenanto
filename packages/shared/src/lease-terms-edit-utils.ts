@@ -1,4 +1,6 @@
+import { validateSecurityDepositAmount } from "./lease-deposit-utils";
 import { resolveLeaseEndDate, validateLeaseTermInput } from "./lease-term-input-utils";
+import { roundMoney } from "./property-income-calculator";
 import {
   type IEditPropertyLongStayTermsBody,
   type ILeaseTermsEditability,
@@ -89,6 +91,26 @@ export function deriveLeaseTermsEditability(
   return { editable: true };
 }
 
+function isSecurityDepositUnchanged(
+  bodyAmount: number | null | undefined,
+  existingAmount: number | null,
+  bodyTracksRent: boolean | undefined,
+  existingTracksRent: boolean
+): boolean {
+  const amountUnchanged =
+    bodyAmount === undefined
+      ? true
+      : bodyAmount === null && existingAmount === null
+        ? true
+        : bodyAmount === null || existingAmount === null
+          ? false
+          : roundMoney(bodyAmount) === roundMoney(existingAmount);
+
+  const tracksRentUnchanged = bodyTracksRent === undefined || bodyTracksRent === existingTracksRent;
+
+  return amountUnchanged && tracksRentUnchanged;
+}
+
 export function validateEditLeaseTerms(
   body: IEditPropertyLongStayTermsBody,
   lease: Pick<
@@ -97,6 +119,8 @@ export function validateEditLeaseTerms(
     | "leaseStartDate"
     | "rentAmount"
     | "rentBillingCadence"
+    | "securityDepositAmount"
+    | "securityDepositTracksRent"
     | "status"
     | "termMonths"
   >,
@@ -109,6 +133,11 @@ export function validateEditLeaseTerms(
   const termError = validateLeaseTermInput(body);
   if (termError) {
     return termError;
+  }
+
+  const depositError = validateSecurityDepositAmount(body.securityDepositAmount);
+  if (depositError) {
+    return depositError;
   }
 
   const editedRentAmount = resolveTermsEditRentAmount(body);
@@ -129,7 +158,13 @@ export function validateEditLeaseTerms(
   if (
     body.leaseStartDate === lease.leaseStartDate &&
     resolved.leaseEndDate === lease.leaseEndDate &&
-    editedRentAmount === getLeaseRentAmount(lease)
+    editedRentAmount === getLeaseRentAmount(lease) &&
+    isSecurityDepositUnchanged(
+      body.securityDepositAmount,
+      lease.securityDepositAmount,
+      body.securityDepositTracksRent,
+      lease.securityDepositTracksRent
+    )
   ) {
     return "At least one lease term field must change";
   }

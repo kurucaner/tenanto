@@ -7,6 +7,7 @@ import {
   buildIncomeToolbarClearOnePatch,
   buildIncomeToolbarFilterItems,
   countIncomeSecondaryFilters,
+  isIncomeToolbarEntryKindFilter,
 } from "./income-toolbar-filters";
 
 const OPTIONS = {
@@ -14,6 +15,7 @@ const OPTIONS = {
   incomeTypeOptions: [
     { label: "Stay", value: "stay" },
     { label: "Long term", value: "longTerm" },
+    { label: "Deposit", value: "deposit" },
   ],
   refundStatusOptions: [{ label: "Refunded", value: "refunded" }],
   statusOptions: [{ label: "Active", value: "active" }],
@@ -34,6 +36,15 @@ describe("countIncomeSecondaryFilters", () => {
   });
 });
 
+describe("isIncomeToolbarEntryKindFilter", () => {
+  test("recognizes stay, longTerm, and deposit chips", () => {
+    expect(isIncomeToolbarEntryKindFilter("stay")).toBe(true);
+    expect(isIncomeToolbarEntryKindFilter("longTerm")).toBe(true);
+    expect(isIncomeToolbarEntryKindFilter("deposit")).toBe(true);
+    expect(isIncomeToolbarEntryKindFilter("00000000-0000-4000-8000-000000000001")).toBe(false);
+  });
+});
+
 describe("buildIncomeToolbarFilterItems", () => {
   test("omits the default month and resolves option labels", () => {
     expect(
@@ -41,7 +52,7 @@ describe("buildIncomeToolbarFilterItems", () => {
         activePreset: DateRangePreset.CURRENT_MONTH,
         channelCommissionId: "channel-1",
         dateSummary: "Current month",
-        incomeType: "",
+        incomeType: "deposit",
         isDefaultDateRange: true,
         refundStatus: "",
         status: "active",
@@ -50,6 +61,7 @@ describe("buildIncomeToolbarFilterItems", () => {
       })
     ).toEqual([
       { id: "unitId", label: "Unit: Unit 101" },
+      { id: "incomeType", label: "Type: Deposit" },
       { id: "channelCommissionId", label: "Channel: Airbnb" },
       { id: "status", label: "Status: Active" },
     ]);

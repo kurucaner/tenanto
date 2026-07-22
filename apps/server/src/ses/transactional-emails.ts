@@ -24,6 +24,8 @@ export interface RentPaymentRecordedEmailOptions {
 
 export interface LeaseEndedEmailOptions {
   contractEndDate: string;
+  depositPlain: string;
+  depositSection: string;
   finalMonthPlain: string;
   finalMonthSection: string;
   holdoverPlain: string;
@@ -198,10 +200,12 @@ export async function sendLeaseEndedEmail(
     opts.holdoverPlain || null,
     opts.finalMonthPlain ? "" : null,
     opts.finalMonthPlain || null,
+    opts.depositPlain ? "" : null,
+    opts.depositPlain || null,
     "",
     opts.paymentStatusLine,
     "",
-    "If you have questions about your final rent or move-out, contact your property manager.",
+    "If you have questions about your final rent or move-out, someone from our team will be in touch.",
   ]
     .filter((line): line is string => line !== null)
     .join("\n");
@@ -209,6 +213,7 @@ export async function sendLeaseEndedEmail(
   const html = renderTemplate("lease-ended.html", {
     appName: APP_NAME,
     contractEndDate: escapeHtml(opts.contractEndDate),
+    depositSection: opts.depositSection,
     finalMonthSection: opts.finalMonthSection,
     holdoverSection: opts.holdoverSection,
     leaseStartDate: escapeHtml(opts.leaseStartDate),

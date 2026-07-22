@@ -8,8 +8,9 @@
   - bun:test error
 - Logging who created, updated, deleted, incomes, units, etc.
 - A dialog when the users log in to the app for the first time.
-- Add security deposit flow
+- ~~Add security deposit flow~~ (v2 done — set/record, balance, end-lease settle, extend top-up)
 - Add weekly long term stays
 - Sub category implementation for expenses
 - Add Stripe commission to long stay payments
 - ACH
+- in properties, modal opening and closing re-renders the table.

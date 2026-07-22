@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-import type { IPropertyLongStay, IPropertyLongStayRentMonth } from "@/packages/shared";
-import { PropertyLongStayStatus, RentBillingCadence, UnitRentalType } from "@/packages/shared";
+import type {
+  ILeaseDepositSummary,
+  IPropertyLongStay,
+  IPropertyLongStayRentMonth,
+} from "@/packages/shared";
+import {
+  LeaseDepositBalanceStatus,
+  PropertyLongStayStatus,
+  RentBillingCadence,
+  UnitRentalType,
+} from "@/packages/shared";
 import type {
   LeaseEndedEmailOptions,
   RentPaymentRecordedEmailOptions,
@@ -15,8 +24,19 @@ import {
   mockResolvedNull,
 } from "@/test-fixtures/mocks";
 
+const emptyDepositSummary: ILeaseDepositSummary = {
+  collected: 0,
+  expected: null,
+  outstanding: 0,
+  status: LeaseDepositBalanceStatus.NONE,
+};
+
 const mockFindLongStayById = mockResolvedNull<IPropertyLongStay>();
 const mockGetRentSchedule = mockResolvedEmpty<IPropertyLongStayRentMonth>();
+const mockLoadLeaseDepositSummary = mockAsyncFn(
+  (_lease: Pick<IPropertyLongStay, "id" | "propertyId" | "securityDepositAmount">) =>
+    Promise.resolve(emptyDepositSummary)
+);
 const mockFindPropertyById = mockAsyncFn(() =>
   Promise.resolve({
     address: "123 Main St",
@@ -65,6 +85,10 @@ mock.module("@/db/property-units", () => ({
   propertyUnitsDb: {
     findById: mockFindUnitById,
   },
+}));
+
+mock.module("@/lib/lease-deposit-summary", () => ({
+  loadLeaseDepositSummary: mockLoadLeaseDepositSummary,
 }));
 
 mock.module("@/ses/transactional-emails", () => ({
@@ -182,6 +206,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
     process.env.TENANT_EMAIL_NOTIFICATIONS_ENABLED = "true";
     mockFindLongStayById.mockClear();
     mockGetRentSchedule.mockClear();
+    mockLoadLeaseDepositSummary.mockClear();
+    mockLoadLeaseDepositSummary.mockResolvedValue(emptyDepositSummary);
     mockFindPropertyById.mockClear();
     mockFindUnitById.mockClear();
     mockSendLeaseEndedEmail.mockClear();
@@ -225,6 +251,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
     expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
     expect(mockSendLeaseEndedEmail).toHaveBeenCalledWith("jane@example.com", {
       contractEndDate: "June 30, 2024",
+      depositPlain: "",
+      depositSection: "",
       finalMonthPlain: "Final rent month: July 2024\nAmount: $161.29\nDays billed: 5/31 days",
       finalMonthSection: expect.stringContaining("Final rent month:"),
       holdoverPlain:
@@ -233,7 +261,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       leaseStartDate: "January 1, 2026",
       moveOutDate: "July 5, 2024",
       paymentStatusLine:
-        "Final month rent of $161.29 is still outstanding. Please contact your property manager.",
+        "Final month rent of $161.29 is still outstanding. Someone from our team will contact you.",
       propertyName: "Sunset Apartments",
       tenantName: "Jane Tenant",
       unitLabel: "Unit 101",
@@ -271,6 +299,8 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
     expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
     expect(mockSendLeaseEndedEmail).toHaveBeenCalledWith("jane@example.com", {
       contractEndDate: "March 31, 2026",
+      depositPlain: "",
+      depositSection: "",
       finalMonthPlain: "Final rent month: March 2026\nAmount: $1,500.00",
       finalMonthSection: expect.stringContaining("March 2026"),
       holdoverPlain: "",
@@ -282,6 +312,76 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       tenantName: "Jane Tenant",
       unitLabel: "Unit 101",
     });
+  });
+
+  test("includes security deposit settlement copy when deposit was collected", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2026-03-31",
+        leaseEndDate: "2026-03-31",
+        propertyId: "prop-1",
+        securityDepositAmount: 1500,
+        status: PropertyLongStayStatus.ENDED,
+      })
+    );
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        daysInMonth: 31,
+        expectedRent: 1500,
+        incomeLineId: "line-mar",
+        isPaid: true,
+        isProrated: false,
+        occupiedDays: 31,
+        paidRent: 1500,
+        periodKey: "2026-03",
+        remainingRent: 0,
+      },
+    ]);
+    mockLoadLeaseDepositSummary.mockResolvedValueOnce({
+      collected: 1500,
+      expected: 1500,
+      outstanding: 0,
+      status: LeaseDepositBalanceStatus.HELD,
+    });
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    expect(mockSendLeaseEndedEmail).toHaveBeenCalledTimes(1);
+    const emailPayload = getMockCallArg<LeaseEndedEmailOptions>(mockSendLeaseEndedEmail, 1);
+    expect(emailPayload?.depositPlain).toBe(
+      "Security deposit: $1,500.00 was collected. Someone from our team will settle any refund or amount withheld for damages."
+    );
+    expect(emailPayload?.depositSection).toContain("Security deposit: $1,500.00 was collected");
+  });
+
+  test("mentions recorded refund when deposit status is refunded", async () => {
+    mockFindLongStayById.mockResolvedValueOnce(
+      makeLease({
+        actualEndDate: "2026-03-31",
+        leaseEndDate: "2026-03-31",
+        propertyId: "prop-1",
+        securityDepositAmount: 1500,
+        status: PropertyLongStayStatus.ENDED,
+      })
+    );
+    mockGetRentSchedule.mockResolvedValueOnce([]);
+    mockLoadLeaseDepositSummary.mockResolvedValueOnce({
+      collected: 1500,
+      expected: 1500,
+      outstanding: 0,
+      status: LeaseDepositBalanceStatus.REFUNDED,
+    });
+
+    await notifyPrimaryTenantLeaseEnded({
+      longStayId: "lease-1",
+      propertyId: "prop-1",
+    });
+
+    const emailPayload = getMockCallArg<LeaseEndedEmailOptions>(mockSendLeaseEndedEmail, 1);
+    expect(emailPayload?.depositPlain).toContain("a refund has been recorded");
   });
 
   test("sends weekly end email with week period label and holdover copy", async () => {
@@ -322,7 +422,7 @@ describe("notifyPrimaryTenantLeaseEnded", () => {
       leaseStartDate: "January 15, 2026",
       moveOutDate: "January 23, 2026",
       paymentStatusLine:
-        "Final week rent of $400.00 is still outstanding. Please contact your property manager.",
+        "Final week rent of $400.00 is still outstanding. Someone from our team will contact you.",
       propertyName: "Sunset Apartments",
       tenantName: "Jane Tenant",
       unitLabel: "Unit 101",

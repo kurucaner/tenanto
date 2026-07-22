@@ -11,6 +11,7 @@ import {
 import { buildLeaseRecordRentPrefill } from "./lease-record-rent-prefill";
 import {
   getExpectedRentForSchedulePeriod,
+  getExtendLeaseDepositTopUpLabel,
   getLeaseBillingCadenceLabel,
   getLeaseExtendTermsDescription,
   getLeaseRentAmountSuffix,
@@ -370,5 +371,13 @@ describe("getLeaseExtendTermsDescription", () => {
   test("describes weekly extend with optional rent change", () => {
     expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weeks");
     expect(getLeaseExtendTermsDescription(RentBillingCadence.WEEKLY)).toContain("weekly rent");
+  });
+});
+
+describe("getExtendLeaseDepositTopUpLabel", () => {
+  test("includes formatted top-up delta", () => {
+    expect(getExtendLeaseDepositTopUpLabel(300)).toBe(
+      "Increase security deposit to match new rent (+$300.00)"
+    );
   });
 });

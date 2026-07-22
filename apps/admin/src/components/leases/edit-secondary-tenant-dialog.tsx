@@ -1,33 +1,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { memo, useCallback, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { memo, useCallback, useMemo } from "react";
+import { type FieldErrors } from "react-hook-form";
 import { toast } from "sonner";
 
-import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
+import { EditLeaseTenantContactDialog } from "@/components/leases/edit-lease-tenant-contact-dialog";
 import {
   createTenantContactFormSchema,
   getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
-  tenantContactFormDefaults,
   toSecondaryOccupantPatch,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogFormFields,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import {
-  invalidatePropertyLongStayCaches,
-  invalidatePropertyLongStayPortalCaches,
-} from "@/lib/invalidate-property-long-stay-caches";
+import { invalidatePropertyLongStayDetailCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { type ILeaseSecondaryTenantContact, type IPropertyLongStay } from "@/packages/shared";
 
 interface EditSecondaryTenantDialogProps {
@@ -56,32 +42,17 @@ export const EditSecondaryTenantDialog = memo(
   }: EditSecondaryTenantDialogProps) => {
     const queryClient = useQueryClient();
 
-    const form = useForm<TTenantContactFormValues>({
-      defaultValues: tenantContactFormDefaults({
-        email: contact.effectiveEmail,
-        name: contact.effectiveName,
-        phone: contact.effectivePhone,
-      }),
-      resolver: zodResolver(
-        createTenantContactFormSchema({
-          excludeEmail: contact.effectiveEmail,
-          primaryTenantEmail,
-          secondaryTenantEmails,
-        })
-      ),
-    });
-
-    useEffect(() => {
-      if (open) {
-        form.reset(
-          tenantContactFormDefaults({
-            email: contact.effectiveEmail,
-            name: contact.effectiveName,
-            phone: contact.effectivePhone,
+    const resolver = useMemo(
+      () =>
+        zodResolver(
+          createTenantContactFormSchema({
+            excludeEmail: contact.effectiveEmail,
+            primaryTenantEmail,
+            secondaryTenantEmails,
           })
-        );
-      }
-    }, [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, open]);
+        ),
+      [contact.effectiveEmail, primaryTenantEmail, secondaryTenantEmails]
+    );
 
     const mutation = useMutation({
       mutationFn: (values: TTenantContactFormValues) =>
@@ -96,76 +67,36 @@ export const EditSecondaryTenantDialog = memo(
       },
       onSuccess: () => {
         toast.success("Secondary tenant updated");
-        invalidatePropertyLongStayCaches(queryClient, propertyId);
-        invalidatePropertyLongStayPortalCaches(queryClient, propertyId, lease.id);
-        handleOpenChange(false);
+        invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
+        onOpenChange(false);
       },
     });
 
-    const handleOpenChange = useCallback(
-      (nextOpen: boolean) => {
-        if (!nextOpen) {
-          form.reset(
-            tenantContactFormDefaults({
-              email: contact.effectiveEmail,
-              name: contact.effectiveName,
-              phone: contact.effectivePhone,
-            })
-          );
-        }
-        onOpenChange(nextOpen);
-      },
-      [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, onOpenChange]
-    );
-
-    const onSubmit = form.handleSubmit(
-      (values) => {
+    const handleSubmit = useCallback(
+      (values: TTenantContactFormValues) => {
         mutation.mutate(values);
       },
-      (fieldErrors) => {
-        toast.error(getTenantContactFormErrorMessage(fieldErrors));
-      }
+      [mutation]
     );
 
-    const { errors, isSubmitting } = form.formState;
+    const handleInvalid = useCallback((fieldErrors: FieldErrors<TTenantContactFormValues>) => {
+      toast.error(getTenantContactFormErrorMessage(fieldErrors));
+    }, []);
 
     return (
-      <Dialog onOpenChange={handleOpenChange} open={open}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Edit Secondary Tenant</DialogTitle>
-            <DialogDescription>
-              Update this secondary tenant&apos;s contact information.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={onSubmit}>
-            <DialogFormFields>
-              <TenantContactFields
-                control={form.control}
-                emailDisabled={isPortalLinked}
-                errors={errors}
-                idPrefix="edit-secondary-tenant"
-                register={form.register}
-              />
-            </DialogFormFields>
-
-            <DialogFooter>
-              <Button
-                disabled={mutation.isPending}
-                onClick={() => handleOpenChange(false)}
-                type="button"
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button disabled={mutation.isPending || isSubmitting} type="submit">
-                {mutation.isPending ? "Saving…" : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EditLeaseTenantContactDialog
+        contact={contact}
+        description="Update this secondary tenant's contact information."
+        emailDisabled={isPortalLinked}
+        idPrefix="edit-secondary-tenant"
+        isPending={mutation.isPending}
+        onInvalid={handleInvalid}
+        onOpenChange={onOpenChange}
+        onSubmit={handleSubmit}
+        open={open}
+        resolver={resolver}
+        title="Edit Secondary Tenant"
+      />
     );
   }
 );

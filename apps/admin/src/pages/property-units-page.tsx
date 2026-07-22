@@ -1,14 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Pencil, Plus } from "lucide-react";
-import {
-  memo,
-  type MouseEvent,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { memo, type MouseEvent, type RefObject, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -40,11 +32,12 @@ import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { unitsApi } from "@/lib/api-client";
-import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getDateRangeSummary, type TDateRangePresetId } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { invalidatePropertyUnitCaches } from "@/lib/invalidate-property-unit-caches";
 import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
+import { type TSelectOption } from "@/lib/select-option-types";
 import { buildPropertyStartLeasePath } from "@/lib/start-lease-routes";
 import { getUnitRentalTypeBadgeClassName } from "@/lib/unit-rental-type-styles";
 import {
@@ -52,6 +45,7 @@ import {
   buildUnitToolbarClearOnePatch,
   buildUnitToolbarFilterItems,
   countUnitSecondaryFilters,
+  type IUnitToolbarFilterItem,
   type TUnitToolbarFilterId,
 } from "@/lib/unit-toolbar-filters";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -233,56 +227,132 @@ function buildUnitsFooterItems(meta: IPropertyUnitsListMeta) {
   ];
 }
 
+const PropertyUnitsCreateShellAction = memo(function PropertyUnitsCreateShellAction({
+  canManage,
+  propertyId,
+}: {
+  canManage: boolean;
+  propertyId: string;
+}) {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const pageActions = useMemo(
+    () =>
+      canManage ? (
+        <Button className="gap-1.5" onClick={() => setCreateOpen(true)} size="sm" type="button">
+          <Plus className="size-3.5" />
+          Add Unit
+        </Button>
+      ) : null,
+    [canManage]
+  );
+
+  usePropertyShellActions(pageActions);
+
+  return (
+    <CreateUnitDialog onOpenChange={setCreateOpen} open={createOpen} propertyId={propertyId} />
+  );
+});
+PropertyUnitsCreateShellAction.displayName = "PropertyUnitsCreateShellAction";
+
 const PropertyUnitsTable = memo(
   ({
+    activeFilterCount,
+    activeFilterItems,
     activeLeaseByUnitId,
+    activePreset,
     canManage,
+    countLabel,
+    displayFrom,
+    displayTo,
     emptyMessage,
     hasNextPage,
     infiniteScrollSentinelRef,
-    isDeletePending,
+    isDeletePendingUnitId,
     isFetchingNextPage,
     isPending,
     isQuickDeleteActive,
     isRefreshing,
     listMeta,
+    occupancy,
+    occupancyOptions,
+    onClearAllToolbarFilters,
+    onClearSecondaryFilters,
     onDelete,
-    onEdit,
+    onFilterChange,
+    onFromChange,
+    onPresetChange,
+    onRemoveToolbarFilter,
     onRestore,
+    onSearchInputChange,
     onStartLease,
+    onToChange,
+    propertyId,
+    rentalType,
+    rentalTypeOptions,
+    searchInput,
     sort,
-    toolbar,
     units,
   }: {
+    activeFilterCount: number;
+    activeFilterItems: IUnitToolbarFilterItem[];
     activeLeaseByUnitId: Map<string, IPropertyLongStay>;
+    activePreset: TDateRangePresetId | null;
     canManage: boolean;
+    countLabel?: string;
+    displayFrom: string;
+    displayTo: string;
     emptyMessage: string;
     hasNextPage: boolean;
     infiniteScrollSentinelRef: RefObject<HTMLDivElement | null>;
-    isDeletePending: boolean;
+    isDeletePendingUnitId?: string;
     isFetchingNextPage: boolean;
     isPending: boolean;
     isQuickDeleteActive: boolean;
     isRefreshing: boolean;
     listMeta?: IPropertyUnitsListMeta;
+    occupancy: string;
+    occupancyOptions: readonly TSelectOption[];
+    onClearAllToolbarFilters: () => void;
+    onClearSecondaryFilters: () => void;
     onDelete: (unit: IPropertyUnit, event?: MouseEvent<HTMLButtonElement>) => void;
-    onEdit: (unit: IPropertyUnit) => void;
+    onFilterChange: (key: TUnitFilterKey, value: string) => void;
+    onFromChange: (value: string) => void;
+    onPresetChange: (presetId: TDateRangePresetId) => void;
+    onRemoveToolbarFilter: (id: TUnitToolbarFilterId) => void;
     onRestore: (unit: IPropertyUnit) => void;
+    onSearchInputChange: (value: string) => void;
     onStartLease: (unit: IPropertyUnit) => void;
+    onToChange: (value: string) => void;
+    propertyId: string;
+    rentalType: string;
+    rentalTypeOptions: readonly TSelectOption[];
+    searchInput: string;
     sort: DataTableSortController;
-    toolbar: ReactNode;
     units: IPropertyUnit[];
   }) => {
+    const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
+
+    const handleEdit = useCallback((unit: IPropertyUnit) => {
+      setEditUnit(unit);
+    }, []);
+
+    const handleEditOpenChange = useCallback((open: boolean) => {
+      if (!open) {
+        setEditUnit(null);
+      }
+    }, []);
+
     const renderUnitRow = useCallback(
       (unit: IPropertyUnit) => (
         <UnitRow
           activeLease={activeLeaseByUnitId.get(unit.id)}
           canManage={canManage}
-          isDeletePending={isDeletePending}
+          isDeletePending={isDeletePendingUnitId === unit.id}
           isQuickDeleteActive={isQuickDeleteActive}
           key={unit.id}
           onDelete={onDelete}
-          onEdit={onEdit}
+          onEdit={handleEdit}
           onRestore={onRestore}
           onStartLease={onStartLease}
           unit={unit}
@@ -291,10 +361,10 @@ const PropertyUnitsTable = memo(
       [
         activeLeaseByUnitId,
         canManage,
-        isDeletePending,
+        handleEdit,
+        isDeletePendingUnitId,
         isQuickDeleteActive,
         onDelete,
-        onEdit,
         onRestore,
         onStartLease,
       ]
@@ -303,78 +373,94 @@ const PropertyUnitsTable = memo(
     const columns = useMemo(() => getUnitColumns(canManage), [canManage]);
     const colSpan = columns.filter((column) => !column.hidden).length;
 
+    const toolbar = useMemo(
+      () => (
+        <PropertyUnitToolbar
+          activeFilterCount={activeFilterCount}
+          activeFilterItems={activeFilterItems}
+          activePreset={activePreset}
+          countLabel={countLabel}
+          from={displayFrom}
+          occupancy={occupancy}
+          occupancyOptions={occupancyOptions}
+          onClearAll={onClearAllToolbarFilters}
+          onClearSecondaryFilters={onClearSecondaryFilters}
+          onFilterChange={onFilterChange}
+          onFromChange={onFromChange}
+          onPresetChange={onPresetChange}
+          onRemoveFilter={onRemoveToolbarFilter}
+          onSearchInputChange={onSearchInputChange}
+          onToChange={onToChange}
+          rentalType={rentalType}
+          rentalTypeOptions={rentalTypeOptions}
+          searchInput={searchInput}
+          to={displayTo}
+        />
+      ),
+      [
+        activeFilterCount,
+        activeFilterItems,
+        activePreset,
+        countLabel,
+        displayFrom,
+        displayTo,
+        occupancy,
+        occupancyOptions,
+        onClearAllToolbarFilters,
+        onClearSecondaryFilters,
+        onFilterChange,
+        onFromChange,
+        onPresetChange,
+        onRemoveToolbarFilter,
+        onSearchInputChange,
+        onToChange,
+        rentalType,
+        rentalTypeOptions,
+        searchInput,
+      ]
+    );
+
     return (
-      <DataTable
-        columns={columns}
-        emptyMessage={emptyMessage}
-        footer={
-          listMeta ? (
-            <DataTableCountFooter colSpan={colSpan} items={buildUnitsFooterItems(listMeta)} />
-          ) : undefined
-        }
-        getItemKey={getUnitKey}
-        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
-        infiniteScrollSentinelRef={infiniteScrollSentinelRef}
-        isPending={isPending}
-        isRefreshing={isRefreshing}
-        items={units}
-        renderRow={renderUnitRow}
-        sort={sort}
-        toolbar={toolbar}
-        virtualization={{ estimateRowHeight: UNIT_ROW_ESTIMATED_HEIGHT }}
-      />
+      <>
+        <DataTable
+          columns={columns}
+          emptyMessage={emptyMessage}
+          footer={
+            listMeta ? (
+              <DataTableCountFooter colSpan={colSpan} items={buildUnitsFooterItems(listMeta)} />
+            ) : undefined
+          }
+          getItemKey={getUnitKey}
+          infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+          infiniteScrollSentinelRef={infiniteScrollSentinelRef}
+          isPending={isPending}
+          isRefreshing={isRefreshing}
+          items={units}
+          renderRow={renderUnitRow}
+          sort={sort}
+          toolbar={toolbar}
+          virtualization={{ estimateRowHeight: UNIT_ROW_ESTIMATED_HEIGHT }}
+        />
+        {editUnit ? (
+          <EditUnitDialog
+            key={editUnit.id}
+            onOpenChange={handleEditOpenChange}
+            open={true}
+            propertyId={propertyId}
+            unit={editUnit}
+          />
+        ) : null}
+      </>
     );
   }
 );
 PropertyUnitsTable.displayName = "PropertyUnitsTable";
 
-function handleUnitDialogOpenChange(open: boolean, clearSelection: () => void): void {
-  if (!open) {
-    clearSelection();
-  }
-}
-
-const PropertyUnitsPageDialogs = memo(
-  ({
-    createOpen,
-    editUnit,
-    onCreateOpenChange,
-    onEditOpenChange,
-    propertyId,
-  }: {
-    createOpen: boolean;
-    editUnit: IPropertyUnit | null;
-    onCreateOpenChange: (open: boolean) => void;
-    onEditOpenChange: (open: boolean) => void;
-    propertyId: string;
-  }) => (
-    <>
-      <CreateUnitDialog
-        onOpenChange={onCreateOpenChange}
-        open={createOpen}
-        propertyId={propertyId}
-      />
-      {editUnit ? (
-        <EditUnitDialog
-          key={editUnit.id}
-          onOpenChange={onEditOpenChange}
-          open={true}
-          propertyId={propertyId}
-          unit={editUnit}
-        />
-      ) : null}
-    </>
-  )
-);
-PropertyUnitsPageDialogs.displayName = "PropertyUnitsPageDialogs";
-
-export const PropertyUnitsPage = memo(() => {
+export const PropertyUnitsPage = memo(function PropertyUnitsPage() {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageUnits;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editUnit, setEditUnit] = useState<IPropertyUnit | null>(null);
 
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
   const unitFilterSchema = useMemo(
@@ -572,10 +658,6 @@ export const PropertyUnitsPage = memo(() => {
     },
   });
 
-  const handleOpenCreateUnit = useCallback(() => {
-    setCreateOpen(true);
-  }, []);
-
   const handleRestoreUnit = useCallback(
     (unit: IPropertyUnit) => {
       restoreMutation.mutate(unit);
@@ -590,78 +672,58 @@ export const PropertyUnitsPage = memo(() => {
     [navigate, propertyId]
   );
 
-  const pageActions = useMemo(
-    () =>
-      canManage ? (
-        <Button className="gap-1.5" onClick={handleOpenCreateUnit} size="sm" type="button">
-          <Plus className="size-3.5" />
-          Add Unit
-        </Button>
-      ) : null,
-    [canManage, handleOpenCreateUnit]
-  );
+  const deletingUnitId = deleteMutation.isPending ? deleteMutation.variables?.id : undefined;
 
-  usePropertyShellActions(pageActions);
+  const countLabel = listMeta ? `${listMeta.totalCount} units` : undefined;
 
   return (
     <>
+      <PropertyUnitsCreateShellAction canManage={canManage} propertyId={propertyId} />
+
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
           <PropertyUnitsTable
+            activeFilterCount={activeSecondaryFilterCount}
+            activeFilterItems={activeFilterItems}
             activeLeaseByUnitId={activeLeaseByUnitId}
+            activePreset={activePreset}
             canManage={canManage}
+            countLabel={countLabel}
+            displayFrom={displayFrom}
+            displayTo={displayTo}
             emptyMessage={emptyMessage}
             hasNextPage={hasNextPage}
             infiniteScrollSentinelRef={scrollSentinelRef}
-            isDeletePending={deleteMutation.isPending}
+            isDeletePendingUnitId={deletingUnitId}
             isFetchingNextPage={isFetchingNextPage}
             isPending={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
             isRefreshing={isFilterRefetching}
             listMeta={listMeta}
+            occupancy={occupancy}
+            occupancyOptions={UNIT_OCCUPANCY_FILTER_OPTIONS}
+            onClearAllToolbarFilters={handleClearAllToolbarFilters}
+            onClearSecondaryFilters={handleClearSecondaryFilters}
             onDelete={handleDelete}
-            onEdit={setEditUnit}
+            onFilterChange={handleUnitFilterChange}
+            onFromChange={onFromChange}
+            onPresetChange={onPresetChange}
+            onRemoveToolbarFilter={handleRemoveToolbarFilter}
             onRestore={handleRestoreUnit}
+            onSearchInputChange={handleSearchInputChange}
             onStartLease={handleStartLease}
+            onToChange={onToChange}
+            propertyId={propertyId}
+            rentalType={rentalType}
+            rentalTypeOptions={UNIT_RENTAL_TYPE_FILTER_OPTIONS}
+            searchInput={searchInput}
             sort={sortController}
-            toolbar={
-              <PropertyUnitToolbar
-                activeFilterCount={activeSecondaryFilterCount}
-                activeFilterItems={activeFilterItems}
-                activePreset={activePreset}
-                countLabel={listMeta ? `${listMeta.totalCount} units` : undefined}
-                from={displayFrom}
-                occupancy={occupancy}
-                occupancyOptions={UNIT_OCCUPANCY_FILTER_OPTIONS}
-                onClearAll={handleClearAllToolbarFilters}
-                onClearSecondaryFilters={handleClearSecondaryFilters}
-                onFilterChange={handleUnitFilterChange}
-                onFromChange={onFromChange}
-                onPresetChange={onPresetChange}
-                onRemoveFilter={handleRemoveToolbarFilter}
-                onSearchInputChange={handleSearchInputChange}
-                onToChange={onToChange}
-                rentalType={rentalType}
-                rentalTypeOptions={UNIT_RENTAL_TYPE_FILTER_OPTIONS}
-                searchInput={searchInput}
-                to={displayTo}
-              />
-            }
             units={units}
           />
         </CardContent>
       </Card>
 
       {deleteConfirmationDialog}
-
-      <PropertyUnitsPageDialogs
-        createOpen={createOpen}
-        editUnit={editUnit}
-        onCreateOpenChange={setCreateOpen}
-        onEditOpenChange={(open) => handleUnitDialogOpenChange(open, () => setEditUnit(null))}
-        propertyId={propertyId}
-      />
     </>
   );
 });
-PropertyUnitsPage.displayName = "PropertyUnitsPage";

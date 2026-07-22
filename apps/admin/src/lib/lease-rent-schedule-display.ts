@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/format-money";
 import {
   enumerateLeaseWeeks,
   getLeaseRentAmount,
@@ -75,6 +76,14 @@ export function getExtendLeaseChangeRentLabel(cadence: TRentBillingCadence): str
 
 export function getExtendLeaseNewRentLabel(cadence: TRentBillingCadence): string {
   return cadence === RentBillingCadence.WEEKLY ? "New weekly rent" : "New monthly rent";
+}
+
+export function getExtendLeaseDepositTopUpLabel(topUpDelta: number): string {
+  return `Increase security deposit to match new rent (+${formatMoney(topUpDelta)})`;
+}
+
+export function getExtendLeaseDepositTopUpDescription(): string {
+  return "Raises the expected deposit on the lease. Collect the extra amount later with Record deposit on the lease.";
 }
 
 export function getLeaseEditTermsDescription(cadence: TRentBillingCadence): string {

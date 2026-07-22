@@ -1,3 +1,16 @@
+import type {
+  IPropertyChannelCommission,
+  IPropertyChannelCommissionInput,
+} from "./property-channel-commission-config";
+import type {
+  IPropertyExpenseCategoryType,
+  IPropertyExpenseCategoryTypeInput,
+} from "./property-expense-category-type-config";
+import type {
+  IPropertyIncomeLineType,
+  IPropertyIncomeLineTypeInput,
+} from "./property-income-line-type-config";
+
 export interface IPropertyTaxRate {
   id: string;
   name: string;
@@ -28,22 +41,6 @@ export const DEFAULT_PROPERTY_TAX_RATES: Pick<IPropertyTaxRateInput, "name" | "r
   { name: "Sales tax", rate: 0.06 },
   { name: RESORT_TAX_NAME, rate: 0.04 },
 ];
-
-import type {
-  IPropertyChannelCommission,
-  IPropertyChannelCommissionInput,
-} from "./property-channel-commission-config";
-import type {
-  IPropertyExpenseCategoryType,
-  IPropertyExpenseCategoryTypeInput,
-} from "./property-expense-category-type-config";
-import type {
-  IPropertyIncomeLineType,
-  IPropertyIncomeLineTypeInput,
-} from "./property-income-line-type-config";
-
-export type { IPropertyChannelCommission, IPropertyChannelCommissionInput };
-export { DEFAULT_PROPERTY_CHANNEL_COMMISSIONS } from "./property-channel-commission-config";
 
 export interface IPropertySettings {
   /**

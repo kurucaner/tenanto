@@ -17,6 +17,8 @@ const activeLease = {
   leaseEndDate: "2026-12-31",
   leaseStartDate: "2026-01-01",
   rentBillingCadence: RentBillingCadence.MONTHLY,
+  securityDepositAmount: null as number | null,
+  securityDepositTracksRent: false,
   status: PropertyLongStayStatus.ACTIVE,
   termMonths: 12,
 } as const;
@@ -25,6 +27,8 @@ const activeWeeklyLease = {
   leaseEndDate: "2026-01-07",
   leaseStartDate: "2026-01-01",
   rentBillingCadence: RentBillingCadence.WEEKLY,
+  securityDepositAmount: null as number | null,
+  securityDepositTracksRent: false,
   status: PropertyLongStayStatus.ACTIVE,
   termMonths: 1,
 } as const;
@@ -303,6 +307,77 @@ describe("validateExtendLease", () => {
   test("accepts weekly custom end date aligned to whole weeks", () => {
     expect(
       validateExtendLease({ newLeaseEndDate: "2026-01-14" }, activeWeeklyLease, "2026-01-05")
+    ).toBeNull();
+  });
+
+  test("rejects top-up without a rent change", () => {
+    expect(
+      validateExtendLease(
+        { additionalTermMonths: 6, topUpSecurityDeposit: true },
+        {
+          ...activeLease,
+          securityDepositAmount: 1500,
+          securityDepositTracksRent: true,
+        },
+        "2026-07-09"
+      )
+    ).toBe("Deposit top-up requires a rent increase on this extend");
+  });
+
+  test("rejects top-up when deposit does not track rent", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalTermMonths: 6,
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2027-01",
+          topUpSecurityDeposit: true,
+        },
+        {
+          ...activeLease,
+          securityDepositAmount: 1500,
+          securityDepositTracksRent: false,
+        },
+        "2026-07-09"
+      )
+    ).toBe("Deposit top-up is only available when the security deposit tracks rent");
+  });
+
+  test("rejects top-up when new rent is not higher than deposit", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalTermMonths: 6,
+          newRentAmount: 1400,
+          rentEffectiveFromPeriod: "2027-01",
+          topUpSecurityDeposit: true,
+        },
+        {
+          ...activeLease,
+          securityDepositAmount: 1500,
+          securityDepositTracksRent: true,
+        },
+        "2026-07-09"
+      )
+    ).toBe("Deposit top-up requires the new rent to be higher than the current deposit");
+  });
+
+  test("accepts eligible deposit top-up with rent increase", () => {
+    expect(
+      validateExtendLease(
+        {
+          additionalTermMonths: 6,
+          newRentAmount: 1800,
+          rentEffectiveFromPeriod: "2027-01",
+          topUpSecurityDeposit: true,
+        },
+        {
+          ...activeLease,
+          securityDepositAmount: 1500,
+          securityDepositTracksRent: true,
+        },
+        "2026-07-09"
+      )
     ).toBeNull();
   });
 });
