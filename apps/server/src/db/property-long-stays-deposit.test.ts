@@ -102,7 +102,7 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(created.securityDepositAmount).toBe(1500);
-    expect(insertParams?.[11]).toBe(1500);
+    expect(insertParams![11]).toBe(1500);
     expect(
       String(mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT"))?.[0])
     ).toContain("security_deposit_amount");
@@ -121,7 +121,7 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(created.securityDepositAmount).toBeNull();
-    expect(insertParams?.[11]).toBeNull();
+    expect(insertParams![11]).toBeNull();
   });
 
   test("updateTerms sets securityDepositAmount when provided", async () => {
@@ -138,7 +138,7 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(updated.securityDepositAmount).toBe(2000);
-    expect(updateTermsParams?.[5]).toBe(2000);
+    expect(updateTermsParams![5]).toBe(2000);
   });
 
   test("updateTerms leaves deposit unchanged when omitted", async () => {
@@ -154,7 +154,7 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(updated.securityDepositAmount).toBe(1800);
-    expect(updateTermsParams?.[5]).toBe(1800);
+    expect(updateTermsParams![5]).toBe(1800);
   });
 
   test("updateTerms clears deposit when null", async () => {
@@ -171,6 +171,6 @@ describe("propertyLongStaysDb security deposit", () => {
     });
 
     expect(updated.securityDepositAmount).toBeNull();
-    expect(updateTermsParams?.[5]).toBeNull();
+    expect(updateTermsParams![5]).toBeNull();
   });
 });
