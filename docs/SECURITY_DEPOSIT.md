@@ -49,7 +49,7 @@ todos:
     status: completed
   - id: phase-8b-extend-api
     content: "Phase 8b: Extend API optional deposit top-up"
-    status: pending
+    status: completed
   - id: phase-8c-extend-ui
     content: "Phase 8c: Extend dialog opt-in + release notes (v2)"
     status: pending

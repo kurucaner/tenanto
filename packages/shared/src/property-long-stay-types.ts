@@ -146,6 +146,11 @@ export interface IExtendPropertyLongStayBody {
   /** @deprecated Use `rentEffectiveFromPeriod`. Accepted on extend for one release after Phase 14. */
   rentEffectiveFromMonth?: string;
   rentEffectiveFromPeriod?: string;
+  /**
+   * When true, raise `securityDepositAmount` to `newRentAmount` if the lease deposit tracks rent
+   * and the new rent is higher than the current expected deposit.
+   */
+  topUpSecurityDeposit?: boolean;
 }
 
 export interface IEndPropertyLongStayBody {

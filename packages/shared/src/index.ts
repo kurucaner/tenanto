@@ -238,6 +238,7 @@ export {
   canOfferDepositTopUp,
   type ICanOfferDepositTopUpInput,
   type IDepositTopUpOffer,
+  validateExtendDepositTopUp,
 } from "./lease-deposit-top-up-utils";
 export {
   inferLeaseDepositPreset,

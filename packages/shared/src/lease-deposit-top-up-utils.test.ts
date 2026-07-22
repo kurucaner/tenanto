@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { canOfferDepositTopUp } from "./lease-deposit-top-up-utils";
+import { canOfferDepositTopUp, validateExtendDepositTopUp } from "./lease-deposit-top-up-utils";
 
 describe("canOfferDepositTopUp", () => {
   test("not eligible when deposit does not track rent", () => {
@@ -60,5 +60,31 @@ describe("canOfferDepositTopUp", () => {
       proposedExpected: 1800,
       topUpDelta: 300,
     });
+  });
+});
+
+describe("validateExtendDepositTopUp", () => {
+  test("allows omit and false", () => {
+    expect(
+      validateExtendDepositTopUp(
+        {},
+        { securityDepositAmount: 1500, securityDepositTracksRent: true }
+      )
+    ).toBeNull();
+    expect(
+      validateExtendDepositTopUp(
+        { topUpSecurityDeposit: false },
+        { securityDepositAmount: 1500, securityDepositTracksRent: true }
+      )
+    ).toBeNull();
+  });
+
+  test("rejects true without rent change", () => {
+    expect(
+      validateExtendDepositTopUp(
+        { topUpSecurityDeposit: true },
+        { securityDepositAmount: 1500, securityDepositTracksRent: true }
+      )
+    ).toBe("Deposit top-up requires a rent increase on this extend");
   });
 });

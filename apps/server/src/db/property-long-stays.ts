@@ -19,6 +19,7 @@ import type {
 } from "@/packages/shared";
 import {
   buildLeaseRentSchedule,
+  canOfferDepositTopUp,
   enumerateLeaseSchedulePeriods,
   getCurrentLeaseRent,
   getLeaseRentAmount,
@@ -210,6 +211,15 @@ export const propertyLongStaysDb = {
     const newRentAmount = resolveExtendNewRentAmount(body);
     const rentEffectiveFromPeriod = resolveExtendRentEffectivePeriod(body);
     const hasRentChange = newRentAmount !== undefined && rentEffectiveFromPeriod !== undefined;
+    const shouldTopUpDeposit = body.topUpSecurityDeposit === true;
+    const securityDepositAmount =
+      shouldTopUpDeposit && newRentAmount !== undefined
+        ? canOfferDepositTopUp({
+            currentExpected: existing.securityDepositAmount,
+            newRentAmount,
+            tracksRent: existing.securityDepositTracksRent,
+          }).proposedExpected
+        : existing.securityDepositAmount;
 
     const client = await pool.connect();
     try {
@@ -263,11 +273,19 @@ export const propertyLongStaysDb = {
         `UPDATE property_long_stays
          SET term_months = $2,
              lease_end_date = $3,
-             rent_amount = $4
+             rent_amount = $4,
+             security_deposit_amount = $5
          WHERE id = $1
-           AND status = $5::property_long_stay_status
+           AND status = $6::property_long_stay_status
          RETURNING *`,
-        [id, newTermMonths, newLeaseEndDate, currentRentAmount, PropertyLongStayStatus.ACTIVE]
+        [
+          id,
+          newTermMonths,
+          newLeaseEndDate,
+          currentRentAmount,
+          securityDepositAmount,
+          PropertyLongStayStatus.ACTIVE,
+        ]
       );
 
       if (result.rows.length === 0) {

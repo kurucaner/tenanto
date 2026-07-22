@@ -380,6 +380,17 @@ function parseExtendLongStayBody(
     body.rentEffectiveFromPeriod = effectivePeriodRaw;
   }
 
+  const topUpSecurityDeposit = parseOptionalBoolean(
+    r["topUpSecurityDeposit"],
+    "topUpSecurityDeposit"
+  );
+  if (!topUpSecurityDeposit.ok) {
+    return topUpSecurityDeposit;
+  }
+  if (topUpSecurityDeposit.value !== undefined) {
+    body.topUpSecurityDeposit = topUpSecurityDeposit.value;
+  }
+
   return { body, ok: true };
 }
 

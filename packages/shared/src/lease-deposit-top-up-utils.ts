@@ -1,4 +1,6 @@
 import { roundMoney } from "./property-income-calculator";
+import type { IExtendPropertyLongStayBody, IPropertyLongStay } from "./property-long-stay-types";
+import { resolveExtendNewRentAmount } from "./rent-period-field-utils";
 
 export interface ICanOfferDepositTopUpInput {
   /** Current contractual expected deposit (`securityDepositAmount`). */
@@ -51,4 +53,41 @@ export function canOfferDepositTopUp(input: ICanOfferDepositTopUpInput): IDeposi
     proposedExpected,
     topUpDelta,
   };
+}
+
+/**
+ * Rejects `topUpSecurityDeposit: true` when the lease/rent change is ineligible.
+ * Omit/false always pass.
+ */
+export function validateExtendDepositTopUp(
+  body: Pick<
+    IExtendPropertyLongStayBody,
+    "newMonthlyRent" | "newRentAmount" | "topUpSecurityDeposit"
+  >,
+  lease: Pick<IPropertyLongStay, "securityDepositAmount" | "securityDepositTracksRent">
+): string | null {
+  if (body.topUpSecurityDeposit !== true) {
+    return null;
+  }
+
+  const newRentAmount = resolveExtendNewRentAmount(body);
+  if (newRentAmount === undefined) {
+    return "Deposit top-up requires a rent increase on this extend";
+  }
+
+  if (!lease.securityDepositTracksRent || lease.securityDepositAmount == null) {
+    return "Deposit top-up is only available when the security deposit tracks rent";
+  }
+
+  const offer = canOfferDepositTopUp({
+    currentExpected: lease.securityDepositAmount,
+    newRentAmount,
+    tracksRent: lease.securityDepositTracksRent,
+  });
+
+  if (!offer.eligible) {
+    return "Deposit top-up requires the new rent to be higher than the current deposit";
+  }
+
+  return null;
 }

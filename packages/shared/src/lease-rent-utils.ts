@@ -4,6 +4,7 @@ import {
   enumerateLeaseWeeks,
   transactionDateToMonth,
 } from "./lease-date-utils";
+import { validateExtendDepositTopUp } from "./lease-deposit-top-up-utils";
 import {
   deriveTermMonthsFromDates,
   parseLeaseIsoDate,
@@ -217,11 +218,36 @@ function validateLeaseRentChange(
   return validateMonthlyLeaseRentChange(newRentAmount, effectivePeriod, lease, newLeaseEndDate);
 }
 
+function validateExtendLeaseAfterTermResolved(
+  body: IExtendPropertyLongStayBody,
+  lease: Pick<
+    IPropertyLongStay,
+    | "leaseEndDate"
+    | "leaseStartDate"
+    | "rentBillingCadence"
+    | "securityDepositAmount"
+    | "securityDepositTracksRent"
+  >,
+  newLeaseEndDate: string
+): string | null {
+  const rentChangeError = validateLeaseRentChange(body, lease, newLeaseEndDate);
+  if (rentChangeError) {
+    return rentChangeError;
+  }
+  return validateExtendDepositTopUp(body, lease);
+}
+
 export function validateExtendLease(
   body: IExtendPropertyLongStayBody,
   lease: Pick<
     IPropertyLongStay,
-    "leaseEndDate" | "leaseStartDate" | "rentBillingCadence" | "status" | "termMonths"
+    | "leaseEndDate"
+    | "leaseStartDate"
+    | "rentBillingCadence"
+    | "securityDepositAmount"
+    | "securityDepositTracksRent"
+    | "status"
+    | "termMonths"
   >,
   _today: string
 ): string | null {
@@ -271,7 +297,7 @@ export function validateExtendLease(
       return `Total lease term cannot exceed ${MAX_TOTAL_LEASE_TERM_MONTHS} months`;
     }
 
-    return validateLeaseRentChange(body, lease, newLeaseEndDate);
+    return validateExtendLeaseAfterTermResolved(body, lease, newLeaseEndDate);
   }
 
   if (hasAdditionalWeeks) {
@@ -296,7 +322,7 @@ export function validateExtendLease(
       return `Total lease term cannot exceed ${MAX_TOTAL_LEASE_TERM_MONTHS} months`;
     }
 
-    return validateLeaseRentChange(body, lease, newLeaseEndDate);
+    return validateExtendLeaseAfterTermResolved(body, lease, newLeaseEndDate);
   }
 
   const { additionalTermMonths } = body;
@@ -320,5 +346,5 @@ export function validateExtendLease(
     return error instanceof Error ? error.message : "Invalid extend lease input";
   }
 
-  return validateLeaseRentChange(body, lease, newLeaseEndDate);
+  return validateExtendLeaseAfterTermResolved(body, lease, newLeaseEndDate);
 }
