@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { TenantContactFields } from "@/components/leases/tenant-contact-fields";
 import {
+  isPrimaryTenantContactUnchanged,
   tenantContactFormDefaults,
   tenantContactFormSchema,
   toPrimaryTenantPatch,
@@ -22,10 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import {
-  invalidatePropertyLongStayCaches,
-  invalidatePropertyLongStayDetailCaches,
-} from "@/lib/invalidate-property-long-stay-caches";
+import { invalidatePropertyLongStayDetailCaches } from "@/lib/invalidate-property-long-stay-caches";
 import type { ILeasePrimaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 
 interface EditPrimaryTenantDialogProps {
@@ -78,7 +76,6 @@ export const EditPrimaryTenantDialog = memo(
       },
       onSuccess: () => {
         toast.success("Primary tenant updated");
-        invalidatePropertyLongStayCaches(queryClient, propertyId);
         invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
@@ -95,10 +92,14 @@ export const EditPrimaryTenantDialog = memo(
     );
 
     const onSubmit = form.handleSubmit((values) => {
+      if (isPrimaryTenantContactUnchanged(values, primaryTenantContact)) {
+        handleOpenChange(false);
+        return;
+      }
       mutation.mutate(values);
     });
 
-    const { errors, isSubmitting } = form.formState;
+    const { errors, isDirty, isSubmitting } = form.formState;
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -132,7 +133,7 @@ export const EditPrimaryTenantDialog = memo(
               >
                 Cancel
               </Button>
-              <Button disabled={mutation.isPending || isSubmitting} type="submit">
+              <Button disabled={mutation.isPending || isSubmitting || !isDirty} type="submit">
                 {mutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
             </DialogFooter>

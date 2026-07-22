@@ -4,10 +4,11 @@ import { z } from "zod";
 import { personNameSchema } from "@/packages/app-ui";
 import {
   type ICreateSecondaryOccupantBody,
+  type ILeasePrimaryTenantContact,
   type IPropertyLongStaySecondaryTenant,
+  type IUpdateSecondaryOccupantBody,
   isValidE164,
   isValidTenantEmail,
-  type IUpdateSecondaryOccupantBody,
   normalizeTenantEmail,
   normalizeToE164,
 } from "@/packages/shared";
@@ -169,6 +170,18 @@ export function toPrimaryTenantPatch(values: TTenantContactFormValues) {
     tenantEmail: values.tenantEmail.trim() || null,
     tenantPhone: normalizeTenantPhone(values.tenantPhone),
   };
+}
+
+export function isPrimaryTenantContactUnchanged(
+  values: TTenantContactFormValues,
+  contact: Pick<ILeasePrimaryTenantContact, "effectiveEmail" | "effectiveName" | "effectivePhone">
+): boolean {
+  const patch = toPrimaryTenantPatch(values);
+  return (
+    patch.guestName === contact.effectiveName &&
+    patch.tenantEmail === (contact.effectiveEmail ?? null) &&
+    patch.tenantPhone === (contact.effectivePhone ?? null)
+  );
 }
 
 export function tenantContactFormDefaults(input: {

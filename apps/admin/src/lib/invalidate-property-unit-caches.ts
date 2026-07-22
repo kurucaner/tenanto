@@ -3,13 +3,15 @@ import { type QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 
 export function invalidatePropertyUnitCaches(queryClient: QueryClient, propertyId: string) {
-  void queryClient.invalidateQueries({
+  queryClient.invalidateQueries({
     queryKey: queryKeys.propertyUnits(propertyId),
   });
-  void queryClient.invalidateQueries({
+  queryClient.invalidateQueries({
     queryKey: queryKeys.propertyUnitsPicker(propertyId),
   });
-  void queryClient.invalidateQueries({
+  // exact: true — propertyDetail is ["property", id]; without it every property-* query refetches.
+  queryClient.invalidateQueries({
+    exact: true,
     queryKey: queryKeys.propertyDetail(propertyId),
   });
 }
