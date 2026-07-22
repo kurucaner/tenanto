@@ -162,7 +162,7 @@ N/A for v1. Optional one-off backfill script in Phase 1b (not a long-running wor
 - [x] Parse/validate `rentPeriodMonth` on income create/update when `longStayId` present (must match a month in lease schedule)
 - [x] Default: `rentPeriodMonth = transactionDateToMonth(transactionDate)` if omitted
 - [x] [`buildLeaseRecordRentPrefill`](../apps/admin/src/lib/lease-record-rent-prefill.ts): set `rentPeriodMonth` from clicked schedule month (not only `transactionDate`)
-- [x] Stripe `applyIncomeForFullyCoveredMonths`: set `rentPeriodMonth` on created lines; consider writing income on **partial** allocation (optional in 1b or Phase 3)
+- [x] Stripe `applyIncomeForFullyCoveredMonths`: set period key on created lines; books **`allocated_cents`** per payment (partial Record Rent + Stripe remainder both appear on Income; idempotent per payment + period)
 - [x] Backfill script: set `rent_period_month = left(transaction_date, 7)` for existing `long_stay_id` rows
 
 **Exit criteria:** New Record Rent rows persist `rent_period_month`; schedule reflects them via rollup.

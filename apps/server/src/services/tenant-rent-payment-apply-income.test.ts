@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
-import { mockAsyncFn, mockResolved } from "@/test-fixtures/mocks";
+import { mockAsyncFn, mockResolvedEmpty } from "@/test-fixtures/mocks";
 
 const mockListAllocations = mockAsyncFn(() =>
   Promise.resolve(
@@ -13,7 +13,6 @@ const mockListAllocations = mockAsyncFn(() =>
     }>
   )
 );
-const mockSumSucceededAllocatedCents = mockResolved(0);
 const mockFindLeaseById = mockAsyncFn(() =>
   Promise.resolve({
     id: "lease-1",
@@ -21,17 +20,11 @@ const mockFindLeaseById = mockAsyncFn(() =>
     unitId: "unit-1",
   } as { id: string; propertyId: string; unitId: string } | null)
 );
-const mockGetRentSchedule = mockAsyncFn(() =>
-  Promise.resolve([
-    {
-      expectedRent: 200,
-      isPaid: false,
-      month: "2026-01",
-      paidRent: 0,
-      remainingRent: 200,
-    },
-  ])
-);
+const mockListActiveByTenantRentPaymentId = mockResolvedEmpty<{
+  id: string;
+  rentPeriodKey: string | null;
+  tenantRentPaymentId: string | null;
+}>();
 const mockEnsureLeaseRentIncomeLineType = mockAsyncFn(() =>
   Promise.resolve({
     id: "type-system-rent",
@@ -58,7 +51,6 @@ const mockCreateIncomeLine = mockAsyncFn(() =>
 mock.module("@/db/property-long-stays", () => ({
   propertyLongStaysDb: {
     findById: mockFindLeaseById,
-    getRentSchedule: mockGetRentSchedule,
   },
 }));
 
@@ -72,13 +64,13 @@ mock.module("@/db/property-income-line-types", () => ({
 mock.module("@/db/property-income-lines", () => ({
   propertyIncomeLinesDb: {
     create: mockCreateIncomeLine,
+    listActiveByTenantRentPaymentId: mockListActiveByTenantRentPaymentId,
   },
 }));
 
 mock.module("@/db/tenant-rent-payments", () => ({
   tenantRentPaymentsDb: {
     listAllocations: mockListAllocations,
-    sumSucceededAllocatedCents: mockSumSucceededAllocatedCents,
   },
 }));
 
@@ -87,9 +79,8 @@ const { applyIncomeForFullyCoveredMonths } = await import("./tenant-rent-payment
 describe("applyIncomeForFullyCoveredMonths", () => {
   beforeEach(() => {
     mockListAllocations.mockClear();
-    mockSumSucceededAllocatedCents.mockClear();
     mockFindLeaseById.mockClear();
-    mockGetRentSchedule.mockClear();
+    mockListActiveByTenantRentPaymentId.mockClear();
     mockEnsureLeaseRentIncomeLineType.mockClear();
     mockEnsureLeaseDepositIncomeLineType.mockClear();
     mockCreateIncomeLine.mockClear();
@@ -101,21 +92,12 @@ describe("applyIncomeForFullyCoveredMonths", () => {
         periodMonth: "2026-01",
       },
     ]);
-    mockSumSucceededAllocatedCents.mockResolvedValue(200_00);
     mockFindLeaseById.mockResolvedValue({
       id: "lease-1",
       propertyId: "property-1",
       unitId: "unit-1",
     });
-    mockGetRentSchedule.mockResolvedValue([
-      {
-        expectedRent: 200,
-        isPaid: false,
-        month: "2026-01",
-        paidRent: 0,
-        remainingRent: 200,
-      },
-    ]);
+    mockListActiveByTenantRentPaymentId.mockResolvedValue([]);
     mockEnsureLeaseRentIncomeLineType.mockResolvedValue({
       id: "type-system-rent",
       name: "Long-term rent",
@@ -124,7 +106,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     });
   });
 
-  test("creates income with tenantRentPaymentId when month is fully covered", async () => {
+  test("creates income for allocatedCents when Stripe covers the full period", async () => {
     await applyIncomeForFullyCoveredMonths(
       makePayment({
         status: TenantRentPaymentStatus.SUCCEEDED,
@@ -137,6 +119,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
+        amount: 200,
         incomeLineTypeId: "type-system-rent",
         longStayId: "lease-1",
         rentPeriodKey: "2026-01",
@@ -167,14 +150,12 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     );
   });
 
-  test("creates income when month is allocation-paid but has no income line", async () => {
-    mockGetRentSchedule.mockResolvedValueOnce([
+  test("creates income for Stripe remainder when period already has Record Rent", async () => {
+    mockListAllocations.mockResolvedValueOnce([
       {
-        expectedRent: 200,
-        isPaid: true,
-        month: "2026-01",
-        paidRent: 200,
-        remainingRent: 0,
+        allocatedCents: 100_00,
+        expectedCentsSnapshot: 200_00,
+        periodMonth: "2026-01",
       },
     ]);
 
@@ -190,6 +171,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
+        amount: 100,
         rentPeriodKey: "2026-01",
         tenantRentPaymentId: "payment-1",
       }),
@@ -197,14 +179,32 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     );
   });
 
-  test("skips create when period already has an income line", async () => {
-    mockGetRentSchedule.mockResolvedValueOnce([
+  test("skips create when this payment already has income for the period", async () => {
+    mockListActiveByTenantRentPaymentId.mockResolvedValueOnce([
       {
-        expectedRent: 200,
-        isPaid: true,
-        month: "2026-01",
-        paidRent: 200,
-        remainingRent: 0,
+        id: "line-existing",
+        rentPeriodKey: "2026-01",
+        tenantRentPaymentId: "payment-1",
+      },
+    ]);
+
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_1",
+        stripePaymentIntentId: "pi_1",
+      })
+    );
+
+    expect(mockCreateIncomeLine).not.toHaveBeenCalled();
+  });
+
+  test("skips allocations with zero allocated cents", async () => {
+    mockListAllocations.mockResolvedValueOnce([
+      {
+        allocatedCents: 0,
+        expectedCentsSnapshot: 200_00,
+        periodMonth: "2026-01",
       },
     ]);
 
@@ -227,16 +227,6 @@ describe("applyIncomeForFullyCoveredMonths", () => {
         periodMonth: "2026-01-15",
       },
     ]);
-    mockSumSucceededAllocatedCents.mockResolvedValueOnce(700_00);
-    mockGetRentSchedule.mockResolvedValueOnce([
-      {
-        expectedRent: 700,
-        isPaid: false,
-        month: "2026-01-15",
-        paidRent: 0,
-        remainingRent: 700,
-      },
-    ]);
 
     await applyIncomeForFullyCoveredMonths(
       makePayment({
@@ -249,6 +239,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({
+        amount: 700,
         rentPeriodKey: "2026-01-15",
         transactionDate: "2026-01-15",
       }),

@@ -54,7 +54,7 @@ Industry-standard Stripe rent collection for PropertyOS: **Connect** (money land
 - Period multi-select / partial amount UX is **deferred** (helpers + FIFO allocation remain for later).
 - Funds settle to the **property’s Connect account** (Express recommended); optional platform **application fee** later.
 - **Webhook** is the only path that marks rent paid; browser return URL is UX only.
-- Successful payment creates/links **`property_income_lines`** so existing `isPaid` stays correct (when a month is fully covered).
+- Successful payment creates/links **`property_income_lines`** for each allocation’s **charged amount** (idempotent per payment + period), additive with any prior Record Rent on the same period.
 - Admin can **onboard Connect** for a property and see payment status.
 
 ## Non-goals (v1)
@@ -160,7 +160,9 @@ sequenceDiagram
 | `expected_cents_snapshot` | schedule expected at charge time |
 | Unique                    | `(payment_id, period_month)`     |
 
-**Paid rule:** A schedule month is fully paid when sum(succeeded allocations for month) + existing income coverage ≥ expected rent (or income line exists covering month — keep current income-line `isPaid` as primary after webhook writes income).
+**Paid rule:** A schedule month is fully paid when sum(succeeded allocations for month) + existing income coverage ≥ expected rent.
+
+**Stripe income apply:** On succeed, book one Long-term rent income line per allocation for that payment’s `allocated_cents` (not necessarily full expected). Idempotent on `(tenant_rent_payment_id, rent_period_key)`. Partial Record Rent + Stripe remainder → two Income rows that sum with allocations toward schedule paid.
 
 ### `stripe_webhook_events`
 

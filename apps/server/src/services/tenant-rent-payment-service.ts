@@ -19,8 +19,6 @@ import {
   calculateMiscIncomeLine,
   centsToDollars,
   computeTenantBalanceFromRentSchedule,
-  getRentSchedulePeriodKey,
-  isLeaseRentPeriodFullyPaidCents,
   isWeeklyPeriodKey,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,
@@ -94,10 +92,10 @@ function toStatusResponse(payment: ITenantRentPayment): ITenantRentPaymentStatus
 }
 
 /**
- * Create income lines for months fully covered by succeeded allocations.
- * Skips periods that already have a rent income line. Do not use schedule
- * `isPaid` — after markSucceeded, allocations alone mark months paid and would
- * skip income create (lease Payments tab paid, Income table empty).
+ * Book Long-term rent income for each positive allocation on a succeeded Stripe
+ * rent payment. Amount is this payment's `allocatedCents` (supports partial Record
+ * Rent + Stripe remainder). Idempotent per payment + rent period — does not skip
+ * merely because another income line or schedule `isPaid` already exists.
  */
 export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayment): Promise<void> {
   const allocations = await tenantRentPaymentsDb.listAllocations(payment.id);
@@ -108,9 +106,13 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
     throw new Error(`Lease ${payment.leaseId} not found while applying rent payment`);
   }
 
-  const schedule = await propertyLongStaysDb.getRentSchedule(payment.leaseId);
-  const periodsWithIncome = new Set(
-    schedule.filter((m) => m.incomeLineId != null).map((m) => getRentSchedulePeriodKey(m))
+  const existingForPayment = await propertyIncomeLinesDb.listActiveByTenantRentPaymentId(
+    payment.id
+  );
+  const periodsBookedForPayment = new Set(
+    existingForPayment
+      .map((line) => line.rentPeriodKey)
+      .filter((key): key is string => key != null && key !== "")
   );
 
   // Stripe rent checkouts always create Long-term rent lines — never Security deposit.
@@ -120,20 +122,14 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
   const incomeLineTypeId = systemType.id;
 
   for (const allocation of allocations) {
-    if (periodsWithIncome.has(allocation.periodMonth)) {
+    if (allocation.allocatedCents <= 0) {
+      continue;
+    }
+    if (periodsBookedForPayment.has(allocation.periodMonth)) {
       continue;
     }
 
-    const totalAllocated = await tenantRentPaymentsDb.sumSucceededAllocatedCents(
-      payment.leaseId,
-      allocation.periodMonth
-    );
-    const expectedCents = allocation.expectedCentsSnapshot;
-    if (!isLeaseRentPeriodFullyPaidCents(expectedCents, totalAllocated)) {
-      continue;
-    }
-
-    const amountDollars = centsToDollars(expectedCents);
+    const amountDollars = centsToDollars(allocation.allocatedCents);
     const computed = calculateMiscIncomeLine(amountDollars);
     await propertyIncomeLinesDb.create(
       payment.propertyId,
@@ -151,7 +147,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
       },
       computed
     );
-    periodsWithIncome.add(allocation.periodMonth);
+    periodsBookedForPayment.add(allocation.periodMonth);
   }
 }
 

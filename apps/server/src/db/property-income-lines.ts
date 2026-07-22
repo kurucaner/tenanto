@@ -223,6 +223,19 @@ export const propertyIncomeLinesDb = {
     };
   },
 
+  async listActiveByTenantRentPaymentId(
+    tenantRentPaymentId: string
+  ): Promise<IPropertyIncomeLine[]> {
+    const result = await pool.query(
+      `${INCOME_LINE_SELECT}
+       WHERE pil.tenant_rent_payment_id = $1
+         AND pil.is_deleted = false
+       ORDER BY pil.rent_period_key ASC NULLS LAST, pil.created_at ASC`,
+      [tenantRentPaymentId]
+    );
+    return result.rows.map((row) => mapPropertyIncomeLineRow(row as Record<string, unknown>));
+  },
+
   async listPaginatedByProperty(
     propertyId: string,
     filters: TIncomeLineListDbFilters,
