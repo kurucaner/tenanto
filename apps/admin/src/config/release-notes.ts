@@ -37,6 +37,35 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "Lease detail shows deposit expected, collected, and outstanding so you can see what’s still due at a glance.",
+      },
+      {
+        category: "new",
+        description:
+          "Ending a lease prompts you to settle a held deposit, with a path to refund from Income — full or partial.",
+      },
+      {
+        category: "new",
+        description:
+          "When you extend a lease and raise rent, you can opt in to increase a rent-linked security deposit to match — then record the top-up from the lease.",
+      },
+      {
+        category: "improved",
+        description:
+          "Refunding a security deposit uses clearer copy, and the tenant’s lease-ended email mentions the deposit when one was collected.",
+      },
+    ],
+    id: "2026.18.0",
+    publishedAt: "2026-07-22",
+    summary:
+      "Security deposit balance, end-lease settlement, and optional top-up when extending rent-linked deposits.",
+    version: "2026.18.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "You can set a security deposit when starting a lease or editing terms — none, one month of rent, or a custom amount.",
       },
       {

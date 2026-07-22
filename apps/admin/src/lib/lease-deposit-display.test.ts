@@ -6,6 +6,7 @@ import {
   canShowRecordLeaseDepositCta,
   formatLeaseDepositBalanceStatusLabel,
   formatLeaseSecurityDepositDisplay,
+  getExtendDepositTopUpPreview,
   getLeaseDepositBalanceRows,
   getLeaseDepositFormDefaults,
 } from "./lease-deposit-display";
@@ -138,5 +139,31 @@ describe("getLeaseDepositBalanceRows", () => {
       expectedLabel: "$1,500.00",
       outstandingLabel: "$1,000.00",
     });
+  });
+});
+
+describe("getExtendDepositTopUpPreview", () => {
+  test("returns eligible offer when tracks rent and rent increases", () => {
+    expect(
+      getExtendDepositTopUpPreview({
+        currentExpected: 1500,
+        newRentAmount: 1800,
+        tracksRent: true,
+      })
+    ).toEqual({
+      eligible: true,
+      proposedExpected: 1800,
+      topUpDelta: 300,
+    });
+  });
+
+  test("returns ineligible when deposit is fixed custom", () => {
+    expect(
+      getExtendDepositTopUpPreview({
+        currentExpected: 1500,
+        newRentAmount: 1800,
+        tracksRent: false,
+      }).eligible
+    ).toBe(false);
   });
 });

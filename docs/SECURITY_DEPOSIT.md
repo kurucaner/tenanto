@@ -52,7 +52,7 @@ todos:
     status: completed
   - id: phase-8c-extend-ui
     content: "Phase 8c: Extend dialog opt-in + release notes (v2)"
-    status: pending
+    status: completed
 isProject: false
 ---
 

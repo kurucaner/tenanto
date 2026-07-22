@@ -23,9 +23,15 @@ import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { longStaysApi } from "@/lib/api-client";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { isValidIntegerInput } from "@/lib/integer-input-utils";
-import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
+import {
+  invalidatePropertyLongStayCaches,
+  invalidatePropertyLongStayDetailQuery,
+} from "@/lib/invalidate-property-long-stay-caches";
+import { getExtendDepositTopUpPreview } from "@/lib/lease-deposit-display";
 import {
   getExtendLeaseChangeRentLabel,
+  getExtendLeaseDepositTopUpDescription,
+  getExtendLeaseDepositTopUpLabel,
   getExtendLeaseDialogDescription,
   getExtendLeaseNewRentLabel,
 } from "@/lib/lease-rent-schedule-display";
@@ -69,6 +75,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
     rentEffectiveFromPeriod: isWeekly
       ? getFirstExtensionWeek(lease.leaseStartDate, lease.leaseEndDate)
       : getFirstExtensionMonth(lease.leaseEndDate),
+    topUpSecurityDeposit: true,
   };
 }
 
@@ -84,6 +91,22 @@ function buildExtendLeaseApiPayload(values: TExtendLeaseFormValues): IExtendProp
   }
 
   return { additionalTermMonths: Number.parseInt(values.additionalTermMonths, 10) };
+}
+
+function buildExtendLeaseMutationBody(
+  values: TExtendLeaseFormValues,
+  includeTopUp: boolean
+): IExtendPropertyLongStayBody {
+  return {
+    ...buildExtendLeaseApiPayload(values),
+    ...(values.changeRent
+      ? {
+          newRentAmount: Number(values.newRentAmount),
+          rentEffectiveFromPeriod: values.rentEffectiveFromPeriod,
+          ...(includeTopUp && values.topUpSecurityDeposit ? { topUpSecurityDeposit: true } : {}),
+        }
+      : {}),
+  };
 }
 
 interface ExtendLeaseDialogProps {
@@ -115,18 +138,19 @@ export const ExtendLeaseDialog = memo(
             newLeaseEndDate: z.string(),
             newRentAmount: z.string(),
             rentEffectiveFromPeriod: z.string(),
+            topUpSecurityDeposit: z.boolean(),
           })
           .superRefine((values, ctx) => {
-            const body: IExtendPropertyLongStayBody = {
-              ...buildExtendLeaseApiPayload(values),
-              ...(values.changeRent
-                ? {
+            const topUpOffer =
+              values.changeRent && values.newRentAmount !== ""
+                ? getExtendDepositTopUpPreview({
+                    currentExpected: lease.securityDepositAmount,
                     newRentAmount: Number(values.newRentAmount),
-                    rentEffectiveFromPeriod: values.rentEffectiveFromPeriod,
-                  }
-                : {}),
-            };
+                    tracksRent: lease.securityDepositTracksRent,
+                  })
+                : null;
 
+            const body = buildExtendLeaseMutationBody(values, topUpOffer?.eligible === true);
             const error = validateExtendLease(body, lease, today);
             if (error) {
               ctx.addIssue({
@@ -206,6 +230,7 @@ export const ExtendLeaseDialog = memo(
     const additionalTermWeeks = form.watch("additionalTermWeeks");
     const newLeaseEndDateValue = form.watch("newLeaseEndDate");
     const changeRent = form.watch("changeRent");
+    const newRentAmountValue = form.watch("newRentAmount");
 
     const extendBody = useMemo(
       () =>
@@ -217,6 +242,7 @@ export const ExtendLeaseDialog = memo(
           newLeaseEndDate: newLeaseEndDateValue,
           newRentAmount: "",
           rentEffectiveFromPeriod: "",
+          topUpSecurityDeposit: true,
         }),
       [additionalTermMonths, additionalTermWeeks, changeRent, extendMode, newLeaseEndDateValue]
     );
@@ -228,6 +254,33 @@ export const ExtendLeaseDialog = memo(
         return null;
       }
     }, [extendBody, lease]);
+
+    const depositTopUpPreview = useMemo(() => {
+      if (!changeRent || newRentAmountValue === "") {
+        return null;
+      }
+      const parsedRent = Number(newRentAmountValue);
+      if (!Number.isFinite(parsedRent)) {
+        return null;
+      }
+      const offer = getExtendDepositTopUpPreview({
+        currentExpected: lease.securityDepositAmount,
+        newRentAmount: parsedRent,
+        tracksRent: lease.securityDepositTracksRent,
+      });
+      if (!offer.eligible) {
+        return null;
+      }
+      return {
+        description: getExtendLeaseDepositTopUpDescription(),
+        label: getExtendLeaseDepositTopUpLabel(offer.topUpDelta),
+      };
+    }, [
+      changeRent,
+      lease.securityDepositAmount,
+      lease.securityDepositTracksRent,
+      newRentAmountValue,
+    ]);
 
     const effectivePeriodOptions = useMemo(() => {
       if (!newLeaseEndDate) {
@@ -264,16 +317,19 @@ export const ExtendLeaseDialog = memo(
 
     const mutation = useMutation({
       mutationFn: (values: TExtendLeaseFormValues) => {
-        const body: IExtendPropertyLongStayBody = {
-          ...buildExtendLeaseApiPayload(values),
-          ...(values.changeRent
-            ? {
+        const topUpOffer =
+          values.changeRent && values.newRentAmount !== ""
+            ? getExtendDepositTopUpPreview({
+                currentExpected: lease.securityDepositAmount,
                 newRentAmount: Number(values.newRentAmount),
-                rentEffectiveFromPeriod: values.rentEffectiveFromPeriod,
-              }
-            : {}),
-        };
-        return longStaysApi.extend(propertyId, lease.id, body);
+                tracksRent: lease.securityDepositTracksRent,
+              })
+            : null;
+        return longStaysApi.extend(
+          propertyId,
+          lease.id,
+          buildExtendLeaseMutationBody(values, topUpOffer?.eligible === true)
+        );
       },
       onError: (e) => {
         toast.error(e instanceof Error ? e.message : "Failed to extend lease");
@@ -281,6 +337,7 @@ export const ExtendLeaseDialog = memo(
       onSuccess: () => {
         toast.success("Lease extended");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
+        invalidatePropertyLongStayDetailQuery(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });
@@ -409,6 +466,7 @@ export const ExtendLeaseDialog = memo(
                         field.onChange(nextChecked);
                         if (nextChecked) {
                           form.setValue("rentEffectiveFromPeriod", defaultEffectivePeriod);
+                          form.setValue("topUpSecurityDeposit", true);
                         }
                       }}
                     />
@@ -432,7 +490,7 @@ export const ExtendLeaseDialog = memo(
                           form.setValue("newRentAmount", nextValue, { shouldValidate: true });
                         }
                       }}
-                      value={form.watch("newRentAmount")}
+                      value={newRentAmountValue}
                     />
                     {errors.newRentAmount ? (
                       <p className="text-xs text-destructive">{errors.newRentAmount.message}</p>
@@ -453,6 +511,31 @@ export const ExtendLeaseDialog = memo(
                     }))}
                     value={form.watch("rentEffectiveFromPeriod")}
                   />
+
+                  {depositTopUpPreview ? (
+                    <div className="flex items-start gap-2">
+                      <Controller
+                        control={form.control}
+                        name="topUpSecurityDeposit"
+                        render={({ field }) => (
+                          <Checkbox
+                            checked={field.value}
+                            className="mt-0.5"
+                            id="extend-lease-top-up-deposit"
+                            onCheckedChange={(checked) => field.onChange(checked === true)}
+                          />
+                        )}
+                      />
+                      <div className="space-y-1">
+                        <Label className="font-normal" htmlFor="extend-lease-top-up-deposit">
+                          {depositTopUpPreview.label}
+                        </Label>
+                        <p className="text-muted-foreground text-xs">
+                          {depositTopUpPreview.description}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </DialogFormFields>

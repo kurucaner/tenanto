@@ -1,5 +1,7 @@
 import { formatMoney } from "@/lib/format-money";
 import {
+  canOfferDepositTopUp,
+  type IDepositTopUpOffer,
   type ILeaseDepositSummary,
   inferLeaseDepositPreset,
   LeaseDepositBalanceStatus,
@@ -73,4 +75,13 @@ export function getLeaseDepositBalanceRows(summary: ILeaseDepositSummary): {
     expectedLabel: formatLeaseSecurityDepositDisplay(summary.expected),
     outstandingLabel: formatMoney(summary.outstanding),
   };
+}
+
+/** Extend dialog: shared eligibility for rent-linked deposit top-up. */
+export function getExtendDepositTopUpPreview(input: {
+  currentExpected: number | null;
+  newRentAmount: number;
+  tracksRent: boolean;
+}): IDepositTopUpOffer {
+  return canOfferDepositTopUp(input);
 }
