@@ -44,6 +44,7 @@ import {
   getExtensionRentEffectiveWeekOptions,
   getFirstExtensionMonth,
   getFirstExtensionWeek,
+  getLeaseRentAmount,
   type IExtendPropertyLongStayBody,
   type IPropertyLongStay,
   isWeeklyRentBillingCadence,
@@ -71,7 +72,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
     changeRent: false,
     extendMode: getDefaultExtendMode(lease),
     newLeaseEndDate: "",
-    newRentAmount: "",
+    newRentAmount: String(getLeaseRentAmount(lease)),
     rentEffectiveFromPeriod: isWeekly
       ? getFirstExtensionWeek(lease.leaseStartDate, lease.leaseEndDate)
       : getFirstExtensionMonth(lease.leaseEndDate),
@@ -467,6 +468,9 @@ export const ExtendLeaseDialog = memo(
                         if (nextChecked) {
                           form.setValue("rentEffectiveFromPeriod", defaultEffectivePeriod);
                           form.setValue("topUpSecurityDeposit", true);
+                          if (form.getValues("newRentAmount").trim() === "") {
+                            form.setValue("newRentAmount", String(getLeaseRentAmount(lease)));
+                          }
                         }
                       }}
                     />
