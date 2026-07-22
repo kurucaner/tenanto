@@ -180,8 +180,8 @@ export const PropertyLeaseDetailPage = memo(() => {
                   Security deposit still needs settlement
                 </p>
                 <p className="text-xs text-amber-900/80 dark:text-amber-200/80">
-                  {formatMoney(depositSummary.collected)} collected — refund and/or withhold from
-                  Income.
+                  {formatMoney(depositSummary.collected)} collected — refund and/or withhold to
+                  settle.
                 </p>
               </div>
               <Button
@@ -270,6 +270,7 @@ export const PropertyLeaseDetailPage = memo(() => {
       {depositCloseOutOpen ? (
         <LeaseDepositCloseOutDialog
           depositSummary={depositSummary}
+          longStayId={lease.id}
           onOpenChange={setDepositCloseOutOpen}
           open={true}
           propertyId={propertyId}

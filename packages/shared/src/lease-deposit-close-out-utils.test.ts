@@ -78,12 +78,13 @@ describe("getEndLeaseDepositCalloutMessage", () => {
       status: LeaseDepositBalanceStatus.HELD,
     });
     expect(message).toContain("security deposit is held");
-    expect(message).toContain("Income");
+    expect(message).toContain("settle");
+    expect(message).not.toContain("Income");
   });
 });
 
 describe("getLeaseDepositCloseOutCopy", () => {
-  test("includes refund and withhold guidance", () => {
+  test("includes refund and withhold guidance without Income CTA", () => {
     const copy = getLeaseDepositCloseOutCopy({
       collected: 1500,
       expected: 1500,
@@ -93,6 +94,7 @@ describe("getLeaseDepositCloseOutCopy", () => {
     expect(copy.title).toBe("Settle security deposit");
     expect(copy.body).toContain("refund");
     expect(copy.body).toContain("withhold");
-    expect(copy.incomeCtaLabel).toBe("Open Income");
+    expect(copy.refundCtaLabel).toBe("Refund…");
+    expect(copy.body).not.toContain("Income page");
   });
 });

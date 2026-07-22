@@ -888,6 +888,7 @@ function buildIncomeLinesSearchParams(query: IPropertyIncomeLinesListQuery = {})
   if (query.to) params.set("to", query.to);
   if (query.unitId) params.set("unitId", query.unitId);
   if (query.incomeLineTypeId) params.set("incomeLineTypeId", query.incomeLineTypeId);
+  if (query.longStayId) params.set("longStayId", query.longStayId);
   if (query.reservationId) params.set("reservationId", query.reservationId);
   if (query.q != null && query.q !== "") params.set("q", query.q);
   if (query.refundStatus) params.set("refundStatus", query.refundStatus);
