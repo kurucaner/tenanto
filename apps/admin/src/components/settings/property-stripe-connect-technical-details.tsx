@@ -2,11 +2,13 @@ import { memo } from "react";
 
 import type { IPropertyStripeConnectStatusResponse } from "@/packages/shared";
 
+interface StripeConnectTechnicalDetailsProps {
+  status: IPropertyStripeConnectStatusResponse;
+}
+
 export const StripeConnectTechnicalDetails = memo(function StripeConnectTechnicalDetails({
   status,
-}: {
-  status: IPropertyStripeConnectStatusResponse;
-}) {
+}: StripeConnectTechnicalDetailsProps) {
   return (
     <details className="group border-border rounded-lg border px-3 py-2">
       <summary className="text-muted-foreground cursor-pointer text-sm font-medium select-none">

@@ -212,7 +212,7 @@ Rent settlement requires a **platform snapshot** Event Destination (or classic w
 | Scope   | **Your account** (platform) — Checkout Sessions are created on the platform with `transfer_data.destination`                           |
 | Payload | **Snapshot** (`object: "event"`)                                                                                                       |
 | URL     | `https://<api-host>/webhooks/stripe`                                                                                                   |
-| Events  | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`, `account.updated` (Connect capability sync) |
+| Events  | `checkout.session.completed`, `checkout.session.expired`, `payment_intent.payment_failed`, `account.updated` (Connect capability sync); refunds/disputes per [`TENANT_STRIPE_RENT_REFUNDS.md`](./TENANT_STRIPE_RENT_REFUNDS.md). **ACH / card-fee (add when shipping):** `payment_intent.processing`, `payment_intent.succeeded`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` — see [`TENANT_RENT_CARD_CONVENIENCE_FEE_PHASES.md`](./TENANT_RENT_CARD_CONVENIENCE_FEE_PHASES.md) ops checklist. |
 
 `STRIPE_WEBHOOK_SECRET` must be **that** destination’s signing secret (`whsec_…`).
 

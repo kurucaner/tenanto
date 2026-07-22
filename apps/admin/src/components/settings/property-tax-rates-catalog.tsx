@@ -20,19 +20,21 @@ type TPropertyTaxRatesCatalogProps = {
   taxRates: PropertyTaxRateFormRow[];
 };
 
+interface TaxRateCatalogRowProps {
+  disabled: boolean;
+  isPending: boolean;
+  isQuickDeleteActive: boolean;
+  onDeleteRow: TPropertyTaxRatesCatalogProps["onDeleteRow"];
+  row: PropertyTaxRateFormRow;
+}
+
 const TaxRateCatalogRow = memo(function TaxRateCatalogRow({
   disabled,
   isPending,
   isQuickDeleteActive,
   onDeleteRow,
   row,
-}: {
-  disabled: boolean;
-  isPending: boolean;
-  isQuickDeleteActive: boolean;
-  onDeleteRow: TPropertyTaxRatesCatalogProps["onDeleteRow"];
-  row: PropertyTaxRateFormRow;
-}) {
+}: TaxRateCatalogRowProps) {
   const { openEdit } = usePropertySettingsCatalogDialog<PropertyTaxRateFormRow>();
 
   return (
