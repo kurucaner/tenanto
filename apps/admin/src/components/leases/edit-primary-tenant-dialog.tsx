@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import { invalidatePropertyLongStayDetailCaches } from "@/lib/invalidate-property-long-stay-caches";
+import { invalidatePropertyLongStayDetailQuery } from "@/lib/invalidate-property-long-stay-caches";
 import type { ILeasePrimaryTenantContact, IPropertyLongStay } from "@/packages/shared";
 
 interface EditPrimaryTenantDialogProps {
@@ -76,7 +76,8 @@ export const EditPrimaryTenantDialog = memo(
       },
       onSuccess: () => {
         toast.success("Primary tenant updated");
-        invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
+        // Contact lives on lease detail; portal membership status is unchanged.
+        invalidatePropertyLongStayDetailQuery(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });

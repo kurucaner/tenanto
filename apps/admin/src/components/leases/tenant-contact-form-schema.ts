@@ -6,9 +6,9 @@ import {
   type ICreateSecondaryOccupantBody,
   type ILeasePrimaryTenantContact,
   type IPropertyLongStaySecondaryTenant,
-  type IUpdateSecondaryOccupantBody,
   isValidE164,
   isValidTenantEmail,
+  type IUpdateSecondaryOccupantBody,
   normalizeTenantEmail,
   normalizeToE164,
 } from "@/packages/shared";
@@ -172,16 +172,30 @@ export function toPrimaryTenantPatch(values: TTenantContactFormValues) {
   };
 }
 
+type TLeaseTenantContactSnapshot = {
+  effectiveEmail: string | null;
+  effectiveName: string;
+  effectivePhone: string | null;
+};
+
+/** True when form values match the displayed primary/secondary contact (normalized). */
+export function isLeaseTenantContactUnchanged(
+  values: TTenantContactFormValues,
+  contact: TLeaseTenantContactSnapshot
+): boolean {
+  const next = toSecondaryOccupantPatch(values);
+  return (
+    next.name === contact.effectiveName &&
+    next.email === (contact.effectiveEmail ?? null) &&
+    next.phone === (contact.effectivePhone ?? null)
+  );
+}
+
 export function isPrimaryTenantContactUnchanged(
   values: TTenantContactFormValues,
   contact: Pick<ILeasePrimaryTenantContact, "effectiveEmail" | "effectiveName" | "effectivePhone">
 ): boolean {
-  const patch = toPrimaryTenantPatch(values);
-  return (
-    patch.guestName === contact.effectiveName &&
-    patch.tenantEmail === (contact.effectiveEmail ?? null) &&
-    patch.tenantPhone === (contact.effectivePhone ?? null)
-  );
+  return isLeaseTenantContactUnchanged(values, contact);
 }
 
 export function tenantContactFormDefaults(input: {

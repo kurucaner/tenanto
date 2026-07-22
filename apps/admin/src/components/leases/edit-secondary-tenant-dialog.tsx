@@ -9,6 +9,7 @@ import {
   createTenantContactFormSchema,
   getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
+  isLeaseTenantContactUnchanged,
   tenantContactFormDefaults,
   toSecondaryOccupantPatch,
   type TTenantContactFormValues,
@@ -24,10 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { longStaysApi } from "@/lib/api-client";
-import {
-  invalidatePropertyLongStayCaches,
-  invalidatePropertyLongStayPortalCaches,
-} from "@/lib/invalidate-property-long-stay-caches";
+import { invalidatePropertyLongStayDetailCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { type ILeaseSecondaryTenantContact, type IPropertyLongStay } from "@/packages/shared";
 
 interface EditSecondaryTenantDialogProps {
@@ -40,6 +38,16 @@ interface EditSecondaryTenantDialogProps {
   primaryTenantEmail: string | null;
   propertyId: string;
   secondaryTenantEmails: readonly (string | null | undefined)[];
+}
+
+function secondaryTenantContactFormValues(
+  contact: ILeaseSecondaryTenantContact
+): TTenantContactFormValues {
+  return tenantContactFormDefaults({
+    email: contact.effectiveEmail,
+    name: contact.effectiveName,
+    phone: contact.effectivePhone,
+  });
 }
 
 export const EditSecondaryTenantDialog = memo(
@@ -57,11 +65,7 @@ export const EditSecondaryTenantDialog = memo(
     const queryClient = useQueryClient();
 
     const form = useForm<TTenantContactFormValues>({
-      defaultValues: tenantContactFormDefaults({
-        email: contact.effectiveEmail,
-        name: contact.effectiveName,
-        phone: contact.effectivePhone,
-      }),
+      defaultValues: secondaryTenantContactFormValues(contact),
       resolver: zodResolver(
         createTenantContactFormSchema({
           excludeEmail: contact.effectiveEmail,
@@ -73,15 +77,9 @@ export const EditSecondaryTenantDialog = memo(
 
     useEffect(() => {
       if (open) {
-        form.reset(
-          tenantContactFormDefaults({
-            email: contact.effectiveEmail,
-            name: contact.effectiveName,
-            phone: contact.effectivePhone,
-          })
-        );
+        form.reset(secondaryTenantContactFormValues(contact));
       }
-    }, [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, open]);
+    }, [contact, form, open]);
 
     const mutation = useMutation({
       mutationFn: (values: TTenantContactFormValues) =>
@@ -96,8 +94,8 @@ export const EditSecondaryTenantDialog = memo(
       },
       onSuccess: () => {
         toast.success("Secondary tenant updated");
-        invalidatePropertyLongStayCaches(queryClient, propertyId);
-        invalidatePropertyLongStayPortalCaches(queryClient, propertyId, lease.id);
+        // Detail holds secondary contacts; portal row may reflect invite/display updates.
+        invalidatePropertyLongStayDetailCaches(queryClient, propertyId, lease.id);
         handleOpenChange(false);
       },
     });
@@ -105,21 +103,19 @@ export const EditSecondaryTenantDialog = memo(
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
         if (!nextOpen) {
-          form.reset(
-            tenantContactFormDefaults({
-              email: contact.effectiveEmail,
-              name: contact.effectiveName,
-              phone: contact.effectivePhone,
-            })
-          );
+          form.reset(secondaryTenantContactFormValues(contact));
         }
         onOpenChange(nextOpen);
       },
-      [contact.effectiveEmail, contact.effectiveName, contact.effectivePhone, form, onOpenChange]
+      [contact, form, onOpenChange]
     );
 
     const onSubmit = form.handleSubmit(
       (values) => {
+        if (isLeaseTenantContactUnchanged(values, contact)) {
+          handleOpenChange(false);
+          return;
+        }
         mutation.mutate(values);
       },
       (fieldErrors) => {
@@ -127,7 +123,7 @@ export const EditSecondaryTenantDialog = memo(
       }
     );
 
-    const { errors, isSubmitting } = form.formState;
+    const { errors, isDirty, isSubmitting } = form.formState;
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -159,7 +155,7 @@ export const EditSecondaryTenantDialog = memo(
               >
                 Cancel
               </Button>
-              <Button disabled={mutation.isPending || isSubmitting} type="submit">
+              <Button disabled={mutation.isPending || isSubmitting || !isDirty} type="submit">
                 {mutation.isPending ? "Saving…" : "Save Changes"}
               </Button>
             </DialogFooter>
