@@ -92,7 +92,8 @@ export function LeaseDepositPresetFields<
       />
       {securityDepositPreset === LeaseDepositPreset.ONE_MONTH_RENT ? (
         <p className="text-muted-foreground text-xs">
-          Saves the current rent amount as a fixed deposit snapshot (not recalculated later).
+          Sets the deposit to the current rent amount. If you raise rent when extending, you can opt
+          in to top up the deposit to match.
         </p>
       ) : null}
     </div>
