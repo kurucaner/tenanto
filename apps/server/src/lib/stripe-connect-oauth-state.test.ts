@@ -99,7 +99,7 @@ describe("consumeStripeConnectOAuthState", () => {
       userId: "user-1",
     });
     // Default miss after consume; first getdel returns the stored payload once.
-    const getdel = mockAsyncFn(() => Promise.resolve(null));
+    const getdel = mockAsyncFn((): Promise<string | null> => Promise.resolve(null));
     getdel.mockResolvedValueOnce(storedPayload);
     const redis = { getdel } as never;
     const token = signStripeConnectOAuthStateNonce("nonce-reuse");

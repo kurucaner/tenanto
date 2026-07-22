@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import {
   LeaseDepositBalanceStatus,
   SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
@@ -15,7 +16,9 @@ mock.module("@/db/pool", () => ({
 }));
 
 /** Full DB-shaped rows so the real `mapPropertyIncomeLineRow` can run (no mappers mock). */
-function buildDepositIncomeLineRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function buildDepositIncomeLineRow(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
   return {
     amount: 1500,
     channel_commission: 0,
