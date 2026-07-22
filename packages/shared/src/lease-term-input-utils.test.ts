@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
+import { addMonthsToIsoDate } from "./lease-date-utils";
 import {
-  addMonthsToIsoDate,
   deriveTermMonthsFromDates,
   isCustomLeaseEndDate,
   resolveExtendLeaseEndDate,

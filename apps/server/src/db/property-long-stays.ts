@@ -19,6 +19,7 @@ import type {
 } from "@/packages/shared";
 import {
   buildLeaseRentSchedule,
+  canOfferDepositTopUp,
   enumerateLeaseSchedulePeriods,
   getCurrentLeaseRent,
   getLeaseRentAmount,
@@ -138,12 +139,18 @@ export const propertyLongStaysDb = {
       throw new Error("rentAmount is required");
     }
 
+    const securityDepositAmount =
+      input.securityDepositAmount === undefined ? null : input.securityDepositAmount;
+    const securityDepositTracksRent =
+      securityDepositAmount == null ? false : (input.securityDepositTracksRent ?? false);
+
     const result = await pool.query(
       `INSERT INTO property_long_stays
          (property_id, unit_id, guest_name, lease_start_date, term_months, rent_amount,
-          lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence)
+          lease_end_date, tenant_email, tenant_phone, status, rent_billing_cadence,
+          security_deposit_amount, security_deposit_tracks_rent)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::property_long_stay_status,
-               $11::rent_billing_cadence)
+               $11::rent_billing_cadence, $12, $13)
        RETURNING *`,
       [
         propertyId,
@@ -157,6 +164,8 @@ export const propertyLongStaysDb = {
         tenantPhone,
         PropertyLongStayStatus.ACTIVE,
         rentBillingCadence,
+        securityDepositAmount,
+        securityDepositTracksRent,
       ]
     );
     const longStay = mapPropertyLongStayRow(result.rows[0] as Record<string, unknown>);
@@ -202,6 +211,15 @@ export const propertyLongStaysDb = {
     const newRentAmount = resolveExtendNewRentAmount(body);
     const rentEffectiveFromPeriod = resolveExtendRentEffectivePeriod(body);
     const hasRentChange = newRentAmount !== undefined && rentEffectiveFromPeriod !== undefined;
+    const shouldTopUpDeposit = body.topUpSecurityDeposit === true;
+    const securityDepositAmount =
+      shouldTopUpDeposit && newRentAmount !== undefined
+        ? canOfferDepositTopUp({
+            currentExpected: existing.securityDepositAmount,
+            newRentAmount,
+            tracksRent: existing.securityDepositTracksRent,
+          }).proposedExpected
+        : existing.securityDepositAmount;
 
     const client = await pool.connect();
     try {
@@ -255,11 +273,19 @@ export const propertyLongStaysDb = {
         `UPDATE property_long_stays
          SET term_months = $2,
              lease_end_date = $3,
-             rent_amount = $4
+             rent_amount = $4,
+             security_deposit_amount = $5
          WHERE id = $1
-           AND status = $5::property_long_stay_status
+           AND status = $6::property_long_stay_status
          RETURNING *`,
-        [id, newTermMonths, newLeaseEndDate, currentRentAmount, PropertyLongStayStatus.ACTIVE]
+        [
+          id,
+          newTermMonths,
+          newLeaseEndDate,
+          currentRentAmount,
+          securityDepositAmount,
+          PropertyLongStayStatus.ACTIVE,
+        ]
       );
 
       if (result.rows.length === 0) {
@@ -336,11 +362,12 @@ export const propertyLongStaysDb = {
     const effectiveEndDate = getLeaseScheduleEffectiveEndDate(longStay, referenceDate);
 
     const incomeResult = await pool.query(
-      `SELECT *
-       FROM property_income_lines
-       WHERE long_stay_id = $1
-         AND is_deleted = false
-       ORDER BY transaction_date ASC`,
+      `SELECT pil.*, ilt.name AS income_line_type_name
+       FROM property_income_lines pil
+       INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
+       WHERE pil.long_stay_id = $1
+         AND pil.is_deleted = false
+       ORDER BY pil.transaction_date ASC`,
       [longStayId]
     );
 
@@ -587,6 +614,14 @@ export const propertyLongStaysDb = {
     );
 
     const rentAmount = resolveTermsEditRentAmount(body);
+    const securityDepositAmount =
+      body.securityDepositAmount === undefined
+        ? existing.securityDepositAmount
+        : body.securityDepositAmount;
+    const securityDepositTracksRent =
+      securityDepositAmount == null
+        ? false
+        : (body.securityDepositTracksRent ?? existing.securityDepositTracksRent);
 
     const client = await pool.connect();
     try {
@@ -615,9 +650,11 @@ export const propertyLongStaysDb = {
          SET lease_start_date = $2,
              term_months = $3,
              rent_amount = $4,
-             lease_end_date = $5
+             lease_end_date = $5,
+             security_deposit_amount = $6,
+             security_deposit_tracks_rent = $7
          WHERE id = $1
-           AND status = $6::property_long_stay_status
+           AND status = $8::property_long_stay_status
          RETURNING *`,
         [
           id,
@@ -625,6 +662,8 @@ export const propertyLongStaysDb = {
           termMonths,
           rentAmount,
           leaseEndDate,
+          securityDepositAmount,
+          securityDepositTracksRent,
           PropertyLongStayStatus.ACTIVE,
         ]
       );

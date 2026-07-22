@@ -49,7 +49,7 @@ See [TENANT_PORTAL_PHASES.md](./TENANT_PORTAL_PHASES.md) for the full rollout.
 
 **Checks:** SES sandbox / suppression, `TENANT_APP_URL` set (accept link build fails without it), invite create `emailSent` / `emailError` on response.
 
-**Recovery:** Fix email on lease if wrong; **Resend** or revoke → re-invite. Structured logs: `tenant_portal.invited` / `.resent`.
+**Recovery:** Fix email on lease if wrong (pending: edit email auto-retargets; active: revoke → edit → invite). Or **Resend** if the address was already correct. Structured logs: `tenant_portal.invited` / `.resent` / `.retargeted`.
 
 ### Tenant cannot see lease after accept
 
@@ -65,48 +65,60 @@ See [TENANT_PORTAL_PHASES.md](./TENANT_PORTAL_PHASES.md) for the full rollout.
 
 ---
 
-## Wrong-email playbook (v1)
+## Wrong-email playbook
 
 There is **no** tenant self-removal. Operator owns corrections:
 
-1. If access is **active** or invite is **pending**: **Revoke** from the Tenants tab row.
-2. Edit the occupant email on the lease (primary `tenantEmail` or secondary tenant).
-3. **Invite** again to the corrected address (new membership row; terminal statuses allow re-invite).
+### Pending invite (not yet accepted)
+
+1. Edit the occupant email on the lease (primary or secondary) in the Tenants tab.
+2. Saving **auto-retargets** the same membership: new `invite_email`, status/`tenant_user_id` reclassified for the new address, invite token rotated, SES invite sent to the new email. The old magic link stops working.
+3. Tenant accepts with the account for the **new** email (or registers if new).
+
+Clearing the email while pending **revokes** the invite.
+
+### Active portal access (wrong recipient already linked)
+
+1. **Revoke** from the Tenants tab row (cuts access).
+2. Edit the occupant email on the lease.
+3. **Invite** again to the corrected address.
 4. Tenant accepts with the account for the **new** email (or registers if new).
 
-Do **not** tell the wrong recipient to “just ignore” an active membership — revoke first so portal access is cut.
+Do **not** tell the wrong recipient to “just ignore” an **active** membership — revoke first so portal access is cut.
 
 ---
 
 ## Manual test matrix
 
-| Scenario | Steps | Expected |
-| --- | --- | --- |
-| New user | Invite primary with no `tenant_users` row → open email link → register → redeem | `pending_invite` → `active`; lease on Active list; invite token single-use |
-| Returning user | Invite email that already has tenant account → login → accept | `pending_acceptance` → `active` |
-| Decline | Pending → Decline in tenant app | `declined`; accept blocked until operator invite again |
-| Revoke | Active → Revoke in Tenants tab | `revoked`; lease detail 403 / gone from active list; may Invite again |
-| Lease end | End lease in admin | Memberships `ended`; Active empty; lease under Past leases (read-only) |
-| Secondary tenant | Invite secondary with valid email | Separate membership; accepted independently of primary |
-| Expired invite | Pending past TTL (or sweep) | Status `expired` in DB + admin badge; preview/accept blocked; **Invite** available again |
-| Duplicate invite | Invite same pending occupant twice | **409** Conflict |
-| Resend | Pending → Resend | New token; old link invalid after resend; email resent |
-| Rate limit | Burst `POST .../portal-invites` | **429** + `Retry-After` |
+| Scenario         | Steps                                                                           | Expected                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| New user         | Invite primary with no `tenant_users` row → open email link → register → redeem | `pending_invite` → `active`; lease on Active list; invite token single-use               |
+| Returning user   | Invite email that already has tenant account → login → accept                   | `pending_acceptance` → `active`                                                          |
+| Decline          | Pending → Decline in tenant app                                                 | `declined`; accept blocked until operator invite again                                   |
+| Revoke           | Active → Revoke in Tenants tab                                                  | `revoked`; lease detail 403 / gone from active list; may Invite again                    |
+| Lease end        | End lease in admin                                                              | Memberships `ended`; Active empty; lease under Past leases (read-only)                   |
+| Secondary tenant | Invite secondary with valid email                                               | Separate membership; accepted independently of primary                                   |
+| Expired invite   | Pending past TTL (or sweep)                                                     | Status `expired` in DB + admin badge; preview/accept blocked; **Invite** available again |
+| Duplicate invite | Invite same pending occupant twice                                              | **409** Conflict                                                                         |
+| Resend           | Pending → Resend                                                                | New token; old link invalid after resend; email resent                                   |
+| Email retarget   | Pending → edit email to a new address                                           | Same membership retargeted; new email gets invite; old link invalid                      |
+| Rate limit       | Burst `POST .../portal-invites`                                                 | **429** + `Retry-After`                                                                  |
 
-Checklist: new user · returning user · decline · revoke · lease end · secondary · expired · 409 · resend.
+Checklist: new user · returning user · decline · revoke · lease end · secondary · expired · 409 · resend · email retarget.
 
 ---
 
 ## Observability (grep keys)
 
-| Event | When |
-| --- | --- |
-| `tenant_portal.invited` | Create invite succeeded |
-| `tenant_portal.resent` | Resend succeeded |
-| `tenant_portal.revoked` | Revoke succeeded |
-| `tenant_portal.accepted` | Accept / redeem succeeded |
-| `tenant_portal.declined` | Decline succeeded |
-| `tenant_portal.ended` | End-lease membership transition |
+| Event                      | When                            |
+| -------------------------- | ------------------------------- |
+| `tenant_portal.invited`    | Create invite succeeded         |
+| `tenant_portal.resent`     | Resend succeeded                |
+| `tenant_portal.retargeted` | Pending invite email retargeted |
+| `tenant_portal.revoked`    | Revoke succeeded                |
+| `tenant_portal.accepted`   | Accept / redeem succeeded       |
+| `tenant_portal.declined`   | Decline succeeded               |
+| `tenant_portal.ended`      | End-lease membership transition |
 
 Context always includes normalized `inviteEmail`, `leaseId`, `membershipId`. Raw invite tokens must not appear in logs/RUM (`token` query redaction).
 
@@ -114,11 +126,11 @@ Context always includes normalized `inviteEmail`, `leaseId`, `membershipId`. Raw
 
 ## Related code
 
-| Area | Path |
-| --- | --- |
-| Invite service | `apps/server/src/services/tenant-portal-invite-service.ts` |
-| Membership / accept | `apps/server/src/services/tenant-portal-membership-service.ts` |
-| Happy-path tests | `apps/server/src/services/tenant-portal-happy-path.test.ts` |
-| Invite unit tests | `apps/server/src/services/tenant-portal-invite-service.test.ts` |
-| Rate limits | `apps/server/src/services/tenant-portal-invite-create-rate-limit.ts`, `tenant-auth-rate-limit.ts` |
-| Phased plan | [TENANT_PORTAL_PHASES.md](./TENANT_PORTAL_PHASES.md) |
+| Area                | Path                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| Invite service      | `apps/server/src/services/tenant-portal-invite-service.ts`                                        |
+| Membership / accept | `apps/server/src/services/tenant-portal-membership-service.ts`                                    |
+| Happy-path tests    | `apps/server/src/services/tenant-portal-happy-path.test.ts`                                       |
+| Invite unit tests   | `apps/server/src/services/tenant-portal-invite-service.test.ts`                                   |
+| Rate limits         | `apps/server/src/services/tenant-portal-invite-create-rate-limit.ts`, `tenant-auth-rate-limit.ts` |
+| Phased plan         | [TENANT_PORTAL_PHASES.md](./TENANT_PORTAL_PHASES.md)                                              |

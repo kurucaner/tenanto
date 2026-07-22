@@ -26,14 +26,14 @@ export interface IPropertyIncomeLine {
   refundedAt: string | null;
   refundedBy: string | null;
   rentPeriodKey: string | null;
+  /** @deprecated Use `rentPeriodKey`. Shimmed on API responses for one release after Phase 14. */
+  rentPeriodMonth?: string | null;
   reservationId: string | null;
   taxBreakdown: IPropertyTaxBreakdownItem[];
   tenantRentPaymentId: string | null;
   transactionDate: string;
   unitId: string | null;
   updatedAt: string;
-  /** @deprecated Use `rentPeriodKey`. Shimmed on API responses for one release after Phase 14. */
-  rentPeriodMonth?: string | null;
 }
 
 export interface IPropertyIncomeLineComputedFields {
@@ -47,15 +47,23 @@ export interface ICreatePropertyIncomeLineBody {
   amount: number;
   description?: string;
   guestName?: string;
-  /** Required for misc income; omit for lease rent — server assigns the system Long-term rent type. */
+  /**
+   * Required for misc income; omit for lease-linked lines.
+   * Lease rent / security deposit types are assigned server-side from `longStayId` (+ `isSecurityDeposit`).
+   */
   incomeLineTypeId?: string;
+  /**
+   * When true with `longStayId`, server assigns the system Security deposit type.
+   * Must not include `rentPeriodKey` / `rentPeriodMonth`.
+   */
+  isSecurityDeposit?: boolean;
   longStayId?: string;
   rentPeriodKey?: string;
+  /** @deprecated Use `rentPeriodKey`. Accepted on create for one release after Phase 14. */
+  rentPeriodMonth?: string;
   reservationId?: string;
   transactionDate: string;
   unitId?: string | null;
-  /** @deprecated Use `rentPeriodKey`. Accepted on create for one release after Phase 14. */
-  rentPeriodMonth?: string;
 }
 
 export interface IUpdatePropertyIncomeLineBody {
@@ -65,11 +73,11 @@ export interface IUpdatePropertyIncomeLineBody {
   incomeLineTypeId?: string;
   longStayId?: string | null;
   rentPeriodKey?: string | null;
+  /** @deprecated Use `rentPeriodKey`. Accepted on update for one release after Phase 14. */
+  rentPeriodMonth?: string | null;
   reservationId?: string | null;
   transactionDate?: string;
   unitId?: string | null;
-  /** @deprecated Use `rentPeriodKey`. Accepted on update for one release after Phase 14. */
-  rentPeriodMonth?: string | null;
 }
 
 export interface IPropertyIncomeLinesListQuery {
@@ -103,6 +111,7 @@ export type TPropertyIncomeEntry =
   | { entryKind: "stay"; stay: IPropertyReservation };
 
 export const IncomeEntryKind = {
+  DEPOSIT: "deposit",
   LINE: "line",
   LONG_TERM: "longTerm",
   STAY: "stay",

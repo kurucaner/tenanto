@@ -169,4 +169,55 @@ describe("buildLeaseRentScheduleWithRollup", () => {
       month: "2026-02-05",
     });
   });
+
+  test("Security deposit income does not affect isPaid or paidRent", () => {
+    const schedule = buildLeaseRentScheduleWithRollup({
+      allocationCentsByMonth: new Map(),
+      effectiveEndDate: "2026-01-31",
+      incomeLines: [
+        makeIncomeLine({
+          amount: 500,
+          createdAt: "2026-01-10T00:00:00.000Z",
+          grossIncome: 500,
+          id: "line-rent",
+          incomeLineTypeId: "type-rent",
+          incomeLineTypeName: "Long-term rent",
+          longStayId: "lease-1",
+          netIncome: 500,
+          rentPeriodKey: "2026-01",
+          transactionDate: "2026-01-10",
+          updatedAt: "2026-01-10T00:00:00.000Z",
+        }),
+        makeIncomeLine({
+          amount: 1500,
+          createdAt: "2026-01-05T00:00:00.000Z",
+          grossIncome: 1500,
+          id: "line-deposit",
+          incomeLineTypeId: "type-deposit",
+          incomeLineTypeName: "Security deposit",
+          longStayId: "lease-1",
+          netIncome: 1500,
+          rentPeriodKey: "2026-01",
+          transactionDate: "2026-01-05",
+          updatedAt: "2026-01-05T00:00:00.000Z",
+        }),
+      ],
+      lease: {
+        leaseStartDate: "2026-01-01",
+        rentAmount: 1500,
+        rentBillingCadence: RentBillingCadence.MONTHLY,
+      },
+      months: ["2026-01"],
+      rentPeriods: [],
+    });
+
+    expect(schedule).toHaveLength(1);
+    expect(schedule[0]).toMatchObject({
+      expectedRent: 1500,
+      incomeLineId: "line-rent",
+      isPaid: false,
+      paidRent: 500,
+      remainingRent: 1000,
+    });
+  });
 });

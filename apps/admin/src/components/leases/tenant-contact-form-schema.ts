@@ -4,6 +4,7 @@ import { z } from "zod";
 import { personNameSchema } from "@/packages/app-ui";
 import {
   type ICreateSecondaryOccupantBody,
+  type ILeasePrimaryTenantContact,
   type IPropertyLongStaySecondaryTenant,
   isValidE164,
   isValidTenantEmail,
@@ -169,6 +170,32 @@ export function toPrimaryTenantPatch(values: TTenantContactFormValues) {
     tenantEmail: values.tenantEmail.trim() || null,
     tenantPhone: normalizeTenantPhone(values.tenantPhone),
   };
+}
+
+type TLeaseTenantContactSnapshot = {
+  effectiveEmail: string | null;
+  effectiveName: string;
+  effectivePhone: string | null;
+};
+
+/** True when form values match the displayed primary/secondary contact (normalized). */
+export function isLeaseTenantContactUnchanged(
+  values: TTenantContactFormValues,
+  contact: TLeaseTenantContactSnapshot
+): boolean {
+  const next = toSecondaryOccupantPatch(values);
+  return (
+    next.name === contact.effectiveName &&
+    next.email === (contact.effectiveEmail ?? null) &&
+    next.phone === (contact.effectivePhone ?? null)
+  );
+}
+
+export function isPrimaryTenantContactUnchanged(
+  values: TTenantContactFormValues,
+  contact: Pick<ILeasePrimaryTenantContact, "effectiveEmail" | "effectiveName" | "effectivePhone">
+): boolean {
+  return isLeaseTenantContactUnchanged(values, contact);
 }
 
 export function tenantContactFormDefaults(input: {

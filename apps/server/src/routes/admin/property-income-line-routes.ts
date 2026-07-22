@@ -6,6 +6,7 @@ import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyReservationsDb } from "@/db/property-reservations";
 import { getTodayUtcIsoDate } from "@/lib/date-utils";
 import { parseCreateIncomeLineBody } from "@/lib/parse-create-income-line-body";
+import { resolveLeaseIncomeLineSystemType } from "@/lib/resolve-lease-income-line-system-type";
 import { resolveLeaseIncomeRentPeriodKeyForLongStay } from "@/lib/resolve-lease-income-rent-period-key";
 import {
   getIncomeLineRefundableCap,
@@ -400,8 +401,10 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
 
       let incomeLineTypeId: string;
       if (longStayId) {
-        const systemType =
-          await propertyIncomeLineTypesDb.ensureLeaseRentIncomeLineType(propertyId);
+        const systemType = await resolveLeaseIncomeLineSystemType(
+          propertyId,
+          parsed.body.isSecurityDeposit
+        );
         incomeLineTypeId = systemType.id;
       } else {
         if (!parsed.body.incomeLineTypeId) {
@@ -429,7 +432,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
       if (guestName === undefined) return;
 
       let rentPeriodKey: string | null = null;
-      if (longStayId) {
+      if (longStayId && !parsed.body.isSecurityDeposit) {
         const resolvedRentPeriod = await resolveLeaseIncomeRentPeriodKeyForLongStay({
           longStayId,
           rentPeriodKey: parsed.body.rentPeriodKey,
@@ -458,7 +461,7 @@ export const propertyIncomeLineRoutes = async (server: FastifyInstance): Promise
         computed
       );
 
-      if (longStayId) {
+      if (longStayId && !parsed.body.isSecurityDeposit) {
         void notifyPrimaryTenantRentRecorded({
           amount: parsed.body.amount,
           longStayId,

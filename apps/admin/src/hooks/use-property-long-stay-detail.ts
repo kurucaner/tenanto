@@ -39,6 +39,7 @@ export function usePropertyLongStayDetail(propertyId: string, leaseId: string | 
 
   return {
     currentRent,
+    depositSummary: detail?.depositSummary,
     detail,
     isError: detailQuery.isError,
     isPending: detailQuery.isPending,

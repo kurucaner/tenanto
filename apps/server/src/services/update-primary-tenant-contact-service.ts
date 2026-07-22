@@ -17,6 +17,8 @@ import {
   type TTenantMembershipStatus,
 } from "@/packages/shared";
 
+import { applyPendingPortalInviteEmailChange } from "./pending-portal-invite-email-change";
+
 export const LINKED_TENANT_EMAIL_CHANGE_MESSAGE =
   "Cannot change email for a tenant linked to a portal account. The tenant must use their portal account email.";
 
@@ -105,6 +107,18 @@ async function updateLinkedPrimaryTenantContact(
   });
 }
 
+async function syncPendingPrimaryDisplayName(
+  membershipId: string,
+  patch: TPrimaryTenantContactPatch
+): Promise<void> {
+  if (patch.guestName === undefined) {
+    return;
+  }
+  await leaseTenantMembershipsDb.updatePendingPrimaryContact(membershipId, {
+    displayName: patch.guestName,
+  });
+}
+
 async function updateUnlinkedPrimaryTenantContact(
   lease: IPropertyLongStay,
   patch: TPrimaryTenantContactPatch,
@@ -124,15 +138,15 @@ async function updateUnlinkedPrimaryTenantContact(
   const updatedLease = await propertyLongStaysDb.updateLease(lease.id, leasePatch);
 
   if (membership && PENDING_MEMBERSHIP_STATUSES.has(membership.status)) {
-    const membershipPatch: { displayName?: string; inviteEmail?: string } = {};
-    if (patch.guestName !== undefined) {
-      membershipPatch.displayName = patch.guestName;
-    }
+    await syncPendingPrimaryDisplayName(membership.id, patch);
+
     if (patch.tenantEmail !== undefined) {
-      membershipPatch.inviteEmail = patch.tenantEmail ?? "";
-    }
-    if (Object.keys(membershipPatch).length > 0) {
-      await leaseTenantMembershipsDb.updatePendingPrimaryContact(membership.id, membershipPatch);
+      await applyPendingPortalInviteEmailChange({
+        lease: updatedLease,
+        membership,
+        nextInviteEmail: patch.tenantEmail?.trim() || null,
+        previousInviteEmail: membership.inviteEmail,
+      });
     }
   }
 

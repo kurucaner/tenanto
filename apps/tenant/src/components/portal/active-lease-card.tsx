@@ -37,22 +37,26 @@ export const ActiveLeaseCard = memo(function ActiveLeaseCard({
 
   const footer =
     hasDue && rentSummaryLease ? (
-      <>
+      <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {duePeriodsLabel ? (
-          <p className="text-sm text-muted-foreground">Due: {duePeriodsLabel}</p>
-        ) : null}
-        <LeasePayActions
-          isCaughtUp={false}
-          isInline={false}
-          isPayingThisLease={isStartingCheckout && checkoutLeaseId === lease.leaseId}
-          isStartingCheckout={isStartingCheckout}
-          lease={rentSummaryLease}
-          onPay={onPay}
-        />
-        <Button asChild className="w-full sm:ms-auto sm:w-auto" type="button" variant="ghost">
-          <Link to={leaseDetailPath}>View lease details</Link>
-        </Button>
-      </>
+          <p className="min-w-0 text-sm text-muted-foreground">Due: {duePeriodsLabel}</p>
+        ) : (
+          <span />
+        )}
+        <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <LeasePayActions
+            isCaughtUp={false}
+            isInline
+            isPayingThisLease={isStartingCheckout && checkoutLeaseId === lease.leaseId}
+            isStartingCheckout={isStartingCheckout}
+            lease={rentSummaryLease}
+            onPay={onPay}
+          />
+          <Button asChild className="w-full sm:w-auto" type="button" variant="ghost">
+            <Link to={leaseDetailPath}>View lease details</Link>
+          </Button>
+        </div>
+      </div>
     ) : undefined;
 
   return (

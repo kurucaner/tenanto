@@ -1,3 +1,4 @@
+import type { ILeaseDepositSummary } from "./lease-deposit-balance-utils";
 import type { ILeasePrimaryTenantContact } from "./lease-primary-tenant-contact";
 import type { ILeaseSecondaryTenantContact } from "./lease-secondary-tenant-contact";
 import type { IPropertyLongStaysListMeta } from "./list-meta-types";
@@ -39,6 +40,16 @@ export interface IPropertyLongStay {
   /** Populated on list/export reads from non-terminal secondary memberships. */
   secondaryOccupantNames?: string[];
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
+  /**
+   * Contractual security deposit amount. `null` means no deposit is required.
+   * Snapshot at agreement time — not recomputed on extend unless Phase 8 top-up.
+   */
+  securityDepositAmount: number | null;
+  /**
+   * When true, deposit was set via the 1× rent preset and may be offered a top-up
+   * when rent increases on Extend. Fixed custom / none are always false.
+   */
+  securityDepositTracksRent: boolean;
   status: TPropertyLongStayStatus;
   /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
   tenantEmail: string | null;
@@ -57,6 +68,10 @@ export interface ICreatePropertyLongStayBody {
   monthlyRent?: number;
   rentAmount: number;
   rentBillingCadence?: TRentBillingCadence;
+  /** Optional contractual deposit; omit or `null` for none. */
+  securityDepositAmount?: number | null;
+  /** When true, deposit tracks rent (1× rent preset). Forced false when amount is null. */
+  securityDepositTracksRent?: boolean;
   tenantEmail?: string;
   tenantPhone?: string;
   termMonths?: number;
@@ -93,6 +108,8 @@ export interface IPropertyLongStaysListResponse {
 }
 
 export interface IPropertyLongStayDetailResponse {
+  /** Deposit balance from contractual amount + deposit income lines (v1.5). */
+  depositSummary: ILeaseDepositSummary;
   longStay: IPropertyLongStay;
   /** Effective primary tenant contact (linked user, pending invite, or lease fallback). */
   primaryTenantContact: ILeasePrimaryTenantContact;
@@ -129,6 +146,11 @@ export interface IExtendPropertyLongStayBody {
   /** @deprecated Use `rentEffectiveFromPeriod`. Accepted on extend for one release after Phase 14. */
   rentEffectiveFromMonth?: string;
   rentEffectiveFromPeriod?: string;
+  /**
+   * When true, raise `securityDepositAmount` to `newRentAmount` if the lease deposit tracks rent
+   * and the new rent is higher than the current expected deposit.
+   */
+  topUpSecurityDeposit?: boolean;
 }
 
 export interface IEndPropertyLongStayBody {
@@ -170,6 +192,10 @@ export interface IEditPropertyLongStayTermsBody {
   /** @deprecated Use `rentAmount`. Accepted on edit terms for one release after Phase 14. */
   monthlyRent?: number;
   rentAmount: number;
+  /** Optional contractual deposit; omit to leave unchanged, `null` to clear. */
+  securityDepositAmount?: number | null;
+  /** When provided with a deposit amount, whether the deposit tracks rent. Cleared with null amount. */
+  securityDepositTracksRent?: boolean;
   termMonths?: number;
 }
 

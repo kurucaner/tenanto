@@ -23,6 +23,7 @@ import {
 } from "@/packages/shared";
 
 import { resolvePrimaryTenantContactForLongStay } from "./lease-primary-tenant-contact-service";
+import { applyPendingPortalInviteEmailChange } from "./pending-portal-invite-email-change";
 import { buildSecondaryOccupantMutationResponse } from "./resolve-secondary-tenant-contacts-service";
 import {
   LINKED_TENANT_EMAIL_CHANGE_MESSAGE,
@@ -139,10 +140,11 @@ async function updateLinkedSecondaryTenantContact(
   return buildSecondaryOccupantMutationResponse(membership);
 }
 
-async function updateUnlinkedSecondaryTenantContact(
-  membership: Awaited<ReturnType<typeof loadSecondaryMembershipForLease>>,
-  patch: IUpdateSecondaryOccupantBody
-) {
+function buildSecondaryContactPatch(patch: IUpdateSecondaryOccupantBody): {
+  contactPhone?: string | null;
+  displayName?: string;
+  inviteEmail?: string | null;
+} {
   const membershipPatch: {
     contactPhone?: string | null;
     displayName?: string;
@@ -158,19 +160,79 @@ async function updateUnlinkedSecondaryTenantContact(
   if (patch.phone !== undefined) {
     membershipPatch.contactPhone = normalizeNullablePhone(patch.phone);
   }
+  return membershipPatch;
+}
+
+/** Retarget owns invite_email when changing to a new address; keep clear-email for revoke. */
+function secondaryContactPatchForDb(
+  membershipPatch: ReturnType<typeof buildSecondaryContactPatch>,
+  pendingEmailChange: boolean,
+  nextInviteEmail: string | null | undefined
+): ReturnType<typeof buildSecondaryContactPatch> {
+  if (!pendingEmailChange || nextInviteEmail == null) {
+    return membershipPatch;
+  }
+  const withoutEmail: ReturnType<typeof buildSecondaryContactPatch> = {};
+  if (membershipPatch.contactPhone !== undefined) {
+    withoutEmail.contactPhone = membershipPatch.contactPhone;
+  }
+  if (membershipPatch.displayName !== undefined) {
+    withoutEmail.displayName = membershipPatch.displayName;
+  }
+  return withoutEmail;
+}
+
+async function updateListedOrPendingSecondaryContact(
+  lease: IPropertyLongStay,
+  membership: Awaited<ReturnType<typeof loadSecondaryMembershipForLease>>,
+  patch: IUpdateSecondaryOccupantBody,
+  membershipPatch: ReturnType<typeof buildSecondaryContactPatch>
+) {
+  const pendingEmailChange =
+    PENDING_MEMBERSHIP_STATUSES.has(membership.status) && patch.email !== undefined;
+  const nextInviteEmail = pendingEmailChange
+    ? normalizeOptionalInviteEmail(patch.email)
+    : undefined;
+  const patchForDb = secondaryContactPatchForDb(
+    membershipPatch,
+    pendingEmailChange,
+    nextInviteEmail
+  );
+
+  const updated =
+    Object.keys(patchForDb).length > 0
+      ? await leaseTenantMembershipsDb.updateSecondaryContact(membership.id, patchForDb)
+      : membership;
+  if (!updated) {
+    throw secondaryOccupantNotFoundError();
+  }
+
+  if (pendingEmailChange) {
+    await applyPendingPortalInviteEmailChange({
+      lease,
+      membership,
+      nextInviteEmail: nextInviteEmail ?? null,
+      previousInviteEmail: membership.inviteEmail,
+    });
+    const refreshed = await leaseTenantMembershipsDb.findById(membership.id);
+    return buildSecondaryOccupantMutationResponse(refreshed ?? updated);
+  }
+
+  return buildSecondaryOccupantMutationResponse(updated);
+}
+
+async function updateUnlinkedSecondaryTenantContact(
+  lease: IPropertyLongStay,
+  membership: Awaited<ReturnType<typeof loadSecondaryMembershipForLease>>,
+  patch: IUpdateSecondaryOccupantBody
+) {
+  const membershipPatch = buildSecondaryContactPatch(patch);
 
   if (
     membership.status === TenantMembershipStatus.LISTED ||
     PENDING_MEMBERSHIP_STATUSES.has(membership.status)
   ) {
-    const updated = await leaseTenantMembershipsDb.updateSecondaryContact(
-      membership.id,
-      membershipPatch
-    );
-    if (!updated) {
-      throw secondaryOccupantNotFoundError();
-    }
-    return buildSecondaryOccupantMutationResponse(updated);
+    return updateListedOrPendingSecondaryContact(lease, membership, patch, membershipPatch);
   }
 
   if (membership.status === TenantMembershipStatus.ACTIVE && membership.tenantUserId == null) {
@@ -238,7 +300,7 @@ export async function updateSecondaryOccupant(input: {
     return updateLinkedSecondaryTenantContact(membership, input.body, tenantUser);
   }
 
-  return updateUnlinkedSecondaryTenantContact(membership, input.body);
+  return updateUnlinkedSecondaryTenantContact(input.lease, membership, input.body);
 }
 
 export async function deleteSecondaryOccupant(input: {

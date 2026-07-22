@@ -284,4 +284,63 @@ describe("editLeaseTerms", () => {
       })
     ).rejects.toMatchObject({ code: LeaseErrorCode.LEASE_TERMS_VALIDATION });
   });
+
+  test("updates deposit when lease terms are editable", async () => {
+    const lease = makeLease({
+      guestName: "Tenant A",
+      leaseEndDate: "2026-12-31",
+      leaseStartDate: "2026-01-01",
+      securityDepositAmount: null,
+      tenantEmail: null,
+      termMonths: 12,
+    });
+    mockEditableLease(lease);
+    const updatedLease = makeLease({
+      ...lease,
+      securityDepositAmount: 1500,
+    });
+    mockUpdateTerms.mockResolvedValueOnce(updatedLease);
+
+    const body = {
+      leaseStartDate: lease.leaseStartDate,
+      rentAmount: lease.rentAmount,
+      securityDepositAmount: 1500,
+      termMonths: lease.termMonths,
+    };
+
+    await expect(editLeaseTerms("lease-1", body)).resolves.toEqual(updatedLease);
+    expect(mockUpdateTerms).toHaveBeenCalledWith("lease-1", body);
+  });
+
+  test("rejects deposit updates when terms are locked", async () => {
+    mockFindById.mockResolvedValue(
+      makeLease({
+        guestName: "Tenant A",
+        leaseEndDate: "2027-01-01",
+        securityDepositAmount: null,
+        tenantEmail: null,
+      })
+    );
+    mockGetTermsEditSignals.mockResolvedValue({
+      leaseStartDate: "2026-01-01",
+      signals: {
+        hasIncomeLines: true,
+        hasRentPeriodHistory: false,
+        hasSucceededPayments: false,
+      },
+    });
+
+    await expect(
+      editLeaseTerms("lease-1", {
+        leaseStartDate: "2026-01-01",
+        rentAmount: 1500,
+        securityDepositAmount: 1500,
+        termMonths: 12,
+      })
+    ).rejects.toMatchObject({
+      body: { reason: LeaseTermsEditBlockReason.HAS_INCOME_LINES },
+      code: LeaseErrorCode.LEASE_TERMS_NOT_EDITABLE,
+    });
+    expect(mockUpdateTerms).not.toHaveBeenCalled();
+  });
 });

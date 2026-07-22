@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { memo, type RefObject } from "react";
 import { Controller, type FieldErrors, type UseFormReturn, useWatch } from "react-hook-form";
 
+import { LeaseDepositPresetFields } from "@/components/leases/lease-deposit-preset-fields";
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field-label";
@@ -97,7 +98,6 @@ const WhoStep = memo(
   }: WhoStepProps) => (
     <div className="space-y-6">
       <div className="space-y-3">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Unit</p>
         {lockedUnit ? (
           <>
             <input type="hidden" {...form.register("unitId")} />
@@ -126,12 +126,7 @@ const WhoStep = memo(
         )}
       </div>
 
-      <div className="border-border/60 border-t" />
-
       <div className="space-y-3">
-        <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-          Primary tenant
-        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="start-lease-tenant-name">Name</Label>
@@ -220,6 +215,7 @@ interface RentStepProps {
   leaseEndDate: string | null;
   leaseStartDate: string;
   rentAmountError?: string;
+  securityDepositCustomAmountError?: string;
   unitLabel: string | null;
 }
 
@@ -232,6 +228,7 @@ const RentStep = memo(
     leaseEndDate,
     leaseStartDate,
     rentAmountError,
+    securityDepositCustomAmountError,
     unitLabel,
   }: RentStepProps) => {
     const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
@@ -316,6 +313,14 @@ const RentStep = memo(
             <p className="text-sm font-medium">{firstMonthRentPreview}</p>
           ) : null}
         </div>
+
+        <div className="border-border/60 border-t" />
+
+        <LeaseDepositPresetFields<TStartLeaseFormValues>
+          control={form.control}
+          customAmountError={securityDepositCustomAmountError}
+          customAmountFieldId="start-lease-deposit-custom"
+        />
       </div>
     );
   }
@@ -385,7 +390,7 @@ export const StartLeaseForm = memo(
         onSubmit={onSubmit}
         ref={formRef}
       >
-        <div className="flex-1 space-y-8 px-1 pb-28 pt-2 md:pb-8 max-w-xl mx-auto">
+        <div className="mx-auto min-h-0 w-full max-w-xl flex-1 space-y-8 overflow-y-auto pb-6">
           <StartLeaseProgress currentStep={currentStep} onStepSelect={onStepSelect} />
 
           <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
@@ -439,37 +444,40 @@ export const StartLeaseForm = memo(
                 leaseEndDate={leaseEndDate}
                 leaseStartDate={leaseStartDate}
                 rentAmountError={errors.rentAmount?.message}
+                securityDepositCustomAmountError={errors.securityDepositCustomAmount?.message}
                 unitLabel={unitLabel}
               />
             </section>
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 px-1 py-3">
-          <Button disabled={mutationPending} onClick={onCancel} type="button" variant="ghost">
-            Cancel
-          </Button>
-          <div className="flex flex-wrap gap-2">
-            {!isFirstStep ? (
-              <Button disabled={mutationPending} onClick={onBack} type="button" variant="outline">
-                Back
-              </Button>
-            ) : null}
-            {isLastStep ? (
-              <Button
-                disabled={submitDisabled}
-                onClick={() => {
-                  void onSubmit();
-                }}
-                type="button"
-              >
-                {mutationPending ? "Starting…" : "Start Lease"}
-              </Button>
-            ) : (
-              <Button disabled={continueDisabled} onClick={onContinue} type="button">
-                {isContinuing ? "Continuing…" : "Continue"}
-              </Button>
-            )}
+        <div className="shrink-0 border-t border-border bg-muted/30 -mx-6 px-6 py-4 md:-mx-8 md:px-8">
+          <div className="mx-auto flex w-full max-w-xl flex-wrap items-center justify-between gap-2">
+            <Button disabled={mutationPending} onClick={onCancel} type="button" variant="ghost">
+              Cancel
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              {!isFirstStep ? (
+                <Button disabled={mutationPending} onClick={onBack} type="button" variant="outline">
+                  Back
+                </Button>
+              ) : null}
+              {isLastStep ? (
+                <Button
+                  disabled={submitDisabled}
+                  onClick={() => {
+                    void onSubmit();
+                  }}
+                  type="button"
+                >
+                  {mutationPending ? "Starting…" : "Start Lease"}
+                </Button>
+              ) : (
+                <Button disabled={continueDisabled} onClick={onContinue} type="button">
+                  {isContinuing ? "Continuing…" : "Continue"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </form>

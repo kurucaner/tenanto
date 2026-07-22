@@ -3459,4 +3459,96 @@ export const migrations: IMigration[] = [
     },
     version: 75,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP CONSTRAINT IF EXISTS property_long_stays_security_deposit_amount_nonneg;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP COLUMN IF EXISTS security_deposit_amount;
+      `);
+    },
+    name: "property_long_stays_security_deposit_amount",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS security_deposit_amount NUMERIC(12,2) NULL;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD CONSTRAINT property_long_stays_security_deposit_amount_nonneg
+            CHECK (
+              security_deposit_amount IS NULL
+              OR security_deposit_amount >= 0
+            );
+      `);
+    },
+    version: 76,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DELETE FROM property_income_line_types
+        WHERE is_system = true
+          AND lower(name) = lower('Security deposit');
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_system_active;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_system_active
+          ON property_income_line_types (property_id)
+          WHERE is_system = true AND is_deleted = false;
+      `);
+    },
+    name: "property_income_line_types_multi_system_security_deposit",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_system_active;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_system_active
+          ON property_income_line_types (property_id, lower(name))
+          WHERE is_system = true AND is_deleted = false;
+      `);
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order, is_system)
+        SELECT p.id, 'Security deposit', -2, true
+        FROM properties p
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM property_income_line_types t
+          WHERE t.property_id = p.id
+            AND t.is_system = true
+            AND t.is_deleted = false
+            AND lower(t.name) = lower('Security deposit')
+        );
+      `);
+    },
+    version: 77,
+  },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP COLUMN IF EXISTS security_deposit_tracks_rent;
+      `);
+    },
+    name: "property_long_stays_security_deposit_tracks_rent",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS security_deposit_tracks_rent BOOLEAN NOT NULL DEFAULT false;
+      `);
+      await client.query(`
+        UPDATE property_long_stays
+        SET security_deposit_tracks_rent = true
+        WHERE security_deposit_amount IS NOT NULL
+          AND security_deposit_amount = rent_amount;
+      `);
+    },
+    version: 78,
+  },
 ];

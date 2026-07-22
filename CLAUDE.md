@@ -84,6 +84,7 @@ The maintainer wants every feature and design decision held to **current industr
 - Interfaces are prefixed `I` (`IProperty`), type aliases `T` (`TAddPropertyMemberResponse`) — match the surrounding style.
 - DB is snake_case; TS domain objects are camelCase (bridged in `db/mappers.ts`).
 - Prettier: 100 col, 2 spaces, semicolons, `es5` trailing commas, always-parens arrows. ESLint uses `simple-import-sort` + `perfectionist` (imports and object keys are sorted) — run `lint` before finishing.
+- **No sibling re-exports** (`.cursor/rules/no-sibling-reexports.mdc`): export only what a module defines; import shared symbols from their source (or the package barrel). Exception: `packages/*/src/index.ts` and other public API entrypoints.
 - **DRY** is enforced (`.cursor/rules/no-code-repetition.mdc`): extract shared logic into utilities/hooks/components/shared types rather than duplicating; put anything both server and client need in `packages/shared`.
 - **Forms** (admin + tenant): use **react-hook-form + Zod** — see `.cursor/rules/react-hook-form.mdc`. No `useState`-per-field submit forms.
 - **Plan mode** (`.cursor/rules/plan-mode-confirmation.mdc`): when in plan mode, stay read-only and get explicit approval before edits, migrations, or schema changes.

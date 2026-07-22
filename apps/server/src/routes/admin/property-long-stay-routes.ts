@@ -4,6 +4,7 @@ import { isIdentityConflictError } from "@/constants/account";
 import { leaseTenantMembershipsDb } from "@/db/lease-tenant-memberships";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { getTodayUtcIsoDate } from "@/lib/date-utils";
+import { loadLeaseDepositSummary } from "@/lib/lease-deposit-summary";
 import {
   HttpStatus,
   type ICreatePropertyLongStayBody,
@@ -34,7 +35,7 @@ import { logTenantPortalMembershipsEnded } from "@/services/tenant-portal-observ
 import { updatePrimaryTenantContact } from "@/services/update-primary-tenant-contact-service";
 
 import { parseDateString, parseUuidParam } from "./admin-query-utils";
-import { parseJsonObject, parseMoney } from "./parse-body-utils";
+import { parseJsonObject, parseMoney, parseOptionalNullableMoney } from "./parse-body-utils";
 import { buildPaginatedListResponse } from "./parse-list-query-pagination";
 import { parsePropertyLongStaysListQuery } from "./parse-property-long-stays-list-query";
 import { parseNullablePhoneNumber, parseOptionalPhoneNumber } from "./phone-body-utils";
@@ -121,6 +122,19 @@ function parseLeaseTermFields(r: Record<string, unknown>):
   };
 }
 
+function parseOptionalBoolean(
+  raw: unknown,
+  fieldName: string
+): { ok: true; value: boolean | undefined } | { error: string; ok: false } {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (typeof raw !== "boolean") {
+    return { error: `${fieldName} must be a boolean`, ok: false };
+  }
+  return { ok: true, value: raw };
+}
+
 function parseCreateLongStayBody(
   raw: unknown
 ): { body: ICreatePropertyLongStayBody; ok: true } | { error: string; ok: false } {
@@ -161,6 +175,22 @@ function parseCreateLongStayBody(
     return tenantPhoneResult;
   }
 
+  const securityDepositAmount = parseOptionalNullableMoney(
+    r["securityDepositAmount"],
+    "securityDepositAmount"
+  );
+  if (!securityDepositAmount.ok) {
+    return securityDepositAmount;
+  }
+
+  const securityDepositTracksRent = parseOptionalBoolean(
+    r["securityDepositTracksRent"],
+    "securityDepositTracksRent"
+  );
+  if (!securityDepositTracksRent.ok) {
+    return securityDepositTracksRent;
+  }
+
   return {
     body: {
       guestName: r["guestName"].trim(),
@@ -171,6 +201,8 @@ function parseCreateLongStayBody(
           rentAmount: rentAmountValue,
         }) ?? rentAmountValue,
       rentBillingCadence,
+      securityDepositAmount: securityDepositAmount.value,
+      securityDepositTracksRent: securityDepositTracksRent.value,
       tenantEmail: tenantEmail ?? undefined,
       tenantPhone: tenantPhoneResult.phoneNumber,
       unitId,
@@ -211,6 +243,22 @@ function parseEditLeaseTermsBody(
     return { error: "rentAmount must be a non-negative number", ok: false };
   }
 
+  const securityDepositAmount = parseOptionalNullableMoney(
+    r["securityDepositAmount"],
+    "securityDepositAmount"
+  );
+  if (!securityDepositAmount.ok) {
+    return securityDepositAmount;
+  }
+
+  const securityDepositTracksRent = parseOptionalBoolean(
+    r["securityDepositTracksRent"],
+    "securityDepositTracksRent"
+  );
+  if (!securityDepositTracksRent.ok) {
+    return securityDepositTracksRent;
+  }
+
   return {
     body: {
       ...leaseTermFields.body,
@@ -218,6 +266,8 @@ function parseEditLeaseTermsBody(
         monthlyRent: parseMoney(r["monthlyRent"]) ?? undefined,
         rentAmount: rentAmountValue,
       }),
+      securityDepositAmount: securityDepositAmount.value,
+      securityDepositTracksRent: securityDepositTracksRent.value,
     },
     ok: true,
   };
@@ -328,6 +378,17 @@ function parseExtendLongStayBody(
     body.newRentAmount = newMonthlyRent;
     body.rentEffectiveFromMonth = effectivePeriodRaw;
     body.rentEffectiveFromPeriod = effectivePeriodRaw;
+  }
+
+  const topUpSecurityDeposit = parseOptionalBoolean(
+    r["topUpSecurityDeposit"],
+    "topUpSecurityDeposit"
+  );
+  if (!topUpSecurityDeposit.ok) {
+    return topUpSecurityDeposit;
+  }
+  if (topUpSecurityDeposit.value !== undefined) {
+    body.topUpSecurityDeposit = topUpSecurityDeposit.value;
   }
 
   return { body, ok: true };
@@ -492,7 +553,9 @@ export const propertyLongStayRoutes = async (server: FastifyInstance): Promise<v
       const primaryTenantContact = await resolvePrimaryTenantContactForLongStay(longStay);
       const secondaryTenantContacts = await resolveSecondaryTenantContactsForLongStay(longStay);
       const termsEditability = await getLeaseTermsEditability(longStayId);
+      const depositSummary = await loadLeaseDepositSummary(longStay);
       return reply.send({
+        depositSummary,
         longStay,
         primaryTenantContact,
         rentPeriods,

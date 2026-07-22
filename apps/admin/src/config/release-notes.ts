@@ -6,6 +6,8 @@
  * - Avoid jargon: API, cache, migration, refactor, endpoint, etc.
  * - Use short, active sentences: "You can now…", "Fixed an issue where…"
  * - Group each item as new | improved | fixed.
+ * - Set `isBreaking: true` sparingly (1–2 per version) for workflow-changing or major items —
+ *   the UI labels these "Notable", not "Breaking".
  * - Add newest releases at the TOP of RELEASE_NOTES with a unique `id` (use the version string).
  * - Bump `version` using simple numbering: 1.0.0, 1.1.0, 1.2.0, etc.
  */
@@ -15,7 +17,11 @@ export type ReleaseChangeCategory = "new" | "improved" | "fixed";
 export type ReleaseChange = {
   category: ReleaseChangeCategory;
   description: string;
+  /** Major / workflow-changing item; shown as a "Notable" callout in the dialog. */
+  isBreaking?: boolean;
 };
+
+export const RELEASE_NOTABLE_LABEL = "Notable";
 
 export type ReleaseNote = {
   id: string;
@@ -35,19 +41,112 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     changes: [
       {
+        category: "improved",
+        description:
+          "You can settle a held security deposit from the lease — refund full or partial in place — without switching to Income.",
+      },
+      {
+        category: "improved",
+        description:
+          "Choosing a 1× rent deposit explains that you can top it up later if you raise rent when extending.",
+      },
+      {
+        category: "improved",
+        description:
+          "Start Lease actions stay pinned at the bottom with a solid bar so they don’t overlap the form on mobile.",
+      },
+      {
+        category: "improved",
+        description:
+          "Whole-dollar amounts hide trailing cents in money displays (for example $1,500 instead of $1,500.00).",
+      },
+      {
+        category: "fixed",
+        description:
+          "Extending a lease prefills the new rent with the current rent so you aren’t starting from a blank field.",
+      },
+    ],
+    id: "2026.19.0",
+    publishedAt: "2026-07-22",
+    summary:
+      "Settle deposits on the lease, clearer rent-linked deposit copy, and a sturdier Start Lease footer.",
+    version: "2026.19.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
+          "Lease detail shows deposit expected, collected, and outstanding so you can see what’s still due at a glance.",
+      },
+      {
+        category: "new",
+        description:
+          "Ending a lease prompts you to settle a held deposit, with a path to refund from Income — full or partial.",
+        isBreaking: true,
+      },
+      {
+        category: "new",
+        description:
+          "When you extend a lease and raise rent, you can opt in to increase a rent-linked security deposit to match — then record the top-up from the lease.",
+        isBreaking: true,
+      },
+      {
+        category: "improved",
+        description:
+          "Refunding a security deposit uses clearer copy, and the tenant’s lease-ended email mentions the deposit when one was collected.",
+      },
+    ],
+    id: "2026.18.0",
+    publishedAt: "2026-07-22",
+    summary:
+      "Security deposit balance, end-lease settlement, and optional top-up when extending rent-linked deposits.",
+    version: "2026.18.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
+          "You can set a security deposit when starting a lease or editing terms — none, one month of rent, or a custom amount.",
+        isBreaking: true,
+      },
+      {
+        category: "new",
+        description:
+          "Record a deposit from the lease Payments tab. It shows on Income with a Deposit badge and its own type filter, separate from rent.",
+      },
+      {
+        category: "improved",
+        description:
+          "Security deposit collections stay out of rent schedules and property revenue reports so they don’t inflate occupancy income.",
+      },
+    ],
+    id: "2026.17.0",
+    publishedAt: "2026-07-21",
+    summary:
+      "Security deposits on leases — set the amount, record collections, and find them on Income.",
+    version: "2026.17.0",
+  },
+  {
+    changes: [
+      {
         category: "new",
         description:
           "Home is now a workspace hub with search and three columns — pick up where you left off, open a property, and see recent tenant email campaigns across your portfolio.",
+        isBreaking: true,
       },
       {
         category: "new",
         description:
           "Press ⌘K or Ctrl+K anywhere to open a command palette — search navigation, find a property, and jump straight to Expenses, Leases, and other destinations.",
+        isBreaking: true,
       },
       {
         category: "improved",
         description:
           "Home search understands shortcuts — type a tab name like expenses or income: beach house to find properties faster.",
+        isBreaking: true,
       },
       {
         category: "improved",

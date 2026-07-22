@@ -1,3 +1,4 @@
+import { normalizeStartLeaseDepositPreset } from "@/lib/start-lease-deposit-field";
 import {
   getStartLeaseDefaultValues,
   type TStartLeaseFormValues,
@@ -52,6 +53,11 @@ function mergeDraftValues(raw: unknown, lockedUnitId?: string): TStartLeaseFormV
           ? raw.monthlyRent
           : defaults.rentAmount,
     rentBillingCadence: normalizeStartLeaseRentBillingCadence(raw.rentBillingCadence),
+    securityDepositCustomAmount:
+      typeof raw.securityDepositCustomAmount === "string"
+        ? raw.securityDepositCustomAmount
+        : defaults.securityDepositCustomAmount,
+    securityDepositPreset: normalizeStartLeaseDepositPreset(raw.securityDepositPreset),
     tenantEmail: typeof raw.tenantEmail === "string" ? raw.tenantEmail : defaults.tenantEmail,
     tenantPhone: typeof raw.tenantPhone === "string" ? raw.tenantPhone : defaults.tenantPhone,
     termMode:

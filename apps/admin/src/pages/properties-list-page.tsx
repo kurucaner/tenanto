@@ -183,11 +183,7 @@ const NewPropertyHeaderActions = memo(function NewPropertyHeaderActions() {
   return (
     <>
       <div className="flex items-center justify-end gap-4">
-        <Button
-          className="shrink-0 gap-2"
-          onClick={() => setCreateOpen(true)}
-          type="button"
-        >
+        <Button className="shrink-0 gap-2" onClick={() => setCreateOpen(true)} type="button">
           <Plus className="size-4" />
           New Property
         </Button>

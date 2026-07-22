@@ -11,8 +11,6 @@ export type LeaseExtendInputMode = "customEnd" | "months";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export { addMonthsToIsoDate } from "./lease-date-utils";
-
 export function parseLeaseIsoDate(value: string): string | null {
   const trimmed = value.trim();
   if (!ISO_DATE_RE.test(trimmed)) {

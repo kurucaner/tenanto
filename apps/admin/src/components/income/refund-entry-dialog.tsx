@@ -1,5 +1,10 @@
-import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
+import { memo, useCallback } from "react";
 
+import { RefundEntryFields } from "@/components/income/refund-entry-fields";
+import {
+  type TRefundEntryConfirmPayload,
+  useRefundEntryForm,
+} from "@/components/income/use-refund-entry-form";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,56 +15,44 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
-import { isValidDecimalInput } from "@/lib/decimal-input-utils";
-import { formatMoney } from "@/lib/format-money";
-import { parseRefundAmountInput } from "@/lib/parse-refund-amount-input";
 
-export type TRefundEntryMode = "full" | "partial";
-
-export type TRefundEntryConfirmPayload =
-  { amount?: undefined; mode: "full" } | { amount: number; mode: "partial" };
+export type {
+  TRefundEntryConfirmPayload,
+  TRefundEntryMode,
+} from "@/components/income/use-refund-entry-form";
 
 interface RefundEntryDialogProps {
   cap: number;
+  confirmLabel?: string;
   description: string;
+  fullOptionLabel?: string;
   isPending?: boolean;
   onConfirm: (payload: TRefundEntryConfirmPayload) => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  partialOptionLabel?: string;
   title: string;
 }
 
 export const RefundEntryDialog = memo(
   ({
     cap,
+    confirmLabel = "Refund",
     description,
+    fullOptionLabel = "Full refund",
     isPending = false,
     onConfirm,
     onOpenChange,
     open,
+    partialOptionLabel = "Partial refund",
     title,
   }: RefundEntryDialogProps) => {
-    const amountInputId = useId();
-    const [mode, setMode] = useState<TRefundEntryMode>("full");
-    const [partialAmount, setPartialAmount] = useState("");
-
-    useEffect(() => {
-      if (!open) {
-        return;
-      }
-      setMode("full");
-      setPartialAmount("");
-    }, [open]);
-
-    const parsedPartialAmount = useMemo(
-      () => (mode === "partial" ? parseRefundAmountInput(partialAmount, cap) : null),
-      [cap, mode, partialAmount]
-    );
-
-    const canSubmit = mode === "full" || parsedPartialAmount?.ok === true;
+    const { canSubmit, confirm, mode, partialAmount, setMode, setPartialAmount } =
+      useRefundEntryForm({
+        cap,
+        onConfirm,
+        resetToken: open,
+      });
 
     const handleOpenChange = useCallback(
       (nextOpen: boolean) => {
@@ -71,29 +64,6 @@ export const RefundEntryDialog = memo(
       [isPending, onOpenChange]
     );
 
-    const handlePartialAmountChange = useCallback((value: string) => {
-      if (isValidDecimalInput(value)) {
-        setPartialAmount(value);
-      }
-    }, []);
-
-    const handleConfirm = useCallback(() => {
-      if (mode === "full") {
-        onConfirm({ mode: "full" });
-        return;
-      }
-
-      if (!parsedPartialAmount?.ok) {
-        return;
-      }
-
-      onConfirm({ amount: parsedPartialAmount.amount, mode: "partial" });
-    }, [mode, onConfirm, parsedPartialAmount]);
-
-    const handleModeChange = useCallback((nextValue: string) => {
-      setMode(nextValue as TRefundEntryMode);
-    }, []);
-
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
         <DialogContent className="sm:max-w-[400px]" showCloseButton={false}>
@@ -103,23 +73,15 @@ export const RefundEntryDialog = memo(
           </DialogHeader>
 
           <DialogFormFields>
-            <RadioGroupFieldset legend="Refund type" onValueChange={handleModeChange} value={mode}>
-              <RadioOption label="Full refund" value="full" />
-              <RadioOption label="Partial refund" value="partial">
-                <div className="ml-6 space-y-1.5">
-                  <Label htmlFor={amountInputId}>Refund amount</Label>
-                  <Input
-                    autoFocus
-                    id={amountInputId}
-                    inputMode="decimal"
-                    onChange={(event) => handlePartialAmountChange(event.target.value)}
-                    placeholder="0.00"
-                    value={partialAmount}
-                  />
-                  <p className="text-muted-foreground text-xs">Max refund: {formatMoney(cap)}</p>
-                </div>
-              </RadioOption>
-            </RadioGroupFieldset>
+            <RefundEntryFields
+              cap={cap}
+              fullOptionLabel={fullOptionLabel}
+              mode={mode}
+              onModeChange={setMode}
+              onPartialAmountChange={setPartialAmount}
+              partialAmount={partialAmount}
+              partialOptionLabel={partialOptionLabel}
+            />
           </DialogFormFields>
 
           <DialogFooter>
@@ -131,8 +93,8 @@ export const RefundEntryDialog = memo(
             >
               Cancel
             </Button>
-            <Button disabled={isPending || !canSubmit} onClick={handleConfirm} type="button">
-              {isPending ? "Refund…" : "Refund"}
+            <Button disabled={isPending || !canSubmit} onClick={confirm} type="button">
+              {isPending ? "Refund…" : confirmLabel}
             </Button>
           </DialogFooter>
         </DialogContent>

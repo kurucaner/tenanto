@@ -22,7 +22,7 @@ const LAUNCHER_DESTINATION_METADATA: Record<string, IPropertyLauncherDestination
     showOnHome: false,
   },
   communications: {
-    searchTerms: ["comm", "communication", "communications"],
+    searchTerms: ["announcement", "comm", "communication", "communications"],
     showInCommandPalette: true,
     showOnHome: false,
   },

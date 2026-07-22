@@ -18,6 +18,7 @@ const {
   logTenantPortalInvited,
   logTenantPortalMembershipsEnded,
   logTenantPortalResent,
+  logTenantPortalRetargeted,
   logTenantPortalRevoked,
 } = await import("./tenant-portal-observability");
 
@@ -41,6 +42,7 @@ describe("tenant-portal-observability", () => {
 
     logTenantPortalInvited(membership);
     logTenantPortalResent(membership);
+    logTenantPortalRetargeted(membership);
     logTenantPortalRevoked(membership);
     logTenantPortalAccepted(membership);
     logTenantPortalDeclined(membership);
@@ -49,6 +51,7 @@ describe("tenant-portal-observability", () => {
     expect(mockInfo.mock.calls.map((call) => call[0])).toEqual([
       "tenant_portal.invited",
       "tenant_portal.resent",
+      "tenant_portal.retargeted",
       "tenant_portal.revoked",
       "tenant_portal.accepted",
       "tenant_portal.declined",

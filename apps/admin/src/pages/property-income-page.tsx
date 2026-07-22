@@ -87,6 +87,7 @@ import {
   buildIncomeToolbarFilterItems,
   countIncomeSecondaryFilters,
   type IIncomeToolbarFilterItem,
+  isIncomeToolbarEntryKindFilter,
   type TIncomeToolbarFilterId,
 } from "@/lib/income-toolbar-filters";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
@@ -116,6 +117,7 @@ import {
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertyUnit,
+  isDepositIncomeLine,
   resolveDefaultIncomeLineTypeId,
   type TIncomeRefundFilter,
   type TPropertyIncomeEntriesListFilters,
@@ -134,7 +136,7 @@ function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
 }
 
 function mapLineToEntry(line: IPropertyIncomeLine): TPropertyIncomeEntry {
-  if (line.longStayId != null) {
+  if (line.longStayId != null && !isDepositIncomeLine(line)) {
     return { entryKind: IncomeEntryKind.LONG_TERM, line };
   }
 
@@ -219,11 +221,7 @@ function buildLineFilters(
   refundStatus: string
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
-  if (
-    incomeType &&
-    incomeType !== IncomeEntryKind.STAY &&
-    incomeType !== IncomeEntryKind.LONG_TERM
-  ) {
+  if (incomeType && !isIncomeToolbarEntryKindFilter(incomeType)) {
     next.incomeLineTypeId = incomeType;
   }
   const qTrim = q.trim();
@@ -277,12 +275,12 @@ interface IIncomeInfiniteListPagination {
 function getActiveIncomeInfiniteListPagination(
   isAllView: boolean,
   isStayOnlyView: boolean,
-  isLongTermOnlyView: boolean,
+  isEntriesKindOnlyView: boolean,
   allViewList: IIncomeInfiniteListPagination,
   stayOnlyViewList: IIncomeInfiniteListPagination,
   lineTypeOnlyViewList: IIncomeInfiniteListPagination
 ): IIncomeInfiniteListPagination {
-  if (isAllView || isLongTermOnlyView) {
+  if (isAllView || isEntriesKindOnlyView) {
     return allViewList;
   }
   if (isStayOnlyView) {
@@ -355,6 +353,10 @@ function isRefundEntryPending(
   return false;
 }
 
+function isDepositLineRefundRequest(request: TRefundEntryRequest | null): boolean {
+  return request?.kind === "line" && isDepositIncomeLine(request.target);
+}
+
 function buildStayRefundEntryRequest(stay: IPropertyReservation): TRefundEntryRequest {
   return {
     cap: getStayRefundableCap(stay),
@@ -366,6 +368,17 @@ function buildStayRefundEntryRequest(stay: IPropertyReservation): TRefundEntryRe
 }
 
 function buildLineRefundEntryRequest(line: IPropertyIncomeLine): TRefundEntryRequest {
+  if (isDepositIncomeLine(line)) {
+    return {
+      cap: getIncomeLineRefundableCap(line),
+      description:
+        "Return part or all of the held deposit to the tenant. Any amount you don't refund stays withheld (for example, for damages). Refunded amounts are excluded from reports but remain visible here.",
+      kind: "line",
+      target: line,
+      title: "Refund security deposit",
+    };
+  }
+
   const label = line.incomeLineTypeName ?? line.incomeLineTypeId;
 
   return {
@@ -1092,13 +1105,19 @@ const IncomeLineEntryRow = memo(
     const isRefundPending = refundingLineId === line.id;
     const isRefunded = line.refundedAt !== null;
     const resolvedEntryKind =
-      entryKind ?? (line.longStayId != null ? IncomeEntryKind.LONG_TERM : IncomeEntryKind.LINE);
+      entryKind ??
+      (line.longStayId != null && !isDepositIncomeLine(line)
+        ? IncomeEntryKind.LONG_TERM
+        : IncomeEntryKind.LINE);
+    const showDepositBadge = isDepositIncomeLine(line);
 
     return (
       <TableRow className={ledgerEntryRowClassName(line.isDeleted, line.refundedAt)}>
         <TableCell>
           <div className="flex items-center gap-2">
-            {resolvedEntryKind === IncomeEntryKind.LONG_TERM ? (
+            {showDepositBadge ? (
+              <IncomeEntryTypeBadge entryKind={IncomeEntryKind.DEPOSIT} />
+            ) : resolvedEntryKind === IncomeEntryKind.LONG_TERM ? (
               <IncomeEntryTypeBadge entryKind={IncomeEntryKind.LONG_TERM} />
             ) : (
               <IncomeEntryTypeBadge
@@ -1376,17 +1395,15 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
 
   const isAllView = incomeType === "";
   const isStayOnlyView = incomeType === IncomeEntryKind.STAY;
-  const isLongTermOnlyView = incomeType === IncomeEntryKind.LONG_TERM;
-  const isLineTypeOnlyView =
-    incomeType !== "" &&
-    incomeType !== IncomeEntryKind.STAY &&
-    incomeType !== IncomeEntryKind.LONG_TERM;
+  const isEntriesKindOnlyView =
+    incomeType === IncomeEntryKind.LONG_TERM || incomeType === IncomeEntryKind.DEPOSIT;
+  const isLineTypeOnlyView = incomeType !== "" && !isIncomeToolbarEntryKindFilter(incomeType);
   const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
 
   const incomeEntriesInfinite = usePropertyIncomeEntriesInfiniteList(
     propertyId,
     incomeEntriesFilters,
-    { enabled: isAllView || isLongTermOnlyView }
+    { enabled: isAllView || isEntriesKindOnlyView }
   );
   const shortStaysInfinite = usePropertyShortStaysInfiniteList(propertyId, reservationFilters, {
     enabled: isStayOnlyView,
@@ -1398,14 +1415,14 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
   const activeIncomeListPagination = getActiveIncomeInfiniteListPagination(
     isAllView,
     isStayOnlyView,
-    isLongTermOnlyView,
+    isEntriesKindOnlyView,
     incomeEntriesInfinite,
     shortStaysInfinite,
     incomeLinesInfinite
   );
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
-    enabled: isAllView || isStayOnlyView || isLongTermOnlyView || isLineTypeOnlyView,
+    enabled: isAllView || isStayOnlyView || isEntriesKindOnlyView || isLineTypeOnlyView,
     fetchNextPage: activeIncomeListPagination.fetchNextPage,
     hasNextPage: activeIncomeListPagination.hasNextPage,
     isFetchingNextPage: activeIncomeListPagination.isFetchingNextPage,
@@ -1736,7 +1753,7 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
   );
 
   const displayEntries = useMemo(() => {
-    if (isAllView || isLongTermOnlyView) {
+    if (isAllView || isEntriesKindOnlyView) {
       return incomeEntriesInfinite.entries;
     }
 
@@ -1749,7 +1766,7 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
     incomeEntriesInfinite.entries,
     incomeLinesInfinite.incomeLines,
     isAllView,
-    isLongTermOnlyView,
+    isEntriesKindOnlyView,
     isStayOnlyView,
     shortStaysInfinite.shortStays,
     sortState,
@@ -1872,7 +1889,13 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
 
       <RefundEntryDialog
         cap={refundEntryRequest?.cap ?? 0}
+        confirmLabel={isDepositLineRefundRequest(refundEntryRequest) ? "Refund deposit" : undefined}
         description={refundEntryRequest?.description ?? ""}
+        fullOptionLabel={
+          isDepositLineRefundRequest(refundEntryRequest)
+            ? "Full refund (return entire remaining amount)"
+            : undefined
+        }
         isPending={isRefundEntryPending(
           refundEntryRequest,
           isRefundStayPending,
@@ -1885,6 +1908,11 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
           }
         }}
         open={refundEntryRequest !== null}
+        partialOptionLabel={
+          isDepositLineRefundRequest(refundEntryRequest)
+            ? "Partial refund (return some; remainder withheld)"
+            : undefined
+        }
         title={refundEntryRequest?.title ?? ""}
       />
 

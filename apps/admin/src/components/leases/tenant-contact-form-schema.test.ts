@@ -5,6 +5,8 @@ import {
   DUPLICATE_SECONDARY_TENANT_EMAIL_MESSAGE,
   getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
+  isLeaseTenantContactUnchanged,
+  isPrimaryTenantContactUnchanged,
   PRIMARY_TENANT_EMAIL_MATCH_MESSAGE,
 } from "@/components/leases/tenant-contact-form-schema";
 
@@ -125,5 +127,94 @@ describe("createTenantContactFormSchema", () => {
     if (!result.success) {
       expect(result.error.issues[0]?.message).toBe(DUPLICATE_SECONDARY_TENANT_EMAIL_MESSAGE);
     }
+  });
+});
+
+describe("isLeaseTenantContactUnchanged", () => {
+  const contact = {
+    effectiveEmail: "tenant@example.com",
+    effectiveName: "Secondary Tenant",
+    effectivePhone: "+13055550111",
+  };
+
+  test("true when values match the current contact", () => {
+    expect(
+      isLeaseTenantContactUnchanged(
+        {
+          name: "Secondary Tenant",
+          tenantEmail: "tenant@example.com",
+          tenantPhone: "+13055550111",
+        },
+        contact
+      )
+    ).toBe(true);
+  });
+
+  test("false when a field changed", () => {
+    expect(
+      isLeaseTenantContactUnchanged(
+        {
+          name: "Secondary Tenant",
+          tenantEmail: "other@example.com",
+          tenantPhone: "+13055550111",
+        },
+        contact
+      )
+    ).toBe(false);
+  });
+});
+
+describe("isPrimaryTenantContactUnchanged", () => {
+  const contact = {
+    effectiveEmail: "tenant@example.com",
+    effectiveName: "Primary Tenant",
+    effectivePhone: "+13055550111",
+  };
+
+  test("true when values match the current contact", () => {
+    expect(
+      isPrimaryTenantContactUnchanged(
+        {
+          name: "Primary Tenant",
+          tenantEmail: "tenant@example.com",
+          tenantPhone: "+13055550111",
+        },
+        contact
+      )
+    ).toBe(true);
+  });
+
+  test("false when name, email, or phone changed", () => {
+    expect(
+      isPrimaryTenantContactUnchanged(
+        { name: "Other", tenantEmail: "tenant@example.com", tenantPhone: "+13055550111" },
+        contact
+      )
+    ).toBe(false);
+    expect(
+      isPrimaryTenantContactUnchanged(
+        {
+          name: "Primary Tenant",
+          tenantEmail: "other@example.com",
+          tenantPhone: "+13055550111",
+        },
+        contact
+      )
+    ).toBe(false);
+    expect(
+      isPrimaryTenantContactUnchanged(
+        { name: "Primary Tenant", tenantEmail: "tenant@example.com", tenantPhone: "" },
+        contact
+      )
+    ).toBe(false);
+  });
+
+  test("treats empty email/phone as null", () => {
+    expect(
+      isPrimaryTenantContactUnchanged(
+        { name: "Primary Tenant", tenantEmail: "", tenantPhone: "" },
+        { effectiveEmail: null, effectiveName: "Primary Tenant", effectivePhone: null }
+      )
+    ).toBe(true);
   });
 });

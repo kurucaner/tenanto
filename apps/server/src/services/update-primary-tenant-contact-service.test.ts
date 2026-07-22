@@ -18,6 +18,7 @@ const mockUpdateLease = mockAsyncFn((_id: string, patch: Partial<IPropertyLongSt
   Promise.resolve(makeLease(patch))
 );
 const mockUpdatePendingPrimaryContact = mockResolvedNull<ILeaseTenantMembership>();
+const mockApplyPendingPortalInviteEmailChange = mockAsyncFn(() => Promise.resolve());
 
 mock.module("@/db/lease-tenant-memberships", () => ({
   leaseTenantMembershipsDb: {
@@ -38,6 +39,10 @@ mock.module("@/db/tenant-users", () => ({
   },
 }));
 
+mock.module("./pending-portal-invite-email-change", () => ({
+  applyPendingPortalInviteEmailChange: mockApplyPendingPortalInviteEmailChange,
+}));
+
 const { updatePrimaryTenantContact } = await import("./update-primary-tenant-contact-service");
 
 describe("updatePrimaryTenantContact", () => {
@@ -48,12 +53,14 @@ describe("updatePrimaryTenantContact", () => {
     mockUpdateUnverifiedPhone.mockReset();
     mockUpdateLease.mockReset();
     mockUpdatePendingPrimaryContact.mockReset();
+    mockApplyPendingPortalInviteEmailChange.mockReset();
 
     mockUpdateName.mockImplementation(async (_tenantUserId, name) => makeTenant({ name }));
     mockUpdateUnverifiedPhone.mockImplementation(async (_tenantUserId, phone) =>
       makeTenant({ phone })
     );
     mockUpdateLease.mockImplementation(async (_id, patch) => makeLease(patch));
+    mockApplyPendingPortalInviteEmailChange.mockResolvedValue(undefined);
   });
 
   test("updates linked tenant user and dual-writes lease snapshot", async () => {
@@ -75,8 +82,15 @@ describe("updatePrimaryTenantContact", () => {
         updatedAt: "2026-01-02T00:00:00.000Z",
       })
     );
+    mockUpdateName.mockImplementation(async (_tenantUserId, name) =>
+      makeTenant({
+        email: "linked@example.com",
+        name,
+        phone: "+13055550999",
+      })
+    );
     mockUpdateUnverifiedPhone.mockImplementation(async (_tenantUserId, phone) =>
-      makeTenant({ name: "Updated Name", phone })
+      makeTenant({ email: "linked@example.com", name: "Updated Name", phone })
     );
 
     await updatePrimaryTenantContact(
@@ -193,9 +207,10 @@ describe("updatePrimaryTenantContact", () => {
     });
   });
 
-  test("syncs pending membership fields when unlinked invite exists", async () => {
+  test("syncs pending display name and retargets invite when email changes", async () => {
     mockLoadPrimaryMembershipForLease.mockResolvedValue(
       makeMembership({
+        inviteEmail: "lease@example.com",
         status: TenantMembershipStatus.PENDING_INVITE,
         tenantUserId: null,
       })
@@ -216,7 +231,65 @@ describe("updatePrimaryTenantContact", () => {
 
     expect(mockUpdatePendingPrimaryContact).toHaveBeenCalledWith("membership-1", {
       displayName: "Pending Name",
-      inviteEmail: "pending@example.com",
     });
+    expect(mockApplyPendingPortalInviteEmailChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        membership: expect.objectContaining({ id: "membership-1" }),
+        nextInviteEmail: "pending@example.com",
+        previousInviteEmail: "lease@example.com",
+      })
+    );
+  });
+
+  test("revokes pending invite when email is cleared", async () => {
+    mockLoadPrimaryMembershipForLease.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "lease@example.com",
+        status: TenantMembershipStatus.PENDING_ACCEPTANCE,
+        tenantUserId: "tenant-old",
+      })
+    );
+
+    await updatePrimaryTenantContact(
+      makeLease({
+        guestName: "Lease Primary",
+        leaseEndDate: "2027-01-01",
+        tenantEmail: "lease@example.com",
+        tenantPhone: "+13055550100",
+      }),
+      { tenantEmail: null }
+    );
+
+    expect(mockApplyPendingPortalInviteEmailChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nextInviteEmail: null,
+        previousInviteEmail: "lease@example.com",
+      })
+    );
+  });
+
+  test("does not retarget when pending email is unchanged", async () => {
+    mockLoadPrimaryMembershipForLease.mockResolvedValue(
+      makeMembership({
+        inviteEmail: "lease@example.com",
+        status: TenantMembershipStatus.PENDING_INVITE,
+        tenantUserId: null,
+      })
+    );
+
+    await updatePrimaryTenantContact(
+      makeLease({
+        guestName: "Lease Primary",
+        leaseEndDate: "2027-01-01",
+        tenantEmail: "lease@example.com",
+        tenantPhone: "+13055550100",
+      }),
+      { guestName: "Renamed Only" }
+    );
+
+    expect(mockUpdatePendingPrimaryContact).toHaveBeenCalledWith("membership-1", {
+      displayName: "Renamed Only",
+    });
+    expect(mockApplyPendingPortalInviteEmailChange).not.toHaveBeenCalled();
   });
 });

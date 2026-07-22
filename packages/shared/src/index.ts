@@ -151,10 +151,12 @@ export {
 // Property Settings Types
 export {
   DEFAULT_PROPERTY_CHANNEL_COMMISSIONS,
-  DEFAULT_PROPERTY_TAX_RATES,
-  formatRateAsPercent,
   type IPropertyChannelCommission,
   type IPropertyChannelCommissionInput,
+} from "./property-channel-commission-config";
+export {
+  DEFAULT_PROPERTY_TAX_RATES,
+  formatRateAsPercent,
   type IPropertySettings,
   type IPropertyTaxBreakdownItem,
   type IPropertyTaxRate,
@@ -174,10 +176,12 @@ export {
   type IPropertyIncomeLineTypeInput,
   isRentIncomeLineType,
   isSystemLeaseRentIncomeLineTypeName,
+  isSystemSecurityDepositIncomeLineTypeName,
   resolveDefaultIncomeLineTypeId,
   resolveLeaseIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
   SYSTEM_LEASE_RENT_INCOME_TYPE_NAME,
+  SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
 } from "./property-income-line-type-config";
 
 // Property Reservation Types
@@ -195,6 +199,7 @@ export {
 
 // Property Long Stay Types
 export {
+  addMonthsToIsoDate,
   calculateLeaseEndDate,
   calculateLeaseEndDateFromWeeks,
   deriveTermWeeksFromDates,
@@ -208,6 +213,44 @@ export {
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
+export {
+  buildLeaseDepositSummary,
+  type IBuildLeaseDepositSummaryInput,
+  type ILeaseDepositBalanceLineInput,
+  type ILeaseDepositSummary,
+  LeaseDepositBalanceStatus,
+  type TLeaseDepositBalanceStatus,
+} from "./lease-deposit-balance-utils";
+export {
+  getEndLeaseDepositCalloutMessage,
+  getLeaseDepositCloseOutCopy,
+  type ILeaseDepositCloseOutCopy,
+  needsLeaseDepositCloseOut,
+} from "./lease-deposit-close-out-utils";
+export {
+  excludeDepositOtherIncomeRows,
+  filterOutDepositIncomeLines,
+  isDepositIncomeLine,
+  isDepositIncomeLineType,
+  sqlIsSecurityDepositIncomeLineType,
+} from "./lease-deposit-income-utils";
+export {
+  canOfferDepositTopUp,
+  type ICanOfferDepositTopUpInput,
+  type IDepositTopUpOffer,
+  validateExtendDepositTopUp,
+} from "./lease-deposit-top-up-utils";
+export {
+  inferLeaseDepositPreset,
+  type IResolveSecurityDepositAmountInput,
+  isLeaseDepositPreset,
+  LEASE_DEPOSIT_PRESETS,
+  LeaseDepositPreset,
+  resolveSecurityDepositAmount,
+  resolveSecurityDepositTracksRent,
+  type TLeaseDepositPreset,
+  validateSecurityDepositAmount,
+} from "./lease-deposit-utils";
 export {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
   resolveDefaultRentPeriodForIncomeLine,
@@ -274,7 +317,6 @@ export {
 } from "./lease-secondary-tenant-contact";
 export { getLeaseOccupancyNames } from "./lease-tenant-utils";
 export {
-  addMonthsToIsoDate,
   deriveTermMonthsFromDates,
   type IResolvedExtendLeaseTerm,
   type IResolvedLeaseTerm,

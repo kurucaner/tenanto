@@ -10,14 +10,14 @@ Work is split into **four optional scopes** (Phases 1–4). Ship Phase 1 alone f
 
 The server already uses domain-accurate names, not "Communications". **No backend migration is required** for this rename.
 
-| Layer | Current name | Action |
-| ----- | ------------ | ------ |
-| API routes | `/properties/:propertyId/tenant-email-campaigns` | Keep |
-| DB tables | `property_tenant_email_campaigns`, … | Keep |
-| Shared types | `IHomeRecentTenantEmailCampaign`, … | Keep |
-| Workers / queues | `tenant-email-*` | Keep |
-| Permissions | `canSendTenantNotifications` | Keep (internal) |
-| Home API | `GET /home/recent-tenant-email-campaigns` | Keep |
+| Layer            | Current name                                     | Action          |
+| ---------------- | ------------------------------------------------ | --------------- |
+| API routes       | `/properties/:propertyId/tenant-email-campaigns` | Keep            |
+| DB tables        | `property_tenant_email_campaigns`, …             | Keep            |
+| Shared types     | `IHomeRecentTenantEmailCampaign`, …              | Keep            |
+| Workers / queues | `tenant-email-*`                                 | Keep            |
+| Permissions      | `canSendTenantNotifications`                     | Keep (internal) |
+| Home API         | `GET /home/recent-tenant-email-campaigns`        | Keep            |
 
 **Related server code (unchanged):**
 
@@ -84,15 +84,15 @@ Everything else flows from that, directly or indirectly.
 
 ## Target naming map
 
-| Before | After (target) |
-| ------ | -------------- |
-| Tab label: **Communications** | Tab label: **Announcements** |
-| Route segment: `communications` | Route segment: **`announcements`** (plural; matches `units`, `leases`, `expenses`) |
-| Home column title: **Communications** | **Announcements** |
-| Empty-state tooltip: “Create a property first to send tenant emails.” | Keep or tweak to “…send an announcement.” (copy-only) |
-| Folder: `components/communications/` | `components/announcements/` (Phase 3) |
-| Page: `property-communications-page.tsx` | `property-announcements-page.tsx` (Phase 3) |
-| API: `…/tenant-email-campaigns` | **unchanged** |
+| Before                                                                | After (target)                                                                     |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Tab label: **Communications**                                         | Tab label: **Announcements**                                                       |
+| Route segment: `communications`                                       | Route segment: **`announcements`** (plural; matches `units`, `leases`, `expenses`) |
+| Home column title: **Communications**                                 | **Announcements**                                                                  |
+| Empty-state tooltip: “Create a property first to send tenant emails.” | Keep or tweak to “…send an announcement.” (copy-only)                              |
+| Folder: `components/communications/`                                  | `components/announcements/` (Phase 3)                                              |
+| Page: `property-communications-page.tsx`                              | `property-announcements-page.tsx` (Phase 3)                                        |
+| API: `…/tenant-email-campaigns`                                       | **unchanged**                                                                      |
 
 **Decision:** Tab label is **Announcements**; URL path is **announcements** (plural, consistent with other shell tabs).
 
@@ -100,13 +100,13 @@ Everything else flows from that, directly or indirectly.
 
 ## Scope overview
 
-| Phase | Scope | Effort | User-visible? | Server / DB? |
-| ----- | ----- | ------ | ------------- | ------------ |
-| **1** | UI copy only | ~1–2 hours | Yes | No |
-| **2** | URL path + link builders | ~half day | Yes (URLs) | No |
-| **3** | Files, folders, identifiers | ~1 day | No (internal) | No |
-| **4** | Docs + optional redirect | ~1–2 hours | Docs / bookmarks | No |
-| — | Server / shared contract | **N/A — out of scope** | — | — |
+| Phase | Scope                       | Effort                 | User-visible?    | Server / DB? |
+| ----- | --------------------------- | ---------------------- | ---------------- | ------------ |
+| **1** | UI copy only                | ~1–2 hours             | Yes              | No           |
+| **2** | URL path + link builders    | ~half day              | Yes (URLs)       | No           |
+| **3** | Files, folders, identifiers | ~1 day                 | No (internal)    | No           |
+| **4** | Docs + optional redirect    | ~1–2 hours             | Docs / bookmarks | No           |
+| —     | Server / shared contract    | **N/A — out of scope** | —                | —            |
 
 ---
 
@@ -116,12 +116,12 @@ Everything else flows from that, directly or indirectly.
 
 **Files (~6)**
 
-- [ ] [`apps/admin/src/config/property-shell-tabs.ts`](../apps/admin/src/config/property-shell-tabs.ts) — `label: "Announcements"` (keep `path: "communications"` for this phase)
-- [ ] [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) — column title `"Announcements"`; update `COMMUNICATIONS_TAB` label constant; adjust empty tooltip copy if desired
-- [ ] [`apps/admin/src/config/release-notes.ts`](../apps/admin/src/config/release-notes.ts) — replace “Communications tab” with “Announcements tab” in current-version bullet(s) only (optional: leave historical bullets)
-- [ ] [`apps/admin/src/lib/property-launcher-destinations.test.ts`](../apps/admin/src/lib/property-launcher-destinations.test.ts) — assertions on label `"Communications"` → `"Announcements"` (paths still `communications`)
-- [ ] Grep admin for remaining user-visible **Communications** strings (page headings, aria labels, toast copy in tenant-email components) and update
-- [ ] Run `cd apps/admin && bun run lint && bun run build`
+- [x] [`apps/admin/src/config/property-shell-tabs.ts`](../apps/admin/src/config/property-shell-tabs.ts) — `label: "Announcements"` (keep `path: "communications"` for this phase)
+- [x] [`apps/admin/src/components/home/home-communications-column.tsx`](../apps/admin/src/components/home/home-communications-column.tsx) — column title `"Announcements"`; update `COMMUNICATIONS_TAB` label constant; adjust empty tooltip copy if desired
+- [x] [`apps/admin/src/config/release-notes.ts`](../apps/admin/src/config/release-notes.ts) — replace “Communications tab” with “Announcements tab” in current-version bullet(s) only (optional: leave historical bullets)
+- [x] [`apps/admin/src/lib/property-launcher-destinations.test.ts`](../apps/admin/src/lib/property-launcher-destinations.test.ts) — assertions on label `"Communications"` → `"Announcements"` (paths still `communications`)
+- [x] Grep admin for remaining user-visible **Communications** strings (page headings, aria labels, toast copy in tenant-email components) and update
+- [x] Run `cd apps/admin && bun run lint && bun run build`
 
 **Exit criteria**
 
@@ -177,18 +177,18 @@ Everything else flows from that, directly or indirectly.
 
 **Renames (representative)**
 
-| Before | After |
-| ------ | ----- |
-| `components/communications/` | `components/announcements/` |
-| `property-communications-page.tsx` | `property-announcements-page.tsx` |
-| `PropertyCommunicationsPage` | `PropertyAnnouncementsPage` |
-| `home-communications-column.tsx` | `home-announcements-column.tsx` |
-| `HomeCommunicationsColumn` | `HomeAnnouncementsColumn` |
-| `use-home-recent-communications.ts` | `use-home-recent-announcements.ts` |
-| `home-recent-communications-utils.ts` | `home-recent-announcements-utils.ts` |
-| `buildHomeCommunicationsCampaignHref` | `buildHomeAnnouncementsCampaignHref` |
+| Before                                  | After                                  |
+| --------------------------------------- | -------------------------------------- |
+| `components/communications/`            | `components/announcements/`            |
+| `property-communications-page.tsx`      | `property-announcements-page.tsx`      |
+| `PropertyCommunicationsPage`            | `PropertyAnnouncementsPage`            |
+| `home-communications-column.tsx`        | `home-announcements-column.tsx`        |
+| `HomeCommunicationsColumn`              | `HomeAnnouncementsColumn`              |
+| `use-home-recent-communications.ts`     | `use-home-recent-announcements.ts`     |
+| `home-recent-communications-utils.ts`   | `home-recent-announcements-utils.ts`   |
+| `buildHomeCommunicationsCampaignHref`   | `buildHomeAnnouncementsCampaignHref`   |
 | `hasHomeRecentCommunicationsSendAccess` | `hasHomeRecentAnnouncementsSendAccess` |
-| `useHomeRecentCommunications` | `useHomeRecentAnnouncements` |
+| `useHomeRecentCommunications`           | `useHomeRecentAnnouncements`           |
 
 **Tasks**
 

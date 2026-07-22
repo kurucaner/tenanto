@@ -10,9 +10,8 @@ export interface IPropertySettingsCatalogDialogApi<TRow> {
   openEdit: (row: TRow) => void;
 }
 
-export const PropertySettingsCatalogDialogContext = createContext<IPropertySettingsCatalogDialogApi<
-  unknown
-> | null>(null);
+export const PropertySettingsCatalogDialogContext =
+  createContext<IPropertySettingsCatalogDialogApi<unknown> | null>(null);
 
 export function usePropertySettingsCatalogDialog<TRow>(): IPropertySettingsCatalogDialogApi<TRow> {
   const context = useContext(PropertySettingsCatalogDialogContext);

@@ -16,6 +16,18 @@ function parseIncomeLineTypeId(raw: unknown): string | null {
   return parseUuidParam(raw);
 }
 
+function parseOptionalIsSecurityDeposit(
+  raw: unknown
+): { ok: true; value: boolean | undefined } | { error: string; ok: false } {
+  if (raw === undefined) {
+    return { ok: true, value: undefined };
+  }
+  if (typeof raw !== "boolean") {
+    return { error: "isSecurityDeposit must be a boolean", ok: false };
+  }
+  return { ok: true, value: raw };
+}
+
 function parseOptionalRentPeriodKeyField(
   r: Record<string, unknown>
 ): { ok: true; value: string | undefined } | { error: string; ok: false } {
@@ -65,6 +77,14 @@ export function parseCreateIncomeLineBody(
     return { error: "Cannot link an income line to both a reservation and a long stay", ok: false };
   }
 
+  const isSecurityDepositResult = parseOptionalIsSecurityDeposit(r["isSecurityDeposit"]);
+  if (!isSecurityDepositResult.ok) return isSecurityDepositResult;
+  const isSecurityDeposit = isSecurityDepositResult.value === true;
+
+  if (isSecurityDeposit && !longStayResult.value) {
+    return { error: "isSecurityDeposit requires longStayId", ok: false };
+  }
+
   let incomeLineTypeId: string | undefined;
   if (longStayResult.value) {
     const incomeLineTypeResult = parseOptionalUuidField(r["incomeLineTypeId"], "incomeLineTypeId");
@@ -85,12 +105,20 @@ export function parseCreateIncomeLineBody(
   const rentPeriodKeyResult = parseOptionalRentPeriodKeyField(r);
   if (!rentPeriodKeyResult.ok) return rentPeriodKeyResult;
 
+  if (isSecurityDeposit && rentPeriodKeyResult.value != null) {
+    return {
+      error: "Security deposit income lines cannot include a rent period",
+      ok: false,
+    };
+  }
+
   return {
     body: {
       amount,
       description: descriptionResult.value,
       guestName: guestNameResult.value,
       incomeLineTypeId,
+      isSecurityDeposit: isSecurityDepositResult.value,
       longStayId: longStayResult.value,
       rentPeriodKey: rentPeriodKeyResult.value,
       reservationId: reservationResult.value,
