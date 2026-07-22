@@ -209,6 +209,16 @@ export {
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
 export {
+  inferLeaseDepositPreset,
+  type IResolveSecurityDepositAmountInput,
+  isLeaseDepositPreset,
+  LEASE_DEPOSIT_PRESETS,
+  LeaseDepositPreset,
+  resolveSecurityDepositAmount,
+  type TLeaseDepositPreset,
+  validateSecurityDepositAmount,
+} from "./lease-deposit-utils";
+export {
   LEASE_UPCOMING_RENT_PERIOD_ERROR,
   resolveDefaultRentPeriodForIncomeLine,
   resolveLeaseIncomeRentPeriodKey,

@@ -39,6 +39,11 @@ export interface IPropertyLongStay {
   /** Populated on list/export reads from non-terminal secondary memberships. */
   secondaryOccupantNames?: string[];
   secondaryTenants: IPropertyLongStaySecondaryTenant[];
+  /**
+   * Contractual security deposit amount. `null` means no deposit is required.
+   * Snapshot at agreement time — not recomputed on extend.
+   */
+  securityDepositAmount: number | null;
   status: TPropertyLongStayStatus;
   /** Legacy storage; prefer `primaryTenantContact` when present (Phase 1+). */
   tenantEmail: string | null;
@@ -57,6 +62,8 @@ export interface ICreatePropertyLongStayBody {
   monthlyRent?: number;
   rentAmount: number;
   rentBillingCadence?: TRentBillingCadence;
+  /** Optional contractual deposit; omit or `null` for none. */
+  securityDepositAmount?: number | null;
   tenantEmail?: string;
   tenantPhone?: string;
   termMonths?: number;
@@ -170,6 +177,8 @@ export interface IEditPropertyLongStayTermsBody {
   /** @deprecated Use `rentAmount`. Accepted on edit terms for one release after Phase 14. */
   monthlyRent?: number;
   rentAmount: number;
+  /** Optional contractual deposit; omit to leave unchanged, `null` to clear. */
+  securityDepositAmount?: number | null;
   termMonths?: number;
 }
 

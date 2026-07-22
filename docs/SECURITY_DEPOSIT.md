@@ -6,13 +6,13 @@ todos:
     content: "Phase 0: Add docs/SECURITY_DEPOSIT_PHASES.md scaffold"
     status: pending
   - id: phase-1a-schema
-    content: "Phase 1a: Migration v75 + shared lease-deposit-utils + types/mappers"
-    status: pending
+    content: "Phase 1a: Migration v76 + shared lease-deposit-utils + types/mappers"
+    status: completed
   - id: phase-1b-server
     content: "Phase 1b: property-long-stays create/updateTerms + routes + tests"
     status: pending
   - id: phase-2a-system-type
-    content: "Phase 2a: Migration v76 multi-system index + ensureLeaseDepositIncomeLineType"
+    content: "Phase 2a: Migration v77 multi-system index + ensureLeaseDepositIncomeLineType"
     status: pending
   - id: phase-2b-isolation
     content: "Phase 2b: Exclude deposit from reports and rent rollup tests"
@@ -115,7 +115,7 @@ flowchart TB
 
 ## Data model
 
-### Migration v75 — lease column
+### Migration v76 — lease column
 
 | Column                    | Type                 | Notes                        |
 | ------------------------- | -------------------- | ---------------------------- |
@@ -123,7 +123,9 @@ flowchart TB
 
 Add to [`IPropertyLongStay`](packages/shared/src/property-long-stay-types.ts), [`ICreatePropertyLongStayBody`](packages/shared/src/property-long-stay-types.ts), [`IEditPropertyLongStayTermsBody`](packages/shared/src/property-long-stay-types.ts) (optional field).
 
-### Migration v76 — multiple system income types
+> Note: Plan originally said v75; that version was taken by `rename_rent_period_columns`, so the deposit column ships as **v76**.
+
+### Migration v77 — multiple system income types
 
 Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/migrations.ts) (v72) with uniqueness on `(property_id, lower(name)) WHERE is_system AND NOT is_deleted`. Backfill `Security deposit` system row per property. Update `ensureLeaseRentIncomeLineType` queries to filter by name (not “any system row”).
 
@@ -155,7 +157,7 @@ Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/mi
 
 | #   | File                                                                                                         |
 | --- | ------------------------------------------------------------------------------------------------------------ |
-| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v75                                 |
+| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v76                                 |
 | 2   | [`packages/shared/src/property-long-stay-types.ts`](packages/shared/src/property-long-stay-types.ts)         |
 | 3   | [`packages/shared/src/lease-deposit-utils.ts`](packages/shared/src/lease-deposit-utils.ts) _(new)_           |
 | 4   | [`packages/shared/src/lease-deposit-utils.test.ts`](packages/shared/src/lease-deposit-utils.test.ts) _(new)_ |
@@ -188,7 +190,7 @@ Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/mi
 
 | #   | File                                                                                                                                                         |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v76                                                                                 |
+| 1   | [`apps/server/src/db/migrations.ts`](apps/server/src/db/migrations.ts) — v77                                                                                 |
 | 2   | [`packages/shared/src/property-income-line-type-config.ts`](packages/shared/src/property-income-line-type-config.ts)                                         |
 | 3   | [`packages/shared/src/property-income-line-type-config.test.ts`](packages/shared/src/property-income-line-type-config.test.ts)                               |
 | 4   | [`apps/server/src/db/property-income-line-types.ts`](apps/server/src/db/property-income-line-types.ts) — `ensureLeaseDepositIncomeLineType`, fix rent ensure |
@@ -367,12 +369,12 @@ Replace one-system-per-property index in [`migrations.ts`](apps/server/src/db/mi
 
 | Checkpoint | Ship                                                                                       |
 | ---------- | ------------------------------------------------------------------------------------------ |
-| **A**      | Phase 1a + 1b (migration v75 + API) — backward compatible (`NULL` deposit)                 |
-| **B**      | Phase 2a + 2b (migration v76 + report guards) — deploy server before deposit income writes |
+| **A**      | Phase 1a + 1b (migration v76 + API) — backward compatible (`NULL` deposit)                 |
+| **B**      | Phase 2a + 2b (migration v77 + report guards) — deploy server before deposit income writes |
 | **C**      | Phase 3–5 admin — **v1**                                                                   |
 | **D**      | Phase 6–7 — **v1.5**                                                                       |
 
-**Hard rule:** migration v76 before any code calling `ensureLeaseDepositIncomeLineType`.
+**Hard rule:** migration v77 before any code calling `ensureLeaseDepositIncomeLineType`.
 
 ---
 

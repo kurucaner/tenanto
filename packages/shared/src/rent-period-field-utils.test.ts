@@ -129,6 +129,7 @@ describe("rent period legacy shims", () => {
       rentAmount: 1500,
       rentBillingCadence: "monthly",
       secondaryTenants: [],
+      securityDepositAmount: null,
       status: "active",
       tenantEmail: null,
       tenantPhone: null,

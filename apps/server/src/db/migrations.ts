@@ -3459,4 +3459,32 @@ export const migrations: IMigration[] = [
     },
     version: 75,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP CONSTRAINT IF EXISTS property_long_stays_security_deposit_amount_nonneg;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stays
+          DROP COLUMN IF EXISTS security_deposit_amount;
+      `);
+    },
+    name: "property_long_stays_security_deposit_amount",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD COLUMN IF NOT EXISTS security_deposit_amount NUMERIC(12,2) NULL;
+      `);
+      await client.query(`
+        ALTER TABLE property_long_stays
+          ADD CONSTRAINT property_long_stays_security_deposit_amount_nonneg
+            CHECK (
+              security_deposit_amount IS NULL
+              OR security_deposit_amount >= 0
+            );
+      `);
+    },
+    version: 76,
+  },
 ];
