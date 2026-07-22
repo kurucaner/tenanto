@@ -1,3 +1,5 @@
+import type Stripe from "stripe";
+
 import { propertyExpenseCategoryTypesDb } from "@/db/property-expense-category-types";
 import { propertyExpensesDb } from "@/db/property-expenses";
 import { type ITenantRentPayment } from "@/db/tenant-rent-payments";
@@ -6,13 +8,12 @@ import {
   getStripeProcessingFeeCentsFromBalanceTransaction,
   getStripeProcessingFeeCentsFromCharge,
   getStripeProcessingFeeCentsFromPaymentIntent,
-  sumReversedStripeFeeCentsFromFeeDetails,
   type IStripeProcessingFeeResult,
+  sumReversedStripeFeeCentsFromFeeDetails,
 } from "@/lib/stripe-processing-fee";
 import { centsToDollars, type IPropertyExpense } from "@/packages/shared";
 import { WinstonLogger } from "@/services/winston";
 import { getStripeClient } from "@/stripe/stripe-client";
-import type Stripe from "stripe";
 
 const PROCESSING_FEE_EXPENSE_DESCRIPTION_PREFIX = "Stripe processing fee";
 const ACH_RETURN_FEE_EXPENSE_DESCRIPTION_PREFIX = "ACH return fee";
@@ -172,14 +173,9 @@ export async function bookAchReturnFeeExpenseForRentPayment(
   });
 }
 
-export type TProcessingFeeRefundExpenseOutcome =
-  | "left_in_place"
-  | "no_expense"
-  | "soft_deleted";
+export type TProcessingFeeRefundExpenseOutcome = "left_in_place" | "no_expense" | "soft_deleted";
 
-function originalChargeBalanceTransactionId(
-  charge: Stripe.Charge
-): string | null {
+function originalChargeBalanceTransactionId(charge: Stripe.Charge): string | null {
   const balanceTransaction = charge.balance_transaction;
   if (balanceTransaction == null) {
     return null;

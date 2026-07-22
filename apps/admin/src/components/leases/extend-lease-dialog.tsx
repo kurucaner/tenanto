@@ -205,8 +205,7 @@ function refineExtendLeaseChangeRent(
   if (!rentResult.success) {
     ctx.addIssue({
       code: "custom",
-      message:
-        rentResult.error.issues[0]?.message ?? `Invalid ${newRentLabel.toLowerCase()}`,
+      message: rentResult.error.issues[0]?.message ?? `Invalid ${newRentLabel.toLowerCase()}`,
       path: ["newRentAmount"],
     });
   }

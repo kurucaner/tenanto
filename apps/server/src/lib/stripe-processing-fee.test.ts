@@ -54,9 +54,7 @@ describe("sumReversedStripeFeeCentsFromFeeDetails", () => {
 
   test("returns 0 when Stripe keeps the fee (typical refund)", () => {
     expect(sumReversedStripeFeeCentsFromFeeDetails([])).toBe(0);
-    expect(
-      sumReversedStripeFeeCentsFromFeeDetails([{ amount: 10, type: "tax" }])
-    ).toBe(0);
+    expect(sumReversedStripeFeeCentsFromFeeDetails([{ amount: 10, type: "tax" }])).toBe(0);
   });
 });
 

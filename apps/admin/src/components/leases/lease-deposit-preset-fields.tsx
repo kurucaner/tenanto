@@ -46,9 +46,7 @@ function handleCustomAmountChange(
   }
 }
 
-function LeaseDepositCustomAmountField<
-  TFieldValues extends FieldValues & TLeaseDepositFormValues,
->({
+function LeaseDepositCustomAmountField<TFieldValues extends FieldValues & TLeaseDepositFormValues>({
   control,
   customAmountError,
   customAmountFieldId,
