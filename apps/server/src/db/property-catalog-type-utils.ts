@@ -24,11 +24,13 @@ export async function archivePropertyCatalogTypesNotInIds(
   propertyId: string,
   incomingIds: string[]
 ): Promise<void> {
+  const systemGuard = table === "property_income_line_types" ? " AND is_system = false" : "";
+
   if (incomingIds.length === 0) {
     await db.query(
       `UPDATE ${table}
        SET is_deleted = true, deleted_at = NOW(), updated_at = NOW()
-       WHERE property_id = $1 AND is_deleted = false`,
+       WHERE property_id = $1 AND is_deleted = false${systemGuard}`,
       [propertyId]
     );
     return;
@@ -39,6 +41,7 @@ export async function archivePropertyCatalogTypesNotInIds(
      SET is_deleted = true, deleted_at = NOW(), updated_at = NOW()
      WHERE property_id = $1
        AND is_deleted = false
+       ${systemGuard}
        AND NOT (id = ANY($2::uuid[]))`,
     [propertyId, incomingIds]
   );

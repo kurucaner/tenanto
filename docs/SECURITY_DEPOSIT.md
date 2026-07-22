@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: phase-2a-system-type
     content: "Phase 2a: Migration v77 multi-system index + ensureLeaseDepositIncomeLineType"
-    status: pending
+    status: completed
   - id: phase-2b-isolation
     content: "Phase 2b: Exclude deposit from reports and rent rollup tests"
     status: pending

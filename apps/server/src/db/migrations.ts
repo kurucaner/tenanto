@@ -3487,4 +3487,46 @@ export const migrations: IMigration[] = [
     },
     version: 76,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DELETE FROM property_income_line_types
+        WHERE is_system = true
+          AND lower(name) = lower('Security deposit');
+      `);
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_system_active;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_system_active
+          ON property_income_line_types (property_id)
+          WHERE is_system = true AND is_deleted = false;
+      `);
+    },
+    name: "property_income_line_types_multi_system_security_deposit",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_income_line_types_property_system_active;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX idx_property_income_line_types_property_system_active
+          ON property_income_line_types (property_id, lower(name))
+          WHERE is_system = true AND is_deleted = false;
+      `);
+      await client.query(`
+        INSERT INTO property_income_line_types (property_id, name, sort_order, is_system)
+        SELECT p.id, 'Security deposit', -2, true
+        FROM properties p
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM property_income_line_types t
+          WHERE t.property_id = p.id
+            AND t.is_system = true
+            AND t.is_deleted = false
+            AND lower(t.name) = lower('Security deposit')
+        );
+      `);
+    },
+    version: 77,
+  },
 ];

@@ -174,10 +174,12 @@ export {
   type IPropertyIncomeLineTypeInput,
   isRentIncomeLineType,
   isSystemLeaseRentIncomeLineTypeName,
+  isSystemSecurityDepositIncomeLineTypeName,
   resolveDefaultIncomeLineTypeId,
   resolveLeaseIncomeLineTypeId,
   resolveRentIncomeLineTypeId,
   SYSTEM_LEASE_RENT_INCOME_TYPE_NAME,
+  SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
 } from "./property-income-line-type-config";
 
 // Property Reservation Types
@@ -208,6 +210,7 @@ export {
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
+export { isDepositIncomeLineType } from "./lease-deposit-income-utils";
 export {
   inferLeaseDepositPreset,
   type IResolveSecurityDepositAmountInput,
