@@ -1,4 +1,5 @@
 import { enumerateLeaseMonths, enumerateLeaseWeeks } from "./lease-date-utils";
+import { filterOutDepositIncomeLines } from "./lease-deposit-income-utils";
 import { calculateExpectedRentForLeaseMonth } from "./lease-proration-utils";
 import { getEffectiveRentPeriodKey, rollupLeaseRentByPeriod } from "./lease-rent-period-rollup";
 import { getLeaseRentForPeriod } from "./lease-rent-utils";
@@ -144,13 +145,15 @@ export function buildLeaseRentScheduleWithRollup(input: {
     return [{ allocatedCents, periodKey }];
   });
 
+  const rentIncomeLines = filterOutDepositIncomeLines(input.incomeLines);
+
   const rolledUp = rollupLeaseRentByPeriod({
     allocations,
-    incomeLines: input.incomeLines,
+    incomeLines: rentIncomeLines,
     scheduleMonths,
   });
 
-  const incomeLineIdByPeriod = indexFirstIncomeLineIdByPeriod(input.incomeLines, input.months);
+  const incomeLineIdByPeriod = indexFirstIncomeLineIdByPeriod(rentIncomeLines, input.months);
   const prorationByPeriod = new Map(scheduleMonths.map((item) => [item.periodKey, item]));
 
   return rolledUp.map((item) => {

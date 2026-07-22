@@ -1,3 +1,4 @@
+import { excludeDepositOtherIncomeRows } from "./lease-deposit-income-utils";
 import type {
   IPropertyReportChannelSummary,
   IPropertyReportExpenseCategory,
@@ -45,7 +46,10 @@ function roundShare(value: number): number {
 }
 
 function sumOtherIncomeAmounts(breakdown: IPropertyReportSalesTypeBreakdown): number {
-  return breakdown.otherIncomeByType.reduce((sum, row) => sum + row.amount, 0);
+  return excludeDepositOtherIncomeRows(breakdown.otherIncomeByType).reduce(
+    (sum, row) => sum + row.amount,
+    0
+  );
 }
 
 export function buildIncomeCompositionBreakdown(
@@ -179,7 +183,7 @@ export function otherIncomeTypeToSegments(
   breakdown: IPropertyReportSalesTypeBreakdown
 ): IReportChartSegment[] {
   return buildReportChartSegments(
-    breakdown.otherIncomeByType.map((row) => ({
+    excludeDepositOtherIncomeRows(breakdown.otherIncomeByType).map((row) => ({
       id: row.incomeLineTypeId,
       label: row.name,
       value: row.amount,

@@ -4,6 +4,7 @@ import {
   IncomeEntryKind,
   type IPropertyIncomeLine,
   type IPropertyReservation,
+  isDepositIncomeLine,
   type TPropertyIncomeEntry,
 } from "@/packages/shared";
 import {
@@ -97,7 +98,7 @@ function buildMergedEntries(
 
   if (showLongTerm) {
     for (const line of incomeLines) {
-      if (line.longStayId != null) {
+      if (line.longStayId != null && !isDepositIncomeLine(line)) {
         entries.push({ entryKind: IncomeEntryKind.LONG_TERM, line });
       }
     }
@@ -105,7 +106,7 @@ function buildMergedEntries(
 
   if (showLines) {
     for (const line of incomeLines) {
-      if (line.longStayId == null) {
+      if (line.longStayId == null || isDepositIncomeLine(line)) {
         if (incomeTypeFilter === "" || line.incomeLineTypeId === incomeTypeFilter) {
           entries.push({ entryKind: IncomeEntryKind.LINE, line });
         }
@@ -272,7 +273,7 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     expect(sql).toContain("property_income_lines pil");
     expect(sql).not.toContain("property_reservations pr");
     expect(sql).toContain("pil.income_line_type_id = $");
-    expect(sql).toContain("pil.long_stay_id IS NULL");
+    expect(sql).toContain("pil.long_stay_id IS NULL OR lower(ilt.name) = lower('Security deposit')");
   });
 
   test("applies longTerm incomeType filter in SQL", async () => {
@@ -290,7 +291,22 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     expect(sql).toContain("property_income_lines pil");
     expect(sql).not.toContain("property_reservations pr");
     expect(sql).toContain("pil.long_stay_id IS NOT NULL");
+    expect(sql).toContain("lower(ilt.name) = lower('Security deposit')");
     expect(sql).toContain(`'${IncomeEntryKind.LONG_TERM}'::text AS entry_kind`);
+  });
+
+  test("longTerm SQL excludes Security deposit; line SQL includes deposit with longStayId", async () => {
+    mockQuery.mockClear();
+
+    await propertyIncomeEntriesDb.listPaginatedByProperty("prop-1", {}, { limit: 10 });
+
+    const sql = mockQuery.mock.calls.find(
+      ([query]) => !(query as string).includes("COUNT(*)")
+    )?.[0] as string;
+    expect(sql).toContain("pil.long_stay_id IS NOT NULL AND NOT (lower(ilt.name) = lower('Security deposit'))");
+    expect(sql).toContain(
+      "(pil.long_stay_id IS NULL OR lower(ilt.name) = lower('Security deposit'))"
+    );
   });
 
   test("cursor pages have no duplicates or gaps", async () => {

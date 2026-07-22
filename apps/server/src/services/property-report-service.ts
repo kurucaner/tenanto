@@ -21,6 +21,7 @@ import {
   type IPropertyReportUnitSummary,
   type IPropertyReservation,
   type IPropertyUnit,
+  isDepositIncomeLine,
   PROPERTY_AMENITY_UNIT_ID,
   PROPERTY_AMENITY_UNIT_LABEL,
   ReportRentalTypeFilter,
@@ -372,6 +373,10 @@ function applyIncomeLineToReport(
   line: IPropertyIncomeLine,
   accumulator: IPropertyReportAccumulator
 ): void {
+  if (isDepositIncomeLine(line)) {
+    return;
+  }
+
   const reportable = getReportableIncomeLineAmounts(line);
   if (reportable.grossIncome === 0) return;
 

@@ -213,7 +213,13 @@ export {
   transactionDateToMonth,
   validateEndLeaseMoveOutDate,
 } from "./lease-date-utils";
-export { isDepositIncomeLineType } from "./lease-deposit-income-utils";
+export {
+  excludeDepositOtherIncomeRows,
+  filterOutDepositIncomeLines,
+  isDepositIncomeLine,
+  isDepositIncomeLineType,
+  sqlIsSecurityDepositIncomeLineType,
+} from "./lease-deposit-income-utils";
 export {
   inferLeaseDepositPreset,
   type IResolveSecurityDepositAmountInput,

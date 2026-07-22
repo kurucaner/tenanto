@@ -341,11 +341,12 @@ export const propertyLongStaysDb = {
     const effectiveEndDate = getLeaseScheduleEffectiveEndDate(longStay, referenceDate);
 
     const incomeResult = await pool.query(
-      `SELECT *
-       FROM property_income_lines
-       WHERE long_stay_id = $1
-         AND is_deleted = false
-       ORDER BY transaction_date ASC`,
+      `SELECT pil.*, ilt.name AS income_line_type_name
+       FROM property_income_lines pil
+       INNER JOIN property_income_line_types ilt ON ilt.id = pil.income_line_type_id
+       WHERE pil.long_stay_id = $1
+         AND pil.is_deleted = false
+       ORDER BY pil.transaction_date ASC`,
       [longStayId]
     );
 

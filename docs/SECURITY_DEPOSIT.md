@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: phase-2b-isolation
     content: "Phase 2b: Exclude deposit from reports and rent rollup tests"
-    status: pending
+    status: completed
   - id: phase-3a-start-lease
     content: "Phase 3a: Start lease deposit fields (schema, form, hook, draft)"
     status: pending
