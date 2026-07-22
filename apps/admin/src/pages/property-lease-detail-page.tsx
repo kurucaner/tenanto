@@ -222,7 +222,7 @@ export const PropertyLeaseDetailPage = memo(() => {
                 depositSummary={depositSummary}
                 lease={lease}
                 onRecordDeposit={handleRecordDeposit}
-                propertyId={propertyId}
+                onSettleDeposit={() => setDepositCloseOutOpen(true)}
               />
               <LeasePaymentsSection
                 canManage={canManage}

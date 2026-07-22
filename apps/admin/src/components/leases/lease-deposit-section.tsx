@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
   type ILeaseDepositSummary,
   type IPropertyLongStay,
   LeaseDepositBalanceStatus,
+  needsLeaseDepositCloseOut,
   PropertyLongStayStatus,
 } from "@/packages/shared";
 
@@ -21,7 +21,7 @@ interface LeaseDepositSectionProps {
   depositSummary: ILeaseDepositSummary;
   lease: IPropertyLongStay;
   onRecordDeposit: () => void;
-  propertyId: string;
+  onSettleDeposit: () => void;
 }
 
 function depositStatusBadgeVariant(
@@ -40,14 +40,17 @@ function depositStatusBadgeVariant(
 }
 
 export const LeaseDepositSection = memo(
-  ({ canManage, depositSummary, lease, onRecordDeposit, propertyId }: LeaseDepositSectionProps) => {
+  ({
+    canManage,
+    depositSummary,
+    lease,
+    onRecordDeposit,
+    onSettleDeposit,
+  }: LeaseDepositSectionProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
     const canRecord = canManage && isActive && canShowRecordLeaseDepositCta(depositSummary);
+    const canSettle = canManage && needsLeaseDepositCloseOut(depositSummary);
     const rows = getLeaseDepositBalanceRows(depositSummary);
-    const showIncomeLink =
-      depositSummary.status === LeaseDepositBalanceStatus.HELD ||
-      depositSummary.status === LeaseDepositBalanceStatus.REFUNDED ||
-      depositSummary.collected > 0;
 
     return (
       <Card>
@@ -72,23 +75,20 @@ export const LeaseDepositSection = memo(
                 <dt className="text-muted-foreground">Outstanding</dt>
                 <dd className="font-medium">{rows.outstandingLabel}</dd>
               </dl>
-              {showIncomeLink ? (
-                <p className="text-muted-foreground text-xs">
-                  Refunds are managed from{" "}
-                  <Link
-                    className="text-foreground underline-offset-4 hover:underline"
-                    to={`/properties/${encodeURIComponent(propertyId)}/income`}
-                  >
-                    Income
-                  </Link>
-                  .
-                </p>
-              ) : null}
             </div>
-            {canRecord ? (
-              <Button onClick={onRecordDeposit} type="button" variant="outline">
-                Record deposit
-              </Button>
+            {canRecord || canSettle ? (
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {canSettle ? (
+                  <Button onClick={onSettleDeposit} type="button" variant="outline">
+                    Settle deposit
+                  </Button>
+                ) : null}
+                {canRecord ? (
+                  <Button onClick={onRecordDeposit} type="button" variant="outline">
+                    Record deposit
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
           </div>
         </CardContent>
