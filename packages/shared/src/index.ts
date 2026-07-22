@@ -222,6 +222,12 @@ export {
   type TLeaseDepositBalanceStatus,
 } from "./lease-deposit-balance-utils";
 export {
+  getEndLeaseDepositCalloutMessage,
+  getLeaseDepositCloseOutCopy,
+  type ILeaseDepositCloseOutCopy,
+  needsLeaseDepositCloseOut,
+} from "./lease-deposit-close-out-utils";
+export {
   excludeDepositOtherIncomeRows,
   filterOutDepositIncomeLines,
   isDepositIncomeLine,

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Download, Eye, MoreHorizontal, Plus, SquarePen } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -31,7 +31,7 @@ import { usePropertyShellActions } from "@/hooks/use-property-shell-actions";
 import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
-import { settingsApi, unitsApi } from "@/lib/api-client";
+import { longStaysApi, settingsApi, unitsApi } from "@/lib/api-client";
 import { getDateRangeSummary } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
@@ -56,12 +56,12 @@ import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { buildPropertyStartLeasePath } from "@/lib/start-lease-routes";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
+  buildLeaseDepositSummary,
   ExportResourceType,
   formatPropertyUnitSelectLabel,
   getLeaseOccupancyNames,
   getLeaseRentAmount,
   type IPropertyLongStay,
-  type IPropertyLongStayDetailResponse,
   isActiveLeaseInHoldover,
   LEASES_DEFAULT_SORT_BY,
   LEASES_DEFAULT_SORT_DIR,
@@ -205,7 +205,6 @@ export const PropertyLeasesPage = memo(() => {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
   const leaseFilterSchema = useMemo(
@@ -259,6 +258,25 @@ export const PropertyLeasesPage = memo(() => {
 
   const [exportTableOpen, setExportTableOpen] = useState(false);
   const [endLease, setEndLease] = useState<IPropertyLongStay | null>(null);
+
+  const endLeaseDetailQuery = useQuery({
+    enabled: Boolean(endLease),
+    queryFn: () => longStaysApi.get(propertyId, endLease!.id),
+    queryKey: queryKeys.propertyLongStay(propertyId, endLease?.id ?? ""),
+  });
+
+  const endLeaseDepositSummary = useMemo(() => {
+    if (endLeaseDetailQuery.data?.depositSummary) {
+      return endLeaseDetailQuery.data.depositSummary;
+    }
+    if (!endLease) {
+      return null;
+    }
+    return buildLeaseDepositSummary({
+      expected: endLease.securityDepositAmount,
+      lines: [],
+    });
+  }, [endLease, endLeaseDetailQuery.data?.depositSummary]);
 
   const listQueryFilters = useMemo(
     () =>
@@ -481,8 +499,9 @@ export const PropertyLeasesPage = memo(() => {
         </CardContent>
       </Card>
 
-      {endLease ? (
+      {endLease && endLeaseDepositSummary ? (
         <EndLeaseDialog
+          depositSummary={endLeaseDepositSummary}
           key={endLease.id}
           lease={endLease}
           onOpenChange={(open) => {
@@ -490,11 +509,7 @@ export const PropertyLeasesPage = memo(() => {
           }}
           open={true}
           propertyId={propertyId}
-          rentPeriods={
-            queryClient.getQueryData<IPropertyLongStayDetailResponse>(
-              queryKeys.propertyLongStay(propertyId, endLease.id)
-            )?.rentPeriods ?? []
-          }
+          rentPeriods={endLeaseDetailQuery.data?.rentPeriods ?? []}
         />
       ) : null}
 

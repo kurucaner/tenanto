@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { longStaysApi } from "@/lib/api-client";
+import { formatMoney } from "@/lib/format-money";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import {
   getActiveLeaseHoldoverNotice,
@@ -27,7 +28,9 @@ import {
 } from "@/lib/lease-proration-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
+  getEndLeaseDepositCalloutMessage,
   getEndLeaseMoveOutDateBounds,
+  type ILeaseDepositSummary,
   type IPropertyLongStay,
   type IPropertyLongStayRentPeriod,
   isActiveLeaseInHoldover,
@@ -39,7 +42,9 @@ type TEndLeaseFormValues = {
 };
 
 interface EndLeaseDialogProps {
+  depositSummary: ILeaseDepositSummary;
   lease: IPropertyLongStay;
+  onEndedWithDepositCloseOut?: () => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   propertyId: string;
@@ -47,7 +52,15 @@ interface EndLeaseDialogProps {
 }
 
 export const EndLeaseDialog = memo(
-  ({ lease, onOpenChange, open, propertyId, rentPeriods = [] }: EndLeaseDialogProps) => {
+  ({
+    depositSummary,
+    lease,
+    onEndedWithDepositCloseOut,
+    onOpenChange,
+    open,
+    propertyId,
+    rentPeriods = [],
+  }: EndLeaseDialogProps) => {
     const queryClient = useQueryClient();
     const today = getTodayLocalIsoDate();
     const { defaultDate, maxDate, minDate } = getEndLeaseMoveOutDateBounds(
@@ -57,6 +70,10 @@ export const EndLeaseDialog = memo(
     );
     const isSingleMoveOutDate = minDate === maxDate;
     const isInHoldover = isActiveLeaseInHoldover(lease, today);
+    const depositCallout = useMemo(
+      () => getEndLeaseDepositCalloutMessage(depositSummary),
+      [depositSummary]
+    );
 
     const endLeaseSchema = useMemo(
       () =>
@@ -121,6 +138,9 @@ export const EndLeaseDialog = memo(
       onSuccess: () => {
         toast.success("Lease ended");
         invalidatePropertyLongStayCaches(queryClient, propertyId);
+        if (depositCallout) {
+          onEndedWithDepositCloseOut?.();
+        }
         handleOpenChange(false);
       },
     });
@@ -155,6 +175,14 @@ export const EndLeaseDialog = memo(
 
           <form onSubmit={onSubmit}>
             <DialogFormFields>
+              {depositCallout ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                  <p className="font-medium">
+                    Security deposit: {formatMoney(depositSummary.collected)} collected
+                  </p>
+                  <p className="mt-1 text-xs opacity-90">{depositCallout}</p>
+                </div>
+              ) : null}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="end-lease-date">Move-out Date</Label>
                 {isSingleMoveOutDate ? (

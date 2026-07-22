@@ -40,7 +40,7 @@ todos:
     status: completed
   - id: phase-7a-end-lease
     content: "Phase 7a: End lease deposit callout + close-out dialog"
-    status: pending
+    status: completed
   - id: phase-7b-refund-email
     content: "Phase 7b: Refund dialog copy + end-lease email (v1.5 complete)"
     status: pending
