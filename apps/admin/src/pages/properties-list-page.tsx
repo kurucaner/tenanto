@@ -21,6 +21,7 @@ import {
   buildPropertiesListToolbarClearOnePatch,
   buildPropertiesListToolbarFilterItems,
   formatPropertiesListCountLabel,
+  type IPropertiesListToolbarFilterItem,
   type TPropertiesListToolbarFilterId,
 } from "@/lib/properties-list-toolbar-filters";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
@@ -39,12 +40,18 @@ const PROPERTY_COLUMNS: DataTableColumn[] = [
   { id: "created", label: "Created" },
 ];
 
+const PROPERTY_ROW_ESTIMATED_HEIGHT = 44;
+
 const PROPERTIES_EMPTY_MESSAGE = (
   <div className="flex flex-col items-center gap-2 py-8">
     <Building2 className="text-muted-foreground/50 size-8" />
     <span>No properties found.</span>
   </div>
 );
+
+function getPropertyKey(property: IProperty): string {
+  return property.id;
+}
 
 const PropertyTableRow = memo(
   ({
@@ -82,56 +89,121 @@ PropertyTableRow.displayName = "PropertyTableRow";
 
 const PropertiesListTable = memo(
   ({
+    activeFilterItems,
+    countLabel,
     favoriteMutation,
     hasNextPage,
     infiniteScrollSentinelRef,
     isFetchingNextPage,
     isPending,
+    onClearAllToolbarFilters,
+    onRemoveToolbarFilter,
+    onSearchInputChange,
     properties,
-    toolbar,
+    searchInput,
   }: {
+    activeFilterItems: IPropertiesListToolbarFilterItem[];
+    countLabel?: string;
     favoriteMutation: ReturnType<typeof useSetPropertyFavorite>;
     hasNextPage: boolean;
     infiniteScrollSentinelRef: RefObject<HTMLDivElement | null>;
     isFetchingNextPage: boolean;
     isPending: boolean;
+    onClearAllToolbarFilters: () => void;
+    onRemoveToolbarFilter: (id: TPropertiesListToolbarFilterId) => void;
+    onSearchInputChange: (value: string) => void;
     properties: IProperty[];
-    toolbar: React.ReactNode;
-  }) => (
-    <DataTable
-      columns={PROPERTY_COLUMNS}
-      emptyMessage={PROPERTIES_EMPTY_MESSAGE}
-      getItemKey={(property) => property.id}
-      infiniteScroll={{ hasNextPage, isFetchingNextPage }}
-      infiniteScrollSentinelRef={infiniteScrollSentinelRef}
-      isPending={isPending}
-      items={properties}
-      renderRow={(property) => (
+    searchInput: string;
+  }) => {
+    const favoritePendingPropertyId = favoriteMutation.isPending
+      ? favoriteMutation.variables?.propertyId
+      : undefined;
+
+    const handleToggleFavorite = useCallback(
+      (property: IProperty) => {
+        favoriteMutation.mutate({ favorite: !property.isFavorite, propertyId: property.id });
+      },
+      [favoriteMutation]
+    );
+
+    const renderRow = useCallback(
+      (property: IProperty) => (
         <PropertyTableRow
           key={property.id}
-          isFavoritePending={
-            favoriteMutation.isPending && favoriteMutation.variables?.propertyId === property.id
-          }
-          onToggleFavorite={(item) =>
-            favoriteMutation.mutate({ favorite: !item.isFavorite, propertyId: item.id })
-          }
+          isFavoritePending={favoritePendingPropertyId === property.id}
+          onToggleFavorite={handleToggleFavorite}
           property={property}
         />
-      )}
-      toolbar={toolbar}
-    />
-  )
+      ),
+      [favoritePendingPropertyId, handleToggleFavorite]
+    );
+
+    const toolbar = useMemo(
+      () => (
+        <PropertiesListToolbar
+          activeFilterItems={activeFilterItems}
+          countLabel={countLabel}
+          onClearAll={onClearAllToolbarFilters}
+          onRemoveFilter={onRemoveToolbarFilter}
+          onSearchInputChange={onSearchInputChange}
+          searchInput={searchInput}
+        />
+      ),
+      [
+        activeFilterItems,
+        countLabel,
+        onClearAllToolbarFilters,
+        onRemoveToolbarFilter,
+        onSearchInputChange,
+        searchInput,
+      ]
+    );
+
+    return (
+      <DataTable
+        columns={PROPERTY_COLUMNS}
+        emptyMessage={PROPERTIES_EMPTY_MESSAGE}
+        getItemKey={getPropertyKey}
+        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+        infiniteScrollSentinelRef={infiniteScrollSentinelRef}
+        isPending={isPending}
+        items={properties}
+        renderRow={renderRow}
+        toolbar={toolbar}
+        virtualization={{ estimateRowHeight: PROPERTY_ROW_ESTIMATED_HEIGHT }}
+      />
+    );
+  }
 );
 PropertiesListTable.displayName = "PropertiesListTable";
 
-const PropertiesListPageInner = memo(() => {
+const NewPropertyHeaderActions = memo(function NewPropertyHeaderActions() {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  return (
+    <>
+      <div className="flex items-center justify-end gap-4">
+        <Button
+          className="shrink-0 gap-2"
+          onClick={() => setCreateOpen(true)}
+          type="button"
+        >
+          <Plus className="size-4" />
+          New Property
+        </Button>
+      </div>
+      <CreatePropertyDialog onOpenChange={setCreateOpen} open={createOpen} />
+    </>
+  );
+});
+
+const PropertiesListPageInner = memo(function PropertiesListPageInner() {
   const { filters, setFilter, setFilters } = useUrlFilterState(PROPERTIES_URL_FILTER_SCHEMA);
   const { q } = filters;
   const { onSearchInputChange: handleSearchInputChange, searchInput } = useLedgerUrlSearch(
     q,
     setFilter
   );
-  const [createOpen, setCreateOpen] = useState(false);
 
   const {
     error,
@@ -176,18 +248,9 @@ const PropertiesListPageInner = memo(() => {
     setFilters(buildPropertiesListToolbarClearAllPatch());
   }, [handleSearchInputChange, setFilters]);
 
-  const handleNewPropertyClick = useCallback(() => {
-    setCreateOpen(true);
-  }, []);
-
   return (
     <AdminPageLayout gap={6}>
-      <div className="flex items-center justify-end gap-4">
-        <Button className="shrink-0 gap-2" onClick={handleNewPropertyClick} type="button">
-          <Plus className="size-4" />
-          New Property
-        </Button>
-      </div>
+      <NewPropertyHeaderActions />
 
       {error ? (
         <p className="text-destructive text-sm">
@@ -198,30 +261,23 @@ const PropertiesListPageInner = memo(() => {
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
           <PropertiesListTable
+            activeFilterItems={activeFilterItems}
+            countLabel={countLabel}
             favoriteMutation={favoriteMutation}
             hasNextPage={hasNextPage ?? false}
             infiniteScrollSentinelRef={scrollSentinelRef}
             isFetchingNextPage={isFetchingNextPage}
             isPending={isPending}
+            onClearAllToolbarFilters={handleClearAllToolbarFilters}
+            onRemoveToolbarFilter={handleRemoveToolbarFilter}
+            onSearchInputChange={handleSearchInputChange}
             properties={properties}
-            toolbar={
-              <PropertiesListToolbar
-                activeFilterItems={activeFilterItems}
-                countLabel={countLabel}
-                onClearAll={handleClearAllToolbarFilters}
-                onRemoveFilter={handleRemoveToolbarFilter}
-                onSearchInputChange={handleSearchInputChange}
-                searchInput={searchInput}
-              />
-            }
+            searchInput={searchInput}
           />
         </CardContent>
       </Card>
-
-      <CreatePropertyDialog onOpenChange={setCreateOpen} open={createOpen} />
     </AdminPageLayout>
   );
 });
-PropertiesListPageInner.displayName = "PropertiesListPageInner";
 
 export const PropertiesListPage = PropertiesListPageInner;
