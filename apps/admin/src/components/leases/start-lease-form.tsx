@@ -390,7 +390,7 @@ export const StartLeaseForm = memo(
         onSubmit={onSubmit}
         ref={formRef}
       >
-        <div className="mx-auto min-h-0 w-full max-w-xl flex-1 space-y-8 overflow-y-auto pb-6">
+        <div className="mx-auto min-h-0 w-full max-w-xl flex-1 space-y-8 pb-6">
           <StartLeaseProgress currentStep={currentStep} onStepSelect={onStepSelect} />
 
           <div className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300">
