@@ -407,8 +407,6 @@ export {
   resolveExtendRentEffectivePeriod,
   resolveIncomeLineRentPeriodKey,
   resolveTermsEditRentAmount,
-  type TRentAmount,
-  type TRentPeriodKey,
   /** @deprecated Use `withLeaseRentLegacyShims`. */
   withLeaseRentAmountNeutralFields,
   withLeaseRentLegacyShims,
