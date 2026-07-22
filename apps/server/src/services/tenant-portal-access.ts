@@ -17,18 +17,29 @@ export async function assertLeaseTenantAccess(
   return membership;
 }
 
-/** Read access for active or archived (ended) leases — no write APIs for either. */
+/** Read access for active or archived (ended) leases — no write APIs for either.
+ * Prefer active when both an active and an ended membership exist for the same lease
+ * (e.g. secondary removed then re-invited).
+ */
 export async function assertLeaseTenantReadAccess(
   leaseId: string,
   tenantUserId: string
 ): Promise<ILeaseTenantMembership> {
-  const membership = await leaseTenantMembershipsDb.findByLeaseAndTenantUserWithStatuses(
+  const active = await leaseTenantMembershipsDb.findActiveByLeaseAndTenantUser(
+    leaseId,
+    tenantUserId
+  );
+  if (active) {
+    return active;
+  }
+
+  const ended = await leaseTenantMembershipsDb.findByLeaseAndTenantUserWithStatuses(
     leaseId,
     tenantUserId,
-    [TenantMembershipStatus.ACTIVE, TenantMembershipStatus.ENDED]
+    [TenantMembershipStatus.ENDED]
   );
-  if (!membership) {
+  if (!ended) {
     throw tenantLeaseAccessDeniedError();
   }
-  return membership;
+  return ended;
 }

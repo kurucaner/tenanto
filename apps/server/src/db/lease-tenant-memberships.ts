@@ -336,7 +336,14 @@ export const leaseTenantMembershipsDb = {
        WHERE lease_id = $1
          AND tenant_user_id = $2
          AND status = ANY($3::tenant_membership_status[])
-       ORDER BY ended_at DESC NULLS LAST, accepted_at DESC NULLS LAST, created_at DESC
+       ORDER BY
+         CASE status
+           WHEN 'active'::tenant_membership_status THEN 0
+           WHEN 'ended'::tenant_membership_status THEN 1
+           ELSE 2
+         END,
+         accepted_at DESC NULLS LAST,
+         created_at DESC
        LIMIT 1`,
       [leaseId, tenantUserId, statuses]
     );

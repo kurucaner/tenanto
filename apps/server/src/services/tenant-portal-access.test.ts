@@ -54,10 +54,30 @@ describe("assertLeaseTenantAccess", () => {
 
 describe("assertLeaseTenantReadAccess", () => {
   beforeEach(() => {
+    mockFindActiveByLeaseAndTenantUser.mockClear();
     mockFindByLeaseAndTenantUserWithStatuses.mockClear();
+    mockFindActiveByLeaseAndTenantUser.mockResolvedValue(null);
+    mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValue(null);
   });
 
-  test("returns ended membership for archive read access", async () => {
+  test("returns active membership when present even if ended also exists", async () => {
+    const active = makeMembership({
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+      expiresAt: "2026-02-01T00:00:00.000Z",
+      status: TenantMembershipStatus.ACTIVE,
+      tenantUserId: "tenant-1",
+      updatedAt: "2026-01-02T00:00:00.000Z",
+    });
+    mockFindActiveByLeaseAndTenantUser.mockResolvedValueOnce(active);
+
+    const result = await assertLeaseTenantReadAccess("lease-1", "tenant-1");
+
+    expect(result).toEqual(active);
+    expect(mockFindActiveByLeaseAndTenantUser).toHaveBeenCalledWith("lease-1", "tenant-1");
+    expect(mockFindByLeaseAndTenantUserWithStatuses).not.toHaveBeenCalled();
+  });
+
+  test("returns ended membership for archive read access when no active", async () => {
     const membership = makeMembership({
       acceptedAt: "2026-01-02T00:00:00.000Z",
       expiresAt: "2026-02-01T00:00:00.000Z",
@@ -71,14 +91,11 @@ describe("assertLeaseTenantReadAccess", () => {
 
     expect(result).toEqual(membership);
     expect(mockFindByLeaseAndTenantUserWithStatuses).toHaveBeenCalledWith("lease-1", "tenant-1", [
-      TenantMembershipStatus.ACTIVE,
       TenantMembershipStatus.ENDED,
     ]);
   });
 
   test("throws when no active or ended membership exists", async () => {
-    mockFindByLeaseAndTenantUserWithStatuses.mockResolvedValueOnce(null);
-
     await expect(assertLeaseTenantReadAccess("lease-1", "tenant-1")).rejects.toMatchObject({
       code: LeaseErrorCode.TENANT_LEASE_ACCESS_DENIED,
     });
