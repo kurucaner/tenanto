@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview",
-    "prettier": "prettier --write ."
+    "prettier": "prettier --write .",
+    "test": "bun test"
   },
   "dependencies": {
     "@/packages/app-ui": "workspace:*",

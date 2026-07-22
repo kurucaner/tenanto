@@ -10,7 +10,7 @@
     "worker:email:prod": "NODE_ENV=production node dist/apps/server/src/workers/tenant-email-worker.cli.js",
     "worker:export": "bun src/workers/property-export-worker.cli.ts",
     "worker:export:prod": "NODE_ENV=production node dist/apps/server/src/workers/property-export-worker.cli.js",
-    "test": "bun test",
+    "test": "bun test --isolate",
     "lint": "eslint .",
     "prettier": "prettier --write .",
     "setup:minio-notifications": "bash ../../scripts/setup-minio-s3-notifications.sh"

@@ -151,17 +151,42 @@ Those exports exist in [`apps/server/src/db/mappers.ts`](apps/server/src/db/mapp
 
 **Do not** rewrite rent-schedule / updateTerms / tenant-access assertions in this phase unless an **isolated** run still fails.
 
+### Phase 3 results (2026-07-22)
+
+**Root cause:** Partial `mock.module("@/db/mappers", …)` in [`lease-deposit-summary.test.ts`](../apps/server/src/lib/lease-deposit-summary.test.ts) (and the same Bun process-global mock pollution from other partial DB mocks) made later files see broken named exports (`mapPropertyReservationRow`, `mapPropertyExpenseRow`, `getRentSchedule`, etc.).
+
+**Fixes:**
+
+1. Removed the mappers mock; tests use the real mapper with full DB-shaped rows.
+2. Server `package.json` `test` → `bun test --isolate` (fresh global per file; ~2.7s for 145 files). `mock.restore()` / afterAll hooks do **not** reliably undo `mock.module` for later files in one process.
+
+**Verify:** `cd apps/server && bun test` → cascade cleared (real leftovers moved to Phase 4).
+
+**Phase 3 complete.** Proceed to Phase 4 for isolated leftovers.
+
 ---
 
 ## Phase 4 — Leftovers
 
 Re-run the full suite (or per-app suites). Anything still red after Phase 3 is a **real** failure — fix one by one.
 
-Known Phase 0 leftover (already fails in isolation):
+Known leftovers fixed:
 
-- [`apps/server/src/lib/stripe-connect-oauth-state.test.ts`](apps/server/src/lib/stripe-connect-oauth-state.test.ts) — `returns payload once then null on reuse`: second `getdel` is mocked to return the payload again; either return `null` on the second call or drop the extra `mockResolvedValueOnce`.
+- [`stripe-connect-oauth-state.test.ts`](../apps/server/src/lib/stripe-connect-oauth-state.test.ts) — `returns payload once then null on reuse`: default `getdel` now misses (`null`); first call uses `mockResolvedValueOnce(storedPayload)` (was re-queuing the payload on reuse).
+- [`tenant-phone-auth-service.test.ts`](../apps/server/src/services/tenant-phone-auth-service.test.ts) — opt-in SMS fixture now includes `phone` + `phoneVerifiedAt` so `canReceiveSms` allows send.
+- Winston observability mocks (`tenant-portal`, `property-member-invite`, `property-stripe-connect`) — always stub `{ error, info, warn }` so incomplete mocks cannot resurface without `--isolate`.
 
 **Exit criteria:** No unexplained fails; each remaining case has a dedicated fix or an explicit skip with a reason.
+
+### Phase 4 results (2026-07-22)
+
+| Suite | Result |
+| ----- | ------ |
+| `apps/server` (`bun test --isolate`) | **746 pass / 0 fail** |
+| `apps/admin` | **397 pass / 0 fail** |
+| `packages/shared` | **428 pass / 0 fail** |
+
+**Phase 4 complete.**
 
 ---
 
@@ -172,6 +197,18 @@ Known Phase 0 leftover (already fails in isolation):
 - Keep money test expectations aligned with whole-dollar `formatMoney`.
 
 **Exit criteria:** Future full runs don’t regress into the same cascade or missing-fixture noise.
+
+### Phase 5 results (2026-07-22)
+
+| Guardrail | What shipped |
+| --------- | ------------ |
+| Fixtures | Cursor rule + CLAUDE.md: commit small samples under colocated `fixtures/` (see `apps/server/src/lib/fixtures/`); never read uncommitted repo-root personal CSVs. |
+| Per-package runs | Root scripts `test:shared` / `test:server` / `test:admin` and `test` (sequential). Package `test` scripts on admin + shared (server already had one). |
+| `formatMoney` | Locked in [`apps/admin/src/lib/format-money.test.ts`](../apps/admin/src/lib/format-money.test.ts); rule reminds display assertions to match whole-dollar omission of `.00`. |
+
+Rule: [`.cursor/rules/test-suite-guardrails.mdc`](../.cursor/rules/test-suite-guardrails.mdc).
+
+**Phase 5 complete.**
 
 ---
 
