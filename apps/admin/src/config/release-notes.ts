@@ -37,6 +37,30 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       {
         category: "new",
         description:
+          "You can set a security deposit when starting a lease or editing terms — none, one month of rent, or a custom amount.",
+      },
+      {
+        category: "new",
+        description:
+          "Record a deposit from the lease Payments tab. It shows on Income with a Deposit badge and its own type filter, separate from rent.",
+      },
+      {
+        category: "improved",
+        description:
+          "Security deposit collections stay out of rent schedules and property revenue reports so they don’t inflate occupancy income.",
+      },
+    ],
+    id: "2026.17.0",
+    publishedAt: "2026-07-21",
+    summary:
+      "Security deposits on leases — set the amount, record collections, and find them on Income.",
+    version: "2026.17.0",
+  },
+  {
+    changes: [
+      {
+        category: "new",
+        description:
           "Home is now a workspace hub with search and three columns — pick up where you left off, open a property, and see recent tenant email campaigns across your portfolio.",
       },
       {

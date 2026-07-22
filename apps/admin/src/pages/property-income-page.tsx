@@ -86,6 +86,7 @@ import {
   buildIncomeToolbarClearOnePatch,
   buildIncomeToolbarFilterItems,
   countIncomeSecondaryFilters,
+  isIncomeToolbarEntryKindFilter,
   type IIncomeToolbarFilterItem,
   type TIncomeToolbarFilterId,
 } from "@/lib/income-toolbar-filters";
@@ -116,6 +117,7 @@ import {
   type IPropertyReservation,
   type IPropertyReservationsListQuery,
   type IPropertyUnit,
+  isDepositIncomeLine,
   resolveDefaultIncomeLineTypeId,
   type TIncomeRefundFilter,
   type TPropertyIncomeEntriesListFilters,
@@ -134,7 +136,7 @@ function mapStayToEntry(stay: IPropertyReservation): TPropertyIncomeEntry {
 }
 
 function mapLineToEntry(line: IPropertyIncomeLine): TPropertyIncomeEntry {
-  if (line.longStayId != null) {
+  if (line.longStayId != null && !isDepositIncomeLine(line)) {
     return { entryKind: IncomeEntryKind.LONG_TERM, line };
   }
 
@@ -221,8 +223,7 @@ function buildLineFilters(
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
   if (
     incomeType &&
-    incomeType !== IncomeEntryKind.STAY &&
-    incomeType !== IncomeEntryKind.LONG_TERM
+    !isIncomeToolbarEntryKindFilter(incomeType)
   ) {
     next.incomeLineTypeId = incomeType;
   }
@@ -277,12 +278,12 @@ interface IIncomeInfiniteListPagination {
 function getActiveIncomeInfiniteListPagination(
   isAllView: boolean,
   isStayOnlyView: boolean,
-  isLongTermOnlyView: boolean,
+  isEntriesKindOnlyView: boolean,
   allViewList: IIncomeInfiniteListPagination,
   stayOnlyViewList: IIncomeInfiniteListPagination,
   lineTypeOnlyViewList: IIncomeInfiniteListPagination
 ): IIncomeInfiniteListPagination {
-  if (isAllView || isLongTermOnlyView) {
+  if (isAllView || isEntriesKindOnlyView) {
     return allViewList;
   }
   if (isStayOnlyView) {
@@ -1092,13 +1093,19 @@ const IncomeLineEntryRow = memo(
     const isRefundPending = refundingLineId === line.id;
     const isRefunded = line.refundedAt !== null;
     const resolvedEntryKind =
-      entryKind ?? (line.longStayId != null ? IncomeEntryKind.LONG_TERM : IncomeEntryKind.LINE);
+      entryKind ??
+      (line.longStayId != null && !isDepositIncomeLine(line)
+        ? IncomeEntryKind.LONG_TERM
+        : IncomeEntryKind.LINE);
+    const showDepositBadge = isDepositIncomeLine(line);
 
     return (
       <TableRow className={ledgerEntryRowClassName(line.isDeleted, line.refundedAt)}>
         <TableCell>
           <div className="flex items-center gap-2">
-            {resolvedEntryKind === IncomeEntryKind.LONG_TERM ? (
+            {showDepositBadge ? (
+              <IncomeEntryTypeBadge entryKind={IncomeEntryKind.DEPOSIT} />
+            ) : resolvedEntryKind === IncomeEntryKind.LONG_TERM ? (
               <IncomeEntryTypeBadge entryKind={IncomeEntryKind.LONG_TERM} />
             ) : (
               <IncomeEntryTypeBadge
@@ -1376,17 +1383,16 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
 
   const isAllView = incomeType === "";
   const isStayOnlyView = incomeType === IncomeEntryKind.STAY;
-  const isLongTermOnlyView = incomeType === IncomeEntryKind.LONG_TERM;
+  const isEntriesKindOnlyView =
+    incomeType === IncomeEntryKind.LONG_TERM || incomeType === IncomeEntryKind.DEPOSIT;
   const isLineTypeOnlyView =
-    incomeType !== "" &&
-    incomeType !== IncomeEntryKind.STAY &&
-    incomeType !== IncomeEntryKind.LONG_TERM;
+    incomeType !== "" && !isIncomeToolbarEntryKindFilter(incomeType);
   const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
 
   const incomeEntriesInfinite = usePropertyIncomeEntriesInfiniteList(
     propertyId,
     incomeEntriesFilters,
-    { enabled: isAllView || isLongTermOnlyView }
+    { enabled: isAllView || isEntriesKindOnlyView }
   );
   const shortStaysInfinite = usePropertyShortStaysInfiniteList(propertyId, reservationFilters, {
     enabled: isStayOnlyView,
@@ -1398,14 +1404,14 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
   const activeIncomeListPagination = getActiveIncomeInfiniteListPagination(
     isAllView,
     isStayOnlyView,
-    isLongTermOnlyView,
+    isEntriesKindOnlyView,
     incomeEntriesInfinite,
     shortStaysInfinite,
     incomeLinesInfinite
   );
 
   const scrollSentinelRef = useInfiniteScrollTrigger({
-    enabled: isAllView || isStayOnlyView || isLongTermOnlyView || isLineTypeOnlyView,
+    enabled: isAllView || isStayOnlyView || isEntriesKindOnlyView || isLineTypeOnlyView,
     fetchNextPage: activeIncomeListPagination.fetchNextPage,
     hasNextPage: activeIncomeListPagination.hasNextPage,
     isFetchingNextPage: activeIncomeListPagination.isFetchingNextPage,
@@ -1736,7 +1742,7 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
   );
 
   const displayEntries = useMemo(() => {
-    if (isAllView || isLongTermOnlyView) {
+    if (isAllView || isEntriesKindOnlyView) {
       return incomeEntriesInfinite.entries;
     }
 
@@ -1749,7 +1755,7 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
     incomeEntriesInfinite.entries,
     incomeLinesInfinite.incomeLines,
     isAllView,
-    isLongTermOnlyView,
+    isEntriesKindOnlyView,
     isStayOnlyView,
     shortStaysInfinite.shortStays,
     sortState,

@@ -5,6 +5,7 @@ import {
   type ILedgerToolbarDefaultDateRange,
 } from "@/lib/ledger-toolbar-date-filters";
 import { type TSelectOption } from "@/lib/select-option-types";
+import { IncomeEntryKind } from "@/packages/shared";
 
 export type TIncomeToolbarFilterId =
   "channelCommissionId" | "date" | "incomeType" | "refundStatus" | "status" | "unitId";
@@ -29,6 +30,15 @@ export function countIncomeSecondaryFilters(values: {
   unitId: string;
 }): number {
   return Object.values(values).filter(Boolean).length;
+}
+
+/** Built-in type chip values that are not catalog incomeLineTypeIds. */
+export function isIncomeToolbarEntryKindFilter(incomeType: string): boolean {
+  return (
+    incomeType === IncomeEntryKind.STAY ||
+    incomeType === IncomeEntryKind.LONG_TERM ||
+    incomeType === IncomeEntryKind.DEPOSIT
+  );
 }
 
 export function buildIncomeToolbarClearOnePatch(

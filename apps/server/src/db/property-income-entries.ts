@@ -41,6 +41,8 @@ const DEPOSIT_INCOME_TYPE_SQL = sqlIsSecurityDepositIncomeLineType();
 const LONG_TERM_INCOME_LINE_SQL = `pil.long_stay_id IS NOT NULL AND NOT (${DEPOSIT_INCOME_TYPE_SQL})`;
 /** Misc lines plus lease-linked Security deposit (not rent schedule). */
 const LINE_INCOME_LINE_SQL = `(pil.long_stay_id IS NULL OR ${DEPOSIT_INCOME_TYPE_SQL})`;
+/** Security deposit system type only (Income type filter = Deposit). */
+const DEPOSIT_ONLY_INCOME_LINE_SQL = DEPOSIT_INCOME_TYPE_SQL;
 
 const STAY_BRANCH_SELECT = `
   pr.*,
@@ -52,6 +54,7 @@ const STAY_BRANCH_SELECT = `
 type TIncomeEntriesListDbFilters = Omit<IPropertyIncomeEntriesListQuery, "cursor" | "limit">;
 
 interface IIncomeEntryBranchPlan {
+  depositOnly?: boolean;
   includeLines: boolean;
   includeLongTerm: boolean;
   includeStays: boolean;
@@ -67,6 +70,14 @@ function resolveIncomeTypeFilter(incomeType?: string): IIncomeEntryBranchPlan {
   }
   if (incomeType === IncomeEntryKind.LONG_TERM) {
     return { includeLines: false, includeLongTerm: true, includeStays: false };
+  }
+  if (incomeType === IncomeEntryKind.DEPOSIT) {
+    return {
+      depositOnly: true,
+      includeLines: true,
+      includeLongTerm: false,
+      includeStays: false,
+    };
   }
   return {
     includeLines: true,
@@ -236,7 +247,8 @@ function buildLineBranchSql(
   filters: TIncomeEntriesListDbFilters,
   includeDeleted: boolean,
   lineTypeId: string | undefined,
-  sort: IIncomeEntryListSortOptions
+  sort: IIncomeEntryListSortOptions,
+  depositOnly = false
 ): { sql: string; values: unknown[] } {
   return buildIncomeLineEntryBranchSql(
     propertyId,
@@ -244,7 +256,7 @@ function buildLineBranchSql(
     includeDeleted,
     IncomeEntryKind.LINE,
     lineTypeId,
-    LINE_INCOME_LINE_SQL,
+    depositOnly ? DEPOSIT_ONLY_INCOME_LINE_SQL : LINE_INCOME_LINE_SQL,
     sort
   );
 }
@@ -294,7 +306,8 @@ function buildMergedUnionSql(
       filters,
       includeDeleted,
       branchPlan.lineTypeId,
-      sort
+      sort,
+      branchPlan.depositOnly === true
     );
     branches.push(offsetSqlPlaceholders(lineBranch.sql, values.length));
     values.push(...lineBranch.values);
@@ -432,7 +445,9 @@ export const propertyIncomeEntriesDb = {
         toLineListFilters(filters, branchPlan.lineTypeId),
         includeDeleted
       );
-      const lineConditions = [...conditions, LINE_INCOME_LINE_SQL];
+      const lineScopeSql =
+        branchPlan.depositOnly === true ? DEPOSIT_ONLY_INCOME_LINE_SQL : LINE_INCOME_LINE_SQL;
+      const lineConditions = [...conditions, lineScopeSql];
       counts.push(
         pool
           .query<{ total_count: number }>(

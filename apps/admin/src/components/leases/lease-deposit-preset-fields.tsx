@@ -7,7 +7,6 @@ import {
 } from "react-hook-form";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { START_LEASE_DEPOSIT_PRESET_LABELS } from "@/lib/start-lease-deposit-field";
@@ -58,7 +57,6 @@ export function LeaseDepositPresetFields<
               >
                 {preset === LeaseDepositPreset.CUSTOM ? (
                   <div className="flex flex-col gap-1.5 pl-6">
-                    <Label htmlFor={customAmountFieldId}>Custom amount</Label>
                     <div className="relative max-w-xs">
                       <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
                         $
