@@ -9,6 +9,7 @@ import { longStaysApi } from "@/lib/api-client";
 import { invalidatePropertyLongStayCaches } from "@/lib/invalidate-property-long-stay-caches";
 import { buildLeaseTermApiPayload, resolveLeaseTermEndPreview } from "@/lib/lease-term-end-utils";
 import { scrollFormToFirstError } from "@/lib/scroll-form-to-first-error";
+import { resolveStartLeaseSecurityDepositAmount } from "@/lib/start-lease-deposit-field";
 import {
   clearStartLeaseDraft,
   getStartLeaseDraftUnitScope,
@@ -246,6 +247,7 @@ export function useStartLeaseForm({
         ...buildLeaseTermApiPayload(values),
         rentAmount: Number(values.rentAmount),
         rentBillingCadence: normalizeStartLeaseRentBillingCadence(values.rentBillingCadence),
+        securityDepositAmount: resolveStartLeaseSecurityDepositAmount(values),
         tenantEmail: values.tenantEmail.trim() || undefined,
         tenantPhone: normalizeToE164(values.tenantPhone.trim()) ?? undefined,
         unitId: values.unitId,

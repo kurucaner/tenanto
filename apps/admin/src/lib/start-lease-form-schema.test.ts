@@ -21,6 +21,8 @@ describe("getStartLeaseDefaultValues", () => {
     expect(values.rentBillingCadence).toBe("monthly");
     expect(values.guestName).toBe("");
     expect(values.rentAmount).toBe("");
+    expect(values.securityDepositPreset).toBe("none");
+    expect(values.securityDepositCustomAmount).toBe("");
     expect(values.unitId).toBe("");
   });
 });
@@ -38,6 +40,34 @@ describe("validateStartLeaseStep", () => {
     values.guestName = "Caner";
 
     expect(validateStartLeaseStep("rent", values).success).toBe(false);
+  });
+
+  test("rent step accepts none deposit with valid rent", () => {
+    const values = getStartLeaseDefaultValues("unit-42");
+    values.guestName = "Caner";
+    values.rentAmount = "1500";
+
+    expect(validateStartLeaseStep("rent", values).success).toBe(true);
+  });
+
+  test("rent step requires custom deposit amount when custom preset is selected", () => {
+    const values = getStartLeaseDefaultValues("unit-42");
+    values.guestName = "Caner";
+    values.rentAmount = "1500";
+    values.securityDepositPreset = "custom";
+    values.securityDepositCustomAmount = "";
+
+    expect(validateStartLeaseStep("rent", values).success).toBe(false);
+  });
+
+  test("rent step accepts custom deposit amount", () => {
+    const values = getStartLeaseDefaultValues("unit-42");
+    values.guestName = "Caner";
+    values.rentAmount = "1500";
+    values.securityDepositPreset = "custom";
+    values.securityDepositCustomAmount = "2000";
+
+    expect(validateStartLeaseStep("rent", values).success).toBe(true);
   });
 });
 

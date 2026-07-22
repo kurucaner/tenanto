@@ -19,7 +19,7 @@ todos:
     status: completed
   - id: phase-3a-start-lease
     content: "Phase 3a: Start lease deposit fields (schema, form, hook, draft)"
-    status: pending
+    status: completed
   - id: phase-3b-terms-ui
     content: "Phase 3b: Lease terms display + edit-lease-terms-dialog"
     status: pending
