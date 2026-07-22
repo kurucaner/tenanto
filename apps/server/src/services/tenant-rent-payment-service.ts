@@ -104,6 +104,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
   const schedule = await propertyLongStaysDb.getRentSchedule(payment.leaseId);
   const paidMonths = new Set(schedule.filter((m) => m.isPaid).map((m) => m.month));
 
+  // Stripe rent checkouts always create Long-term rent lines — never Security deposit.
   const systemType = await propertyIncomeLineTypesDb.ensureLeaseRentIncomeLineType(
     payment.propertyId
   );

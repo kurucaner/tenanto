@@ -40,6 +40,14 @@ const mockEnsureLeaseRentIncomeLineType = mockAsyncFn(() =>
     sortOrder: -1,
   })
 );
+const mockEnsureLeaseDepositIncomeLineType = mockAsyncFn(() =>
+  Promise.resolve({
+    id: "type-system-deposit",
+    name: "Security deposit",
+    propertyId: "property-1",
+    sortOrder: -2,
+  })
+);
 const mockCreateIncomeLine = mockAsyncFn(() =>
   Promise.resolve({
     id: "line-1",
@@ -56,6 +64,7 @@ mock.module("@/db/property-long-stays", () => ({
 
 mock.module("@/db/property-income-line-types", () => ({
   propertyIncomeLineTypesDb: {
+    ensureLeaseDepositIncomeLineType: mockEnsureLeaseDepositIncomeLineType,
     ensureLeaseRentIncomeLineType: mockEnsureLeaseRentIncomeLineType,
   },
 }));
@@ -82,6 +91,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     mockFindLeaseById.mockClear();
     mockGetRentSchedule.mockClear();
     mockEnsureLeaseRentIncomeLineType.mockClear();
+    mockEnsureLeaseDepositIncomeLineType.mockClear();
     mockCreateIncomeLine.mockClear();
 
     mockListAllocations.mockResolvedValue([
@@ -146,6 +156,7 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     );
 
     expect(mockEnsureLeaseRentIncomeLineType).toHaveBeenCalledWith("property-1");
+    expect(mockEnsureLeaseDepositIncomeLineType).not.toHaveBeenCalled();
     expect(mockCreateIncomeLine).toHaveBeenCalledWith(
       "property-1",
       expect.objectContaining({

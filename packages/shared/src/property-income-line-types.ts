@@ -47,8 +47,16 @@ export interface ICreatePropertyIncomeLineBody {
   amount: number;
   description?: string;
   guestName?: string;
-  /** Required for misc income; omit for lease rent — server assigns the system Long-term rent type. */
+  /**
+   * Required for misc income; omit for lease-linked lines.
+   * Lease rent / security deposit types are assigned server-side from `longStayId` (+ `isSecurityDeposit`).
+   */
   incomeLineTypeId?: string;
+  /**
+   * When true with `longStayId`, server assigns the system Security deposit type.
+   * Must not include `rentPeriodKey` / `rentPeriodMonth`.
+   */
+  isSecurityDeposit?: boolean;
   longStayId?: string;
   rentPeriodKey?: string;
   reservationId?: string;

@@ -171,6 +171,7 @@ const CreateIncomeLineDialogForm = memo(
           amount: Number(values.amount) || 0,
           description: values.description.trim() || undefined,
           guestName: values.guestName.trim() || undefined,
+          isSecurityDeposit: isDepositRecording ? true : undefined,
           longStayId: values.longStayId || undefined,
           rentPeriodKey: isDepositRecording ? undefined : prefill?.rentPeriodKey,
           reservationId: values.reservationId || undefined,
