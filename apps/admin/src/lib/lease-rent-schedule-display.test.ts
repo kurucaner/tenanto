@@ -377,7 +377,7 @@ describe("getLeaseExtendTermsDescription", () => {
 describe("getExtendLeaseDepositTopUpLabel", () => {
   test("includes formatted top-up delta", () => {
     expect(getExtendLeaseDepositTopUpLabel(300)).toBe(
-      "Increase security deposit to match new rent (+$300.00)"
+      "Increase security deposit to match new rent (+$300)"
     );
   });
 });

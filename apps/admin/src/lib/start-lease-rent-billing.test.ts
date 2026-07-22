@@ -33,7 +33,7 @@ describe("getStartLeaseFirstPeriodRentPreview", () => {
         rentAmount: 700,
         rentBillingCadence: "weekly",
       })
-    ).toBe("First week rent: $600.00 (6/7 days)");
+    ).toBe("First week rent: $600 (6/7 days)");
   });
 
   test("routes to monthly preview for monthly cadence", () => {
@@ -44,7 +44,7 @@ describe("getStartLeaseFirstPeriodRentPreview", () => {
         rentAmount: 1000,
         rentBillingCadence: "monthly",
       })
-    ).toBe("First month rent: $500.00 (15/30 days)");
+    ).toBe("First month rent: $500 (15/30 days)");
   });
 
   test("returns null when the first month is not prorated", () => {
