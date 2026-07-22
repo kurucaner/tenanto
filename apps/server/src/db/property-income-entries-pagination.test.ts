@@ -281,7 +281,9 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     expect(sql).toContain("property_income_lines pil");
     expect(sql).not.toContain("property_reservations pr");
     expect(sql).toContain("pil.income_line_type_id = $");
-    expect(sql).toContain("pil.long_stay_id IS NULL OR lower(ilt.name) = lower('Security deposit')");
+    expect(sql).toContain(
+      "pil.long_stay_id IS NULL OR lower(ilt.name) = lower('Security deposit')"
+    );
   });
 
   test("applies longTerm incomeType filter in SQL", async () => {
@@ -330,7 +332,9 @@ describe("propertyIncomeEntriesDb.listPaginatedByProperty", () => {
     const sql = mockQuery.mock.calls.find(
       ([query]) => !(query as string).includes("COUNT(*)")
     )?.[0] as string;
-    expect(sql).toContain("pil.long_stay_id IS NOT NULL AND NOT (lower(ilt.name) = lower('Security deposit'))");
+    expect(sql).toContain(
+      "pil.long_stay_id IS NOT NULL AND NOT (lower(ilt.name) = lower('Security deposit'))"
+    );
     expect(sql).toContain(
       "(pil.long_stay_id IS NULL OR lower(ilt.name) = lower('Security deposit'))"
     );

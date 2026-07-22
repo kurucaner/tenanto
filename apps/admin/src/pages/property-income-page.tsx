@@ -86,8 +86,8 @@ import {
   buildIncomeToolbarClearOnePatch,
   buildIncomeToolbarFilterItems,
   countIncomeSecondaryFilters,
-  isIncomeToolbarEntryKindFilter,
   type IIncomeToolbarFilterItem,
+  isIncomeToolbarEntryKindFilter,
   type TIncomeToolbarFilterId,
 } from "@/lib/income-toolbar-filters";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
@@ -221,10 +221,7 @@ function buildLineFilters(
   refundStatus: string
 ): IPropertyIncomeLinesListQuery {
   const next: IPropertyIncomeLinesListQuery = { ...dateFilters };
-  if (
-    incomeType &&
-    !isIncomeToolbarEntryKindFilter(incomeType)
-  ) {
+  if (incomeType && !isIncomeToolbarEntryKindFilter(incomeType)) {
     next.incomeLineTypeId = incomeType;
   }
   const qTrim = q.trim();
@@ -1385,8 +1382,7 @@ const PropertyIncomePage = memo(function PropertyIncomePage() {
   const isStayOnlyView = incomeType === IncomeEntryKind.STAY;
   const isEntriesKindOnlyView =
     incomeType === IncomeEntryKind.LONG_TERM || incomeType === IncomeEntryKind.DEPOSIT;
-  const isLineTypeOnlyView =
-    incomeType !== "" && !isIncomeToolbarEntryKindFilter(incomeType);
+  const isLineTypeOnlyView = incomeType !== "" && !isIncomeToolbarEntryKindFilter(incomeType);
   const showStays = incomeType === "" || incomeType === IncomeEntryKind.STAY;
 
   const incomeEntriesInfinite = usePropertyIncomeEntriesInfiniteList(

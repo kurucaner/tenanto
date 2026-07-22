@@ -285,12 +285,7 @@ const PropertyMembersAddButton = memo(function PropertyMembersAddButton({
 
   return (
     <>
-      <Button
-        className="gap-1.5"
-        onClick={() => setAddMemberOpen(true)}
-        size="sm"
-        type="button"
-      >
+      <Button className="gap-1.5" onClick={() => setAddMemberOpen(true)} size="sm" type="button">
         <Plus className="size-3.5" />
         Add Member
       </Button>
@@ -422,7 +417,9 @@ const PropertyMembersSection = memo(function PropertyMembersSection({
     revokeInviteMutation.isPending ||
     inviteAgainMutation.isPending;
 
-  const removingUserId = removeMemberMutation.isPending ? removeMemberMutation.variables : undefined;
+  const removingUserId = removeMemberMutation.isPending
+    ? removeMemberMutation.variables
+    : undefined;
 
   const handleChangeRole = useCallback(
     (userId: string, role: TPropertyRole) => {

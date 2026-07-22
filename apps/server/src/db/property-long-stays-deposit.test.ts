@@ -103,9 +103,9 @@ describe("propertyLongStaysDb security deposit", () => {
 
     expect(created.securityDepositAmount).toBe(1500);
     expect(insertParams?.[11]).toBe(1500);
-    expect(String(mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT"))?.[0])).toContain(
-      "security_deposit_amount"
-    );
+    expect(
+      String(mockQuery.mock.calls.find(([sql]) => String(sql).includes("INSERT"))?.[0])
+    ).toContain("security_deposit_amount");
   });
 
   test("create defaults omitted deposit to null", async () => {

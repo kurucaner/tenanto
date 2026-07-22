@@ -15,8 +15,7 @@ interface LeaseDepositSectionProps {
 export const LeaseDepositSection = memo(
   ({ canManage, lease, onRecordDeposit }: LeaseDepositSectionProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
-    const canRecord =
-      canManage && isActive && canRecordLeaseSecurityDeposit(lease);
+    const canRecord = canManage && isActive && canRecordLeaseSecurityDeposit(lease);
 
     return (
       <Card>

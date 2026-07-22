@@ -12,7 +12,13 @@ import type {
 } from "@/packages/shared";
 import { TenantMembershipRole, TenantMembershipStatus } from "@/packages/shared";
 import * as transactionalEmails from "@/ses/transactional-emails";
-import { makeLease, makeMembership, makeProperty, makeTenant, makeUnit } from "@/test-fixtures/domain";
+import {
+  makeLease,
+  makeMembership,
+  makeProperty,
+  makeTenant,
+  makeUnit,
+} from "@/test-fixtures/domain";
 import {
   mockAsyncFn,
   mockResolved,
@@ -621,7 +627,8 @@ describe("tenantPortalInviteService.retargetPendingInvite", () => {
         id: "tenant-new",
         name: "New Tenant",
       })
-    );    mockRetargetPendingInvite.mockResolvedValue(
+    );
+    mockRetargetPendingInvite.mockResolvedValue(
       makeMembership({
         inviteEmail: "new@example.com",
         status: TenantMembershipStatus.PENDING_ACCEPTANCE,

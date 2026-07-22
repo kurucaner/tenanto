@@ -152,10 +152,7 @@ describe("propertyIncomeLineTypesDb system income types", () => {
       sortOrder: -1,
     });
     const lookup = capturedQueries.find((query) => isActiveSystemNameLookup(query.sql));
-    expect(lookup?.values?.[1]).toEqual([
-      SYSTEM_LEASE_RENT_INCOME_TYPE_NAME.toLowerCase(),
-      "rent",
-    ]);
+    expect(lookup?.values?.[1]).toEqual([SYSTEM_LEASE_RENT_INCOME_TYPE_NAME.toLowerCase(), "rent"]);
   });
 
   test("ensureLeaseDepositIncomeLineType returns active deposit system row", async () => {
