@@ -5,10 +5,8 @@ import { personNameSchema } from "@/packages/app-ui";
 import {
   type ICreateSecondaryOccupantBody,
   type ILeasePrimaryTenantContact,
-  type IPropertyLongStaySecondaryTenant,
   isValidE164,
   isValidTenantEmail,
-  type IUpdateSecondaryOccupantBody,
   normalizeTenantEmail,
   normalizeToE164,
 } from "@/packages/shared";
@@ -134,29 +132,8 @@ function normalizeTenantPhone(value: string): string | null {
   return normalizeToE164(value.trim()) ?? null;
 }
 
-export function toSecondaryOccupantBody(
-  values: TTenantContactFormValues
-): ICreateSecondaryOccupantBody {
-  return {
-    email: values.tenantEmail.trim() || null,
-    name: values.name,
-    phone: normalizeTenantPhone(values.tenantPhone),
-  };
-}
-
-export function toSecondaryOccupantPatch(
-  values: TTenantContactFormValues
-): IUpdateSecondaryOccupantBody {
-  return {
-    email: values.tenantEmail.trim() || null,
-    name: values.name,
-    phone: normalizeTenantPhone(values.tenantPhone),
-  };
-}
-
-export function toSecondaryTenant(
-  values: TTenantContactFormValues
-): IPropertyLongStaySecondaryTenant {
+/** Shared secondary contact payload for create/update APIs (and contact comparison). */
+export function toSecondaryContact(values: TTenantContactFormValues): ICreateSecondaryOccupantBody {
   return {
     email: values.tenantEmail.trim() || null,
     name: values.name,
@@ -183,7 +160,7 @@ export function isLeaseTenantContactUnchanged(
   values: TTenantContactFormValues,
   contact: TLeaseTenantContactSnapshot
 ): boolean {
-  const next = toSecondaryOccupantPatch(values);
+  const next = toSecondaryContact(values);
   return (
     next.name === contact.effectiveName &&
     next.email === (contact.effectiveEmail ?? null) &&

@@ -9,7 +9,7 @@ import {
   createTenantContactFormSchema,
   getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
-  toSecondaryOccupantPatch,
+  toSecondaryContact,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
 import { longStaysApi } from "@/lib/api-client";
@@ -60,7 +60,7 @@ export const EditSecondaryTenantDialog = memo(
           propertyId,
           lease.id,
           membershipId,
-          toSecondaryOccupantPatch(values)
+          toSecondaryContact(values)
         ),
       onError: (e) => {
         toast.error(getSecondaryTenantMutationErrorMessage(e, "Failed to update secondary tenant"));

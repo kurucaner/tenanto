@@ -9,7 +9,7 @@ import {
   createTenantContactFormSchema,
   getSecondaryTenantMutationErrorMessage,
   getTenantContactFormErrorMessage,
-  toSecondaryOccupantBody,
+  toSecondaryContact,
   type TTenantContactFormValues,
 } from "@/components/leases/tenant-contact-form-schema";
 import { Button } from "@/components/ui/button";
@@ -69,7 +69,7 @@ export const AddSecondaryTenantDialog = memo(
         return longStaysApi.createSecondaryOccupant(
           propertyId,
           lease.id,
-          toSecondaryOccupantBody(values)
+          toSecondaryContact(values)
         );
       },
       onError: (e) => {
