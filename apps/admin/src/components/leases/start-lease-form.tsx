@@ -2,6 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { memo, type RefObject } from "react";
 import { Controller, type FieldErrors, type UseFormReturn, useWatch } from "react-hook-form";
 
+import { LeaseDepositPresetFields } from "@/components/leases/lease-deposit-preset-fields";
 import { LeaseTermEndFields } from "@/components/leases/lease-term-end-fields";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field-label";
@@ -12,10 +13,6 @@ import { RadioGroupFieldset, RadioOption } from "@/components/ui/radio-option";
 import { PropertyUnitSelectOptions } from "@/components/units/property-unit-select-options";
 import { isValidDecimalInput } from "@/lib/decimal-input-utils";
 import { formatIsoDateDisplay } from "@/lib/format-iso-date";
-import {
-  LeaseDepositPreset,
-  START_LEASE_DEPOSIT_PRESET_LABELS,
-} from "@/lib/start-lease-deposit-field";
 import { type TStartLeaseFormValues } from "@/lib/start-lease-form-schema";
 import {
   getStartLeaseRentAmountLabel,
@@ -34,7 +31,6 @@ import { PhoneInput } from "@/packages/app-ui";
 import {
   formatPropertyUnitSelectLabel,
   type IPropertyUnit,
-  LEASE_DEPOSIT_PRESETS,
   RENT_BILLING_CADENCE_VALUES,
 } from "@/packages/shared";
 
@@ -242,10 +238,6 @@ const RentStep = memo(
     unitLabel,
   }: RentStepProps) => {
     const rentBillingCadence = useWatch({ control: form.control, name: "rentBillingCadence" });
-    const securityDepositPreset = useWatch({
-      control: form.control,
-      name: "securityDepositPreset",
-    });
     const rentAmountLabel = getStartLeaseRentAmountLabel(rentBillingCadence);
 
     return (
@@ -330,69 +322,11 @@ const RentStep = memo(
 
         <div className="border-border/60 border-t" />
 
-        <div className="space-y-3">
-          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-            Security deposit
-          </p>
-          <Controller
-            control={form.control}
-            name="securityDepositPreset"
-            render={({ field }) => (
-              <RadioGroupFieldset
-                legend="Security deposit"
-                onValueChange={field.onChange}
-                value={field.value}
-              >
-                {LEASE_DEPOSIT_PRESETS.map((preset) => (
-                  <RadioOption
-                    key={preset}
-                    label={START_LEASE_DEPOSIT_PRESET_LABELS[preset]}
-                    value={preset}
-                  >
-                    {preset === LeaseDepositPreset.CUSTOM ? (
-                      <div className="flex flex-col gap-1.5 pl-6">
-                        <Label htmlFor="start-lease-deposit-custom">Custom amount</Label>
-                        <div className="relative max-w-xs">
-                          <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
-                            $
-                          </span>
-                          <Controller
-                            control={form.control}
-                            name="securityDepositCustomAmount"
-                            render={({ field: customField }) => (
-                              <Input
-                                className="pl-7 tabular-nums"
-                                id="start-lease-deposit-custom"
-                                inputMode="decimal"
-                                onChange={(e) => {
-                                  if (isValidDecimalInput(e.target.value)) {
-                                    customField.onChange(e.target.value);
-                                  }
-                                }}
-                                type="text"
-                                value={customField.value}
-                              />
-                            )}
-                          />
-                        </div>
-                        {securityDepositCustomAmountError ? (
-                          <p className="text-destructive text-xs">
-                            {securityDepositCustomAmountError}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </RadioOption>
-                ))}
-              </RadioGroupFieldset>
-            )}
-          />
-          {securityDepositPreset === LeaseDepositPreset.ONE_MONTH_RENT ? (
-            <p className="text-muted-foreground text-xs">
-              Saves the current rent amount as a fixed deposit snapshot (not recalculated later).
-            </p>
-          ) : null}
-        </div>
+        <LeaseDepositPresetFields<TStartLeaseFormValues>
+          control={form.control}
+          customAmountError={securityDepositCustomAmountError}
+          customAmountFieldId="start-lease-deposit-custom"
+        />
       </div>
     );
   }

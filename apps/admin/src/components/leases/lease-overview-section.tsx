@@ -1,6 +1,7 @@
 import { memo } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { formatLeaseSecurityDepositDisplay } from "@/lib/lease-deposit-display";
 import { getActiveLeaseHoldoverNotice } from "@/lib/lease-proration-display";
 import {
   getLeaseBillingCadenceLabel,
@@ -46,6 +47,12 @@ export const LeaseOverviewSection = memo(({ lease }: LeaseOverviewSectionProps) 
           <div>
             <dt className="text-muted-foreground">Rent billing</dt>
             <dd className="font-medium">{getLeaseBillingCadenceLabel(lease.rentBillingCadence)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Security deposit</dt>
+            <dd className="font-medium">
+              {formatLeaseSecurityDepositDisplay(lease.securityDepositAmount)}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Term</dt>

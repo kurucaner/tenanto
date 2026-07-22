@@ -3,21 +3,18 @@ import { z } from "zod";
 
 import { tenantPhoneFieldSchema } from "@/components/leases/tenant-contact-form-schema";
 import { refineLeaseTermEndFormValues } from "@/lib/lease-term-end-utils";
-import {
-  optionalNonNegativeMoneyField,
-  requiredNonNegativeMoneyField,
-  requiredPositiveMoneyField,
-} from "@/lib/money-field-validation";
+import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
-import { LeaseDepositPreset, type TLeaseDepositPreset } from "@/lib/start-lease-deposit-field";
+import {
+  LeaseDepositPreset,
+  leaseDepositPresetSchema,
+  refineLeaseDepositFormValues,
+  type TLeaseDepositPreset,
+} from "@/lib/start-lease-deposit-field";
 import { getStartLeaseRentAmountLabel } from "@/lib/start-lease-rent-billing";
 import { type TStartLeaseStep } from "@/lib/start-lease-steps";
 import { createPersonNameSchema } from "@/packages/app-ui";
-import {
-  LEASE_DEPOSIT_PRESETS,
-  RENT_BILLING_CADENCE_VALUES,
-  RentBillingCadence,
-} from "@/packages/shared";
+import { RENT_BILLING_CADENCE_VALUES, RentBillingCadence } from "@/packages/shared";
 
 export type { TStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 
@@ -25,9 +22,6 @@ export const DEFAULT_START_LEASE_TERM_MONTHS = "12";
 export const DEFAULT_START_LEASE_TERM_WEEKS = "4";
 
 const startLeaseRentBillingCadenceSchema = z.enum(RENT_BILLING_CADENCE_VALUES);
-const startLeaseDepositPresetSchema = z.enum(
-  LEASE_DEPOSIT_PRESETS as unknown as [TLeaseDepositPreset, ...TLeaseDepositPreset[]]
-);
 
 const startLeaseWhoStepSchema = z.object({
   guestName: createPersonNameSchema({ requiredMessage: "Primary tenant name is required" }),
@@ -67,26 +61,7 @@ function refineStartLeaseRentAndDeposit(
     }
   }
 
-  if (values.securityDepositPreset === LeaseDepositPreset.CUSTOM) {
-    const customResult = requiredNonNegativeMoneyField("Custom deposit amount").safeParse(
-      values.securityDepositCustomAmount
-    );
-    if (!customResult.success) {
-      for (const issue of customResult.error.issues) {
-        ctx.addIssue({ ...issue, path: ["securityDepositCustomAmount"] });
-      }
-    }
-    return;
-  }
-
-  const optionalCustom = optionalNonNegativeMoneyField(
-    "Custom deposit amount must be a non-negative number"
-  ).safeParse(values.securityDepositCustomAmount);
-  if (!optionalCustom.success) {
-    for (const issue of optionalCustom.error.issues) {
-      ctx.addIssue({ ...issue, path: ["securityDepositCustomAmount"] });
-    }
-  }
+  refineLeaseDepositFormValues(values, ctx);
 }
 
 const startLeaseRentStepSchema = z
@@ -94,7 +69,7 @@ const startLeaseRentStepSchema = z
     rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
     securityDepositCustomAmount: z.string(),
-    securityDepositPreset: startLeaseDepositPresetSchema,
+    securityDepositPreset: leaseDepositPresetSchema,
   })
   .superRefine((values, ctx) => {
     refineStartLeaseRentAndDeposit(values, ctx);
@@ -108,7 +83,7 @@ export const startLeaseSchema = z
     rentAmount: z.string(),
     rentBillingCadence: startLeaseRentBillingCadenceSchema,
     securityDepositCustomAmount: z.string(),
-    securityDepositPreset: startLeaseDepositPresetSchema,
+    securityDepositPreset: leaseDepositPresetSchema,
     tenantEmail: z.string(),
     tenantPhone: tenantPhoneFieldSchema,
     termMode: z.enum(["months", "weeks", "customEnd"]),
