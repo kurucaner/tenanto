@@ -15,18 +15,19 @@ const mockEnsureSystemPaymentProcessingExpenseCategory = mockAsyncFn(() =>
   })
 );
 
-const mockCreateExpense = mockAsyncFn(() =>
-  Promise.resolve(
-    makeExpense({
-      amount: 4.66,
-      categoryId: "cat-payment-processing",
-      categoryName: "Payment processing",
-      description: "Stripe processing fee (rent payment payment-1)",
-      expenseDate: "2026-07-22",
-      id: "expense-fee-1",
-      stripeBalanceTransactionId: "txn_1",
-    })
-  )
+const mockCreateExpense = mockAsyncFn(
+  (_propertyId: string, _input: { stripeBalanceTransactionId?: string | null }) =>
+    Promise.resolve(
+      makeExpense({
+        amount: 4.66,
+        categoryId: "cat-payment-processing",
+        categoryName: "Payment processing",
+        description: "Stripe processing fee (rent payment payment-1)",
+        expenseDate: "2026-07-22",
+        id: "expense-fee-1",
+        stripeBalanceTransactionId: "txn_1",
+      })
+    )
 );
 
 const mockFindExpenseByStripeBalanceTransactionId = mockAsyncFn(() =>
@@ -197,7 +198,13 @@ describe("bookStripeProcessingFeeExpenseForRentPayment", () => {
     expect(first?.id).toBe("expense-fee-1");
     expect(second?.id).toBe("expense-fee-1");
     expect(mockCreateExpense).toHaveBeenCalledTimes(2);
-    expect(mockCreateExpense.mock.calls[1]?.[1]?.stripeBalanceTransactionId).toBe("txn_1");
+    expect(mockCreateExpense).toHaveBeenNthCalledWith(
+      2,
+      payment.propertyId,
+      expect.objectContaining({
+        stripeBalanceTransactionId: "txn_1",
+      })
+    );
   });
 });
 
