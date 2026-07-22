@@ -127,7 +127,7 @@ export const EditLeaseTermsDialog = memo(
             );
             if (error) {
               ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+                code: "custom",
                 message: error,
                 path: [getLeaseTermEndErrorPath(values.termMode)],
               });

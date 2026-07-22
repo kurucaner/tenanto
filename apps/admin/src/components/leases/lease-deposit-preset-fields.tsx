@@ -1,3 +1,4 @@
+import { type ChangeEvent } from "react";
 import {
   type Control,
   Controller,
@@ -28,6 +29,56 @@ type TLeaseDepositPresetFieldsProps<TFieldValues extends FieldValues & TLeaseDep
   legend?: string;
 };
 
+type TLeaseDepositCustomAmountFieldProps<
+  TFieldValues extends FieldValues & TLeaseDepositFormValues,
+> = {
+  control: Control<TFieldValues>;
+  customAmountError?: string;
+  customAmountFieldId: string;
+};
+
+function handleCustomAmountChange(
+  onChange: (value: string) => void,
+  event: ChangeEvent<HTMLInputElement>
+): void {
+  if (isValidDecimalInput(event.target.value)) {
+    onChange(event.target.value);
+  }
+}
+
+function LeaseDepositCustomAmountField<
+  TFieldValues extends FieldValues & TLeaseDepositFormValues,
+>({
+  control,
+  customAmountError,
+  customAmountFieldId,
+}: Readonly<TLeaseDepositCustomAmountFieldProps<TFieldValues>>) {
+  return (
+    <div className="flex flex-col gap-1.5 pl-6">
+      <div className="relative max-w-xs">
+        <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
+          $
+        </span>
+        <Controller
+          control={control}
+          name={"securityDepositCustomAmount" as FieldPath<TFieldValues>}
+          render={({ field }) => (
+            <Input
+              className="pl-7 tabular-nums"
+              id={customAmountFieldId}
+              inputMode="decimal"
+              onChange={(event) => handleCustomAmountChange(field.onChange, event)}
+              type="text"
+              value={field.value}
+            />
+          )}
+        />
+      </div>
+      {customAmountError ? <p className="text-destructive text-xs">{customAmountError}</p> : null}
+    </div>
+  );
+}
+
 export function LeaseDepositPresetFields<
   TFieldValues extends FieldValues & TLeaseDepositFormValues,
 >({
@@ -56,34 +107,11 @@ export function LeaseDepositPresetFields<
                 value={preset}
               >
                 {preset === LeaseDepositPreset.CUSTOM ? (
-                  <div className="flex flex-col gap-1.5 pl-6">
-                    <div className="relative max-w-xs">
-                      <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm">
-                        $
-                      </span>
-                      <Controller
-                        control={control}
-                        name={"securityDepositCustomAmount" as FieldPath<TFieldValues>}
-                        render={({ field: customField }) => (
-                          <Input
-                            className="pl-7 tabular-nums"
-                            id={customAmountFieldId}
-                            inputMode="decimal"
-                            onChange={(e) => {
-                              if (isValidDecimalInput(e.target.value)) {
-                                customField.onChange(e.target.value);
-                              }
-                            }}
-                            type="text"
-                            value={customField.value}
-                          />
-                        )}
-                      />
-                    </div>
-                    {customAmountError ? (
-                      <p className="text-destructive text-xs">{customAmountError}</p>
-                    ) : null}
-                  </div>
+                  <LeaseDepositCustomAmountField
+                    control={control}
+                    customAmountError={customAmountError}
+                    customAmountFieldId={customAmountFieldId}
+                  />
                 ) : null}
               </RadioOption>
             ))}
