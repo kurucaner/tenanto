@@ -392,10 +392,45 @@ async function validateExpenseCategoryTypeRemoval(
   const removed = existing.filter((type) => !incomingIds.has(type.id));
 
   for (const type of removed) {
+    if (type.isSystem) {
+      return {
+        error: `Cannot remove system category "${type.name}"`,
+        ok: false,
+      };
+    }
     const count = await propertyExpenseCategoryTypesDb.countUsage(type.id);
     if (count > 0) {
       return {
         error: `Cannot remove "${type.name}" because ${count} expense(s) still use it`,
+        ok: false,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+async function validateSystemExpenseCategoryTypes(
+  propertyId: string,
+  incoming: IPropertyExpenseCategoryTypeInput[]
+): Promise<{ error: string; ok: false } | { ok: true }> {
+  const existing = await propertyExpenseCategoryTypesDb.findByProperty(propertyId);
+  const systemTypes = existing.filter((type) => type.isSystem);
+  const incomingById = new Map(
+    incoming.flatMap((input) => (input.id != null ? [[input.id, input] as const] : []))
+  );
+
+  for (const systemType of systemTypes) {
+    const next = incomingById.get(systemType.id);
+    if (next == null) {
+      return {
+        error: `Cannot remove system category "${systemType.name}"`,
+        ok: false,
+      };
+    }
+    if (next.name.trim().toLowerCase() !== systemType.name.toLowerCase()) {
+      return {
+        error: `Cannot rename system category "${systemType.name}"`,
         ok: false,
       };
     }
@@ -498,6 +533,14 @@ export const propertySettingsRoutes = async (server: FastifyInstance): Promise<v
       }
 
       if (parsed.body.expenseCategoryTypes != null) {
+        const systemCheck = await validateSystemExpenseCategoryTypes(
+          propertyId,
+          parsed.body.expenseCategoryTypes
+        );
+        if (!systemCheck.ok) {
+          return reply.status(HttpStatus.BAD_REQUEST).send({ error: systemCheck.error });
+        }
+
         const removalCheck = await validateExpenseCategoryTypeRemoval(
           propertyId,
           parsed.body.expenseCategoryTypes

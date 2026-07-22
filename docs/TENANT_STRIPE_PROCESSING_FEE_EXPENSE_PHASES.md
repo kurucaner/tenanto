@@ -199,9 +199,9 @@ No new public API required for v1. Internal:
 
 **Goal:** Operators cannot destroy the automation target.
 
-- [ ] `archivePropertyCatalogTypesNotInIds` / `replaceAll` skip or re-ensure `is_system` rows
-- [ ] Settings route rejects delete/rename of system expense categories
-- [ ] Admin expense category catalog: hide delete; disable name edit for `isSystem`
+- [x] `archivePropertyCatalogTypesNotInIds` / `replaceAll` skip or re-ensure `is_system` rows
+- [x] Settings route rejects delete/rename of system expense categories
+- [x] Admin expense category catalog: hide delete/edit for `isSystem` (name locked)
 
 **Files (≤6):** catalog utils and/or expense category DAO; settings route; admin catalog component(s); tests.
 

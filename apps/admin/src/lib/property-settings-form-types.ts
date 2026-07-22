@@ -11,6 +11,7 @@ export interface PropertyExpenseCategoryTypeFormRow {
   clientId: string;
   id?: string;
   isAnnualAmount: boolean;
+  isSystem?: boolean;
   name: string;
 }
 

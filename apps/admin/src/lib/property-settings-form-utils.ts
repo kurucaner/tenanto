@@ -80,6 +80,7 @@ const expenseCategoryTypeToFormRow = (
   clientId: type.id,
   id: type.id,
   isAnnualAmount: type.isAnnualAmount,
+  isSystem: type.isSystem,
   name: type.name,
 });
 

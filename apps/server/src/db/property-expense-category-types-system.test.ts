@@ -241,4 +241,67 @@ describe("propertyExpenseCategoryTypesDb system Payment processing", () => {
       )
     ).toBe(true);
   });
+
+  test("replaceAll merges system id before archive and skips system updates", async () => {
+    capturedQueries.length = 0;
+    mockClientQuery.mockClear();
+
+    mockClientQuery.mockImplementation((sql: string, values?: unknown[]) => {
+      capturedQueries.push({ sql, values: values ?? [] });
+
+      if (isActiveSystemNameLookup(sql)) {
+        return Promise.resolve({ rows: [systemCategoryRow()] });
+      }
+
+      if (sql.includes("SET is_deleted = true")) {
+        return Promise.resolve({ rows: [] });
+      }
+
+      if (
+        sql.includes("UPDATE property_expense_category_types") &&
+        sql.includes("is_system = false")
+      ) {
+        return Promise.resolve({ rows: [] });
+      }
+
+      if (
+        sql.includes("FROM property_expense_category_types") &&
+        sql.includes("ORDER BY sort_order")
+      ) {
+        return Promise.resolve({ rows: [systemCategoryRow()] });
+      }
+
+      return Promise.resolve({ rows: [] });
+    });
+
+    const types = await propertyExpenseCategoryTypesDb.replaceAll(
+      propertyId,
+      [],
+      mockClient as never
+    );
+
+    const archiveQuery = capturedQueries.find((query) =>
+      query.sql.includes("SET is_deleted = true")
+    );
+    expect(archiveQuery?.values?.[1]).toContain(systemCategoryId);
+    expect(archiveQuery?.sql).toContain("is_system = false");
+    expect(
+      capturedQueries.some(
+        (query) =>
+          query.sql.includes("UPDATE property_expense_category_types") &&
+          query.sql.includes("is_system = false") &&
+          query.sql.includes("sort_order")
+      )
+    ).toBe(false);
+    expect(types).toEqual([
+      {
+        id: systemCategoryId,
+        isAnnualAmount: false,
+        isSystem: true,
+        name: SYSTEM_PAYMENT_PROCESSING_EXPENSE_CATEGORY_NAME,
+        propertyId,
+        sortOrder: -1,
+      },
+    ]);
+  });
 });

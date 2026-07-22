@@ -24,7 +24,7 @@ export async function archivePropertyCatalogTypesNotInIds(
   propertyId: string,
   incomingIds: string[]
 ): Promise<void> {
-  const systemGuard = table === "property_income_line_types" ? " AND is_system = false" : "";
+  const systemGuard = " AND is_system = false";
 
   if (incomingIds.length === 0) {
     await db.query(
@@ -86,6 +86,7 @@ export async function restoreArchivedExpenseCategoryTypeByName(
          updated_at = NOW()
      WHERE property_id = $4
        AND is_deleted = true
+       AND is_system = false
        AND lower(name) = lower($1)
      RETURNING id`,
     [name, sortOrder, isAnnualAmount, propertyId]

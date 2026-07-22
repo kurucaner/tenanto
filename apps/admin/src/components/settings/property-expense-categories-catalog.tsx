@@ -36,15 +36,19 @@ const ExpenseCategoryCatalogRow = memo(function ExpenseCategoryCatalogRow({
   row: PropertyExpenseCategoryTypeFormRow;
 }) {
   const { openEdit } = usePropertySettingsCatalogDialog<PropertyExpenseCategoryTypeFormRow>();
+  const isSystem = row.isSystem === true;
+  const metaParts = [...(row.isAnnualAmount ? ["Annual"] : []), ...(isSystem ? ["System"] : [])];
 
   return (
     <PropertySettingsCatalogRow
       disabled={disabled}
       isDeletePending={isPending}
-      meta={row.isAnnualAmount ? "Annual" : undefined}
-      onDelete={(event) => onDeleteRow(row, event)}
-      onEdit={() => openEdit(row)}
+      meta={metaParts.length > 0 ? metaParts.join(" · ") : undefined}
+      onDelete={isSystem ? undefined : (event) => onDeleteRow(row, event)}
+      onEdit={isSystem ? undefined : () => openEdit(row)}
       quickDeleteActive={isQuickDeleteActive}
+      showDelete={!isSystem}
+      showEdit={!isSystem}
       title={row.name}
     />
   );

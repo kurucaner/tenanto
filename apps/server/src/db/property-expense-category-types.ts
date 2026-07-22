@@ -140,7 +140,17 @@ export const propertyExpenseCategoryTypesDb = {
     client?: PoolClient
   ): Promise<IPropertyExpenseCategoryType[]> {
     const db = client ?? pool;
-    const incomingIds = inputs.flatMap((input) => (input.id != null ? [input.id] : []));
+    const systemType =
+      await propertyExpenseCategoryTypesDb.ensureSystemPaymentProcessingExpenseCategory(
+        propertyId,
+        client
+      );
+    const incomingIds = [
+      ...new Set([
+        ...inputs.flatMap((input) => (input.id != null ? [input.id] : [])),
+        systemType.id,
+      ]),
+    ];
 
     await archivePropertyCatalogTypesNotInIds(
       db,
@@ -161,7 +171,9 @@ export const propertyExpenseCategoryTypesDb = {
                is_deleted = false,
                deleted_at = NULL,
                updated_at = NOW()
-           WHERE id = $4 AND property_id = $5`,
+           WHERE id = $4
+             AND property_id = $5
+             AND is_system = false`,
           [name, input.sortOrder, isAnnualAmount, input.id, propertyId]
         );
       } else {
@@ -182,6 +194,11 @@ export const propertyExpenseCategoryTypesDb = {
         }
       }
     }
+
+    await propertyExpenseCategoryTypesDb.ensureSystemPaymentProcessingExpenseCategory(
+      propertyId,
+      client
+    );
 
     return propertyExpenseCategoryTypesDb.findByProperty(propertyId, client);
   },

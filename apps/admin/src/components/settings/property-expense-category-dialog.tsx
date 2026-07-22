@@ -49,6 +49,7 @@ export const PropertyExpenseCategoryDialog = memo(function PropertyExpenseCatego
   row,
 }: TPropertyExpenseCategoryDialogProps) {
   const isEdit = row != null;
+  const isSystem = row?.isSystem === true;
   const form = useForm<TExpenseCategoryFormValues>({
     defaultValues: getDefaultValues(row),
     resolver: zodResolver(expenseCategoryFormSchema),
@@ -65,7 +66,8 @@ export const PropertyExpenseCategoryDialog = memo(function PropertyExpenseCatego
       clientId: row?.clientId ?? createPropertySettingsClientId(),
       id: row?.id,
       isAnnualAmount: values.isAnnualAmount,
-      name: values.name.trim(),
+      isSystem: row?.isSystem,
+      name: isSystem ? (row?.name ?? values.name.trim()) : values.name.trim(),
     });
   });
 
@@ -82,15 +84,20 @@ export const PropertyExpenseCategoryDialog = memo(function PropertyExpenseCatego
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit expense category" : "Add expense category"}</DialogTitle>
           <DialogDescription>
-            Categories available when adding expenses. Annual categories are spread across months in
-            reports.
+            {isSystem
+              ? "System categories are used by automation and cannot be renamed or removed."
+              : "Categories available when adding expenses. Annual categories are spread across months in reports."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <DialogFormFields>
             <div className="space-y-2">
               <Label htmlFor="expense-category-name">Name</Label>
-              <Input id="expense-category-name" {...form.register("name")} disabled={isPending} />
+              <Input
+                id="expense-category-name"
+                {...form.register("name")}
+                disabled={isPending || isSystem}
+              />
               {form.formState.errors.name ? (
                 <p className="text-destructive text-sm">{form.formState.errors.name.message}</p>
               ) : null}
@@ -102,7 +109,7 @@ export const PropertyExpenseCategoryDialog = memo(function PropertyExpenseCatego
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={field.value}
-                    disabled={isPending}
+                    disabled={isPending || isSystem}
                     onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
                   Annual amount (spread across months in reports)
@@ -119,7 +126,7 @@ export const PropertyExpenseCategoryDialog = memo(function PropertyExpenseCatego
             >
               Cancel
             </Button>
-            <Button disabled={isPending} type="submit">
+            <Button disabled={isPending || (isSystem && isEdit)} type="submit">
               {submitLabel}
             </Button>
           </DialogFooter>

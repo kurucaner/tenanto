@@ -8,9 +8,11 @@ export interface PropertySettingsCatalogRowProps {
   disabled?: boolean;
   isDeletePending?: boolean;
   meta?: ReactNode;
-  onDelete: (event?: MouseEvent<HTMLButtonElement>) => void;
-  onEdit: () => void;
+  onDelete?: (event?: MouseEvent<HTMLButtonElement>) => void;
+  onEdit?: () => void;
   quickDeleteActive: boolean;
+  showDelete?: boolean;
+  showEdit?: boolean;
   title: string;
 }
 
@@ -21,6 +23,8 @@ export const PropertySettingsCatalogRow = memo(function PropertySettingsCatalogR
   onDelete,
   onEdit,
   quickDeleteActive,
+  showDelete = true,
+  showEdit = true,
   title,
 }: PropertySettingsCatalogRowProps) {
   return (
@@ -30,20 +34,24 @@ export const PropertySettingsCatalogRow = memo(function PropertySettingsCatalogR
         {meta ? <p className="text-muted-foreground truncate text-xs">{meta}</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-0.5">
-        <TableIconButton
-          ariaLabel={`Edit ${title || "item"}`}
-          disabled={disabled || isDeletePending}
-          onClick={onEdit}
-          tooltip="Edit"
-        >
-          <Pencil className="size-3.5" />
-        </TableIconButton>
-        <QuickDeleteButton
-          ariaLabel={`Remove ${title || "item"}`}
-          disabled={disabled || isDeletePending}
-          onClick={onDelete}
-          quickDeleteActive={quickDeleteActive}
-        />
+        {showEdit && onEdit != null ? (
+          <TableIconButton
+            ariaLabel={`Edit ${title || "item"}`}
+            disabled={disabled || isDeletePending}
+            onClick={onEdit}
+            tooltip="Edit"
+          >
+            <Pencil className="size-3.5" />
+          </TableIconButton>
+        ) : null}
+        {showDelete && onDelete != null ? (
+          <QuickDeleteButton
+            ariaLabel={`Remove ${title || "item"}`}
+            disabled={disabled || isDeletePending}
+            onClick={onDelete}
+            quickDeleteActive={quickDeleteActive}
+          />
+        ) : null}
       </div>
     </li>
   );
