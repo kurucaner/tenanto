@@ -7,39 +7,33 @@ import type {
   IPropertyLongStayRentPeriod,
 } from "./property-long-stay-types";
 
-/** Schedule period key: `YYYY-MM` (monthly cadence) or `YYYY-MM-DD` week start (weekly cadence). */
-export type TRentPeriodKey = string;
-
-/** Recurring rent amount for the lease billing cadence (weekly or monthly). */
-export type TRentAmount = number;
-
 export function getRentPeriodEffectiveFrom(
   period: Pick<IPropertyLongStayRentPeriod, "effectiveFromMonth" | "effectiveFromPeriod">
-): TRentPeriodKey {
+): string {
   return period.effectiveFromPeriod ?? period.effectiveFromMonth ?? "";
 }
 
 export function getRentPeriodAmount(
   period: Pick<IPropertyLongStayRentPeriod, "monthlyRent" | "rentAmount">
-): TRentAmount {
+): number {
   return period.rentAmount ?? period.monthlyRent ?? 0;
 }
 
 export function getRentSchedulePeriodKey(
   item: Pick<IPropertyLongStayRentMonth, "month" | "periodKey">
-): TRentPeriodKey {
+): string {
   return item.periodKey ?? item.month ?? "";
 }
 
 export function getLeaseRentAmount(
   lease: Pick<IPropertyLongStay, "monthlyRent" | "rentAmount">
-): TRentAmount {
+): number {
   return lease.rentAmount ?? lease.monthlyRent ?? 0;
 }
 
 export function resolveCreateLeaseRentAmount(
   body: Pick<ICreatePropertyLongStayBody, "monthlyRent" | "rentAmount">
-): TRentAmount | undefined {
+): number | undefined {
   if (body.rentAmount !== undefined) {
     return body.rentAmount;
   }
@@ -49,24 +43,27 @@ export function resolveCreateLeaseRentAmount(
 
 export function resolveExtendRentEffectivePeriod(
   body: Pick<IExtendPropertyLongStayBody, "rentEffectiveFromMonth" | "rentEffectiveFromPeriod">
-): TRentPeriodKey | undefined {
+): string | undefined {
   return body.rentEffectiveFromPeriod ?? body.rentEffectiveFromMonth;
 }
 
 export function resolveExtendNewRentAmount(
   body: Pick<IExtendPropertyLongStayBody, "newMonthlyRent" | "newRentAmount">
-): TRentAmount | undefined {
+): number | undefined {
   return body.newRentAmount ?? body.newMonthlyRent;
 }
 
 export function resolveTermsEditRentAmount(
   body: Pick<IEditPropertyLongStayTermsBody, "monthlyRent" | "rentAmount">
-): TRentAmount {
+): number {
   return body.rentAmount ?? body.monthlyRent ?? 0;
 }
 
 export function resolveIncomeLineRentPeriodKey(
-  body: Pick<{ rentPeriodKey?: string | null; rentPeriodMonth?: string | null }, "rentPeriodKey" | "rentPeriodMonth">
+  body: Pick<
+    { rentPeriodKey?: string | null; rentPeriodMonth?: string | null },
+    "rentPeriodKey" | "rentPeriodMonth"
+  >
 ): string | null | undefined {
   if (body.rentPeriodKey !== undefined) {
     return body.rentPeriodKey;
@@ -82,10 +79,10 @@ export function withRentPeriodLegacyShims(
   const rentAmount = getRentPeriodAmount(period);
 
   return {
-    effectiveFromPeriod,
-    rentAmount,
     effectiveFromMonth: effectiveFromPeriod,
+    effectiveFromPeriod,
     monthlyRent: rentAmount,
+    rentAmount,
   };
 }
 
@@ -96,8 +93,8 @@ export function withRentScheduleLegacyShims(
 
   return {
     ...item,
-    periodKey,
     month: periodKey,
+    periodKey,
   };
 }
 
@@ -106,8 +103,8 @@ export function withLeaseRentLegacyShims(lease: IPropertyLongStay): IPropertyLon
 
   return {
     ...lease,
-    rentAmount,
     monthlyRent: rentAmount,
+    rentAmount,
   };
 }
 

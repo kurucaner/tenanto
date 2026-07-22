@@ -19,6 +19,7 @@ import {
   calculateMiscIncomeLine,
   centsToDollars,
   computeTenantBalanceFromRentSchedule,
+  getRentSchedulePeriodKey,
   isLeaseRentPeriodFullyPaidCents,
   isWeeklyPeriodKey,
   type ITenantCreateRentCheckoutResponse,
@@ -94,7 +95,9 @@ function toStatusResponse(payment: ITenantRentPayment): ITenantRentPaymentStatus
 
 /**
  * Create income lines for months fully covered by succeeded allocations.
- * Skips months that already have schedule income (isPaid).
+ * Skips periods that already have a rent income line. Do not use schedule
+ * `isPaid` — after markSucceeded, allocations alone mark months paid and would
+ * skip income create (lease Payments tab paid, Income table empty).
  */
 export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayment): Promise<void> {
   const allocations = await tenantRentPaymentsDb.listAllocations(payment.id);
@@ -106,7 +109,9 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
   }
 
   const schedule = await propertyLongStaysDb.getRentSchedule(payment.leaseId);
-  const paidMonths = new Set(schedule.filter((m) => m.isPaid).map((m) => m.month));
+  const periodsWithIncome = new Set(
+    schedule.filter((m) => m.incomeLineId != null).map((m) => getRentSchedulePeriodKey(m))
+  );
 
   // Stripe rent checkouts always create Long-term rent lines — never Security deposit.
   const systemType = await propertyIncomeLineTypesDb.ensureLeaseRentIncomeLineType(
@@ -115,7 +120,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
   const incomeLineTypeId = systemType.id;
 
   for (const allocation of allocations) {
-    if (paidMonths.has(allocation.periodMonth)) {
+    if (periodsWithIncome.has(allocation.periodMonth)) {
       continue;
     }
 
@@ -146,7 +151,7 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
       },
       computed
     );
-    paidMonths.add(allocation.periodMonth);
+    periodsWithIncome.add(allocation.periodMonth);
   }
 }
 

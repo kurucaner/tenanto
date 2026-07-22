@@ -167,10 +167,41 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     );
   });
 
-  test("skips create when schedule month is already paid", async () => {
+  test("creates income when month is allocation-paid but has no income line", async () => {
     mockGetRentSchedule.mockResolvedValueOnce([
       {
         expectedRent: 200,
+        isPaid: true,
+        month: "2026-01",
+        paidRent: 200,
+        remainingRent: 0,
+      },
+    ]);
+
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_1",
+        stripePaymentIntentId: "pi_1",
+      })
+    );
+
+    expect(mockCreateIncomeLine).toHaveBeenCalledTimes(1);
+    expect(mockCreateIncomeLine).toHaveBeenCalledWith(
+      "property-1",
+      expect.objectContaining({
+        rentPeriodKey: "2026-01",
+        tenantRentPaymentId: "payment-1",
+      }),
+      expect.any(Object)
+    );
+  });
+
+  test("skips create when period already has an income line", async () => {
+    mockGetRentSchedule.mockResolvedValueOnce([
+      {
+        expectedRent: 200,
+        incomeLineId: "line-existing",
         isPaid: true,
         month: "2026-01",
         paidRent: 200,
