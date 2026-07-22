@@ -41,6 +41,40 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     changes: [
       {
+        category: "new",
+        description:
+          "When a tenant pays rent successfully, Stripe’s processing fee is recorded as a Payment processing expense on the property.",
+      },
+      {
+        category: "new",
+        description:
+          "Failed ACH returns that Stripe charges a fee for are recorded under the same Payment processing expense category.",
+      },
+      {
+        category: "improved",
+        description:
+          "The Payment processing expense category can’t be renamed or removed in property settings.",
+      },
+      {
+        category: "improved",
+        description:
+          "If you refund rent, the processing-fee expense is only removed when Stripe actually reverses that fee — otherwise it stays, matching Stripe.",
+      },
+      {
+        category: "improved",
+        description:
+          "Extending a lease defaults the new end date to one week or one month ahead, and the custom date field sits under the options so it’s easier to use.",
+      },
+    ],
+    id: "2026.20.0",
+    publishedAt: "2026-07-22",
+    summary:
+      "Stripe rent fees book as Payment processing expenses, and tenant rent payments show on Income again.",
+    version: "2026.20.0",
+  },
+  {
+    changes: [
+      {
         category: "improved",
         description:
           "You can settle a held security deposit from the lease — refund full or partial in place — without switching to Income.",
