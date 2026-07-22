@@ -11,7 +11,6 @@ import { ExtendLeaseDialog } from "@/components/leases/extend-lease-dialog";
 import { LeaseDepositCloseOutDialog } from "@/components/leases/lease-deposit-close-out-dialog";
 import { LeaseDepositSection } from "@/components/leases/lease-deposit-section";
 import { LeaseDetailActions, LeaseDetailHeader } from "@/components/leases/lease-detail-header";
-import { LeaseOverviewSection } from "@/components/leases/lease-overview-section";
 import { LeasePaymentsSection } from "@/components/leases/lease-payments-section";
 import { LeaseTenantsSection } from "@/components/leases/lease-tenants-section";
 import { LeaseTermsSection } from "@/components/leases/lease-terms-section";
@@ -43,7 +42,7 @@ export const PropertyLeaseDetailPage = memo(() => {
   const propertyId = routePropertyId ?? shellPropertyId;
   const canManage = permissions.canManageLedger;
 
-  const { activeTab, setActiveTab } = useUrlTabState(LEASE_DETAIL_TABS, "overview");
+  const { activeTab, setActiveTab } = useUrlTabState(LEASE_DETAIL_TABS, "payments");
 
   const [endLeaseOpen, setEndLeaseOpen] = useState(false);
   const [extendLeaseOpen, setExtendLeaseOpen] = useState(false);
@@ -201,20 +200,6 @@ export const PropertyLeaseDetailPage = memo(() => {
           onTabChange={setActiveTab}
           tabs={LEASE_DETAIL_TAB_DEFINITIONS}
         >
-          <UrlSyncedTabsContent value="overview">
-            <LeaseOverviewSection lease={lease} />
-          </UrlSyncedTabsContent>
-
-          <UrlSyncedTabsContent value="tenants">
-            <LeaseTenantsSection
-              canManage={canManage}
-              lease={lease}
-              primaryTenantContact={primaryTenantContact}
-              propertyId={propertyId}
-              secondaryTenantContacts={secondaryTenantContacts}
-            />
-          </UrlSyncedTabsContent>
-
           <UrlSyncedTabsContent value="payments">
             <div className="space-y-4">
               <LeaseDepositSection
@@ -232,6 +217,16 @@ export const PropertyLeaseDetailPage = memo(() => {
                 rentSchedule={rentSchedule}
               />
             </div>
+          </UrlSyncedTabsContent>
+
+          <UrlSyncedTabsContent value="tenants">
+            <LeaseTenantsSection
+              canManage={canManage}
+              lease={lease}
+              primaryTenantContact={primaryTenantContact}
+              propertyId={propertyId}
+              secondaryTenantContacts={secondaryTenantContacts}
+            />
           </UrlSyncedTabsContent>
 
           <UrlSyncedTabsContent value="terms">

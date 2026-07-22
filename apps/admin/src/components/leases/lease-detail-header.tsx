@@ -3,8 +3,12 @@ import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatLeaseSecurityDepositDisplay } from "@/lib/lease-deposit-display";
 import { formatMoney } from "@/lib/format-money";
-import { getLeaseRentAmountSuffix } from "@/lib/lease-rent-schedule-display";
+import {
+  getLeaseBillingCadenceLabel,
+  getLeaseRentAmountSuffix,
+} from "@/lib/lease-rent-schedule-display";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import {
   type IPropertyLongStay,
@@ -59,21 +63,51 @@ export const LeaseDetailHeader = memo(
   ({ currentRent, lease, unitLabel }: LeaseDetailHeaderProps) => {
     const isActive = lease.status === PropertyLongStayStatus.ACTIVE;
     const isInHoldover = isActiveLeaseInHoldover(lease, getTodayLocalIsoDate());
+    const endDate = lease.actualEndDate ?? lease.leaseEndDate;
 
     return (
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{lease.guestName}</h1>
-          <Badge variant={isActive ? "default" : "secondary"}>
-            {isActive ? "Active" : "Ended"}
-          </Badge>
-          {isInHoldover ? <Badge variant="outline">Holdover</Badge> : null}
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">{lease.guestName}</h1>
+            <Badge variant={isActive ? "default" : "secondary"}>
+              {isActive ? "Active" : "Ended"}
+            </Badge>
+            {isInHoldover ? <Badge variant="outline">Holdover</Badge> : null}
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Unit {unitLabel}
+            {isInHoldover ? " · Contract ended" : null}
+          </p>
         </div>
-        <p className="text-muted-foreground text-sm">
-          Unit {unitLabel} · {formatMoney(currentRent)}
-          {getLeaseRentAmountSuffix(lease.rentBillingCadence)}
-          {isInHoldover ? " · Contract ended" : null}
-        </p>
+        <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-muted-foreground">Lease period</dt>
+            <dd className="font-medium">
+              {new Date(`${lease.leaseStartDate}T00:00:00`).toLocaleDateString()} →{" "}
+              {new Date(`${endDate}T00:00:00`).toLocaleDateString()}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Rent</dt>
+            <dd className="font-medium">
+              {formatMoney(currentRent)}
+              {getLeaseRentAmountSuffix(lease.rentBillingCadence)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Rent billing</dt>
+            <dd className="font-medium">
+              {getLeaseBillingCadenceLabel(lease.rentBillingCadence)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Security deposit</dt>
+            <dd className="font-medium">
+              {formatLeaseSecurityDepositDisplay(lease.securityDepositAmount)}
+            </dd>
+          </div>
+        </dl>
       </div>
     );
   }
