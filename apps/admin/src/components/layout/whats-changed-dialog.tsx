@@ -88,10 +88,7 @@ const ReleaseChangeItem = memo(({ change }: Readonly<{ change: ReleaseChange }>)
 ReleaseChangeItem.displayName = "ReleaseChangeItem";
 
 const ReleaseNoteSection = memo(
-  ({
-    note,
-    prioritizeNotable,
-  }: Readonly<{ note: ReleaseNote; prioritizeNotable: boolean }>) => {
+  ({ note, prioritizeNotable }: Readonly<{ note: ReleaseNote; prioritizeNotable: boolean }>) => {
     const orderedChanges = orderReleaseChanges(note.changes, prioritizeNotable);
 
     return (

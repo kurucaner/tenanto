@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { LeaseDepositBalanceStatus, SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME } from "@/packages/shared";
+import {
+  LeaseDepositBalanceStatus,
+  SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
+} from "@/packages/shared";
 import { makeIncomeLine, makeLease } from "@/test-fixtures/domain";
 import { mockAsyncFn } from "@/test-fixtures/mocks";
 
@@ -20,8 +23,7 @@ mock.module("@/db/mappers", () => ({
       incomeLineTypeName: String(row["income_line_type_name"]),
       longStayId: String(row["long_stay_id"]),
       propertyId: String(row["property_id"]),
-      refundedAmount:
-        row["refunded_amount"] == null ? null : Number(row["refunded_amount"]),
+      refundedAmount: row["refunded_amount"] == null ? null : Number(row["refunded_amount"]),
       refundedAt: (row["refunded_at"] as string | null) ?? null,
     }),
 }));
@@ -43,10 +45,10 @@ describe("loadLeaseDepositSummary", () => {
       })
     );
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("pil.long_stay_id = $2"),
-      ["property-1", "lease-1"]
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("pil.long_stay_id = $2"), [
+      "property-1",
+      "lease-1",
+    ]);
     expect(summary).toEqual({
       collected: 0,
       expected: 1500,
