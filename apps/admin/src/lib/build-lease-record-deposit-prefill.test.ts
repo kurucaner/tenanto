@@ -15,11 +15,11 @@ describe("buildLeaseRecordDepositPrefill", () => {
     unitId: "unit-1",
   };
 
-  test("prefills amount, lease link, and deposit intent without rent period", () => {
-    const prefill = buildLeaseRecordDepositPrefill(lease);
+  test("prefills outstanding when deposit summary has remaining balance", () => {
+    const prefill = buildLeaseRecordDepositPrefill(lease, { outstanding: 1000 });
 
     expect(prefill).toEqual({
-      amount: "1500",
+      amount: "1000",
       guestName: "Tenant",
       isSecurityDeposit: true,
       longStayId: "lease-1",
@@ -29,7 +29,20 @@ describe("buildLeaseRecordDepositPrefill", () => {
     expect(prefill.rentPeriodKey).toBeUndefined();
   });
 
-  test("uses empty amount when deposit is null", () => {
+  test("falls back to expected deposit when summary is omitted", () => {
+    const prefill = buildLeaseRecordDepositPrefill(lease);
+
+    expect(prefill.amount).toBe("1500");
+    expect(prefill.isSecurityDeposit).toBe(true);
+  });
+
+  test("falls back to expected when outstanding is zero", () => {
+    const prefill = buildLeaseRecordDepositPrefill(lease, { outstanding: 0 });
+
+    expect(prefill.amount).toBe("1500");
+  });
+
+  test("uses empty amount when deposit is null and no outstanding", () => {
     const prefill = buildLeaseRecordDepositPrefill({
       ...lease,
       securityDepositAmount: null,

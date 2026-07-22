@@ -96,11 +96,11 @@ export const PropertyLeaseDetailPage = memo(() => {
   );
 
   const handleRecordDeposit = useCallback(() => {
-    if (!lease) {
+    if (!lease || !depositSummary) {
       return;
     }
-    setRecordIncomePrefill(buildLeaseRecordDepositPrefill(lease));
-  }, [lease]);
+    setRecordIncomePrefill(buildLeaseRecordDepositPrefill(lease, depositSummary));
+  }, [depositSummary, lease]);
 
   const handleEndLeaseSuccess = useCallback(() => {
     setEndLeaseOpen(false);
