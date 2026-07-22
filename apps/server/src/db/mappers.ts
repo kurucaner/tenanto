@@ -344,6 +344,7 @@ export const mapPropertyExpenseRow = (row: Record<string, unknown>): IPropertyEx
   id: row.id as string,
   isDeleted: (row.is_deleted as boolean) ?? false,
   propertyId: row.property_id as string,
+  stripeBalanceTransactionId: (row.stripe_balance_transaction_id as string | null) ?? null,
   updatedAt: (row.updated_at as Date).toISOString(),
 });
 

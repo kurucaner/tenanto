@@ -13,6 +13,8 @@ export interface IPropertyExpense {
   id: string;
   isDeleted: boolean;
   propertyId: string;
+  /** Set for Stripe auto-booked processing-fee expenses; null for manual/import rows. */
+  stripeBalanceTransactionId: string | null;
   updatedAt: string;
 }
 

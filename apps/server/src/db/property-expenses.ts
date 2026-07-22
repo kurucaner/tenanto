@@ -82,12 +82,18 @@ export const propertyExpensesDb = {
       description: string | null;
       expenseDate: string | null;
       cashExpense: boolean;
+      stripeBalanceTransactionId?: string | null;
     }
   ): Promise<IPropertyExpense> {
+    const stripeBalanceTransactionId = input.stripeBalanceTransactionId ?? null;
+
     const insertResult = await pool.query(
       `INSERT INTO property_expenses
-         (property_id, category_id, amount, expense_date, description, cash_expense)
-       VALUES ($1, $2::uuid, $3, $4, $5, $6)
+         (property_id, category_id, amount, expense_date, description, cash_expense, stripe_balance_transaction_id)
+       VALUES ($1, $2::uuid, $3, $4, $5, $6, $7)
+       ON CONFLICT (stripe_balance_transaction_id)
+         WHERE (stripe_balance_transaction_id IS NOT NULL)
+       DO NOTHING
        RETURNING id`,
       [
         propertyId,
@@ -96,8 +102,25 @@ export const propertyExpensesDb = {
         input.expenseDate,
         input.description,
         input.cashExpense,
+        stripeBalanceTransactionId,
       ]
     );
+
+    if (insertResult.rows.length === 0) {
+      if (stripeBalanceTransactionId == null) {
+        throw new Error("Expense insert returned no row");
+      }
+      const existing = await propertyExpensesDb.findByStripeBalanceTransactionId(
+        stripeBalanceTransactionId
+      );
+      if (!existing) {
+        throw new Error(
+          `Expense with stripe_balance_transaction_id ${stripeBalanceTransactionId} conflicted but could not be loaded`
+        );
+      }
+      return existing;
+    }
+
     const id = (insertResult.rows[0] as Record<string, unknown>).id as string;
     const expense = await propertyExpensesDb.findById(id);
     if (!expense) {
@@ -184,6 +207,19 @@ export const propertyExpensesDb = {
     );
 
     return result.rows.map((row) => mapPropertyExpenseRow(row as Record<string, unknown>));
+  },
+
+  async findByStripeBalanceTransactionId(
+    stripeBalanceTransactionId: string
+  ): Promise<IPropertyExpense | null> {
+    const result = await pool.query(
+      `${EXPENSE_SELECT}
+       WHERE pe.stripe_balance_transaction_id = $1
+       LIMIT 1`,
+      [stripeBalanceTransactionId]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPropertyExpenseRow(result.rows[0] as Record<string, unknown>);
   },
 
   async getListMetaByProperty(

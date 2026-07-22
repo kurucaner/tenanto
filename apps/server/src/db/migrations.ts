@@ -3606,4 +3606,28 @@ export const migrations: IMigration[] = [
     },
     version: 80,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        DROP INDEX IF EXISTS idx_property_expenses_stripe_balance_transaction_id;
+      `);
+      await client.query(`
+        ALTER TABLE property_expenses
+          DROP COLUMN IF EXISTS stripe_balance_transaction_id;
+      `);
+    },
+    name: "property_expenses_stripe_balance_transaction_id",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_expenses
+          ADD COLUMN IF NOT EXISTS stripe_balance_transaction_id TEXT NULL;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_property_expenses_stripe_balance_transaction_id
+          ON property_expenses (stripe_balance_transaction_id)
+          WHERE stripe_balance_transaction_id IS NOT NULL;
+      `);
+    },
+    version: 81,
+  },
 ];

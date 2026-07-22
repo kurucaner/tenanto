@@ -213,10 +213,10 @@ No new public API required for v1. Internal:
 
 **Goal:** Pure/server helper: PI or Charge → balance transaction → `stripe_fee` cents.
 
-- [ ] `getStripeProcessingFeeCentsFromPaymentIntent(piId)` (or charge) using Stripe SDK expand
-- [ ] Sum only `fee_details` entries with `type === "stripe_fee"`
-- [ ] Explicitly ignore `application_fee`
-- [ ] Fixture-based unit tests (mocked Stripe objects)
+- [x] `getStripeProcessingFeeCentsFromPaymentIntent(piId)` (expand `latest_charge.balance_transaction`)
+- [x] Sum only `fee_details` entries with `type === "stripe_fee"`
+- [x] Explicitly ignore `application_fee`
+- [x] Fixture-based unit tests (mocked Stripe objects)
 
 **Files (≤4).**
 
@@ -228,9 +228,9 @@ No new public API required for v1. Internal:
 
 **Goal:** Persist Stripe balance transaction id on expenses.
 
-- [ ] Migration: `stripe_balance_transaction_id TEXT NULL` + **UNIQUE** partial/unique index
-- [ ] DAO create + mapper + shared type field (optional on API responses)
-- [ ] Create conflict → treat as success / no-op
+- [x] Migration: `stripe_balance_transaction_id TEXT NULL` + **UNIQUE** partial index (v81)
+- [x] DAO create + mapper + shared `IPropertyExpense.stripeBalanceTransactionId`
+- [x] Create conflict → `ON CONFLICT DO NOTHING` then return existing (no-op)
 
 **Files (≤4).**
 
@@ -325,8 +325,8 @@ No new public API required for v1. Internal:
 
 ## Deploy checklist
 
-| Checkpoint | Ship         | Notes                                                                                                                                 |
-| ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkpoint | Ship         | Notes                                                                                                                                     |
+| ---------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | **A**      | Phases 0c–1c | System category exists and cannot be removed. **v80** backfills every property with active `is_system` **Payment processing** on migrate. |
-| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                     |
-| **C**      | Phases 3–4   | Failure/refund policy + docs                                                                                                          |
+| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                         |
+| **C**      | Phases 3–4   | Failure/refund policy + docs                                                                                                              |
