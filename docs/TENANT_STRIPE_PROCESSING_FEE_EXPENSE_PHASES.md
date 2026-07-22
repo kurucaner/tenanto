@@ -271,9 +271,11 @@ No new public API required for v1. Internal:
 
 **Goal:** Define and implement behavior when rent payment is refunded.
 
-- [ ] **Chosen default:** If Stripe reverses the processing fee, soft-delete or reverse the linked expense; if Stripe keeps the fee, leave the expense.
-- [ ] Implement against `charge.refunded` / existing `markRefunded` path
-- [ ] Tests for both cases if distinguishable in fixtures; otherwise document “leave expense” and assert no crash
+- [x] **Chosen default:** If Stripe reverses the processing fee (negative `stripe_fee` on refund BT), soft-delete the linked expense; if Stripe keeps the fee (typical), leave the expense
+- [x] Implement on `charge.refunded` after `markRefunded` via `reverseProcessingFeeExpenseOnRentRefund`
+- [x] Tests: leave-in-place (kept fee); soft-delete (reversed fee); idempotent already-deleted
+
+**Policy note:** Stripe’s docs state processing fees are usually **not** returned on refund. PropertyOS therefore leaves the Payment processing expense unless a refund balance transaction explicitly credits `stripe_fee`.
 
 **Files (≤4).**
 
@@ -326,8 +328,8 @@ No new public API required for v1. Internal:
 
 ## Deploy checklist
 
-| Checkpoint | Ship         | Notes                                                                                                                                 |
-| ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **A**      | Phases 0c–1c | System category exists and cannot be removed. **v80** backfills every property with active `is_system` **Payment processing** on migrate. |
-| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                     |
+| Checkpoint | Ship         | Notes                                                                                                                                                                     |
+| ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A**      | Phases 0c–1c | System category exists and cannot be removed. **v80** backfills every property with active `is_system` **Payment processing** on migrate.                                 |
+| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense                                                                                                                         |
 | **C**      | Phases 3–4   | Failure/refund policy + docs. **Enable** `checkout.session.async_payment_failed` + `charge.failed` (plus ACH success events) on the Stripe destination / `stripe listen`. |

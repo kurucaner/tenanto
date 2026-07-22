@@ -17,6 +17,7 @@ const mockMarkFailed = mockResolvedNull<unknown>();
 const mockMarkCanceled = mockResolvedNull<unknown>();
 const mockMarkRefunded = mockResolvedNull<unknown>();
 const mockBookAchReturnFeeExpense = mockResolvedNull<unknown>();
+const mockReverseProcessingFeeExpense = mockResolvedNull<unknown>();
 const mockPostDiscordWebhook = mockResolvedVoid();
 const mockLoggerInfo = mockSyncVoid();
 const mockLoggerWarn = mockSyncVoid();
@@ -65,6 +66,7 @@ mock.module("@/services/tenant-rent-payment-service", () => ({
 
 mock.module("@/services/book-stripe-processing-fee-expense", () => ({
   bookAchReturnFeeExpenseForRentPayment: mockBookAchReturnFeeExpense,
+  reverseProcessingFeeExpenseOnRentRefund: mockReverseProcessingFeeExpense,
 }));
 
 mock.module("@/services/discord-webhook", () => ({
@@ -107,6 +109,7 @@ describe("processStripeWebhookEvent", () => {
     mockMarkCanceled.mockReset();
     mockMarkRefunded.mockReset();
     mockBookAchReturnFeeExpense.mockReset();
+    mockReverseProcessingFeeExpense.mockReset();
     mockPostDiscordWebhook.mockReset();
     mockLoggerInfo.mockReset();
     mockLoggerWarn.mockReset();
@@ -363,6 +366,10 @@ describe("processStripeWebhookEvent", () => {
       amountRefundedCents: 100_00,
       chargeAmountCents: 100_00,
     });
+    expect(mockReverseProcessingFeeExpense).toHaveBeenCalledWith(
+      payment,
+      expect.objectContaining({ id: "ch_1", payment_intent: "pi_1" })
+    );
     expect(mockMarkProcessed).toHaveBeenCalledWith("evt_5");
   });
 

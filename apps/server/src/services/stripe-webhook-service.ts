@@ -5,7 +5,10 @@ import { stripeWebhookEventsDb } from "@/db/stripe-webhook-events";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
 import { stripeWebhookSignatureError } from "@/errors/stripe-errors";
 import { stripeConnectAccountFlagsFromStripeAccount } from "@/lib/stripe-connect-account-flags";
-import { bookAchReturnFeeExpenseForRentPayment } from "@/services/book-stripe-processing-fee-expense";
+import {
+  bookAchReturnFeeExpenseForRentPayment,
+  reverseProcessingFeeExpenseOnRentRefund,
+} from "@/services/book-stripe-processing-fee-expense";
 import { postDiscordWebhook } from "@/services/discord-webhook";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
@@ -246,6 +249,18 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     amountRefundedCents: charge.amount_refunded,
     chargeAmountCents: charge.amount,
   });
+
+  try {
+    await reverseProcessingFeeExpenseOnRentRefund(payment, charge);
+  } catch (error) {
+    WinstonLogger.error({
+      chargeId: charge.id,
+      err: error,
+      msg: "tenant_payments.processing_fee_expense_refund_failed",
+      paymentId: payment.id,
+      propertyId: payment.propertyId,
+    });
+  }
 }
 
 async function handleChargeDisputeCreated(dispute: Stripe.Dispute): Promise<void> {

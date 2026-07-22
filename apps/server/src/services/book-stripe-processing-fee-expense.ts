@@ -6,6 +6,7 @@ import {
   getStripeProcessingFeeCentsFromBalanceTransaction,
   getStripeProcessingFeeCentsFromCharge,
   getStripeProcessingFeeCentsFromPaymentIntent,
+  sumReversedStripeFeeCentsFromFeeDetails,
   type IStripeProcessingFeeResult,
 } from "@/lib/stripe-processing-fee";
 import { centsToDollars, type IPropertyExpense } from "@/packages/shared";
@@ -167,4 +168,119 @@ export async function bookAchReturnFeeExpenseForRentPayment(
     logPrefix: "ach_return_fee",
     payment,
   });
+}
+
+export type TProcessingFeeRefundExpenseOutcome =
+  | "left_in_place"
+  | "no_expense"
+  | "soft_deleted";
+
+function originalChargeBalanceTransactionId(
+  charge: Stripe.Charge
+): string | null {
+  const balanceTransaction = charge.balance_transaction;
+  if (balanceTransaction == null) {
+    return null;
+  }
+  if (typeof balanceTransaction === "string") {
+    return balanceTransaction;
+  }
+  return balanceTransaction.id;
+}
+
+async function sumReversedProcessingFeeCentsFromChargeRefunds(
+  charge: Stripe.Charge,
+  stripe?: Stripe
+): Promise<number> {
+  const refunds = charge.refunds?.data ?? [];
+  if (refunds.length === 0) {
+    return 0;
+  }
+
+  const client = stripe ?? getStripeClient();
+  let reversedCents = 0;
+
+  for (const refund of refunds) {
+    let balanceTransaction = refund.balance_transaction;
+    if (balanceTransaction == null) {
+      continue;
+    }
+    if (typeof balanceTransaction === "string") {
+      balanceTransaction = await client.balanceTransactions.retrieve(balanceTransaction);
+    }
+    reversedCents += sumReversedStripeFeeCentsFromFeeDetails(balanceTransaction.fee_details);
+  }
+
+  return reversedCents;
+}
+
+/**
+ * On rent charge refund: soft-delete the Payment processing expense only when
+ * Stripe reverses `stripe_fee` on a refund balance transaction. Otherwise leave
+ * the expense (Stripe normally keeps processing fees on refund).
+ * Idempotent when the expense is already soft-deleted.
+ */
+export async function reverseProcessingFeeExpenseOnRentRefund(
+  payment: TRentPaymentFeeTarget,
+  charge: Stripe.Charge,
+  options?: { stripe?: Stripe }
+): Promise<TProcessingFeeRefundExpenseOutcome> {
+  const reversedCents = await sumReversedProcessingFeeCentsFromChargeRefunds(
+    charge,
+    options?.stripe
+  );
+
+  if (reversedCents <= 0) {
+    WinstonLogger.info({
+      chargeId: charge.id,
+      msg: "tenant_payments.processing_fee_expense_left_on_refund",
+      paymentId: payment.id,
+      propertyId: payment.propertyId,
+      reason: "stripe_kept_processing_fee",
+    });
+    return "left_in_place";
+  }
+
+  const originalBalanceTransactionId = originalChargeBalanceTransactionId(charge);
+  if (originalBalanceTransactionId == null) {
+    WinstonLogger.warn({
+      chargeId: charge.id,
+      msg: "tenant_payments.processing_fee_expense_refund_missing_original_bt",
+      paymentId: payment.id,
+      propertyId: payment.propertyId,
+      reversedCents,
+    });
+    return "no_expense";
+  }
+
+  const expense = await propertyExpensesDb.findByStripeBalanceTransactionId(
+    originalBalanceTransactionId
+  );
+  if (expense == null) {
+    WinstonLogger.info({
+      balanceTransactionId: originalBalanceTransactionId,
+      msg: "tenant_payments.processing_fee_expense_refund_no_expense",
+      paymentId: payment.id,
+      propertyId: payment.propertyId,
+      reversedCents,
+    });
+    return "no_expense";
+  }
+
+  if (expense.isDeleted) {
+    return "soft_deleted";
+  }
+
+  await propertyExpensesDb.softDelete(expense.id);
+
+  WinstonLogger.info({
+    balanceTransactionId: originalBalanceTransactionId,
+    expenseId: expense.id,
+    msg: "tenant_payments.processing_fee_expense_soft_deleted_on_refund",
+    paymentId: payment.id,
+    propertyId: payment.propertyId,
+    reversedCents,
+  });
+
+  return "soft_deleted";
 }

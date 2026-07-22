@@ -41,8 +41,28 @@ export function sumStripeFeeCentsFromFeeDetails(
 
   let total = 0;
   for (const detail of feeDetails) {
-    if (detail.type === "stripe_fee" && Number.isFinite(detail.amount)) {
+    if (detail.type === "stripe_fee" && Number.isFinite(detail.amount) && detail.amount > 0) {
       total += detail.amount;
+    }
+  }
+  return total;
+}
+
+/**
+ * Fee credits on refund balance transactions appear as negative `stripe_fee` amounts.
+ * Returns absolute cents reversed (0 when Stripe keeps the original processing fee).
+ */
+export function sumReversedStripeFeeCentsFromFeeDetails(
+  feeDetails: ReadonlyArray<TFeeDetailLike> | null | undefined
+): number {
+  if (feeDetails == null || feeDetails.length === 0) {
+    return 0;
+  }
+
+  let total = 0;
+  for (const detail of feeDetails) {
+    if (detail.type === "stripe_fee" && Number.isFinite(detail.amount) && detail.amount < 0) {
+      total += Math.abs(detail.amount);
     }
   }
   return total;

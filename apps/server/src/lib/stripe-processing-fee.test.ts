@@ -9,6 +9,7 @@ import {
   getStripeProcessingFeeCentsFromBalanceTransaction,
   getStripeProcessingFeeCentsFromCharge,
   getStripeProcessingFeeCentsFromPaymentIntent,
+  sumReversedStripeFeeCentsFromFeeDetails,
   sumStripeFeeCentsFromFeeDetails,
 } from "@/lib/stripe-processing-fee";
 
@@ -24,10 +25,38 @@ describe("sumStripeFeeCentsFromFeeDetails", () => {
     ).toBe(150);
   });
 
+  test("ignores negative stripe_fee (refund credits)", () => {
+    expect(
+      sumStripeFeeCentsFromFeeDetails([
+        { amount: 100, type: "stripe_fee" },
+        { amount: -100, type: "stripe_fee" },
+      ])
+    ).toBe(100);
+  });
+
   test("returns 0 for empty or missing details", () => {
     expect(sumStripeFeeCentsFromFeeDetails(undefined)).toBe(0);
     expect(sumStripeFeeCentsFromFeeDetails(null)).toBe(0);
     expect(sumStripeFeeCentsFromFeeDetails([])).toBe(0);
+  });
+});
+
+describe("sumReversedStripeFeeCentsFromFeeDetails", () => {
+  test("sums absolute value of negative stripe_fee only", () => {
+    expect(
+      sumReversedStripeFeeCentsFromFeeDetails([
+        { amount: 466, type: "stripe_fee" },
+        { amount: -466, type: "stripe_fee" },
+        { amount: -50, type: "application_fee" },
+      ])
+    ).toBe(466);
+  });
+
+  test("returns 0 when Stripe keeps the fee (typical refund)", () => {
+    expect(sumReversedStripeFeeCentsFromFeeDetails([])).toBe(0);
+    expect(
+      sumReversedStripeFeeCentsFromFeeDetails([{ amount: 10, type: "tax" }])
+    ).toBe(0);
   });
 });
 

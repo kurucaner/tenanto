@@ -29,6 +29,11 @@ const mockCreateExpense = mockAsyncFn(() =>
   )
 );
 
+const mockFindExpenseByStripeBalanceTransactionId = mockAsyncFn(() =>
+  Promise.resolve(null as ReturnType<typeof makeExpense> | null)
+);
+const mockSoftDeleteExpense = mockAsyncFn(() => Promise.resolve(true));
+
 const mockGetStripeProcessingFeeCentsFromPaymentIntent = mockAsyncFn(() =>
   Promise.resolve({
     balanceTransactionId: "txn_1" as string | null,
@@ -52,6 +57,8 @@ mock.module("@/db/property-expense-category-types", () => ({
 mock.module("@/db/property-expenses", () => ({
   propertyExpensesDb: {
     create: mockCreateExpense,
+    findByStripeBalanceTransactionId: mockFindExpenseByStripeBalanceTransactionId,
+    softDelete: mockSoftDeleteExpense,
   },
 }));
 
@@ -65,6 +72,20 @@ mock.module("@/lib/stripe-processing-fee", () => ({
   ),
   getStripeProcessingFeeCentsFromCharge: mockGetStripeProcessingFeeCentsFromCharge,
   getStripeProcessingFeeCentsFromPaymentIntent: mockGetStripeProcessingFeeCentsFromPaymentIntent,
+  sumReversedStripeFeeCentsFromFeeDetails: (
+    feeDetails: ReadonlyArray<{ amount: number; type: string }> | null | undefined
+  ) => {
+    if (feeDetails == null || feeDetails.length === 0) {
+      return 0;
+    }
+    let total = 0;
+    for (const detail of feeDetails) {
+      if (detail.type === "stripe_fee" && detail.amount < 0) {
+        total += Math.abs(detail.amount);
+      }
+    }
+    return total;
+  },
 }));
 
 mock.module("@/services/winston", () => ({
@@ -80,12 +101,15 @@ const {
   bookStripeProcessingFeeExpenseForRentPayment,
   buildAchReturnFeeExpenseDescription,
   buildStripeProcessingFeeExpenseDescription,
+  reverseProcessingFeeExpenseOnRentRefund,
 } = await import("./book-stripe-processing-fee-expense");
 
 describe("bookStripeProcessingFeeExpenseForRentPayment", () => {
   beforeEach(() => {
     mockEnsureSystemPaymentProcessingExpenseCategory.mockClear();
     mockCreateExpense.mockClear();
+    mockFindExpenseByStripeBalanceTransactionId.mockClear();
+    mockSoftDeleteExpense.mockClear();
     mockGetStripeProcessingFeeCentsFromPaymentIntent.mockClear();
     mockGetStripeProcessingFeeCentsFromCharge.mockClear();
 
@@ -181,6 +205,8 @@ describe("bookAchReturnFeeExpenseForRentPayment", () => {
   beforeEach(() => {
     mockEnsureSystemPaymentProcessingExpenseCategory.mockClear();
     mockCreateExpense.mockClear();
+    mockFindExpenseByStripeBalanceTransactionId.mockClear();
+    mockSoftDeleteExpense.mockClear();
     mockGetStripeProcessingFeeCentsFromPaymentIntent.mockClear();
     mockGetStripeProcessingFeeCentsFromCharge.mockClear();
 
@@ -268,5 +294,99 @@ describe("bookAchReturnFeeExpenseForRentPayment", () => {
     expect(first?.id).toBe("expense-ach-1");
     expect(second?.id).toBe("expense-ach-1");
     expect(mockCreateExpense).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("reverseProcessingFeeExpenseOnRentRefund", () => {
+  beforeEach(() => {
+    mockFindExpenseByStripeBalanceTransactionId.mockClear();
+    mockSoftDeleteExpense.mockClear();
+  });
+
+  test("leaves expense when Stripe keeps processing fee (typical refund)", async () => {
+    const payment = makePayment({ stripePaymentIntentId: "pi_1" });
+    const charge = {
+      balance_transaction: "txn_1",
+      id: "ch_1",
+      refunds: {
+        data: [
+          {
+            balance_transaction: {
+              fee_details: [],
+              id: "txn_refund_1",
+            },
+            id: "re_1",
+          },
+        ],
+      },
+    } as never;
+
+    const outcome = await reverseProcessingFeeExpenseOnRentRefund(payment, charge);
+
+    expect(outcome).toBe("left_in_place");
+    expect(mockSoftDeleteExpense).not.toHaveBeenCalled();
+  });
+
+  test("soft-deletes expense when refund reverses stripe_fee", async () => {
+    mockFindExpenseByStripeBalanceTransactionId.mockResolvedValueOnce(
+      makeExpense({
+        id: "expense-fee-1",
+        isDeleted: false,
+        stripeBalanceTransactionId: "txn_1",
+      })
+    );
+    mockSoftDeleteExpense.mockResolvedValueOnce(true);
+
+    const payment = makePayment({ stripePaymentIntentId: "pi_1" });
+    const charge = {
+      balance_transaction: "txn_1",
+      id: "ch_1",
+      refunds: {
+        data: [
+          {
+            balance_transaction: {
+              fee_details: [{ amount: -466, type: "stripe_fee" }],
+              id: "txn_refund_1",
+            },
+            id: "re_1",
+          },
+        ],
+      },
+    } as never;
+
+    const outcome = await reverseProcessingFeeExpenseOnRentRefund(payment, charge);
+
+    expect(outcome).toBe("soft_deleted");
+    expect(mockFindExpenseByStripeBalanceTransactionId).toHaveBeenCalledWith("txn_1");
+    expect(mockSoftDeleteExpense).toHaveBeenCalledWith("expense-fee-1");
+  });
+
+  test("idempotent when expense already soft-deleted", async () => {
+    mockFindExpenseByStripeBalanceTransactionId.mockResolvedValueOnce(
+      makeExpense({
+        id: "expense-fee-1",
+        isDeleted: true,
+        stripeBalanceTransactionId: "txn_1",
+      })
+    );
+
+    const outcome = await reverseProcessingFeeExpenseOnRentRefund(makePayment(), {
+      balance_transaction: "txn_1",
+      id: "ch_1",
+      refunds: {
+        data: [
+          {
+            balance_transaction: {
+              fee_details: [{ amount: -466, type: "stripe_fee" }],
+              id: "txn_refund_1",
+            },
+            id: "re_1",
+          },
+        ],
+      },
+    } as never);
+
+    expect(outcome).toBe("soft_deleted");
+    expect(mockSoftDeleteExpense).not.toHaveBeenCalled();
   });
 });
