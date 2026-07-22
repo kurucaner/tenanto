@@ -39,7 +39,7 @@ describe("getEndLeaseMoveOutRentPreview", () => {
         moveOutDate: "2026-01-20",
         rentPeriods: [],
       })
-    ).toBe("Final week rent: $600.00 (6/7 days)");
+    ).toBe("Final week rent: $600 (6/7 days)");
   });
 
   test("returns null when move-out date is empty", () => {
@@ -109,6 +109,6 @@ describe("getEditLeaseFirstPeriodRentPreview", () => {
         rentAmount: 700,
         rentBillingCadence: RentBillingCadence.WEEKLY,
       })
-    ).toBe("First week rent: $600.00 (6/7 days)");
+    ).toBe("First week rent: $600 (6/7 days)");
   });
 });

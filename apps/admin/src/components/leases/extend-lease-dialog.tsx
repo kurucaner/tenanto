@@ -39,6 +39,7 @@ import { requiredPositiveMoneyField } from "@/lib/money-field-validation";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
 import { normalizeStartLeaseRentBillingCadence } from "@/lib/start-lease-rent-billing";
 import {
+  addDaysToIsoDate,
   formatRentPeriodLabel,
   getExtensionRentEffectiveMonthOptions,
   getExtensionRentEffectiveWeekOptions,
@@ -63,6 +64,18 @@ function getDefaultExtendMode(lease: IPropertyLongStay): TExtendLeaseInputMode {
   return isWeeklyRentBillingCadence(lease.rentBillingCadence) ? "weeks" : "months";
 }
 
+function getMinNewLeaseEndDate(leaseEndDate: string): string {
+  return addDaysToIsoDate(leaseEndDate, 1);
+}
+
+function getDefaultNewLeaseEndDate(lease: IPropertyLongStay): string {
+  if (isWeeklyRentBillingCadence(lease.rentBillingCadence)) {
+    return resolveExtendLeaseEndDate(lease, { additionalWeeks: 1 }).newLeaseEndDate;
+  }
+
+  return resolveExtendLeaseEndDate(lease, { additionalTermMonths: 1 }).newLeaseEndDate;
+}
+
 function getDefaultValues(lease: IPropertyLongStay) {
   const isWeekly = isWeeklyRentBillingCadence(lease.rentBillingCadence);
 
@@ -71,7 +84,7 @@ function getDefaultValues(lease: IPropertyLongStay) {
     additionalTermWeeks: DEFAULT_ADDITIONAL_TERM_WEEKS,
     changeRent: false,
     extendMode: getDefaultExtendMode(lease),
-    newLeaseEndDate: "",
+    newLeaseEndDate: getDefaultNewLeaseEndDate(lease),
     newRentAmount: String(getLeaseRentAmount(lease)),
     rentEffectiveFromPeriod: isWeekly
       ? getFirstExtensionWeek(lease.leaseStartDate, lease.leaseEndDate)
@@ -358,6 +371,11 @@ export const ExtendLeaseDialog = memo(
     });
 
     const { errors, isSubmitting } = form.formState;
+    const termFieldError =
+      extendMode === "weeks" ? errors.additionalTermWeeks : errors.additionalTermMonths;
+    const termFieldName = extendMode === "weeks" ? "additionalTermWeeks" : "additionalTermMonths";
+    const termFieldId = extendMode === "weeks" ? "extend-lease-term-weeks" : "extend-lease-term";
+    const termFieldValue = extendMode === "weeks" ? additionalTermWeeks : additionalTermMonths;
 
     return (
       <Dialog onOpenChange={handleOpenChange} open={open}>
@@ -377,75 +395,50 @@ export const ExtendLeaseDialog = memo(
                 value={extendMode}
               >
                 {isWeekly ? (
-                  <RadioOption label="Additional weeks" value="weeks">
-                    <div className="flex flex-col gap-1.5 pl-6">
-                      <Input
-                        disabled={extendMode !== "weeks"}
-                        id="extend-lease-term-weeks"
-                        inputMode="numeric"
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          if (nextValue === "" || isValidIntegerInput(nextValue)) {
-                            form.setValue("additionalTermWeeks", nextValue, {
-                              shouldValidate: true,
-                            });
-                          }
-                        }}
-                        value={additionalTermWeeks}
-                      />
-                      {errors.additionalTermWeeks ? (
-                        <p className="text-xs text-destructive">
-                          {errors.additionalTermWeeks.message}
-                        </p>
-                      ) : null}
-                    </div>
-                  </RadioOption>
+                  <RadioOption label="Additional weeks" value="weeks" />
                 ) : (
-                  <RadioOption label="Additional months" value="months">
-                    <div className="flex flex-col gap-1.5 pl-6">
-                      <Input
-                        disabled={extendMode !== "months"}
-                        id="extend-lease-term"
-                        inputMode="numeric"
-                        onChange={(event) => {
-                          const nextValue = event.target.value;
-                          if (nextValue === "" || isValidIntegerInput(nextValue)) {
-                            form.setValue("additionalTermMonths", nextValue, {
-                              shouldValidate: true,
-                            });
-                          }
-                        }}
-                        value={additionalTermMonths}
-                      />
-                      {errors.additionalTermMonths ? (
-                        <p className="text-xs text-destructive">
-                          {errors.additionalTermMonths.message}
-                        </p>
-                      ) : null}
-                    </div>
-                  </RadioOption>
+                  <RadioOption label="Additional months" value="months" />
                 )}
-                <RadioOption label="New end date" value="customEnd">
-                  <div className="flex flex-col gap-1.5 pl-6">
-                    <Input
-                      disabled={extendMode !== "customEnd"}
-                      id="extend-lease-end-date"
-                      onChange={(event) =>
-                        form.setValue("newLeaseEndDate", event.target.value, {
-                          shouldValidate: true,
-                        })
-                      }
-                      type="date"
-                      value={newLeaseEndDateValue}
-                    />
-                    {errors.newLeaseEndDate ? (
-                      <p className="text-xs text-destructive">{errors.newLeaseEndDate.message}</p>
-                    ) : null}
-                  </div>
-                </RadioOption>
+                <RadioOption label="New end date" value="customEnd" />
               </RadioGroupFieldset>
 
-              {newLeaseEndDate ? (
+              {extendMode === "weeks" || extendMode === "months" ? (
+                <div className="flex flex-col gap-1.5">
+                  <Input
+                    id={termFieldId}
+                    inputMode="numeric"
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      if (nextValue === "" || isValidIntegerInput(nextValue)) {
+                        form.setValue(termFieldName, nextValue, { shouldValidate: true });
+                      }
+                    }}
+                    value={termFieldValue}
+                  />
+                  {termFieldError ? (
+                    <p className="text-xs text-destructive">{termFieldError.message}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <Input
+                    id="extend-lease-end-date"
+                    min={getMinNewLeaseEndDate(lease.leaseEndDate)}
+                    onChange={(event) =>
+                      form.setValue("newLeaseEndDate", event.target.value, {
+                        shouldValidate: true,
+                      })
+                    }
+                    type="date"
+                    value={newLeaseEndDateValue}
+                  />
+                  {errors.newLeaseEndDate ? (
+                    <p className="text-xs text-destructive">{errors.newLeaseEndDate.message}</p>
+                  ) : null}
+                </div>
+              )}
+
+              {newLeaseEndDate && extendMode !== "customEnd" ? (
                 <p className="text-muted-foreground text-sm">
                   New lease end:{" "}
                   <span className="text-foreground font-medium">

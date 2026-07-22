@@ -275,6 +275,8 @@ describe("tenant phone bind", () => {
 
   test("bind verify grants consent and sends opt-in confirmation once", async () => {
     const subscribedUser = makeTenantUser({
+      phone: "+13055550100",
+      phoneVerifiedAt: "2026-01-02T00:00:00.000Z",
       smsConsentedAt: "2026-01-02T00:00:00.000Z",
     });
     mockGrantVerifiedPhoneWithSmsConsent.mockResolvedValue({

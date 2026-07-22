@@ -98,7 +98,9 @@ describe("consumeStripeConnectOAuthState", () => {
       propertyId: "property-1",
       userId: "user-1",
     });
-    const getdel = mockAsyncFn(() => Promise.resolve(storedPayload));
+    // Default miss after consume; first getdel returns the stored payload once.
+    const getdel = mockAsyncFn((): Promise<string | null> => Promise.resolve(null));
+    getdel.mockResolvedValueOnce(storedPayload);
     const redis = { getdel } as never;
     const token = signStripeConnectOAuthStateNonce("nonce-reuse");
 
@@ -108,7 +110,6 @@ describe("consumeStripeConnectOAuthState", () => {
       userId: "user-1",
     });
 
-    getdel.mockResolvedValueOnce(JSON.stringify({ propertyId: "property-1", userId: "user-1" }));
     const second = await consumeStripeConnectOAuthState(token, { redis });
     expect(second).toBeNull();
   });

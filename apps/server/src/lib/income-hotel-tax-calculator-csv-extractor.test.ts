@@ -12,10 +12,7 @@ import {
   parseIncomeCsvDate,
 } from "./income-hotel-tax-calculator-csv-extractor";
 
-const fixturePath = join(
-  __dirname,
-  "../../../../sanem Final_Hotel_Tax_Calculator 3 (1)-Hotel Tax Calculator.csv"
-);
+const fixturePath = join(__dirname, "fixtures/hotel-tax-calculator-sample.csv");
 
 describe("isHotelTaxCalculatorCsv", () => {
   test("recognizes the sample file header", () => {
@@ -61,7 +58,7 @@ describe("extractIncomeRowsFromHotelTaxCalculatorCsv", () => {
       return;
     }
 
-    expect(result.rows).toHaveLength(494);
+    expect(result.rows).toHaveLength(6);
   });
 
   test("maps status counts from the sample fixture", () => {
@@ -78,10 +75,10 @@ describe("extractIncomeRowsFromHotelTaxCalculatorCsv", () => {
     const noShow = result.rows.filter((row) => row.status === ReservationStatus.NO_SHOW);
     const refunded = result.rows.filter((row) => row.refunded);
 
-    expect(stayed).toHaveLength(375);
-    expect(canceled).toHaveLength(114);
-    expect(noShow).toHaveLength(5);
-    expect(refunded).toHaveLength(3);
+    expect(stayed).toHaveLength(3);
+    expect(canceled).toHaveLength(2);
+    expect(noShow).toHaveLength(1);
+    expect(refunded).toHaveLength(1);
   });
 
   test("maps a checked row correctly", () => {

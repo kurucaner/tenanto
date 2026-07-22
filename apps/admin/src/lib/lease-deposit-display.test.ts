@@ -18,11 +18,11 @@ describe("formatLeaseSecurityDepositDisplay", () => {
   });
 
   test("formats a positive deposit amount", () => {
-    expect(formatLeaseSecurityDepositDisplay(1500)).toBe("$1,500.00");
+    expect(formatLeaseSecurityDepositDisplay(1500)).toBe("$1,500");
   });
 
   test("formats zero deposit", () => {
-    expect(formatLeaseSecurityDepositDisplay(0)).toBe("$0.00");
+    expect(formatLeaseSecurityDepositDisplay(0)).toBe("$0");
   });
 });
 
@@ -135,9 +135,9 @@ describe("getLeaseDepositBalanceRows", () => {
         status: LeaseDepositBalanceStatus.PARTIAL,
       })
     ).toEqual({
-      collectedLabel: "$500.00",
-      expectedLabel: "$1,500.00",
-      outstandingLabel: "$1,000.00",
+      collectedLabel: "$500",
+      expectedLabel: "$1,500",
+      outstandingLabel: "$1,000",
     });
   });
 });

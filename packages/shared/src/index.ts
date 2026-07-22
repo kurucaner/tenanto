@@ -199,6 +199,7 @@ export {
 
 // Property Long Stay Types
 export {
+  addDaysToIsoDate,
   addMonthsToIsoDate,
   calculateLeaseEndDate,
   calculateLeaseEndDateFromWeeks,

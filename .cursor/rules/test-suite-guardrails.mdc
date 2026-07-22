@@ -1,0 +1,34 @@
+---
+description: Prevent test-suite regressions from missing fixtures, root bun test, and formatMoney drift
+globs: "**/*.test.ts,**/*.test.tsx,**/fixtures/**"
+alwaysApply: false
+---
+
+# Test suite guardrails
+
+## Run tests per package
+
+Prefer per-package runs over a single repo-root `bun test` (root order can cascade via `mock.module` pollution):
+
+```bash
+bun run test:shared   # or: cd packages/shared && bun test
+bun run test:server   # or: cd apps/server && bun test  (uses --isolate)
+bun run test:admin    # or: cd apps/admin && bun test
+# all three, sequentially:
+bun run test
+```
+
+Server tests **must** use `bun test --isolate` (wired in `apps/server/package.json`). Plain `bun test` in one process lets partial `mock.module` mocks leak across files.
+## CSV / file fixtures
+
+- **Do not** read uncommitted personal exports from the repo root (or any path outside the tree).
+- Commit a **small** sample under a colocated `fixtures/` dir (e.g. `apps/server/src/lib/fixtures/`) and resolve with `join(__dirname, "fixtures/…")`.
+- Examples: `hotel-tax-calculator-sample.csv`, `chase-activity-sample.csv`.
+
+## Money display expectations (`formatMoney`)
+
+Admin `formatMoney` omits trailing `.00` for whole dollars (`$1,500` not `$1,500.00`; cents stay as `$1,500.50`).
+
+- Align display-string assertions with that behavior — **do not** revert `formatMoney` to force `.00`.
+- Lock file: `apps/admin/src/lib/format-money.test.ts`.
+- Server email/`Intl.NumberFormat` paths may still show cents; only change those when the production formatter changes.

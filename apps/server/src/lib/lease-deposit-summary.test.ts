@@ -4,7 +4,7 @@ import {
   LeaseDepositBalanceStatus,
   SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
 } from "@/packages/shared";
-import { makeIncomeLine, makeLease } from "@/test-fixtures/domain";
+import { makeLease } from "@/test-fixtures/domain";
 import { mockAsyncFn } from "@/test-fixtures/mocks";
 
 const mockQuery = mockAsyncFn((_sql: string, _params?: unknown[]) =>
@@ -15,18 +15,38 @@ mock.module("@/db/pool", () => ({
   pool: { query: mockQuery },
 }));
 
-mock.module("@/db/mappers", () => ({
-  mapPropertyIncomeLineRow: (row: Record<string, unknown>) =>
-    makeIncomeLine({
-      amount: Number(row["amount"]),
-      id: String(row["id"]),
-      incomeLineTypeName: String(row["income_line_type_name"]),
-      longStayId: String(row["long_stay_id"]),
-      propertyId: String(row["property_id"]),
-      refundedAmount: row["refunded_amount"] == null ? null : Number(row["refunded_amount"]),
-      refundedAt: (row["refunded_at"] as string | null) ?? null,
-    }),
-}));
+/** Full DB-shaped rows so the real `mapPropertyIncomeLineRow` can run (no mappers mock). */
+function buildDepositIncomeLineRow(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    amount: 1500,
+    channel_commission: 0,
+    created_at: new Date("2026-01-15T00:00:00.000Z"),
+    deleted_at: null,
+    description: null,
+    gross_income: 1500,
+    guest_name: null,
+    id: "line-1",
+    income_line_type_id: "type-deposit",
+    income_line_type_name: SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
+    is_deleted: false,
+    long_stay_id: "lease-1",
+    net_income: 1500,
+    property_id: "property-1",
+    refunded_amount: null,
+    refunded_at: null,
+    refunded_by: null,
+    rent_period_key: null,
+    reservation_id: null,
+    tax_breakdown: [],
+    tenant_rent_payment_id: null,
+    transaction_date: "2026-01-15",
+    unit_id: "unit-1",
+    updated_at: new Date("2026-01-15T00:00:00.000Z"),
+    ...overrides,
+  };
+}
 
 const { loadLeaseDepositSummary } = await import("./lease-deposit-summary");
 
@@ -59,17 +79,7 @@ describe("loadLeaseDepositSummary", () => {
 
   test("aggregates deposit lines into held summary", async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          amount: 1500,
-          id: "line-1",
-          income_line_type_name: SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
-          long_stay_id: "lease-1",
-          property_id: "property-1",
-          refunded_amount: null,
-          refunded_at: null,
-        },
-      ],
+      rows: [buildDepositIncomeLineRow()],
     });
 
     const summary = await loadLeaseDepositSummary(
@@ -91,15 +101,10 @@ describe("loadLeaseDepositSummary", () => {
   test("returns refunded when a deposit line has been refunded", async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
-        {
-          amount: 1500,
-          id: "line-1",
-          income_line_type_name: SYSTEM_SECURITY_DEPOSIT_INCOME_TYPE_NAME,
-          long_stay_id: "lease-1",
-          property_id: "property-1",
+        buildDepositIncomeLineRow({
           refunded_amount: 1500,
-          refunded_at: "2026-07-01T00:00:00.000Z",
-        },
+          refunded_at: new Date("2026-07-01T00:00:00.000Z"),
+        }),
       ],
     });
 

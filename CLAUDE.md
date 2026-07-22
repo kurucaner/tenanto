@@ -33,12 +33,24 @@ Or run inside the app dir directly (more reliable): `cd apps/server && bun run d
 
 Per-app essentials:
 
-- Server: `bun run dev` (nodemon + bun), `bun run build` (`tsc` → `tsc-alias` → copies `templates/`), `bun test` (uses `bun test`), `bun run lint`.
-- Admin: `bun run dev` (Vite), `bun run build` (`tsc -b && vite build`), `bun run lint`.
+- Server: `bun run dev` (nodemon + bun), `bun run build` (`tsc` → `tsc-alias` → copies `templates/`), `bun test` (uses `bun test --isolate` — required so `mock.module` does not leak across files), `bun run lint`.
+- Admin: `bun run dev` (Vite), `bun run build` (`tsc -b && vite build`), `bun test`, `bun run lint`.
 - Tenant: `bun run dev` (Vite on port **5174**), `bun run build` (`tsc -b && vite build`), `bun run lint`. Copy `apps/tenant/.env.example` → `apps/tenant/.env` and set `VITE_API_URL` (typically `http://localhost:3001`).
 - Web: `bun run dev`/`build` (Next).
+- Shared: `cd packages/shared && bun test` (pure unit tests; no separate build).
+
+**Tests (prefer per package — avoid one giant root `bun test`):**
+
+```bash
+bun run test:shared
+bun run test:server
+bun run test:admin
+bun run test          # runs the three above sequentially
+```
 
 Run a single server test: `cd apps/server && bun test src/db/pg-errors.test.ts` (tests are colocated `*.test.ts` files, run by `bun test`).
+
+CSV/file fixtures used by tests must be **committed** under a colocated `fixtures/` dir (e.g. `apps/server/src/lib/fixtures/`) — never uncommitted personal exports at the repo root. Admin money display strings follow whole-dollar `formatMoney` (`$1,500` not `$1,500.00`); see `.cursor/rules/test-suite-guardrails.mdc`.
 
 `bun run logaway` strips stray `console.log` calls from server/admin/web (config in `.logawayrc.json`).
 
