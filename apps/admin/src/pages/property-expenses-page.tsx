@@ -1,14 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
-import {
-  memo,
-  type MouseEvent,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { memo, type MouseEvent, type RefObject, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -44,12 +36,13 @@ import { useQuickDelete } from "@/hooks/use-quick-delete";
 import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { expensesApi, settingsApi } from "@/lib/api-client";
-import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getDateRangeSummary, type TDateRangePresetId } from "@/lib/date-range-presets";
 import {
   buildExpenseToolbarClearAllPatch,
   buildExpenseToolbarClearOnePatch,
   buildExpenseToolbarFilterItems,
   countExpenseSecondaryFilters,
+  type IExpenseToolbarFilterItem,
   type TExpenseToolbarFilterId,
 } from "@/lib/expense-toolbar-filters";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
@@ -59,6 +52,7 @@ import { deletedRowClassName } from "@/lib/ledger-entry-row-styles";
 import { formatExpenseExportFilterSummary } from "@/lib/property-export-utils";
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
+import { type TSelectOption } from "@/lib/select-option-types";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   ExportResourceType,
@@ -157,79 +151,6 @@ function buildExpenseFilters(
   return next;
 }
 
-function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): void {
-  if (!open) {
-    clearSelection();
-  }
-}
-
-const PropertyExpensesTable = memo(
-  ({
-    canManage,
-    expenses,
-    hasNextPage,
-    isDeletePending,
-    isFetchingNextPage,
-    isPending,
-    isQuickDeleteActive,
-    isRefreshing,
-    onDelete,
-    onEdit,
-    onRestore,
-    scrollSentinelRef,
-    toolbar,
-  }: {
-    canManage: boolean;
-    expenses: IPropertyExpense[];
-    hasNextPage: boolean;
-    isDeletePending: boolean;
-    isFetchingNextPage: boolean;
-    isPending: boolean;
-    isQuickDeleteActive: boolean;
-    isRefreshing: boolean;
-    onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
-    onEdit: (expense: IPropertyExpense) => void;
-    onRestore: (expense: IPropertyExpense) => void;
-    scrollSentinelRef: RefObject<HTMLDivElement | null>;
-    toolbar: ReactNode;
-  }) => {
-    const renderExpenseRow = useCallback(
-      (expense: IPropertyExpense) => (
-        <ExpenseRow
-          canManage={canManage}
-          expense={expense}
-          isDeletePending={isDeletePending}
-          isQuickDeleteActive={isQuickDeleteActive}
-          key={expense.id}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          onRestore={onRestore}
-        />
-      ),
-      [canManage, isDeletePending, isQuickDeleteActive, onDelete, onEdit, onRestore]
-    );
-
-    const columns = useMemo(() => getExpenseColumns(canManage), [canManage]);
-
-    return (
-      <DataTable
-        columns={columns}
-        emptyMessage={`No expenses yet.${canManage ? " Add an expense to get started." : ""}`}
-        getItemKey={getExpenseKey}
-        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
-        infiniteScrollSentinelRef={scrollSentinelRef}
-        isPending={isPending}
-        isRefreshing={isRefreshing}
-        items={expenses}
-        renderRow={renderExpenseRow}
-        toolbar={toolbar}
-        virtualization={{ estimateRowHeight: EXPENSE_ROW_ESTIMATED_HEIGHT }}
-      />
-    );
-  }
-);
-PropertyExpensesTable.displayName = "PropertyExpensesTable";
-
 const PropertyExpensesPageActions = memo(
   ({
     canManage,
@@ -273,83 +194,226 @@ const PropertyExpensesPageActions = memo(
 );
 PropertyExpensesPageActions.displayName = "PropertyExpensesPageActions";
 
-const PropertyExpensesPageDialogs = memo(
-  ({
-    categoryTypes,
-    createOpen,
-    editExpense,
-    importCsvOpen,
-    onCreateOpenChange,
-    onEditOpenChange,
-    onImportCsvOpenChange,
-    propertyId,
-  }: {
-    categoryTypes: IPropertyExpenseCategoryType[];
-    createOpen: boolean;
-    editExpense: IPropertyExpense | null;
-    importCsvOpen: boolean;
-    onCreateOpenChange: (open: boolean) => void;
-    onEditOpenChange: (open: boolean) => void;
-    onImportCsvOpenChange: (open: boolean) => void;
-    propertyId: string;
-  }) => (
-    <>
-      <CreateExpenseDialog
-        categoryTypes={categoryTypes}
-        onOpenChange={onCreateOpenChange}
-        open={createOpen}
-        propertyId={propertyId}
-      />
-      <ImportExpenseCsvDialog
-        categoryTypes={categoryTypes}
-        onOpenChange={onImportCsvOpenChange}
-        open={importCsvOpen}
-        propertyId={propertyId}
-      />
-      {editExpense ? (
-        <EditExpenseDialog
-          categoryTypes={categoryTypes}
-          expense={editExpense}
-          key={editExpense.id}
-          onOpenChange={onEditOpenChange}
-          open={true}
-          propertyId={propertyId}
-        />
-      ) : null}
-    </>
-  )
-);
-PropertyExpensesPageDialogs.displayName = "PropertyExpensesPageDialogs";
+const PropertyExpensesShellActions = memo(function PropertyExpensesShellActions({
+  canManage,
+  categoryTypes,
+  onExportTable,
+  propertyId,
+}: {
+  canManage: boolean;
+  categoryTypes: IPropertyExpenseCategoryType[];
+  onExportTable: () => void;
+  propertyId: string;
+}) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [importCsvOpen, setImportCsvOpen] = useState(false);
 
-function useRegisterExpensePageActions(
-  canManage: boolean,
-  onExportTable: () => void,
-  onImportCsv: () => void,
-  onOpenCreate: () => void
-) {
   const pageActions = useMemo(
     () => (
       <PropertyExpensesPageActions
         canManage={canManage}
         onExportTable={onExportTable}
-        onImportCsv={onImportCsv}
-        onOpenCreate={onOpenCreate}
+        onImportCsv={() => setImportCsvOpen(true)}
+        onOpenCreate={() => setCreateOpen(true)}
       />
     ),
-    [canManage, onExportTable, onImportCsv, onOpenCreate]
+    [canManage, onExportTable]
   );
 
   usePropertyShellActions(pageActions);
-}
 
-export const PropertyExpensesPage = memo(() => {
+  return (
+    <>
+      <CreateExpenseDialog
+        categoryTypes={categoryTypes}
+        onOpenChange={setCreateOpen}
+        open={createOpen}
+        propertyId={propertyId}
+      />
+      <ImportExpenseCsvDialog
+        categoryTypes={categoryTypes}
+        onOpenChange={setImportCsvOpen}
+        open={importCsvOpen}
+        propertyId={propertyId}
+      />
+    </>
+  );
+});
+PropertyExpensesShellActions.displayName = "PropertyExpensesShellActions";
+
+const PropertyExpensesTable = memo(
+  ({
+    activeFilterCount,
+    activeFilterItems,
+    activePreset,
+    canManage,
+    categoryFilterOptions,
+    categoryId,
+    categoryTypes,
+    countLabel,
+    deletingExpenseId,
+    displayFrom,
+    displayTo,
+    expenses,
+    hasNextPage,
+    isFetchingNextPage,
+    isPending,
+    isQuickDeleteActive,
+    isRefreshing,
+    onClearAllToolbarFilters,
+    onClearSecondaryFilters,
+    onDelete,
+    onFilterChange,
+    onFromChange,
+    onPresetChange,
+    onRemoveToolbarFilter,
+    onRestore,
+    onSearchInputChange,
+    onToChange,
+    propertyId,
+    scrollSentinelRef,
+    searchInput,
+  }: {
+    activeFilterCount: number;
+    activeFilterItems: IExpenseToolbarFilterItem[];
+    activePreset: TDateRangePresetId | null;
+    canManage: boolean;
+    categoryFilterOptions: TSelectOption[];
+    categoryId: string;
+    categoryTypes: IPropertyExpenseCategoryType[];
+    countLabel?: string;
+    deletingExpenseId?: string;
+    displayFrom: string;
+    displayTo: string;
+    expenses: IPropertyExpense[];
+    hasNextPage: boolean;
+    isFetchingNextPage: boolean;
+    isPending: boolean;
+    isQuickDeleteActive: boolean;
+    isRefreshing: boolean;
+    onClearAllToolbarFilters: () => void;
+    onClearSecondaryFilters: () => void;
+    onDelete: (expense: IPropertyExpense, event?: MouseEvent<HTMLButtonElement>) => void;
+    onFilterChange: (key: TExpenseFilterKey, value: string) => void;
+    onFromChange: (value: string) => void;
+    onPresetChange: (presetId: TDateRangePresetId) => void;
+    onRemoveToolbarFilter: (id: TExpenseToolbarFilterId) => void;
+    onRestore: (expense: IPropertyExpense) => void;
+    onSearchInputChange: (value: string) => void;
+    onToChange: (value: string) => void;
+    propertyId: string;
+    scrollSentinelRef: RefObject<HTMLDivElement | null>;
+    searchInput: string;
+  }) => {
+    const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
+
+    const handleEdit = useCallback((expense: IPropertyExpense) => {
+      setEditExpense(expense);
+    }, []);
+
+    const handleEditOpenChange = useCallback((open: boolean) => {
+      if (!open) {
+        setEditExpense(null);
+      }
+    }, []);
+
+    const renderExpenseRow = useCallback(
+      (expense: IPropertyExpense) => (
+        <ExpenseRow
+          canManage={canManage}
+          expense={expense}
+          isDeletePending={deletingExpenseId === expense.id}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={expense.id}
+          onDelete={onDelete}
+          onEdit={handleEdit}
+          onRestore={onRestore}
+        />
+      ),
+      [canManage, deletingExpenseId, handleEdit, isQuickDeleteActive, onDelete, onRestore]
+    );
+
+    const columns = useMemo(() => getExpenseColumns(canManage), [canManage]);
+
+    const toolbar = useMemo(
+      () => (
+        <PropertyExpenseToolbar
+          activeFilterCount={activeFilterCount}
+          activeFilterItems={activeFilterItems}
+          activePreset={activePreset}
+          categoryFilterOptions={categoryFilterOptions}
+          categoryId={categoryId}
+          countLabel={countLabel}
+          from={displayFrom}
+          onClearAll={onClearAllToolbarFilters}
+          onClearSecondaryFilters={onClearSecondaryFilters}
+          onFilterChange={onFilterChange}
+          onFromChange={onFromChange}
+          onPresetChange={onPresetChange}
+          onRemoveFilter={onRemoveToolbarFilter}
+          onSearchInputChange={onSearchInputChange}
+          onToChange={onToChange}
+          searchInput={searchInput}
+          to={displayTo}
+        />
+      ),
+      [
+        activeFilterCount,
+        activeFilterItems,
+        activePreset,
+        categoryFilterOptions,
+        categoryId,
+        countLabel,
+        displayFrom,
+        displayTo,
+        onClearAllToolbarFilters,
+        onClearSecondaryFilters,
+        onFilterChange,
+        onFromChange,
+        onPresetChange,
+        onRemoveToolbarFilter,
+        onSearchInputChange,
+        onToChange,
+        searchInput,
+      ]
+    );
+
+    return (
+      <>
+        <DataTable
+          columns={columns}
+          emptyMessage={`No expenses yet.${canManage ? " Add an expense to get started." : ""}`}
+          getItemKey={getExpenseKey}
+          infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+          infiniteScrollSentinelRef={scrollSentinelRef}
+          isPending={isPending}
+          isRefreshing={isRefreshing}
+          items={expenses}
+          renderRow={renderExpenseRow}
+          toolbar={toolbar}
+          virtualization={{ estimateRowHeight: EXPENSE_ROW_ESTIMATED_HEIGHT }}
+        />
+        {editExpense ? (
+          <EditExpenseDialog
+            categoryTypes={categoryTypes}
+            expense={editExpense}
+            key={editExpense.id}
+            onOpenChange={handleEditOpenChange}
+            open={true}
+            propertyId={propertyId}
+          />
+        ) : null}
+      </>
+    );
+  }
+);
+PropertyExpensesTable.displayName = "PropertyExpensesTable";
+
+export const PropertyExpensesPage = memo(function PropertyExpensesPage() {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
-  const [createOpen, setCreateOpen] = useState(false);
   const [exportTableOpen, setExportTableOpen] = useState(false);
-  const [importCsvOpen, setImportCsvOpen] = useState(false);
-  const [editExpense, setEditExpense] = useState<IPropertyExpense | null>(null);
 
   const defaultDateRange = useMemo(() => getDefaultReportDateRange(), []);
   const expenseFilterSchema = useMemo(
@@ -514,16 +578,8 @@ export const PropertyExpensesPage = memo(() => {
     },
   });
 
-  const handleOpenCreate = useCallback(() => {
-    setCreateOpen(true);
-  }, []);
-
   const handleOpenExportTable = useCallback(() => {
     setExportTableOpen(true);
-  }, []);
-
-  const handleOpenImportCsv = useCallback(() => {
-    setImportCsvOpen(true);
   }, []);
 
   const handleRestoreExpense = useCallback(
@@ -533,67 +589,56 @@ export const PropertyExpensesPage = memo(() => {
     [restoreMutation]
   );
 
-  useRegisterExpensePageActions(
-    canManage,
-    handleOpenExportTable,
-    handleOpenImportCsv,
-    handleOpenCreate
-  );
+  const deletingExpenseId = deleteMutation.isPending ? deleteMutation.variables?.id : undefined;
+  const countLabel = meta ? `${meta.totalCount} entries` : undefined;
 
   return (
     <>
+      <PropertyExpensesShellActions
+        canManage={canManage}
+        categoryTypes={categoryTypes}
+        onExportTable={handleOpenExportTable}
+        propertyId={propertyId}
+      />
+
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
           <PropertyExpensesTable
+            activeFilterCount={activeSecondaryFilterCount}
+            activeFilterItems={activeFilterItems}
+            activePreset={activePreset}
             canManage={canManage}
+            categoryFilterOptions={categoryFilterOptions}
+            categoryId={categoryId}
+            categoryTypes={categoryTypes}
+            countLabel={countLabel}
+            deletingExpenseId={deletingExpenseId}
+            displayFrom={displayFrom}
+            displayTo={displayTo}
             expenses={expenses}
             hasNextPage={hasNextPage}
-            isDeletePending={deleteMutation.isPending}
             isFetchingNextPage={isFetchingNextPage}
             isPending={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
             isRefreshing={isFilterRefetching}
+            onClearAllToolbarFilters={handleClearAllToolbarFilters}
+            onClearSecondaryFilters={handleClearSecondaryFilters}
             onDelete={handleDelete}
-            onEdit={setEditExpense}
+            onFilterChange={handleExpenseFilterChange}
+            onFromChange={onFromChange}
+            onPresetChange={onPresetChange}
+            onRemoveToolbarFilter={handleRemoveToolbarFilter}
             onRestore={handleRestoreExpense}
+            onSearchInputChange={handleSearchInputChange}
+            onToChange={onToChange}
+            propertyId={propertyId}
             scrollSentinelRef={scrollSentinelRef}
-            toolbar={
-              <PropertyExpenseToolbar
-                activeFilterCount={activeSecondaryFilterCount}
-                activeFilterItems={activeFilterItems}
-                activePreset={activePreset}
-                categoryFilterOptions={categoryFilterOptions}
-                categoryId={categoryId}
-                countLabel={meta ? `${meta.totalCount} entries` : undefined}
-                from={displayFrom}
-                onClearAll={handleClearAllToolbarFilters}
-                onClearSecondaryFilters={handleClearSecondaryFilters}
-                onFilterChange={handleExpenseFilterChange}
-                onFromChange={onFromChange}
-                onPresetChange={onPresetChange}
-                onRemoveFilter={handleRemoveToolbarFilter}
-                onSearchInputChange={handleSearchInputChange}
-                onToChange={onToChange}
-                searchInput={searchInput}
-                to={displayTo}
-              />
-            }
+            searchInput={searchInput}
           />
         </CardContent>
       </Card>
 
       {deleteConfirmationDialog}
-
-      <PropertyExpensesPageDialogs
-        categoryTypes={categoryTypes}
-        createOpen={createOpen}
-        editExpense={editExpense}
-        importCsvOpen={importCsvOpen}
-        onCreateOpenChange={setCreateOpen}
-        onEditOpenChange={(open) => handleEditDialogOpenChange(open, () => setEditExpense(null))}
-        onImportCsvOpenChange={setImportCsvOpen}
-        propertyId={propertyId}
-      />
 
       <PropertyTableExportDialog
         config={{ filters: expenseListFilters, resourceType: ExportResourceType.EXPENSES }}
@@ -606,4 +651,3 @@ export const PropertyExpensesPage = memo(() => {
     </>
   );
 });
-PropertyExpensesPage.displayName = "PropertyExpensesPage";

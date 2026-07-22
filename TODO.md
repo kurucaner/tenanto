@@ -13,3 +13,4 @@
 - Sub category implementation for expenses
 - Add Stripe commission to long stay payments
 - ACH
+- in properties, modal opening and closing re-renders the table.

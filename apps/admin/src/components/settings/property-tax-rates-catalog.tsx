@@ -1,5 +1,7 @@
-import { memo, type MouseEvent, useState } from "react";
+import { memo, type MouseEvent, useCallback, useState } from "react";
 
+import { usePropertySettingsCatalogDialog } from "@/components/settings/property-settings-catalog-dialog-context";
+import { PropertySettingsCatalogDialogScope } from "@/components/settings/property-settings-catalog-dialog-scope";
 import { PropertySettingsCatalogList } from "@/components/settings/property-settings-catalog-list";
 import { PropertySettingsCatalogRow } from "@/components/settings/property-settings-catalog-row";
 import { PropertyTaxRateDialog } from "@/components/settings/property-tax-rate-dialog";
@@ -18,6 +20,79 @@ type TPropertyTaxRatesCatalogProps = {
   taxRates: PropertyTaxRateFormRow[];
 };
 
+const TaxRateCatalogRow = memo(function TaxRateCatalogRow({
+  disabled,
+  isPending,
+  isQuickDeleteActive,
+  onDeleteRow,
+  row,
+}: {
+  disabled: boolean;
+  isPending: boolean;
+  isQuickDeleteActive: boolean;
+  onDeleteRow: TPropertyTaxRatesCatalogProps["onDeleteRow"];
+  row: PropertyTaxRateFormRow;
+}) {
+  const { openEdit } = usePropertySettingsCatalogDialog<PropertyTaxRateFormRow>();
+
+  return (
+    <PropertySettingsCatalogRow
+      disabled={disabled}
+      isDeletePending={isPending}
+      meta={`${row.ratePercent}%`}
+      onDelete={(event) => onDeleteRow(row, event)}
+      onEdit={() => openEdit(row)}
+      quickDeleteActive={isQuickDeleteActive}
+      title={row.name}
+    />
+  );
+});
+TaxRateCatalogRow.displayName = "TaxRateCatalogRow";
+
+const TaxRatesCatalogList = memo(function TaxRatesCatalogList({
+  description,
+  disabled,
+  isPending,
+  isQuickDeleteActive,
+  onDeleteRow,
+  taxRates,
+}: Omit<TPropertyTaxRatesCatalogProps, "onUpsertRow">) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const { openAdd } = usePropertySettingsCatalogDialog<PropertyTaxRateFormRow>();
+
+  const filtered = taxRates.filter((row) =>
+    row.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
+  const showSearch = taxRates.length > PROPERTY_SETTINGS_CATALOG_SEARCH_THRESHOLD;
+
+  return (
+    <PropertySettingsCatalogList
+      addLabel="Add tax"
+      count={taxRates.length}
+      description={description}
+      disabled={disabled || isPending}
+      emptyLabel="No taxes configured."
+      onAdd={openAdd}
+      onSearchChange={setSearchQuery}
+      searchQuery={searchQuery}
+      showSearch={showSearch}
+      title="Tax rates"
+    >
+      {filtered.map((row) => (
+        <TaxRateCatalogRow
+          disabled={disabled ?? false}
+          isPending={isPending ?? false}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={row.clientId}
+          onDeleteRow={onDeleteRow}
+          row={row}
+        />
+      ))}
+    </PropertySettingsCatalogList>
+  );
+});
+TaxRatesCatalogList.displayName = "TaxRatesCatalogList";
+
 export const PropertyTaxRatesCatalog = memo(function PropertyTaxRatesCatalog({
   description,
   disabled = false,
@@ -27,57 +102,32 @@ export const PropertyTaxRatesCatalog = memo(function PropertyTaxRatesCatalog({
   onUpsertRow,
   taxRates,
 }: TPropertyTaxRatesCatalogProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dialogRow, setDialogRow] = useState<PropertyTaxRateFormRow | null | undefined>(undefined);
-
-  const filtered = taxRates.filter((row) =>
-    row.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  const renderDialog = useCallback(
+    (props: {
+      isPending: boolean;
+      onOpenChange: (open: boolean) => void;
+      onSubmit: (row: PropertyTaxRateFormRow) => void;
+      open: boolean;
+      row: PropertyTaxRateFormRow | null;
+    }) => <PropertyTaxRateDialog {...props} />,
+    []
   );
-  const showSearch = taxRates.length > PROPERTY_SETTINGS_CATALOG_SEARCH_THRESHOLD;
-  const dialogOpen = dialogRow !== undefined;
 
   return (
-    <>
-      <PropertySettingsCatalogList
-        addLabel="Add tax"
-        count={taxRates.length}
+    <PropertySettingsCatalogDialogScope
+      isPending={isPending}
+      onUpsertRow={onUpsertRow}
+      renderDialog={renderDialog}
+    >
+      <TaxRatesCatalogList
         description={description}
-        disabled={disabled || isPending}
-        emptyLabel="No taxes configured."
-        onAdd={() => setDialogRow(null)}
-        onSearchChange={setSearchQuery}
-        searchQuery={searchQuery}
-        showSearch={showSearch}
-        title="Tax rates"
-      >
-        {filtered.map((row) => (
-          <PropertySettingsCatalogRow
-            disabled={disabled}
-            isDeletePending={isPending}
-            key={row.clientId}
-            meta={`${row.ratePercent}%`}
-            onDelete={(event) => onDeleteRow(row, event)}
-            onEdit={() => setDialogRow(row)}
-            quickDeleteActive={isQuickDeleteActive}
-            title={row.name}
-          />
-        ))}
-      </PropertySettingsCatalogList>
-      <PropertyTaxRateDialog
+        disabled={disabled}
         isPending={isPending}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDialogRow(undefined);
-          }
-        }}
-        onSubmit={(row) => {
-          onUpsertRow(row);
-          setDialogRow(undefined);
-        }}
-        open={dialogOpen}
-        row={dialogRow ?? null}
+        isQuickDeleteActive={isQuickDeleteActive}
+        onDeleteRow={onDeleteRow}
+        taxRates={taxRates}
       />
-    </>
+    </PropertySettingsCatalogDialogScope>
   );
 });
 PropertyTaxRatesCatalog.displayName = "PropertyTaxRatesCatalog";

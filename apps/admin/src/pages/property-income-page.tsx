@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CirclePlus, Download, MoreHorizontal, Pencil, Plus, Sparkles } from "lucide-react";
 import {
+  createContext,
   memo,
   type MouseEvent,
   type ReactNode,
   type RefObject,
   useCallback,
+  useContext,
   useMemo,
   useState,
 } from "react";
@@ -70,7 +72,7 @@ import { useUrlDateRangeFilter } from "@/hooks/use-url-date-range-filter";
 import { useUrlFilterState } from "@/hooks/use-url-filter-state";
 import { useUrlTableSort } from "@/hooks/use-url-table-sort";
 import { incomeLinesApi, settingsApi, shortStaysApi, unitsApi } from "@/lib/api-client";
-import { getDateRangeSummary } from "@/lib/date-range-presets";
+import { getDateRangeSummary, type TDateRangePresetId } from "@/lib/date-range-presets";
 import { getFilteredTableFetchState } from "@/lib/filtered-table-fetch-state";
 import { formatMoney } from "@/lib/format-money";
 import {
@@ -84,6 +86,7 @@ import {
   buildIncomeToolbarClearOnePatch,
   buildIncomeToolbarFilterItems,
   countIncomeSecondaryFilters,
+  type IIncomeToolbarFilterItem,
   type TIncomeToolbarFilterId,
 } from "@/lib/income-toolbar-filters";
 import { invalidatePropertyIncomeCaches } from "@/lib/invalidate-property-income-caches";
@@ -95,6 +98,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 import { getDefaultReportDateRange } from "@/lib/report-date-defaults";
 import { getTodayLocalIsoDate } from "@/lib/reservation-date-utils";
+import { type TSelectOption } from "@/lib/select-option-types";
 import { defineUrlFilterSchema } from "@/lib/url-search-params";
 import {
   ExportResourceType,
@@ -400,222 +404,422 @@ function openOtherIncomeFromStay(
   actions.setCreateLineOpen(true);
 }
 
-function handleCreateIncomeLineOpenChange(
-  open: boolean,
-  setCreateLineOpen: (open: boolean) => void,
-  resetCreateLineState: () => void
-): void {
-  setCreateLineOpen(open);
-  if (!open) {
-    resetCreateLineState();
-  }
+interface IPropertyIncomeCreateLineContext {
+  openBlank: () => void;
+  openFromStay: (stay: IPropertyReservation) => void;
 }
 
-const PropertyIncomeEntriesTable = memo(
-  ({
-    canManage,
-    entries,
-    hasNextPage,
-    isDeleteLinePending,
-    isDeleteStayPending,
-    isFetchingNextPage,
-    isLoading,
-    isQuickDeleteActive,
-    isRefreshing,
-    isRefundLinePending,
-    isRefundStayPending,
-    onAddOtherIncomeFromStay,
-    onDeleteLine,
-    onDeleteStay,
-    onEditLine,
-    onEditStay,
-    onRefundLine,
-    onRefundStay,
-    onRestoreLine,
-    onRestoreStay,
-    onShowCalculationDetails,
-    scrollSentinelRef,
-    sort,
-    toolbar,
-    unitLabelById,
-  }: {
-    canManage: boolean;
-    entries: TPropertyIncomeEntry[];
-    hasNextPage: boolean;
-    isDeleteLinePending: boolean;
-    isDeleteStayPending: boolean;
-    isFetchingNextPage: boolean;
-    isLoading: boolean;
-    isQuickDeleteActive: boolean;
-    isRefreshing: boolean;
-    isRefundLinePending: boolean;
-    isRefundStayPending: boolean;
-    onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
-    onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
-    onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
-    onEditLine: (line: IPropertyIncomeLine) => void;
-    onEditStay: (stay: IPropertyReservation) => void;
-    onRefundLine: (line: IPropertyIncomeLine) => void;
-    onRefundStay: (stay: IPropertyReservation) => void;
-    onRestoreLine: (line: IPropertyIncomeLine) => void;
-    onRestoreStay: (stay: IPropertyReservation) => void;
-    onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
-    scrollSentinelRef: RefObject<HTMLDivElement | null>;
-    sort: DataTableSortController;
-    toolbar: ReactNode;
-    unitLabelById: Map<string, string>;
-  }) => {
-    const renderIncomeEntryRow = useCallback(
-      (entry: TPropertyIncomeEntry) => (
-        <IncomeEntryRow
-          canManage={canManage}
-          entry={entry}
-          isDeleteLinePending={isDeleteLinePending}
-          isDeleteStayPending={isDeleteStayPending}
-          isQuickDeleteActive={isQuickDeleteActive}
-          isRefundLinePending={isRefundLinePending}
-          isRefundStayPending={isRefundStayPending}
-          key={getIncomeEntryKey(entry)}
-          onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
-          onDeleteLine={onDeleteLine}
-          onDeleteStay={onDeleteStay}
-          onEditLine={onEditLine}
-          onEditStay={onEditStay}
-          onRefundLine={onRefundLine}
-          onRefundStay={onRefundStay}
-          onRestoreLine={onRestoreLine}
-          onRestoreStay={onRestoreStay}
-          onShowCalculationDetails={onShowCalculationDetails}
-          unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
-        />
-      ),
-      [
-        canManage,
-        isDeleteLinePending,
-        isDeleteStayPending,
-        isQuickDeleteActive,
-        isRefundLinePending,
-        isRefundStayPending,
-        onAddOtherIncomeFromStay,
-        onDeleteLine,
-        onDeleteStay,
-        onEditLine,
-        onEditStay,
-        onRefundLine,
-        onRefundStay,
-        onRestoreLine,
-        onRestoreStay,
-        onShowCalculationDetails,
-        unitLabelById,
-      ]
-    );
+const PropertyIncomeCreateLineContext = createContext<IPropertyIncomeCreateLineContext | null>(
+  null
+);
 
-    const columns = useMemo(() => getIncomeColumns(canManage), [canManage]);
-    return (
-      <DataTable
-        columns={columns}
-        emptyMessage={`No income entries yet.${canManage ? " Add a stay or other income to get started." : ""}`}
-        getItemKey={getIncomeEntryKey}
-        infiniteScroll={{ hasNextPage, isFetchingNextPage }}
-        infiniteScrollSentinelRef={scrollSentinelRef}
-        isPending={isLoading}
-        isRefreshing={isRefreshing}
-        items={entries}
-        renderRow={renderIncomeEntryRow}
-        sort={sort}
-        toolbar={toolbar}
-        virtualization={{ estimateRowHeight: INCOME_ROW_ESTIMATED_HEIGHT }}
-      />
+function usePropertyIncomeCreateLine(): IPropertyIncomeCreateLineContext {
+  const context = useContext(PropertyIncomeCreateLineContext);
+  if (context === null) {
+    throw new Error(
+      "usePropertyIncomeCreateLine must be used within PropertyIncomeCreateLineProvider"
     );
   }
-);
-PropertyIncomeEntriesTable.displayName = "PropertyIncomeEntriesTable";
+  return context;
+}
 
-const PropertyIncomePageDialogs = memo(
-  ({
-    createLineLockedStay,
-    createLineOpen,
-    createLinePrefill,
-    createStayOpen,
-    editIncomeLine,
-    editReservation,
-    importCsvOpen,
-    incomeLineTypes,
-    onCreateIncomeLineOpenChange,
-    onCreateStayOpenChange,
-    onEditIncomeLineOpenChange,
-    onEditReservationOpenChange,
-    onImportCsvOpenChange,
-    propertyId,
-    units,
-  }: {
-    createLineLockedStay: IPropertyReservation | null;
-    createLineOpen: boolean;
-    createLinePrefill: CreateIncomeLineDialogPrefill | null;
-    createStayOpen: boolean;
-    editIncomeLine: IPropertyIncomeLine | null;
-    editReservation: IPropertyReservation | null;
-    importCsvOpen: boolean;
-    incomeLineTypes: IPropertyIncomeLineType[];
-    onCreateIncomeLineOpenChange: (open: boolean) => void;
-    onCreateStayOpenChange: (open: boolean) => void;
-    onEditIncomeLineOpenChange: (open: boolean) => void;
-    onEditReservationOpenChange: (open: boolean) => void;
-    onImportCsvOpenChange: (open: boolean) => void;
-    propertyId: string;
-    units: IPropertyUnit[];
-  }) => (
-    <>
-      <CreateReservationDialog
-        onOpenChange={onCreateStayOpenChange}
-        open={createStayOpen}
-        propertyId={propertyId}
-      />
+const PropertyIncomeCreateLineProvider = memo(function PropertyIncomeCreateLineProvider({
+  children,
+  incomeLineTypes,
+  propertyId,
+  units,
+}: {
+  children: ReactNode;
+  incomeLineTypes: IPropertyIncomeLineType[];
+  propertyId: string;
+  units: IPropertyUnit[];
+}) {
+  const [createLineOpen, setCreateLineOpen] = useState(false);
+  const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
+    null
+  );
+  const [createLineLockedStay, setCreateLineLockedStay] = useState<IPropertyReservation | null>(
+    null
+  );
+
+  const resetCreateLineState = useCallback(() => {
+    setCreateLinePrefill(null);
+    setCreateLineLockedStay(null);
+  }, []);
+
+  const openBlank = useCallback(() => {
+    resetCreateLineState();
+    setCreateLineOpen(true);
+  }, [resetCreateLineState]);
+
+  const openFromStay = useCallback(
+    (stay: IPropertyReservation) => {
+      openOtherIncomeFromStay(stay, incomeLineTypes, {
+        setCreateLineLockedStay,
+        setCreateLineOpen,
+        setCreateLinePrefill,
+      });
+    },
+    [incomeLineTypes]
+  );
+
+  const handleCreateIncomeLineOpenChange = useCallback(
+    (open: boolean) => {
+      setCreateLineOpen(open);
+      if (!open) {
+        resetCreateLineState();
+      }
+    },
+    [resetCreateLineState]
+  );
+
+  const contextValue = useMemo(() => ({ openBlank, openFromStay }), [openBlank, openFromStay]);
+
+  return (
+    <PropertyIncomeCreateLineContext.Provider value={contextValue}>
+      {children}
       <CreateIncomeLineDialog
         incomeLineTypes={incomeLineTypes}
         lockedStay={createLineLockedStay}
-        onOpenChange={onCreateIncomeLineOpenChange}
+        onOpenChange={handleCreateIncomeLineOpenChange}
         open={createLineOpen}
         prefill={createLinePrefill}
         propertyId={propertyId}
         units={units}
       />
+    </PropertyIncomeCreateLineContext.Provider>
+  );
+});
+
+const PropertyIncomeEntriesTable = memo(
+  ({
+    activeFilterCount,
+    activeFilterItems,
+    activePreset,
+    canManage,
+    channelCommissionId,
+    channelFilterOptions,
+    countLabel,
+    deletingLineId,
+    deletingStayId,
+    displayFrom,
+    displayTo,
+    entries,
+    hasNextPage,
+    incomeLineTypes,
+    incomeType,
+    incomeTypeFilterOptions,
+    isFetchingNextPage,
+    isLoading,
+    isQuickDeleteActive,
+    isRefreshing,
+    onClearAllToolbarFilters,
+    onClearSecondaryFilters,
+    onDeleteLine,
+    onDeleteStay,
+    onFilterChange,
+    onFromChange,
+    onPresetChange,
+    onRefundLine,
+    onRefundStay,
+    onRemoveToolbarFilter,
+    onRestoreLine,
+    onRestoreStay,
+    onSearchInputChange,
+    onShowCalculationDetails,
+    onToChange,
+    propertyId,
+    refundingLineId,
+    refundingStayId,
+    refundStatus,
+    refundStatusFilterOptions,
+    scrollSentinelRef,
+    searchInput,
+    showStays,
+    sort,
+    status,
+    statusOptions,
+    unitId,
+    unitLabelById,
+    units,
+  }: {
+    activeFilterCount: number;
+    activeFilterItems: IIncomeToolbarFilterItem[];
+    activePreset: TDateRangePresetId | null;
+    canManage: boolean;
+    channelCommissionId: string;
+    channelFilterOptions: TSelectOption[];
+    countLabel?: string;
+    deletingLineId?: string;
+    deletingStayId?: string;
+    displayFrom: string;
+    displayTo: string;
+    entries: TPropertyIncomeEntry[];
+    hasNextPage: boolean;
+    incomeLineTypes: IPropertyIncomeLineType[];
+    incomeType: string;
+    incomeTypeFilterOptions: TSelectOption[];
+    isFetchingNextPage: boolean;
+    isLoading: boolean;
+    isQuickDeleteActive: boolean;
+    isRefreshing: boolean;
+    onClearAllToolbarFilters: () => void;
+    onClearSecondaryFilters: () => void;
+    onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
+    onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
+    onFilterChange: (key: TIncomeFilterKey, value: string) => void;
+    onFromChange: (value: string) => void;
+    onPresetChange: (presetId: TDateRangePresetId) => void;
+    onRefundLine: (line: IPropertyIncomeLine) => void;
+    onRefundStay: (stay: IPropertyReservation) => void;
+    onRemoveToolbarFilter: (id: TIncomeToolbarFilterId) => void;
+    onRestoreLine: (line: IPropertyIncomeLine) => void;
+    onRestoreStay: (stay: IPropertyReservation) => void;
+    onSearchInputChange: (value: string) => void;
+    onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+    onToChange: (value: string) => void;
+    propertyId: string;
+    refundStatus: string;
+    refundStatusFilterOptions: TSelectOption[];
+    refundingLineId?: string;
+    refundingStayId?: string;
+    scrollSentinelRef: RefObject<HTMLDivElement | null>;
+    searchInput: string;
+    showStays: boolean;
+    sort: DataTableSortController;
+    status: string;
+    statusOptions: TSelectOption[];
+    unitId: string;
+    unitLabelById: Map<string, string>;
+    units: IPropertyUnit[];
+  }) => {
+    const { openFromStay } = usePropertyIncomeCreateLine();
+    const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
+    const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
+
+    const handleEditLine = useCallback((line: IPropertyIncomeLine) => {
+      setEditIncomeLine(line);
+    }, []);
+
+    const handleEditStay = useCallback((stay: IPropertyReservation) => {
+      setEditReservation(stay);
+    }, []);
+
+    const handleEditIncomeLineOpenChange = useCallback((open: boolean) => {
+      if (!open) {
+        setEditIncomeLine(null);
+      }
+    }, []);
+
+    const handleEditReservationOpenChange = useCallback((open: boolean) => {
+      if (!open) {
+        setEditReservation(null);
+      }
+    }, []);
+
+    const renderIncomeEntryRow = useCallback(
+      (entry: TPropertyIncomeEntry) => (
+        <IncomeEntryRow
+          canManage={canManage}
+          deletingLineId={deletingLineId}
+          deletingStayId={deletingStayId}
+          entry={entry}
+          isQuickDeleteActive={isQuickDeleteActive}
+          key={getIncomeEntryKey(entry)}
+          onAddOtherIncomeFromStay={openFromStay}
+          onDeleteLine={onDeleteLine}
+          onDeleteStay={onDeleteStay}
+          onEditLine={handleEditLine}
+          onEditStay={handleEditStay}
+          onRefundLine={onRefundLine}
+          onRefundStay={onRefundStay}
+          onRestoreLine={onRestoreLine}
+          onRestoreStay={onRestoreStay}
+          onShowCalculationDetails={onShowCalculationDetails}
+          refundingLineId={refundingLineId}
+          refundingStayId={refundingStayId}
+          unitLabel={resolveIncomeUnitLabel(getEntryUnitId(entry), unitLabelById)}
+        />
+      ),
+      [
+        canManage,
+        deletingLineId,
+        deletingStayId,
+        handleEditLine,
+        handleEditStay,
+        isQuickDeleteActive,
+        onDeleteLine,
+        onDeleteStay,
+        onRefundLine,
+        onRefundStay,
+        onRestoreLine,
+        onRestoreStay,
+        onShowCalculationDetails,
+        openFromStay,
+        refundingLineId,
+        refundingStayId,
+        unitLabelById,
+      ]
+    );
+
+    const columns = useMemo(() => getIncomeColumns(canManage), [canManage]);
+
+    const toolbar = useMemo(
+      () => (
+        <PropertyIncomeToolbar
+          activeFilterCount={activeFilterCount}
+          activeFilterItems={activeFilterItems}
+          activePreset={activePreset}
+          channelCommissionId={channelCommissionId}
+          channelFilterOptions={channelFilterOptions}
+          countLabel={countLabel}
+          from={displayFrom}
+          incomeType={incomeType}
+          incomeTypeFilterOptions={incomeTypeFilterOptions}
+          onClearAll={onClearAllToolbarFilters}
+          onClearSecondaryFilters={onClearSecondaryFilters}
+          onFilterChange={onFilterChange}
+          onFromChange={onFromChange}
+          onPresetChange={onPresetChange}
+          onRemoveFilter={onRemoveToolbarFilter}
+          onSearchInputChange={onSearchInputChange}
+          onToChange={onToChange}
+          refundStatus={refundStatus}
+          refundStatusFilterOptions={refundStatusFilterOptions}
+          searchInput={searchInput}
+          showStays={showStays}
+          status={status}
+          statusOptions={statusOptions}
+          to={displayTo}
+          unitId={unitId}
+          units={units}
+        />
+      ),
+      [
+        activeFilterCount,
+        activeFilterItems,
+        activePreset,
+        channelCommissionId,
+        channelFilterOptions,
+        countLabel,
+        displayFrom,
+        displayTo,
+        incomeType,
+        incomeTypeFilterOptions,
+        onClearAllToolbarFilters,
+        onClearSecondaryFilters,
+        onFilterChange,
+        onFromChange,
+        onPresetChange,
+        onRemoveToolbarFilter,
+        onSearchInputChange,
+        onToChange,
+        refundStatus,
+        refundStatusFilterOptions,
+        searchInput,
+        showStays,
+        status,
+        statusOptions,
+        unitId,
+        units,
+      ]
+    );
+
+    return (
+      <>
+        <DataTable
+          columns={columns}
+          emptyMessage={`No income entries yet.${canManage ? " Add a stay or other income to get started." : ""}`}
+          getItemKey={getIncomeEntryKey}
+          infiniteScroll={{ hasNextPage, isFetchingNextPage }}
+          infiniteScrollSentinelRef={scrollSentinelRef}
+          isPending={isLoading}
+          isRefreshing={isRefreshing}
+          items={entries}
+          renderRow={renderIncomeEntryRow}
+          sort={sort}
+          toolbar={toolbar}
+          virtualization={{ estimateRowHeight: INCOME_ROW_ESTIMATED_HEIGHT }}
+        />
+        {editReservation ? (
+          <EditReservationDialog
+            key={editReservation.id}
+            onOpenChange={handleEditReservationOpenChange}
+            open={true}
+            propertyId={propertyId}
+            reservation={editReservation}
+            units={units}
+          />
+        ) : null}
+        {editIncomeLine ? (
+          <EditIncomeLineDialog
+            incomeLine={editIncomeLine}
+            incomeLineTypes={incomeLineTypes}
+            key={editIncomeLine.id}
+            onOpenChange={handleEditIncomeLineOpenChange}
+            open={true}
+            propertyId={propertyId}
+            units={units}
+          />
+        ) : null}
+      </>
+    );
+  }
+);
+PropertyIncomeEntriesTable.displayName = "PropertyIncomeEntriesTable";
+
+const PropertyIncomeShellActions = memo(function PropertyIncomeShellActions({
+  canManage,
+  onExportTable,
+  propertyId,
+}: {
+  canManage: boolean;
+  onExportTable: () => void;
+  propertyId: string;
+}) {
+  const { openBlank } = usePropertyIncomeCreateLine();
+  const [createStayOpen, setCreateStayOpen] = useState(false);
+  const [importCsvOpen, setImportCsvOpen] = useState(false);
+
+  const handleAddStay = useCallback(() => {
+    setCreateStayOpen(true);
+  }, []);
+
+  const handleImportCsv = useCallback(() => {
+    setImportCsvOpen(true);
+  }, []);
+
+  const pageActions = useMemo(
+    () => (
+      <PropertyIncomePageActions
+        canManage={canManage}
+        onAddOtherIncome={openBlank}
+        onAddStay={handleAddStay}
+        onExportTable={onExportTable}
+        onImportCsv={handleImportCsv}
+      />
+    ),
+    [canManage, handleAddStay, handleImportCsv, onExportTable, openBlank]
+  );
+
+  usePropertyShellActions(pageActions);
+
+  return (
+    <>
+      <CreateReservationDialog
+        onOpenChange={setCreateStayOpen}
+        open={createStayOpen}
+        propertyId={propertyId}
+      />
       <ImportIncomeCsvDialog
-        onOpenChange={onImportCsvOpenChange}
+        onOpenChange={setImportCsvOpen}
         open={importCsvOpen}
         propertyId={propertyId}
       />
-      {editReservation ? (
-        <EditReservationDialog
-          key={editReservation.id}
-          onOpenChange={onEditReservationOpenChange}
-          open={true}
-          propertyId={propertyId}
-          reservation={editReservation}
-          units={units}
-        />
-      ) : null}
-      {editIncomeLine ? (
-        <EditIncomeLineDialog
-          incomeLine={editIncomeLine}
-          incomeLineTypes={incomeLineTypes}
-          key={editIncomeLine.id}
-          onOpenChange={onEditIncomeLineOpenChange}
-          open={true}
-          propertyId={propertyId}
-          units={units}
-        />
-      ) : null}
     </>
-  )
-);
-PropertyIncomePageDialogs.displayName = "PropertyIncomePageDialogs";
-
-function handleEditDialogOpenChange(open: boolean, clearSelection: () => void): void {
-  if (!open) {
-    clearSelection();
-  }
-}
+  );
+});
+PropertyIncomeShellActions.displayName = "PropertyIncomeShellActions";
 
 const PropertyIncomePageActions = memo(
   ({
@@ -707,15 +911,15 @@ StayMetricCell.displayName = "StayMetricCell";
 
 type IncomeStayEntryRowProps = {
   canManage: boolean;
-  isDeletePending: boolean;
+  deletingStayId?: string;
   isQuickDeleteActive: boolean;
-  isRefundPending: boolean;
   onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
   onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
   onEditStay: (stay: IPropertyReservation) => void;
   onRefundStay: (stay: IPropertyReservation) => void;
   onRestoreStay: (stay: IPropertyReservation) => void;
   onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+  refundingStayId?: string;
   stay: IPropertyReservation;
   unitLabel: string;
 };
@@ -723,18 +927,20 @@ type IncomeStayEntryRowProps = {
 const IncomeStayEntryRow = memo(
   ({
     canManage,
-    isDeletePending,
+    deletingStayId,
     isQuickDeleteActive,
-    isRefundPending,
     onAddOtherIncomeFromStay,
     onDeleteStay,
     onEditStay,
     onRefundStay,
     onRestoreStay,
     onShowCalculationDetails,
+    refundingStayId,
     stay,
     unitLabel,
   }: IncomeStayEntryRowProps) => {
+    const isDeletePending = deletingStayId === stay.id;
+    const isRefundPending = refundingStayId === stay.id;
     const isRefunded = stay.refundedAt !== null;
     const taxesTotal = getStayTaxesTotal(stay);
     const showTaxesDetails = taxesTotal > 0;
@@ -856,32 +1062,34 @@ IncomeStayEntryRow.displayName = "IncomeStayEntryRow";
 
 type IncomeLineEntryRowProps = {
   canManage: boolean;
+  deletingLineId?: string;
   entryKind?: typeof IncomeEntryKind.LINE | typeof IncomeEntryKind.LONG_TERM;
-  isDeletePending: boolean;
   isQuickDeleteActive: boolean;
-  isRefundPending: boolean;
   line: IPropertyIncomeLine;
   onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
   onEditLine: (line: IPropertyIncomeLine) => void;
   onRefundLine: (line: IPropertyIncomeLine) => void;
   onRestoreLine: (line: IPropertyIncomeLine) => void;
+  refundingLineId?: string;
   unitLabel: string;
 };
 
 const IncomeLineEntryRow = memo(
   ({
     canManage,
+    deletingLineId,
     entryKind,
-    isDeletePending,
     isQuickDeleteActive,
-    isRefundPending,
     line,
     onDeleteLine,
     onEditLine,
     onRefundLine,
     onRestoreLine,
+    refundingLineId,
     unitLabel,
   }: IncomeLineEntryRowProps) => {
+    const isDeletePending = deletingLineId === line.id;
+    const isRefundPending = refundingLineId === line.id;
     const isRefunded = line.refundedAt !== null;
     const resolvedEntryKind =
       entryKind ?? (line.longStayId != null ? IncomeEntryKind.LONG_TERM : IncomeEntryKind.LINE);
@@ -967,12 +1175,10 @@ IncomeLineEntryRow.displayName = "IncomeLineEntryRow";
 const IncomeEntryRow = memo(
   ({
     canManage,
+    deletingLineId,
+    deletingStayId,
     entry,
-    isDeleteLinePending,
-    isDeleteStayPending,
     isQuickDeleteActive,
-    isRefundLinePending,
-    isRefundStayPending,
     onAddOtherIncomeFromStay,
     onDeleteLine,
     onDeleteStay,
@@ -983,15 +1189,15 @@ const IncomeEntryRow = memo(
     onRestoreLine,
     onRestoreStay,
     onShowCalculationDetails,
+    refundingLineId,
+    refundingStayId,
     unitLabel,
   }: {
     canManage: boolean;
+    deletingLineId?: string;
+    deletingStayId?: string;
     entry: TPropertyIncomeEntry;
-    isDeleteLinePending: boolean;
-    isDeleteStayPending: boolean;
     isQuickDeleteActive: boolean;
-    isRefundLinePending: boolean;
-    isRefundStayPending: boolean;
     onAddOtherIncomeFromStay: (stay: IPropertyReservation) => void;
     onDeleteLine: (line: IPropertyIncomeLine, event?: MouseEvent<HTMLButtonElement>) => void;
     onDeleteStay: (stay: IPropertyReservation, event?: MouseEvent<HTMLButtonElement>) => void;
@@ -1002,21 +1208,23 @@ const IncomeEntryRow = memo(
     onRestoreLine: (line: IPropertyIncomeLine) => void;
     onRestoreStay: (stay: IPropertyReservation) => void;
     onShowCalculationDetails: (stay: IPropertyReservation, metric: TStayCalculationMetric) => void;
+    refundingLineId?: string;
+    refundingStayId?: string;
     unitLabel: string;
   }) => {
     if (entry.entryKind === IncomeEntryKind.STAY) {
       return (
         <IncomeStayEntryRow
           canManage={canManage}
-          isDeletePending={isDeleteStayPending}
+          deletingStayId={deletingStayId}
           isQuickDeleteActive={isQuickDeleteActive}
-          isRefundPending={isRefundStayPending}
           onAddOtherIncomeFromStay={onAddOtherIncomeFromStay}
           onDeleteStay={onDeleteStay}
           onEditStay={onEditStay}
           onRefundStay={onRefundStay}
           onRestoreStay={onRestoreStay}
           onShowCalculationDetails={onShowCalculationDetails}
+          refundingStayId={refundingStayId}
           stay={entry.stay}
           unitLabel={unitLabel}
         />
@@ -1026,19 +1234,19 @@ const IncomeEntryRow = memo(
     return (
       <IncomeLineEntryRow
         canManage={canManage}
+        deletingLineId={deletingLineId}
         entryKind={
           entry.entryKind === IncomeEntryKind.LONG_TERM
             ? IncomeEntryKind.LONG_TERM
             : IncomeEntryKind.LINE
         }
-        isDeletePending={isDeleteLinePending}
         isQuickDeleteActive={isQuickDeleteActive}
-        isRefundPending={isRefundLinePending}
         line={entry.line}
         onDeleteLine={onDeleteLine}
         onEditLine={onEditLine}
         onRefundLine={onRefundLine}
         onRestoreLine={onRestoreLine}
+        refundingLineId={refundingLineId}
         unitLabel={unitLabel}
       />
     );
@@ -1046,45 +1254,11 @@ const IncomeEntryRow = memo(
 );
 IncomeEntryRow.displayName = "IncomeEntryRow";
 
-function useRegisterIncomePageActions(
-  canManage: boolean,
-  onExportTable: () => void,
-  onAddOtherIncome: () => void,
-  onAddStay: () => void,
-  onImportCsv: () => void
-) {
-  const pageActions = useMemo(
-    () => (
-      <PropertyIncomePageActions
-        canManage={canManage}
-        onAddOtherIncome={onAddOtherIncome}
-        onAddStay={onAddStay}
-        onExportTable={onExportTable}
-        onImportCsv={onImportCsv}
-      />
-    ),
-    [canManage, onAddOtherIncome, onAddStay, onExportTable, onImportCsv]
-  );
-
-  usePropertyShellActions(pageActions);
-}
-
-const PropertyIncomePage = memo(() => {
+const PropertyIncomePage = memo(function PropertyIncomePage() {
   const { permissions, propertyId } = usePropertyShell();
   const canManage = permissions.canManageLedger;
   const queryClient = useQueryClient();
-  const [createStayOpen, setCreateStayOpen] = useState(false);
   const [exportTableOpen, setExportTableOpen] = useState(false);
-  const [importCsvOpen, setImportCsvOpen] = useState(false);
-  const [createLineOpen, setCreateLineOpen] = useState(false);
-  const [createLinePrefill, setCreateLinePrefill] = useState<CreateIncomeLineDialogPrefill | null>(
-    null
-  );
-  const [createLineLockedStay, setCreateLineLockedStay] = useState<IPropertyReservation | null>(
-    null
-  );
-  const [editReservation, setEditReservation] = useState<IPropertyReservation | null>(null);
-  const [editIncomeLine, setEditIncomeLine] = useState<IPropertyIncomeLine | null>(null);
   const [calculationDetails, setCalculationDetails] = useState<{
     metric: TStayCalculationMetric;
     stay: IPropertyReservation;
@@ -1475,6 +1649,26 @@ const PropertyIncomePage = memo(() => {
   const isRefundStayPending = refundStayMutation.isPending || unrefundStayMutation.isPending;
   const isRefundLinePending = refundLineMutation.isPending || unrefundLineMutation.isPending;
 
+  const deletingStayId = deleteStayMutation.isPending
+    ? deleteStayMutation.variables?.id
+    : undefined;
+  const deletingLineId = deleteLineMutation.isPending
+    ? deleteLineMutation.variables?.id
+    : undefined;
+  let refundingStayId: string | undefined;
+  if (refundStayMutation.isPending) {
+    refundingStayId = refundStayMutation.variables?.stay.id;
+  } else if (unrefundStayMutation.isPending) {
+    refundingStayId = unrefundStayMutation.variables?.id;
+  }
+
+  let refundingLineId: string | undefined;
+  if (refundLineMutation.isPending) {
+    refundingLineId = refundLineMutation.variables?.line.id;
+  } else if (unrefundLineMutation.isPending) {
+    refundingLineId = unrefundLineMutation.variables?.id;
+  }
+
   const closeRefundEntry = useCallback(() => {
     setRefundEntryRequest(null);
   }, []);
@@ -1572,20 +1766,6 @@ const PropertyIncomePage = memo(() => {
   const hasNextPage = Boolean(activeIncomeListPagination.hasNextPage);
   const isFetchingNextPage = activeIncomeListPagination.isFetchingNextPage;
 
-  const handleAddOtherIncome = useCallback(() => {
-    setCreateLinePrefill(null);
-    setCreateLineLockedStay(null);
-    setCreateLineOpen(true);
-  }, []);
-
-  const handleAddStay = useCallback(() => {
-    setCreateStayOpen(true);
-  }, []);
-
-  const handleOpenImportCsv = useCallback(() => {
-    setImportCsvOpen(true);
-  }, []);
-
   const handleOpenExportTable = useCallback(() => {
     setExportTableOpen(true);
   }, []);
@@ -1604,79 +1784,72 @@ const PropertyIncomePage = memo(() => {
     [exportFilterSummaryOptions, incomeEntriesFilters]
   );
 
-  useRegisterIncomePageActions(
-    canManage,
-    handleOpenExportTable,
-    handleAddOtherIncome,
-    handleAddStay,
-    handleOpenImportCsv
-  );
+  const countLabel = listMeta ? `${listMeta.totalCount} entries` : undefined;
 
   return (
-    <>
+    <PropertyIncomeCreateLineProvider
+      incomeLineTypes={incomeLineTypes}
+      propertyId={propertyId}
+      units={activeUnits}
+    >
+      <PropertyIncomeShellActions
+        canManage={canManage}
+        onExportTable={handleOpenExportTable}
+        propertyId={propertyId}
+      />
+
       <Card className="gap-0 py-0">
         <CardContent className="p-0">
           <PropertyIncomeEntriesTable
+            activeFilterCount={activeSecondaryFilterCount}
+            activeFilterItems={activeFilterItems}
+            activePreset={activePreset}
             canManage={canManage}
+            channelCommissionId={channelCommissionId}
+            channelFilterOptions={channelFilterOptions}
+            countLabel={countLabel}
+            deletingLineId={deletingLineId}
+            deletingStayId={deletingStayId}
+            displayFrom={displayFrom}
+            displayTo={displayTo}
             entries={displayEntries}
             hasNextPage={hasNextPage}
-            isDeleteLinePending={deleteLineMutation.isPending}
-            isDeleteStayPending={deleteStayMutation.isPending}
+            incomeLineTypes={incomeLineTypes}
+            incomeType={incomeType}
+            incomeTypeFilterOptions={incomeTypeFilterOptions}
             isFetchingNextPage={isFetchingNextPage}
             isLoading={isTableInitialPending}
             isQuickDeleteActive={isQuickDeleteActive}
             isRefreshing={isFilterRefetching}
-            isRefundLinePending={isRefundLinePending}
-            isRefundStayPending={isRefundStayPending}
-            onAddOtherIncomeFromStay={(stay) =>
-              openOtherIncomeFromStay(stay, incomeLineTypes, {
-                setCreateLineLockedStay,
-                setCreateLineOpen,
-                setCreateLinePrefill,
-              })
-            }
+            onClearAllToolbarFilters={handleClearAllToolbarFilters}
+            onClearSecondaryFilters={handleClearSecondaryFilters}
             onDeleteLine={handleDeleteLine}
             onDeleteStay={handleDeleteStay}
-            onEditLine={setEditIncomeLine}
-            onEditStay={setEditReservation}
+            onFilterChange={handleIncomeFilterChange}
+            onFromChange={onFromChange}
+            onPresetChange={onPresetChange}
             onRefundLine={handleRefundLine}
             onRefundStay={handleRefundStay}
+            onRemoveToolbarFilter={handleRemoveToolbarFilter}
             onRestoreLine={(line) => restoreLineMutation.mutate(line)}
             onRestoreStay={(stay) => restoreStayMutation.mutate(stay)}
+            onSearchInputChange={handleSearchInputChange}
             onShowCalculationDetails={(stay, metric) => setCalculationDetails({ metric, stay })}
+            onToChange={onToChange}
+            propertyId={propertyId}
+            refundStatus={refundStatus}
+            refundStatusFilterOptions={REFUND_STATUS_FILTER_OPTIONS}
+            refundingLineId={refundingLineId}
+            refundingStayId={refundingStayId}
             scrollSentinelRef={scrollSentinelRef}
+            searchInput={searchInput}
+            showStays={showStays}
             sort={sortController}
-            toolbar={
-              <PropertyIncomeToolbar
-                activeFilterCount={activeSecondaryFilterCount}
-                activeFilterItems={activeFilterItems}
-                activePreset={activePreset}
-                channelCommissionId={channelCommissionId}
-                channelFilterOptions={channelFilterOptions}
-                countLabel={listMeta ? `${listMeta.totalCount} entries` : undefined}
-                from={displayFrom}
-                incomeType={incomeType}
-                incomeTypeFilterOptions={incomeTypeFilterOptions}
-                onClearAll={handleClearAllToolbarFilters}
-                onClearSecondaryFilters={handleClearSecondaryFilters}
-                onFilterChange={handleIncomeFilterChange}
-                onFromChange={onFromChange}
-                onPresetChange={onPresetChange}
-                onRemoveFilter={handleRemoveToolbarFilter}
-                onSearchInputChange={handleSearchInputChange}
-                onToChange={onToChange}
-                refundStatus={refundStatus}
-                refundStatusFilterOptions={REFUND_STATUS_FILTER_OPTIONS}
-                searchInput={searchInput}
-                showStays={showStays}
-                status={status}
-                statusOptions={STATUS_OPTIONS}
-                to={displayTo}
-                unitId={unitId}
-                units={activeUnits}
-              />
-            }
+            status={status}
+            statusOptions={STATUS_OPTIONS}
+            unitId={unitId}
             unitLabelById={unitLabelById}
+            units={activeUnits}
           />
         </CardContent>
       </Card>
@@ -1715,33 +1888,6 @@ const PropertyIncomePage = memo(() => {
         title={refundEntryRequest?.title ?? ""}
       />
 
-      <PropertyIncomePageDialogs
-        createLineLockedStay={createLineLockedStay}
-        createLineOpen={createLineOpen}
-        createLinePrefill={createLinePrefill}
-        createStayOpen={createStayOpen}
-        editIncomeLine={editIncomeLine}
-        editReservation={editReservation}
-        importCsvOpen={importCsvOpen}
-        incomeLineTypes={incomeLineTypes}
-        onCreateIncomeLineOpenChange={(open) =>
-          handleCreateIncomeLineOpenChange(open, setCreateLineOpen, () => {
-            setCreateLinePrefill(null);
-            setCreateLineLockedStay(null);
-          })
-        }
-        onCreateStayOpenChange={setCreateStayOpen}
-        onEditIncomeLineOpenChange={(open) =>
-          handleEditDialogOpenChange(open, () => setEditIncomeLine(null))
-        }
-        onEditReservationOpenChange={(open) =>
-          handleEditDialogOpenChange(open, () => setEditReservation(null))
-        }
-        onImportCsvOpenChange={setImportCsvOpen}
-        propertyId={propertyId}
-        units={activeUnits}
-      />
-
       <PropertyTableExportDialog
         config={{ filters: incomeEntriesFilters, resourceType: ExportResourceType.INCOME }}
         filterSummary={incomeExportFilterSummary}
@@ -1750,7 +1896,7 @@ const PropertyIncomePage = memo(() => {
         open={exportTableOpen}
         propertyId={propertyId}
       />
-    </>
+    </PropertyIncomeCreateLineProvider>
   );
 });
 PropertyIncomePage.displayName = "PropertyIncomePage";
