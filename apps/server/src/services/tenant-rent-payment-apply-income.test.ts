@@ -201,7 +201,6 @@ describe("applyIncomeForFullyCoveredMonths", () => {
     mockGetRentSchedule.mockResolvedValueOnce([
       {
         expectedRent: 200,
-        incomeLineId: "line-existing",
         isPaid: true,
         month: "2026-01",
         paidRent: 200,
