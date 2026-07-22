@@ -34,7 +34,7 @@ export const propertyExpenseCategoryTypesDb = {
   ): Promise<IPropertyExpenseCategoryType | null> {
     const db = client ?? pool;
     const result = await db.query(
-      `SELECT id, property_id, name, sort_order, is_annual_amount
+      `SELECT id, property_id, name, sort_order, is_annual_amount, is_system
        FROM property_expense_category_types
        WHERE id = $1 AND property_id = $2${activeOnly ? " AND is_deleted = false" : ""}`,
       [typeId, propertyId]
@@ -49,7 +49,7 @@ export const propertyExpenseCategoryTypesDb = {
   ): Promise<IPropertyExpenseCategoryType[]> {
     const db = client ?? pool;
     const result = await db.query(
-      `SELECT id, property_id, name, sort_order, is_annual_amount
+      `SELECT id, property_id, name, sort_order, is_annual_amount, is_system
        FROM property_expense_category_types
        WHERE property_id = $1 AND is_deleted = false
        ORDER BY sort_order ASC, created_at ASC`,
@@ -101,8 +101,8 @@ export const propertyExpenseCategoryTypesDb = {
         if (!restored) {
           await db.query(
             `INSERT INTO property_expense_category_types
-               (property_id, name, sort_order, is_annual_amount)
-             VALUES ($1, $2, $3, $4)`,
+               (property_id, name, sort_order, is_annual_amount, is_system)
+             VALUES ($1, $2, $3, $4, false)`,
             [propertyId, name, input.sortOrder, isAnnualAmount]
           );
         }
@@ -126,8 +126,8 @@ export const propertyExpenseCategoryTypesDb = {
       if (categoryType == null) continue;
       await db.query(
         `INSERT INTO property_expense_category_types
-           (property_id, name, sort_order, is_annual_amount)
-         VALUES ($1, $2, $3, $4)`,
+           (property_id, name, sort_order, is_annual_amount, is_system)
+         VALUES ($1, $2, $3, $4, false)`,
         [propertyId, categoryType.name, index, categoryType.isAnnualAmount]
       );
     }

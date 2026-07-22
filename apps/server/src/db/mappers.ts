@@ -150,6 +150,7 @@ export const mapPropertyExpenseCategoryTypeRow = (
 ): IPropertyExpenseCategoryType => ({
   id: row.id as string,
   isAnnualAmount: row.is_annual_amount as boolean,
+  isSystem: Boolean(row.is_system),
   name: row.name as string,
   propertyId: row.property_id as string,
   sortOrder: Number(row.sort_order),

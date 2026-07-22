@@ -2,6 +2,7 @@
 export interface IPropertyExpenseCategoryType {
   id: string;
   isAnnualAmount: boolean;
+  isSystem: boolean;
   name: string;
   propertyId: string;
   sortOrder: number;

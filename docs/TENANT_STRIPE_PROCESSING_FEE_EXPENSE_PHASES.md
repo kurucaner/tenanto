@@ -84,17 +84,17 @@ N/A — ship with rent payments when Connect is enabled. No separate fee-expense
 
 ### `property_expense_category_types`
 
-| Column | Notes |
-| --- | --- |
+| Column      | Notes                                                  |
+| ----------- | ------------------------------------------------------ |
 | `is_system` | `BOOLEAN NOT NULL DEFAULT false` — mirror income types |
 
 **Domain rule:** System row per property with name **Payment processing** (`is_system = true`). Unique active name still `(property_id, lower(name))`.
 
 ### `property_expenses`
 
-| Column | Notes |
-| --- | --- |
-| `stripe_balance_transaction_id` | `TEXT NULL`, **UNIQUE** where not null — idempotency for auto fees |
+| Column                            | Notes                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| `stripe_balance_transaction_id`   | `TEXT NULL`, **UNIQUE** where not null — idempotency for auto fees       |
 | Optional `tenant_rent_payment_id` | Nullable FK for traceability (if added, keep under file budget or defer) |
 
 **Domain rule:** One expense per balance transaction id. Amount = dollars from Stripe fee cents. `category_id` = that property’s Payment processing row.
@@ -103,11 +103,11 @@ N/A — ship with rent payments when Connect is enabled. No separate fee-expense
 
 ## Shared contract (`packages/shared`)
 
-| Symbol | Purpose |
-| --- | --- |
-| `SYSTEM_PAYMENT_PROCESSING_EXPENSE_CATEGORY_NAME` | `"Payment processing"` |
-| `isSystemPaymentProcessingExpenseCategoryName(name)` | Case-insensitive match |
-| Default list | Include Payment processing in `DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES` (or ensure-only like income — prefer **ensure-only system** so operators don’t see it as a deletable default seed item; either way `is_system` wins) |
+| Symbol                                               | Purpose                                                                                                                                                                                                                      |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SYSTEM_PAYMENT_PROCESSING_EXPENSE_CATEGORY_NAME`    | `"Payment processing"`                                                                                                                                                                                                       |
+| `isSystemPaymentProcessingExpenseCategoryName(name)` | Case-insensitive match                                                                                                                                                                                                       |
+| Default list                                         | Include Payment processing in `DEFAULT_PROPERTY_EXPENSE_CATEGORY_TYPES` (or ensure-only like income — prefer **ensure-only system** so operators don’t see it as a deletable default seed item; either way `is_system` wins) |
 
 ---
 
@@ -115,11 +115,11 @@ N/A — ship with rent payments when Connect is enabled. No separate fee-expense
 
 No new public API required for v1. Internal:
 
-| Caller | Behavior |
-| --- | --- |
+| Caller                             | Behavior                                                      |
+| ---------------------------------- | ------------------------------------------------------------- |
 | `markSucceeded` / post-income hook | Ensure category → fetch Stripe fee → create expense if needed |
-| Expense category settings PATCH | Reject archive/rename when `is_system` |
-| Category list GET | Include system row (visible, not removable in UI) |
+| Expense category settings PATCH    | Reject archive/rename when `is_system`                        |
+| Category list GET                  | Include system row (visible, not removable in UI)             |
 
 ---
 
@@ -158,9 +158,9 @@ No new public API required for v1. Internal:
 
 **Goal:** Persist system flag on expense category types.
 
-- [ ] Migration: `ALTER TABLE property_expense_category_types ADD COLUMN is_system …`
-- [ ] Mapper + DAO SELECT/INSERT include `is_system`
-- [ ] Shared `IPropertyExpenseCategoryType` gains `isSystem?: boolean` (or required boolean)
+- [x] Migration: `ALTER TABLE property_expense_category_types ADD COLUMN is_system …` (v79)
+- [x] Mapper + DAO SELECT/INSERT include `is_system`
+- [x] Shared `IPropertyExpenseCategoryType` gains `isSystem: boolean`
 
 **Files (≤4):** `migrations.ts`; `property-expense-category-types.ts`; `mappers.ts`; shared type config.
 
@@ -296,15 +296,15 @@ No new public API required for v1. Internal:
 
 ## Hardening table
 
-| Concern | Action |
-| --- | --- |
-| Wrong owner of fee | Only book `stripe_fee`; never `application_fee` |
-| Global category id | Forbidden — per-property ensure |
-| Operator deletes category | `is_system` + API/UI locks + ensure restore |
-| Duplicate expenses | Unique `stripe_balance_transaction_id` |
-| ACH still processing | Only run on rent **succeeded** |
-| CSV double-count | Document; no auto-dedupe in v1 |
-| Connect destination | Confirm on sandbox who the Stripe fee is assessed against; expense still attributed to the **property** that received the rent (product decision locked: property P&L) |
+| Concern                   | Action                                                                                                                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wrong owner of fee        | Only book `stripe_fee`; never `application_fee`                                                                                                                        |
+| Global category id        | Forbidden — per-property ensure                                                                                                                                        |
+| Operator deletes category | `is_system` + API/UI locks + ensure restore                                                                                                                            |
+| Duplicate expenses        | Unique `stripe_balance_transaction_id`                                                                                                                                 |
+| ACH still processing      | Only run on rent **succeeded**                                                                                                                                         |
+| CSV double-count          | Document; no auto-dedupe in v1                                                                                                                                         |
+| Connect destination       | Confirm on sandbox who the Stripe fee is assessed against; expense still attributed to the **property** that received the rent (product decision locked: property P&L) |
 
 ## What not to do
 
@@ -325,8 +325,8 @@ No new public API required for v1. Internal:
 
 ## Deploy checklist
 
-| Checkpoint | Ship | Notes |
-| --- | --- | --- |
-| **A** | Phases 0c–1c | System category exists and cannot be removed |
-| **B** | Phases 2a–2c | Succeeded rent pay creates processing-fee expense |
-| **C** | Phases 3–4 | Failure/refund policy + docs |
+| Checkpoint | Ship         | Notes                                             |
+| ---------- | ------------ | ------------------------------------------------- |
+| **A**      | Phases 0c–1c | System category exists and cannot be removed      |
+| **B**      | Phases 2a–2c | Succeeded rent pay creates processing-fee expense |
+| **C**      | Phases 3–4   | Failure/refund policy + docs                      |

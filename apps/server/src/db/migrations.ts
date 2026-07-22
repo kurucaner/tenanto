@@ -3551,4 +3551,20 @@ export const migrations: IMigration[] = [
     },
     version: 78,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_expense_category_types
+          DROP COLUMN IF EXISTS is_system;
+      `);
+    },
+    name: "property_expense_category_types_is_system",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE property_expense_category_types
+          ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT FALSE;
+      `);
+    },
+    version: 79,
+  },
 ];

@@ -9,6 +9,7 @@ const CATEGORY_TYPES = [
   {
     id: "uuid-sub",
     isAnnualAmount: false,
+    isSystem: false,
     name: "Subscription",
     propertyId: "prop-1",
     sortOrder: 0,
@@ -16,11 +17,19 @@ const CATEGORY_TYPES = [
   {
     id: "uuid-internet",
     isAnnualAmount: false,
+    isSystem: false,
     name: "Internet",
     propertyId: "prop-1",
     sortOrder: 1,
   },
-  { id: "uuid-other", isAnnualAmount: false, name: "Other", propertyId: "prop-1", sortOrder: 99 },
+  {
+    id: "uuid-other",
+    isAnnualAmount: false,
+    isSystem: false,
+    name: "Other",
+    propertyId: "prop-1",
+    sortOrder: 99,
+  },
 ];
 
 describe("parseExpenseCategoryAssignments", () => {
