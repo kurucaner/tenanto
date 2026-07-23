@@ -214,8 +214,8 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Persist fee + method on payments.
 
-- [ ] Migration (next version after current head) on `tenant_rent_payments`
-- [ ] DAO + fixture updates
+- [x] Migration (next version after current head) on `tenant_rent_payments`
+- [x] DAO + fixture updates
 
 **Files (≤4):** `migrations.ts`; `tenant-rent-payments.ts`; fixture; optional DAO test.
 

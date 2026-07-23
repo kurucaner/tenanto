@@ -3630,4 +3630,75 @@ export const migrations: IMigration[] = [
     },
     version: 81,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP CONSTRAINT IF EXISTS tenant_rent_payments_charge_equals_amount_plus_fee;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP CONSTRAINT IF EXISTS tenant_rent_payments_fee_cents_nonneg;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP CONSTRAINT IF EXISTS tenant_rent_payments_payment_method_family_valid;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP COLUMN IF EXISTS charge_cents,
+          DROP COLUMN IF EXISTS fee_cents,
+          DROP COLUMN IF EXISTS payment_method_family;
+      `);
+    },
+    name: "tenant_rent_payments_fee_method_charge",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          ADD COLUMN IF NOT EXISTS fee_cents INTEGER NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS payment_method_family VARCHAR(32) NULL,
+          ADD COLUMN IF NOT EXISTS charge_cents INTEGER;
+      `);
+      await client.query(`
+        UPDATE tenant_rent_payments
+        SET charge_cents = amount_cents + fee_cents
+        WHERE charge_cents IS NULL;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          ALTER COLUMN charge_cents SET NOT NULL;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP CONSTRAINT IF EXISTS tenant_rent_payments_fee_cents_nonneg;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          ADD CONSTRAINT tenant_rent_payments_fee_cents_nonneg
+            CHECK (fee_cents >= 0);
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP CONSTRAINT IF EXISTS tenant_rent_payments_charge_equals_amount_plus_fee;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          ADD CONSTRAINT tenant_rent_payments_charge_equals_amount_plus_fee
+            CHECK (charge_cents = amount_cents + fee_cents);
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          DROP CONSTRAINT IF EXISTS tenant_rent_payments_payment_method_family_valid;
+      `);
+      await client.query(`
+        ALTER TABLE tenant_rent_payments
+          ADD CONSTRAINT tenant_rent_payments_payment_method_family_valid
+            CHECK (
+              payment_method_family IS NULL
+              OR payment_method_family IN ('card', 'us_bank_account')
+            );
+      `);
+    },
+    version: 82,
+  },
 ];
