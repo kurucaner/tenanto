@@ -275,14 +275,18 @@ describe("tenantRentPaymentService.createPaymentIntent", () => {
       {
         amount: number;
         application_fee_amount?: number;
+        automatic_payment_methods: { enabled: boolean };
         customer: string;
+        excluded_payment_method_types: string[];
         payment_method_types: string[];
         transfer_data: { destination: string };
       },
     ];
     expect(piParams.amount).toBe(200_00);
     expect(piParams.application_fee_amount).toBeUndefined();
+    expect(piParams.automatic_payment_methods).toEqual({ enabled: false });
     expect(piParams.customer).toBe("cus_1");
+    expect(piParams.excluded_payment_method_types).toContain("klarna");
     expect(piParams.payment_method_types).toEqual(["us_bank_account"]);
     expect(piParams.transfer_data.destination).toBe("acct_1");
   });
@@ -318,10 +322,18 @@ describe("tenantRentPaymentService.createPaymentIntent", () => {
     expect(result.chargeCents).toBe(206_10);
     expect(result.feeCents).toBe(610);
     const [piParams] = lastPaymentIntentCreateArgs() as [
-      { amount: number; application_fee_amount?: number; payment_method_types: string[] },
+      {
+        amount: number;
+        application_fee_amount?: number;
+        automatic_payment_methods: { enabled: boolean };
+        excluded_payment_method_types: string[];
+        payment_method_types: string[];
+      },
     ];
     expect(piParams.amount).toBe(206_10);
     expect(piParams.application_fee_amount).toBe(610);
+    expect(piParams.automatic_payment_methods).toEqual({ enabled: false });
+    expect(piParams.excluded_payment_method_types).toContain("klarna");
     expect(piParams.payment_method_types).toEqual(["card"]);
   });
 

@@ -5,9 +5,17 @@
  *   bun apps/server/scripts/backfill-stripe-connect-ach-capability.ts --dry-run
  *   bun apps/server/scripts/backfill-stripe-connect-ach-capability.ts
  *
- * Requires STRIPE_CONNECT_ENABLED=true and STRIPE_SECRET_KEY (test or live).
- * Run in test mode first; confirm capabilities in Stripe Dashboard → Connect → Accounts.
+ * Loads `apps/server/.env` automatically. Requires STRIPE_CONNECT_ENABLED=true and
+ * STRIPE_SECRET_KEY (test or live). Run in test mode first; confirm capabilities in
+ * Stripe Dashboard → Connect → Accounts.
  */
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { config } from "dotenv";
+
+config({ path: join(dirname(fileURLToPath(import.meta.url)), "../.env") });
+
 import { pool } from "../src/db/pool";
 import { propertyStripeConnectService } from "../src/services/property-stripe-connect-service";
 

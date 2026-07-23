@@ -10,17 +10,19 @@ import {
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 import { parseTenantRentPayMethodParam } from "@/lib/start-rent-checkout";
+import { buildStripeElementsOptions } from "@/lib/stripe-elements-appearance";
 import {
   getStripePromise,
   isTenantRentPaymentElementEnabled,
   requireStripePublishableKey,
 } from "@/lib/stripe-publishable-key";
-import { Button } from "@/packages/app-ui";
+import { Button, useResolvedDark } from "@/packages/app-ui";
 
 export const RentPayPage = memo(function RentPayPage() {
   const { leaseId = "" } = useParams<{ leaseId: string }>();
   const [searchParams] = useSearchParams();
   const initialMethod = parseTenantRentPayMethodParam(searchParams.get("method"));
+  const isDark = useResolvedDark();
 
   const balanceQuery = useQuery({
     enabled: leaseId.length > 0,
@@ -95,12 +97,16 @@ export const RentPayPage = memo(function RentPayPage() {
         renderElements={(intent) => (
           <Elements
             key={intent.clientSecret}
-            options={{ clientSecret: intent.clientSecret }}
+            options={buildStripeElementsOptions({
+              clientSecret: intent.clientSecret,
+              isDark,
+            })}
             stripe={getStripePromise()}
           >
             <RentPaymentConfirmForm
               currency={balance.currency}
               paymentId={intent.paymentId}
+              paymentMethodFamily={intent.paymentMethodFamily}
               totalCents={intent.chargeCents}
             />
           </Elements>

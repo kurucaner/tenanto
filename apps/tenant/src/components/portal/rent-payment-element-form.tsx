@@ -7,6 +7,7 @@ import { PayRentMethodPicker } from "@/components/portal/pay-rent-checkout-picke
 import { tenantPortalApi } from "@/lib/api-client";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { queryKeys } from "@/lib/query-keys";
+import { buildStripePaymentElementOptions } from "@/lib/stripe-payment-element-options";
 import { Button } from "@/packages/app-ui";
 import {
   type ITenantCreateRentPaymentIntentResponse,
@@ -24,12 +25,14 @@ function resolveDefaultMethod(balance: ITenantLeaseBalanceResponse): TRentPaymen
 interface IRentPaymentConfirmFormProps {
   currency: string;
   paymentId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
   totalCents: number;
 }
 
 const RentPaymentConfirmForm = memo(function RentPaymentConfirmForm({
   currency,
   paymentId,
+  paymentMethodFamily,
   totalCents,
 }: IRentPaymentConfirmFormProps) {
   const stripe = useStripe();
@@ -57,7 +60,7 @@ const RentPaymentConfirmForm = memo(function RentPaymentConfirmForm({
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      <PaymentElement options={{ layout: "tabs" }} />
+      <PaymentElement options={buildStripePaymentElementOptions(paymentMethodFamily)} />
       <Button disabled={!stripe || !elements || isConfirming} type="submit">
         {isConfirming
           ? "Processing…"
