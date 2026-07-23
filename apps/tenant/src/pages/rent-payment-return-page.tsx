@@ -24,6 +24,13 @@ function statusHeading(
       title: "Payment successful",
     };
   }
+  if (status === TenantRentPaymentStatus.PROCESSING) {
+    return {
+      subtitle:
+        "Your bank transfer is processing. This usually takes a few business days — we'll update this page automatically.",
+      title: "Payment processing",
+    };
+  }
   if (status === TenantRentPaymentStatus.FAILED) {
     return {
       subtitle: "The charge did not go through. You can try again from your lease.",

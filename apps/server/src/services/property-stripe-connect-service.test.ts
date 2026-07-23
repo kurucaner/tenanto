@@ -6,12 +6,20 @@ import type { IStripeConnectOAuthState } from "@/lib/stripe-connect-oauth-state"
 import { PropertyStripeAccountType } from "@/packages/shared";
 import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
+type TMockStripeAccountResponse = {
+  capabilities?: Record<string, string | undefined>;
+  charges_enabled?: boolean;
+  details_submitted?: boolean;
+  id?: string;
+  payouts_enabled?: boolean;
+};
+
 const mockFindByPropertyId = mockResolvedNull<IPropertyStripeAccount>();
 const mockListAll = mockAsyncFn((): Promise<IPropertyStripeAccount[]> => Promise.resolve([]));
 const mockUpdateFlags = mockResolvedNull<IPropertyStripeAccount>();
 const mockUpsert = mockResolvedNull<IPropertyStripeAccount>();
 const mockDeleteByPropertyId = mockAsyncFn(() => Promise.resolve(true));
-const mockAccountsCreate = mockAsyncFn(() =>
+const mockAccountsCreate = mockAsyncFn((): Promise<TMockStripeAccountResponse> =>
   Promise.resolve({
     charges_enabled: false,
     details_submitted: false,
@@ -19,7 +27,7 @@ const mockAccountsCreate = mockAsyncFn(() =>
     payouts_enabled: false,
   })
 );
-const mockAccountsUpdate = mockAsyncFn(() =>
+const mockAccountsUpdate = mockAsyncFn((): Promise<TMockStripeAccountResponse> =>
   Promise.resolve({
     charges_enabled: false,
     details_submitted: false,
@@ -28,7 +36,7 @@ const mockAccountsUpdate = mockAsyncFn(() =>
   })
 );
 const mockAccountsDel = mockAsyncFn(() => Promise.resolve({ deleted: true }));
-const mockAccountsRetrieve = mockAsyncFn(() =>
+const mockAccountsRetrieve = mockAsyncFn((): Promise<TMockStripeAccountResponse> =>
   Promise.resolve({
     charges_enabled: true,
     details_submitted: true,

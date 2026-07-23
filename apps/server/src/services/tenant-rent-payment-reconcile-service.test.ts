@@ -13,6 +13,7 @@ import {
 const mockListReconcileCandidatesSince = mockResolvedEmpty<ITenantRentPayment>();
 const mockFindById = mockResolvedNull<ITenantRentPayment>();
 const mockMarkSucceeded = mockResolvedNull<unknown>();
+const mockMarkProcessing = mockResolvedNull<unknown>();
 const mockMarkCanceled = mockResolvedNull<unknown>();
 const mockRetrievePi = mockResolved({ id: "pi_1", status: "succeeded" });
 const mockListPi = mockResolved({ data: [] as unknown[] });
@@ -30,6 +31,7 @@ mock.module("@/db/tenant-rent-payments", () => ({
 mock.module("@/services/tenant-rent-payment-service", () => ({
   tenantRentPaymentService: {
     markCanceled: mockMarkCanceled,
+    markProcessing: mockMarkProcessing,
     markSucceeded: mockMarkSucceeded,
   },
 }));
@@ -65,6 +67,7 @@ describe("reconcileTenantRentPayments", () => {
     mockListReconcileCandidatesSince.mockReset();
     mockFindById.mockReset();
     mockMarkSucceeded.mockReset();
+    mockMarkProcessing.mockReset();
     mockMarkCanceled.mockReset();
     mockRetrievePi.mockReset();
     mockListPi.mockReset();
@@ -175,6 +178,62 @@ describe("reconcileTenantRentPayments", () => {
     const result = await reconcileTenantRentPayments();
 
     expect(mockMarkSucceeded).toHaveBeenCalledWith(payment, "pi_2");
+    expect(result.recovered).toBe(1);
+  });
+
+  test("promotes local pending payment to processing when Stripe PaymentIntent is processing", async () => {
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.PENDING,
+      stripePaymentIntentId: "pi_ach_1",
+    });
+    mockListReconcileCandidatesSince.mockResolvedValueOnce([payment]);
+    mockRetrievePi.mockResolvedValueOnce({ id: "pi_ach_1", status: "processing" });
+    mockMarkProcessing.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.PROCESSING,
+    });
+
+    const result = await reconcileTenantRentPayments();
+
+    expect(mockMarkProcessing).toHaveBeenCalledWith(payment, "pi_ach_1");
+    expect(mockMarkSucceeded).not.toHaveBeenCalled();
+    expect(result.recovered).toBe(0);
+    expect(mockWinstonInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ msg: "tenant_payments.reconcile_processing" })
+    );
+  });
+
+  test("does not re-mark processing when local row is already processing", async () => {
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.PROCESSING,
+      stripePaymentIntentId: "pi_ach_1",
+    });
+    mockListReconcileCandidatesSince.mockResolvedValueOnce([payment]);
+    mockRetrievePi.mockResolvedValueOnce({ id: "pi_ach_1", status: "processing" });
+
+    await reconcileTenantRentPayments();
+
+    expect(mockMarkProcessing).not.toHaveBeenCalled();
+    expect(mockMarkSucceeded).not.toHaveBeenCalled();
+  });
+
+  test("still recovers succeeded after ACH was processing locally", async () => {
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.PROCESSING,
+      stripePaymentIntentId: "pi_ach_1",
+    });
+    mockListReconcileCandidatesSince.mockResolvedValueOnce([payment]);
+    mockRetrievePi.mockResolvedValueOnce({ id: "pi_ach_1", status: "succeeded" });
+    mockFindById.mockResolvedValue(payment);
+    mockMarkSucceeded.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.SUCCEEDED,
+    });
+
+    const result = await reconcileTenantRentPayments();
+
+    expect(mockMarkProcessing).not.toHaveBeenCalled();
+    expect(mockMarkSucceeded).toHaveBeenCalledWith(payment, "pi_ach_1");
     expect(result.recovered).toBe(1);
   });
 });

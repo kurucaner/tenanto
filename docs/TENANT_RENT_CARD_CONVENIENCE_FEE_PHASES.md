@@ -313,9 +313,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Income ignores fee; reconcile can sync `processing` and still recover `succeeded`.
 
-- [ ] Tests: succeeded payment with fee allocates rent `amount_cents` only
-- [ ] Reconcile: if PI `processing` and local not terminal → `markProcessing`; keep succeeded recovery
-- [ ] Return-page contract: `processing` is non-terminal (poll continues)
+- [x] Tests: succeeded payment with fee allocates rent `amount_cents` only
+- [x] Reconcile: if PI `processing` and local not terminal → `markProcessing`; keep succeeded recovery
+- [x] Return-page contract: `processing` is non-terminal (poll continues)
 
 **Files (≤4):** income/service tests; `tenant-rent-payment-reconcile-service.ts`; reconcile test.
 
