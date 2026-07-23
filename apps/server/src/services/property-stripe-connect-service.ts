@@ -41,6 +41,27 @@ import {
 } from "@/services/property-stripe-connect-observability";
 import { getStripeClient } from "@/stripe/stripe-client";
 
+/** Capabilities requested when creating a new Express connected account. */
+export const STRIPE_CONNECT_EXPRESS_CREATE_CAPABILITIES = {
+  card_payments: { requested: true },
+  transfers: { requested: true },
+  us_bank_account_ach_payments: { requested: true },
+} as const;
+
+/** ACH capability update payload for Standard OAuth and account backfill. */
+export const STRIPE_CONNECT_ACH_PAYMENTS_CAPABILITY_REQUEST = {
+  us_bank_account_ach_payments: { requested: true },
+} as const;
+
+async function requestConnectAchPaymentsCapability(
+  stripe: ReturnType<typeof getStripeClient>,
+  stripeAccountId: string
+): Promise<void> {
+  await stripe.accounts.update(stripeAccountId, {
+    capabilities: STRIPE_CONNECT_ACH_PAYMENTS_CAPABILITY_REQUEST,
+  });
+}
+
 function platformAppBaseUrl(): string {
   const base = process.env.PLATFORM_APP_URL?.trim().replace(/\/$/, "");
   if (!base) {
@@ -230,6 +251,8 @@ export const propertyStripeConnectService = {
         stripeAccountId,
       });
 
+      await requestConnectAchPaymentsCapability(stripe, stripeAccountId);
+
       await propertyStripeConnectService.syncAccountStatus(propertyId);
 
       logPropertyStripeConnectOAuthCompleted({
@@ -271,10 +294,7 @@ export const propertyStripeConnectService = {
 
     if (!local) {
       const account = await stripe.accounts.create({
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
+        capabilities: STRIPE_CONNECT_EXPRESS_CREATE_CAPABILITIES,
         country: "US",
         type: "express",
       });

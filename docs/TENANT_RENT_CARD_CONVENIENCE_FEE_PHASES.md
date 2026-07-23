@@ -254,9 +254,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** New connected accounts request `us_bank_account_ach_payments`.
 
-- [ ] Express account create capabilities include ACH
-- [ ] Standard OAuth / account path requests ACH where capabilities are set in code
-- [ ] **Ops:** Connect Payment methods default for ACH
+- [x] Express account create capabilities include ACH
+- [x] Standard OAuth / account path requests ACH where capabilities are set in code
+- [x] **Ops:** Connect Payment methods default for ACH
 
 **Files (≤3):** connect service; test; doc note if needed.
 
