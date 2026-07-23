@@ -81,6 +81,11 @@ const mockPaymentIntentsUpdate = mockAsyncFn(() =>
     status: "requires_payment_method",
   })
 );
+const mockAccountsRetrieve = mockAsyncFn(() =>
+  Promise.resolve({
+    capabilities: { us_bank_account_ach_payments: "active" },
+  })
+);
 
 mock.module("@/services/tenant-portal-access", () => ({
   assertLeaseTenantAccess: mockAssertLeaseTenantAccess,
@@ -141,6 +146,9 @@ mock.module("@/stripe/stripe-client", () => ({
     throw new Error("constructStripeWebhookEvent not used in payment intent tests");
   },
   getStripeClient: () => ({
+    accounts: {
+      retrieve: mockAccountsRetrieve,
+    },
     customers: {
       create: mockCustomersCreate,
     },
@@ -199,6 +207,7 @@ describe("tenantRentPaymentService.createPaymentIntent", () => {
     mockPaymentIntentsCreate.mockClear();
     mockPaymentIntentsRetrieve.mockClear();
     mockPaymentIntentsUpdate.mockClear();
+    mockAccountsRetrieve.mockClear();
 
     mockFindLeaseById.mockResolvedValue({
       id: "lease-1",

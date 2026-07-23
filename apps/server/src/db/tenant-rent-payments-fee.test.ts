@@ -134,10 +134,10 @@ describe("tenantRentPaymentsDb fee / method / charge", () => {
           return Promise.resolve({
             rows: [
               paymentRow({
+                amount_cents: 200_00,
                 charge_cents: 200_00,
                 fee_cents: 0,
                 payment_method_family: null,
-                amount_cents: 200_00,
               }),
             ] as never[],
           });

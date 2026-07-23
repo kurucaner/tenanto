@@ -47,6 +47,11 @@ const mockSessionsRetrieve = mockAsyncFn(() =>
     url: "https://checkout.stripe.test/pay/cs_existing",
   })
 );
+const mockAccountsRetrieve = mockAsyncFn(() =>
+  Promise.resolve({
+    capabilities: { us_bank_account_ach_payments: "active" },
+  })
+);
 
 mock.module("@/services/tenant-portal-access", () => ({
   assertLeaseTenantAccess: mockAssertLeaseTenantAccess,
@@ -97,6 +102,9 @@ mock.module("@/stripe/stripe-client", () => ({
     throw new Error("constructStripeWebhookEvent not used in checkout tests");
   },
   getStripeClient: () => ({
+    accounts: {
+      retrieve: mockAccountsRetrieve,
+    },
     checkout: {
       sessions: {
         create: mockSessionsCreate,
@@ -146,6 +154,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
     mockUpdateStripeIds.mockClear();
     mockSessionsCreate.mockClear();
     mockSessionsRetrieve.mockClear();
+    mockAccountsRetrieve.mockClear();
 
     mockFindLeaseById.mockResolvedValue({
       id: "lease-1",
@@ -257,6 +266,8 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
     mockCreateWithAllocations.mockClear();
     mockUpdateStripeIds.mockClear();
     mockSessionsCreate.mockClear();
+    mockAccountsRetrieve.mockClear();
+    mockFindByIdempotencyKey.mockClear();
     mockFindStripeAccount.mockResolvedValue(connectedStripeAccount);
   });
 

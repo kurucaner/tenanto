@@ -83,11 +83,7 @@ function achBackfillSkipOutcome(
 }
 
 export type TStripeConnectAchCapabilityBackfillOutcome =
-  | "dry_run"
-  | "failed"
-  | "requested"
-  | "skipped_active"
-  | "skipped_pending";
+  "dry_run" | "failed" | "requested" | "skipped_active" | "skipped_pending";
 
 export interface IStripeConnectAchCapabilityBackfillAccountResult {
   accountType: TPropertyStripeAccountType;
@@ -187,6 +183,91 @@ async function resetIncompleteConnect(local: IPropertyStripeAccount): Promise<vo
 }
 
 export const propertyStripeConnectService = {
+  async backfillAchPaymentsCapability(input: {
+    dryRun: boolean;
+  }): Promise<IStripeConnectAchCapabilityBackfillResult> {
+    requireStripeConnectOperational();
+    const accounts = await propertyStripeAccountsDb.listAll();
+    const stripe = getStripeClient();
+    const results: IStripeConnectAchCapabilityBackfillAccountResult[] = [];
+
+    for (const account of accounts) {
+      try {
+        const stripeAccount = await stripe.accounts.retrieve(account.stripeAccountId);
+        const achCapabilityStatus = readAchPaymentsCapabilityStatus(stripeAccount);
+        const skipOutcome = achBackfillSkipOutcome(achCapabilityStatus);
+        if (skipOutcome) {
+          results.push({
+            accountType: account.accountType,
+            achCapabilityStatus,
+            outcome: skipOutcome,
+            propertyId: account.propertyId,
+            stripeAccountId: account.stripeAccountId,
+          });
+          continue;
+        }
+
+        if (input.dryRun) {
+          results.push({
+            accountType: account.accountType,
+            achCapabilityStatus,
+            outcome: "dry_run",
+            propertyId: account.propertyId,
+            stripeAccountId: account.stripeAccountId,
+          });
+          continue;
+        }
+
+        await requestConnectAchPaymentsCapability(stripe, account.stripeAccountId);
+        const updatedAccount = await stripe.accounts.retrieve(account.stripeAccountId);
+        const updatedStatus = readAchPaymentsCapabilityStatus(updatedAccount);
+        results.push({
+          accountType: account.accountType,
+          achCapabilityStatus: updatedStatus,
+          outcome: "requested",
+          propertyId: account.propertyId,
+          stripeAccountId: account.stripeAccountId,
+        });
+        WinstonLogger.info({
+          accountType: account.accountType,
+          achCapabilityStatus: updatedStatus,
+          msg: "tenant_payments.connect_ach_backfill_requested",
+          propertyId: account.propertyId,
+          stripeAccountId: account.stripeAccountId,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        results.push({
+          accountType: account.accountType,
+          achCapabilityStatus: null,
+          error: message,
+          outcome: "failed",
+          propertyId: account.propertyId,
+          stripeAccountId: account.stripeAccountId,
+        });
+        WinstonLogger.error({
+          accountType: account.accountType,
+          err: error,
+          msg: "tenant_payments.connect_ach_backfill_failed",
+          propertyId: account.propertyId,
+          stripeAccountId: account.stripeAccountId,
+        });
+      }
+    }
+
+    const counts = {
+      dryRun: results.filter((row) => row.outcome === "dry_run").length,
+      failed: results.filter((row) => row.outcome === "failed").length,
+      requested: results.filter((row) => row.outcome === "requested").length,
+      skipped: results.filter(
+        (row) => row.outcome === "skipped_active" || row.outcome === "skipped_pending"
+      ).length,
+      total: results.length,
+    };
+
+    return { accounts: results, counts };
+  },
+
   async completeStandardOAuthCallback(query: {
     code?: string;
     error?: string;
@@ -433,90 +514,5 @@ export const propertyStripeConnectService = {
     const flags = stripeConnectAccountFlagsFromStripeAccount(account);
     const updated = await propertyStripeAccountsDb.updateFlags(propertyId, flags);
     return toConnectStatusResponse(updated, true);
-  },
-
-  async backfillAchPaymentsCapability(input: {
-    dryRun: boolean;
-  }): Promise<IStripeConnectAchCapabilityBackfillResult> {
-    requireStripeConnectOperational();
-    const accounts = await propertyStripeAccountsDb.listAll();
-    const stripe = getStripeClient();
-    const results: IStripeConnectAchCapabilityBackfillAccountResult[] = [];
-
-    for (const account of accounts) {
-      try {
-        const stripeAccount = await stripe.accounts.retrieve(account.stripeAccountId);
-        const achCapabilityStatus = readAchPaymentsCapabilityStatus(stripeAccount);
-        const skipOutcome = achBackfillSkipOutcome(achCapabilityStatus);
-        if (skipOutcome) {
-          results.push({
-            accountType: account.accountType,
-            achCapabilityStatus,
-            outcome: skipOutcome,
-            propertyId: account.propertyId,
-            stripeAccountId: account.stripeAccountId,
-          });
-          continue;
-        }
-
-        if (input.dryRun) {
-          results.push({
-            accountType: account.accountType,
-            achCapabilityStatus,
-            outcome: "dry_run",
-            propertyId: account.propertyId,
-            stripeAccountId: account.stripeAccountId,
-          });
-          continue;
-        }
-
-        await requestConnectAchPaymentsCapability(stripe, account.stripeAccountId);
-        const updatedAccount = await stripe.accounts.retrieve(account.stripeAccountId);
-        const updatedStatus = readAchPaymentsCapabilityStatus(updatedAccount);
-        results.push({
-          accountType: account.accountType,
-          achCapabilityStatus: updatedStatus,
-          outcome: "requested",
-          propertyId: account.propertyId,
-          stripeAccountId: account.stripeAccountId,
-        });
-        WinstonLogger.info({
-          accountType: account.accountType,
-          achCapabilityStatus: updatedStatus,
-          msg: "tenant_payments.connect_ach_backfill_requested",
-          propertyId: account.propertyId,
-          stripeAccountId: account.stripeAccountId,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        results.push({
-          accountType: account.accountType,
-          achCapabilityStatus: null,
-          error: message,
-          outcome: "failed",
-          propertyId: account.propertyId,
-          stripeAccountId: account.stripeAccountId,
-        });
-        WinstonLogger.error({
-          accountType: account.accountType,
-          err: error,
-          msg: "tenant_payments.connect_ach_backfill_failed",
-          propertyId: account.propertyId,
-          stripeAccountId: account.stripeAccountId,
-        });
-      }
-    }
-
-    const counts = {
-      dryRun: results.filter((row) => row.outcome === "dry_run").length,
-      failed: results.filter((row) => row.outcome === "failed").length,
-      requested: results.filter((row) => row.outcome === "requested").length,
-      skipped: results.filter(
-        (row) => row.outcome === "skipped_active" || row.outcome === "skipped_pending"
-      ).length,
-      total: results.length,
-    };
-
-    return { accounts: results, counts };
   },
 };
