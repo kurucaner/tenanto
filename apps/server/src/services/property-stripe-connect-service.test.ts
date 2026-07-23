@@ -15,6 +15,7 @@ type TMockStripeAccountResponse = {
 };
 
 const mockFindByPropertyId = mockResolvedNull<IPropertyStripeAccount>();
+const mockFindByStripeAccountId = mockResolvedNull<IPropertyStripeAccount>();
 const mockListAll = mockAsyncFn((): Promise<IPropertyStripeAccount[]> => Promise.resolve([]));
 const mockUpdateFlags = mockResolvedNull<IPropertyStripeAccount>();
 const mockUpsert = mockResolvedNull<IPropertyStripeAccount>();
@@ -62,6 +63,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
   propertyStripeAccountsDb: {
     deleteByPropertyId: mockDeleteByPropertyId,
     findByPropertyId: mockFindByPropertyId,
+    findByStripeAccountId: mockFindByStripeAccountId,
     listAll: mockListAll,
     updateFlags: mockUpdateFlags,
     upsert: mockUpsert,
@@ -452,6 +454,7 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test";
     process.env.PLATFORM_APP_URL = "https://app.test";
     mockFindByPropertyId.mockReset();
+    mockFindByStripeAccountId.mockReset();
     mockUpsert.mockReset();
     mockUpdateFlags.mockReset();
     mockConsumeOAuthState.mockReset();
@@ -462,6 +465,7 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
     mockAccountsDel.mockReset();
     mockOauthDeauthorize.mockReset();
     mockFindByPropertyId.mockResolvedValue(null);
+    mockFindByStripeAccountId.mockResolvedValue(null);
     mockConsumeOAuthState.mockResolvedValue({ propertyId: "property-1", userId: "user-1" });
     mockOauthToken.mockResolvedValue({ stripe_user_id: "acct_standard" });
     mockUpsert.mockResolvedValue({
@@ -687,6 +691,48 @@ describe("propertyStripeConnectService.completeStandardOAuthCallback", () => {
 
     expect(result.redirectUrl).toBe(
       `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.INVALID_GRANT}`
+    );
+  });
+
+  test("redirects with stripe_account_already_linked when Stripe account belongs to another property", async () => {
+    mockFindByPropertyId.mockResolvedValueOnce(null);
+    mockFindByStripeAccountId.mockResolvedValueOnce({
+      accountType: PropertyStripeAccountType.STANDARD,
+      chargesEnabled: true,
+      detailsSubmitted: true,
+      onboardingComplete: true,
+      payoutsEnabled: true,
+      propertyId: "property-other",
+      stripeAccountId: "acct_standard",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED}`
+    );
+    expect(mockUpsert).not.toHaveBeenCalled();
+  });
+
+  test("redirects with stripe_account_already_linked when upsert hits stripe account unique constraint", async () => {
+    mockFindByPropertyId.mockResolvedValueOnce(null);
+    mockFindByStripeAccountId.mockResolvedValueOnce(null);
+    mockUpsert.mockRejectedValueOnce({
+      code: "23505",
+      constraint: "property_stripe_accounts_stripe_account_id_uniq",
+    });
+
+    const result = await propertyStripeConnectService.completeStandardOAuthCallback({
+      code: "auth_code",
+      state: "signed-state",
+    });
+
+    expect(result.redirectUrl).toBe(
+      `https://app.test/properties/property-1/settings?stripe_connect=error&reason=${StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED}`
     );
   });
 

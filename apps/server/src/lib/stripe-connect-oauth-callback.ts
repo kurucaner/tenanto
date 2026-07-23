@@ -1,3 +1,8 @@
+import { getPostgresErrorMeta, isPostgresUniqueViolation } from "@/db/pg-errors";
+
+export const PROPERTY_STRIPE_ACCOUNTS_STRIPE_ACCOUNT_ID_UNIQ =
+  "property_stripe_accounts_stripe_account_id_uniq";
+
 export const StripeConnectOAuthCallbackReason = {
   DENIED: "denied",
   EXPRESS_CONNECTED: "express_connected",
@@ -6,6 +11,7 @@ export const StripeConnectOAuthCallbackReason = {
   INVALID_STATE: "invalid_state",
   MISSING_CODE: "missing_code",
   NOT_CONFIGURED: "not_configured",
+  STRIPE_ACCOUNT_ALREADY_LINKED: "stripe_account_already_linked",
   STRIPE_ERROR: "stripe_error",
   TOKEN_EXCHANGE_FAILED: "token_exchange_failed",
 } as const;
@@ -53,10 +59,15 @@ function readStripeErrorCode(error: unknown): string | undefined {
   return typeof code === "string" ? code : undefined;
 }
 
-/** Maps Stripe `oauth.token` failures to stable callback reasons. */
-export function mapStripeOAuthTokenExchangeReason(
-  error: unknown
-): TStripeConnectOAuthCallbackReason {
+/** Maps Standard OAuth finish-step failures (token exchange, DB, sync) to stable callback reasons. */
+export function mapStandardOAuthFinishReason(error: unknown): TStripeConnectOAuthCallbackReason {
+  if (isPostgresUniqueViolation(error)) {
+    const constraint = getPostgresErrorMeta(error)?.constraint;
+    if (constraint === PROPERTY_STRIPE_ACCOUNTS_STRIPE_ACCOUNT_ID_UNIQ) {
+      return StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED;
+    }
+  }
+
   const code = readStripeErrorCode(error);
   if (code === "invalid_grant") {
     return StripeConnectOAuthCallbackReason.INVALID_GRANT;

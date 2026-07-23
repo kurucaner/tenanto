@@ -16,7 +16,7 @@ import {
 import {
   buildPropertyStripeConnectSettingsRedirectUrl,
   mapStripeOAuthCallbackErrorReason,
-  mapStripeOAuthTokenExchangeReason,
+  mapStandardOAuthFinishReason,
   StripeConnectOAuthCallbackReason,
   type TStripeConnectOAuthCallbackReason,
 } from "@/lib/stripe-connect-oauth-callback";
@@ -370,6 +370,19 @@ export const propertyStripeConnectService = {
         );
       }
 
+      const linkedElsewhere = await propertyStripeAccountsDb.findByStripeAccountId(stripeAccountId);
+      if (linkedElsewhere && linkedElsewhere.propertyId !== propertyId) {
+        logOAuthFailure({
+          propertyId,
+          reason: StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED,
+        });
+        return redirect(
+          propertyId,
+          "error",
+          StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED
+        );
+      }
+
       await propertyStripeAccountsDb.upsert({
         accountType: PropertyStripeAccountType.STANDARD,
         chargesEnabled: false,
@@ -392,7 +405,7 @@ export const propertyStripeConnectService = {
 
       return redirect(propertyId, "return");
     } catch (error) {
-      const reason = mapStripeOAuthTokenExchangeReason(error);
+      const reason = mapStandardOAuthFinishReason(error);
       logOAuthFailure({ err: error, propertyId, reason });
       return redirect(propertyId, "error", reason);
     }

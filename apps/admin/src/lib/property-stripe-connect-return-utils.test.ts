@@ -56,6 +56,16 @@ describe("getStripeConnectOAuthErrorToast", () => {
       title: "Property already uses Stripe Express",
     });
   });
+
+  test("returns user-facing copy when Stripe account is linked to another property", () => {
+    expect(
+      getStripeConnectOAuthErrorToast(StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED)
+    ).toEqual({
+      description:
+        "This Stripe account is already connected to another property in PropertyOS. Each property needs its own Stripe account, or disconnect it from the other property first.",
+      title: "Stripe account already in use",
+    });
+  });
 });
 
 describe("resolveStripeConnectSettingsReturn", () => {
@@ -99,6 +109,22 @@ describe("resolveStripeConnectSettingsReturn", () => {
       toast: {
         description: "Start connecting Stripe again from property settings.",
         title: "Stripe connection session expired",
+        type: "error",
+      },
+    });
+  });
+
+  test("returns error toast when Stripe account is already linked elsewhere", () => {
+    expect(
+      resolveStripeConnectSettingsReturn({
+        reason: StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED,
+        stripeConnect: "error",
+      })
+    ).toEqual({
+      toast: {
+        description:
+          "This Stripe account is already connected to another property in PropertyOS. Each property needs its own Stripe account, or disconnect it from the other property first.",
+        title: "Stripe account already in use",
         type: "error",
       },
     });

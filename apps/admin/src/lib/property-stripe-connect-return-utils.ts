@@ -11,6 +11,7 @@ export const StripeConnectOAuthCallbackReason = {
   INVALID_STATE: "invalid_state",
   MISSING_CODE: "missing_code",
   NOT_CONFIGURED: "not_configured",
+  STRIPE_ACCOUNT_ALREADY_LINKED: "stripe_account_already_linked",
   STRIPE_ERROR: "stripe_error",
   TOKEN_EXCHANGE_FAILED: "token_exchange_failed",
 } as const;
@@ -90,6 +91,12 @@ export function getStripeConnectOAuthErrorToast(
         description:
           "Connecting an existing Stripe account is not configured for this environment.",
         title: "Stripe connection unavailable",
+      };
+    case StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED:
+      return {
+        description:
+          "This Stripe account is already connected to another property in PropertyOS. Each property needs its own Stripe account, or disconnect it from the other property first.",
+        title: "Stripe account already in use",
       };
     case StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED:
       return {

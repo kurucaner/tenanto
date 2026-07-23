@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test";
 
 import {
   buildPropertyStripeConnectSettingsRedirectUrl,
+  mapStandardOAuthFinishReason,
   mapStripeOAuthCallbackErrorReason,
-  mapStripeOAuthTokenExchangeReason,
+  PROPERTY_STRIPE_ACCOUNTS_STRIPE_ACCOUNT_ID_UNIQ,
   StripeConnectOAuthCallbackReason,
 } from "./stripe-connect-oauth-callback";
 
@@ -62,18 +63,36 @@ describe("mapStripeOAuthCallbackErrorReason", () => {
   });
 });
 
-describe("mapStripeOAuthTokenExchangeReason", () => {
+describe("mapStandardOAuthFinishReason", () => {
   test("maps invalid_grant to invalid_grant", () => {
-    expect(mapStripeOAuthTokenExchangeReason({ code: "invalid_grant" })).toBe(
+    expect(mapStandardOAuthFinishReason({ code: "invalid_grant" })).toBe(
       StripeConnectOAuthCallbackReason.INVALID_GRANT
     );
   });
 
-  test("maps other token exchange failures to token_exchange_failed", () => {
-    expect(mapStripeOAuthTokenExchangeReason({ code: "api_error" })).toBe(
+  test("maps stripe account unique violation to stripe_account_already_linked", () => {
+    expect(
+      mapStandardOAuthFinishReason({
+        code: "23505",
+        constraint: PROPERTY_STRIPE_ACCOUNTS_STRIPE_ACCOUNT_ID_UNIQ,
+      })
+    ).toBe(StripeConnectOAuthCallbackReason.STRIPE_ACCOUNT_ALREADY_LINKED);
+  });
+
+  test("maps other unique violations to token_exchange_failed", () => {
+    expect(
+      mapStandardOAuthFinishReason({
+        code: "23505",
+        constraint: "some_other_uniq",
+      })
+    ).toBe(StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED);
+  });
+
+  test("maps other failures to token_exchange_failed", () => {
+    expect(mapStandardOAuthFinishReason({ code: "api_error" })).toBe(
       StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED
     );
-    expect(mapStripeOAuthTokenExchangeReason(new Error("network"))).toBe(
+    expect(mapStandardOAuthFinishReason(new Error("network"))).toBe(
       StripeConnectOAuthCallbackReason.TOKEN_EXCHANGE_FAILED
     );
   });
