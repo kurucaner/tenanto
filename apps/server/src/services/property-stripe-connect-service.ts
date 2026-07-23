@@ -63,10 +63,7 @@ async function requestConnectAchPaymentsCapability(
   });
 }
 
-function readAchPaymentsCapabilityStatus(account: {
-  capabilities?: Record<string, string | undefined> | null;
-}): string | null {
-  const status = account.capabilities?.us_bank_account_ach_payments;
+function readAchPaymentsCapabilityStatus(status: string | null | undefined): string | null {
   return typeof status === "string" ? status : null;
 }
 
@@ -194,7 +191,9 @@ export const propertyStripeConnectService = {
     for (const account of accounts) {
       try {
         const stripeAccount = await stripe.accounts.retrieve(account.stripeAccountId);
-        const achCapabilityStatus = readAchPaymentsCapabilityStatus(stripeAccount);
+        const achCapabilityStatus = readAchPaymentsCapabilityStatus(
+          stripeAccount.capabilities?.us_bank_account_ach_payments
+        );
         const skipOutcome = achBackfillSkipOutcome(achCapabilityStatus);
         if (skipOutcome) {
           results.push({
@@ -220,7 +219,9 @@ export const propertyStripeConnectService = {
 
         await requestConnectAchPaymentsCapability(stripe, account.stripeAccountId);
         const updatedAccount = await stripe.accounts.retrieve(account.stripeAccountId);
-        const updatedStatus = readAchPaymentsCapabilityStatus(updatedAccount);
+        const updatedStatus = readAchPaymentsCapabilityStatus(
+          updatedAccount.capabilities?.us_bank_account_ach_payments
+        );
         results.push({
           accountType: account.accountType,
           achCapabilityStatus: updatedStatus,
