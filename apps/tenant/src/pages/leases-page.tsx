@@ -41,7 +41,7 @@ export const LeasesPage = memo(function LeasesPage() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: startRentCheckoutForAmountDue,
+    mutationFn: (leaseId: string) => startRentCheckoutForAmountDue(leaseId),
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to start checkout");
     },

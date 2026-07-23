@@ -327,7 +327,7 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Client can pass `paymentMethodFamily` into checkout.
 
-- [ ] API client + `start-rent-checkout` signature
+- [x] API client + `start-rent-checkout` signature
 
 **Files (≤4).**
 
