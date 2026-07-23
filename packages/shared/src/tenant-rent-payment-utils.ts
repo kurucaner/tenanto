@@ -1,6 +1,12 @@
 import { isLeaseRentPeriodFullyPaidCents } from "./lease-rent-paid-tolerance";
 import { isMonthlyPeriodKey, isValidRentPeriodKey } from "./rent-period-key-utils";
-import type { ITenantLeaseBalancePeriod } from "./tenant-rent-payment-types";
+import { computeRentCardConvenienceFeeCents } from "./tenant-rent-card-fee";
+import {
+  isRentPaymentMethodFamily,
+  type ITenantLeaseBalancePeriod,
+  RentPaymentMethodFamily,
+  type TRentPaymentMethodFamily,
+} from "./tenant-rent-payment-types";
 
 /** Stripe's minimum charge for USD (card). */
 export const STRIPE_MIN_CHARGE_CENTS_USD = 50;
@@ -15,15 +21,40 @@ export function centsToDollars(cents: number): number {
   return Math.round(cents) / 100;
 }
 
-/** Checkout idempotency key — same tenant/lease/months/amount reuses an open payment. */
+/** Total Stripe charge for rent checkout: rent + card convenience fee (ACH fee = 0). */
+export function computeRentCheckoutChargeCents(
+  rentCents: number,
+  paymentMethodFamily: TRentPaymentMethodFamily
+): number {
+  const feeCents =
+    paymentMethodFamily === RentPaymentMethodFamily.CARD
+      ? computeRentCardConvenienceFeeCents(rentCents)
+      : 0;
+  return rentCents + feeCents;
+}
+
+/** Checkout idempotency key — same tenant/lease/months/method/charge reuses an open payment. */
 export function buildRentCheckoutIdempotencyKey(input: {
   amountCents: number;
   leaseId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
   periodMonths: string[];
   tenantUserId: string;
 }): string {
   const months = [...input.periodMonths].sort((a, b) => a.localeCompare(b)).join(",");
-  return `rent_checkout:${input.leaseId}:${input.tenantUserId}:${months}:${input.amountCents}`;
+  const chargeCents = computeRentCheckoutChargeCents(input.amountCents, input.paymentMethodFamily);
+  return `rent_checkout:${input.leaseId}:${input.tenantUserId}:${months}:${input.paymentMethodFamily}:${chargeCents}`;
+}
+
+/** PaymentIntent idempotency key — method-specific; open PI rows can be updated when method changes. */
+export function buildRentPaymentIntentIdempotencyKey(input: {
+  leaseId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
+  periodMonths: string[];
+  tenantUserId: string;
+}): string {
+  const months = [...input.periodMonths].sort((a, b) => a.localeCompare(b)).join(",");
+  return `rent_pi:${input.leaseId}:${input.tenantUserId}:${months}:${input.paymentMethodFamily}`;
 }
 
 export interface IRentPeriodInput {
@@ -153,6 +184,7 @@ export function validateCreateRentCheckoutBody(input: {
   currency?: string;
   leaseId: string;
   minChargeCents?: number;
+  paymentMethodFamily: unknown;
   periodMonths: string[];
   periods: ITenantLeaseBalancePeriod[];
 }): TValidateRentCheckoutResult {
@@ -160,6 +192,10 @@ export function validateCreateRentCheckoutBody(input: {
   const leaseId = input.leaseId.trim();
   if (!leaseId) {
     return { error: "leaseId is required", ok: false };
+  }
+
+  if (!isRentPaymentMethodFamily(input.paymentMethodFamily)) {
+    return { error: "paymentMethodFamily must be card or us_bank_account", ok: false };
   }
 
   if (!Array.isArray(input.periodMonths) || input.periodMonths.length === 0) {

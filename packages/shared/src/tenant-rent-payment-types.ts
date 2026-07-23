@@ -12,6 +12,21 @@ export const TenantRentPaymentStatus = {
 export type TTenantRentPaymentStatus =
   (typeof TenantRentPaymentStatus)[keyof typeof TenantRentPaymentStatus];
 
+/** Locked Checkout / PaymentIntent method family for dual-price rent pay. */
+export const RentPaymentMethodFamily = {
+  CARD: "card",
+  US_BANK_ACCOUNT: "us_bank_account",
+} as const;
+
+export type TRentPaymentMethodFamily =
+  (typeof RentPaymentMethodFamily)[keyof typeof RentPaymentMethodFamily];
+
+const RENT_PAYMENT_METHOD_FAMILIES = new Set<string>(Object.values(RentPaymentMethodFamily));
+
+export function isRentPaymentMethodFamily(value: unknown): value is TRentPaymentMethodFamily {
+  return typeof value === "string" && RENT_PAYMENT_METHOD_FAMILIES.has(value);
+}
+
 const TERMINAL_TENANT_RENT_PAYMENT_STATUSES = new Set<TTenantRentPaymentStatus>([
   TenantRentPaymentStatus.CANCELED,
   TenantRentPaymentStatus.FAILED,
@@ -32,6 +47,8 @@ export interface ITenantLeaseBalancePeriod {
 }
 
 export interface ITenantLeaseBalanceResponse {
+  /** True when connected account can accept ACH Direct Debit (active or pending capability). */
+  achPaymentsEnabled: boolean;
   amountDueCents: number;
   currency: string;
   leaseId: string;
@@ -62,15 +79,28 @@ export interface ITenantRentSummaryResponse {
   totalAmountDueCents: number;
 }
 
-/**
- * Create Checkout body — unused for settlement. Amount due is computed server-side.
- * Clients may POST `{}`.
- */
-export type ITenantCreateRentCheckoutBody = Record<string, never>;
+/** Create Checkout body — amount due is computed server-side; method selects rent vs rent+fee. */
+export interface ITenantCreateRentCheckoutBody {
+  paymentMethodFamily: TRentPaymentMethodFamily;
+}
 
 export interface ITenantCreateRentCheckoutResponse {
   checkoutUrl: string;
   paymentId: string;
+}
+
+/** Create PaymentIntent body — amount due is computed server-side; method selects rent vs rent+fee. */
+export interface ITenantCreateRentPaymentIntentBody {
+  paymentMethodFamily: TRentPaymentMethodFamily;
+}
+
+export interface ITenantCreateRentPaymentIntentResponse {
+  chargeCents: number;
+  clientSecret: string;
+  feeCents: number;
+  paymentId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
+  rentCents: number;
 }
 
 export interface ITenantRentPaymentStatusResponse {

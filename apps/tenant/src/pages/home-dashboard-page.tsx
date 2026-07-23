@@ -1,10 +1,11 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { FileText, KeyRound, Users, Wrench } from "lucide-react";
 import { memo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { LeaseDueRow } from "@/components/portal/lease-due-row";
+import { PayRentCheckoutSheet } from "@/components/portal/pay-rent-checkout-picker";
 import { QuickActionCard } from "@/components/portal/quick-action-card";
 import { tenantPortalApi } from "@/lib/api-client";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
@@ -13,9 +14,7 @@ import {
   formatDuePeriodsLabel,
   hasOnlinePayAvailable,
   resolveRentPayAction,
-  type TRentPayAction,
 } from "@/lib/rent-summary-utils";
-import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
 import { Button } from "@/packages/app-ui";
 import { type ITenantRentSummaryResponse } from "@/packages/shared";
 
@@ -30,7 +29,7 @@ function amountDueHint(totalDue: number, onlinePayAvailable: boolean): string {
     return "You&apos;re all caught up.";
   }
   if (onlinePayAvailable) {
-    return "Pay online securely using the button above.";
+    return "Choose a payment method to pay online securely.";
   }
   return "Online payments aren't available for these leases yet. Open your lease for details.";
 }
@@ -40,19 +39,9 @@ function multiLeaseAmountDueHint(totalDue: number, onlinePayAvailable: boolean):
     return "Nothing is due across your active leases right now.";
   }
   if (onlinePayAvailable) {
-    return "Choose a lease below to pay online.";
+    return "Choose a lease below to pick a payment method.";
   }
   return "Online payments aren't available for some leases yet. Open a lease for details.";
-}
-
-function primaryDueCtaLabel(isStartingCheckout: boolean, payAction: TRentPayAction): string {
-  if (isStartingCheckout) {
-    return "Starting checkout…";
-  }
-  if (payAction.kind === "checkout" || payAction.kind === "pick-lease") {
-    return "Pay rent";
-  }
-  return "View leases";
 }
 
 interface NoActiveLeaseSectionProps {
@@ -81,19 +70,15 @@ function NoActiveLeaseSection({ hasPastLeases }: Readonly<NoActiveLeaseSectionPr
 interface SingleLeaseDueSectionProps {
   currency: string;
   duePeriodsLabel: string | null;
-  isStartingCheckout: boolean;
   onlinePayAvailable: boolean;
-  onPayRent: () => void;
-  payAction: TRentPayAction;
+  payAction: ReturnType<typeof resolveRentPayAction>;
   totalDue: number;
 }
 
 const SingleLeaseDueSection = memo(function SingleLeaseDueSection({
   currency,
   duePeriodsLabel,
-  isStartingCheckout,
   onlinePayAvailable,
-  onPayRent,
   payAction,
   totalDue,
 }: SingleLeaseDueSectionProps) {
@@ -111,37 +96,35 @@ const SingleLeaseDueSection = memo(function SingleLeaseDueSection({
           {amountDueHint(totalDue, onlinePayAvailable)}
         </p>
       </div>
-      {totalDue > 0 ? (
-        <Button disabled={isStartingCheckout} onClick={onPayRent} type="button">
-          {primaryDueCtaLabel(isStartingCheckout, payAction)}
+      {totalDue > 0 && payAction.kind === "checkout" ? (
+        <PayRentCheckoutSheet leaseId={payAction.leaseId} triggerLabel="Pay rent" />
+      ) : null}
+      {totalDue > 0 && payAction.kind === "navigate" ? (
+        <Button asChild type="button">
+          <Link to={payAction.href}>View lease</Link>
         </Button>
-      ) : (
+      ) : null}
+      {totalDue === 0 ? (
         <Button asChild type="button" variant="outline">
           <Link to="/leases">View leases</Link>
         </Button>
-      )}
+      ) : null}
     </section>
   );
 });
 SingleLeaseDueSection.displayName = "SingleLeaseDueSection";
 
 interface MultiLeaseDueSectionProps {
-  checkoutLeaseId: string | undefined;
   currency: string;
-  isStartingCheckout: boolean;
   leases: ITenantRentSummaryResponse["leases"];
   onlinePayAvailable: boolean;
-  onPay: (leaseId: string) => void;
   totalDue: number;
 }
 
 const MultiLeaseDueSection = memo(function MultiLeaseDueSection({
-  checkoutLeaseId,
   currency,
-  isStartingCheckout,
   leases,
   onlinePayAvailable,
-  onPay,
   totalDue,
 }: MultiLeaseDueSectionProps) {
   return (
@@ -165,15 +148,7 @@ const MultiLeaseDueSection = memo(function MultiLeaseDueSection({
 
       <div className="flex flex-col gap-3">
         {leases.map((lease) => (
-          <LeaseDueRow
-            checkoutLeaseId={checkoutLeaseId}
-            currency={currency}
-            isStartingCheckout={isStartingCheckout}
-            key={lease.leaseId}
-            lease={lease}
-            onPay={onPay}
-            variant="inline"
-          />
+          <LeaseDueRow currency={currency} key={lease.leaseId} lease={lease} variant="inline" />
         ))}
       </div>
 
@@ -188,17 +163,9 @@ const MultiLeaseDueSection = memo(function MultiLeaseDueSection({
 MultiLeaseDueSection.displayName = "MultiLeaseDueSection";
 
 export const HomeDashboardPage = memo(function HomeDashboardPage() {
-  const navigate = useNavigate();
   const summaryQuery = useQuery({
     queryFn: () => tenantPortalApi.getRentSummary(),
     queryKey: queryKeys.rentSummary(),
-  });
-
-  const checkoutMutation = useMutation({
-    mutationFn: startRentCheckoutForAmountDue,
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
-    },
   });
 
   const summary = summaryQuery.data;
@@ -207,19 +174,8 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
     : { href: "/leases", kind: "navigate" as const };
   const totalDue = summary?.totalAmountDueCents ?? 0;
   const onlinePayAvailable = summary ? hasOnlinePayAvailable(summary.leases) : false;
-  const isStartingCheckout = checkoutMutation.isPending;
   const hasActiveLease = summary?.hasActiveLease ?? false;
   const isMultiLease = (summary?.leases.length ?? 0) > 1;
-
-  const handlePayRent = () => {
-    if (payAction.kind === "checkout") {
-      checkoutMutation.mutate(payAction.leaseId);
-      return;
-    }
-    if (payAction.kind === "navigate") {
-      navigate(payAction.href);
-    }
-  };
 
   const showComingSoon = () => {
     toast.message("Coming soon");
@@ -244,20 +200,15 @@ export const HomeDashboardPage = memo(function HomeDashboardPage() {
         <>
           {isMultiLease ? (
             <MultiLeaseDueSection
-              checkoutLeaseId={checkoutMutation.variables}
               currency={summary.currency}
-              isStartingCheckout={isStartingCheckout}
               leases={summary.leases}
               onlinePayAvailable={onlinePayAvailable}
-              onPay={(leaseId) => checkoutMutation.mutate(leaseId)}
               totalDue={totalDue}
             />
           ) : (
             <SingleLeaseDueSection
               currency={summary.currency}
               duePeriodsLabel={formatDuePeriodsLabel(summary.leases[0]?.duePeriodKeys ?? [])}
-              isStartingCheckout={isStartingCheckout}
-              onPayRent={handlePayRent}
               onlinePayAvailable={onlinePayAvailable}
               payAction={payAction}
               totalDue={totalDue}

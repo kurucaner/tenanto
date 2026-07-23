@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { TenantRentPaymentStatus } from "@/packages/shared";
+import { RentPaymentMethodFamily, TenantRentPaymentStatus } from "@/packages/shared";
 import { makePayment } from "@/test-fixtures/domain";
 import { mockAsyncFn, mockResolvedEmpty } from "@/test-fixtures/mocks";
 
@@ -125,6 +125,44 @@ describe("applyIncomeForFullyCoveredMonths", () => {
         rentPeriodKey: "2026-01",
         tenantRentPaymentId: "payment-1",
       }),
+      expect.any(Object)
+    );
+  });
+
+  test("books rent amount_cents only when card convenience fee is on the payment row", async () => {
+    mockListAllocations.mockResolvedValueOnce([
+      {
+        allocatedCents: 150_000,
+        expectedCentsSnapshot: 150_000,
+        periodMonth: "2026-01",
+      },
+    ]);
+
+    await applyIncomeForFullyCoveredMonths(
+      makePayment({
+        amountCents: 150_000,
+        chargeCents: 154_380,
+        feeCents: 4_380,
+        paymentMethodFamily: RentPaymentMethodFamily.CARD,
+        status: TenantRentPaymentStatus.SUCCEEDED,
+        stripeCheckoutSessionId: "cs_card",
+        stripePaymentIntentId: "pi_card",
+      })
+    );
+
+    expect(mockCreateIncomeLine).toHaveBeenCalledTimes(1);
+    expect(mockCreateIncomeLine).toHaveBeenCalledWith(
+      "property-1",
+      expect.objectContaining({
+        amount: 1500,
+        rentPeriodKey: "2026-01",
+        tenantRentPaymentId: "payment-1",
+      }),
+      expect.any(Object)
+    );
+    expect(mockCreateIncomeLine).not.toHaveBeenCalledWith(
+      "property-1",
+      expect.objectContaining({ amount: 1543.8 }),
       expect.any(Object)
     );
   });

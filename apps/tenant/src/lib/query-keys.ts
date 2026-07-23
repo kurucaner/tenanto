@@ -6,5 +6,7 @@ export const queryKeys = {
   me: () => ["tenant", "me"] as const,
   pendingInvites: () => ["tenant", "invites", "pending"] as const,
   rentPayment: (paymentId: string) => ["tenant", "rent-payment", paymentId] as const,
+  rentPaymentIntent: (leaseId: string, paymentMethodFamily: string) =>
+    ["tenant", "rent-payment-intent", leaseId, paymentMethodFamily] as const,
   rentSummary: () => ["tenant", "rent-summary"] as const,
 };

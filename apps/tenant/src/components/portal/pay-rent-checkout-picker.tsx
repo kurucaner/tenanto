@@ -1,0 +1,257 @@
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { memo, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+
+import { tenantPortalApi } from "@/lib/api-client";
+import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  buildTenantRentPayPagePath,
+  startRentPayForAmountDue,
+} from "@/lib/start-rent-checkout";
+import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
+import {
+  Button,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/packages/app-ui";
+import {
+  computeRentCardConvenienceFeeCents,
+  computeRentCheckoutChargeCents,
+  type ITenantLeaseBalanceResponse,
+  RentPaymentMethodFamily,
+  type TRentPaymentMethodFamily,
+} from "@/packages/shared";
+
+const CARD_CONVENIENCE_FEE_DISCLOSURE =
+  "A convenience fee applies when you pay by card. This fee is charged by the platform, not your property manager.";
+
+function resolveDefaultMethod(balance: ITenantLeaseBalanceResponse): TRentPaymentMethodFamily {
+  return balance.achPaymentsEnabled
+    ? RentPaymentMethodFamily.US_BANK_ACCOUNT
+    : RentPaymentMethodFamily.CARD;
+}
+
+function methodLabel(method: TRentPaymentMethodFamily): string {
+  return method === RentPaymentMethodFamily.CARD ? "Debit or credit card" : "Bank account (ACH)";
+}
+
+interface IPayRentMethodPickerProps {
+  balance: ITenantLeaseBalanceResponse;
+  isSubmitting?: boolean;
+  mode?: "checkout" | "element";
+  onMethodChange?: (paymentMethodFamily: TRentPaymentMethodFamily) => void;
+  onSubmit?: (paymentMethodFamily: TRentPaymentMethodFamily) => void;
+  selectedMethod?: TRentPaymentMethodFamily;
+}
+
+export const PayRentMethodPicker = memo(function PayRentMethodPicker({
+  balance,
+  isSubmitting = false,
+  mode = "checkout",
+  onMethodChange,
+  onSubmit,
+  selectedMethod: selectedMethodProp,
+}: IPayRentMethodPickerProps) {
+  const [internalMethod, setInternalMethod] = useState<TRentPaymentMethodFamily>(() =>
+    resolveDefaultMethod(balance)
+  );
+  const selectedMethod = selectedMethodProp ?? internalMethod;
+
+  useEffect(() => {
+    if (selectedMethodProp == null) {
+      setInternalMethod(resolveDefaultMethod(balance));
+    }
+  }, [balance, selectedMethodProp]);
+
+  const setSelectedMethod = (method: TRentPaymentMethodFamily) => {
+    if (selectedMethodProp == null) {
+      setInternalMethod(method);
+    }
+    onMethodChange?.(method);
+  };
+
+  const feeCents =
+    selectedMethod === RentPaymentMethodFamily.CARD
+      ? computeRentCardConvenienceFeeCents(balance.amountDueCents)
+      : 0;
+  const chargeCents = computeRentCheckoutChargeCents(balance.amountDueCents, selectedMethod);
+  const availableMethods: TRentPaymentMethodFamily[] = balance.achPaymentsEnabled
+    ? [RentPaymentMethodFamily.US_BANK_ACCOUNT, RentPaymentMethodFamily.CARD]
+    : [RentPaymentMethodFamily.CARD];
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-foreground">Payment method</p>
+        <div className="flex flex-col gap-2">
+          {availableMethods.map((method) => {
+            const methodChargeCents = computeRentCheckoutChargeCents(balance.amountDueCents, method);
+            const isSelected = selectedMethod === method;
+            return (
+              <button
+                aria-pressed={isSelected}
+                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                  isSelected
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 bg-card/85 hover:bg-muted/40"
+                }`}
+                key={method}
+                onClick={() => setSelectedMethod(method)}
+                type="button"
+              >
+                <span className="block text-sm font-medium text-foreground">
+                  {methodLabel(method)}
+                </span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  Total {formatUsdFromCents(methodChargeCents, balance.currency)}
+                  {method === RentPaymentMethodFamily.US_BANK_ACCOUNT ? " · no fee" : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {!balance.achPaymentsEnabled ? (
+          <p className="text-xs text-muted-foreground">
+            Bank transfer is not available for this property yet. Pay by card to continue online.
+          </p>
+        ) : null}
+      </div>
+
+      <dl className="space-y-2 rounded-lg border border-border/80 bg-muted/20 px-4 py-3 text-sm">
+        <div className="flex justify-between gap-4">
+          <dt className="text-muted-foreground">Rent due</dt>
+          <dd className="font-medium text-foreground">
+            {formatUsdFromCents(balance.amountDueCents, balance.currency)}
+          </dd>
+        </div>
+        {feeCents > 0 ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Card convenience fee</dt>
+            <dd className="font-medium text-foreground">
+              {formatUsdFromCents(feeCents, balance.currency)}
+            </dd>
+          </div>
+        ) : null}
+        <div className="flex justify-between gap-4 border-t border-border/60 pt-2">
+          <dt className="font-medium text-foreground">Total</dt>
+          <dd className="font-semibold text-foreground">
+            {formatUsdFromCents(chargeCents, balance.currency)}
+          </dd>
+        </div>
+      </dl>
+
+      {selectedMethod === RentPaymentMethodFamily.CARD ? (
+        <p className="text-xs text-muted-foreground">{CARD_CONVENIENCE_FEE_DISCLOSURE}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          ACH bank transfers usually take a few business days to settle. You&apos;ll see a
+          processing status until the payment clears.
+        </p>
+      )}
+
+      {mode === "checkout" && onSubmit ? (
+        <Button disabled={isSubmitting} onClick={() => onSubmit(selectedMethod)} type="button">
+          {isSubmitting ? "Redirecting…" : "Continue to payment"}
+        </Button>
+      ) : null}
+    </div>
+  );
+});
+PayRentMethodPicker.displayName = "PayRentMethodPicker";
+
+interface IPayRentCheckoutSheetProps {
+  disabled?: boolean;
+  leaseId: string;
+  triggerClassName?: string;
+  triggerLabel?: string;
+}
+
+export const PayRentCheckoutSheet = memo(function PayRentCheckoutSheet({
+  disabled = false,
+  leaseId,
+  triggerClassName,
+  triggerLabel = "Pay rent",
+}: IPayRentCheckoutSheetProps) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const usesPaymentElement = isTenantRentPaymentElementEnabled();
+
+  const balanceQuery = useQuery({
+    enabled: open && !usesPaymentElement,
+    queryFn: () => tenantPortalApi.getLeaseBalance(leaseId),
+    queryKey: queryKeys.leaseBalance(leaseId),
+  });
+  const payMutation = useMutation({
+    mutationFn: (paymentMethodFamily: TRentPaymentMethodFamily) =>
+      startRentPayForAmountDue(leaseId, paymentMethodFamily),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to start payment");
+    },
+    onSuccess: (result) => {
+      if (result.kind === "element") {
+        void navigate(result.path);
+      }
+    },
+  });
+
+  if (usesPaymentElement) {
+    return (
+      <Button asChild className={triggerClassName} disabled={disabled} type="button">
+        <Link to={buildTenantRentPayPagePath(leaseId)}>{triggerLabel}</Link>
+      </Button>
+    );
+  }
+
+  return (
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>
+        <Button
+          className={triggerClassName}
+          disabled={disabled || payMutation.isPending}
+          type="button"
+        >
+          {payMutation.isPending ? "Redirecting…" : triggerLabel}
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto" side="bottom">
+        <SheetHeader>
+          <SheetTitle>Pay rent</SheetTitle>
+          <SheetDescription>
+            Choose how you want to pay. Amounts are locked before checkout.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="px-4 pb-6">
+          {balanceQuery.isPending ? (
+            <p className="text-sm text-muted-foreground">Loading amount due…</p>
+          ) : null}
+          {balanceQuery.isError ? (
+            <p className="text-sm text-destructive">
+              {balanceQuery.error instanceof Error
+                ? balanceQuery.error.message
+                : "Failed to load balance"}
+            </p>
+          ) : null}
+          {balanceQuery.data && balanceQuery.data.amountDueCents > 0 ? (
+            <PayRentMethodPicker
+              balance={balanceQuery.data}
+              isSubmitting={payMutation.isPending}
+              onSubmit={(method) => payMutation.mutate(method)}
+            />
+          ) : null}
+          {balanceQuery.data && balanceQuery.data.amountDueCents <= 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing is due right now.</p>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+});
+PayRentCheckoutSheet.displayName = "PayRentCheckoutSheet";
+
+export { CARD_CONVENIENCE_FEE_DISCLOSURE };

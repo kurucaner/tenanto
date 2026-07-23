@@ -124,6 +124,18 @@ export async function reconcileTenantRentPayments(
       continue;
     }
 
+    if (intent.status === "processing") {
+      if (payment.status !== TenantRentPaymentStatus.PROCESSING) {
+        await tenantRentPaymentService.markProcessing(payment, piId);
+        WinstonLogger.info({
+          msg: "tenant_payments.reconcile_processing",
+          paymentId: payment.id,
+          stripePaymentIntentId: piId,
+        });
+      }
+      continue;
+    }
+
     if (intent.status === "canceled") {
       await tenantRentPaymentService.markCanceled(payment);
       WinstonLogger.info({

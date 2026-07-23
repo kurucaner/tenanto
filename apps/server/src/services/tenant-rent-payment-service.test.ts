@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { IPropertyStripeAccount } from "@/db/property-stripe-accounts";
 import type { ITenantRentPayment } from "@/db/tenant-rent-payments";
-import { PropertyStripeAccountType } from "@/packages/shared";
+import { PropertyStripeAccountType, RentPaymentMethodFamily } from "@/packages/shared";
 import { makePayment, makeRentScheduleRow } from "@/test-fixtures/domain";
 import { mockAsyncFn, mockResolved, mockResolvedNull, mockSyncVoid } from "@/test-fixtures/mocks";
 
@@ -45,6 +45,11 @@ const mockSessionsRetrieve = mockAsyncFn(() =>
     id: "cs_existing",
     status: "open",
     url: "https://checkout.stripe.test/pay/cs_existing",
+  })
+);
+const mockAccountsRetrieve = mockAsyncFn(() =>
+  Promise.resolve({
+    capabilities: { us_bank_account_ach_payments: "active" },
   })
 );
 
@@ -97,6 +102,9 @@ mock.module("@/stripe/stripe-client", () => ({
     throw new Error("constructStripeWebhookEvent not used in checkout tests");
   },
   getStripeClient: () => ({
+    accounts: {
+      retrieve: mockAccountsRetrieve,
+    },
     checkout: {
       sessions: {
         create: mockSessionsCreate,
@@ -121,6 +129,15 @@ mock.module("@/lib/date-utils", () => ({
 
 const { tenantRentPaymentService } = await import("./tenant-rent-payment-service");
 
+const achCheckoutBody = { paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT };
+const cardCheckoutBody = { paymentMethodFamily: RentPaymentMethodFamily.CARD };
+
+function lastCheckoutSessionCreateArgs(): unknown[] {
+  const calls = mockSessionsCreate.mock.calls;
+  expect(calls.length).toBeGreaterThan(0);
+  return calls[calls.length - 1] as unknown[];
+}
+
 describe("tenantRentPaymentService.createCheckout idempotency", () => {
   const originalStripeConnectEnabled = process.env.STRIPE_CONNECT_ENABLED;
 
@@ -137,6 +154,7 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
     mockUpdateStripeIds.mockClear();
     mockSessionsCreate.mockClear();
     mockSessionsRetrieve.mockClear();
+    mockAccountsRetrieve.mockClear();
 
     mockFindLeaseById.mockResolvedValue({
       id: "lease-1",
@@ -163,7 +181,11 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
     mockCreateWithAllocations.mockRejectedValueOnce({ code: "23505" });
     mockFindByIdempotencyKey.mockResolvedValueOnce(existing);
 
-    const result = await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
+    const result = await tenantRentPaymentService.createCheckout(
+      "lease-1",
+      "tenant-1",
+      achCheckoutBody
+    );
 
     expect(result).toEqual({
       checkoutUrl: "https://checkout.stripe.test/pay/cs_existing",
@@ -186,7 +208,11 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
       stripePaymentIntentId: "pi_new",
     });
 
-    const result = await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
+    const result = await tenantRentPaymentService.createCheckout(
+      "lease-1",
+      "tenant-1",
+      achCheckoutBody
+    );
 
     expect(result.paymentId).toBe("payment-2");
     expect(result.checkoutUrl).toContain("cs_new");
@@ -198,9 +224,9 @@ describe("tenantRentPaymentService.createCheckout idempotency", () => {
       makeRentScheduleRow({ expectedRent: 200, isPaid: true, month: "2026-01" }),
     ]);
 
-    await expect(tenantRentPaymentService.createCheckout("lease-1", "tenant-1")).rejects.toThrow(
-      "Nothing is due right now"
-    );
+    await expect(
+      tenantRentPaymentService.createCheckout("lease-1", "tenant-1", achCheckoutBody)
+    ).rejects.toThrow("Nothing is due right now");
     expect(mockSessionsCreate).not.toHaveBeenCalled();
   });
 
@@ -240,6 +266,8 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
     mockCreateWithAllocations.mockClear();
     mockUpdateStripeIds.mockClear();
     mockSessionsCreate.mockClear();
+    mockAccountsRetrieve.mockClear();
+    mockFindByIdempotencyKey.mockClear();
     mockFindStripeAccount.mockResolvedValue(connectedStripeAccount);
   });
 
@@ -264,7 +292,7 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
     mockCreateWithAllocations.mockResolvedValueOnce(makePayment({ amountCents: 1000_00 }));
     mockUpdateStripeIds.mockResolvedValueOnce(makePayment({ amountCents: 1000_00 }));
 
-    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", achCheckoutBody);
 
     expect(mockCreateWithAllocations).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -330,7 +358,7 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
     mockCreateWithAllocations.mockResolvedValueOnce(makePayment({ amountCents: 1400_00 }));
     mockUpdateStripeIds.mockResolvedValueOnce(makePayment({ amountCents: 1400_00 }));
 
-    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1");
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", achCheckoutBody);
 
     expect(mockCreateWithAllocations).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -345,8 +373,119 @@ describe("tenantRentPaymentService tenant balance rollup", () => {
           }),
         ],
         amountCents: 1400_00,
-        idempotencyKey: "rent_checkout:lease-1:tenant-1:2026-01-15,2026-01-22:140000",
+        chargeCents: 1400_00,
+        feeCents: 0,
+        idempotencyKey:
+          "rent_checkout:lease-1:tenant-1:2026-01-15,2026-01-22:us_bank_account:140000",
+        paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       })
     );
+  });
+
+  test("creates ACH Checkout locked to us_bank_account with rent-only charge", async () => {
+    mockCreateWithAllocations.mockResolvedValueOnce(makePayment({ amountCents: 200_00 }));
+    mockUpdateStripeIds.mockResolvedValueOnce(makePayment({ amountCents: 200_00 }));
+
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", achCheckoutBody);
+
+    expect(mockCreateWithAllocations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 200_00,
+        chargeCents: 200_00,
+        feeCents: 0,
+        paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
+      })
+    );
+
+    const [sessionParams] = lastCheckoutSessionCreateArgs() as [
+      {
+        line_items: Array<{ price_data: { unit_amount: number } }>;
+        metadata: Record<string, string>;
+        payment_intent_data: Record<string, unknown>;
+        payment_method_types: string[];
+      },
+    ];
+    expect(sessionParams.payment_method_types).toEqual(["us_bank_account"]);
+    expect(sessionParams.line_items[0]?.price_data.unit_amount).toBe(200_00);
+    expect(sessionParams.metadata).toMatchObject({
+      amountCents: "20000",
+      chargeCents: "20000",
+      feeCents: "0",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
+    });
+    expect(sessionParams.payment_intent_data).not.toHaveProperty("application_fee_amount");
+  });
+
+  test("creates card Checkout with convenience fee and application_fee_amount", async () => {
+    mockCreateWithAllocations.mockResolvedValueOnce(
+      makePayment({
+        amountCents: 200_00,
+        chargeCents: 206_10,
+        feeCents: 610,
+        paymentMethodFamily: RentPaymentMethodFamily.CARD,
+      })
+    );
+    mockUpdateStripeIds.mockResolvedValueOnce(
+      makePayment({
+        amountCents: 200_00,
+        chargeCents: 206_10,
+        feeCents: 610,
+        paymentMethodFamily: RentPaymentMethodFamily.CARD,
+      })
+    );
+
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", cardCheckoutBody);
+
+    expect(mockCreateWithAllocations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amountCents: 200_00,
+        chargeCents: 206_10,
+        feeCents: 610,
+        paymentMethodFamily: RentPaymentMethodFamily.CARD,
+      })
+    );
+
+    const [sessionParams] = lastCheckoutSessionCreateArgs() as [
+      {
+        line_items: Array<{ price_data: { unit_amount: number } }>;
+        metadata: Record<string, string>;
+        payment_intent_data: { application_fee_amount?: number; metadata: Record<string, string> };
+        payment_method_types: string[];
+      },
+    ];
+    expect(sessionParams.payment_method_types).toEqual(["card"]);
+    expect(sessionParams.line_items[0]?.price_data.unit_amount).toBe(206_10);
+    expect(sessionParams.metadata).toMatchObject({
+      amountCents: "20000",
+      chargeCents: "20610",
+      feeCents: "610",
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
+    });
+    expect(sessionParams.payment_intent_data.application_fee_amount).toBe(610);
+    expect(sessionParams.payment_intent_data.metadata.paymentMethodFamily).toBe(
+      RentPaymentMethodFamily.CARD
+    );
+  });
+
+  test("does not reuse open Checkout when payment method differs", async () => {
+    mockCreateWithAllocations.mockResolvedValueOnce(
+      makePayment({
+        id: "payment-card",
+        paymentMethodFamily: RentPaymentMethodFamily.CARD,
+        stripeCheckoutSessionId: null,
+        stripePaymentIntentId: null,
+      })
+    );
+    mockUpdateStripeIds.mockResolvedValueOnce(
+      makePayment({
+        id: "payment-card",
+        paymentMethodFamily: RentPaymentMethodFamily.CARD,
+      })
+    );
+
+    await tenantRentPaymentService.createCheckout("lease-1", "tenant-1", cardCheckoutBody);
+
+    expect(mockFindByIdempotencyKey).not.toHaveBeenCalled();
+    expect(mockSessionsCreate).toHaveBeenCalledTimes(1);
   });
 });

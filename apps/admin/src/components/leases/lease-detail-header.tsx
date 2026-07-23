@@ -3,8 +3,8 @@ import { memo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatLeaseSecurityDepositDisplay } from "@/lib/lease-deposit-display";
 import { formatMoney } from "@/lib/format-money";
+import { formatLeaseSecurityDepositDisplay } from "@/lib/lease-deposit-display";
 import {
   getLeaseBillingCadenceLabel,
   getLeaseRentAmountSuffix,
@@ -97,9 +97,7 @@ export const LeaseDetailHeader = memo(
           </div>
           <div>
             <dt className="text-muted-foreground">Rent billing</dt>
-            <dd className="font-medium">
-              {getLeaseBillingCadenceLabel(lease.rentBillingCadence)}
-            </dd>
+            <dd className="font-medium">{getLeaseBillingCadenceLabel(lease.rentBillingCadence)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Security deposit</dt>

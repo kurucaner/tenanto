@@ -13,6 +13,7 @@ const mockFindByCheckoutSessionId = mockResolvedNull<ITenantRentPayment>();
 const mockFindByPaymentIntentId = mockResolvedNull<ITenantRentPayment>();
 const mockUpdateStripeIds = mockResolvedNull<ITenantRentPayment>();
 const mockMarkSucceeded = mockResolvedNull<unknown>();
+const mockMarkProcessing = mockResolvedNull<unknown>();
 const mockMarkFailed = mockResolvedNull<unknown>();
 const mockMarkCanceled = mockResolvedNull<unknown>();
 const mockMarkRefunded = mockResolvedNull<unknown>();
@@ -59,6 +60,7 @@ mock.module("@/services/tenant-rent-payment-service", () => ({
   tenantRentPaymentService: {
     markCanceled: mockMarkCanceled,
     markFailed: mockMarkFailed,
+    markProcessing: mockMarkProcessing,
     markRefunded: mockMarkRefunded,
     markSucceeded: mockMarkSucceeded,
   },
@@ -105,6 +107,7 @@ describe("processStripeWebhookEvent", () => {
     mockFindByPaymentIntentId.mockReset();
     mockUpdateStripeIds.mockReset();
     mockMarkSucceeded.mockReset();
+    mockMarkProcessing.mockReset();
     mockMarkFailed.mockReset();
     mockMarkCanceled.mockReset();
     mockMarkRefunded.mockReset();
@@ -179,6 +182,259 @@ describe("processStripeWebhookEvent", () => {
 
     expect(mockMarkSucceeded).toHaveBeenCalledTimes(1);
     expect(mockMarkProcessed).toHaveBeenCalledWith("evt_2");
+  });
+
+  test("ignores checkout.session.completed when payment_status is unpaid (ACH in flight)", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_unpaid",
+      type: "checkout.session.completed",
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "cs_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "checkout.session",
+          payment_intent: "pi_ach_1",
+          payment_status: "unpaid",
+        },
+      },
+      id: "evt_unpaid",
+      livemode: false,
+      object: "event",
+      type: "checkout.session.completed",
+    } as never);
+
+    expect(mockMarkSucceeded).not.toHaveBeenCalled();
+    expect(mockMarkProcessing).not.toHaveBeenCalled();
+    expect(mockFindPaymentById).not.toHaveBeenCalled();
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        msg: "tenant_payments.checkout_completed_unpaid",
+        paymentStatus: "unpaid",
+      })
+    );
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_unpaid");
+  });
+
+  test("marks processing on payment_intent.processing", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_processing",
+      type: "payment_intent.processing",
+    });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.PENDING,
+      stripePaymentIntentId: null,
+    });
+    mockFindPaymentById.mockResolvedValueOnce(payment);
+    mockMarkProcessing.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.PROCESSING,
+      stripePaymentIntentId: "pi_ach_1",
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "pi_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "payment_intent",
+        },
+      },
+      id: "evt_processing",
+      livemode: false,
+      object: "event",
+      type: "payment_intent.processing",
+    } as never);
+
+    expect(mockMarkProcessing).toHaveBeenCalledWith(payment, "pi_ach_1");
+    expect(mockMarkSucceeded).not.toHaveBeenCalled();
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_processing");
+  });
+
+  test("marks succeeded on payment_intent.succeeded", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_pi_succeeded",
+      type: "payment_intent.succeeded",
+    });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.PROCESSING,
+      stripePaymentIntentId: "pi_ach_1",
+    });
+    mockFindPaymentById.mockResolvedValueOnce(payment);
+    mockMarkSucceeded.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.SUCCEEDED,
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "pi_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "payment_intent",
+        },
+      },
+      id: "evt_pi_succeeded",
+      livemode: false,
+      object: "event",
+      type: "payment_intent.succeeded",
+    } as never);
+
+    expect(mockMarkSucceeded).toHaveBeenCalledWith(payment, "pi_ach_1");
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_pi_succeeded");
+  });
+
+  test("marks succeeded on checkout.session.async_payment_succeeded", async () => {
+    mockFindById.mockResolvedValueOnce(null);
+    mockTryInsert.mockResolvedValueOnce({
+      createdAt: "2026-01-01T00:00:00.000Z",
+      payload: {},
+      processedAt: null,
+      stripeEventId: "evt_async_ok",
+      type: "checkout.session.async_payment_succeeded",
+    });
+    const payment = makePayment({
+      status: TenantRentPaymentStatus.PROCESSING,
+      stripeCheckoutSessionId: "cs_ach_1",
+      stripePaymentIntentId: "pi_ach_1",
+    });
+    mockFindByCheckoutSessionId.mockResolvedValueOnce(payment);
+    mockUpdateStripeIds.mockResolvedValueOnce(payment);
+    mockMarkSucceeded.mockResolvedValueOnce({
+      ...payment,
+      status: TenantRentPaymentStatus.SUCCEEDED,
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "cs_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "checkout.session",
+          payment_intent: "pi_ach_1",
+        },
+      },
+      id: "evt_async_ok",
+      livemode: false,
+      object: "event",
+      type: "checkout.session.async_payment_succeeded",
+    } as never);
+
+    expect(mockMarkSucceeded).toHaveBeenCalledWith(payment, "pi_ach_1");
+    expect(mockMarkProcessed).toHaveBeenCalledWith("evt_async_ok");
+  });
+
+  test("simulates ACH settlement processing then succeeded without early paid mark", async () => {
+    mockFindById.mockResolvedValue(null);
+    mockTryInsert
+      .mockResolvedValueOnce({
+        createdAt: "2026-01-01T00:00:00.000Z",
+        payload: {},
+        processedAt: null,
+        stripeEventId: "evt_completed_unpaid",
+        type: "checkout.session.completed",
+      })
+      .mockResolvedValueOnce({
+        createdAt: "2026-01-01T00:00:00.000Z",
+        payload: {},
+        processedAt: null,
+        stripeEventId: "evt_processing_seq",
+        type: "payment_intent.processing",
+      })
+      .mockResolvedValueOnce({
+        createdAt: "2026-01-01T00:00:00.000Z",
+        payload: {},
+        processedAt: null,
+        stripeEventId: "evt_succeeded_seq",
+        type: "payment_intent.succeeded",
+      });
+    const pendingPayment = makePayment({
+      status: TenantRentPaymentStatus.PENDING,
+      stripeCheckoutSessionId: "cs_ach_1",
+      stripePaymentIntentId: null,
+    });
+    const processingPayment = {
+      ...pendingPayment,
+      status: TenantRentPaymentStatus.PROCESSING,
+      stripePaymentIntentId: "pi_ach_1",
+    };
+    mockFindPaymentById
+      .mockResolvedValueOnce(pendingPayment)
+      .mockResolvedValueOnce(processingPayment);
+    mockMarkProcessing.mockResolvedValueOnce(processingPayment);
+    mockMarkSucceeded.mockResolvedValueOnce({
+      ...processingPayment,
+      status: TenantRentPaymentStatus.SUCCEEDED,
+    });
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "cs_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "checkout.session",
+          payment_intent: "pi_ach_1",
+          payment_status: "unpaid",
+        },
+      },
+      id: "evt_completed_unpaid",
+      livemode: false,
+      object: "event",
+      type: "checkout.session.completed",
+    } as never);
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "pi_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "payment_intent",
+        },
+      },
+      id: "evt_processing_seq",
+      livemode: false,
+      object: "event",
+      type: "payment_intent.processing",
+    } as never);
+
+    await processStripeWebhookEvent({
+      created: 1,
+      data: {
+        object: {
+          id: "pi_ach_1",
+          metadata: { paymentId: "payment-1" },
+          object: "payment_intent",
+        },
+      },
+      id: "evt_succeeded_seq",
+      livemode: false,
+      object: "event",
+      type: "payment_intent.succeeded",
+    } as never);
+
+    expect(mockMarkSucceeded).toHaveBeenCalledTimes(1);
+    expect(mockMarkProcessing).toHaveBeenCalledWith(pendingPayment, "pi_ach_1");
+    expect(mockMarkSucceeded).toHaveBeenCalledWith(processingPayment, "pi_ach_1");
   });
 
   test("marks canceled on checkout.session.expired", async () => {

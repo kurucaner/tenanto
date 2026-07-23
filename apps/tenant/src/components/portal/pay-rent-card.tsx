@@ -1,25 +1,14 @@
 import { useMutation } from "@tanstack/react-query";
 import { memo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/packages/app-ui";
-import { centsToDollars, type ITenantLeaseBalanceResponse } from "@/packages/shared";
-
-function formatUsdFromCents(cents: number, currency = "usd"): string {
-  return centsToDollars(cents).toLocaleString(undefined, {
-    currency: currency.toUpperCase(),
-    style: "currency",
-  });
-}
+import { PayRentMethodPicker } from "@/components/portal/pay-rent-checkout-picker";
+import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
+import { buildTenantRentPayPagePath, startRentPayForAmountDue } from "@/lib/start-rent-checkout";
+import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/packages/app-ui";
+import { type ITenantLeaseBalanceResponse } from "@/packages/shared";
 
 export const PayRentCard = memo(function PayRentCard({
   balance,
@@ -28,10 +17,17 @@ export const PayRentCard = memo(function PayRentCard({
   balance: ITenantLeaseBalanceResponse;
   leaseId: string;
 }) {
-  const checkoutMutation = useMutation({
-    mutationFn: () => startRentCheckoutForAmountDue(leaseId),
+  const navigate = useNavigate();
+  const payMutation = useMutation({
+    mutationFn: (paymentMethodFamily: Parameters<typeof startRentPayForAmountDue>[1]) =>
+      startRentPayForAmountDue(leaseId, paymentMethodFamily),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
+      toast.error(error instanceof Error ? error.message : "Failed to start payment");
+    },
+    onSuccess: (result) => {
+      if (result.kind === "element") {
+        void navigate(result.path);
+      }
     },
   });
 
@@ -70,27 +66,39 @@ export const PayRentCard = memo(function PayRentCard({
     );
   }
 
+  if (isTenantRentPaymentElementEnabled()) {
+    return (
+      <Card className="rounded-xl border-border/80 bg-card/85 shadow-sm">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-lg font-semibold">Pay rent</CardTitle>
+          <CardDescription>
+            Pay on this site with your bank account or card. Totals update when you change method.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="w-full" type="button">
+            <Link to={buildTenantRentPayPagePath(leaseId)}>Pay rent</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="rounded-xl border-border/80 bg-card/85 shadow-sm">
       <CardHeader className="space-y-1">
         <CardTitle className="text-lg font-semibold">Pay rent</CardTitle>
         <CardDescription>
-          Amount due{" "}
-          <span className="font-medium text-foreground">
-            {formatUsdFromCents(balance.amountDueCents, balance.currency)}
-          </span>
-          . Pay securely with Stripe.
+          Choose a payment method below. You&apos;ll review the total before checkout.
         </CardDescription>
       </CardHeader>
-      <CardFooter>
-        <Button
-          disabled={checkoutMutation.isPending}
-          onClick={() => checkoutMutation.mutate()}
-          type="button"
-        >
-          {checkoutMutation.isPending ? "Redirecting…" : "Pay rent"}
-        </Button>
-      </CardFooter>
+      <CardContent>
+        <PayRentMethodPicker
+          balance={balance}
+          isSubmitting={payMutation.isPending}
+          onSubmit={(method) => payMutation.mutate(method)}
+        />
+      </CardContent>
     </Card>
   );
 });

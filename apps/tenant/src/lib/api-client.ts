@@ -8,7 +8,10 @@ import {
   type ITenantAuthRegisterStartBody,
   type ITenantAuthRegisterVerifyBody,
   type ITenantAuthSessionResponse,
+  type ITenantCreateRentCheckoutBody,
   type ITenantCreateRentCheckoutResponse,
+  type ITenantCreateRentPaymentIntentBody,
+  type ITenantCreateRentPaymentIntentResponse,
   type ITenantGoogleAuthBody,
   type ITenantInvitePreviewResponse,
   type ITenantInviteRedeemBody,
@@ -117,11 +120,20 @@ export const tenantPortalApi = {
       { method: "POST", omitDefaultContentType: true }
     ),
 
-  createRentCheckout: (leaseId: string) =>
+  createRentCheckout: (leaseId: string, body: ITenantCreateRentCheckoutBody) =>
     authenticatedRequest<ITenantCreateRentCheckoutResponse>(
       `/tenant/me/leases/${encodeURIComponent(leaseId)}/rent-payments/checkout`,
       {
-        body: JSON.stringify({}),
+        body: JSON.stringify(body),
+        method: "POST",
+      }
+    ),
+
+  createRentPaymentIntent: (leaseId: string, body: ITenantCreateRentPaymentIntentBody) =>
+    authenticatedRequest<ITenantCreateRentPaymentIntentResponse>(
+      `/tenant/me/leases/${encodeURIComponent(leaseId)}/rent-payments/payment-intent`,
+      {
+        body: JSON.stringify(body),
         method: "POST",
       }
     ),

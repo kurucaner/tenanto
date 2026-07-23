@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
+import { computeRentCardConvenienceFeeCents } from "./tenant-rent-card-fee";
+import { RentPaymentMethodFamily } from "./tenant-rent-payment-types";
 import {
   allocateFifo,
   buildRentCheckoutIdempotencyKey,
+  buildRentPaymentIntentIdempotencyKey,
   computePeriodRemainingCents,
   computeRemainingByMonth,
+  computeRentCheckoutChargeCents,
   dollarsToCents,
   isValidPeriodKey,
   isValidPeriodMonth,
@@ -21,21 +25,87 @@ describe("dollarsToCents", () => {
   });
 });
 
+describe("computeRentCheckoutChargeCents", () => {
+  test("adds card convenience fee for card", () => {
+    const rentCents = 150_000;
+    expect(computeRentCheckoutChargeCents(rentCents, RentPaymentMethodFamily.CARD)).toBe(
+      rentCents + computeRentCardConvenienceFeeCents(rentCents)
+    );
+  });
+
+  test("returns rent only for ACH", () => {
+    expect(computeRentCheckoutChargeCents(150_000, RentPaymentMethodFamily.US_BANK_ACCOUNT)).toBe(
+      150_000
+    );
+  });
+});
+
 describe("buildRentCheckoutIdempotencyKey", () => {
   test("is stable for same inputs regardless of month order", () => {
     const a = buildRentCheckoutIdempotencyKey({
       amountCents: 100,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-02", "2026-01"],
       tenantUserId: "tenant-1",
     });
     const b = buildRentCheckoutIdempotencyKey({
       amountCents: 100,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-01", "2026-02"],
       tenantUserId: "tenant-1",
     });
     expect(a).toBe(b);
+  });
+
+  test("differs for card vs ACH at the same rent amount", () => {
+    const base = {
+      amountCents: 150_000,
+      leaseId: "lease-1",
+      periodMonths: ["2026-01"],
+      tenantUserId: "tenant-1",
+    };
+    const ach = buildRentCheckoutIdempotencyKey({
+      ...base,
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
+    });
+    const card = buildRentCheckoutIdempotencyKey({
+      ...base,
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
+    });
+    expect(ach).not.toBe(card);
+    expect(ach).toContain(":us_bank_account:150000");
+    expect(card).toContain(":card:154380");
+  });
+});
+
+describe("buildRentPaymentIntentIdempotencyKey", () => {
+  test("uses rent_pi prefix and method without charge suffix", () => {
+    const key = buildRentPaymentIntentIdempotencyKey({
+      leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
+      periodMonths: ["2026-01"],
+      tenantUserId: "tenant-1",
+    });
+    expect(key).toBe("rent_pi:lease-1:tenant-1:2026-01:card");
+  });
+
+  test("differs for card vs ACH at the same rent amount", () => {
+    const base = {
+      leaseId: "lease-1",
+      periodMonths: ["2026-01"],
+      tenantUserId: "tenant-1",
+    };
+    const ach = buildRentPaymentIntentIdempotencyKey({
+      ...base,
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
+    });
+    const card = buildRentPaymentIntentIdempotencyKey({
+      ...base,
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
+    });
+    expect(ach).not.toBe(card);
   });
 });
 
@@ -159,6 +229,7 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: 350_00,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-02", "2026-01"],
       periods,
     });
@@ -176,6 +247,7 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: 75_00,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
       periodMonths: ["2026-01"],
       periods,
     });
@@ -192,6 +264,7 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: STRIPE_MIN_CHARGE_CENTS_USD - 1,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-01"],
       periods,
     });
@@ -202,6 +275,7 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: 151_00,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-02"],
       periods,
     });
@@ -212,6 +286,7 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: 50_00,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-01", "2026-01"],
       periods,
     });
@@ -225,6 +300,7 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: 50_00,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-01"],
       periods: paid,
     });
@@ -238,9 +314,40 @@ describe("validateCreateRentCheckoutBody", () => {
     const result = validateCreateRentCheckoutBody({
       amountCents: 700_00,
       leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
       periodMonths: ["2026-01-15"],
       periods: weeklyPeriods,
     });
     expect(result.ok).toBe(true);
+  });
+
+  test("rejects missing paymentMethodFamily", () => {
+    const result = validateCreateRentCheckoutBody({
+      amountCents: 50_00,
+      leaseId: "lease-1",
+      paymentMethodFamily: undefined,
+      periodMonths: ["2026-01"],
+      periods,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error).toBe("paymentMethodFamily must be card or us_bank_account");
+  });
+
+  test("rejects invalid paymentMethodFamily", () => {
+    const result = validateCreateRentCheckoutBody({
+      amountCents: 50_00,
+      leaseId: "lease-1",
+      paymentMethodFamily: "paypal",
+      periodMonths: ["2026-01"],
+      periods,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error).toBe("paymentMethodFamily must be card or us_bank_account");
   });
 });

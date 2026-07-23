@@ -1,16 +1,22 @@
-import type { TTenantRentPaymentStatus } from "@/packages/shared";
+import type { TRentPaymentMethodFamily, TTenantRentPaymentStatus } from "@/packages/shared";
 import { TenantRentPaymentStatus } from "@/packages/shared";
 
 import { pool } from "./pool";
 
 export interface ITenantRentPayment {
   amountCents: number;
+  /** amount_cents + fee_cents (audit); CHECK-enforced in DB. */
+  chargeCents: number;
   connectedAccountId: string;
   createdAt: string;
   currency: string;
+  /** Platform card convenience fee; 0 for ACH / legacy. */
+  feeCents: number;
   id: string;
   idempotencyKey: string;
   leaseId: string;
+  /** null = legacy rows before dual-price. */
+  paymentMethodFamily: TRentPaymentMethodFamily | null;
   propertyId: string;
   status: TTenantRentPaymentStatus;
   stripeCheckoutSessionId: string | null;
@@ -28,14 +34,20 @@ export interface ITenantRentPaymentAllocation {
 }
 
 function mapPaymentRow(row: Record<string, unknown>): ITenantRentPayment {
+  const amountCents = Number(row.amount_cents);
+  const feeCents = Number(row.fee_cents ?? 0);
+  const chargeCents = row.charge_cents == null ? amountCents + feeCents : Number(row.charge_cents);
   return {
-    amountCents: Number(row.amount_cents),
+    amountCents,
+    chargeCents,
     connectedAccountId: row.connected_account_id as string,
     createdAt: (row.created_at as Date).toISOString(),
     currency: row.currency as string,
+    feeCents,
     id: row.id as string,
     idempotencyKey: row.idempotency_key as string,
     leaseId: row.lease_id as string,
+    paymentMethodFamily: (row.payment_method_family as TRentPaymentMethodFamily | null) ?? null,
     propertyId: row.property_id as string,
     status: row.status as TTenantRentPaymentStatus,
     stripeCheckoutSessionId: (row.stripe_checkout_session_id as string) ?? null,
@@ -63,13 +75,20 @@ export const tenantRentPaymentsDb = {
       periodMonth: string;
     }>;
     amountCents: number;
+    /** Defaults to amountCents + feeCents. */
+    chargeCents?: number;
     connectedAccountId: string;
     currency?: string;
+    /** Defaults to 0. */
+    feeCents?: number;
     idempotencyKey: string;
     leaseId: string;
+    paymentMethodFamily?: TRentPaymentMethodFamily | null;
     propertyId: string;
     tenantUserId: string;
   }): Promise<ITenantRentPayment> {
+    const feeCents = input.feeCents ?? 0;
+    const chargeCents = input.chargeCents ?? input.amountCents + feeCents;
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -81,9 +100,12 @@ export const tenantRentPaymentsDb = {
            status,
            currency,
            amount_cents,
+           fee_cents,
+           charge_cents,
+           payment_method_family,
            idempotency_key,
            connected_account_id
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
         [
           input.leaseId,
@@ -92,6 +114,9 @@ export const tenantRentPaymentsDb = {
           TenantRentPaymentStatus.PENDING,
           input.currency ?? "usd",
           input.amountCents,
+          feeCents,
+          chargeCents,
+          input.paymentMethodFamily ?? null,
           input.idempotencyKey,
           input.connectedAccountId,
         ]
@@ -153,6 +178,31 @@ export const tenantRentPaymentsDb = {
     const result = await pool.query(
       `SELECT * FROM tenant_rent_payments WHERE stripe_payment_intent_id = $1`,
       [paymentIntentId]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPaymentRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async findOpenPaymentIntentPayment(
+    leaseId: string,
+    tenantUserId: string
+  ): Promise<ITenantRentPayment | null> {
+    const result = await pool.query(
+      `SELECT * FROM tenant_rent_payments
+       WHERE lease_id = $1
+         AND tenant_user_id = $2
+         AND stripe_checkout_session_id IS NULL
+         AND stripe_payment_intent_id IS NOT NULL
+         AND status IN ($3, $4)
+         AND idempotency_key LIKE 'rent_pi:%'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [
+        leaseId,
+        tenantUserId,
+        TenantRentPaymentStatus.PENDING,
+        TenantRentPaymentStatus.REQUIRES_ACTION,
+      ]
     );
     if (result.rows.length === 0) return null;
     return mapPaymentRow(result.rows[0] as Record<string, unknown>);
@@ -227,6 +277,36 @@ export const tenantRentPaymentsDb = {
       totals.set(row.month as string, Number(row.total));
     }
     return totals;
+  },
+
+  async updateChargeMethodAndIdempotencyKey(
+    paymentId: string,
+    input: {
+      chargeCents: number;
+      feeCents: number;
+      idempotencyKey: string;
+      paymentMethodFamily: TRentPaymentMethodFamily;
+    }
+  ): Promise<ITenantRentPayment | null> {
+    const result = await pool.query(
+      `UPDATE tenant_rent_payments SET
+         charge_cents = $2,
+         fee_cents = $3,
+         payment_method_family = $4,
+         idempotency_key = $5,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [
+        paymentId,
+        input.chargeCents,
+        input.feeCents,
+        input.paymentMethodFamily,
+        input.idempotencyKey,
+      ]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPaymentRow(result.rows[0] as Record<string, unknown>);
   },
 
   async updateStatus(

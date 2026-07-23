@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
 
+import { PayRentCheckoutSheet } from "@/components/portal/pay-rent-checkout-picker";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { formatDuePeriodsLabel } from "@/lib/rent-summary-utils";
 import { Button } from "@/packages/app-ui";
@@ -9,19 +10,13 @@ import { type ITenantRentSummaryLease } from "@/packages/shared";
 interface LeasePayActionsProps {
   isCaughtUp: boolean;
   isInline: boolean;
-  isPayingThisLease: boolean;
-  isStartingCheckout: boolean;
   lease: ITenantRentSummaryLease;
-  onPay: (leaseId: string) => void;
 }
 
 export const LeasePayActions = memo(function LeasePayActions({
   isCaughtUp,
   isInline,
-  isPayingThisLease,
-  isStartingCheckout,
   lease,
-  onPay,
 }: LeasePayActionsProps) {
   const buttonClassName = isInline ? "w-full sm:w-auto" : "w-full";
 
@@ -47,36 +42,26 @@ export const LeasePayActions = memo(function LeasePayActions({
   }
 
   return (
-    <Button
-      className={buttonClassName}
-      disabled={isStartingCheckout}
-      onClick={() => onPay(lease.leaseId)}
-      type="button"
-    >
-      {isPayingThisLease ? "Redirecting…" : "Pay rent"}
-    </Button>
+    <PayRentCheckoutSheet
+      leaseId={lease.leaseId}
+      triggerClassName={buttonClassName}
+      triggerLabel="Pay rent"
+    />
   );
 });
 LeasePayActions.displayName = "LeasePayActions";
 
 interface LeaseDueRowProps {
-  checkoutLeaseId: string | undefined;
   currency: string;
-  isStartingCheckout: boolean;
   lease: ITenantRentSummaryLease;
-  onPay: (leaseId: string) => void;
   variant?: "card" | "inline";
 }
 
 export const LeaseDueRow = memo(function LeaseDueRow({
-  checkoutLeaseId,
   currency,
-  isStartingCheckout,
   lease,
-  onPay,
   variant = "card",
 }: LeaseDueRowProps) {
-  const isPayingThisLease = isStartingCheckout && checkoutLeaseId === lease.leaseId;
   const isCaughtUp = lease.amountDueCents <= 0;
   const isInline = variant === "inline";
   const duePeriodsLabel = formatDuePeriodsLabel(lease.duePeriodKeys);
@@ -109,14 +94,7 @@ export const LeaseDueRow = memo(function LeaseDueRow({
         )}
       </div>
       <div className={isInline ? "shrink-0 sm:w-auto" : undefined}>
-        <LeasePayActions
-          isCaughtUp={isCaughtUp}
-          isInline={isInline}
-          isPayingThisLease={isPayingThisLease}
-          isStartingCheckout={isStartingCheckout}
-          lease={lease}
-          onPay={onPay}
-        />
+        <LeasePayActions isCaughtUp={isCaughtUp} isInline={isInline} lease={lease} />
       </div>
     </div>
   );
