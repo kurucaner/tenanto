@@ -831,6 +831,8 @@ export {
   isTerminalTenantRentPaymentStatus,
   type ITenantCreateRentCheckoutBody,
   type ITenantCreateRentCheckoutResponse,
+  type ITenantCreateRentPaymentIntentBody,
+  type ITenantCreateRentPaymentIntentResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
   type ITenantRentPaymentStatusResponse,
@@ -846,6 +848,7 @@ export {
 export {
   allocateFifo,
   buildRentCheckoutIdempotencyKey,
+  buildRentPaymentIntentIdempotencyKey,
   centsToDollars,
   computePeriodRemainingCents,
   computeRemainingByMonth,

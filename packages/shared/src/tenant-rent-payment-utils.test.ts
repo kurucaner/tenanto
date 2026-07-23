@@ -5,6 +5,7 @@ import { RentPaymentMethodFamily } from "./tenant-rent-payment-types";
 import {
   allocateFifo,
   buildRentCheckoutIdempotencyKey,
+  buildRentPaymentIntentIdempotencyKey,
   computePeriodRemainingCents,
   computeRemainingByMonth,
   computeRentCheckoutChargeCents,
@@ -76,6 +77,35 @@ describe("buildRentCheckoutIdempotencyKey", () => {
     expect(ach).not.toBe(card);
     expect(ach).toContain(":us_bank_account:150000");
     expect(card).toContain(":card:154380");
+  });
+});
+
+describe("buildRentPaymentIntentIdempotencyKey", () => {
+  test("uses rent_pi prefix and method without charge suffix", () => {
+    const key = buildRentPaymentIntentIdempotencyKey({
+      leaseId: "lease-1",
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
+      periodMonths: ["2026-01"],
+      tenantUserId: "tenant-1",
+    });
+    expect(key).toBe("rent_pi:lease-1:tenant-1:2026-01:card");
+  });
+
+  test("differs for card vs ACH at the same rent amount", () => {
+    const base = {
+      leaseId: "lease-1",
+      periodMonths: ["2026-01"],
+      tenantUserId: "tenant-1",
+    };
+    const ach = buildRentPaymentIntentIdempotencyKey({
+      ...base,
+      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
+    });
+    const card = buildRentPaymentIntentIdempotencyKey({
+      ...base,
+      paymentMethodFamily: RentPaymentMethodFamily.CARD,
+    });
+    expect(ach).not.toBe(card);
   });
 });
 

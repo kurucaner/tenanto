@@ -223,6 +223,14 @@ export const tenantUsersDb = {
     };
   },
 
+  async getStripeCustomerId(tenantUserId: string): Promise<string | null> {
+    const result = await pool.query(`SELECT stripe_customer_id FROM tenant_users WHERE id = $1`, [
+      tenantUserId,
+    ]);
+    if (result.rows.length === 0) return null;
+    return (result.rows[0]?.stripe_customer_id as string | null) ?? null;
+  },
+
   async grantVerifiedPhoneWithSmsConsent(
     tenantUserId: string,
     phone: string
@@ -372,6 +380,26 @@ export const tenantUsersDb = {
       return null;
     }
     return mapTenantUserRow(result.rows[0] as Record<string, unknown>);
+  },
+
+  async setStripeCustomerIdIfNull(
+    tenantUserId: string,
+    stripeCustomerId: string
+  ): Promise<string | null> {
+    const result = await pool.query(
+      `UPDATE tenant_users
+       SET stripe_customer_id = $2, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1 AND stripe_customer_id IS NULL
+       RETURNING stripe_customer_id`,
+      [tenantUserId, stripeCustomerId]
+    );
+    if (result.rows.length > 0) {
+      return (result.rows[0]?.stripe_customer_id as string) ?? stripeCustomerId;
+    }
+    const existing = await pool.query(`SELECT stripe_customer_id FROM tenant_users WHERE id = $1`, [
+      tenantUserId,
+    ]);
+    return (existing.rows[0]?.stripe_customer_id as string | null) ?? null;
   },
 
   /**

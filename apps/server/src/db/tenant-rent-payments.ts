@@ -36,8 +36,7 @@ export interface ITenantRentPaymentAllocation {
 function mapPaymentRow(row: Record<string, unknown>): ITenantRentPayment {
   const amountCents = Number(row.amount_cents);
   const feeCents = Number(row.fee_cents ?? 0);
-  const chargeCents =
-    row.charge_cents == null ? amountCents + feeCents : Number(row.charge_cents);
+  const chargeCents = row.charge_cents == null ? amountCents + feeCents : Number(row.charge_cents);
   return {
     amountCents,
     chargeCents,
@@ -184,6 +183,31 @@ export const tenantRentPaymentsDb = {
     return mapPaymentRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async findOpenPaymentIntentPayment(
+    leaseId: string,
+    tenantUserId: string
+  ): Promise<ITenantRentPayment | null> {
+    const result = await pool.query(
+      `SELECT * FROM tenant_rent_payments
+       WHERE lease_id = $1
+         AND tenant_user_id = $2
+         AND stripe_checkout_session_id IS NULL
+         AND stripe_payment_intent_id IS NOT NULL
+         AND status IN ($3, $4)
+         AND idempotency_key LIKE 'rent_pi:%'
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [
+        leaseId,
+        tenantUserId,
+        TenantRentPaymentStatus.PENDING,
+        TenantRentPaymentStatus.REQUIRES_ACTION,
+      ]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPaymentRow(result.rows[0] as Record<string, unknown>);
+  },
+
   async listAllocations(paymentId: string): Promise<ITenantRentPaymentAllocation[]> {
     const result = await pool.query(
       `SELECT * FROM tenant_rent_payment_allocations
@@ -253,6 +277,36 @@ export const tenantRentPaymentsDb = {
       totals.set(row.month as string, Number(row.total));
     }
     return totals;
+  },
+
+  async updateChargeMethodAndIdempotencyKey(
+    paymentId: string,
+    input: {
+      chargeCents: number;
+      feeCents: number;
+      idempotencyKey: string;
+      paymentMethodFamily: TRentPaymentMethodFamily;
+    }
+  ): Promise<ITenantRentPayment | null> {
+    const result = await pool.query(
+      `UPDATE tenant_rent_payments SET
+         charge_cents = $2,
+         fee_cents = $3,
+         payment_method_family = $4,
+         idempotency_key = $5,
+         updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [
+        paymentId,
+        input.chargeCents,
+        input.feeCents,
+        input.paymentMethodFamily,
+        input.idempotencyKey,
+      ]
+    );
+    if (result.rows.length === 0) return null;
+    return mapPaymentRow(result.rows[0] as Record<string, unknown>);
   },
 
   async updateStatus(

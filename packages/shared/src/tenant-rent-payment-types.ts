@@ -89,6 +89,20 @@ export interface ITenantCreateRentCheckoutResponse {
   paymentId: string;
 }
 
+/** Create PaymentIntent body — amount due is computed server-side; method selects rent vs rent+fee. */
+export interface ITenantCreateRentPaymentIntentBody {
+  paymentMethodFamily: TRentPaymentMethodFamily;
+}
+
+export interface ITenantCreateRentPaymentIntentResponse {
+  chargeCents: number;
+  clientSecret: string;
+  feeCents: number;
+  paymentId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
+  rentCents: number;
+}
+
 export interface ITenantRentPaymentStatusResponse {
   amountCents: number;
   currency: string;

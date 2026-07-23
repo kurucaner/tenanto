@@ -355,9 +355,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Create/update PI with same fee rules + `clientSecret`.
 
-- [ ] Create/reuse Stripe **Customer** for tenant (ACH/PE mandate-friendly); store id if needed (new column or existing user metadata — prefer minimal: Stripe Customer id on tenant user or payment row)
-- [ ] PI amount = rent+fee; card → `application_fee_amount`; ACH fee 0; destination transfer
-- [ ] Idempotent update when method changes before confirm
+- [x] Create/reuse Stripe **Customer** for tenant (ACH/PE mandate-friendly); store id if needed (new column or existing user metadata — prefer minimal: Stripe Customer id on tenant user or payment row)
+- [x] PI amount = rent+fee; card → `application_fee_amount`; ACH fee 0; destination transfer
+- [x] Idempotent update when method changes before confirm
 
 **Files (≤5):** service; routes; shared types; tests; small persistence for customer id if required.
 

@@ -1,9 +1,12 @@
+import type Stripe from "stripe";
+
 import { isPostgresUniqueViolation } from "@/db/pg-errors";
 import { propertyIncomeLineTypesDb } from "@/db/property-income-line-types";
 import { propertyIncomeLinesDb } from "@/db/property-income-lines";
 import { propertyLongStaysDb } from "@/db/property-long-stays";
 import { propertyStripeAccountsDb } from "@/db/property-stripe-accounts";
 import { type ITenantRentPayment, tenantRentPaymentsDb } from "@/db/tenant-rent-payments";
+import { tenantUsersDb } from "@/db/tenant-users";
 import {
   rentPaymentConnectNotReadyError,
   rentPaymentNotFoundError,
@@ -16,6 +19,7 @@ import {
 } from "@/lib/stripe-connect-config";
 import {
   buildRentCheckoutIdempotencyKey,
+  buildRentPaymentIntentIdempotencyKey,
   calculateMiscIncomeLine,
   centsToDollars,
   computeRentCardConvenienceFeeCents,
@@ -24,6 +28,8 @@ import {
   isWeeklyPeriodKey,
   type ITenantCreateRentCheckoutBody,
   type ITenantCreateRentCheckoutResponse,
+  type ITenantCreateRentPaymentIntentBody,
+  type ITenantCreateRentPaymentIntentResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
   type ITenantRentPaymentStatusResponse,
@@ -118,7 +124,7 @@ async function computeLeaseBalanceFields(
   };
 }
 
-function stripeCheckoutPaymentMethodTypes(
+function stripePaymentMethodTypes(
   paymentMethodFamily: TRentPaymentMethodFamily
 ): Array<"card" | "us_bank_account"> {
   return paymentMethodFamily === RentPaymentMethodFamily.CARD ? ["card"] : ["us_bank_account"];
@@ -141,6 +147,270 @@ function toStatusResponse(payment: ITenantRentPayment): ITenantRentPaymentStatus
     leaseId: payment.leaseId,
     status: payment.status,
   };
+}
+
+function buildRentPaymentMetadata(input: {
+  amountCents: number;
+  chargeCents: number;
+  feeCents: number;
+  leaseId: string;
+  paymentId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
+  periodMonthsMeta: string;
+  propertyId: string;
+}): Record<string, string> {
+  return {
+    amountCents: String(input.amountCents),
+    chargeCents: String(input.chargeCents),
+    feeCents: String(input.feeCents),
+    leaseId: input.leaseId,
+    paymentId: input.paymentId,
+    paymentMethodFamily: input.paymentMethodFamily,
+    periodMonths: input.periodMonthsMeta,
+    propertyId: input.propertyId,
+  };
+}
+
+function isStripePaymentIntentUpdatable(status: Stripe.PaymentIntent.Status): boolean {
+  return (
+    status === "requires_payment_method" ||
+    status === "requires_confirmation" ||
+    status === "requires_action"
+  );
+}
+
+function toPaymentIntentResponse(
+  payment: ITenantRentPayment,
+  paymentIntent: Stripe.PaymentIntent,
+  paymentMethodFamily: TRentPaymentMethodFamily
+): ITenantCreateRentPaymentIntentResponse {
+  if (!paymentIntent.client_secret) {
+    throw new Error("Stripe PaymentIntent did not return a client secret");
+  }
+  return {
+    chargeCents: payment.chargeCents,
+    clientSecret: paymentIntent.client_secret,
+    feeCents: payment.feeCents,
+    paymentId: payment.id,
+    paymentMethodFamily,
+    rentCents: payment.amountCents,
+  };
+}
+
+async function allocationPeriodMonthsMatch(
+  paymentId: string,
+  periodMonths: string[]
+): Promise<boolean> {
+  const allocations = await tenantRentPaymentsDb.listAllocations(paymentId);
+  const existingMonths = allocations
+    .map((row) => row.periodMonth)
+    .sort((a, b) => a.localeCompare(b));
+  const expectedMonths = [...periodMonths].sort((a, b) => a.localeCompare(b));
+  return (
+    existingMonths.length === expectedMonths.length &&
+    existingMonths.every((month, index) => month === expectedMonths[index])
+  );
+}
+
+async function resolveStripeCustomerId(tenantUserId: string): Promise<string> {
+  const tenantUser = await tenantUsersDb.findById(tenantUserId);
+  if (!tenantUser) {
+    throw rentPaymentNotFoundError("Tenant user not found");
+  }
+
+  const existingCustomerId = await tenantUsersDb.getStripeCustomerId(tenantUserId);
+  if (existingCustomerId) {
+    return existingCustomerId;
+  }
+
+  const stripe = getStripeClient();
+  const customer = await stripe.customers.create(
+    {
+      email: tenantUser.email,
+      metadata: { tenantUserId },
+      name: tenantUser.name,
+    },
+    { idempotencyKey: `tenant_stripe_customer:${tenantUserId}` }
+  );
+
+  const persistedId = await tenantUsersDb.setStripeCustomerIdIfNull(tenantUserId, customer.id);
+  return persistedId ?? customer.id;
+}
+
+interface IPreparedRentPayment {
+  amountCents: number;
+  chargeCents: number;
+  connect: NonNullable<Awaited<ReturnType<typeof propertyStripeAccountsDb.findByPropertyId>>>;
+  feeCents: number;
+  lease: NonNullable<Awaited<ReturnType<typeof propertyLongStaysDb.findById>>>;
+  paymentMethodFamily: TRentPaymentMethodFamily;
+  periodMonths: string[];
+  periodMonthsMeta: string;
+  validated: Extract<ReturnType<typeof validateCreateRentCheckoutBody>, { ok: true }>;
+}
+
+async function prepareRentPayment(
+  leaseId: string,
+  tenantUserId: string,
+  paymentMethodFamily: TRentPaymentMethodFamily
+): Promise<IPreparedRentPayment> {
+  await assertLeaseTenantAccess(leaseId, tenantUserId);
+  requireStripeConfigured();
+
+  const lease = await propertyLongStaysDb.findById(leaseId);
+  if (!lease) {
+    throw rentPaymentNotFoundError("Lease not found");
+  }
+
+  const connect = await propertyStripeAccountsDb.findByPropertyId(lease.propertyId);
+  if (!connect?.chargesEnabled) {
+    throw rentPaymentConnectNotReadyError();
+  }
+
+  const balance = await loadTenantBalanceFromSchedule(leaseId);
+  if (balance.amountDueCents <= 0 || balance.periodMonths.length === 0) {
+    throw rentPaymentValidationError("Nothing is due right now");
+  }
+
+  if (paymentMethodFamily === RentPaymentMethodFamily.US_BANK_ACCOUNT) {
+    const achPaymentsEnabled = await readConnectAchPaymentsEnabled(connect.stripeAccountId);
+    if (!achPaymentsEnabled) {
+      throw rentPaymentValidationError(TENANT_RENT_ACH_UNAVAILABLE_MESSAGE);
+    }
+  }
+
+  const validated = validateCreateRentCheckoutBody({
+    amountCents: balance.amountDueCents,
+    leaseId,
+    paymentMethodFamily,
+    periodMonths: balance.periodMonths,
+    periods: balance.periods,
+  });
+  if (!validated.ok) {
+    throw rentPaymentValidationError(validated.error);
+  }
+
+  const feeCents = computeRentCheckoutFeeCents(balance.amountDueCents, paymentMethodFamily);
+  const chargeCents = computeRentCheckoutChargeCents(balance.amountDueCents, paymentMethodFamily);
+  const periodMonthsMeta = validated.allocations.map((allocation) => allocation.month).join(",");
+
+  return {
+    amountCents: balance.amountDueCents,
+    chargeCents,
+    connect,
+    feeCents,
+    lease,
+    paymentMethodFamily,
+    periodMonths: balance.periodMonths,
+    periodMonthsMeta,
+    validated,
+  };
+}
+
+async function buildPaymentIntentParams(
+  prepared: IPreparedRentPayment,
+  payment: ITenantRentPayment,
+  stripeCustomerId: string
+): Promise<Stripe.PaymentIntentCreateParams> {
+  const metadata = buildRentPaymentMetadata({
+    amountCents: prepared.amountCents,
+    chargeCents: prepared.chargeCents,
+    feeCents: prepared.feeCents,
+    leaseId: prepared.lease.id,
+    paymentId: payment.id,
+    paymentMethodFamily: prepared.paymentMethodFamily,
+    periodMonthsMeta: prepared.periodMonthsMeta,
+    propertyId: prepared.lease.propertyId,
+  });
+
+  return {
+    amount: prepared.chargeCents,
+    application_fee_amount: prepared.feeCents > 0 ? prepared.feeCents : undefined,
+    currency: "usd",
+    customer: stripeCustomerId,
+    metadata,
+    payment_method_types: stripePaymentMethodTypes(prepared.paymentMethodFamily),
+    transfer_data: {
+      destination: prepared.connect.stripeAccountId,
+    },
+  };
+}
+
+async function buildPaymentIntentUpdateParams(
+  prepared: IPreparedRentPayment,
+  paymentId: string
+): Promise<Stripe.PaymentIntentUpdateParams> {
+  const metadata = buildRentPaymentMetadata({
+    amountCents: prepared.amountCents,
+    chargeCents: prepared.chargeCents,
+    feeCents: prepared.feeCents,
+    leaseId: prepared.lease.id,
+    paymentId,
+    paymentMethodFamily: prepared.paymentMethodFamily,
+    periodMonthsMeta: prepared.periodMonthsMeta,
+    propertyId: prepared.lease.propertyId,
+  });
+
+  return {
+    amount: prepared.chargeCents,
+    application_fee_amount: prepared.feeCents,
+    metadata,
+    payment_method_types: stripePaymentMethodTypes(prepared.paymentMethodFamily),
+  };
+}
+
+async function syncOpenPaymentIntent(
+  payment: ITenantRentPayment,
+  prepared: IPreparedRentPayment,
+  idempotencyKey: string,
+  stripeUpdateIdempotencyKey: string
+): Promise<ITenantCreateRentPaymentIntentResponse> {
+  if (!payment.stripePaymentIntentId) {
+    throw rentPaymentValidationError("Payment is missing a Stripe PaymentIntent");
+  }
+
+  const stripe = getStripeClient();
+  let paymentIntent = await stripe.paymentIntents.retrieve(payment.stripePaymentIntentId);
+  if (paymentIntent.status === "succeeded") {
+    throw rentPaymentValidationError("This rent payment was already completed");
+  }
+  if (!isStripePaymentIntentUpdatable(paymentIntent.status)) {
+    throw rentPaymentValidationError("Your prior payment is still processing. Try again shortly.");
+  }
+
+  const needsStripeUpdate =
+    paymentIntent.amount !== prepared.chargeCents ||
+    payment.chargeCents !== prepared.chargeCents ||
+    payment.feeCents !== prepared.feeCents ||
+    payment.paymentMethodFamily !== prepared.paymentMethodFamily;
+
+  if (needsStripeUpdate) {
+    paymentIntent = await stripe.paymentIntents.update(
+      paymentIntent.id,
+      await buildPaymentIntentUpdateParams(prepared, payment.id),
+      { idempotencyKey: stripeUpdateIdempotencyKey }
+    );
+  }
+
+  let nextPayment = payment;
+  if (
+    payment.chargeCents !== prepared.chargeCents ||
+    payment.feeCents !== prepared.feeCents ||
+    payment.paymentMethodFamily !== prepared.paymentMethodFamily ||
+    payment.idempotencyKey !== idempotencyKey
+  ) {
+    const updated = await tenantRentPaymentsDb.updateChargeMethodAndIdempotencyKey(payment.id, {
+      chargeCents: prepared.chargeCents,
+      feeCents: prepared.feeCents,
+      idempotencyKey,
+      paymentMethodFamily: prepared.paymentMethodFamily,
+    });
+    if (updated) {
+      nextPayment = updated;
+    }
+  }
+
+  return toPaymentIntentResponse(nextPayment, paymentIntent, prepared.paymentMethodFamily);
 }
 
 /**
@@ -340,7 +610,7 @@ export const tenantRentPaymentService = {
             destination: connect.stripeAccountId,
           },
         },
-        payment_method_types: stripeCheckoutPaymentMethodTypes(paymentMethodFamily),
+        payment_method_types: stripePaymentMethodTypes(paymentMethodFamily),
         success_url: `${appBase}/rent-payments/${payment.id}?status=success`,
       },
       { idempotencyKey }
@@ -372,6 +642,118 @@ export const tenantRentPaymentService = {
     });
 
     return { checkoutUrl: session.url, paymentId: payment.id };
+  },
+
+  async createPaymentIntent(
+    leaseId: string,
+    tenantUserId: string,
+    body: ITenantCreateRentPaymentIntentBody
+  ): Promise<ITenantCreateRentPaymentIntentResponse> {
+    const prepared = await prepareRentPayment(leaseId, tenantUserId, body.paymentMethodFamily);
+    const idempotencyKey = buildRentPaymentIntentIdempotencyKey({
+      leaseId,
+      paymentMethodFamily: prepared.paymentMethodFamily,
+      periodMonths: prepared.periodMonths,
+      tenantUserId,
+    });
+
+    const existingByKey = await tenantRentPaymentsDb.findByIdempotencyKey(idempotencyKey);
+    if (existingByKey?.stripePaymentIntentId) {
+      return syncOpenPaymentIntent(
+        existingByKey,
+        prepared,
+        idempotencyKey,
+        `${idempotencyKey}:update`
+      );
+    }
+
+    const openPayment = await tenantRentPaymentsDb.findOpenPaymentIntentPayment(
+      leaseId,
+      tenantUserId
+    );
+    if (
+      openPayment &&
+      openPayment.paymentMethodFamily !== prepared.paymentMethodFamily &&
+      openPayment.stripePaymentIntentId
+    ) {
+      const periodsMatch = await allocationPeriodMonthsMatch(openPayment.id, prepared.periodMonths);
+      if (periodsMatch) {
+        return syncOpenPaymentIntent(
+          openPayment,
+          prepared,
+          idempotencyKey,
+          `rent_pi_update:${openPayment.id}:${prepared.paymentMethodFamily}`
+        );
+      }
+    }
+
+    let payment: ITenantRentPayment;
+    try {
+      payment = await tenantRentPaymentsDb.createWithAllocations({
+        allocations: prepared.validated.allocations.map((allocation) => ({
+          allocatedCents: allocation.allocatedCents,
+          expectedCentsSnapshot: allocation.expectedCentsSnapshot,
+          periodMonth: allocation.month,
+        })),
+        amountCents: prepared.amountCents,
+        chargeCents: prepared.chargeCents,
+        connectedAccountId: prepared.connect.stripeAccountId,
+        feeCents: prepared.feeCents,
+        idempotencyKey,
+        leaseId,
+        paymentMethodFamily: prepared.paymentMethodFamily,
+        propertyId: prepared.lease.propertyId,
+        tenantUserId,
+      });
+    } catch (error) {
+      if (!isPostgresUniqueViolation(error)) {
+        throw error;
+      }
+      const existing = await tenantRentPaymentsDb.findByIdempotencyKey(idempotencyKey);
+      if (!existing) {
+        throw error;
+      }
+      if (existing.status === TenantRentPaymentStatus.SUCCEEDED) {
+        throw rentPaymentValidationError("This rent payment was already completed");
+      }
+      if (existing.stripePaymentIntentId) {
+        return syncOpenPaymentIntent(
+          existing,
+          prepared,
+          idempotencyKey,
+          `${idempotencyKey}:update`
+        );
+      }
+      payment = existing;
+    }
+
+    if (payment.stripePaymentIntentId) {
+      return syncOpenPaymentIntent(payment, prepared, idempotencyKey, `${idempotencyKey}:update`);
+    }
+
+    const stripe = getStripeClient();
+    const stripeCustomerId = await resolveStripeCustomerId(tenantUserId);
+    const paymentIntent = await stripe.paymentIntents.create(
+      await buildPaymentIntentParams(prepared, payment, stripeCustomerId),
+      { idempotencyKey }
+    );
+
+    await tenantRentPaymentsDb.updateStripeIds(payment.id, {
+      stripePaymentIntentId: paymentIntent.id,
+    });
+
+    WinstonLogger.info({
+      amountCents: prepared.amountCents,
+      chargeCents: prepared.chargeCents,
+      feeCents: prepared.feeCents,
+      leaseId,
+      msg: "tenant_payments.payment_intent_created",
+      paymentId: payment.id,
+      paymentMethodFamily: prepared.paymentMethodFamily,
+      stripePaymentIntentId: paymentIntent.id,
+    });
+
+    return toPaymentIntentResponse(payment, paymentIntent, prepared.paymentMethodFamily);
   },
 
   async getBalance(leaseId: string, tenantUserId: string): Promise<ITenantLeaseBalanceResponse> {

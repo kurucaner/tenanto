@@ -3701,4 +3701,25 @@ export const migrations: IMigration[] = [
     },
     version: 82,
   },
+  {
+    down: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          DROP COLUMN IF EXISTS stripe_customer_id;
+      `);
+    },
+    name: "tenant_users_stripe_customer_id",
+    up: async (client: TDBClient) => {
+      await client.query(`
+        ALTER TABLE tenant_users
+          ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255) NULL;
+      `);
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS tenant_users_stripe_customer_id_uniq
+          ON tenant_users (stripe_customer_id)
+          WHERE stripe_customer_id IS NOT NULL;
+      `);
+    },
+    version: 83,
+  },
 ];

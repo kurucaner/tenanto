@@ -46,6 +46,17 @@ export function buildRentCheckoutIdempotencyKey(input: {
   return `rent_checkout:${input.leaseId}:${input.tenantUserId}:${months}:${input.paymentMethodFamily}:${chargeCents}`;
 }
 
+/** PaymentIntent idempotency key — method-specific; open PI rows can be updated when method changes. */
+export function buildRentPaymentIntentIdempotencyKey(input: {
+  leaseId: string;
+  paymentMethodFamily: TRentPaymentMethodFamily;
+  periodMonths: string[];
+  tenantUserId: string;
+}): string {
+  const months = [...input.periodMonths].sort((a, b) => a.localeCompare(b)).join(",");
+  return `rent_pi:${input.leaseId}:${input.tenantUserId}:${months}:${input.paymentMethodFamily}`;
+}
+
 export interface IRentPeriodInput {
   expectedCents: number;
   month: string;
