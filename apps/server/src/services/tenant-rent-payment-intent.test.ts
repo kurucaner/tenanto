@@ -54,7 +54,7 @@ const mockFindTenantUserById = mockAsyncFn(() =>
   })
 );
 const mockGetStripeCustomerId = mockAsyncFn(() => Promise.resolve(null as string | null));
-const mockSetStripeCustomerIdIfNull = mockAsyncFn((tenantUserId: string, customerId: string) =>
+const mockSetStripeCustomerIdIfNull = mockAsyncFn((_tenantUserId: string, customerId: string) =>
   Promise.resolve(customerId)
 );
 const mockCustomersCreate = mockAsyncFn(() => Promise.resolve({ id: "cus_1" }));
