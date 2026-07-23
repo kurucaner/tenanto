@@ -447,6 +447,31 @@ export const tenantRentPaymentService = {
     return updated;
   },
 
+  async markProcessing(payment: ITenantRentPayment, stripePaymentIntentId?: string | null) {
+    if (
+      payment.status === TenantRentPaymentStatus.SUCCEEDED ||
+      payment.status === TenantRentPaymentStatus.REFUNDED ||
+      payment.status === TenantRentPaymentStatus.CANCELED ||
+      payment.status === TenantRentPaymentStatus.FAILED
+    ) {
+      return payment;
+    }
+    if (payment.status === TenantRentPaymentStatus.PROCESSING) {
+      if (stripePaymentIntentId && !payment.stripePaymentIntentId) {
+        const next = await tenantRentPaymentsDb.updateStripeIds(payment.id, {
+          stripePaymentIntentId,
+        });
+        if (next) {
+          return next;
+        }
+      }
+      return payment;
+    }
+    return tenantRentPaymentsDb.updateStatus(payment.id, TenantRentPaymentStatus.PROCESSING, {
+      stripePaymentIntentId: stripePaymentIntentId ?? undefined,
+    });
+  },
+
   async markRefunded(
     payment: ITenantRentPayment,
     charge?: { amountRefundedCents: number; chargeAmountCents: number }

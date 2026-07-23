@@ -298,9 +298,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Don’t treat ACH as paid early; set `processing`; succeed only on definitive success events.
 
-- [ ] Handlers: `payment_intent.processing`, `payment_intent.succeeded`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
-- [ ] Keep ignoring unpaid `checkout.session.completed` (do not “fix” into succeeded)
-- [ ] `markProcessing` / succeed / fail on rent payment service
+- [x] Handlers: `payment_intent.processing`, `payment_intent.succeeded`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
+- [x] Keep ignoring unpaid `checkout.session.completed` (do not “fix” into succeeded)
+- [x] `markProcessing` / succeed / fail on rent payment service
 - [ ] **Ops (blocking):** add the four events to Dashboard destination (test + live) and local `stripe listen`; update parent rent doc event table
 
 **Files (≤4):** `stripe-webhook-service.ts`; webhook tests; `tenant-rent-payment-service.ts`; optional shared status helper.

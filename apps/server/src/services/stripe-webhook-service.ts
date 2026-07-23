@@ -79,6 +79,38 @@ async function resolvePaymentFromDispute(dispute: Stripe.Dispute) {
   return resolvePaymentFromPaymentIntentId(paymentIntentId);
 }
 
+function paymentIntentIdFromCheckoutSession(session: Stripe.Checkout.Session): string | null {
+  return typeof session.payment_intent === "string"
+    ? session.payment_intent
+    : (session.payment_intent?.id ?? null);
+}
+
+async function syncCheckoutSessionStripeIds(
+  payment: ITenantRentPayment,
+  session: Stripe.Checkout.Session
+): Promise<ITenantRentPayment> {
+  const paymentIntentId = paymentIntentIdFromCheckoutSession(session);
+  if (
+    payment.stripeCheckoutSessionId === session.id &&
+    (!paymentIntentId || payment.stripePaymentIntentId === paymentIntentId)
+  ) {
+    return payment;
+  }
+
+  const updated = await tenantRentPaymentsDb.updateStripeIds(payment.id, {
+    stripeCheckoutSessionId: session.id,
+    stripePaymentIntentId: paymentIntentId,
+  });
+  if (updated) {
+    return updated;
+  }
+  return {
+    ...payment,
+    stripeCheckoutSessionId: session.id,
+    stripePaymentIntentId: paymentIntentId ?? payment.stripePaymentIntentId,
+  };
+}
+
 async function notifyTenantPaymentDisputeCreated(
   dispute: Stripe.Dispute,
   payment: ITenantRentPayment | null
@@ -145,17 +177,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
     return;
   }
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : (session.payment_intent?.id ?? null);
-
-  await tenantRentPaymentsDb.updateStripeIds(payment.id, {
-    stripeCheckoutSessionId: session.id,
-    stripePaymentIntentId: paymentIntentId,
-  });
-
-  await tenantRentPaymentService.markSucceeded(payment, paymentIntentId);
+  const synced = await syncCheckoutSessionStripeIds(payment, session);
+  await tenantRentPaymentService.markSucceeded(synced, paymentIntentIdFromCheckoutSession(session));
 }
 
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session): Promise<void> {
@@ -170,6 +193,34 @@ async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): P
   await tenantRentPaymentService.markFailed(payment);
 }
 
+async function handlePaymentIntentProcessing(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+  const payment = await resolvePaymentFromPaymentIntent(paymentIntent);
+  if (!payment) return;
+  await tenantRentPaymentService.markProcessing(payment, paymentIntent.id);
+}
+
+async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+  const payment = await resolvePaymentFromPaymentIntent(paymentIntent);
+  if (!payment) return;
+  await tenantRentPaymentService.markSucceeded(payment, paymentIntent.id);
+}
+
+async function handleCheckoutSessionAsyncPaymentSucceeded(
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const payment = await resolvePaymentFromCheckoutSession(session);
+  if (!payment) {
+    WinstonLogger.warn({
+      msg: "tenant_payments.async_payment_succeeded_unknown_payment",
+      sessionId: session.id,
+    });
+    return;
+  }
+
+  const synced = await syncCheckoutSessionStripeIds(payment, session);
+  await tenantRentPaymentService.markSucceeded(synced, paymentIntentIdFromCheckoutSession(session));
+}
+
 async function handleCheckoutSessionAsyncPaymentFailed(
   session: Stripe.Checkout.Session
 ): Promise<void> {
@@ -182,23 +233,10 @@ async function handleCheckoutSessionAsyncPaymentFailed(
     return;
   }
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : (session.payment_intent?.id ?? null);
-
+  const paymentIntentId = paymentIntentIdFromCheckoutSession(session);
   let target = payment;
   if (paymentIntentId && !payment.stripePaymentIntentId) {
-    await tenantRentPaymentsDb.updateStripeIds(payment.id, {
-      stripeCheckoutSessionId: session.id,
-      stripePaymentIntentId: paymentIntentId,
-    });
-    const refreshed = await tenantRentPaymentsDb.findById(payment.id);
-    if (refreshed) {
-      target = refreshed;
-    } else {
-      target = { ...payment, stripePaymentIntentId: paymentIntentId };
-    }
+    target = await syncCheckoutSessionStripeIds(payment, session);
   }
 
   await tenantRentPaymentService.markFailed(target);
@@ -360,13 +398,24 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
         case "checkout.session.expired":
           await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session);
           break;
-        case "payment_intent.payment_failed":
-          await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+        case "checkout.session.async_payment_succeeded":
+          await handleCheckoutSessionAsyncPaymentSucceeded(
+            event.data.object as Stripe.Checkout.Session
+          );
           break;
         case "checkout.session.async_payment_failed":
           await handleCheckoutSessionAsyncPaymentFailed(
             event.data.object as Stripe.Checkout.Session
           );
+          break;
+        case "payment_intent.processing":
+          await handlePaymentIntentProcessing(event.data.object as Stripe.PaymentIntent);
+          break;
+        case "payment_intent.succeeded":
+          await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
+          break;
+        case "payment_intent.payment_failed":
+          await handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
           break;
         case "charge.failed":
           await handleChargeFailed(event.data.object as Stripe.Charge);
