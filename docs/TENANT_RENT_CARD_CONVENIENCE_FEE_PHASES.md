@@ -268,13 +268,29 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Already-linked properties can accept ACH.
 
-- [ ] Script or service method: `accounts.update` requesting `us_bank_account_ach_payments` for rows in `property_stripe_accounts` (Express + Standard)
-- [ ] Idempotent; log failures per account
+- [x] Script or service method: `accounts.update` requesting `us_bank_account_ach_payments` for rows in `property_stripe_accounts` (Express + Standard)
+- [x] Idempotent; log failures per account
 - [ ] **Ops:** run in test then live; confirm capabilities active in Dashboard
 
 **Files (≤4):** script and/or connect service; dry-run logging; short runbook section in this doc.
 
 **Exit criteria:** Sample existing account shows ACH capability `active` (or clearly blocked with Stripe requirements).
+
+#### Runbook (test → live)
+
+1. **Dry-run** (no Stripe writes):  
+   `bun apps/server/scripts/backfill-stripe-connect-ach-capability.ts --dry-run`  
+   Review JSON output: `dry_run` rows are accounts that would be updated; `skipped_*` are already requested/active.
+
+2. **Execute in test mode** (`STRIPE_SECRET_KEY=sk_test_…`):  
+   `bun apps/server/scripts/backfill-stripe-connect-ach-capability.ts`  
+   Exit code `1` if any account failed; check server logs for `tenant_payments.connect_ach_backfill_failed`.
+
+3. **Verify in Stripe Dashboard** (test): Connect → Accounts → pick a backfilled account → Capabilities → `US bank account ACH payments` should be `active` or `pending` (with requirements listed if blocked).
+
+4. **Repeat steps 1–3 in live** before enabling ACH rent pay for production traffic.
+
+5. **New accounts** from Phase 1c already request ACH; this backfill is only for rows linked before that change.
 
 ---
 

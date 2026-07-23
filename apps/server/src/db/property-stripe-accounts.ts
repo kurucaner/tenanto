@@ -97,6 +97,13 @@ export const propertyStripeAccountsDb = {
     return mapRow(result.rows[0] as Record<string, unknown>);
   },
 
+  async listAll(): Promise<IPropertyStripeAccount[]> {
+    const result = await pool.query(
+      `SELECT * FROM property_stripe_accounts ORDER BY property_id ASC`
+    );
+    return result.rows.map((row) => mapRow(row as Record<string, unknown>));
+  },
+
   async updateFlags(
     propertyId: string,
     flags: {

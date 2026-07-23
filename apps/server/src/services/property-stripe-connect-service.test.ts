@@ -7,6 +7,7 @@ import { PropertyStripeAccountType } from "@/packages/shared";
 import { mockAsyncFn, mockResolved, mockResolvedNull } from "@/test-fixtures/mocks";
 
 const mockFindByPropertyId = mockResolvedNull<IPropertyStripeAccount>();
+const mockListAll = mockAsyncFn((): Promise<IPropertyStripeAccount[]> => Promise.resolve([]));
 const mockUpdateFlags = mockResolvedNull<IPropertyStripeAccount>();
 const mockUpsert = mockResolvedNull<IPropertyStripeAccount>();
 const mockDeleteByPropertyId = mockAsyncFn(() => Promise.resolve(true));
@@ -53,6 +54,7 @@ mock.module("@/db/property-stripe-accounts", () => ({
   propertyStripeAccountsDb: {
     deleteByPropertyId: mockDeleteByPropertyId,
     findByPropertyId: mockFindByPropertyId,
+    listAll: mockListAll,
     updateFlags: mockUpdateFlags,
     upsert: mockUpsert,
   },
@@ -765,5 +767,144 @@ describe("propertyStripeConnectService.getStatus", () => {
     expect(status.platformEnabled).toBe(true);
     expect(status.chargesEnabled).toBe(true);
     expect(mockAccountsRetrieve).toHaveBeenCalled();
+  });
+});
+
+describe("propertyStripeConnectService.backfillAchPaymentsCapability", () => {
+  const originalConnectFlag = process.env.STRIPE_CONNECT_ENABLED;
+  const originalSecret = process.env.STRIPE_SECRET_KEY;
+
+  const expressAccount: IPropertyStripeAccount = {
+    accountType: PropertyStripeAccountType.EXPRESS,
+    chargesEnabled: true,
+    detailsSubmitted: true,
+    onboardingComplete: true,
+    payoutsEnabled: true,
+    propertyId: "property-1",
+    stripeAccountId: "acct_express",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  const standardAccount: IPropertyStripeAccount = {
+    accountType: PropertyStripeAccountType.STANDARD,
+    chargesEnabled: true,
+    detailsSubmitted: true,
+    onboardingComplete: true,
+    payoutsEnabled: true,
+    propertyId: "property-2",
+    stripeAccountId: "acct_standard",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+
+  beforeEach(() => {
+    process.env.STRIPE_CONNECT_ENABLED = "true";
+    process.env.STRIPE_SECRET_KEY = "sk_test";
+    mockListAll.mockReset();
+    mockAccountsRetrieve.mockReset();
+    mockAccountsUpdate.mockReset();
+    mockListAll.mockResolvedValue([expressAccount, standardAccount]);
+  });
+
+  afterEach(() => {
+    if (originalConnectFlag === undefined) {
+      delete process.env.STRIPE_CONNECT_ENABLED;
+    } else {
+      process.env.STRIPE_CONNECT_ENABLED = originalConnectFlag;
+    }
+    if (originalSecret === undefined) {
+      delete process.env.STRIPE_SECRET_KEY;
+    } else {
+      process.env.STRIPE_SECRET_KEY = originalSecret;
+    }
+  });
+
+  test("dry-run reports accounts that would be updated without calling Stripe update", async () => {
+    mockAccountsRetrieve.mockResolvedValue({
+      capabilities: { us_bank_account_ach_payments: "inactive" },
+    });
+
+    const result = await propertyStripeConnectService.backfillAchPaymentsCapability({
+      dryRun: true,
+    });
+
+    expect(result.counts).toEqual({
+      dryRun: 2,
+      failed: 0,
+      requested: 0,
+      skipped: 0,
+      total: 2,
+    });
+    expect(mockAccountsUpdate).not.toHaveBeenCalled();
+    expect(result.accounts.every((row) => row.outcome === "dry_run")).toBe(true);
+  });
+
+  test("skips accounts that already have active or pending ACH capability", async () => {
+    mockAccountsRetrieve
+      .mockResolvedValueOnce({
+        capabilities: { us_bank_account_ach_payments: "active" },
+      })
+      .mockResolvedValueOnce({
+        capabilities: { us_bank_account_ach_payments: "pending" },
+      });
+
+    const result = await propertyStripeConnectService.backfillAchPaymentsCapability({
+      dryRun: false,
+    });
+
+    expect(result.counts).toEqual({
+      dryRun: 0,
+      failed: 0,
+      requested: 0,
+      skipped: 2,
+      total: 2,
+    });
+    expect(mockAccountsUpdate).not.toHaveBeenCalled();
+  });
+
+  test("requests ACH capability for inactive accounts and logs failures per account", async () => {
+    mockAccountsRetrieve
+      .mockResolvedValueOnce({
+        capabilities: { us_bank_account_ach_payments: "inactive" },
+      })
+      .mockResolvedValueOnce({
+        capabilities: { us_bank_account_ach_payments: "pending" },
+      })
+      .mockResolvedValueOnce({
+        capabilities: { us_bank_account_ach_payments: "inactive" },
+      });
+    mockAccountsUpdate
+      .mockResolvedValueOnce({
+        capabilities: { us_bank_account_ach_payments: "pending" },
+      })
+      .mockRejectedValueOnce(new Error("Stripe rejected update"));
+
+    const result = await propertyStripeConnectService.backfillAchPaymentsCapability({
+      dryRun: false,
+    });
+
+    expect(result.counts).toEqual({
+      dryRun: 0,
+      failed: 1,
+      requested: 1,
+      skipped: 0,
+      total: 2,
+    });
+    expect(mockAccountsUpdate).toHaveBeenCalledTimes(2);
+    expect(mockAccountsUpdate).toHaveBeenCalledWith("acct_express", {
+      capabilities: {
+        us_bank_account_ach_payments: { requested: true },
+      },
+    });
+    expect(result.accounts[0]).toMatchObject({
+      outcome: "requested",
+      propertyId: "property-1",
+      stripeAccountId: "acct_express",
+    });
+    expect(result.accounts[1]).toMatchObject({
+      error: "Stripe rejected update",
+      outcome: "failed",
+      propertyId: "property-2",
+      stripeAccountId: "acct_standard",
+    });
   });
 });
