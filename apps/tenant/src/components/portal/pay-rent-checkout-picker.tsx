@@ -1,11 +1,16 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { memo, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { tenantPortalApi } from "@/lib/api-client";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { queryKeys } from "@/lib/query-keys";
-import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
+import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
+import {
+  buildTenantRentPayPagePath,
+  startRentPayForAmountDue,
+} from "@/lib/start-rent-checkout";
 import {
   Button,
   Sheet,
@@ -38,22 +43,38 @@ function methodLabel(method: TRentPaymentMethodFamily): string {
 
 interface IPayRentMethodPickerProps {
   balance: ITenantLeaseBalanceResponse;
-  isSubmitting: boolean;
-  onSubmit: (paymentMethodFamily: TRentPaymentMethodFamily) => void;
+  isSubmitting?: boolean;
+  mode?: "checkout" | "element";
+  onMethodChange?: (paymentMethodFamily: TRentPaymentMethodFamily) => void;
+  onSubmit?: (paymentMethodFamily: TRentPaymentMethodFamily) => void;
+  selectedMethod?: TRentPaymentMethodFamily;
 }
 
 export const PayRentMethodPicker = memo(function PayRentMethodPicker({
   balance,
-  isSubmitting,
+  isSubmitting = false,
+  mode = "checkout",
+  onMethodChange,
   onSubmit,
+  selectedMethod: selectedMethodProp,
 }: IPayRentMethodPickerProps) {
-  const [selectedMethod, setSelectedMethod] = useState<TRentPaymentMethodFamily>(() =>
+  const [internalMethod, setInternalMethod] = useState<TRentPaymentMethodFamily>(() =>
     resolveDefaultMethod(balance)
   );
+  const selectedMethod = selectedMethodProp ?? internalMethod;
 
   useEffect(() => {
-    setSelectedMethod(resolveDefaultMethod(balance));
-  }, [balance]);
+    if (selectedMethodProp == null) {
+      setInternalMethod(resolveDefaultMethod(balance));
+    }
+  }, [balance, selectedMethodProp]);
+
+  const setSelectedMethod = (method: TRentPaymentMethodFamily) => {
+    if (selectedMethodProp == null) {
+      setInternalMethod(method);
+    }
+    onMethodChange?.(method);
+  };
 
   const feeCents =
     selectedMethod === RentPaymentMethodFamily.CARD
@@ -70,10 +91,7 @@ export const PayRentMethodPicker = memo(function PayRentMethodPicker({
         <p className="text-sm font-medium text-foreground">Payment method</p>
         <div className="flex flex-col gap-2">
           {availableMethods.map((method) => {
-            const methodChargeCents = computeRentCheckoutChargeCents(
-              balance.amountDueCents,
-              method
-            );
+            const methodChargeCents = computeRentCheckoutChargeCents(balance.amountDueCents, method);
             const isSelected = selectedMethod === method;
             return (
               <button
@@ -137,9 +155,11 @@ export const PayRentMethodPicker = memo(function PayRentMethodPicker({
         </p>
       )}
 
-      <Button disabled={isSubmitting} onClick={() => onSubmit(selectedMethod)} type="button">
-        {isSubmitting ? "Redirecting…" : "Continue to payment"}
-      </Button>
+      {mode === "checkout" && onSubmit ? (
+        <Button disabled={isSubmitting} onClick={() => onSubmit(selectedMethod)} type="button">
+          {isSubmitting ? "Redirecting…" : "Continue to payment"}
+        </Button>
+      ) : null}
     </div>
   );
 });
@@ -158,17 +178,32 @@ export const PayRentCheckoutSheet = memo(function PayRentCheckoutSheet({
   triggerClassName,
   triggerLabel = "Pay rent",
 }: IPayRentCheckoutSheetProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+
+  if (isTenantRentPaymentElementEnabled()) {
+    return (
+      <Button asChild className={triggerClassName} disabled={disabled} type="button">
+        <Link to={buildTenantRentPayPagePath(leaseId)}>{triggerLabel}</Link>
+      </Button>
+    );
+  }
+
   const balanceQuery = useQuery({
     enabled: open,
     queryFn: () => tenantPortalApi.getLeaseBalance(leaseId),
     queryKey: queryKeys.leaseBalance(leaseId),
   });
-  const checkoutMutation = useMutation({
+  const payMutation = useMutation({
     mutationFn: (paymentMethodFamily: TRentPaymentMethodFamily) =>
-      startRentCheckoutForAmountDue(leaseId, paymentMethodFamily),
+      startRentPayForAmountDue(leaseId, paymentMethodFamily),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
+      toast.error(error instanceof Error ? error.message : "Failed to start payment");
+    },
+    onSuccess: (result) => {
+      if (result.kind === "element") {
+        void navigate(result.path);
+      }
     },
   });
 
@@ -177,10 +212,10 @@ export const PayRentCheckoutSheet = memo(function PayRentCheckoutSheet({
       <SheetTrigger asChild>
         <Button
           className={triggerClassName}
-          disabled={disabled || checkoutMutation.isPending}
+          disabled={disabled || payMutation.isPending}
           type="button"
         >
-          {checkoutMutation.isPending ? "Redirecting…" : triggerLabel}
+          {payMutation.isPending ? "Redirecting…" : triggerLabel}
         </Button>
       </SheetTrigger>
       <SheetContent className="overflow-y-auto" side="bottom">
@@ -204,8 +239,8 @@ export const PayRentCheckoutSheet = memo(function PayRentCheckoutSheet({
           {balanceQuery.data && balanceQuery.data.amountDueCents > 0 ? (
             <PayRentMethodPicker
               balance={balanceQuery.data}
-              isSubmitting={checkoutMutation.isPending}
-              onSubmit={(method) => checkoutMutation.mutate(method)}
+              isSubmitting={payMutation.isPending}
+              onSubmit={(method) => payMutation.mutate(method)}
             />
           ) : null}
           {balanceQuery.data && balanceQuery.data.amountDueCents <= 0 ? (

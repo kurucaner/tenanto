@@ -26,14 +26,21 @@ mock.module("@/lib/api-client", () => ({
   },
 }));
 
-const { startRentCheckoutForAmountDue, TENANT_RENT_ACH_UNAVAILABLE_MESSAGE } =
-  await import("./start-rent-checkout");
+const originalStripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+const {
+  buildTenantRentPayPagePath,
+  startRentCheckoutForAmountDue,
+  startRentPayForAmountDue,
+  TENANT_RENT_ACH_UNAVAILABLE_MESSAGE,
+} = await import("./start-rent-checkout");
 
 describe("startRentCheckoutForAmountDue", () => {
   let assignMock: ReturnType<typeof mock>;
   let originalAssign: typeof globalThis.location.assign | undefined;
 
   beforeEach(() => {
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY = "";
     mockGetLeaseBalance.mockClear();
     mockCreateRentCheckout.mockClear();
     assignMock = mock(() => {});
@@ -46,6 +53,7 @@ describe("startRentCheckoutForAmountDue", () => {
   });
 
   afterEach(() => {
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY = originalStripeKey;
     Object.defineProperty(globalThis, "location", {
       configurable: true,
       value: { assign: originalAssign ?? (() => {}) },
@@ -78,5 +86,44 @@ describe("startRentCheckoutForAmountDue", () => {
       startRentCheckoutForAmountDue("lease-1", RentPaymentMethodFamily.US_BANK_ACCOUNT)
     ).rejects.toThrow(TENANT_RENT_ACH_UNAVAILABLE_MESSAGE);
     expect(mockCreateRentCheckout).not.toHaveBeenCalled();
+  });
+});
+
+describe("startRentPayForAmountDue", () => {
+  beforeEach(() => {
+    mockGetLeaseBalance.mockClear();
+    mockCreateRentCheckout.mockClear();
+  });
+
+  afterEach(() => {
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY = originalStripeKey;
+  });
+
+  test("returns element path when publishable key is configured", async () => {
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY = "pk_test_123";
+
+    const result = await startRentPayForAmountDue("lease-1", RentPaymentMethodFamily.CARD);
+
+    expect(result).toEqual({
+      kind: "element",
+      path: buildTenantRentPayPagePath("lease-1", RentPaymentMethodFamily.CARD),
+    });
+    expect(mockCreateRentCheckout).not.toHaveBeenCalled();
+  });
+
+  test("redirects to Checkout when publishable key is missing", async () => {
+    import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY = "";
+    const assignMock = mock(() => {});
+    Object.defineProperty(globalThis, "location", {
+      configurable: true,
+      value: { assign: assignMock },
+      writable: true,
+    });
+
+    const result = await startRentPayForAmountDue("lease-1", RentPaymentMethodFamily.CARD);
+
+    expect(result).toEqual({ kind: "checkout" });
+    expect(mockCreateRentCheckout).toHaveBeenCalledTimes(1);
+    expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.test/pay/cs_1");
   });
 });

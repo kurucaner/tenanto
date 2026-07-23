@@ -369,9 +369,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** One-screen pay; on method change, update PI amount/fee then confirm.
 
-- [ ] `@stripe/stripe-js` (+ React Stripe if used); `VITE_STRIPE_PUBLISHABLE_KEY` required
-- [ ] Pay page/component; router; start helper branch to Elements vs Checkout
-- [ ] Live total updates on method change
+- [x] `@stripe/stripe-js` (+ React Stripe if used); `VITE_STRIPE_PUBLISHABLE_KEY` required
+- [x] Pay page/component; router; start helper branch to Elements vs Checkout
+- [x] Live total updates on method change
 
 **Files (≤6):** package.json + lockfile; pay UI; api-client; router; start helper; status UX.
 

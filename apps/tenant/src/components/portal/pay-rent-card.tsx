@@ -1,11 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
 import { memo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { PayRentMethodPicker } from "@/components/portal/pay-rent-checkout-picker";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
-import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/packages/app-ui";
+import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
+import { buildTenantRentPayPagePath, startRentPayForAmountDue } from "@/lib/start-rent-checkout";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/packages/app-ui";
 import { type ITenantLeaseBalanceResponse } from "@/packages/shared";
 
 export const PayRentCard = memo(function PayRentCard({
@@ -15,11 +17,17 @@ export const PayRentCard = memo(function PayRentCard({
   balance: ITenantLeaseBalanceResponse;
   leaseId: string;
 }) {
-  const checkoutMutation = useMutation({
-    mutationFn: (paymentMethodFamily: Parameters<typeof startRentCheckoutForAmountDue>[1]) =>
-      startRentCheckoutForAmountDue(leaseId, paymentMethodFamily),
+  const navigate = useNavigate();
+  const payMutation = useMutation({
+    mutationFn: (paymentMethodFamily: Parameters<typeof startRentPayForAmountDue>[1]) =>
+      startRentPayForAmountDue(leaseId, paymentMethodFamily),
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
+      toast.error(error instanceof Error ? error.message : "Failed to start payment");
+    },
+    onSuccess: (result) => {
+      if (result.kind === "element") {
+        void navigate(result.path);
+      }
     },
   });
 
@@ -58,6 +66,24 @@ export const PayRentCard = memo(function PayRentCard({
     );
   }
 
+  if (isTenantRentPaymentElementEnabled()) {
+    return (
+      <Card className="rounded-xl border-border/80 bg-card/85 shadow-sm">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-lg font-semibold">Pay rent</CardTitle>
+          <CardDescription>
+            Pay on this site with your bank account or card. Totals update when you change method.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="w-full" type="button">
+            <Link to={buildTenantRentPayPagePath(leaseId)}>Pay rent</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="rounded-xl border-border/80 bg-card/85 shadow-sm">
       <CardHeader className="space-y-1">
@@ -69,8 +95,8 @@ export const PayRentCard = memo(function PayRentCard({
       <CardContent>
         <PayRentMethodPicker
           balance={balance}
-          isSubmitting={checkoutMutation.isPending}
-          onSubmit={(method) => checkoutMutation.mutate(method)}
+          isSubmitting={payMutation.isPending}
+          onSubmit={(method) => payMutation.mutate(method)}
         />
       </CardContent>
     </Card>

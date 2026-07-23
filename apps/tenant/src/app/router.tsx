@@ -14,6 +14,7 @@ import { NotFoundPage } from "@/pages/not-found-page";
 import { PendingInvitesPage } from "@/pages/pending-invites-page";
 import { RegisterPage } from "@/pages/register-page";
 import { RegisterVerifyPage } from "@/pages/register-verify-page";
+import { RentPayPage } from "@/pages/rent-pay-page";
 import { RentPaymentReturnPage } from "@/pages/rent-payment-return-page";
 import { SettingsPage } from "@/pages/settings-page";
 
@@ -39,6 +40,11 @@ export const router = createBrowserRouter([
                 element: <LeaseDetailPage />,
                 handle: { title: "Lease details" },
                 path: "leases/:leaseId",
+              },
+              {
+                element: <RentPayPage />,
+                handle: { title: "Pay rent" },
+                path: "leases/:leaseId/pay-rent",
               },
               {
                 element: <RentPaymentReturnPage />,
