@@ -2,8 +2,8 @@ import { tenantPortalApi } from "@/lib/api-client";
 import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
 import {
   isRentPaymentMethodFamily,
-  RentPaymentMethodFamily,
   type ITenantLeaseBalanceResponse,
+  RentPaymentMethodFamily,
   type TRentPaymentMethodFamily,
 } from "@/packages/shared";
 

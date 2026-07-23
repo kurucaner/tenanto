@@ -10,6 +10,10 @@ import {
   reverseProcessingFeeExpenseOnRentRefund,
 } from "@/services/book-stripe-processing-fee-expense";
 import { postDiscordWebhook } from "@/services/discord-webhook";
+import {
+  buildTenantRentPaymentLogFields,
+  logTenantRentPaymentWebhookProcessed,
+} from "@/services/tenant-rent-payment-observability";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
 import { type TVerifiedStripeWebhook, verifyStripeWebhookPayload } from "@/stripe/stripe-client";
@@ -116,11 +120,13 @@ async function notifyTenantPaymentDisputeCreated(
   payment: ITenantRentPayment | null
 ): Promise<void> {
   WinstonLogger.warn({
+    ...(payment ? buildTenantRentPaymentLogFields(payment) : {}),
     amountCents: dispute.amount,
     currency: dispute.currency,
     disputeId: dispute.id,
     disputeReason: dispute.reason,
     disputeStatus: dispute.status,
+    eventType: "charge.dispute.created",
     leaseId: payment?.leaseId ?? null,
     msg: "tenant_payments.dispute_created",
     paymentId: payment?.id ?? null,
@@ -179,30 +185,50 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session):
 
   const synced = await syncCheckoutSessionStripeIds(payment, session);
   await tenantRentPaymentService.markSucceeded(synced, paymentIntentIdFromCheckoutSession(session));
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "checkout.session.completed",
+    payment: synced,
+  });
 }
 
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session): Promise<void> {
   const payment = await resolvePaymentFromCheckoutSession(session);
   if (!payment) return;
   await tenantRentPaymentService.markCanceled(payment);
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "checkout.session.expired",
+    payment,
+  });
 }
 
 async function handlePaymentIntentFailed(paymentIntent: Stripe.PaymentIntent): Promise<void> {
   const payment = await resolvePaymentFromPaymentIntent(paymentIntent);
   if (!payment) return;
   await tenantRentPaymentService.markFailed(payment);
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "payment_intent.payment_failed",
+    payment,
+  });
 }
 
 async function handlePaymentIntentProcessing(paymentIntent: Stripe.PaymentIntent): Promise<void> {
   const payment = await resolvePaymentFromPaymentIntent(paymentIntent);
   if (!payment) return;
   await tenantRentPaymentService.markProcessing(payment, paymentIntent.id);
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "payment_intent.processing",
+    payment,
+  });
 }
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
   const payment = await resolvePaymentFromPaymentIntent(paymentIntent);
   if (!payment) return;
   await tenantRentPaymentService.markSucceeded(payment, paymentIntent.id);
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "payment_intent.succeeded",
+    payment,
+  });
 }
 
 async function handleCheckoutSessionAsyncPaymentSucceeded(
@@ -219,6 +245,10 @@ async function handleCheckoutSessionAsyncPaymentSucceeded(
 
   const synced = await syncCheckoutSessionStripeIds(payment, session);
   await tenantRentPaymentService.markSucceeded(synced, paymentIntentIdFromCheckoutSession(session));
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "checkout.session.async_payment_succeeded",
+    payment: synced,
+  });
 }
 
 async function handleCheckoutSessionAsyncPaymentFailed(
@@ -240,6 +270,10 @@ async function handleCheckoutSessionAsyncPaymentFailed(
   }
 
   await tenantRentPaymentService.markFailed(target);
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "checkout.session.async_payment_failed",
+    payment: target,
+  });
 }
 
 async function handleChargeFailed(charge: Stripe.Charge): Promise<void> {
@@ -258,13 +292,17 @@ async function handleChargeFailed(charge: Stripe.Charge): Promise<void> {
 
   try {
     await bookAchReturnFeeExpenseForRentPayment(payment, { charge });
+    logTenantRentPaymentWebhookProcessed({
+      eventType: "charge.failed",
+      payment,
+    });
   } catch (error) {
     WinstonLogger.error({
+      ...buildTenantRentPaymentLogFields(payment),
       chargeId: charge.id,
       err: error,
+      eventType: "ach_return_fee_expense_failed",
       msg: "tenant_payments.ach_return_fee_expense_failed",
-      paymentId: payment.id,
-      propertyId: payment.propertyId,
     });
   }
 }
@@ -287,16 +325,20 @@ async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
     amountRefundedCents: charge.amount_refunded,
     chargeAmountCents: charge.amount,
   });
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "charge.refunded",
+    payment,
+  });
 
   try {
     await reverseProcessingFeeExpenseOnRentRefund(payment, charge);
   } catch (error) {
     WinstonLogger.error({
+      ...buildTenantRentPaymentLogFields(payment),
       chargeId: charge.id,
       err: error,
+      eventType: "processing_fee_expense_refund_failed",
       msg: "tenant_payments.processing_fee_expense_refund_failed",
-      paymentId: payment.id,
-      propertyId: payment.propertyId,
     });
   }
 }
@@ -336,6 +378,10 @@ async function handleChargeDisputeClosed(dispute: Stripe.Dispute): Promise<void>
   }
 
   await tenantRentPaymentService.markRefunded(payment);
+  logTenantRentPaymentWebhookProcessed({
+    eventType: "charge.dispute.closed",
+    payment,
+  });
 }
 
 async function handleAccountUpdated(account: Stripe.Account): Promise<void> {
@@ -369,9 +415,9 @@ async function recordAndProcessEvent(input: {
   const existing = await stripeWebhookEventsDb.findById(input.stripeEventId);
   if (existing?.processedAt) {
     WinstonLogger.info({
+      eventType: input.type,
       msg: "tenant_payments.webhook_duplicate",
       stripeEventId: input.stripeEventId,
-      type: input.type,
     });
     return;
   }
@@ -434,9 +480,9 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<vo
           break;
         default:
           WinstonLogger.info({
+            eventType: event.type,
             msg: "tenant_payments.webhook_ignored",
             stripeEventId: event.id,
-            type: event.type,
           });
           break;
       }

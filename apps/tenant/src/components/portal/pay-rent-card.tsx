@@ -5,8 +5,8 @@ import { toast } from "sonner";
 
 import { PayRentMethodPicker } from "@/components/portal/pay-rent-checkout-picker";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
-import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
 import { buildTenantRentPayPagePath, startRentPayForAmountDue } from "@/lib/start-rent-checkout";
+import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/packages/app-ui";
 import { type ITenantLeaseBalanceResponse } from "@/packages/shared";
 

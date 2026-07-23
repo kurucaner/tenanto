@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import { tenantPortalApi } from "@/lib/api-client";
 import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { queryKeys } from "@/lib/query-keys";
-import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
 import {
   buildTenantRentPayPagePath,
   startRentPayForAmountDue,
 } from "@/lib/start-rent-checkout";
+import { isTenantRentPaymentElementEnabled } from "@/lib/stripe-publishable-key";
 import {
   Button,
   Sheet,
@@ -180,17 +180,10 @@ export const PayRentCheckoutSheet = memo(function PayRentCheckoutSheet({
 }: IPayRentCheckoutSheetProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-
-  if (isTenantRentPaymentElementEnabled()) {
-    return (
-      <Button asChild className={triggerClassName} disabled={disabled} type="button">
-        <Link to={buildTenantRentPayPagePath(leaseId)}>{triggerLabel}</Link>
-      </Button>
-    );
-  }
+  const usesPaymentElement = isTenantRentPaymentElementEnabled();
 
   const balanceQuery = useQuery({
-    enabled: open,
+    enabled: open && !usesPaymentElement,
     queryFn: () => tenantPortalApi.getLeaseBalance(leaseId),
     queryKey: queryKeys.leaseBalance(leaseId),
   });
@@ -206,6 +199,14 @@ export const PayRentCheckoutSheet = memo(function PayRentCheckoutSheet({
       }
     },
   });
+
+  if (usesPaymentElement) {
+    return (
+      <Button asChild className={triggerClassName} disabled={disabled} type="button">
+        <Link to={buildTenantRentPayPagePath(leaseId)}>{triggerLabel}</Link>
+      </Button>
+    );
+  }
 
   return (
     <Sheet onOpenChange={setOpen} open={open}>

@@ -1,6 +1,6 @@
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useQuery } from "@tanstack/react-query";
-import { memo, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { type FormEvent, memo, type ReactNode,useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PayRentMethodPicker } from "@/components/portal/pay-rent-checkout-picker";

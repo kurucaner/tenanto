@@ -383,14 +383,83 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Observability, abuse checks, docs, live cutover runbook.
 
-- [ ] Winston fields: method, feeCents, chargeCents, event type
-- [ ] Rate-limit / abuse notes for checkout + PI create
-- [ ] Failure matrix: ACH return, dispute, app fee create failure, capability missing
-- [ ] Full ops checklist re-run on **live** before shipping dual-price to production traffic
+- [x] Winston fields: `method`, `feeCents`, `chargeCents`, `eventType` on create, status transitions, webhook settlement, and create failures (`tenant-rent-payment-observability.ts`)
+- [x] Rate-limit / abuse notes for checkout + PI create (Redis per tenant+lease and tenant+IP; see below)
+- [x] Failure matrix: ACH return, dispute, app fee create failure, capability missing (see below)
+- [ ] Full ops checklist re-run on **live** before shipping dual-price to production traffic (operator sign-off)
 
-**Files (≤5).**
+**Files:** `tenant-rent-payment-observability.ts`; `tenant-rent-payment-create-rate-limit.ts`; `tenant-rent-payment-routes.ts`; `tenant-rent-payment-service.ts`; `stripe-webhook-service.ts`.
 
 **Exit criteria:** Checklist: idempotency, ACH processing copy, fee disclosure, webhook events live, ACH capability backfill done, PE publishable key set.
+
+#### Observability (`tenant_payments.*` logs)
+
+Structured fields on rent-payment logs:
+
+| Field         | Meaning                                                                 |
+| ------------- | ----------------------------------------------------------------------- |
+| `method`      | `card` \| `us_bank_account` \| null (legacy)                            |
+| `feeCents`    | Platform convenience fee (0 for ACH)                                    |
+| `chargeCents` | Rent + fee charged to tenant                                            |
+| `amountCents` | Rent due only (income allocation base)                                  |
+| `eventType`   | Stripe webhook type, create outcome, or status transition (see below) |
+
+**Create:** `checkout_created`, `payment_intent_created` — includes method/fee/charge.
+
+**Status transitions:** `rent_payment_succeeded`, `rent_payment_processing`, `rent_payment_failed`, `rent_payment_refunded`, `rent_payment_canceled`.
+
+**Webhooks:** `webhook_processed` with `eventType` = Stripe event (e.g. `payment_intent.succeeded`, `checkout.session.async_payment_failed`).
+
+**Create failures:** `checkout_failed`, `payment_intent_failed`; Stripe application-fee errors also set `eventType: application_fee_create_failed` and `failureReason`.
+
+#### Rate limits (checkout + PaymentIntent create)
+
+Both `POST .../rent-payments/checkout` and `POST .../rent-payments/payment-intent` enforce **two** Redis fixed-window limits (in addition to the global Fastify IP cap):
+
+| Limit   | Key                                              | Default              | Env override                                              |
+| ------- | ------------------------------------------------ | -------------------- | --------------------------------------------------------- |
+| Lease   | `tenant-rent-payment:create:lease:{user}:{lease}` | 10 / 15 min          | `TENANT_RENT_PAYMENT_CREATE_LEASE_RATE_LIMIT_*`           |
+| IP      | `tenant-rent-payment:create:ip:{user}:{ip}`        | 20 / 15 min          | `TENANT_RENT_PAYMENT_CREATE_IP_RATE_LIMIT_*`              |
+
+Exceeded → **429** + `Retry-After`. Idempotent retries that hit an existing open session do not bypass limits (each create attempt counts).
+
+**Abuse notes:** Limits throttle session/PI spam and method-flip probing; they do not replace Stripe Radar or Connect account review. Monitor `tenant_payments.checkout_failed` / `payment_intent_failed` volume per tenant.
+
+#### Failure matrix
+
+| Scenario                         | Tenant UX / API                                      | Local status / ledger                         | Logs / alerts                                                                 |
+| -------------------------------- | ---------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| **ACH return / async failure**   | Return page shows failed; can retry                  | `failed`; income not applied                  | `payment_intent.payment_failed`, `checkout.session.async_payment_failed`, `rent_payment_failed`; optional ACH return fee expense via `charge.failed` |
+| **ACH return fee (late)**        | N/A (payment may already be `failed`)                | Property expense under Payment processing     | `charge.failed` → `ach_return_fee_expense_failed` on book failure             |
+| **Dispute opened**               | No tenant action required                            | Status unchanged until closed                 | `dispute_created` + optional Discord (`DISCORD_TENANT_PAYMENTS_WEBHOOK_URL`)  |
+| **Dispute lost**                 | N/A                                                  | `refunded`; rent income lines clawed back     | `charge.dispute.closed`, `rent_payment_refunded`, `webhook_processed`         |
+| **Dispute won**                  | N/A                                                  | No status change                              | `dispute_closed`                                                              |
+| **Card refund (full)**           | N/A                                                  | `refunded`; income clawback                   | `charge.refunded`, `rent_payment_refunded`                                    |
+| **Partial refund**               | N/A                                                  | Manual ops — not auto-handled                 | `refund_partial_unhandled`                                                    |
+| **Application fee create failure** | **500** “Failed to create…”                        | No Stripe object / row may exist              | `application_fee_create_failed` + `failureReason`; verify platform app fees enabled |
+| **ACH capability missing**       | **400** ACH unavailable message; ACH hidden in UI    | No payment created                            | `ach_capability_read_failed`; run Phase 1d backfill                           |
+| **Connect not ready**            | **409** connect not ready                            | No payment created                            | Domain error only                                                             |
+| **Rate limited**                 | **429** + retry message                              | No payment created                            | No dedicated log (use HTTP metrics)                                           |
+
+See also [`TENANT_STRIPE_RENT_REFUNDS.md`](./TENANT_STRIPE_RENT_REFUNDS.md) and [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md).
+
+#### Live cutover checklist (operator sign-off)
+
+Complete in **Stripe live mode** before enabling dual-price rent pay for production tenants. Copy this checklist into the release PR when done.
+
+| #   | Item                                                                                         | Test ✓ | Live ✓ |
+| --- | -------------------------------------------------------------------------------------------- | ------ | ------ |
+| 1   | Platform Dashboard: ACH Direct Debit enabled                                                 |        |        |
+| 2   | Platform Dashboard: application fees allowed on Connect destination charges                    |        |        |
+| 3   | Webhook destination includes all events in [Stripe ops checklist](#stripe-ops-checklist-do-not-skip) (+ `charge.failed` for ACH return fees) |        |        |
+| 4   | ACH capability backfill dry-run reviewed; execute live (`backfill-stripe-connect-ach-capability.ts`) |        |        |
+| 5   | Sample live connected account: ACH capability `active` or `pending`                          |        |        |
+| 6   | `VITE_STRIPE_PUBLISHABLE_KEY` set on tenant app (Payment Element path)                       |        |        |
+| 7   | Smoke: card Checkout — fee disclosed, `application_fee_amount` on PI in Dashboard            |        |        |
+| 8   | Smoke: ACH Checkout — `processing` → `succeeded`; income = rent only                         |        |        |
+| 9   | Smoke: Payment Element — method switch updates total; webhooks settle                        |        |        |
+| 10  | Idempotency: card vs ACH open sessions do not collide                                        |        |        |
+| 11  | Redis reachable for rent create rate limits (`REDIS_URL` / `REDISHOST`)                       |        |        |
 
 ---
 
@@ -403,7 +472,7 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 | Post-settle Stripe processing fee | Property expense under **Payment processing** — [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md); never book `application_fee` as that expense |
 | ACH delay                         | Status `processing`; UI + reconcile                                                                                                                                                                |
 | ACH returns                       | Existing refund/dispute path; clawback income if refunded; optional ACH return fee expense (same processing-fee plan)                                                                              |
-| Double checkout                   | Idempotency includes method + chargeCents                                                                                                                                                          |
+| Double checkout                   | Idempotency includes method + chargeCents; Redis create limits per lease + IP (Phase 5)                                            |
 | Webhook config drift              | Ops checklist; parent doc event table                                                                                                                                                              |
 | Existing Connect accounts         | Phase 1d capability backfill                                                                                                                                                                       |
 | Connect master switch             | `STRIPE_CONNECT_ENABLED` only — fee/ACH always on when payments are on                                                                                                                             |

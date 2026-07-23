@@ -9,12 +9,12 @@ import {
 } from "@/components/portal/rent-payment-element-form";
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
+import { parseTenantRentPayMethodParam } from "@/lib/start-rent-checkout";
 import {
   getStripePromise,
   isTenantRentPaymentElementEnabled,
   requireStripePublishableKey,
 } from "@/lib/stripe-publishable-key";
-import { parseTenantRentPayMethodParam } from "@/lib/start-rent-checkout";
 import { Button } from "@/packages/app-ui";
 
 export const RentPayPage = memo(function RentPayPage() {

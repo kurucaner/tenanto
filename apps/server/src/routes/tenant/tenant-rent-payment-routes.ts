@@ -6,8 +6,16 @@ import {
   type ITenantCreateRentPaymentIntentBody,
 } from "@/packages/shared";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
+import {
+  assertTenantRentPaymentCreateAllowed,
+  getTenantRentPaymentCreateRateLimitErrorMessage,
+  TENANT_RENT_PAYMENT_CREATE_IP_RATE_LIMIT_MAX,
+  TENANT_RENT_PAYMENT_CREATE_IP_RATE_LIMIT_WINDOW_MS,
+  TENANT_RENT_PAYMENT_CREATE_LEASE_RATE_LIMIT_MAX,
+  TENANT_RENT_PAYMENT_CREATE_LEASE_RATE_LIMIT_WINDOW_MS,
+} from "@/services/tenant-rent-payment-create-rate-limit";
+import { logTenantRentPaymentCreateFailed } from "@/services/tenant-rent-payment-observability";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
-import { WinstonLogger } from "@/services/winston";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -16,6 +24,37 @@ function mapRentPaymentError(error: unknown, reply: FastifyReply): FastifyReply 
     return reply;
   }
   return null;
+}
+
+async function enforceTenantRentPaymentCreateRateLimit(
+  reply: FastifyReply,
+  input: { clientIp: string; leaseId: string; tenantUserId: string }
+): Promise<boolean> {
+  const rateLimit = await assertTenantRentPaymentCreateAllowed(input);
+  if (rateLimit.allowed) {
+    return true;
+  }
+
+  const limit = Math.min(
+    TENANT_RENT_PAYMENT_CREATE_LEASE_RATE_LIMIT_MAX,
+    TENANT_RENT_PAYMENT_CREATE_IP_RATE_LIMIT_MAX
+  );
+  const windowMs = Math.max(
+    TENANT_RENT_PAYMENT_CREATE_LEASE_RATE_LIMIT_WINDOW_MS,
+    TENANT_RENT_PAYMENT_CREATE_IP_RATE_LIMIT_WINDOW_MS
+  );
+
+  void reply
+    .status(HttpStatus.TOO_MANY_REQUESTS)
+    .header("Retry-After", String(rateLimit.retryAfterSec))
+    .send({
+      error: getTenantRentPaymentCreateRateLimitErrorMessage({
+        limit,
+        retryAfterSec: rateLimit.retryAfterSec,
+        windowMs,
+      }),
+    });
+  return false;
 }
 
 export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<void> => {
@@ -74,20 +113,29 @@ export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid leaseId" });
       }
 
-      try {
-        const result = await tenantRentPaymentService.createCheckout(
+      if (
+        !(await enforceTenantRentPaymentCreateRateLimit(reply, {
+          clientIp: request.ip,
           leaseId,
           tenantUserId,
-          request.body ?? ({} as ITenantCreateRentCheckoutBody)
-        );
+        }))
+      ) {
+        return reply;
+      }
+
+      const body = request.body ?? ({} as ITenantCreateRentCheckoutBody);
+
+      try {
+        const result = await tenantRentPaymentService.createCheckout(leaseId, tenantUserId, body);
         return reply.status(HttpStatus.CREATED).send(result);
       } catch (error) {
         const mapped = mapRentPaymentError(error, reply);
         if (mapped) return mapped;
-        WinstonLogger.error({
+        logTenantRentPaymentCreateFailed({
           err: error,
+          eventType: "checkout_failed",
           leaseId,
-          msg: "tenant_payments.checkout_failed",
+          method: body.paymentMethodFamily,
           tenantUserId,
         });
         return reply
@@ -110,20 +158,33 @@ export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<
         return reply.status(HttpStatus.BAD_REQUEST).send({ error: "Invalid leaseId" });
       }
 
+      if (
+        !(await enforceTenantRentPaymentCreateRateLimit(reply, {
+          clientIp: request.ip,
+          leaseId,
+          tenantUserId,
+        }))
+      ) {
+        return reply;
+      }
+
+      const body = request.body ?? ({} as ITenantCreateRentPaymentIntentBody);
+
       try {
         const result = await tenantRentPaymentService.createPaymentIntent(
           leaseId,
           tenantUserId,
-          request.body ?? ({} as ITenantCreateRentPaymentIntentBody)
+          body
         );
         return reply.status(HttpStatus.CREATED).send(result);
       } catch (error) {
         const mapped = mapRentPaymentError(error, reply);
         if (mapped) return mapped;
-        WinstonLogger.error({
+        logTenantRentPaymentCreateFailed({
           err: error,
+          eventType: "payment_intent_failed",
           leaseId,
-          msg: "tenant_payments.payment_intent_failed",
+          method: body.paymentMethodFamily,
           tenantUserId,
         });
         return reply

@@ -47,6 +47,12 @@ import {
 } from "@/services/book-stripe-processing-fee-expense";
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
+import {
+  buildTenantRentPaymentLogFields,
+  logTenantRentPaymentCheckoutCreated,
+  logTenantRentPaymentIntentCreated,
+  logTenantRentPaymentStatusTransition,
+} from "@/services/tenant-rent-payment-observability";
 import { WinstonLogger } from "@/services/winston";
 import { getStripeClient, isStripeSecretConfigured } from "@/stripe/stripe-client";
 
@@ -630,14 +636,13 @@ export const tenantRentPaymentService = {
       stripePaymentIntentId: paymentIntentId,
     });
 
-    WinstonLogger.info({
+    logTenantRentPaymentCheckoutCreated({
       amountCents: balance.amountDueCents,
       chargeCents,
       feeCents,
       leaseId,
-      msg: "tenant_payments.checkout_created",
+      method: paymentMethodFamily,
       paymentId: payment.id,
-      paymentMethodFamily,
       stripeCheckoutSessionId: session.id,
     });
 
@@ -742,14 +747,13 @@ export const tenantRentPaymentService = {
       stripePaymentIntentId: paymentIntent.id,
     });
 
-    WinstonLogger.info({
+    logTenantRentPaymentIntentCreated({
       amountCents: prepared.amountCents,
       chargeCents: prepared.chargeCents,
       feeCents: prepared.feeCents,
       leaseId,
-      msg: "tenant_payments.payment_intent_created",
+      method: prepared.paymentMethodFamily,
       paymentId: payment.id,
-      paymentMethodFamily: prepared.paymentMethodFamily,
       stripePaymentIntentId: paymentIntent.id,
     });
 
@@ -838,7 +842,20 @@ export const tenantRentPaymentService = {
     ) {
       return payment;
     }
-    return tenantRentPaymentsDb.updateStatus(payment.id, TenantRentPaymentStatus.CANCELED);
+    if (payment.status === TenantRentPaymentStatus.CANCELED) {
+      return payment;
+    }
+    const updated = await tenantRentPaymentsDb.updateStatus(
+      payment.id,
+      TenantRentPaymentStatus.CANCELED
+    );
+    const target = updated ?? payment;
+    logTenantRentPaymentStatusTransition({
+      eventType: "rent_payment_canceled",
+      payment: target,
+      previousStatus: payment.status,
+    });
+    return updated;
   },
 
   async markFailed(payment: ITenantRentPayment) {
@@ -848,19 +865,27 @@ export const tenantRentPaymentService = {
     ) {
       return payment;
     }
+    if (payment.status === TenantRentPaymentStatus.FAILED) {
+      return payment;
+    }
     const updated = await tenantRentPaymentsDb.updateStatus(
       payment.id,
       TenantRentPaymentStatus.FAILED
     );
     const target = updated ?? payment;
+    logTenantRentPaymentStatusTransition({
+      eventType: "rent_payment_failed",
+      payment: target,
+      previousStatus: payment.status,
+    });
     try {
       await bookAchReturnFeeExpenseForRentPayment(target);
     } catch (error) {
       WinstonLogger.error({
+        ...buildTenantRentPaymentLogFields(target),
         err: error,
+        eventType: "ach_return_fee_expense_failed",
         msg: "tenant_payments.ach_return_fee_expense_failed",
-        paymentId: target.id,
-        propertyId: target.propertyId,
         stripePaymentIntentId: target.stripePaymentIntentId,
       });
     }
@@ -887,9 +912,19 @@ export const tenantRentPaymentService = {
       }
       return payment;
     }
-    return tenantRentPaymentsDb.updateStatus(payment.id, TenantRentPaymentStatus.PROCESSING, {
-      stripePaymentIntentId: stripePaymentIntentId ?? undefined,
+    const updated = await tenantRentPaymentsDb.updateStatus(
+      payment.id,
+      TenantRentPaymentStatus.PROCESSING,
+      { stripePaymentIntentId: stripePaymentIntentId ?? undefined }
+    );
+    const target = updated ?? payment;
+    logTenantRentPaymentStatusTransition({
+      eventType: "rent_payment_processing",
+      payment: target,
+      previousStatus: payment.status,
+      stripePaymentIntentId,
     });
+    return updated;
   },
 
   async markRefunded(
@@ -905,10 +940,11 @@ export const tenantRentPaymentService = {
 
     if (charge && !isFullRefund) {
       WinstonLogger.warn({
+        ...buildTenantRentPaymentLogFields(payment),
         amountRefundedCents: charge.amountRefundedCents,
         chargeAmountCents: charge.chargeAmountCents,
+        eventType: "refund_partial_unhandled",
         msg: "tenant_payments.refund_partial_unhandled",
-        paymentId: payment.id,
       });
     }
 
@@ -920,13 +956,20 @@ export const tenantRentPaymentService = {
       throw rentPaymentNotFoundError();
     }
 
+    logTenantRentPaymentStatusTransition({
+      eventType: "rent_payment_refunded",
+      payment: updated,
+      previousStatus: payment.status,
+    });
+
     if (isFullRefund) {
       const refundedLineCount = await propertyIncomeLinesDb.refundAllLinkedToTenantRentPayment(
         payment.id
       );
       WinstonLogger.info({
+        ...buildTenantRentPaymentLogFields(updated),
+        eventType: "rent_payment_refunded",
         msg: "tenant_payments.refunded",
-        paymentId: payment.id,
         refundedIncomeLineCount: refundedLineCount,
       });
     }
@@ -936,6 +979,7 @@ export const tenantRentPaymentService = {
 
   async markSucceeded(payment: ITenantRentPayment, stripePaymentIntentId?: string | null) {
     let updated = payment;
+    let transitioned = false;
     if (payment.status !== TenantRentPaymentStatus.SUCCEEDED) {
       const next = await tenantRentPaymentsDb.updateStatus(
         payment.id,
@@ -946,21 +990,30 @@ export const tenantRentPaymentService = {
         throw rentPaymentNotFoundError();
       }
       updated = next;
+      transitioned = true;
     } else if (stripePaymentIntentId && !payment.stripePaymentIntentId) {
       const next = await tenantRentPaymentsDb.updateStripeIds(payment.id, {
         stripePaymentIntentId,
       });
       if (next) updated = next;
     }
+    if (transitioned) {
+      logTenantRentPaymentStatusTransition({
+        eventType: "rent_payment_succeeded",
+        payment: updated,
+        previousStatus: payment.status,
+        stripePaymentIntentId,
+      });
+    }
     await applyIncomeForFullyCoveredMonths(updated);
     try {
       await bookStripeProcessingFeeExpenseForRentPayment(updated);
     } catch (error) {
       WinstonLogger.error({
+        ...buildTenantRentPaymentLogFields(updated),
         err: error,
+        eventType: "processing_fee_expense_failed",
         msg: "tenant_payments.processing_fee_expense_failed",
-        paymentId: updated.id,
-        propertyId: updated.propertyId,
         stripePaymentIntentId: updated.stripePaymentIntentId,
       });
     }
