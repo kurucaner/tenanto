@@ -136,25 +136,6 @@ function stripePaymentMethodTypes(
   return paymentMethodFamily === RentPaymentMethodFamily.CARD ? ["card"] : ["us_bank_account"];
 }
 
-/** BNPL/redirect methods Stripe may inject via dynamic payment methods — never used for rent pay. */
-// const RENT_PAYMENT_EXCLUDED_STRIPE_PAYMENT_METHOD_TYPES = [
-//   "affirm",
-//   "afterpay_clearpay",
-//   "klarna",
-//   "zip",
-// ] as const;
-
-/** Prevent Dashboard dynamic PM from adding Klarna etc. alongside locked payment_method_types. */
-function stripeRentPaymentIntentMethodControls(): Pick<
-  Stripe.PaymentIntentCreateParams,
-  "automatic_payment_methods" | "excluded_payment_method_types"
-> {
-  return {
-    automatic_payment_methods: { enabled: false },
-    // excluded_payment_method_types: [...RENT_PAYMENT_EXCLUDED_STRIPE_PAYMENT_METHOD_TYPES],
-  };
-}
-
 function computeRentCheckoutFeeCents(
   rentCents: number,
   paymentMethodFamily: TRentPaymentMethodFamily
@@ -354,7 +335,6 @@ async function buildPaymentIntentParams(
     currency: "usd",
     customer: stripeCustomerId,
     metadata,
-    ...stripeRentPaymentIntentMethodControls(),
     payment_method_types: stripePaymentMethodTypes(prepared.paymentMethodFamily),
     transfer_data: {
       destination: prepared.connect.stripeAccountId,
@@ -381,7 +361,6 @@ async function buildPaymentIntentUpdateParams(
     amount: prepared.chargeCents,
     application_fee_amount: prepared.feeCents,
     metadata,
-    ...stripeRentPaymentIntentMethodControls(),
     payment_method_types: stripePaymentMethodTypes(prepared.paymentMethodFamily),
   };
 }
@@ -633,7 +612,6 @@ export const tenantRentPaymentService = {
         payment_intent_data: {
           ...(feeCents > 0 ? { application_fee_amount: feeCents } : {}),
           metadata: paymentIntentMetadata,
-          ...stripeRentPaymentIntentMethodControls(),
           transfer_data: {
             destination: connect.stripeAccountId,
           },
