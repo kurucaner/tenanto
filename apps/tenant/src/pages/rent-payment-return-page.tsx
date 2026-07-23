@@ -76,6 +76,23 @@ function formatStatusLabel(status: TTenantRentPaymentStatus): string {
   }
 }
 
+function resolveLeaseReturnLinkLabel(
+  status: TTenantRentPaymentStatus | undefined,
+  returnHint: string | null
+): string {
+  if (
+    status === TenantRentPaymentStatus.FAILED ||
+    status === TenantRentPaymentStatus.CANCELED ||
+    returnHint === "cancel"
+  ) {
+    return "Try again on lease";
+  }
+  if (status === TenantRentPaymentStatus.PROCESSING) {
+    return "View lease";
+  }
+  return "Back to lease";
+}
+
 export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
   const { paymentId = "" } = useParams<{ paymentId: string }>();
   const [searchParams] = useSearchParams();
@@ -99,13 +116,10 @@ export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
   const status = paymentQuery.data?.status;
   const leaseId = paymentQuery.data?.leaseId;
   const { subtitle, title } = statusHeading(status, returnHint);
+  const leaseReturnLinkLabel = resolveLeaseReturnLinkLabel(status, returnHint);
 
   useEffect(() => {
-    if (
-      status !== TenantRentPaymentStatus.SUCCEEDED ||
-      !leaseId ||
-      didInvalidateSuccess.current
-    ) {
+    if (status !== TenantRentPaymentStatus.SUCCEEDED || !leaseId || didInvalidateSuccess.current) {
       return;
     }
     didInvalidateSuccess.current = true;
@@ -151,16 +165,17 @@ export const RentPaymentReturnPage = memo(function RentPaymentReturnPage() {
         </dl>
       ) : null}
 
+      {paymentQuery.data && paymentQuery.data.status === TenantRentPaymentStatus.PROCESSING ? (
+        <p className="rounded-lg border border-border/80 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Your rent is not late because of processing — bank transfers take a few business days to
+          clear. This page will update when your payment settles.
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-3">
         {leaseId ? (
           <Button asChild type="button">
-            <Link to={`/leases/${leaseId}`}>
-              {status === TenantRentPaymentStatus.FAILED ||
-              status === TenantRentPaymentStatus.CANCELED ||
-              returnHint === "cancel"
-                ? "Try again on lease"
-                : "Back to lease"}
-            </Link>
+            <Link to={`/leases/${leaseId}`}>{leaseReturnLinkLabel}</Link>
           </Button>
         ) : null}
         <Button asChild type="button" variant="outline">

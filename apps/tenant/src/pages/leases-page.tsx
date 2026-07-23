@@ -1,13 +1,11 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { memo, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 
 import { ActiveLeaseCard } from "@/components/portal/active-lease-card";
 import { PendingInvitesBanner } from "@/components/portal/pending-invites-banner";
 import { tenantPortalApi } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
 import {
   Button,
   Card,
@@ -40,13 +38,6 @@ export const LeasesPage = memo(function LeasesPage() {
     queryKey: queryKeys.rentSummary(),
   });
 
-  const checkoutMutation = useMutation({
-    mutationFn: (leaseId: string) => startRentCheckoutForAmountDue(leaseId),
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to start checkout");
-    },
-  });
-
   const pendingCount = pendingQuery.data?.invites.length ?? 0;
   const activeLeases = activeLeasesQuery.data?.leases ?? [];
   const pastLeases = pastLeasesQuery.data?.leases ?? [];
@@ -55,7 +46,6 @@ export const LeasesPage = memo(function LeasesPage() {
     [rentSummaryQuery.data?.leases]
   );
   const currency = rentSummaryQuery.data?.currency ?? "usd";
-  const isStartingCheckout = checkoutMutation.isPending;
 
   return (
     <div className="flex flex-col gap-8">
@@ -106,12 +96,9 @@ export const LeasesPage = memo(function LeasesPage() {
 
         {activeLeases.map((lease) => (
           <ActiveLeaseCard
-            checkoutLeaseId={checkoutMutation.variables}
             currency={currency}
-            isStartingCheckout={isStartingCheckout}
             key={lease.leaseId}
             lease={lease}
-            onPay={(leaseId) => checkoutMutation.mutate(leaseId)}
             rentSummaryLease={rentSummaryByLeaseId.get(lease.leaseId)}
             tenantDisplayName={user?.name}
           />

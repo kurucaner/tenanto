@@ -47,6 +47,8 @@ export interface ITenantLeaseBalancePeriod {
 }
 
 export interface ITenantLeaseBalanceResponse {
+  /** True when connected account can accept ACH Direct Debit (active or pending capability). */
+  achPaymentsEnabled: boolean;
   amountDueCents: number;
   currency: string;
   leaseId: string;

@@ -339,10 +339,10 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Before redirect, tenant chooses ACH vs Card; show rent, fee, total; disclose convenience fee; handle `processing` on return.
 
-- [ ] Picker UI (rent / fee / total); wire through shared start helper so home/leases/detail stay thin
-- [ ] Copy: card convenience fee disclosure (not “Stripe fee”)
-- [ ] [`rent-payment-return-page.tsx`](../apps/tenant/src/pages/rent-payment-return-page.tsx): `processing` = pending ACH, not error
-- [ ] Offer ACH only when property Connect ACH-ready (or fail gracefully with clear error)
+- [x] Picker UI (rent / fee / total); wire through shared start helper so home/leases/detail stay thin
+- [x] Copy: card convenience fee disclosure (not “Stripe fee”)
+- [x] [`rent-payment-return-page.tsx`](../apps/tenant/src/pages/rent-payment-return-page.tsx): `processing` = pending ACH, not error
+- [x] Offer ACH only when property Connect ACH-ready (or fail gracefully with clear error)
 - [ ] **Ops:** confirm test webhook events already enabled from 2a
 
 **Files (≤6).**

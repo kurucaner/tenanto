@@ -8,21 +8,15 @@ import { Button, TenantLeaseCard } from "@/packages/app-ui";
 import { type ITenantLeaseListItem, type ITenantRentSummaryLease } from "@/packages/shared";
 
 interface ActiveLeaseCardProps {
-  checkoutLeaseId: string | undefined;
   currency: string;
-  isStartingCheckout: boolean;
   lease: ITenantLeaseListItem;
-  onPay: (leaseId: string) => void;
   rentSummaryLease?: ITenantRentSummaryLease;
   tenantDisplayName?: string;
 }
 
 export const ActiveLeaseCard = memo(function ActiveLeaseCard({
-  checkoutLeaseId,
   currency,
-  isStartingCheckout,
   lease,
-  onPay,
   rentSummaryLease,
   tenantDisplayName,
 }: ActiveLeaseCardProps) {
@@ -44,14 +38,7 @@ export const ActiveLeaseCard = memo(function ActiveLeaseCard({
           <span />
         )}
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <LeasePayActions
-            isCaughtUp={false}
-            isInline
-            isPayingThisLease={isStartingCheckout && checkoutLeaseId === lease.leaseId}
-            isStartingCheckout={isStartingCheckout}
-            lease={rentSummaryLease}
-            onPay={onPay}
-          />
+          <LeasePayActions isCaughtUp={false} isInline lease={rentSummaryLease} />
           <Button asChild className="w-full sm:w-auto" type="button" variant="ghost">
             <Link to={leaseDetailPath}>View lease details</Link>
           </Button>

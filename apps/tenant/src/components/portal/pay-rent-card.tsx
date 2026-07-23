@@ -2,24 +2,11 @@ import { useMutation } from "@tanstack/react-query";
 import { memo } from "react";
 import { toast } from "sonner";
 
+import { PayRentMethodPicker } from "@/components/portal/pay-rent-checkout-picker";
+import { formatUsdFromCents } from "@/lib/format-usd-from-cents";
 import { startRentCheckoutForAmountDue } from "@/lib/start-rent-checkout";
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/packages/app-ui";
-import { centsToDollars, type ITenantLeaseBalanceResponse } from "@/packages/shared";
-
-function formatUsdFromCents(cents: number, currency = "usd"): string {
-  return centsToDollars(cents).toLocaleString(undefined, {
-    currency: currency.toUpperCase(),
-    style: "currency",
-  });
-}
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/packages/app-ui";
+import { type ITenantLeaseBalanceResponse } from "@/packages/shared";
 
 export const PayRentCard = memo(function PayRentCard({
   balance,
@@ -29,7 +16,8 @@ export const PayRentCard = memo(function PayRentCard({
   leaseId: string;
 }) {
   const checkoutMutation = useMutation({
-    mutationFn: () => startRentCheckoutForAmountDue(leaseId),
+    mutationFn: (paymentMethodFamily: Parameters<typeof startRentCheckoutForAmountDue>[1]) =>
+      startRentCheckoutForAmountDue(leaseId, paymentMethodFamily),
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to start checkout");
     },
@@ -75,22 +63,16 @@ export const PayRentCard = memo(function PayRentCard({
       <CardHeader className="space-y-1">
         <CardTitle className="text-lg font-semibold">Pay rent</CardTitle>
         <CardDescription>
-          Amount due{" "}
-          <span className="font-medium text-foreground">
-            {formatUsdFromCents(balance.amountDueCents, balance.currency)}
-          </span>
-          . Pay securely with Stripe.
+          Choose a payment method below. You&apos;ll review the total before checkout.
         </CardDescription>
       </CardHeader>
-      <CardFooter>
-        <Button
-          disabled={checkoutMutation.isPending}
-          onClick={() => checkoutMutation.mutate()}
-          type="button"
-        >
-          {checkoutMutation.isPending ? "Redirecting…" : "Pay rent"}
-        </Button>
-      </CardFooter>
+      <CardContent>
+        <PayRentMethodPicker
+          balance={balance}
+          isSubmitting={checkoutMutation.isPending}
+          onSubmit={(method) => checkoutMutation.mutate(method)}
+        />
+      </CardContent>
     </Card>
   );
 });

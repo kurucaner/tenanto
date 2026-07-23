@@ -42,7 +42,10 @@ import {
 import { assertLeaseTenantAccess } from "@/services/tenant-portal-access";
 import { tenantPortalMembershipService } from "@/services/tenant-portal-membership-service";
 import { WinstonLogger } from "@/services/winston";
-import { getStripeClient } from "@/stripe/stripe-client";
+import { getStripeClient, isStripeSecretConfigured } from "@/stripe/stripe-client";
+
+export const TENANT_RENT_ACH_UNAVAILABLE_MESSAGE =
+  "Bank transfer isn't available for this property yet. Please pay by card or contact your property manager.";
 
 function tenantAppBaseUrl(): string {
   const base = process.env.TENANT_APP_URL?.trim().replace(/\/$/, "");
@@ -65,10 +68,33 @@ async function loadTenantBalanceFromSchedule(leaseId: string) {
   return computeTenantBalanceFromRentSchedule(schedule, getTodayUtcIsoDate());
 }
 
+function isAchPaymentsCapabilityReady(status: string | undefined): boolean {
+  return status === "active" || status === "pending";
+}
+
+async function readConnectAchPaymentsEnabled(stripeAccountId: string): Promise<boolean> {
+  if (!isStripeConnectEnabled() || !isStripeSecretConfigured()) {
+    return false;
+  }
+  try {
+    const stripe = getStripeClient();
+    const account = await stripe.accounts.retrieve(stripeAccountId);
+    return isAchPaymentsCapabilityReady(account.capabilities?.us_bank_account_ach_payments);
+  } catch (error) {
+    WinstonLogger.warn({
+      err: error,
+      msg: "tenant_payments.ach_capability_read_failed",
+      stripeAccountId,
+    });
+    return false;
+  }
+}
+
 async function computeLeaseBalanceFields(
   leaseId: string,
   propertyId: string
 ): Promise<{
+  achPaymentsEnabled: boolean;
   amountDueCents: number;
   duePeriodKeys: string[];
   paymentsEnabled: boolean;
@@ -78,10 +104,16 @@ async function computeLeaseBalanceFields(
     loadTenantBalanceFromSchedule(leaseId),
     propertyStripeAccountsDb.findByPropertyId(propertyId),
   ]);
+  const paymentsEnabled = isStripeConnectEnabled() && Boolean(connect?.chargesEnabled);
+  const achPaymentsEnabled =
+    paymentsEnabled && connect
+      ? await readConnectAchPaymentsEnabled(connect.stripeAccountId)
+      : false;
   return {
+    achPaymentsEnabled,
     amountDueCents: balance.amountDueCents,
     duePeriodKeys: balance.periodMonths,
-    paymentsEnabled: isStripeConnectEnabled() && Boolean(connect?.chargesEnabled),
+    paymentsEnabled,
     periods: balance.periods,
   };
 }
@@ -197,6 +229,13 @@ export const tenantRentPaymentService = {
     }
 
     const paymentMethodFamily = body.paymentMethodFamily;
+
+    if (paymentMethodFamily === RentPaymentMethodFamily.US_BANK_ACCOUNT) {
+      const achPaymentsEnabled = await readConnectAchPaymentsEnabled(connect.stripeAccountId);
+      if (!achPaymentsEnabled) {
+        throw rentPaymentValidationError(TENANT_RENT_ACH_UNAVAILABLE_MESSAGE);
+      }
+    }
 
     const validated = validateCreateRentCheckoutBody({
       amountCents: balance.amountDueCents,
@@ -342,11 +381,10 @@ export const tenantRentPaymentService = {
       throw rentPaymentNotFoundError("Lease not found");
     }
 
-    const { amountDueCents, paymentsEnabled, periods } = await computeLeaseBalanceFields(
-      leaseId,
-      lease.propertyId
-    );
+    const { achPaymentsEnabled, amountDueCents, paymentsEnabled, periods } =
+      await computeLeaseBalanceFields(leaseId, lease.propertyId);
     return {
+      achPaymentsEnabled,
       amountDueCents,
       currency: "usd",
       leaseId,

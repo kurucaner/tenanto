@@ -4,6 +4,7 @@ import { RentPaymentMethodFamily } from "@/packages/shared";
 
 const mockGetLeaseBalance = mock(() =>
   Promise.resolve({
+    achPaymentsEnabled: true,
     amountDueCents: 150_000,
     currency: "usd",
     leaseId: "lease-1",
@@ -25,7 +26,8 @@ mock.module("@/lib/api-client", () => ({
   },
 }));
 
-const { startRentCheckoutForAmountDue } = await import("./start-rent-checkout");
+const { startRentCheckoutForAmountDue, TENANT_RENT_ACH_UNAVAILABLE_MESSAGE } =
+  await import("./start-rent-checkout");
 
 describe("startRentCheckoutForAmountDue", () => {
   let assignMock: ReturnType<typeof mock>;
@@ -60,11 +62,21 @@ describe("startRentCheckoutForAmountDue", () => {
     expect(assignMock).toHaveBeenCalledWith("https://checkout.stripe.test/pay/cs_1");
   });
 
-  test("defaults to ACH when method omitted", async () => {
-    await startRentCheckoutForAmountDue("lease-1");
+  test("rejects ACH when property is not ACH-ready", async () => {
+    mockGetLeaseBalance.mockImplementationOnce(() =>
+      Promise.resolve({
+        achPaymentsEnabled: false,
+        amountDueCents: 150_000,
+        currency: "usd",
+        leaseId: "lease-1",
+        paymentsEnabled: true,
+        periods: [],
+      })
+    );
 
-    expect(mockCreateRentCheckout).toHaveBeenCalledWith("lease-1", {
-      paymentMethodFamily: RentPaymentMethodFamily.US_BANK_ACCOUNT,
-    });
+    await expect(
+      startRentCheckoutForAmountDue("lease-1", RentPaymentMethodFamily.US_BANK_ACCOUNT)
+    ).rejects.toThrow(TENANT_RENT_ACH_UNAVAILABLE_MESSAGE);
+    expect(mockCreateRentCheckout).not.toHaveBeenCalled();
   });
 });
