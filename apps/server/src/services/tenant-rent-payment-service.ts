@@ -18,16 +18,21 @@ import {
   buildRentCheckoutIdempotencyKey,
   calculateMiscIncomeLine,
   centsToDollars,
+  computeRentCardConvenienceFeeCents,
+  computeRentCheckoutChargeCents,
   computeTenantBalanceFromRentSchedule,
   isWeeklyPeriodKey,
+  type ITenantCreateRentCheckoutBody,
   type ITenantCreateRentCheckoutResponse,
   type ITenantLeaseBalancePeriod,
   type ITenantLeaseBalanceResponse,
   type ITenantRentPaymentStatusResponse,
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
+  RentPaymentMethodFamily,
   TenantLeaseListStatus,
   TenantRentPaymentStatus,
+  type TRentPaymentMethodFamily,
   validateCreateRentCheckoutBody,
 } from "@/packages/shared";
 import {
@@ -79,6 +84,21 @@ async function computeLeaseBalanceFields(
     paymentsEnabled: isStripeConnectEnabled() && Boolean(connect?.chargesEnabled),
     periods: balance.periods,
   };
+}
+
+function stripeCheckoutPaymentMethodTypes(
+  paymentMethodFamily: TRentPaymentMethodFamily
+): Array<"card" | "us_bank_account"> {
+  return paymentMethodFamily === RentPaymentMethodFamily.CARD ? ["card"] : ["us_bank_account"];
+}
+
+function computeRentCheckoutFeeCents(
+  rentCents: number,
+  paymentMethodFamily: TRentPaymentMethodFamily
+): number {
+  return paymentMethodFamily === RentPaymentMethodFamily.CARD
+    ? computeRentCardConvenienceFeeCents(rentCents)
+    : 0;
 }
 
 function toStatusResponse(payment: ITenantRentPayment): ITenantRentPaymentStatusResponse {
@@ -154,7 +174,8 @@ export async function applyIncomeForFullyCoveredMonths(payment: ITenantRentPayme
 export const tenantRentPaymentService = {
   async createCheckout(
     leaseId: string,
-    tenantUserId: string
+    tenantUserId: string,
+    body: ITenantCreateRentCheckoutBody
   ): Promise<ITenantCreateRentCheckoutResponse> {
     await assertLeaseTenantAccess(leaseId, tenantUserId);
     requireStripeConfigured();
@@ -175,9 +196,12 @@ export const tenantRentPaymentService = {
       throw rentPaymentValidationError("Nothing is due right now");
     }
 
+    const paymentMethodFamily = body.paymentMethodFamily;
+
     const validated = validateCreateRentCheckoutBody({
       amountCents: balance.amountDueCents,
       leaseId,
+      paymentMethodFamily,
       periodMonths: balance.periodMonths,
       periods: balance.periods,
     });
@@ -185,9 +209,13 @@ export const tenantRentPaymentService = {
       throw rentPaymentValidationError(validated.error);
     }
 
+    const feeCents = computeRentCheckoutFeeCents(balance.amountDueCents, paymentMethodFamily);
+    const chargeCents = computeRentCheckoutChargeCents(balance.amountDueCents, paymentMethodFamily);
+
     const idempotencyKey = buildRentCheckoutIdempotencyKey({
       amountCents: balance.amountDueCents,
       leaseId,
+      paymentMethodFamily,
       periodMonths: balance.periodMonths,
       tenantUserId,
     });
@@ -201,9 +229,12 @@ export const tenantRentPaymentService = {
           periodMonth: a.month,
         })),
         amountCents: balance.amountDueCents,
+        chargeCents,
         connectedAccountId: connect.stripeAccountId,
+        feeCents,
         idempotencyKey,
         leaseId,
+        paymentMethodFamily,
         propertyId: lease.propertyId,
         tenantUserId,
       });
@@ -232,6 +263,16 @@ export const tenantRentPaymentService = {
     const appBase = tenantAppBaseUrl();
     const periodMonthsMeta = validated.allocations.map((a) => a.month).join(",");
 
+    const paymentIntentMetadata = {
+      amountCents: String(balance.amountDueCents),
+      chargeCents: String(chargeCents),
+      feeCents: String(feeCents),
+      leaseId,
+      paymentId: payment.id,
+      paymentMethodFamily,
+      propertyId: lease.propertyId,
+    };
+
     const session = await stripe.checkout.sessions.create(
       {
         cancel_url: `${appBase}/rent-payments/${payment.id}?status=cancel`,
@@ -243,29 +284,24 @@ export const tenantRentPaymentService = {
                 description: `Lease rent (${periodMonthsMeta})`,
                 name: "Rent payment",
               },
-              unit_amount: balance.amountDueCents,
+              unit_amount: chargeCents,
             },
             quantity: 1,
           },
         ],
         metadata: {
-          amountCents: String(balance.amountDueCents),
-          leaseId,
-          paymentId: payment.id,
+          ...paymentIntentMetadata,
           periodMonths: periodMonthsMeta,
-          propertyId: lease.propertyId,
         },
         mode: "payment",
         payment_intent_data: {
-          metadata: {
-            leaseId,
-            paymentId: payment.id,
-            propertyId: lease.propertyId,
-          },
+          ...(feeCents > 0 ? { application_fee_amount: feeCents } : {}),
+          metadata: paymentIntentMetadata,
           transfer_data: {
             destination: connect.stripeAccountId,
           },
         },
+        payment_method_types: stripeCheckoutPaymentMethodTypes(paymentMethodFamily),
         success_url: `${appBase}/rent-payments/${payment.id}?status=success`,
       },
       { idempotencyKey }
@@ -287,9 +323,12 @@ export const tenantRentPaymentService = {
 
     WinstonLogger.info({
       amountCents: balance.amountDueCents,
+      chargeCents,
+      feeCents,
       leaseId,
       msg: "tenant_payments.checkout_created",
       paymentId: payment.id,
+      paymentMethodFamily,
       stripeCheckoutSessionId: session.id,
     });
 

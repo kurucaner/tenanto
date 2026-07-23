@@ -21,6 +21,12 @@ export const RentPaymentMethodFamily = {
 export type TRentPaymentMethodFamily =
   (typeof RentPaymentMethodFamily)[keyof typeof RentPaymentMethodFamily];
 
+const RENT_PAYMENT_METHOD_FAMILIES = new Set<string>(Object.values(RentPaymentMethodFamily));
+
+export function isRentPaymentMethodFamily(value: unknown): value is TRentPaymentMethodFamily {
+  return typeof value === "string" && RENT_PAYMENT_METHOD_FAMILIES.has(value);
+}
+
 const TERMINAL_TENANT_RENT_PAYMENT_STATUSES = new Set<TTenantRentPaymentStatus>([
   TenantRentPaymentStatus.CANCELED,
   TenantRentPaymentStatus.FAILED,
@@ -71,11 +77,10 @@ export interface ITenantRentSummaryResponse {
   totalAmountDueCents: number;
 }
 
-/**
- * Create Checkout body — unused for settlement. Amount due is computed server-side.
- * Clients may POST `{}`.
- */
-export type ITenantCreateRentCheckoutBody = Record<string, never>;
+/** Create Checkout body — amount due is computed server-side; method selects rent vs rent+fee. */
+export interface ITenantCreateRentCheckoutBody {
+  paymentMethodFamily: TRentPaymentMethodFamily;
+}
 
 export interface ITenantCreateRentCheckoutResponse {
   checkoutUrl: string;

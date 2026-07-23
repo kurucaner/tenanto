@@ -227,8 +227,8 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Checkout body requires method; idempotency includes method + charge.
 
-- [ ] Update `validateCreateRentCheckoutBody` / `buildRentCheckoutIdempotencyKey`
-- [ ] Tests: keys differ for card vs ACH; invalid method rejected
+- [x] Update `validateCreateRentCheckoutBody` / `buildRentCheckoutIdempotencyKey`
+- [x] Tests: keys differ for card vs ACH; invalid method rejected
 
 **Files (≤4).**
 
@@ -240,9 +240,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Server creates method-locked Checkout; card sets `application_fee_amount`; row stores fee/method.
 
-- [ ] Checkout create: `payment_method_types` locked; card → `application_fee_amount`; metadata includes fee/method
-- [ ] Do not reuse an open session when method/charge differs (idempotency)
-- [ ] **Ops:** platform ACH enabled; application fees allowed (test mode)
+- [x] Checkout create: `payment_method_types` locked; card → `application_fee_amount`; metadata includes fee/method
+- [x] Do not reuse an open session when method/charge differs (idempotency)
+- [x] **Ops:** platform ACH enabled; application fees allowed (test mode)
 
 **Files (≤5):** service; routes; tests; small helper if needed.
 

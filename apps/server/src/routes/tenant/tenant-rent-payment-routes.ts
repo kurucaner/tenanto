@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 
-import { HttpStatus } from "@/packages/shared";
+import { HttpStatus, type ITenantCreateRentCheckoutBody } from "@/packages/shared";
 import { replyFromDomainError } from "@/routes/reply-from-domain-error";
 import { tenantRentPaymentService } from "@/services/tenant-rent-payment-service";
 import { WinstonLogger } from "@/services/winston";
@@ -57,7 +57,7 @@ export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<
     }
   );
 
-  server.post<{ Params: { leaseId: string } }>(
+  server.post<{ Body: ITenantCreateRentCheckoutBody; Params: { leaseId: string } }>(
     "/tenant/me/leases/:leaseId/rent-payments/checkout",
     tenantAuthPre,
     async (request, reply) => {
@@ -71,7 +71,11 @@ export const tenantRentPaymentRoutes = async (server: FastifyInstance): Promise<
       }
 
       try {
-        const result = await tenantRentPaymentService.createCheckout(leaseId, tenantUserId);
+        const result = await tenantRentPaymentService.createCheckout(
+          leaseId,
+          tenantUserId,
+          request.body ?? ({} as ITenantCreateRentCheckoutBody)
+        );
         return reply.status(HttpStatus.CREATED).send(result);
       } catch (error) {
         const mapped = mapRentPaymentError(error, reply);
