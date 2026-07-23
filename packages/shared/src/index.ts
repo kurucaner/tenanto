@@ -819,6 +819,11 @@ export {
   type TTenantRentScheduleBalanceMonth,
 } from "./tenant-rent-balance-from-schedule";
 export {
+  computeRentCardConvenienceFeeCents,
+  RENT_CARD_CONVENIENCE_FEE_FIXED_CENTS,
+  RENT_CARD_CONVENIENCE_FEE_RATE,
+} from "./tenant-rent-card-fee";
+export {
   type IPropertyStripeConnectAuthorizeUrlResponse,
   type IPropertyStripeConnectOnboardingLinkResponse,
   type IPropertyStripeConnectStatusResponse,
@@ -831,8 +836,10 @@ export {
   type ITenantRentSummaryLease,
   type ITenantRentSummaryResponse,
   PropertyStripeAccountType,
+  RentPaymentMethodFamily,
   TenantRentPaymentStatus,
   type TPropertyStripeAccountType,
+  type TRentPaymentMethodFamily,
   type TTenantRentPaymentStatus,
 } from "./tenant-rent-payment-types";
 export {

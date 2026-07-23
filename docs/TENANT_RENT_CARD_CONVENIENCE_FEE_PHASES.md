@@ -74,19 +74,19 @@ flowchart TD
 
 ### Feature flag
 
-| Flag | Role |
-| --- | --- |
+| Flag                     | Role                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
 | `STRIPE_CONNECT_ENABLED` | Existing master switch for Connect + rent pay (unchanged). When off, no tenant payments. |
 
 Card convenience fee + ACH dual-pricing is **always on** whenever Connect rent pay is enabled — no separate fee feature flag.
 
 ### Money split (card)
 
-| Party | Receives |
-| --- | --- |
-| Platform | `application_fee_amount` (= `fee_cents`) |
+| Party                      | Receives                                 |
+| -------------------------- | ---------------------------------------- |
+| Platform                   | `application_fee_amount` (= `fee_cents`) |
 | Connected property account | Charge − app fee − Stripe processing fee |
-| Tenant | Pays `amount_cents + fee_cents` |
+| Tenant                     | Pays `amount_cents + fee_cents`          |
 
 ---
 
@@ -96,12 +96,12 @@ Recurring exit item for any phase that touches live Stripe behavior: complete th
 
 ### Platform Dashboard
 
-| Step | When |
-| --- | --- |
-| Enable **ACH Direct Debit** / US bank account under Payment methods | Before Phase 1b ACH Checkout works |
-| Confirm platform may collect **application fees** on Connect destination charges | Before Phase 1b card + fee |
-| Connect → Payment methods: ACH **on by default** (or eligible) for connected accounts | Before ACH to properties |
-| Webhook / Event Destination (same `/webhooks/stripe` URL + secret): **add events** listed below | Before Phase 2a can fire in prod |
+| Step                                                                                            | When                               |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Enable **ACH Direct Debit** / US bank account under Payment methods                             | Before Phase 1b ACH Checkout works |
+| Confirm platform may collect **application fees** on Connect destination charges                | Before Phase 1b card + fee         |
+| Connect → Payment methods: ACH **on by default** (or eligible) for connected accounts           | Before ACH to properties           |
+| Webhook / Event Destination (same `/webhooks/stripe` URL + secret): **add events** listed below | Before Phase 2a can fire in prod   |
 
 ### Webhook events to add (test + live + `stripe listen`)
 
@@ -109,12 +109,12 @@ Recurring exit item for any phase that touches live Stripe behavior: complete th
 
 **Add for ACH / dual settlement:**
 
-| Event | Purpose |
-| --- | --- |
-| `payment_intent.processing` | Set local status `processing` |
-| `payment_intent.succeeded` | Mark succeeded + apply rent income |
-| `checkout.session.async_payment_succeeded` | ACH Checkout success path |
-| `checkout.session.async_payment_failed` | ACH Checkout failure path |
+| Event                                      | Purpose                            |
+| ------------------------------------------ | ---------------------------------- |
+| `payment_intent.processing`                | Set local status `processing`      |
+| `payment_intent.succeeded`                 | Mark succeeded + apply rent income |
+| `checkout.session.async_payment_succeeded` | ACH Checkout success path          |
+| `checkout.session.async_payment_failed`    | ACH Checkout failure path          |
 
 Update the events table in [`TENANT_STRIPE_RENT_PAYMENTS.md`](./TENANT_STRIPE_RENT_PAYMENTS.md) when these are enabled.
 
@@ -122,18 +122,18 @@ Local: `stripe listen --forward-to localhost:3001/webhooks/stripe` must include 
 
 ### Connected accounts
 
-| Step | When |
-| --- | --- |
-| New Express creates request `us_bank_account_ach_payments` | Phase 1c |
+| Step                                                                                       | When                                                                 |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| New Express creates request `us_bank_account_ach_payments`                                 | Phase 1c                                                             |
 | **Backfill** existing Express **and Standard** connected accounts with the same capability | Phase 1c / 1d — otherwise ACH fails for already-onboarded properties |
-| Verify account `charges_enabled` + ACH capability active before offering ACH in UI | Phase 3b |
+| Verify account `charges_enabled` + ACH capability active before offering ACH in UI         | Phase 3b                                                             |
 
 ### Env / tenant app
 
-| Variable | When |
-| --- | --- |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | **Required for Phase 4b Payment Element** (Checkout redirect can work without it) |
-| Existing `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_ENABLED`, `TENANT_APP_URL` | Unchanged prerequisites |
+| Variable                                                                                          | When                                                                              |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `VITE_STRIPE_PUBLISHABLE_KEY`                                                                     | **Required for Phase 4b Payment Element** (Checkout redirect can work without it) |
+| Existing `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_ENABLED`, `TENANT_APP_URL` | Unchanged prerequisites                                                           |
 
 ### QA notes
 
@@ -147,11 +147,11 @@ Local: `stripe listen --forward-to localhost:3001/webhooks/stripe` must include 
 
 ### `tenant_rent_payments` (add columns)
 
-| Column | Notes |
-| --- | --- |
-| `fee_cents` | `INT NOT NULL DEFAULT 0` — platform convenience fee |
-| `payment_method_family` | `card` \| `us_bank_account` \| null (legacy) |
-| `charge_cents` | Stored `amount_cents + fee_cents` for audit |
+| Column                  | Notes                                               |
+| ----------------------- | --------------------------------------------------- |
+| `fee_cents`             | `INT NOT NULL DEFAULT 0` — platform convenience fee |
+| `payment_method_family` | `card` \| `us_bank_account` \| null (legacy)        |
+| `charge_cents`          | Stored `amount_cents + fee_cents` for audit         |
 
 **Domain rule:** Allocations and `applyIncomeForFullyCoveredMonths` use **rent** `amount_cents` only, never `fee_cents`.
 
@@ -159,12 +159,12 @@ Local: `stripe listen --forward-to localhost:3001/webhooks/stripe` must include 
 
 ## Shared contract (`packages/shared`)
 
-| Symbol | Purpose |
-| --- | --- |
-| `TRentPaymentMethodFamily` | `card` \| `us_bank_account` |
-| `computeRentCardConvenienceFeeCents(rentCents)` | 2.9% + 30¢ |
-| `ICreateRentCheckoutBody` | `{ paymentMethodFamily }` |
-| Checkout / PI responses | include `rentCents`, `feeCents`, `chargeCents`, `paymentMethodFamily` |
+| Symbol                                          | Purpose                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------- |
+| `TRentPaymentMethodFamily`                      | `card` \| `us_bank_account`                                           |
+| `computeRentCardConvenienceFeeCents(rentCents)` | 2.9% + 30¢                                                            |
+| `ICreateRentCheckoutBody`                       | `{ paymentMethodFamily }`                                             |
+| Checkout / PI responses                         | include `rentCents`, `feeCents`, `chargeCents`, `paymentMethodFamily` |
 
 Idempotency key must include method + charge total so card and ACH don’t collide.
 
@@ -172,11 +172,11 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 ## API (sketch)
 
-| Method | Path | Notes |
-| --- | --- | --- |
-| `POST` | `/tenant/me/leases/:leaseId/rent-payments/checkout` | Body: `paymentMethodFamily`; locked `payment_method_types`; card → `application_fee_amount` |
-| `POST` | `/tenant/me/leases/:leaseId/rent-payments/payment-intent` | Creates/updates PI + returns `clientSecret`; attach/reuse Stripe Customer (Phase 4) |
-| `GET` | existing payment status | Surface `processing` copy for ACH |
+| Method | Path                                                      | Notes                                                                                       |
+| ------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `POST` | `/tenant/me/leases/:leaseId/rent-payments/checkout`       | Body: `paymentMethodFamily`; locked `payment_method_types`; card → `application_fee_amount` |
+| `POST` | `/tenant/me/leases/:leaseId/rent-payments/payment-intent` | Creates/updates PI + returns `clientSecret`; attach/reuse Stripe Customer (Phase 4)         |
+| `GET`  | existing payment status                                   | Surface `processing` copy for ACH                                                           |
 
 ---
 
@@ -200,9 +200,9 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 **Goal:** Pure fee helper + tests; no API yet.
 
-- [ ] `packages/shared/src/tenant-rent-card-fee.ts` + tests
-- [ ] `TRentPaymentMethodFamily` in types
-- [ ] Export from `packages/shared/src/index.ts`
+- [x] `packages/shared/src/tenant-rent-card-fee.ts` + tests
+- [x] `TRentPaymentMethodFamily` in types
+- [x] Export from `packages/shared/src/index.ts`
 
 **Files (≤4).**
 
@@ -380,18 +380,18 @@ Idempotency key must include method + charge total so card and ACH don’t colli
 
 ## Hardening table
 
-| Concern | Action |
-| --- | --- |
-| Method/amount mismatch | Lock Checkout PMs; PE updates PI before confirm |
-| Fee vs rent ledger | Income uses `amount_cents` only |
+| Concern                           | Action                                                                                                                                                                                             |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Method/amount mismatch            | Lock Checkout PMs; PE updates PI before confirm                                                                                                                                                    |
+| Fee vs rent ledger                | Income uses `amount_cents` only                                                                                                                                                                    |
 | Post-settle Stripe processing fee | Property expense under **Payment processing** — [`TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md`](./TENANT_STRIPE_PROCESSING_FEE_EXPENSE_PHASES.md); never book `application_fee` as that expense |
-| ACH delay | Status `processing`; UI + reconcile |
-| ACH returns | Existing refund/dispute path; clawback income if refunded; optional ACH return fee expense (same processing-fee plan) |
-| Double checkout | Idempotency includes method + chargeCents |
-| Webhook config drift | Ops checklist; parent doc event table |
-| Existing Connect accounts | Phase 1d capability backfill |
-| Connect master switch | `STRIPE_CONNECT_ENABLED` only — fee/ACH always on when payments are on |
-| PE without pk | Fail fast if `VITE_STRIPE_PUBLISHABLE_KEY` missing |
+| ACH delay                         | Status `processing`; UI + reconcile                                                                                                                                                                |
+| ACH returns                       | Existing refund/dispute path; clawback income if refunded; optional ACH return fee expense (same processing-fee plan)                                                                              |
+| Double checkout                   | Idempotency includes method + chargeCents                                                                                                                                                          |
+| Webhook config drift              | Ops checklist; parent doc event table                                                                                                                                                              |
+| Existing Connect accounts         | Phase 1d capability backfill                                                                                                                                                                       |
+| Connect master switch             | `STRIPE_CONNECT_ENABLED` only — fee/ACH always on when payments are on                                                                                                                             |
+| PE without pk                     | Fail fast if `VITE_STRIPE_PUBLISHABLE_KEY` missing                                                                                                                                                 |
 
 ## What not to do
 

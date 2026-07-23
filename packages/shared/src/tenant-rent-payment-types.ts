@@ -12,6 +12,15 @@ export const TenantRentPaymentStatus = {
 export type TTenantRentPaymentStatus =
   (typeof TenantRentPaymentStatus)[keyof typeof TenantRentPaymentStatus];
 
+/** Locked Checkout / PaymentIntent method family for dual-price rent pay. */
+export const RentPaymentMethodFamily = {
+  CARD: "card",
+  US_BANK_ACCOUNT: "us_bank_account",
+} as const;
+
+export type TRentPaymentMethodFamily =
+  (typeof RentPaymentMethodFamily)[keyof typeof RentPaymentMethodFamily];
+
 const TERMINAL_TENANT_RENT_PAYMENT_STATUSES = new Set<TTenantRentPaymentStatus>([
   TenantRentPaymentStatus.CANCELED,
   TenantRentPaymentStatus.FAILED,
